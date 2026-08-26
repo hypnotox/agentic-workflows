@@ -268,7 +268,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed cmd/awf/init.go:25.17,27.4 1 in runInitWithProjectLoader, beginning `if err != nil {`. The source exclusion records that descriptors marshal to JSON; cannot fail. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -283,7 +283,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed cmd/awf/init.go:50.83,52.5 1 in runInitWithProjectLoader, beginning `if presentErr := renderInitOutcome(partial.Outcome, stdout); presentErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -508,7 +508,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:402.3,402.142 1 in guardProjectState, beginning `return fmt.Errorf(\"retired project layout is unsupported at live floor %d; restore a supported .awf control pair\", migrate.LiveSchemaFloor)`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -523,7 +523,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:404.49,406.3 1 in guardProjectState, beginning `if _, err := lock.AuthorityState(); err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -538,7 +538,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:426.64,428.4 1 in projectGuardState, beginning `if configErr != nil && !errors.Is(configErr, os.ErrNotExist) {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -553,7 +553,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:439.16,441.3 1 in projectGuardState, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -568,7 +568,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:536.16,538.3 1 in writeStatus, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -583,7 +583,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      "reason": "Phase 3 reviewed cmd/awf/main.go:540.16,542.3 1 in writeStatus, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -613,7 +613,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed cmd/awf/sync.go:43.16,45.3 1 in runSyncPrinting, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -628,7 +628,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed cmd/awf/sync.go:54.70,56.4 1 in runSyncPrinting, beginning `if presentErr := renderPartialSync(stdout, err); presentErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -643,7 +643,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed cmd/awf/sync.go:60.16,62.3 1 in runSyncPrinting, beginning `if err != nil {`. The source exclusion records that typed results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -658,7 +658,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed cmd/awf/sync.go:68.35,70.3 1 in renderPartialSync, beginning `if !errors.As(syncErr, &partial) {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -673,7 +673,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed cmd/awf/sync.go:72.16,74.3 1 in renderPartialSync, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
     },
     {
       "identity": {
@@ -688,7 +688,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed cmd/awf/sync.go:80.16,82.3 1 in renderSyncMutation, beginning `if err != nil {`. The source exclusion records that typed results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -1303,7 +1303,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 lease extraction retains this defensive host-fault path as visible coverage debt; focused lease and transaction tests exercise the reachable behavior without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/adr/scaffold_lock.go:27.60,28.78 1 in acquireScaffoldLock, beginning `case strings.Contains(message, \"canonicalize lease root\"):`. This is the ADR-specific adapter error return around the shared lease owner; shared lease acquisition, release, cancellation, and cross-process behavior are directly tested at the filesystem boundary."
     },
     {
       "identity": {
@@ -1318,7 +1318,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 lease extraction retains this defensive host-fault path as visible coverage debt; focused lease and transaction tests exercise the reachable behavior without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/adr/scaffold_lock.go:33.10,34.18 1 in acquireScaffoldLock, beginning `default:`. This is the ADR-specific adapter error return around the shared lease owner; shared lease acquisition, release, cancellation, and cross-process behavior are directly tested at the filesystem boundary."
     },
     {
       "identity": {
@@ -4472,18 +4472,123 @@
     },
     {
       "identity": {
-        "file": "internal/filesystem/handle.go",
+        "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
-          "line": 33,
-          "column": 2
+          "line": 19,
+          "column": 16
         },
         "end": {
-          "line": 33,
-          "column": 59
+          "line": 21,
+          "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:19.16,21.3 1 in exchangeExpected, beginning `if err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 27,
+          "column": 35
+        },
+        "end": {
+          "line": 29,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:27.35,29.3 1 in exchangeExpected, beginning `if err := exchange(); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 33,
+          "column": 24
+        },
+        "end": {
+          "line": 35,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:33.24,35.4 1 in exchangeExpected, beginning `if inspectErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 36,
+          "column": 52
+        },
+        "end": {
+          "line": 39,
+          "column": 4
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:36.52,39.4 2 in exchangeExpected, beginning `if rollbackErr := exchange(); rollbackErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 42,
+          "column": 47
+        },
+        "end": {
+          "line": 43,
+          "column": 52
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:42.47,43.52 1 in exchangeExpected, beginning `if err := root.Remove(temporary); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 43,
+          "column": 52
+        },
+        "end": {
+          "line": 46,
+          "column": 4
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:43.52,46.4 2 in exchangeExpected, beginning `if rollbackErr := exchange(); rollbackErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 47,
+          "column": 3
+        },
+        "end": {
+          "line": 47,
+          "column": 20
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:47.3,47.20 1 in exchangeExpected, beginning `return false, err`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 50,
+          "column": 50
+        },
+        "end": {
+          "line": 52,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:50.50,52.4 1 in exchangeExpected, beginning `if err := root.Remove(destination); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
     },
     {
       "identity": {
@@ -4498,7 +4603,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:65.21,67.4 1 in Walk, beginning `if walkErr != nil {`. The source exclusion records that permission controls are execution-identity-dependent; otherwise an underlying WalkDir error requires a concurrent filesystem change. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -4513,7 +4618,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:69.17,71.4 1 in Walk, beginning `if err != nil {`. The source exclusion records that permission controls are execution-identity-dependent; otherwise this requires a concurrent filesystem change. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -4528,119 +4633,104 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:164.47,166.3 1 in ReplaceExpected, beginning `if err := validPath(destination); err != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 180,
+          "line": 183,
           "column": 48
         },
         "end": {
-          "line": 182,
+          "line": 185,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:183.48,185.4 1 in ReplaceExpected, beginning `if _, err := rand.Read(token[:]); err != nil {`. The source exclusion records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 186,
+          "line": 189,
           "column": 34
         },
         "end": {
-          "line": 187,
+          "line": 190,
           "column": 12
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:189.34,190.12 1 in ReplaceExpected, beginning `if errors.Is(err, fs.ErrExist) {`. The source exclusion records that a collision requires predicting the cryptographically random temporary name before this operation. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 194,
+          "line": 197,
           "column": 17
         },
         "end": {
-          "line": 196,
+          "line": 199,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:197.17,199.3 1 in ReplaceExpected, beginning `if file == nil {`. The source exclusion records that exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 198,
+          "line": 201,
           "column": 18
         },
         "end": {
-          "line": 200,
+          "line": 203,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:201.18,203.4 1 in ReplaceExpected, beginning `if file != nil {`. The source exclusion records that this remains non-nil only after a local temporary write storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 202,
+          "line": 205,
           "column": 86
         },
         "end": {
-          "line": 204,
+          "line": 207,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:205.86,207.5 1 in ReplaceExpected, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {`. The source exclusion records that the concrete root can fault here only through a concurrent namespace change or storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 207,
+          "line": 210,
           "column": 48
         },
         "end": {
-          "line": 209,
+          "line": 212,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 209,
-          "column": 31
-        },
-        "end": {
-          "line": 211,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:210.48,212.3 1 in ReplaceExpected, beginning `if n, err := file.Write(contents); err != nil {`. The source exclusion records that writing a locally-created regular temporary requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 212,
-          "column": 41
+          "column": 31
         },
         "end": {
           "line": 214,
@@ -4648,14 +4738,14 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:212.31,214.3 1 in ReplaceExpected, beginning `} else if n != len(contents) {`. The source exclusion records that os.File.Write returns a non-nil error when it writes fewer bytes than requested. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 215,
-          "column": 37
+          "column": 41
         },
         "end": {
           "line": 217,
@@ -4663,97 +4753,232 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:215.41,217.3 1 in ReplaceExpected, beginning `if err := file.Chmod(mode); err != nil {`. The source exclusion records that chmod of a newly-created regular temporary requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 223,
-          "column": 16
+          "line": 218,
+          "column": 36
         },
         "end": {
-          "line": 225,
+          "line": 220,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:218.36,220.3 1 in ReplaceExpected, beginning `if err := file.Sync(); err != nil {`. The source exclusion records that syncing a locally-created regular temporary requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 259,
+          "line": 221,
+          "column": 37
+        },
+        "end": {
+          "line": 223,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:221.37,223.3 1 in ReplaceExpected, beginning `if err := file.Close(); err != nil {`. The source exclusion records that closing a locally-created regular temporary after a successful sync requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 262,
+          "column": 47
+        },
+        "end": {
+          "line": 264,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:262.47,264.3 1 in RemoveExpected, beginning `if err := validPath(destination); err != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 265,
+          "column": 21
+        },
+        "end": {
+          "line": 267,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:265.21,267.3 1 in RemoveExpected, beginning `if expected == nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 270,
+          "column": 17
+        },
+        "end": {
+          "line": 272,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:270.17,272.4 1 in RemoveExpected, beginning `if err != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 278,
+          "column": 53
+        },
+        "end": {
+          "line": 280,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:278.53,280.4 1 in RemoveExpected, beginning `if !errors.Is(readErr, io.EOF) || closeErr != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 286,
+          "column": 48
+        },
+        "end": {
+          "line": 288,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:286.48,288.4 1 in RemoveExpected, beginning `if _, err := rand.Read(token[:]); err != nil {`. The source exclusion records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 296,
+          "column": 50
+        },
+        "end": {
+          "line": 299,
+          "column": 6
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:296.50,299.6 2 in RemoveExpected, beginning `if closeErr := file.Close(); closeErr != nil {`. The source exclusion records that closing a newly-created empty regular file requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 302,
           "column": 40
         },
         "end": {
-          "line": 261,
-          "column": 3
+          "line": 303,
+          "column": 12
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:302.40,303.12 1 in RemoveExpected, beginning `if errors.Is(returnErr, fs.ErrExist) {`. The source exclusion records that collision requires predicting a cryptographically random temporary. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 266,
-          "column": 16
+          "line": 305,
+          "column": 23
         },
         "end": {
-          "line": 268,
-          "column": 3
+          "line": 307,
+          "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:305.23,307.4 1 in RemoveExpected, beginning `if returnErr != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
+          "line": 311,
+          "column": 14
+        },
+        "end": {
           "line": 313,
-          "column": 20
-        },
-        "end": {
-          "line": 315,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:311.14,313.3 1 in RemoveExpected, beginning `if !created {`. The source exclusion records that exhausting random temporary names is not practically triggerable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 316,
-          "column": 21
+          "column": 86
         },
         "end": {
           "line": 318,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:316.86,318.5 1 in RemoveExpected, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 369,
+          "column": 20
+        },
+        "end": {
+          "line": 371,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:369.20,371.3 1 in ReadWithMode, beginning `if statErr != nil {`. The source exclusion records that stat on a successfully read confined regular file requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 372,
+          "column": 21
+        },
+        "end": {
+          "line": 374,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/filesystem/handle.go:372.21,374.3 1 in ReadWithMode, beginning `if closeErr != nil {`. The source exclusion records that close after a successful confined read requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 20,
-          "column": 16
+          "line": 37,
+          "column": 28
         },
         "end": {
-          "line": 22,
+          "line": 39,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 lease extraction retains this defensive host-fault path as visible coverage debt; focused lease and transaction tests exercise the reachable behavior without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/lease.go:37.28,39.3 1 in Release, beginning `if l == nil || l.released {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
     },
     {
       "identity": {
@@ -4768,112 +4993,97 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/lease.go:51.28,53.3 1 in CoversProject, beginning `if l == nil || l.released {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 65,
-          "column": 28
-        },
-        "end": {
-          "line": 67,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 118,
+          "line": 104,
           "column": 3
         },
         "end": {
-          "line": 118,
+          "line": 104,
           "column": 24
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/lease.go:104.3,104.24 1 in canonicalIdentities, beginning `if a.scope > b.scope {`. This comparator arm depends on the standard library sort comparison schedule; canonical, reversed, and duplicate root inputs directly prove the resulting deterministic order without binding tests to comparator call order."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 118,
+          "line": 104,
           "column": 24
         },
         "end": {
-          "line": 120,
+          "line": 106,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/lease.go:104.24,106.4 1 in canonicalIdentities, beginning `if a.scope > b.scope {`. This comparator arm depends on the standard library sort comparison schedule; canonical, reversed, and duplicate root inputs directly prove the resulting deterministic order without binding tests to comparator call order."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 121,
+          "line": 107,
           "column": 3
         },
         "end": {
-          "line": 121,
+          "line": 107,
           "column": 11
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/lease.go:107.3,107.11 1 in canonicalIdentities, beginning `return 0`. This comparator arm depends on the standard library sort comparison schedule; canonical, reversed, and duplicate root inputs directly prove the resulting deterministic order without binding tests to comparator call order."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 144,
+          "line": 130,
           "column": 18
         },
         "end": {
-          "line": 148,
+          "line": 134,
           "column": 5
         },
         "statements": 3
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/lease.go:130.18,134.5 3 in acquire, beginning `if err != nil {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 160,
+          "line": 146,
           "column": 54
         },
         "end": {
-          "line": 164,
+          "line": 150,
           "column": 4
         },
         "statements": 3
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/lease.go:146.54,150.4 3 in acquire, beginning `if err := os.Chmod(lock.Path(), 0o600); err != nil {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 179,
+          "line": 165,
           "column": 47
         },
         "end": {
-          "line": 181,
+          "line": 167,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/filesystem/lease.go:165.47,167.3 1 in leaseCache, beginning `if err := os.Chmod(cache, 0o700); err != nil {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
     },
     {
       "identity": {
@@ -5749,436 +5959,496 @@
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 40,
+          "line": 41,
           "column": 39
         },
         "end": {
-          "line": 42,
+          "line": 43,
           "column": 2
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:41.39,43.2 1 in Error, beginning `func (e *PartialError) Error() string {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 43,
-          "column": 39
-        },
-        "end": {
-          "line": 43,
-          "column": 57
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 65,
+          "line": 66,
           "column": 16
         },
         "end": {
-          "line": 67,
+          "line": 68,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:66.16,68.3 1 in Run, beginning `if err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 69,
+          "line": 70,
           "column": 55
         },
         "end": {
-          "line": 71,
+          "line": 72,
           "column": 32
         },
         "statements": 2
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:70.55,72.32 2 in Run, beginning `if releaseErr := lease.Release(); releaseErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 71,
+          "line": 72,
           "column": 32
         },
         "end": {
-          "line": 73,
+          "line": 74,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:72.32,74.5 1 in Run, beginning `if outcome.ConfigPath != \"\" {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 73,
+          "line": 74,
           "column": 10
         },
         "end": {
-          "line": 75,
+          "line": 76,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:74.10,76.5 1 in Run, beginning `} else {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 100,
+          "line": 101,
           "column": 17
         },
         "end": {
-          "line": 102,
+          "line": 103,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/initop/init.go:100.17,102.4 1 in function Run, beginning `{ // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Phase 3 reviewed internal/initop/init.go:101.17,103.4 1 in Run, beginning `if err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 103,
+          "line": 104,
           "column": 13
         },
         "end": {
-          "line": 105,
+          "line": 106,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:104.13,106.4 1 in Run, beginning `if !found {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 107,
+          "line": 108,
           "column": 17
         },
         "end": {
-          "line": 109,
+          "line": 110,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:108.17,110.4 1 in Run, beginning `if err != nil {`. The source exclusion records that LoadOptional parsed and validated this unchanged lock immediately above. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 110,
+          "line": 111,
           "column": 43
         },
         "end": {
-          "line": 112,
+          "line": 113,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:111.43,113.4 1 in Run, beginning `if state != manifest.AuthorityPermanent {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 129,
-          "column": 67
-        },
-        "end": {
           "line": 131,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 133,
           "column": 17
         },
         "end": {
-          "line": 135,
+          "line": 133,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:131.17,133.4 1 in Run, beginning `if err != nil {`. The source exclusion records that ScaffoldConfig renders a static template over a dir basename; cannot fail in practice. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 137,
+          "line": 135,
           "column": 21
         },
         "end": {
-          "line": 139,
+          "line": 137,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:135.21,137.4 1 in Run, beginning `if openErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 142,
-          "column": 43
+          "line": 139,
+          "column": 58
         },
         "end": {
-          "line": 144,
+          "line": 142,
           "column": 4
         },
-        "statements": 1
+        "statements": 2
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:139.58,142.4 2 in Run, beginning `if dirErr != nil && !errors.Is(dirErr, fs.ErrNotExist) {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 144,
+          "column": 65
+        },
+        "end": {
+          "line": 147,
+          "column": 5
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 reviewed internal/initop/init.go:144.65,147.5 2 in Run, beginning `if err := handle.MkdirAll(config.DirName, 0o755); err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 150,
+          "column": 21
+        },
+        "end": {
+          "line": 153,
+          "column": 5
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 reviewed internal/initop/init.go:150.21,153.5 2 in Run, beginning `if dirErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 163,
-          "column": 16
+          "column": 43
         },
         "end": {
-          "line": 166,
-          "column": 3
+          "line": 165,
+          "column": 4
         },
-        "statements": 2
+        "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 167,
-          "column": 41
-        },
-        "end": {
-          "line": 170,
-          "column": 3
-        },
-        "statements": 2
-      },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:163.43,165.4 1 in Run, beginning `if publishErr != nil || closeErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 185,
-          "column": 26
+          "column": 16
         },
         "end": {
           "line": 187,
-          "column": 5
+          "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:185.16,187.3 1 in Run, beginning `if err != nil {`. The source exclusion records that preparation validated every planned path; failure now requires an unportable root-confined filesystem fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 188,
-          "column": 18
+          "column": 41
         },
         "end": {
           "line": 190,
-          "column": 24
-        },
-        "statements": 2
-      },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 190,
-          "column": 24
-        },
-        "end": {
-          "line": 192,
-          "column": 6
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 193,
-          "column": 5
-        },
-        "end": {
-          "line": 193,
-          "column": 174
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 201,
           "column": 3
         },
-        "end": {
-          "line": 202,
-          "column": 33
-        },
-        "statements": 2
+        "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:188.41,190.3 1 in Run, beginning `if len(collisions) > 0 && !input.Force {`. The source exclusion records that the non-force probe plans the same full catalog; force makes this condition false. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 205,
-          "column": 16
+          "column": 26
         },
         "end": {
+          "line": 207,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/initop/init.go:205.26,207.5 1 in Run, beginning `if mutationErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
           "line": 208,
-          "column": 3
+          "column": 26
+        },
+        "end": {
+          "line": 210,
+          "column": 24
         },
         "statements": 2
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:208.26,210.24 2 in Run, beginning `if scaffold.committed {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 210,
-          "column": 16
+          "column": 24
         },
         "end": {
           "line": 212,
-          "column": 3
+          "column": 6
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:210.24,212.6 1 in Run, beginning `if valueErr != nil {`. The source exclusion records that fixed path and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 256,
-          "column": 16
+          "line": 213,
+          "column": 5
         },
         "end": {
-          "line": 258,
-          "column": 3
+          "line": 213,
+          "column": 174
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:213.5,213.174 1 in Run, beginning `partialMutation.Changes = append([]presentation.MutationChange{{Label: \"committed init effects\", Values: []presentation.Value{configValue}}}, parti...`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 261,
+          "line": 221,
+          "column": 3
+        },
+        "end": {
+          "line": 221,
+          "column": 27
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/initop/init.go:221.3,221.27 1 in Run, beginning `return failScaffold(err)`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 224,
           "column": 16
         },
         "end": {
+          "line": 227,
+          "column": 3
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 reviewed internal/initop/init.go:224.16,227.3 2 in Run, beginning `if err != nil {`. The source exclusion records that typed Publisher results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 229,
+          "column": 16
+        },
+        "end": {
+          "line": 232,
+          "column": 3
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 reviewed internal/initop/init.go:229.16,232.3 2 in Run, beginning `if err != nil {`. The source exclusion records that Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
           "line": 263,
+          "column": 20
+        },
+        "end": {
+          "line": 265,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:263.20,265.3 1 in rollbackScaffold, beginning `if openErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 265,
+          "line": 288,
+          "column": 17
+        },
+        "end": {
+          "line": 290,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/initop/init.go:288.17,290.4 1 in scaffoldPartialOutcome, beginning `if err != nil {`. The source exclusion records that fixed path and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 295,
+          "column": 17
+        },
+        "end": {
+          "line": 297,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/initop/init.go:295.17,297.4 1 in scaffoldPartialOutcome, beginning `if err != nil {`. The source exclusion records that fixed path and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 325,
+          "column": 16
+        },
+        "end": {
+          "line": 327,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/initop/init.go:325.16,327.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 330,
+          "column": 16
+        },
+        "end": {
+          "line": 332,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed internal/initop/init.go:330.16,332.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that ScaffoldConfig over the embedded catalog cannot fail at runtime. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 334,
           "column": 66
         },
         "end": {
-          "line": 267,
+          "line": 336,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:334.66,336.3 1 in probeCollisions, beginning `if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {`. The source exclusion records that a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 268,
+          "line": 337,
           "column": 63
         },
         "end": {
-          "line": 270,
+          "line": 339,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:337.63,339.3 1 in probeCollisions, beginning `if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil {`. The source exclusion records that post-MkdirAll write into a fresh temp dir cannot fail in practice. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 273,
+          "line": 342,
           "column": 16
         },
         "end": {
-          "line": 275,
+          "line": 344,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:342.16,344.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that a freshly-scaffolded default config always opens. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 277,
+          "line": 346,
           "column": 16
         },
         "end": {
-          "line": 279,
+          "line": 348,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initop/init.go:346.16,348.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -6283,7 +6553,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initspec/presentation.go:29.16,31.3 1 in Document, beginning `if err != nil {`. The source exclusion records that fixed nonempty prose contains no forbidden line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -6298,7 +6568,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initspec/presentation.go:33.16,35.3 1 in Document, beginning `if err != nil {`. The source exclusion records that Literal validated the value and config is a fixed grammar-valid label. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -6313,7 +6583,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initspec/presentation.go:37.16,39.3 1 in Document, beginning `if err != nil {`. The source exclusion records that Prose validated the value and config-action is a fixed grammar-valid label. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -6328,7 +6598,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: this exact uncovered defensive branch is a host-fault, cleanup-fault, invalid supplied-capability, or presentation-write path adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; it remains visible debt without adding test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/initspec/presentation.go:45.22,47.4 1 in Document, beginning `if valueErr != nil {`. The source exclusion records that fixed nonempty prose contains no forbidden line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -7093,7 +7363,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      "reason": "Phase 3 reviewed internal/project/project.go:246.16,248.3 1 in OpenForOperation, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
@@ -8308,7 +8578,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:75.18,77.3 1 in InitializeLeased, beginning `if lease == nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
@@ -8323,7 +8593,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:94.64,96.3 1 in run, beginning `} else if !lease.CoversProject(roots.Tracked, roots.Resident) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
@@ -8338,7 +8608,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:99.42,101.5 1 in run, beginning `if err := lease.Release(); err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
@@ -8353,7 +8623,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:157.30,159.3 1 in partialOrError, beginning `if errors.As(err, &partial) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
@@ -8368,7 +8638,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:173.17,175.4 1 in PartialMutation, beginning `if err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
@@ -8383,7 +8653,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:179.16,181.3 1 in PartialMutation, beginning `if err != nil {`. The source exclusion records that fixed presentation text. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -8398,7 +8668,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:260.16,262.3 1 in sync, beginning `if err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
@@ -8413,7 +8683,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:293.12,295.4 1 in syncReportWithPlan, beginning `if found {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
@@ -8428,7 +8698,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:297.13,299.4 1 in syncReportWithPlan, beginning `if !found {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
@@ -8443,7 +8713,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:301.62,303.4 1 in syncReportWithPlan, beginning `if stateErr != nil || state != manifest.AuthorityPermanent {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
@@ -8458,7 +8728,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:312.102,314.5 1 in syncReportWithPlan, beginning `if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil {`. The source exclusion records that rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -8473,82 +8743,82 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:354.60,356.4 1 in syncReportWithPlan, beginning `if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 361,
-          "column": 76
+          "line": 458,
+          "column": 91
         },
         "end": {
-          "line": 365,
-          "column": 6
+          "line": 462,
+          "column": 29
         },
-        "statements": 3
+        "statements": 4
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:458.91,462.29 4 in syncReportWithPlan, beginning `if committedPath, residuePath, committed := committedPublication(bakErr); committed {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 455,
-          "column": 81
+          "line": 462,
+          "column": 29
         },
         "end": {
-          "line": 459,
-          "column": 8
+          "line": 464,
+          "column": 9
         },
-        "statements": 3
+        "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:462.29,464.9 1 in syncReportWithPlan, beginning `if residuePath != \"\" {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 470,
+          "line": 476,
           "column": 67
         },
         "end": {
-          "line": 472,
+          "line": 478,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:476.67,478.5 1 in syncReportWithPlan, beginning `if observeErr != nil && !errors.Is(observeErr, fs.ErrNotExist) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 503,
+          "line": 509,
           "column": 16
         },
         "end": {
-          "line": 505,
+          "line": 511,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:509.16,511.3 1 in syncReportWithPlan, beginning `if err != nil {`. The source exclusion records that sync constructs only authority-valid lock fields, so marshal failure requires a future representation change. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 587,
+          "line": 593,
           "column": 16
         },
         "end": {
-          "line": 589,
+          "line": 595,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 root-scoped publication review: exact uncovered defensive host-fault, cleanup-fault, invalid-capability, or presentation-write branch adjacent to directly exercised lease, confinement, transaction-order, and typed partial-outcome behavior; retained without test-shaped production seams."
+      "reason": "Phase 3 reviewed internal/publisher/sync.go:593.16,595.3 1 in syncMutation, beginning `if err != nil {`. The source exclusion records that fixed nonempty completion action always validates as prose. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -9868,7 +10138,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      "reason": "Phase 3 reviewed internal/upgrade/operation.go:231.49,233.3 1 in Run, beginning `if _, err := lock.AuthorityState(); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
@@ -11514,7 +11784,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/config/edit.go:70, `if err := item.Decode(\u0026existing); err != nil {` is guarded by the preceding `var existing LocalDoc` at internal/config/edit.go:69; in `func AppendLocalDoc(src []byte, doc LocalDoc) ([]byte, error)` (internal/config/edit.go:48), the predecessor invariant is strict Parse decoded every existing item immediately above. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/config/edit.go:70, `if err := item.Decode(&existing); err != nil {` is guarded by the preceding `var existing LocalDoc` at internal/config/edit.go:69; in `func AppendLocalDoc(src []byte, doc LocalDoc) ([]byte, error)` (internal/config/edit.go:48), the predecessor invariant is strict Parse decoded every existing item immediately above. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -11670,7 +11940,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func renderDetail(detail presentation.Detail) string` begins at internal/contextq/render.go:352; its branch `if presentation.Render(\u0026out, document) != nil {` at internal/contextq/render.go:358 follows `var out strings.Builder` at internal/contextq/render.go:357. That flow establishes a validated document cannot fail buffer rendering, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func renderDetail(detail presentation.Detail) string` begins at internal/contextq/render.go:352; its branch `if presentation.Render(&out, document) != nil {` at internal/contextq/render.go:358 follows `var out strings.Builder` at internal/contextq/render.go:357. That flow establishes a validated document cannot fail buffer rendering, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -11917,12 +12187,12 @@
         "file": "internal/currentstatecoord/number.go",
         "line": 90,
         "targetLine": 90,
-        "reason": "every named slug came from the corpus, whose pending records all parsed from a `\u003cslug\u003e.md` file carrying the slug-form heading",
+        "reason": "every named slug came from the corpus, whose pending records all parsed from a `<slug>.md` file carrying the slug-form heading",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/currentstatecoord/number.go:90, `if err := adr.RenumberPending(decisionsDir(root), slug, number); err != nil {` is guarded by the preceding `number := next + i` at internal/currentstatecoord/number.go:89; in `func NumberPendingADRs(root string, slugs []string, publish func() error) (NumberingReport, error)` (internal/currentstatecoord/number.go:68), the predecessor invariant is every named slug came from the corpus, whose pending records all parsed from a `\u003cslug\u003e.md` file carrying the slug-form heading. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/currentstatecoord/number.go:90, `if err := adr.RenumberPending(decisionsDir(root), slug, number); err != nil {` is guarded by the preceding `number := next + i` at internal/currentstatecoord/number.go:89; in `func NumberPendingADRs(root string, slugs []string, publish func() error) (NumberingReport, error)` (internal/currentstatecoord/number.go:68), the predecessor invariant is every named slug came from the corpus, whose pending records all parsed from a `<slug>.md` file carrying the slug-form heading. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -12066,7 +12336,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/effort/activity.go:273, `if e := os.Remove(tempPath); e != nil \u0026\u0026 !errors.Is(e, os.ErrNotExist) {` follows the concrete operation `}` at internal/effort/activity.go:272 in `func (s store) replaceResidentExpected(path string, raw []byte, label string, expected *fileIdentity, operation activityOperation) (returnErr error)` (internal/effort/activity.go:241). The reviewed failure condition is cleanup of a local temporary can only fail through a storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/effort/activity.go:273, `if e := os.Remove(tempPath); e != nil && !errors.Is(e, os.ErrNotExist) {` follows the concrete operation `}` at internal/effort/activity.go:272 in `func (s store) replaceResidentExpected(path string, raw []byte, label string, expected *fileIdentity, operation activityOperation) (returnErr error)` (internal/effort/activity.go:241). The reviewed failure condition is cleanup of a local temporary can only fail through a storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
@@ -12246,7 +12516,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/effort/paths.go:42, `if info.Mode()\u0026os.ModeSymlink != 0 {` follows the concrete operation `}` at internal/effort/paths.go:41 in `func (p paths) ensure(root string) error` (internal/effort/paths.go:34). The reviewed failure condition is MkdirAll rejects a symlink leaf and ResidentRoot rejects ancestor symlinks; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/effort/paths.go:42, `if info.Mode()&os.ModeSymlink != 0 {` follows the concrete operation `}` at internal/effort/paths.go:41 in `func (p paths) ensure(root string) error` (internal/effort/paths.go:34). The reviewed failure condition is MkdirAll rejects a symlink leaf and ResidentRoot rejects ancestor symlinks; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
@@ -12690,7 +12960,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `if err == nil \u0026\u0026 os.SameFile(expected.info, displaced.info) {` at internal/effort/publication_linux.go:40 feeds `if err := os.Remove(tempPath); err != nil {` at internal/effort/publication_linux.go:41 in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (internal/effort/publication_linux.go:35). Its concrete fault condition is the exchanged temporary is a same-owner regular file; failure requires a storage fault, so no safe portable production input induces this error path."
+      "evidence": "The source predecessor `if err == nil && os.SameFile(expected.info, displaced.info) {` at internal/effort/publication_linux.go:40 feeds `if err := os.Remove(tempPath); err != nil {` at internal/effort/publication_linux.go:41 in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (internal/effort/publication_linux.go:35). Its concrete fault condition is the exchanged temporary is a same-owner regular file; failure requires a storage fault, so no safe portable production input induces this error path."
     },
     {
       "directive": {
@@ -13086,7 +13356,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (s store) replaceMemory(path string, raw []byte) (returnErr error)` (starts internal/effort/store.go:237) checks `if err := os.Remove(tempPath); err != nil \u0026\u0026 !errors.Is(err, os.ErrNotExist) {` at internal/effort/store.go:250 after `if !published {` at internal/effort/store.go:249. Here the locally-created sibling can disappear, but a non-ENOENT removal failure requires a kernel or storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func (s store) replaceMemory(path string, raw []byte) (returnErr error)` (starts internal/effort/store.go:237) checks `if err := os.Remove(tempPath); err != nil && !errors.Is(err, os.ErrNotExist) {` at internal/effort/store.go:250 after `if !published {` at internal/effort/store.go:249. Here the locally-created sibling can disappear, but a non-ENOENT removal failure requires a kernel or storage fault; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -13451,254 +13721,374 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 180,
-        "targetLine": 180,
+        "line": 183,
+        "targetLine": 183,
         "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (starts internal/filesystem/handle.go:138) checks `if _, err := rand.Read(token[:]); err != nil {` at internal/filesystem/handle.go:146 after `var token [16]byte` at internal/filesystem/handle.go:145. Here the operating-system random source is required by the Go runtime and cannot be faulted through this seam; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:183 targeting line 183: `the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 186,
-        "targetLine": 186,
+        "line": 189,
+        "targetLine": 189,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `if errors.Is(err, fs.ErrExist) {` at internal/filesystem/handle.go:152 feeds `continue` at internal/filesystem/handle.go:153 in `func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (internal/filesystem/handle.go:138). Its concrete fault condition is a collision requires predicting the cryptographically random temporary name before this operation, so no safe portable production input induces this error path."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:189 targeting line 189: `a collision requires predicting the cryptographically random temporary name before this operation`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 187,
-        "targetLine": 187,
+        "line": 190,
+        "targetLine": 190,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `if errors.Is(err, fs.ErrExist) {` at internal/filesystem/handle.go:152 feeds `continue` at internal/filesystem/handle.go:153 in `func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (internal/filesystem/handle.go:138). Its concrete fault condition is a collision requires predicting the cryptographically random temporary name before this operation, so no safe portable production input induces this error path."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:190 targeting line 190: `a collision requires predicting the cryptographically random temporary name before this operation`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 194,
-        "targetLine": 194,
+        "line": 197,
+        "targetLine": 197,
         "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (starts internal/filesystem/handle.go:138) checks `return fmt.Errorf(\"filesystem: create replacement temporary for %q: temporary name collisions exhausted\", destination)` at internal/filesystem/handle.go:161 after `if file == nil {` at internal/filesystem/handle.go:160. Here exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle; exercising this exact branch requires an unportable environmental failure."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 195,
-        "targetLine": 195,
-        "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (starts internal/filesystem/handle.go:138) checks `return fmt.Errorf(\"filesystem: create replacement temporary for %q: temporary name collisions exhausted\", destination)` at internal/filesystem/handle.go:161 after `if file == nil {` at internal/filesystem/handle.go:160. Here exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:197 targeting line 197: `exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 198,
         "targetLine": 198,
+        "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:198 targeting line 198: `exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 201,
+        "targetLine": 201,
         "reason": "this remains non-nil only after a local temporary write storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (starts internal/filesystem/handle.go:138) checks `if file != nil {` at internal/filesystem/handle.go:164 after `defer func() {` at internal/filesystem/handle.go:163. Here this remains non-nil only after a local temporary write storage fault; exercising this exact branch requires an unportable environmental failure."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 199,
-        "targetLine": 199,
-        "reason": "a second close failure after a replacement write failure requires a second storage fault",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `if file != nil {` at internal/filesystem/handle.go:164 feeds `returnErr = errors.Join(returnErr, file.Close())` at internal/filesystem/handle.go:165 in `func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (internal/filesystem/handle.go:138). Its concrete fault condition is a second close failure after a replacement write failure requires a second storage fault, so no safe portable production input induces this error path."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:201 targeting line 201: `this remains non-nil only after a local temporary write storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 202,
         "targetLine": 202,
+        "reason": "a second close failure after a replacement write failure requires a second storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:202 targeting line 202: `a second close failure after a replacement write failure requires a second storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 205,
+        "targetLine": 205,
         "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/filesystem/handle.go:169, `returnErr = errors.Join(returnErr, fmt.Errorf(\"filesystem: remove replacement temporary %q: %w\", temporary, err))` follows the concrete operation `if err := h.root.Remove(temporary); err != nil \u0026\u0026 !errors.Is(err, fs.ErrNotExist) {` at internal/filesystem/handle.go:168 in `func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (internal/filesystem/handle.go:138). The reviewed failure condition is the concrete root can fault here only through a concurrent namespace change or storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:205 targeting line 205: `the concrete root can fault here only through a concurrent namespace change or storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 203,
-        "targetLine": 203,
+        "line": 206,
+        "targetLine": 206,
         "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/filesystem/handle.go:169, `returnErr = errors.Join(returnErr, fmt.Errorf(\"filesystem: remove replacement temporary %q: %w\", temporary, err))` follows the concrete operation `if err := h.root.Remove(temporary); err != nil \u0026\u0026 !errors.Is(err, fs.ErrNotExist) {` at internal/filesystem/handle.go:168 in `func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (internal/filesystem/handle.go:138). The reviewed failure condition is the concrete root can fault here only through a concurrent namespace change or storage fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 207,
-        "targetLine": 207,
-        "reason": "writing a locally-created regular temporary requires a storage fault",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `if n, err := file.Write(contents); err != nil {` at internal/filesystem/handle.go:173 feeds `return fmt.Errorf(\"filesystem: write replacement temporary for %q: %w\", destination, err)` at internal/filesystem/handle.go:174 in `func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (internal/filesystem/handle.go:138). Its concrete fault condition is writing a locally-created regular temporary requires a storage fault, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 208,
-        "targetLine": 208,
-        "reason": "writing a locally-created regular temporary requires a storage fault",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `if n, err := file.Write(contents); err != nil {` at internal/filesystem/handle.go:173 feeds `return fmt.Errorf(\"filesystem: write replacement temporary for %q: %w\", destination, err)` at internal/filesystem/handle.go:174 in `func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (internal/filesystem/handle.go:138). Its concrete fault condition is writing a locally-created regular temporary requires a storage fault, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 209,
-        "targetLine": 209,
-        "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (starts internal/filesystem/handle.go:138) checks `return fmt.Errorf(\"filesystem: write replacement temporary for %q: %w\", destination, io.ErrShortWrite)` at internal/filesystem/handle.go:176 after `} else if n != len(contents) {` at internal/filesystem/handle.go:175. Here os.File.Write returns a non-nil error when it writes fewer bytes than requested; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:206 targeting line 206: `the concrete root can fault here only through a concurrent namespace change or storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 210,
         "targetLine": 210,
-        "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
+        "reason": "writing a locally-created regular temporary requires a storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:210 targeting line 210: `writing a locally-created regular temporary requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 211,
+        "targetLine": 211,
+        "reason": "writing a locally-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (starts internal/filesystem/handle.go:138) checks `return fmt.Errorf(\"filesystem: write replacement temporary for %q: %w\", destination, io.ErrShortWrite)` at internal/filesystem/handle.go:176 after `} else if n != len(contents) {` at internal/filesystem/handle.go:175. Here os.File.Write returns a non-nil error when it writes fewer bytes than requested; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:211 targeting line 211: `writing a locally-created regular temporary requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 212,
         "targetLine": 212,
-        "reason": "chmod of a newly-created regular temporary requires a storage fault",
+        "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (starts internal/filesystem/handle.go:138) checks `return fmt.Errorf(\"filesystem: set replacement mode for %q: %w\", destination, err)` at internal/filesystem/handle.go:179 after `if err := file.Chmod(mode); err != nil {` at internal/filesystem/handle.go:178. Here chmod of a newly-created regular temporary requires a storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:212 targeting line 212: `os.File.Write returns a non-nil error when it writes fewer bytes than requested`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 213,
         "targetLine": 213,
-        "reason": "chmod of a newly-created regular temporary requires a storage fault",
+        "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (starts internal/filesystem/handle.go:138) checks `return fmt.Errorf(\"filesystem: set replacement mode for %q: %w\", destination, err)` at internal/filesystem/handle.go:179 after `if err := file.Chmod(mode); err != nil {` at internal/filesystem/handle.go:178. Here chmod of a newly-created regular temporary requires a storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:213 targeting line 213: `os.File.Write returns a non-nil error when it writes fewer bytes than requested`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 215,
         "targetLine": 215,
-        "reason": "closing a locally-created regular temporary after a successful write requires a storage fault",
+        "reason": "chmod of a newly-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (starts internal/filesystem/handle.go:138) checks `return fmt.Errorf(\"filesystem: close replacement temporary for %q: %w\", destination, err)` at internal/filesystem/handle.go:182 after `if err := file.Close(); err != nil {` at internal/filesystem/handle.go:181. Here closing a locally-created regular temporary after a successful write requires a storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:215 targeting line 215: `chmod of a newly-created regular temporary requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 216,
         "targetLine": 216,
-        "reason": "closing a locally-created regular temporary after a successful write requires a storage fault",
+        "reason": "chmod of a newly-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error)` (starts internal/filesystem/handle.go:138) checks `return fmt.Errorf(\"filesystem: close replacement temporary for %q: %w\", destination, err)` at internal/filesystem/handle.go:182 after `if err := file.Close(); err != nil {` at internal/filesystem/handle.go:181. Here closing a locally-created regular temporary after a successful write requires a storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:216 targeting line 216: `chmod of a newly-created regular temporary requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 313,
-        "targetLine": 313,
+        "line": 218,
+        "targetLine": 218,
+        "reason": "syncing a locally-created regular temporary requires a storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:218 targeting line 218: `syncing a locally-created regular temporary requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 219,
+        "targetLine": 219,
+        "reason": "syncing a locally-created regular temporary requires a storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:219 targeting line 219: `syncing a locally-created regular temporary requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 221,
+        "targetLine": 221,
+        "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:221 targeting line 221: `closing a locally-created regular temporary after a successful sync requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 222,
+        "targetLine": 222,
+        "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:222 targeting line 222: `closing a locally-created regular temporary after a successful sync requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 286,
+        "targetLine": 286,
+        "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:286 targeting line 286: `the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 296,
+        "targetLine": 296,
+        "reason": "closing a newly-created empty regular file requires a storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:296 targeting line 296: `closing a newly-created empty regular file requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 297,
+        "targetLine": 297,
+        "reason": "cleanup after a close storage fault requires the same unportable fault source",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:297 targeting line 297: `cleanup after a close storage fault requires the same unportable fault source`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 298,
+        "targetLine": 298,
+        "reason": "closing a newly-created empty regular file requires a storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:298 targeting line 298: `closing a newly-created empty regular file requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 302,
+        "targetLine": 302,
+        "reason": "collision requires predicting a cryptographically random temporary",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:302 targeting line 302: `collision requires predicting a cryptographically random temporary`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 303,
+        "targetLine": 303,
+        "reason": "collision requires predicting a cryptographically random temporary",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:303 targeting line 303: `collision requires predicting a cryptographically random temporary`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 311,
+        "targetLine": 311,
+        "reason": "exhausting random temporary names is not practically triggerable",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:311 targeting line 311: `exhausting random temporary names is not practically triggerable`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 312,
+        "targetLine": 312,
+        "reason": "exhausting random temporary names is not practically triggerable",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:312 targeting line 312: `exhausting random temporary names is not practically triggerable`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 369,
+        "targetLine": 369,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (starts internal/filesystem/handle.go:215) checks `return nil, 0, fmt.Errorf(\"filesystem: read %q: %w\", path, errors.Join(statErr, closeErr))` at internal/filesystem/handle.go:255 after `if statErr != nil {` at internal/filesystem/handle.go:229. Here stat on a successfully read confined regular file requires a storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:369 targeting line 369: `stat on a successfully read confined regular file requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 314,
-        "targetLine": 314,
+        "line": 370,
+        "targetLine": 370,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (starts internal/filesystem/handle.go:215) checks `return nil, 0, fmt.Errorf(\"filesystem: read %q: %w\", path, errors.Join(statErr, closeErr))` at internal/filesystem/handle.go:255 after `if statErr != nil {` at internal/filesystem/handle.go:229. Here stat on a successfully read confined regular file requires a storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:370 targeting line 370: `stat on a successfully read confined regular file requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 316,
-        "targetLine": 316,
+        "line": 372,
+        "targetLine": 372,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (starts internal/filesystem/handle.go:215) checks `return nil, 0, fmt.Errorf(\"filesystem: read %q: %w\", path, closeErr)` at internal/filesystem/handle.go:258 after `if closeErr != nil {` at internal/filesystem/handle.go:232. Here close after a successful confined read requires a storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:372 targeting line 372: `close after a successful confined read requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 317,
-        "targetLine": 317,
+        "line": 373,
+        "targetLine": 373,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error)` (starts internal/filesystem/handle.go:215) checks `return nil, 0, fmt.Errorf(\"filesystem: read %q: %w\", path, closeErr)` at internal/filesystem/handle.go:258 after `if closeErr != nil {` at internal/filesystem/handle.go:232. Here close after a successful confined read requires a storage fault; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:373 targeting line 373: `close after a successful confined read requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
@@ -13710,7 +14100,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err := dec.Decode(\u0026extra); !errors.Is(err, io.EOF) {` at internal/frontmatter/frontmatter.go:57 is `var extra any` (internal/frontmatter/frontmatter.go:56). Within `func ParseStrict(content []byte, out any) (body []byte, found bool, err error)` at internal/frontmatter/frontmatter.go:46, source review establishes Split ends the block at the first exact delimiter, so a second YAML document cannot remain inside it; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {` at internal/frontmatter/frontmatter.go:57 is `var extra any` (internal/frontmatter/frontmatter.go:56). Within `func ParseStrict(content []byte, out any) (body []byte, found bool, err error)` at internal/frontmatter/frontmatter.go:46, source review establishes Split ends the block at the first exact delimiter, so a second YAML document cannot remain inside it; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
@@ -13722,7 +14112,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/frontmatter/frontmatter.go:58, `if err != nil {` is guarded by the preceding `if err := dec.Decode(\u0026extra); !errors.Is(err, io.EOF) {` at internal/frontmatter/frontmatter.go:57; in `func ParseStrict(content []byte, out any) (body []byte, found bool, err error)` (internal/frontmatter/frontmatter.go:46), the predecessor invariant is the first decode consumed the complete delimiter-bounded YAML block. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/frontmatter/frontmatter.go:58, `if err != nil {` is guarded by the preceding `if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {` at internal/frontmatter/frontmatter.go:57; in `func ParseStrict(content []byte, out any) (body []byte, found bool, err error)` (internal/frontmatter/frontmatter.go:46), the predecessor invariant is the first decode consumed the complete delimiter-bounded YAML block. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -13998,7 +14388,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func platformLstatComponent(path string, requireOwner bool) (os.FileInfo, error)` (starts internal/git/controlroot_unix.go:42) checks `if requireOwner \u0026\u0026 !ownedByCurrentUser(info) {` at internal/git/controlroot_unix.go:50 after `}` at internal/git/controlroot_unix.go:49. Here exercised only when the test process can create a foreign-owned fixture; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func platformLstatComponent(path string, requireOwner bool) (os.FileInfo, error)` (starts internal/git/controlroot_unix.go:42) checks `if requireOwner && !ownedByCurrentUser(info) {` at internal/git/controlroot_unix.go:50 after `}` at internal/git/controlroot_unix.go:49. Here exercised only when the test process can create a foreign-owned fixture; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -14387,182 +14777,194 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 107,
-        "targetLine": 107,
+        "line": 108,
+        "targetLine": 108,
         "reason": "LoadOptional parsed and validated this unchanged lock immediately above",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error)` begins at internal/initop/init.go:43; its branch `if err != nil {` at internal/initop/init.go:74 follows `state, err := lock.AuthorityState()` at internal/initop/init.go:73. That flow establishes LoadOptional parsed and validated this unchanged lock immediately above, making the defensive return unreachable without an invariant breach."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:108 targeting line 108: `LoadOptional parsed and validated this unchanged lock immediately above`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 129,
-        "targetLine": 129,
-        "reason": "entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `if !configExists {` at internal/initop/init.go:95 feeds `if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {` at internal/initop/init.go:96 in `func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error)` (internal/initop/init.go:43). Its concrete fault condition is entering this block needs cfgPath absent, which precludes a parent collision making MkdirAll fail, so no safe portable production input induces this error path."
-    },
-    {
-      "directive": {
-        "file": "internal/initop/init.go",
-        "line": 133,
-        "targetLine": 133,
+        "line": 131,
+        "targetLine": 131,
         "reason": "ScaffoldConfig renders a static template over a dir basename; cannot fail in practice",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/initop/init.go:100, `if err != nil {` is guarded by the preceding `scaffold, err := project.ScaffoldConfigForProfile(filepath.Base(root), vars, scopes, profile)` at internal/initop/init.go:99; in `func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error)` (internal/initop/init.go:43), the predecessor invariant is ScaffoldConfig renders a static template over a dir basename; cannot fail in practice. Only violation of that closed state reaches this guard."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:131 targeting line 131: `ScaffoldConfig renders a static template over a dir basename; cannot fail in practice`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 163,
-        "targetLine": 163,
+        "line": 185,
+        "targetLine": 185,
         "reason": "preparation validated every planned path; failure now requires an unportable root-confined filesystem fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/initop/init.go:124, `if err != nil {` follows the concrete operation `collisions, err := prepared.InitCollisions()` at internal/initop/init.go:123 in `func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error)` (internal/initop/init.go:43). The reviewed failure condition is preparation validated every planned path; failure now requires an unportable root-confined filesystem fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:185 targeting line 185: `preparation validated every planned path; failure now requires an unportable root-confined filesystem fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 167,
-        "targetLine": 167,
+        "line": 188,
+        "targetLine": 188,
         "reason": "the non-force probe plans the same full catalog; force makes this condition false",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error)` (starts internal/initop/init.go:43) checks `if len(collisions) \u003e 0 \u0026\u0026 !input.Force {` at internal/initop/init.go:128 after `}` at internal/initop/init.go:127. Here the non-force probe plans the same full catalog; force makes this condition false; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:188 targeting line 188: `the non-force probe plans the same full catalog; force makes this condition false`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 169,
-        "targetLine": 169,
+        "line": 189,
+        "targetLine": 189,
         "reason": "the identical pre-prompt probe makes this path unreachable",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/initop/init.go:130, `return initspec.Outcome{}, collisionRefusal(collisions)` follows the concrete operation `cleanupScaffold(cfgPath, scaffolded)` at internal/initop/init.go:129 in `func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error)` (internal/initop/init.go:43). The reviewed failure condition is the identical pre-prompt probe makes this path unreachable; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
-    },
-    {
-      "directive": {
-        "file": "internal/initop/init.go",
-        "line": 190,
-        "targetLine": 190,
-        "reason": "fixed path and prose contain no line break",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 direct source review: fixed validated presentation values or locally created confined filesystem objects make this branch safely uninducible without a test-shaped production seam; adjacent behavior and error identity are exercised."
-    },
-    {
-      "directive": {
-        "file": "internal/initop/init.go",
-        "line": 205,
-        "targetLine": 205,
-        "reason": "typed Publisher results and fixed presentation grammar make this mapping failure unreachable",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/initop/init.go:147 is `mutation, err := result.Mutation()` (internal/initop/init.go:146). Within `func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error)` at internal/initop/init.go:43, source review establishes typed Publisher results and fixed presentation grammar make this mapping failure unreachable; this is therefore a closed-state fail-closed branch."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:189 targeting line 189: `the identical pre-prompt probe makes this path unreachable`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
         "line": 210,
         "targetLine": 210,
+        "reason": "fixed path and prose contain no line break",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:210 targeting line 210: `fixed path and prose contain no line break`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/initop/init.go",
+        "line": 224,
+        "targetLine": 224,
+        "reason": "typed Publisher results and fixed presentation grammar make this mapping failure unreachable",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:224 targeting line 224: `typed Publisher results and fixed presentation grammar make this mapping failure unreachable`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/initop/init.go",
+        "line": 229,
+        "targetLine": 229,
         "reason": "Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error)` (starts internal/initop/init.go:43) checks `if err != nil {` at internal/initop/init.go:152 after `advisories, err := project.AdvisoryNotes(state, cfg, prepared.Plan(), projectSemantics(prepared))` at internal/initop/init.go:151. Here Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:229 targeting line 229: `Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 256,
-        "targetLine": 256,
+        "line": 288,
+        "targetLine": 288,
+        "reason": "fixed path and prose contain no line break",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:288 targeting line 288: `fixed path and prose contain no line break`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/initop/init.go",
+        "line": 295,
+        "targetLine": 295,
+        "reason": "fixed path and prose contain no line break",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:295 targeting line 295: `fixed path and prose contain no line break`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+    },
+    {
+      "directive": {
+        "file": "internal/initop/init.go",
+        "line": 325,
+        "targetLine": 325,
         "reason": "MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `tmp, err := os.MkdirTemp(\"\", \"awf-init-probe-*\")` at internal/initop/init.go:197 feeds `if err != nil {` at internal/initop/init.go:198 in `func probeCollisions(ctx context.Context, root string, loadProject LoadProject) ([]string, error)` (internal/initop/init.go:185). Its concrete fault condition is MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably, so no safe portable production input induces this error path."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:325 targeting line 325: `MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 261,
-        "targetLine": 261,
+        "line": 330,
+        "targetLine": 330,
         "reason": "ScaffoldConfig over the embedded catalog cannot fail at runtime",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func probeCollisions(ctx context.Context, root string, loadProject LoadProject) ([]string, error)` begins at internal/initop/init.go:185; its branch `if err != nil {` at internal/initop/init.go:203 follows `scaffold, err := project.ScaffoldConfig(filepath.Base(root), nil, nil)` at internal/initop/init.go:202. That flow establishes ScaffoldConfig over the embedded catalog cannot fail at runtime, making the defensive return unreachable without an invariant breach."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:330 targeting line 330: `ScaffoldConfig over the embedded catalog cannot fail at runtime`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 265,
-        "targetLine": 265,
+        "line": 334,
+        "targetLine": 334,
         "reason": "a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `cfgPath := config.ConfigPath(tmp)` at internal/initop/init.go:206 feeds `if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {` at internal/initop/init.go:207 in `func probeCollisions(ctx context.Context, root string, loadProject LoadProject) ([]string, error)` (internal/initop/init.go:185). Its concrete fault condition is a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses, so no safe portable production input induces this error path."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:334 targeting line 334: `a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 268,
-        "targetLine": 268,
+        "line": 337,
+        "targetLine": 337,
         "reason": "post-MkdirAll write into a fresh temp dir cannot fail in practice",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `}` at internal/initop/init.go:209 feeds `if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil {` at internal/initop/init.go:210 in `func probeCollisions(ctx context.Context, root string, loadProject LoadProject) ([]string, error)` (internal/initop/init.go:185). Its concrete fault condition is post-MkdirAll write into a fresh temp dir cannot fail in practice, so no safe portable production input induces this error path."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:337 targeting line 337: `post-MkdirAll write into a fresh temp dir cannot fail in practice`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 273,
-        "targetLine": 273,
+        "line": 342,
+        "targetLine": 342,
         "reason": "a freshly-scaffolded default config always opens",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func probeCollisions(ctx context.Context, root string, loadProject LoadProject) ([]string, error)` begins at internal/initop/init.go:185; its branch `if err != nil {` at internal/initop/init.go:215 follows `state, cfg, err := loader.OpenForOperation(ctx, tmp)` at internal/initop/init.go:214. That flow establishes a freshly-scaffolded default config always opens, making the defensive return unreachable without an invariant breach."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:342 targeting line 342: `a freshly-scaffolded default config always opens`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 277,
-        "targetLine": 277,
+        "line": 346,
+        "targetLine": 346,
         "reason": "rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/initop/init.go:219 is `prepared, err := composePublisher(state, cfg).Prepare()` (internal/initop/init.go:218). Within `func probeCollisions(ctx context.Context, root string, loadProject LoadProject) ([]string, error)` at internal/initop/init.go:185, source review establishes rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail; this is therefore a closed-state fail-closed branch."
+      "evidence": "Phase 3 reviewed directive internal/initop/init.go:346 targeting line 346: `rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
@@ -14910,7 +15312,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func parsePlan(path string, source, body string, p *Plan, v2 bool) error` begins at internal/plan/structure.go:162; its branch `if lineText(lines[idx]) != \"## Notes\" {` at internal/plan/structure.go:242 follows `if idx \u003c len(lines) {` at internal/plan/structure.go:241. That flow establishes dodEnd moves below len only when this exact heading is found, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func parsePlan(path string, source, body string, p *Plan, v2 bool) error` begins at internal/plan/structure.go:162; its branch `if lineText(lines[idx]) != \"## Notes\" {` at internal/plan/structure.go:242 follows `if idx < len(lines) {` at internal/plan/structure.go:241. That flow establishes dodEnd moves below len only when this exact heading is found, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -14934,7 +15336,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func sectionBodyNonempty(lines []string, start, end int) bool` begins at internal/plan/structure.go:298; its branch `if start \u003e end || start \u003c 0 || end \u003e len(lines) {` at internal/plan/structure.go:299 follows `func sectionBodyNonempty(lines []string, start, end int) bool {` at internal/plan/structure.go:298. That flow establishes parser-owned boundaries are constructed within the same line slice, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func sectionBodyNonempty(lines []string, start, end int) bool` begins at internal/plan/structure.go:298; its branch `if start > end || start < 0 || end > len(lines) {` at internal/plan/structure.go:299 follows `func sectionBodyNonempty(lines []string, start, end int) bool {` at internal/plan/structure.go:298. That flow establishes parser-owned boundaries are constructed within the same line slice, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -15510,7 +15912,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/banner.go:50, `if nl \u003c 0 {` is guarded by the preceding `nl := strings.IndexByte(content, '\\n')` at internal/publisher/banner.go:49; in `func injectBanner(content, tid string, styles ...render.CommentStyle) string` (internal/publisher/banner.go:34), the predecessor invariant is a rendered shebang script always has a trailing newline body. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/banner.go:50, `if nl < 0 {` is guarded by the preceding `nl := strings.IndexByte(content, '\\n')` at internal/publisher/banner.go:49; in `func injectBanner(content, tid string, styles ...render.CommentStyle) string` (internal/publisher/banner.go:34), the predecessor invariant is a rendered shebang script always has a trailing newline body. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -16134,7 +16536,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:680, `if err != nil {` is guarded by the preceding `\u0026renderOutputOptions{encoder: PlainAgentDialect})` at internal/publisher/render.go:679; in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:514), the predecessor invariant is conditional units use only fixed embedded templates and validated fixed output paths; renderTarget owns malformed-input error coverage. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:680, `if err != nil {` is guarded by the preceding `&renderOutputOptions{encoder: PlainAgentDialect})` at internal/publisher/render.go:679; in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:514), the predecessor invariant is conditional units use only fixed embedded templates and validated fixed output paths; renderTarget owns malformed-input error coverage. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -16266,19 +16668,19 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:965, `if err != nil {` is guarded by the preceding `\u0026renderOutputOptions{sources: []string{entry.SourcePath}})` at internal/publisher/render.go:964; in `func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus, eff map[string]bool) ([]RenderedFile, error)` (internal/publisher/render.go:958), the predecessor invariant is embedded leaf template and validated typed data cannot fail at this point. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:965, `if err != nil {` is guarded by the preceding `&renderOutputOptions{sources: []string{entry.SourcePath}})` at internal/publisher/render.go:964; in `func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus, eff map[string]bool) ([]RenderedFile, error)` (internal/publisher/render.go:958), the predecessor invariant is embedded leaf template and validated typed data cannot fail at this point. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
         "line": 1008,
         "targetLine": 1008,
-        "reason": ".data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce \u003cno value\u003e or a read error here",
+        "reason": ".data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func generateDomainDocs(p renderInputs, topics topic.Corpus, eff map[string]bool) ([]RenderedFile, error)` begins at internal/publisher/render.go:996; its branch `if err != nil {` at internal/publisher/render.go:1008 follows `}})` at internal/publisher/render.go:1007. That flow establishes .data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce \u003cno value\u003e or a read error here, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func generateDomainDocs(p renderInputs, topics topic.Corpus, eff map[string]bool) ([]RenderedFile, error)` begins at internal/publisher/render.go:996; its branch `if err != nil {` at internal/publisher/render.go:1008 follows `}})` at internal/publisher/render.go:1007. That flow establishes .data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -16290,7 +16692,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 direct source review: fixed validated presentation values or locally created confined filesystem objects make this branch safely uninducible without a test-shaped production seam; adjacent behavior and error identity are exercised."
+      "evidence": "Phase 3 reviewed directive internal/publisher/sync.go:179 targeting line 179: `fixed presentation text`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
@@ -16302,43 +16704,43 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 coverage reconciliation: source review retains this defensive host-fault or closed-state branch; focused operation tests cover the ordinary behavior."
+      "evidence": "Phase 3 reviewed directive internal/publisher/sync.go:312 targeting line 312: `rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 503,
-        "targetLine": 503,
+        "line": 509,
+        "targetLine": 509,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 coverage reconciliation: source review retains this defensive host-fault or closed-state branch; focused operation tests cover the ordinary behavior."
+      "evidence": "Phase 3 reviewed directive internal/publisher/sync.go:509 targeting line 509: `sync constructs only authority-valid lock fields, so marshal failure requires a future representation change`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 504,
-        "targetLine": 504,
+        "line": 510,
+        "targetLine": 510,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": false,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 coverage reconciliation: source review retains this defensive host-fault or closed-state branch; focused operation tests cover the ordinary behavior."
+      "evidence": "Phase 3 reviewed directive internal/publisher/sync.go:510 targeting line 510: `sync constructs only authority-valid lock fields, so marshal failure requires a future representation change`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 587,
-        "targetLine": 587,
+        "line": 593,
+        "targetLine": 593,
         "reason": "fixed nonempty completion action always validates as prose",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 coverage reconciliation: source review retains this defensive host-fault or closed-state branch; focused operation tests cover the ordinary behavior."
+      "evidence": "Phase 3 reviewed directive internal/publisher/sync.go:593 targeting line 593: `fixed nonempty completion action always validates as prose`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {
@@ -16662,7 +17064,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func AddAll(t testing.TB, f Fixture)` (starts internal/testsupport/gitfixture/gitfixture.go:101) checks `if err := worktree(t, f).AddWithOptions(\u0026git.AddOptions{All: true}); err != nil {` at internal/testsupport/gitfixture/gitfixture.go:103 after `t.Helper()` at internal/testsupport/gitfixture/gitfixture.go:102. Here staging a readable fixture worktree wholesale fails only on a permission fault a test cannot trigger; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func AddAll(t testing.TB, f Fixture)` (starts internal/testsupport/gitfixture/gitfixture.go:101) checks `if err := worktree(t, f).AddWithOptions(&git.AddOptions{All: true}); err != nil {` at internal/testsupport/gitfixture/gitfixture.go:103 after `t.Helper()` at internal/testsupport/gitfixture/gitfixture.go:102. Here staging a readable fixture worktree wholesale fails only on a permission fault a test cannot trigger; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -16674,7 +17076,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/testsupport/gitfixture/gitfixture.go:141, `if err != nil {` is guarded by the preceding `h, err := wt.Commit(msg, \u0026git.CommitOptions{Author: Sig, Committer: Sig})` at internal/testsupport/gitfixture/gitfixture.go:140; in `func Commit(t testing.TB, f Fixture, msg string, write map[string]string, remove ...string) string` (internal/testsupport/gitfixture/gitfixture.go:135), the predecessor invariant is Commit with a valid signature and staged tree cannot fail. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/testsupport/gitfixture/gitfixture.go:141, `if err != nil {` is guarded by the preceding `h, err := wt.Commit(msg, &git.CommitOptions{Author: Sig, Committer: Sig})` at internal/testsupport/gitfixture/gitfixture.go:140; in `func Commit(t testing.TB, f Fixture, msg string, write map[string]string, remove ...string) string` (internal/testsupport/gitfixture/gitfixture.go:135), the predecessor invariant is Commit with a valid signature and staged tree cannot fail. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -16878,7 +17280,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func NativeSSHKey(t *testing.T) (string, string)` (starts internal/testsupport/gitfixture/native.go:113) checks `if len(fields) \u003c 2 {` at internal/testsupport/gitfixture/native.go:125 after `fields := strings.Fields(string(body))` at internal/testsupport/gitfixture/native.go:124. Here ssh-keygen emits an algorithm and base64 record; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func NativeSSHKey(t *testing.T) (string, string)` (starts internal/testsupport/gitfixture/native.go:113) checks `if len(fields) < 2 {` at internal/testsupport/gitfixture/native.go:125 after `fields := strings.Fields(string(body))` at internal/testsupport/gitfixture/native.go:124. Here ssh-keygen emits an algorithm and base64 record; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -17070,7 +17472,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, domains []string, domainPaths map[string][]string, adrs adr.Corpus) (Corpus, error)` (starts internal/topic/corpus.go:56) checks `if _, ok := c.byClaim[cl.ID]; ok {` at internal/topic/corpus.go:100 after `cl := \u0026t.Claims[j]` at internal/topic/corpus.go:99. Here one canonical pair owns each path-derived topic ID, and local duplicates fail ParsePart; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, domains []string, domainPaths map[string][]string, adrs adr.Corpus) (Corpus, error)` (starts internal/topic/corpus.go:56) checks `if _, ok := c.byClaim[cl.ID]; ok {` at internal/topic/corpus.go:100 after `cl := &t.Claims[j]` at internal/topic/corpus.go:99. Here one canonical pair owns each path-derived topic ID, and local duplicates fail ParsePart; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
@@ -17094,7 +17496,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func finalizeMarkerIndex(idx MarkerIndex, corpus Corpus) error` (starts internal/topic/markers.go:129) checks `if claim.Type == Invariant \u0026\u0026 claim.Backing == Unbacked \u0026\u0026 proofs \u003e 0 {` at internal/topic/markers.go:141 after `}` at internal/topic/markers.go:140. Here resolveMarker rejects an unbacked proof before it can enter the index; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func finalizeMarkerIndex(idx MarkerIndex, corpus Corpus) error` (starts internal/topic/markers.go:129) checks `if claim.Type == Invariant && claim.Backing == Unbacked && proofs > 0 {` at internal/topic/markers.go:141 after `}` at internal/topic/markers.go:140. Here resolveMarker rejects an unbacked proof before it can enter the index; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {

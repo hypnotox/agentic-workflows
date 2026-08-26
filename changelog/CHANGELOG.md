@@ -12,6 +12,8 @@ query a single version or a range.
 
 - Mutable project authority now fails closed: config and sidecars require one complete YAML document, live locks require closed nonempty permanent inventory, and upgrade recovery binds a complete journal to its terminal lock replacement before mutation.
 
+- Project rendering now serializes tracked and shared resident mutations by canonical physical root, prepares inside the lease, commits through confined identity-aware operations, and reports stable partial effects with recovery guidance.
+
 ## [0.40.0] - 2026-08-25
 
 ### Breaking changes

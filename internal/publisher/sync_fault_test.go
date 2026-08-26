@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
@@ -454,6 +455,41 @@ func TestBackupFileConfinedPropagatesPublicationFailure(t *testing.T) {
 		t.Fatalf("backup error=%v calls=%d", err, calls)
 	}
 }
+
+// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncReportsCommittedBackupAndCleanupResidue)
+// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestSyncReportsCommittedBackupAndCleanupResidue)
+func TestSyncReportsCommittedBackupAndCleanupResidue(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	testsupport.WriteFile(t, filepath.Join(root, "AGENTS.md"), "foreign\n")
+	state, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeAll()
+	failure := errors.New("cleanup failed")
+	committed := &filepublication.CommittedCleanupError{DestinationPath: "AGENTS.md.awf-bak", ResiduePath: ".filepublication-residue.tmp", Cause: failure}
+	calls := 0
+	filesystems.tracked = publicationFaultFilesystem{syncFilesystem: filesystems.tracked, err: committed, calls: &calls}
+	inputs, plan := testSyncPlan(t, state)
+	seed := &InitAuthority{InitializedWithVersion: Version}
+	backups, _, _, effects, err := syncReportWithPlan(inputs, seed, filesystems, plan)
+	if !errors.Is(err, failure) || calls != 1 {
+		t.Fatalf("sync error = %v, calls = %d", err, calls)
+	}
+	if len(backups) != 1 || backups[0].Bak != "AGENTS.md.awf-bak" {
+		t.Fatalf("backups = %#v", backups)
+	}
+	for _, want := range []Effect{{Kind: "backup-created", Path: "AGENTS.md.awf-bak", Recovery: "retain while recovering the render"}, {Kind: "publication-residue", Path: ".filepublication-residue.tmp", Recovery: "remove this temporary residue, then rerun awf render"}} {
+		if !slices.Contains(effects, want) {
+			t.Fatalf("effects = %#v, want %#v", effects, want)
+		}
+	}
+}
+
 func TestSyncReportDoesNotReportOutputWhenReplacementFails(t *testing.T) { syncFailedOutput(t, true) }
 func TestSyncReportDoesNotReportOutputWhenWriteFails(t *testing.T)       { syncFailedOutput(t, false) }
 func syncFailedOutput(t *testing.T, corruptHash bool) {
@@ -494,6 +530,32 @@ func syncFailedOutput(t *testing.T, corruptHash bool) {
 	}
 }
 
+// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncReportsResidentDirectoryModeCorrection)
+func TestSyncReportsResidentDirectoryModeCorrection(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	state, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(state); err != nil {
+		t.Fatal(err)
+	}
+	residentDir := filepath.Join(root, ".awf", "efforts")
+	if err := os.Chmod(residentDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	result, err := testPublisher(renderInputsForTest(state)).Sync()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := Effect{Kind: "mode-corrected", Path: ".awf/efforts", Recovery: "rerun awf render"}
+	if !slices.Contains(result.Effects(), want) {
+		t.Fatalf("effects = %#v, want %#v", result.Effects(), want)
+	}
+	assertPerm(t, residentDir, 0o700)
+}
+
+// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure)
 // TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure uses
 // only the public Publisher.Sync boundary. It makes the first planned output
 // need a mode correction, then turns the later bridge output into a directory

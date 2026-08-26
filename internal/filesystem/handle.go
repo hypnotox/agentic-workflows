@@ -173,6 +173,9 @@ func (h *Handle) ReplaceExpected(destination string, expected fs.FileInfo, conte
 		}
 		return nil
 	}
+	if expected.IsDir() {
+		return fmt.Errorf("filesystem: replace %q: destination is a directory", destination)
+	}
 	var temporary string
 	var file *os.File
 	for range 100 {
@@ -212,18 +215,18 @@ func (h *Handle) ReplaceExpected(destination string, expected fs.FileInfo, conte
 	if err := file.Chmod(mode); err != nil { // coverage-ignore: chmod of a newly-created regular temporary requires a storage fault
 		return fmt.Errorf("filesystem: set replacement mode for %q: %w", destination, err) // coverage-ignore: chmod of a newly-created regular temporary requires a storage fault
 	}
-	if err := file.Close(); err != nil { // coverage-ignore: closing a locally-created regular temporary after a successful write requires a storage fault
-		return fmt.Errorf("filesystem: close replacement temporary for %q: %w", destination, err) // coverage-ignore: closing a locally-created regular temporary after a successful write requires a storage fault
+	if err := file.Sync(); err != nil { // coverage-ignore: syncing a locally-created regular temporary requires a storage fault
+		return fmt.Errorf("filesystem: sync replacement temporary for %q: %w", destination, err) // coverage-ignore: syncing a locally-created regular temporary requires a storage fault
+	}
+	if err := file.Close(); err != nil { // coverage-ignore: closing a locally-created regular temporary after a successful sync requires a storage fault
+		return fmt.Errorf("filesystem: close replacement temporary for %q: %w", destination, err) // coverage-ignore: closing a locally-created regular temporary after a successful sync requires a storage fault
 	}
 	file = nil
-	current, err := h.root.Lstat(destination)
-	if errors.Is(err, fs.ErrNotExist) || (err == nil && !os.SameFile(expected, current)) {
-		return fmt.Errorf("filesystem: replace %q: %w", destination, ErrIdentityChanged)
+	consumed, err := exchangeExpected(h.root, temporary, destination, expected, false)
+	if consumed {
+		temporary = ""
 	}
 	if err != nil {
-		return fmt.Errorf("filesystem: inspect expected replacement %q: %w", destination, err)
-	}
-	if err := h.root.Rename(temporary, destination); err != nil {
 		return fmt.Errorf("filesystem: replace %q: %w", destination, err)
 	}
 	return nil
@@ -255,19 +258,72 @@ func (h *Handle) RemoveAll(path string) error {
 }
 
 // RemoveExpected removes path only while it still has expected's identity.
-func (h *Handle) RemoveExpected(path string, expected fs.FileInfo) error {
-	if err := validPath(path); err != nil {
-		return fmt.Errorf("filesystem: remove %q: %w", path, err)
+func (h *Handle) RemoveExpected(destination string, expected fs.FileInfo) (returnErr error) {
+	if err := validPath(destination); err != nil {
+		return fmt.Errorf("filesystem: remove %q: %w", destination, err)
 	}
-	current, err := h.root.Lstat(path)
-	if errors.Is(err, fs.ErrNotExist) || expected == nil || (err == nil && !os.SameFile(expected, current)) {
-		return fmt.Errorf("filesystem: remove %q: %w", path, ErrIdentityChanged)
+	if expected == nil {
+		return fmt.Errorf("filesystem: remove %q: %w", destination, ErrIdentityChanged)
+	}
+	if expected.IsDir() {
+		directory, err := h.root.Open(destination)
+		if err != nil {
+			return fmt.Errorf("filesystem: inspect removable directory %q: %w", destination, err)
+		}
+		_, readErr := directory.Readdirnames(1)
+		closeErr := directory.Close()
+		if readErr == nil {
+			return fmt.Errorf("filesystem: remove %q: directory not empty", destination)
+		}
+		if !errors.Is(readErr, io.EOF) || closeErr != nil {
+			return fmt.Errorf("filesystem: inspect removable directory %q: %w", destination, errors.Join(readErr, closeErr))
+		}
+	}
+	var temporary string
+	created := false
+	for range 100 {
+		var token [16]byte
+		if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam
+			return fmt.Errorf("filesystem: name removal temporary for %q: %w", destination, err)
+		}
+		temporary = path.Join(path.Dir(destination), ".awf-remove-"+hex.EncodeToString(token[:]))
+		if expected.IsDir() {
+			returnErr = h.root.Mkdir(temporary, 0o700)
+		} else {
+			var file *os.File
+			file, returnErr = h.root.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+			if returnErr == nil {
+				if closeErr := file.Close(); closeErr != nil { // coverage-ignore: closing a newly-created empty regular file requires a storage fault
+					removeErr := h.root.Remove(temporary)                                                                              // coverage-ignore: cleanup after a close storage fault requires the same unportable fault source
+					return fmt.Errorf("filesystem: close removal temporary for %q: %w", destination, errors.Join(closeErr, removeErr)) // coverage-ignore: closing a newly-created empty regular file requires a storage fault
+				}
+			}
+		}
+		if errors.Is(returnErr, fs.ErrExist) { // coverage-ignore: collision requires predicting a cryptographically random temporary
+			continue // coverage-ignore: collision requires predicting a cryptographically random temporary
+		}
+		if returnErr != nil {
+			return fmt.Errorf("filesystem: create removal temporary for %q: %w", destination, returnErr)
+		}
+		created = true
+		break
+	}
+	if !created { // coverage-ignore: exhausting random temporary names is not practically triggerable
+		return fmt.Errorf("filesystem: create removal temporary for %q: collisions exhausted", destination) // coverage-ignore: exhausting random temporary names is not practically triggerable
+	}
+	defer func() {
+		if temporary != "" {
+			if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				returnErr = errors.Join(returnErr, fmt.Errorf("filesystem: remove removal temporary %q: %w", temporary, err))
+			}
+		}
+	}()
+	consumed, err := exchangeExpected(h.root, temporary, destination, expected, true)
+	if consumed {
+		temporary = ""
 	}
 	if err != nil {
-		return fmt.Errorf("filesystem: inspect expected removal %q: %w", path, err)
-	}
-	if err := h.root.Remove(path); err != nil {
-		return fmt.Errorf("filesystem: remove %q: %w", path, err)
+		return fmt.Errorf("filesystem: remove %q: %w", destination, err)
 	}
 	return nil
 }

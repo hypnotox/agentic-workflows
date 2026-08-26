@@ -13,20 +13,6 @@ import (
 	"github.com/gofrs/flock"
 )
 
-// CanonicalRoot returns the physical identity used to serialize a root. It
-// resolves symbolic links; callers select the semantic scope separately.
-func CanonicalRoot(root string) (string, error) {
-	absolute, err := filepath.Abs(root)
-	if err != nil {
-		return "", err
-	}
-	identity, err := filepath.EvalSymlinks(absolute)
-	if err != nil {
-		return "", err
-	}
-	return filepath.Clean(identity), nil
-}
-
 type leaseRequest struct {
 	scope string
 	root  string

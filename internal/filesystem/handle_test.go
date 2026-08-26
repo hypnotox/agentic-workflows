@@ -467,6 +467,7 @@ func TestReadWithModeUsesOneOpenedFileForBytesAndMode(t *testing.T) {
 	}
 }
 
+// invariant: tooling/filesystem-access:root-confined-paths (TestExpectedIdentityReplacementAndRemovalRefuseStaleEntries)
 func TestExpectedIdentityReplacementAndRemovalRefuseStaleEntries(t *testing.T) {
 	root := t.TempDir()
 	h, err := Open(root)
@@ -504,6 +505,87 @@ func TestExpectedIdentityReplacementAndRemovalRefuseStaleEntries(t *testing.T) {
 	}
 	if err := h.ReplaceExpected("absent", nil, []byte("clobber"), 0o644); !errors.Is(err, ErrIdentityChanged) {
 		t.Fatalf("absent-identity clobber = %v, want identity change", err)
+	}
+}
+
+func TestExpectedIdentityReplacementAndRemovalCommitFilesAndEmptyDirectories(t *testing.T) {
+	root := t.TempDir()
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	artifact := filepath.Join(root, "artifact")
+	if err := os.WriteFile(artifact, []byte("observed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := h.LinkInfo("artifact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.ReplaceExpected("artifact", expected, []byte("replacement"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if got, err := os.ReadFile(artifact); err != nil || string(got) != "replacement" {
+		t.Fatalf("replacement = %q, %v", got, err)
+	}
+	if info, err := os.Stat(artifact); err != nil || info.Mode().Perm() != 0o640 {
+		t.Fatalf("replacement mode = %v, %v", info, err)
+	}
+	expected, err = h.LinkInfo("artifact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RemoveExpected("artifact", expected); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(artifact); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("removed file remains: %v", err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "empty"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	expected, err = h.LinkInfo("empty")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RemoveExpected("empty", expected); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := os.Lstat(filepath.Join(root, "empty")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("removed directory remains: %v", err)
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(entries) != 0 {
+		t.Fatalf("expected-identity mutation left residue: %v", entries)
+	}
+}
+
+func TestExpectedIdentityRemovalPreservesNonemptyDirectory(t *testing.T) {
+	root := t.TempDir()
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	if err := os.MkdirAll(filepath.Join(root, "owned"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "owned", "child"), []byte("preserve"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := h.LinkInfo("owned")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RemoveExpected("owned", expected); err == nil {
+		t.Fatal("nonempty directory removal succeeded")
+	}
+	if got, err := os.ReadFile(filepath.Join(root, "owned", "child")); err != nil || string(got) != "preserve" {
+		t.Fatalf("nonempty directory child = %q, %v", got, err)
 	}
 }
 
@@ -719,7 +801,7 @@ func filesystemConsumerFinding(rel, src string) string {
 				if id, ok := s.X.(*ast.Ident); ok && bound[id.Name] {
 					capability = true
 				}
-				if id, ok := s.X.(*ast.Ident); ok && imports[id.Name] && (s.Sel.Name == "Backup" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireProjectLease") {
+				if id, ok := s.X.(*ast.Ident); ok && imports[id.Name] && (s.Sel.Name == "Backup" || s.Sel.Name == "CanonicalRoot" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireProjectLease") {
 					capability = true
 				}
 			}
@@ -804,7 +886,7 @@ func isFilesystemConstructor(call *ast.CallExpr, imports map[string]bool) bool {
 	s, ok := call.Fun.(*ast.SelectorExpr)
 	// Handle construction and the neutral lease capability are the two allowed
 	// production flows from this package; neither exports another concrete type.
-	return ok && (s.Sel.Name == "Open" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireProjectLease") && importedOS(s.X, imports)
+	return ok && (s.Sel.Name == "Open" || s.Sel.Name == "CanonicalRoot" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireProjectLease") && importedOS(s.X, imports)
 }
 
 func importedOS(expr ast.Expr, names map[string]bool) bool {

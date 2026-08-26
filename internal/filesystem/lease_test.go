@@ -57,6 +57,7 @@ func TestRootScopedProjectMutationLeases(t *testing.T) {
 	}
 }
 
+// invariant: tooling/filesystem-access:root-scoped-project-mutation-leases (TestAcquireProjectRetainsDistinctScopesAtSameRoot)
 func TestAcquireProjectRetainsDistinctScopesAtSameRoot(t *testing.T) {
 	root := t.TempDir()
 	lease, err := AcquireProjectLease(context.Background(), root, root)
@@ -95,6 +96,7 @@ func TestLeaseHelperProcess(t *testing.T) {
 	time.Sleep(time.Hour)
 }
 
+// invariant: tooling/filesystem-access:root-scoped-project-mutation-leases (TestLeaseCrossProcessContentionAndProcessDeathRelease)
 func TestLeaseCrossProcessContentionAndProcessDeathRelease(t *testing.T) {
 	root := t.TempDir()
 	ready := filepath.Join(t.TempDir(), "ready")
@@ -134,6 +136,7 @@ func TestLeaseCrossProcessContentionAndProcessDeathRelease(t *testing.T) {
 	}
 }
 
+// invariant: tooling/filesystem-access:root-scoped-project-mutation-leases (TestLeaseOrderingAndRestrictivePersistentModes)
 func TestLeaseOrderingAndRestrictivePersistentModes(t *testing.T) {
 	first, second := t.TempDir(), t.TempDir()
 	one, err := Acquire(context.Background(), "ordered-test", first, second)
@@ -178,6 +181,7 @@ func TestLeaseOrderingAndRestrictivePersistentModes(t *testing.T) {
 	}
 }
 
+// invariant: tooling/filesystem-access:root-scoped-project-mutation-leases (TestAcquireProjectAllowsIndependentTrackedRoots)
 func TestAcquireProjectAllowsIndependentTrackedRoots(t *testing.T) {
 	first := t.TempDir()
 	second := t.TempDir()

@@ -347,7 +347,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 				return backups, changes, pruned, effects, err
 			}
 			if beforeMode != nil && beforeMode.Mode().Perm() != 0o700 {
-				effects = append(effects, Effect{Kind: "mode-corrected", Path: f.Path(), Recovery: "rerun awf render"})
+				effects = append(effects, Effect{Kind: "mode-corrected", Path: dir, Recovery: "rerun awf render"})
 			}
 		}
 		info, infoErr := filesystem.LinkInfo(outputPath)
@@ -358,10 +358,13 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			// touches-state: rendering/sync-and-drift:sync-backs-up-foreign - foreign-file backup on sync; proof in publication_sync_test.go
 			bak, err := backupFileConfined(outputPath, filesystem)
 			if err != nil {
-				if committedPath, _, committed := committedPublication(err); committed {
+				if committedPath, residuePath, committed := committedPublication(err); committed {
 					bak = committedPath
 					backups = append(backups, Backup{Path: f.Path(), Bak: bak, Index: f.RegenChecked()})
-					effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: "remove the reported residue, then rerun awf render"})
+					effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: "retain while recovering the render"})
+					if residuePath != "" {
+						effects = append(effects, Effect{Kind: "publication-residue", Path: residuePath, Recovery: "remove this temporary residue, then rerun awf render"})
+					}
 				}
 				return backups, changes, pruned, effects, fmt.Errorf("back up %s: %w", f.Path(), err)
 			}
@@ -452,10 +455,13 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 					}
 					bak, bakErr := backupFileConfined(outputPath, filesystem)
 					if bakErr != nil {
-						if committedPath, _, committed := committedPublication(bakErr); committed {
+						if committedPath, residuePath, committed := committedPublication(bakErr); committed {
 							bak = committedPath
 							backups = append(backups, Backup{Path: path, Bak: bak})
-							effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: "remove the reported residue, then rerun awf render"})
+							effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: "retain as recovery for the local document"})
+							if residuePath != "" {
+								effects = append(effects, Effect{Kind: "publication-residue", Path: residuePath, Recovery: "remove this temporary residue, then rerun awf render"})
+							}
 						}
 						return backups, changes, pruned, effects, fmt.Errorf("back up pruned local document %s: %w", path, bakErr)
 					}
