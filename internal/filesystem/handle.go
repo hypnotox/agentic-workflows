@@ -85,6 +85,18 @@ func (h *Handle) Walk(subtree string, visit func(path string, info fs.FileInfo) 
 	return err
 }
 
+// Mkdir creates exactly one directory beneath the selected root and refuses an
+// existing entry.
+func (h *Handle) Mkdir(path string, mode fs.FileMode) error {
+	if err := validPath(path); err != nil {
+		return fmt.Errorf("filesystem: mkdir %q: %w", path, err)
+	}
+	if err := h.root.Mkdir(path, mode); err != nil {
+		return fmt.Errorf("filesystem: mkdir %q: %w", path, err)
+	}
+	return nil
+}
+
 // MkdirAll creates path and missing parents beneath the selected root.
 func (h *Handle) MkdirAll(path string, mode fs.FileMode) error {
 	if err := validPath(path); err != nil {

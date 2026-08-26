@@ -8,6 +8,7 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
 
@@ -276,6 +277,8 @@ func TestHandleOperations(t *testing.T) {
 		t.Fatalf("failed replacement changed destination = %q, %v, %v", marker, failedInfo, errors.Join(markerReadErr, failedStatErr))
 	}
 	for _, operation := range []func() error{
+		func() error { return h.Mkdir("..", 0o755) },
+		func() error { return h.Mkdir("dir/file/child", 0o755) },
 		func() error { return h.MkdirAll("..", 0o755) },
 		func() error { return h.Publish("../artifact", nil, 0o644) },
 		func() error { return h.Replace("../artifact", nil, 0o644) },
@@ -564,6 +567,91 @@ func TestExpectedIdentityReplacementAndRemovalCommitFilesAndEmptyDirectories(t *
 	}
 }
 
+func TestExpectedMutationRootAnchorRefusesRelocatedParent(t *testing.T) {
+	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
+		t.Skip("native expected mutation is unavailable")
+	}
+	for _, remove := range []bool{false, true} {
+		t.Run(map[bool]string{false: "replace", true: "remove"}[remove], func(t *testing.T) {
+			container := t.TempDir()
+			rootPath := filepath.Join(container, "root")
+			outside := filepath.Join(container, "outside")
+			if err := os.MkdirAll(filepath.Join(rootPath, "parent"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Mkdir(outside, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			h, err := Open(rootPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer h.Close()
+			if err := os.WriteFile(filepath.Join(rootPath, "parent", "destination"), []byte("observed"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(rootPath, "parent", "temporary"), []byte("replacement"), 0o640); err != nil {
+				t.Fatal(err)
+			}
+			expected, err := h.root.Lstat("parent/destination")
+			if err != nil {
+				t.Fatal(err)
+			}
+			anchor, err := h.root.Open(".")
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer anchor.Close()
+			relocated := filepath.Join(outside, "parent")
+			if err := os.Rename(filepath.Join(rootPath, "parent"), relocated); err != nil {
+				t.Fatal(err)
+			}
+			consumed, err := exchangeExpectedAnchored(h.root, anchor, "parent/temporary", "parent/destination", expected, remove)
+			if err == nil || consumed {
+				t.Fatalf("relocated-parent commit = consumed %v, error %v; want uncommitted refusal", consumed, err)
+			}
+			if got, err := os.ReadFile(filepath.Join(relocated, "destination")); err != nil || string(got) != "observed" {
+				t.Fatalf("relocated destination = %q, %v", got, err)
+			}
+			if got, err := os.ReadFile(filepath.Join(relocated, "temporary")); err != nil || string(got) != "replacement" {
+				t.Fatalf("relocated temporary = %q, %v", got, err)
+			}
+		})
+	}
+}
+
+func TestExpectedMutationRefusesDisappearedDestination(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("covers the Linux exchange syscall refusal")
+	}
+	root := t.TempDir()
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	if err := os.WriteFile(filepath.Join(root, "destination"), []byte("observed"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "temporary"), []byte("replacement"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := h.root.Lstat("destination")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "destination")); err != nil {
+		t.Fatal(err)
+	}
+	consumed, err := exchangeExpected(h.root, "temporary", "destination", expected, false)
+	if err == nil || consumed {
+		t.Fatalf("disappeared-destination commit = consumed %v, error %v; want uncommitted refusal", consumed, err)
+	}
+	if got, err := os.ReadFile(filepath.Join(root, "temporary")); err != nil || string(got) != "replacement" {
+		t.Fatalf("temporary after refusal = %q, %v", got, err)
+	}
+}
+
 func TestExpectedIdentityRemovalPreservesNonemptyDirectory(t *testing.T) {
 	root := t.TempDir()
 	h, err := Open(root)
@@ -609,6 +697,7 @@ func TestOpenFailureAndWalkErrors(t *testing.T) {
 
 // TestRootConfinedFilesystemSingleHome is intentionally structural: production root handles have one home.
 // invariant: tooling/filesystem-access:single-production-handle (TestRootConfinedFilesystemSingleHome)
+// invariant: tooling/filesystem-access:root-scoped-project-mutation-leases (TestRootConfinedFilesystemSingleHome)
 func TestRootConfinedFilesystemSingleHome(t *testing.T) {
 	var consumers []string
 	filesystemSources := map[string]string{}

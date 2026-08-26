@@ -19,6 +19,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"golang.org/x/tools/go/packages"
@@ -53,7 +54,7 @@ func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 		assertProjectLeaseHeld(t, root)
 		return config.Load(path)
 	}, catalog.Standard, func(_ context.Context, got string) string { return got }, mustOpenGit(t, root))
-	writer := &leaseAssertingWriter{t: t, root: root}
+	writer := &releasedLeaseAssertingWriter{t: t, root: root}
 	if err := runSyncPrinting(ctx, loader, root, writer); err != nil {
 		t.Fatal(err)
 	}
@@ -73,16 +74,49 @@ func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 	}
 }
 
-type leaseAssertingWriter struct {
+type releasedLeaseAssertingWriter struct {
 	t      *testing.T
 	root   string
 	called bool
 }
 
-func (w *leaseAssertingWriter) Write(payload []byte) (int, error) {
+func (w *releasedLeaseAssertingWriter) Write(payload []byte) (int, error) {
 	w.called = true
-	assertProjectLeaseHeld(w.t, w.root)
+	lease, err := filesystem.AcquireProjectLease(context.Background(), w.root, w.root)
+	if err != nil {
+		w.t.Fatalf("project lease remained held during presentation: %v", err)
+	}
+	if err := lease.Release(); err != nil {
+		w.t.Fatal(err)
+	}
 	return len(payload), nil
+}
+
+func TestFinishSyncPrintingPresentsCompleteEffectsOnLeaseReleaseFailure(t *testing.T) {
+	ctx := testContext(t)
+	root := scaffoldProject(t)
+	loader, err := newProjectLoader(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state, cfg, err := loader.OpenForOperation(ctx, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	result, err := composePublisher(state, cfg).Sync()
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := errors.New("release failed")
+	var out bytes.Buffer
+	err = finishSyncPrinting(&out, result, nil, want)
+	var partial *publisher.PartialError
+	if !errors.Is(err, want) || !errors.As(err, &partial) {
+		t.Fatalf("release outcome = %v, want typed partial preserving release failure", err)
+	}
+	if got := out.String(); !strings.Contains(got, "status: partially committed") || !strings.Contains(got, "lock-replaced .awf/awf.lock") || !strings.Contains(got, "recovery:") {
+		t.Fatalf("release stdout = %q, want complete Publisher effects", got)
+	}
 }
 
 func assertProjectLeaseHeld(t *testing.T, root string) {

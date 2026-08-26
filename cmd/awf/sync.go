@@ -37,24 +37,31 @@ func runSync(ctx context.Context, root string, stdout io.Writer) error {
 	return runSyncPrinting(ctx, loader, root, stdout)
 }
 
-func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, stdout io.Writer) (returnErr error) {
+func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, stdout io.Writer) error {
 	residentRoot := awfgit.ProjectResidentRoot(ctx, root)
 	lease, err := filesystem.AcquireProjectLease(ctx, root, residentRoot)
 	if err != nil {
 		return err
 	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
 	state, cfg, err := loader.OpenForOperation(ctx, root)
 	if err != nil {
-		return err
+		return errors.Join(err, lease.Release())
 	}
 	composed := composePublisher(state, cfg)
-	result, err := composed.SyncLeased(ctx, lease)
-	if err != nil {
-		if presentErr := renderPartialSync(stdout, err); presentErr != nil {
-			return errors.Join(err, presentErr)
+	result, syncErr := composed.SyncLeased(ctx, lease)
+	return finishSyncPrinting(stdout, result, syncErr, lease.Release())
+}
+
+func finishSyncPrinting(stdout io.Writer, result publisher.Result, syncErr, releaseErr error) error {
+	combined := errors.Join(syncErr, releaseErr)
+	if syncErr == nil && releaseErr != nil {
+		combined = &publisher.PartialError{Result: result, Cause: releaseErr}
+	}
+	if combined != nil {
+		if presentErr := renderPartialSync(stdout, combined); presentErr != nil {
+			return errors.Join(combined, presentErr)
 		}
-		return err
+		return combined
 	}
 	mutation, err := result.Mutation()
 	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable

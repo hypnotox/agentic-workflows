@@ -132,7 +132,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 						if receiverIsIdent && receiver.Name == "execution" {
 							return true
 						}
-						allowed := receiverIsIdent && receiver.Name == "composed" && (fn.Name.Name == "preparePublisher" || fn.Name.Name == "Run")
+						allowed := receiverIsIdent && receiver.Name == "composed" && (fn.Name.Name == "preparePublisher" || fn.Name.Name == "runWithDependencies")
 						if call, ok := target.X.(*ast.CallExpr); ok {
 							constructor, constructorOK := call.Fun.(*ast.Ident)
 							allowed = constructorOK && constructor.Name == "composePublisher" && fn.Name.Name == "probeCollisions"

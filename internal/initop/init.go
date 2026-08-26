@@ -54,11 +54,22 @@ type Input struct {
 	Interactive  bool
 }
 
+type advisoryNotesFunc func(*project.ProjectState, *config.Config, publisher.Preparation) ([]string, error)
+type releaseLeaseFunc func(*filesystem.Lease) error
+
 // Run performs one complete initialization operation and returns its semantic
 // outcome. Rendering and protocol selection remain with the command.
-func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (outcome initspec.Outcome, returnErr error) {
+func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error) {
+	return runWithDependencies(ctx, input, loadProject, gate, func(state *project.ProjectState, cfg *config.Config, prepared publisher.Preparation) ([]string, error) {
+		return project.AdvisoryNotes(state, cfg, prepared.Plan(), projectSemantics(prepared))
+	}, (*filesystem.Lease).Release)
+}
+
+func runWithDependencies(ctx context.Context, input Input, loadProject LoadProject, gate Gate, advisoryNotes advisoryNotesFunc, releaseLease releaseLeaseFunc) (outcome initspec.Outcome, returnErr error) {
 	root := input.Root
 	residentRoot := input.ResidentRoot
+	var result publisher.Result
+	var scaffold scaffoldCommit
 	if residentRoot == "" {
 		residentRoot = root
 	}
@@ -67,9 +78,11 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 		return initspec.Outcome{}, err
 	}
 	defer func() {
-		if releaseErr := lease.Release(); releaseErr != nil {
+		if releaseErr := releaseLease(lease); releaseErr != nil {
 			joined := errors.Join(returnErr, releaseErr)
-			if outcome.ConfigPath != "" {
+			if outcome.ConfigPath != "" && len(result.Effects()) > 0 {
+				outcome, returnErr = publisherPartialOutcome(outcome, scaffold, result, joined)
+			} else if outcome.ConfigPath != "" {
 				returnErr = &PartialError{Outcome: outcome, Cause: joined}
 			} else {
 				returnErr = joined
@@ -125,7 +138,6 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 		}
 	}
 
-	scaffold := scaffoldCommit{}
 	if !configExists {
 		contents, err := project.ScaffoldConfigForProfile(filepath.Base(root), vars, scopes, profile)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
@@ -169,7 +181,6 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 		return failScaffold(err)
 	}
 
-	var result publisher.Result
 	if !configExists && !lockExists {
 		result, err = composed.InitializeLeased(ctx, lease, publisher.InitAuthority{InitializedWithVersion: project.Version})
 	} else {
@@ -178,38 +189,17 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 	if err != nil {
 		var publisherPartial *publisher.PartialError
 		if errors.As(err, &publisherPartial) || scaffold.committed() {
-			partialMutation, mutationErr := result.PartialMutation()
-			if mutationErr != nil {
-				partialOutcome, partialErr := scaffoldPartialOutcome(cfgPath, scaffold.configCommitted, scaffold.createdDir, scaffold.residue, errors.Join(err, mutationErr))
-				if partialErr != nil {
-					return partialOutcome, partialErr
-				}
-			}
-			if scaffold.committed() {
-				values, valueErr := scaffoldEffectValues(scaffold.configCommitted, scaffold.createdDir, scaffold.residue)
-				if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break
-					partialOutcome := initspec.Outcome{Status: "initialization partially committed", ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: partialMutation}
-					return partialOutcome, &PartialError{Outcome: partialOutcome, Cause: errors.Join(err, valueErr)}
-				}
-				partialMutation.Changes = append([]presentation.MutationChange{{Label: "committed init effects", Values: values}}, partialMutation.Changes...)
-			}
-			partialOutcome := initspec.Outcome{
-				Status: "initialization partially committed", ConfigPath: cfgPath,
-				ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: partialMutation,
-			}
-			return partialOutcome, &PartialError{Outcome: partialOutcome, Cause: err}
+			return publisherPartialOutcome(initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}, scaffold, result, err)
 		}
 		return failScaffold(err)
 	}
 	mutation, err := result.Mutation()
 	if err != nil { // coverage-ignore: typed Publisher results and fixed presentation grammar make this mapping failure unreachable
-		partialOutcome := initspec.Outcome{Status: "initialization publication committed", ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}
-		return partialOutcome, &PartialError{Outcome: partialOutcome, Cause: err}
+		return publisherPartialOutcome(initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}, scaffold, result, err)
 	}
-	advisories, err := project.AdvisoryNotes(state, cfg, prepared.Plan(), projectSemantics(prepared))
-	if err != nil { // coverage-ignore: Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation
-		partialOutcome := initspec.Outcome{Status: "initialization publication committed", ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: mutation}
-		return partialOutcome, &PartialError{Outcome: partialOutcome, Cause: err}
+	advisories, err := advisoryNotes(state, cfg, prepared)
+	if err != nil {
+		return publisherPartialOutcome(initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}, scaffold, result, err)
 	}
 	return initspec.Outcome{
 		ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers,
@@ -230,7 +220,7 @@ func projectSemantics(prepared publisher.Preparation) project.OperationSemantics
 }
 
 type scaffoldFilesystem interface {
-	MkdirAll(string, fs.FileMode) error
+	Mkdir(string, fs.FileMode) error
 	Publish(string, []byte, fs.FileMode) error
 	LinkInfo(string) (fs.FileInfo, error)
 }
@@ -253,18 +243,17 @@ func createScaffold(handle scaffoldFilesystem, contents []byte) (scaffold scaffo
 		return scaffold, dirErr
 	}
 	if errors.Is(dirErr, fs.ErrNotExist) {
-		mkdirErr := handle.MkdirAll(config.DirName, 0o755)
+		mkdirErr := handle.Mkdir(config.DirName, 0o755)
 		if mkdirErr == nil {
 			scaffold.createdDir = true
+		} else if !errors.Is(mkdirErr, fs.ErrExist) {
+			return scaffold, mkdirErr
 		}
 		dirInfo, dirErr = handle.LinkInfo(config.DirName)
-		if dirErr == nil {
-			scaffold.createdDir = true
-			scaffold.dirInfo = dirInfo
-		}
-		if mkdirErr != nil || dirErr != nil {
+		if dirErr != nil {
 			return scaffold, errors.Join(mkdirErr, dirErr)
 		}
+		scaffold.dirInfo = dirInfo
 	}
 	scaffold.dirInfo = dirInfo
 	configRel := filepath.ToSlash(filepath.Join(config.DirName, "config.yaml"))
@@ -316,6 +305,25 @@ func rollbackScaffold(root, cfgPath string, scaffold scaffoldCommit, cause error
 		return initspec.Outcome{}, cause
 	}
 	return scaffoldPartialOutcome(cfgPath, configRemains, dirRemains, scaffold.residue, errors.Join(cause, rollbackErr))
+}
+
+func publisherPartialOutcome(base initspec.Outcome, scaffold scaffoldCommit, result publisher.Result, cause error) (initspec.Outcome, error) {
+	mutation, mutationErr := result.PartialMutation()
+	if mutationErr != nil {
+		return scaffoldPartialOutcome(base.ConfigPath, scaffold.configCommitted, scaffold.createdDir, scaffold.residue, errors.Join(cause, mutationErr))
+	}
+	if scaffold.committed() {
+		values, valueErr := scaffoldEffectValues(scaffold.configCommitted, scaffold.createdDir, scaffold.residue)
+		if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break
+			base.Status = "initialization partially committed"
+			base.Sync = mutation
+			return base, &PartialError{Outcome: base, Cause: errors.Join(cause, valueErr)}
+		}
+		mutation.Changes = append([]presentation.MutationChange{{Label: "committed init effects", Values: values}}, mutation.Changes...)
+	}
+	base.Status = "initialization partially committed"
+	base.Sync = mutation
+	return base, &PartialError{Outcome: base, Cause: cause}
 }
 
 func scaffoldEffectValues(configRemains, dirRemains bool, residue []string) ([]presentation.Value, error) {

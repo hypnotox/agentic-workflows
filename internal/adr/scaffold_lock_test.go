@@ -267,6 +267,7 @@ func proveScaffoldRecordProductionWiring(t *testing.T) {
 }
 
 // invariant: adr-system/adr-lifecycle:adr-new-no-overwrite (TestADRNewNoOverwriteInvariant)
+// invariant: tooling/filesystem-access:root-scoped-project-mutation-leases (TestADRNewNoOverwriteInvariant)
 func TestADRNewNoOverwriteInvariant(t *testing.T) {
 	t.Run("production-wiring", proveScaffoldRecordProductionWiring)
 	t.Run("canonical-process-transaction", proveCanonicalProcessContentionAndDeathRelease)

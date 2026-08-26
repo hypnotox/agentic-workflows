@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "72748207634e1cb473ec628f6f7a21b4c069cb4c008b521dbfa1150ab5f2bd6f",
+  "universeSHA256": "49839f18cf0a7fcdbc3630eaac23101be03882552c2991c50aec4358882482e7",
   "repository": [
     {
       "identity": {
@@ -622,6 +622,19 @@
       "identity": {
         "file": "cmd/awf/sync.go",
         "start": {
+          "line": 61,
+          "column": 75
+        },
+        "end": {
+          "line": 63,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed cmd/awf/sync.go:54.70,56.4 1 in runSyncPrinting, beginning `if presentErr := renderPartialSync(stdout, err); presentErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
+        "file": "cmd/awf/sync.go",
+        "start": {
           "line": 54,
           "column": 70
         },
@@ -630,11 +643,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:54.70,56.4 1 in runSyncPrinting, beginning `if presentErr := renderPartialSync(stdout, err); presentErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/sync.go",
+        "start": {
+          "line": 67,
+          "column": 16
+        },
+        "end": {
+          "line": 69,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed cmd/awf/sync.go:60.16,62.3 1 in runSyncPrinting, beginning `if err != nil {`. The source exclusion records that typed results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
         "file": "cmd/awf/sync.go",
         "start": {
           "line": 60,
@@ -645,11 +670,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:60.16,62.3 1 in runSyncPrinting, beginning `if err != nil {`. The source exclusion records that typed results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/sync.go",
+        "start": {
+          "line": 75,
+          "column": 35
+        },
+        "end": {
+          "line": 77,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed cmd/awf/sync.go:68.35,70.3 1 in renderPartialSync, beginning `if !errors.As(syncErr, \u0026partial) {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
         "file": "cmd/awf/sync.go",
         "start": {
           "line": 68,
@@ -660,11 +697,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:68.35,70.3 1 in renderPartialSync, beginning `if !errors.As(syncErr, \u0026partial) {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/sync.go",
+        "start": {
+          "line": 79,
+          "column": 16
+        },
+        "end": {
+          "line": 81,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed cmd/awf/sync.go:72.16,74.3 1 in renderPartialSync, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
         "file": "cmd/awf/sync.go",
         "start": {
           "line": 72,
@@ -675,11 +724,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:72.16,74.3 1 in renderPartialSync, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam."
+      }
     },
     {
       "identity": {
+        "file": "cmd/awf/sync.go",
+        "start": {
+          "line": 87,
+          "column": 16
+        },
+        "end": {
+          "line": 89,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 reviewed cmd/awf/sync.go:80.16,82.3 1 in renderSyncMutation, beginning `if err != nil {`. The source exclusion records that typed results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
         "file": "cmd/awf/sync.go",
         "start": {
           "line": 80,
@@ -690,8 +751,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed cmd/awf/sync.go:80.16,82.3 1 in renderSyncMutation, beginning `if err != nil {`. The source exclusion records that typed results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      }
     },
     {
       "identity": {
@@ -4507,6 +4567,19 @@
       "identity": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
+          "line": 17,
+          "column": 16
+        },
+        "end": {
+          "line": 19,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:17.16,19.3 1 in exchangeExpected. Failure to duplicate the already-open confined root anchor is a host filesystem fault without a safe production injection seam; root-anchor success and relocated-parent refusal are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
           "line": 19,
           "column": 16
         },
@@ -4515,26 +4588,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:19.16,21.3 1 in exchangeExpected, beginning `if err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+      }
     },
     {
       "identity": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
-          "line": 27,
-          "column": 35
+          "line": 34,
+          "column": 24
         },
         "end": {
-          "line": 29,
-          "column": 3
+          "line": 36,
+          "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:27.35,29.3 1 in exchangeExpected, beginning `if err := exchange(); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
-    },
-    {
-      "identity": {
+      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:34.24,36.4 1 in exchangeExpectedAnchored. This is post-exchange failure to inspect the displaced entry; changed-identity rollback and successful exchange are directly tested, while the concrete os.Root inspection fault has no safe deterministic injection seam.",
+      "movedFrom": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
           "line": 33,
@@ -4545,11 +4615,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:33.24,35.4 1 in exchangeExpected, beginning `if inspectErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 37,
+          "column": 52
+        },
+        "end": {
+          "line": 40,
+          "column": 4
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:37.52,40.4 2 in exchangeExpectedAnchored. This is failure of the second native exchange while restoring an unexpected displaced identity; changed-winner rollback is directly tested and the second syscall failure is not safely injectable.",
+      "movedFrom": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
           "line": 36,
@@ -4560,11 +4642,23 @@
           "column": 4
         },
         "statements": 2
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:36.52,39.4 2 in exchangeExpected, beginning `if rollbackErr := exchange(); rollbackErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 43,
+          "column": 47
+        },
+        "end": {
+          "line": 44,
+          "column": 52
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:43.47,44.52 1 in exchangeExpectedAnchored. This is failure to remove the verified displaced entry after exchange; successful cleanup is directly tested and the concrete os.Root removal fault has no safe deterministic injection seam.",
+      "movedFrom": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
           "line": 42,
@@ -4575,11 +4669,23 @@
           "column": 52
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:42.47,43.52 1 in exchangeExpected, beginning `if err := root.Remove(temporary); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 44,
+          "column": 52
+        },
+        "end": {
+          "line": 47,
+          "column": 4
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:44.52,47.4 2 in exchangeExpectedAnchored. This is failure of the compensating native exchange after displaced-entry cleanup fails; successful cleanup is directly tested and the paired syscall failure is not safely injectable.",
+      "movedFrom": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
           "line": 43,
@@ -4590,11 +4696,23 @@
           "column": 4
         },
         "statements": 2
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:43.52,46.4 2 in exchangeExpected, beginning `if rollbackErr := exchange(); rollbackErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 48,
+          "column": 3
+        },
+        "end": {
+          "line": 48,
+          "column": 20
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:48.3,48.20 1 in exchangeExpectedAnchored. This returns the original displaced-entry cleanup failure after successful rollback; the rollback behavior is covered through reachable identity mismatch while the preceding concrete removal fault is not safely injectable.",
+      "movedFrom": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
           "line": 47,
@@ -4605,11 +4723,23 @@
           "column": 20
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:47.3,47.20 1 in exchangeExpected, beginning `return false, err`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 51,
+          "column": 50
+        },
+        "end": {
+          "line": 53,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/expected_commit_linux.go:51.50,53.4 1 in exchangeExpectedAnchored. This reports a post-exchange disappearance or removal fault for the destination during expected removal; successful file and directory removal are directly tested and no test-only syscall seam is introduced.",
+      "movedFrom": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
           "line": 50,
@@ -4620,8 +4750,7 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/expected_commit_linux.go:50.50,52.4 1 in exchangeExpected, beginning `if err := root.Remove(destination); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+      }
     },
     {
       "identity": {
@@ -4657,6 +4786,19 @@
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
+          "line": 180,
+          "column": 47
+        },
+        "end": {
+          "line": 182,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:168.47,170.3 1, beginning `if err := validPath(destination); err != nil {`. This rejects an invalid confined destination before namespace mutation; production callers pass validated project-relative paths and the common path validator is directly exercised. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
           "line": 168,
           "column": 47
         },
@@ -4665,11 +4807,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:168.47,170.3 1, beginning `if err := validPath(destination); err != nil {`. This rejects an invalid confined destination before namespace mutation; production callers pass validated project-relative paths and the common path validator is directly exercised. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 199,
+          "column": 48
+        },
+        "end": {
+          "line": 201,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:187.48,189.4 1, beginning `if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The source directive records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 187,
@@ -4680,11 +4834,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:187.48,189.4 1, beginning `if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The source directive records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 205,
+          "column": 34
+        },
+        "end": {
+          "line": 206,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:193.34,194.12 1, beginning `if errors.Is(err, fs.ErrExist) { // coverage-ignore: a collision requires predicting the cryptographically random temporary name before this operation`. The source directive records that a collision requires predicting the cryptographically random temporary name before this operation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 193,
@@ -4695,11 +4861,23 @@
           "column": 12
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:193.34,194.12 1, beginning `if errors.Is(err, fs.ErrExist) { // coverage-ignore: a collision requires predicting the cryptographically random temporary name before this operation`. The source directive records that a collision requires predicting the cryptographically random temporary name before this operation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 213,
+          "column": 17
+        },
+        "end": {
+          "line": 215,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:201.17,203.3 1, beginning `if file == nil { // coverage-ignore: exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle`. The source directive records that exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 201,
@@ -4710,11 +4888,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:201.17,203.3 1, beginning `if file == nil { // coverage-ignore: exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle`. The source directive records that exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 217,
+          "column": 18
+        },
+        "end": {
+          "line": 219,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:205.18,207.4 1, beginning `if file != nil { // coverage-ignore: this remains non-nil only after a local temporary write storage fault`. The source directive records that this remains non-nil only after a local temporary write storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 205,
@@ -4725,11 +4915,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:205.18,207.4 1, beginning `if file != nil { // coverage-ignore: this remains non-nil only after a local temporary write storage fault`. The source directive records that this remains non-nil only after a local temporary write storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 221,
+          "column": 86
+        },
+        "end": {
+          "line": 223,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:209.86,211.5 1, beginning `if err := h.root.Remove(temporary); err != nil \u0026\u0026 !errors.Is(err, fs.ErrNotExist) { // coverage-ignore: the concrete root can fault here only through a concurrent namespace change or storage fault`. The source directive records that the concrete root can fault here only through a concurrent namespace change or storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 209,
@@ -4740,11 +4942,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:209.86,211.5 1, beginning `if err := h.root.Remove(temporary); err != nil \u0026\u0026 !errors.Is(err, fs.ErrNotExist) { // coverage-ignore: the concrete root can fault here only through a concurrent namespace change or storage fault`. The source directive records that the concrete root can fault here only through a concurrent namespace change or storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 226,
+          "column": 48
+        },
+        "end": {
+          "line": 228,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:214.48,216.3 1, beginning `if n, err := file.Write(contents); err != nil { // coverage-ignore: writing a locally-created regular temporary requires a storage fault`. The source directive records that writing a locally-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 214,
@@ -4755,11 +4969,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:214.48,216.3 1, beginning `if n, err := file.Write(contents); err != nil { // coverage-ignore: writing a locally-created regular temporary requires a storage fault`. The source directive records that writing a locally-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 228,
+          "column": 31
+        },
+        "end": {
+          "line": 230,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:216.31,218.3 1, beginning `} else if n != len(contents) { // coverage-ignore: os.File.Write returns a non-nil error when it writes fewer bytes than requested`. The source directive records that os.File.Write returns a non-nil error when it writes fewer bytes than requested. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 216,
@@ -4770,11 +4996,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:216.31,218.3 1, beginning `} else if n != len(contents) { // coverage-ignore: os.File.Write returns a non-nil error when it writes fewer bytes than requested`. The source directive records that os.File.Write returns a non-nil error when it writes fewer bytes than requested. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 231,
+          "column": 41
+        },
+        "end": {
+          "line": 233,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:219.41,221.3 1, beginning `if err := file.Chmod(mode); err != nil { // coverage-ignore: chmod of a newly-created regular temporary requires a storage fault`. The source directive records that chmod of a newly-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 219,
@@ -4785,11 +5023,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:219.41,221.3 1, beginning `if err := file.Chmod(mode); err != nil { // coverage-ignore: chmod of a newly-created regular temporary requires a storage fault`. The source directive records that chmod of a newly-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 234,
+          "column": 36
+        },
+        "end": {
+          "line": 236,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:222.36,224.3 1, beginning `if err := file.Sync(); err != nil { // coverage-ignore: syncing a locally-created regular temporary requires a storage fault`. The source directive records that syncing a locally-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 222,
@@ -4800,11 +5050,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:222.36,224.3 1, beginning `if err := file.Sync(); err != nil { // coverage-ignore: syncing a locally-created regular temporary requires a storage fault`. The source directive records that syncing a locally-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 237,
+          "column": 37
+        },
+        "end": {
+          "line": 239,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:225.37,227.3 1, beginning `if err := file.Close(); err != nil { // coverage-ignore: closing a locally-created regular temporary after a successful sync requires a storage fault`. The source directive records that closing a locally-created regular temporary after a successful sync requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 225,
@@ -4815,11 +5077,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:225.37,227.3 1, beginning `if err := file.Close(); err != nil { // coverage-ignore: closing a locally-created regular temporary after a successful sync requires a storage fault`. The source directive records that closing a locally-created regular temporary after a successful sync requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 278,
+          "column": 47
+        },
+        "end": {
+          "line": 280,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:266.47,268.3 1, beginning `if err := validPath(destination); err != nil {`. This rejects an invalid confined destination before namespace mutation; production callers pass validated project-relative paths and the common path validator is directly exercised. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 266,
@@ -4830,11 +5104,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:266.47,268.3 1, beginning `if err := validPath(destination); err != nil {`. This rejects an invalid confined destination before namespace mutation; production callers pass validated project-relative paths and the common path validator is directly exercised. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 281,
+          "column": 21
+        },
+        "end": {
+          "line": 283,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:269.21,271.3 1, beginning `if expected == nil {`. This rejects removal without a previously observed entry identity, preserving the expected-identity contract before any namespace mutation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 269,
@@ -4845,11 +5131,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:269.21,271.3 1, beginning `if expected == nil {`. This rejects removal without a previously observed entry identity, preserving the expected-identity contract before any namespace mutation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 286,
+          "column": 17
+        },
+        "end": {
+          "line": 288,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:274.17,276.4 1, beginning `if err != nil {`. This reports failure to open an observed directory before installing the exchange temporary; it requires a concurrent namespace change or host I/O fault after observation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 274,
@@ -4860,11 +5158,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:274.17,276.4 1, beginning `if err != nil {`. This reports failure to open an observed directory before installing the exchange temporary; it requires a concurrent namespace change or host I/O fault after observation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 294,
+          "column": 53
+        },
+        "end": {
+          "line": 296,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:282.53,284.4 1, beginning `if !errors.Is(readErr, io.EOF) || closeErr != nil {`. This distinguishes an empty directory from a read or close fault before exchange; empty and nonempty directory outcomes are directly tested, while the I/O-fault arm is not portably inducible. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 282,
@@ -4875,11 +5185,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:282.53,284.4 1, beginning `if !errors.Is(readErr, io.EOF) || closeErr != nil {`. This distinguishes an empty directory from a read or close fault before exchange; empty and nonempty directory outcomes are directly tested, while the I/O-fault arm is not portably inducible. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 302,
+          "column": 48
+        },
+        "end": {
+          "line": 304,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:290.48,292.4 1, beginning `if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The source directive records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 290,
@@ -4890,11 +5212,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:290.48,292.4 1, beginning `if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The source directive records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 312,
+          "column": 50
+        },
+        "end": {
+          "line": 315,
+          "column": 6
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:300.50,303.6 2, beginning `if closeErr := file.Close(); closeErr != nil { // coverage-ignore: closing a newly-created empty regular file requires a storage fault`. The source directive records that closing a newly-created empty regular file requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 300,
@@ -4905,11 +5239,23 @@
           "column": 6
         },
         "statements": 2
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:300.50,303.6 2, beginning `if closeErr := file.Close(); closeErr != nil { // coverage-ignore: closing a newly-created empty regular file requires a storage fault`. The source directive records that closing a newly-created empty regular file requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 318,
+          "column": 40
+        },
+        "end": {
+          "line": 319,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:306.40,307.12 1, beginning `if errors.Is(returnErr, fs.ErrExist) { // coverage-ignore: collision requires predicting a cryptographically random temporary`. The source directive records that collision requires predicting a cryptographically random temporary. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 306,
@@ -4920,11 +5266,23 @@
           "column": 12
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:306.40,307.12 1, beginning `if errors.Is(returnErr, fs.ErrExist) { // coverage-ignore: collision requires predicting a cryptographically random temporary`. The source directive records that collision requires predicting a cryptographically random temporary. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 321,
+          "column": 23
+        },
+        "end": {
+          "line": 323,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:309.23,311.4 1, beginning `if returnErr != nil {`. This reports inability to create the same-directory exchange temporary, a host permission or storage fault before mutation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 309,
@@ -4935,11 +5293,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:309.23,311.4 1, beginning `if returnErr != nil {`. This reports inability to create the same-directory exchange temporary, a host permission or storage fault before mutation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 327,
+          "column": 14
+        },
+        "end": {
+          "line": 329,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:315.14,317.3 1, beginning `if !created { // coverage-ignore: exhausting random temporary names is not practically triggerable`. The source directive records that exhausting random temporary names is not practically triggerable. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 315,
@@ -4950,11 +5320,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:315.14,317.3 1, beginning `if !created { // coverage-ignore: exhausting random temporary names is not practically triggerable`. The source directive records that exhausting random temporary names is not practically triggerable. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 332,
+          "column": 86
+        },
+        "end": {
+          "line": 334,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:320.86,322.5 1, beginning `if err := h.root.Remove(temporary); err != nil \u0026\u0026 !errors.Is(err, fs.ErrNotExist) {`. This reports failure to clean the same-directory exchange temporary after an uncommitted native-exchange refusal; reaching it requires a second concurrent namespace or storage fault during cleanup. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 320,
@@ -4965,11 +5347,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:320.86,322.5 1, beginning `if err := h.root.Remove(temporary); err != nil \u0026\u0026 !errors.Is(err, fs.ErrNotExist) {`. This reports failure to clean the same-directory exchange temporary after an uncommitted native-exchange refusal; reaching it requires a second concurrent namespace or storage fault during cleanup. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 385,
+          "column": 20
+        },
+        "end": {
+          "line": 387,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:373.20,375.3 1, beginning `if statErr != nil { // coverage-ignore: stat on a successfully read confined regular file requires a storage fault`. The source directive records that stat on a successfully read confined regular file requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 373,
@@ -4980,11 +5374,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:373.20,375.3 1, beginning `if statErr != nil { // coverage-ignore: stat on a successfully read confined regular file requires a storage fault`. The source directive records that stat on a successfully read confined regular file requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 388,
+          "column": 21
+        },
+        "end": {
+          "line": 390,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:376.21,378.3 1, beginning `if closeErr != nil { // coverage-ignore: close after a successful confined read requires a storage fault`. The source directive records that close after a successful confined read requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam.",
+      "movedFrom": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 376,
@@ -4995,8 +5401,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:376.21,378.3 1, beginning `if closeErr != nil { // coverage-ignore: close after a successful confined read requires a storage fault`. The source directive records that close after a successful confined read requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+      }
     },
     {
       "identity": {
@@ -6007,6 +6412,19 @@
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
+          "line": 77,
+          "column": 16
+        },
+        "end": {
+          "line": 79,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:66.16,68.3 1, beginning `if err != nil {`. This returns a pre-authority lease acquisition failure with no committed Init effect. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
           "line": 66,
           "column": 16
         },
@@ -6015,26 +6433,38 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:66.16,68.3 1 in Run, beginning `if err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      }
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 70,
-          "column": 55
+          "line": 85,
+          "column": 10
         },
         "end": {
-          "line": 72,
-          "column": 32
+          "line": 85,
+          "column": 39
         },
-        "statements": 2
+        "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:70.55,72.32 2 in Run, beginning `if releaseErr := lease.Release(); releaseErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:85.10,85.39 1 in runWithDependencies. This selects the typed effectless Init outcome when lease release fails after an earlier partial outcome but before Publisher records an effect; committed Publisher and scaffold release failures are directly tested, while a real flock close failure after that exact rollback boundary is not safely injectable."
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 85,
+          "column": 39
+        },
+        "end": {
+          "line": 87,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:72.32,74.5 1, beginning `if outcome.ConfigPath != \"\" {`. This selects typed partial versus ordinary release failure from the already-constructed outcome; real flock close failure is not safely injectable through the production lease. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 72,
@@ -6045,11 +6475,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:72.32,74.5 1 in Run, beginning `if outcome.ConfigPath != \"\" {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 87,
+          "column": 10
+        },
+        "end": {
+          "line": 89,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:74.10,76.5 1, beginning `} else {`. This selects typed partial versus ordinary release failure from the already-constructed outcome; real flock close failure is not safely injectable through the production lease. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 74,
@@ -6060,11 +6502,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:74.10,76.5 1 in Run, beginning `} else {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 114,
+          "column": 17
+        },
+        "end": {
+          "line": 116,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:101.17,103.4 1, beginning `if err != nil {`. This is an existing-authority load, absence, validation, or permanent-state refusal before Init mutates the tree. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 101,
@@ -6075,11 +6529,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:101.17,103.4 1 in Run, beginning `if err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 117,
+          "column": 13
+        },
+        "end": {
+          "line": 119,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:104.13,106.4 1, beginning `if !found {`. This is an existing-authority load, absence, validation, or permanent-state refusal before Init mutates the tree. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 104,
@@ -6090,11 +6556,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:104.13,106.4 1 in Run, beginning `if !found {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 121,
+          "column": 17
+        },
+        "end": {
+          "line": 123,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:108.17,110.4 1, beginning `if err != nil { // coverage-ignore: LoadOptional parsed and validated this unchanged lock immediately above`. The source directive records that LoadOptional parsed and validated this unchanged lock immediately above. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 108,
@@ -6105,11 +6583,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:108.17,110.4 1 in Run, beginning `if err != nil {`. The source exclusion records that LoadOptional parsed and validated this unchanged lock immediately above. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 124,
+          "column": 43
+        },
+        "end": {
+          "line": 126,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:111.43,113.4 1, beginning `if state != manifest.AuthorityPermanent {`. This is an existing-authority load, absence, validation, or permanent-state refusal before Init mutates the tree. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 111,
@@ -6120,11 +6610,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:111.43,113.4 1 in Run, beginning `if state != manifest.AuthorityPermanent {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 143,
+          "column": 17
+        },
+        "end": {
+          "line": 145,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:131.17,133.4 1, beginning `if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice`. The source directive records that ScaffoldConfig renders a static template over a dir basename; cannot fail in practice. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 131,
@@ -6135,11 +6637,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:131.17,133.4 1 in Run, beginning `if err != nil {`. The source exclusion records that ScaffoldConfig renders a static template over a dir basename; cannot fail in practice. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 147,
+          "column": 21
+        },
+        "end": {
+          "line": 149,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:135.21,137.4 1, beginning `if openErr != nil {`. This reports failure to open the confined root before scaffold creation, so no Init effect has committed. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 135,
@@ -6150,11 +6664,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:135.21,137.4 1 in Run, beginning `if openErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 152,
+          "column": 36
+        },
+        "end": {
+          "line": 154,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:140.36,142.4 1, beginning `if err != nil || closeErr != nil {`. This routes scaffold publication or handle-close failure through identity-checked rollback so committed directory, config, or residue effects cannot escape the typed outcome. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 140,
@@ -6165,11 +6691,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:140.36,142.4 1, beginning `if err != nil || closeErr != nil {`. This routes scaffold publication or handle-close failure through identity-checked rollback so committed directory, config, or residue effects cannot escape the typed outcome. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 174,
+          "column": 16
+        },
+        "end": {
+          "line": 176,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:162.16,164.3 1, beginning `if err != nil { // coverage-ignore: preparation validated every planned path; failure now requires an unportable root-confined filesystem fault`. The source directive records that preparation validated every planned path; failure now requires an unportable root-confined filesystem fault. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 162,
@@ -6180,11 +6718,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:162.16,164.3 1, beginning `if err != nil { // coverage-ignore: preparation validated every planned path; failure now requires an unportable root-confined filesystem fault`. The source directive records that preparation validated every planned path; failure now requires an unportable root-confined filesystem fault. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 177,
+          "column": 41
+        },
+        "end": {
+          "line": 179,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:165.41,167.3 1, beginning `if len(collisions) \u003e 0 \u0026\u0026 !input.Force { // coverage-ignore: the non-force probe plans the same full catalog; force makes this condition false`. The source directive records that the non-force probe plans the same full catalog; force makes this condition false. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 165,
@@ -6195,86 +6745,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:165.41,167.3 1, beginning `if len(collisions) \u003e 0 \u0026\u0026 !input.Force { // coverage-ignore: the non-force probe plans the same full catalog; force makes this condition false`. The source directive records that the non-force probe plans the same full catalog; force makes this condition false. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 182,
-          "column": 26
-        },
-        "end": {
-          "line": 184,
-          "column": 26
-        },
-        "statements": 2
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:182.26,184.26 2, beginning `if mutationErr != nil {`. This fallback inventories scaffold effects when Publisher result presentation itself fails, preserving both causes rather than dropping committed Init state. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 184,
-          "column": 26
-        },
-        "end": {
-          "line": 186,
-          "column": 6
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:184.26,186.6 1, beginning `if partialErr != nil {`. This returns the already-complete scaffold PartialError if fallback effect presentation also fails, rather than constructing an incomplete Publisher outcome. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 188,
-          "column": 28
-        },
-        "end": {
-          "line": 190,
-          "column": 24
-        },
-        "statements": 2
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:188.28,190.24 2, beginning `if scaffold.committed() {`. This adds Init-owned directory, config, and publication-residue effects only when the scaffold inventory proves one remains committed. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 190,
-          "column": 24
-        },
-        "end": {
-          "line": 193,
-          "column": 6
-        },
-        "statements": 2
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:190.24,193.6 2, beginning `if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break`. The source directive records that fixed paths and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 194,
-          "column": 5
+          "column": 3
         },
         "end": {
           "line": 194,
-          "column": 147
+          "column": 27
         },
         "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:194.5,194.147 1, beginning `partialMutation.Changes = append([]presentation.MutationChange{{Label: \"committed init effects\", Values: values}}, partialMutation.Changes...)`. This prepends Init-owned effects ahead of Publisher effects so the cross-owner partial outcome has deterministic causal ordering. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
-    },
-    {
-      "identity": {
+      "reason": "Phase 3 renewed review of internal/initop/init.go:202.3,202.27 1, beginning `return failScaffold(err)`. This uses expected-identity rollback when Publisher fails before either Publisher or scaffold reports a committed effect. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 202,
@@ -6285,11 +6772,23 @@
           "column": 27
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:202.3,202.27 1, beginning `return failScaffold(err)`. This uses expected-identity rollback when Publisher fails before either Publisher or scaffold reports a committed effect. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 197,
+          "column": 16
+        },
+        "end": {
+          "line": 199,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:205.16,208.3 2, beginning `if err != nil { // coverage-ignore: typed Publisher results and fixed presentation grammar make this mapping failure unreachable`. The source directive records that typed Publisher results and fixed presentation grammar make this mapping failure unreachable. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 205,
@@ -6300,26 +6799,23 @@
           "column": 3
         },
         "statements": 2
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:205.16,208.3 2, beginning `if err != nil { // coverage-ignore: typed Publisher results and fixed presentation grammar make this mapping failure unreachable`. The source directive records that typed Publisher results and fixed presentation grammar make this mapping failure unreachable. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 210,
-          "column": 16
+          "line": 242,
+          "column": 57
         },
         "end": {
-          "line": 213,
+          "line": 244,
           "column": 3
         },
-        "statements": 2
+        "statements": 1
       },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:210.16,213.3 2, beginning `if err != nil { // coverage-ignore: Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation`. The source directive records that Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
-    },
-    {
-      "identity": {
+      "reason": "Phase 3 renewed review of internal/initop/init.go:252.57,254.3 1, beginning `if dirErr != nil \u0026\u0026 !errors.Is(dirErr, fs.ErrNotExist) {`. This preserves a committed scaffold directory in the partial inventory when identity-checked cleanup fails for a reason other than already-absent. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 252,
@@ -6330,11 +6826,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:252.57,254.3 1, beginning `if dirErr != nil \u0026\u0026 !errors.Is(dirErr, fs.ErrNotExist) {`. This preserves a committed scaffold directory in the partial inventory when identity-checked cleanup fails for a reason other than already-absent. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 282,
+          "column": 20
+        },
+        "end": {
+          "line": 284,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:293.20,295.3 1, beginning `if openErr != nil {`. This returns a complete typed scaffold inventory when the confined rollback handle cannot be opened after scaffold commitment. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 293,
@@ -6345,11 +6853,77 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:293.20,295.3 1, beginning `if openErr != nil {`. This returns a complete typed scaffold inventory when the confined rollback handle cannot be opened after scaffold commitment. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 312,
+          "column": 24
+        },
+        "end": {
+          "line": 314,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:182.26,184.26 2, beginning `if mutationErr != nil {`. This fallback inventories scaffold effects when Publisher result presentation itself fails, preserving both causes rather than dropping committed Init state. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 182,
+          "column": 26
+        },
+        "end": {
+          "line": 184,
+          "column": 26
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 317,
+          "column": 22
+        },
+        "end": {
+          "line": 321,
+          "column": 4
+        },
+        "statements": 3
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:190.24,193.6 2, beginning `if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break`. The source directive records that fixed paths and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 190,
+          "column": 24
+        },
+        "end": {
+          "line": 193,
+          "column": 6
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 333,
+          "column": 17
+        },
+        "end": {
+          "line": 335,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:325.17,327.4 1, beginning `if err != nil { // coverage-ignore: fixed path and prose contain no line break`. The source directive records that fixed path and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 325,
@@ -6360,11 +6934,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:325.17,327.4 1, beginning `if err != nil { // coverage-ignore: fixed path and prose contain no line break`. The source directive records that fixed path and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 340,
+          "column": 17
+        },
+        "end": {
+          "line": 342,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:332.17,334.4 1, beginning `if err != nil { // coverage-ignore: fixed path and prose contain no line break`. The source directive records that fixed path and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 332,
@@ -6375,11 +6961,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:332.17,334.4 1, beginning `if err != nil { // coverage-ignore: fixed path and prose contain no line break`. The source directive records that fixed path and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 347,
+          "column": 17
+        },
+        "end": {
+          "line": 349,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:339.17,341.4 1, beginning `if err != nil {`. This preserves the underlying presentation error if a committed publication-residue path cannot be represented, rather than omitting that residue from recovery. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 339,
@@ -6390,11 +6988,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:339.17,341.4 1, beginning `if err != nil {`. This preserves the underlying presentation error if a committed publication-residue path cannot be represented, rather than omitting that residue from recovery. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 357,
+          "column": 21
+        },
+        "end": {
+          "line": 359,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:349.21,351.3 1, beginning `if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break`. The source directive records that fixed paths and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 349,
@@ -6405,11 +7015,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:349.21,351.3 1, beginning `if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break`. The source directive records that fixed paths and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 385,
+          "column": 16
+        },
+        "end": {
+          "line": 387,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:377.16,379.3 1, beginning `if err != nil { // coverage-ignore: MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably`. The source directive records that MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 377,
@@ -6420,11 +7042,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:377.16,379.3 1, beginning `if err != nil { // coverage-ignore: MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably`. The source directive records that MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 390,
+          "column": 16
+        },
+        "end": {
+          "line": 392,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:382.16,384.3 1, beginning `if err != nil { // coverage-ignore: ScaffoldConfig over the embedded catalog cannot fail at runtime`. The source directive records that ScaffoldConfig over the embedded catalog cannot fail at runtime. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 382,
@@ -6435,11 +7069,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:382.16,384.3 1, beginning `if err != nil { // coverage-ignore: ScaffoldConfig over the embedded catalog cannot fail at runtime`. The source directive records that ScaffoldConfig over the embedded catalog cannot fail at runtime. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 394,
+          "column": 66
+        },
+        "end": {
+          "line": 396,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:386.66,388.3 1, beginning `if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses`. The source directive records that a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 386,
@@ -6450,11 +7096,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:386.66,388.3 1, beginning `if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses`. The source directive records that a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 397,
+          "column": 63
+        },
+        "end": {
+          "line": 399,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:389.63,391.3 1, beginning `if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write into a fresh temp dir cannot fail in practice`. The source directive records that post-MkdirAll write into a fresh temp dir cannot fail in practice. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 389,
@@ -6465,11 +7123,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:389.63,391.3 1, beginning `if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write into a fresh temp dir cannot fail in practice`. The source directive records that post-MkdirAll write into a fresh temp dir cannot fail in practice. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 402,
+          "column": 16
+        },
+        "end": {
+          "line": 404,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:394.16,396.3 1, beginning `if err != nil { // coverage-ignore: a freshly-scaffolded default config always opens`. The source directive records that a freshly-scaffolded default config always opens. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 394,
@@ -6480,11 +7150,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:394.16,396.3 1, beginning `if err != nil { // coverage-ignore: a freshly-scaffolded default config always opens`. The source directive records that a freshly-scaffolded default config always opens. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 406,
+          "column": 16
+        },
+        "end": {
+          "line": 408,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:398.16,400.3 1, beginning `if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail`. The source directive records that rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization.",
+      "movedFrom": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 398,
@@ -6495,8 +7177,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 renewed review of internal/initop/init.go:398.16,400.3 1, beginning `if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail`. The source directive records that rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+      }
     },
     {
       "identity": {
@@ -11081,11 +11762,11 @@
         {
           "file": "cmd/awf/sync.go",
           "start": {
-            "line": 54,
-            "column": 70
+            "line": 61,
+            "column": 75
           },
           "end": {
-            "line": 56,
+            "line": 63,
             "column": 4
           },
           "statements": 1
@@ -11093,11 +11774,11 @@
         {
           "file": "cmd/awf/sync.go",
           "start": {
-            "line": 60,
+            "line": 67,
             "column": 16
           },
           "end": {
-            "line": 62,
+            "line": 69,
             "column": 3
           },
           "statements": 1
@@ -11105,11 +11786,11 @@
         {
           "file": "cmd/awf/sync.go",
           "start": {
-            "line": 68,
+            "line": 75,
             "column": 35
           },
           "end": {
-            "line": 70,
+            "line": 77,
             "column": 3
           },
           "statements": 1
@@ -11117,11 +11798,11 @@
         {
           "file": "cmd/awf/sync.go",
           "start": {
-            "line": 72,
+            "line": 79,
             "column": 16
           },
           "end": {
-            "line": 74,
+            "line": 81,
             "column": 3
           },
           "statements": 1
@@ -11129,11 +11810,11 @@
         {
           "file": "cmd/awf/sync.go",
           "start": {
-            "line": 80,
+            "line": 87,
             "column": 16
           },
           "end": {
-            "line": 82,
+            "line": 89,
             "column": 3
           },
           "statements": 1
@@ -16369,8 +17050,8 @@
     {
       "directive": {
         "file": "cmd/awf/sync.go",
-        "line": 60,
-        "targetLine": 60,
+        "line": 67,
+        "targetLine": 67,
         "reason": "typed results and fixed presentation grammar make this mapping failure unreachable",
         "mapped": true,
         "executed": false
@@ -16381,8 +17062,8 @@
     {
       "directive": {
         "file": "cmd/awf/sync.go",
-        "line": 80,
-        "targetLine": 80,
+        "line": 87,
+        "targetLine": 87,
         "reason": "typed results and fixed presentation grammar make this mapping failure unreachable",
         "mapped": true,
         "executed": false
@@ -19429,8 +20110,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 187,
-        "targetLine": 187,
+        "line": 199,
+        "targetLine": 199,
         "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
         "mapped": true,
         "executed": false
@@ -19441,8 +20122,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 193,
-        "targetLine": 193,
+        "line": 205,
+        "targetLine": 205,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": true,
         "executed": false
@@ -19453,8 +20134,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 194,
-        "targetLine": 194,
+        "line": 206,
+        "targetLine": 206,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": false,
         "executed": false
@@ -19465,8 +20146,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 201,
-        "targetLine": 201,
+        "line": 213,
+        "targetLine": 213,
         "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
         "mapped": true,
         "executed": false
@@ -19477,8 +20158,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 202,
-        "targetLine": 202,
+        "line": 214,
+        "targetLine": 214,
         "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
         "mapped": false,
         "executed": false
@@ -19489,8 +20170,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 205,
-        "targetLine": 205,
+        "line": 217,
+        "targetLine": 217,
         "reason": "this remains non-nil only after a local temporary write storage fault",
         "mapped": true,
         "executed": false
@@ -19501,8 +20182,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 206,
-        "targetLine": 206,
+        "line": 218,
+        "targetLine": 218,
         "reason": "a second close failure after a replacement write failure requires a second storage fault",
         "mapped": false,
         "executed": false
@@ -19513,8 +20194,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 209,
-        "targetLine": 209,
+        "line": 221,
+        "targetLine": 221,
         "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
         "mapped": true,
         "executed": false
@@ -19525,8 +20206,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 210,
-        "targetLine": 210,
+        "line": 222,
+        "targetLine": 222,
         "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
         "mapped": false,
         "executed": false
@@ -19537,8 +20218,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 214,
-        "targetLine": 214,
+        "line": 226,
+        "targetLine": 226,
         "reason": "writing a locally-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -19549,8 +20230,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 215,
-        "targetLine": 215,
+        "line": 227,
+        "targetLine": 227,
         "reason": "writing a locally-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -19561,8 +20242,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 216,
-        "targetLine": 216,
+        "line": 228,
+        "targetLine": 228,
         "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
         "mapped": true,
         "executed": false
@@ -19573,8 +20254,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 217,
-        "targetLine": 217,
+        "line": 229,
+        "targetLine": 229,
         "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
         "mapped": false,
         "executed": false
@@ -19585,8 +20266,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 219,
-        "targetLine": 219,
+        "line": 231,
+        "targetLine": 231,
         "reason": "chmod of a newly-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -19597,8 +20278,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 220,
-        "targetLine": 220,
+        "line": 232,
+        "targetLine": 232,
         "reason": "chmod of a newly-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -19609,8 +20290,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 222,
-        "targetLine": 222,
+        "line": 234,
+        "targetLine": 234,
         "reason": "syncing a locally-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -19621,8 +20302,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 223,
-        "targetLine": 223,
+        "line": 235,
+        "targetLine": 235,
         "reason": "syncing a locally-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -19633,8 +20314,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 225,
-        "targetLine": 225,
+        "line": 237,
+        "targetLine": 237,
         "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
         "mapped": true,
         "executed": false
@@ -19645,8 +20326,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 226,
-        "targetLine": 226,
+        "line": 238,
+        "targetLine": 238,
         "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
         "mapped": false,
         "executed": false
@@ -19657,8 +20338,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 290,
-        "targetLine": 290,
+        "line": 302,
+        "targetLine": 302,
         "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
         "mapped": true,
         "executed": false
@@ -19669,8 +20350,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 300,
-        "targetLine": 300,
+        "line": 312,
+        "targetLine": 312,
         "reason": "closing a newly-created empty regular file requires a storage fault",
         "mapped": true,
         "executed": false
@@ -19681,8 +20362,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 301,
-        "targetLine": 301,
+        "line": 313,
+        "targetLine": 313,
         "reason": "cleanup after a close storage fault requires the same unportable fault source",
         "mapped": false,
         "executed": false
@@ -19693,8 +20374,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 302,
-        "targetLine": 302,
+        "line": 314,
+        "targetLine": 314,
         "reason": "closing a newly-created empty regular file requires a storage fault",
         "mapped": false,
         "executed": false
@@ -19705,8 +20386,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 306,
-        "targetLine": 306,
+        "line": 318,
+        "targetLine": 318,
         "reason": "collision requires predicting a cryptographically random temporary",
         "mapped": true,
         "executed": false
@@ -19717,8 +20398,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 307,
-        "targetLine": 307,
+        "line": 319,
+        "targetLine": 319,
         "reason": "collision requires predicting a cryptographically random temporary",
         "mapped": false,
         "executed": false
@@ -19729,8 +20410,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 315,
-        "targetLine": 315,
+        "line": 327,
+        "targetLine": 327,
         "reason": "exhausting random temporary names is not practically triggerable",
         "mapped": true,
         "executed": false
@@ -19741,8 +20422,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 316,
-        "targetLine": 316,
+        "line": 328,
+        "targetLine": 328,
         "reason": "exhausting random temporary names is not practically triggerable",
         "mapped": false,
         "executed": false
@@ -19753,8 +20434,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 373,
-        "targetLine": 373,
+        "line": 385,
+        "targetLine": 385,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": true,
         "executed": false
@@ -19765,8 +20446,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 374,
-        "targetLine": 374,
+        "line": 386,
+        "targetLine": 386,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": false,
         "executed": false
@@ -19777,8 +20458,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 376,
-        "targetLine": 376,
+        "line": 388,
+        "targetLine": 388,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": true,
         "executed": false
@@ -19789,8 +20470,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 377,
-        "targetLine": 377,
+        "line": 389,
+        "targetLine": 389,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": false,
         "executed": false
@@ -20485,32 +21166,32 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 108,
-        "targetLine": 108,
+        "line": 121,
+        "targetLine": 121,
         "reason": "LoadOptional parsed and validated this unchanged lock immediately above",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:108 targeting line 108: `LoadOptional parsed and validated this unchanged lock immediately above`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:108 records `LoadOptional parsed and validated this unchanged lock immediately above`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 131,
-        "targetLine": 131,
+        "line": 143,
+        "targetLine": 143,
         "reason": "ScaffoldConfig renders a static template over a dir basename; cannot fail in practice",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:131 targeting line 131: `ScaffoldConfig renders a static template over a dir basename; cannot fail in practice`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:131 records `ScaffoldConfig renders a static template over a dir basename; cannot fail in practice`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 162,
-        "targetLine": 162,
+        "line": 174,
+        "targetLine": 174,
         "reason": "preparation validated every planned path; failure now requires an unportable root-confined filesystem fault",
         "mapped": true,
         "executed": false
@@ -20521,8 +21202,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 165,
-        "targetLine": 165,
+        "line": 177,
+        "targetLine": 177,
         "reason": "the non-force probe plans the same full catalog; force makes this condition false",
         "mapped": true,
         "executed": false
@@ -20533,8 +21214,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 166,
-        "targetLine": 166,
+        "line": 178,
+        "targetLine": 178,
         "reason": "the identical pre-prompt probe makes this path unreachable",
         "mapped": false,
         "executed": false
@@ -20545,9 +21226,9 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 190,
-        "targetLine": 190,
-        "reason": "fixed paths and prose contain no line break",
+        "line": 197,
+        "targetLine": 197,
+        "reason": "typed Publisher results and fixed presentation grammar make this mapping failure unreachable",
         "mapped": true,
         "executed": false
       },
@@ -20557,21 +21238,9 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 205,
-        "targetLine": 205,
-        "reason": "typed Publisher results and fixed presentation grammar make this mapping failure unreachable",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:205 records `typed Publisher results and fixed presentation grammar make this mapping failure unreachable`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
-    },
-    {
-      "directive": {
-        "file": "internal/initop/init.go",
-        "line": 210,
-        "targetLine": 210,
-        "reason": "Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation",
+        "line": 317,
+        "targetLine": 317,
+        "reason": "fixed paths and prose contain no line break",
         "mapped": true,
         "executed": false
       },
@@ -20581,8 +21250,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 325,
-        "targetLine": 325,
+        "line": 333,
+        "targetLine": 333,
         "reason": "fixed path and prose contain no line break",
         "mapped": true,
         "executed": false
@@ -20593,8 +21262,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 332,
-        "targetLine": 332,
+        "line": 340,
+        "targetLine": 340,
         "reason": "fixed path and prose contain no line break",
         "mapped": true,
         "executed": false
@@ -20605,8 +21274,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 349,
-        "targetLine": 349,
+        "line": 357,
+        "targetLine": 357,
         "reason": "fixed paths and prose contain no line break",
         "mapped": true,
         "executed": false
@@ -20617,8 +21286,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 377,
-        "targetLine": 377,
+        "line": 385,
+        "targetLine": 385,
         "reason": "MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably",
         "mapped": true,
         "executed": false
@@ -20629,8 +21298,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 382,
-        "targetLine": 382,
+        "line": 390,
+        "targetLine": 390,
         "reason": "ScaffoldConfig over the embedded catalog cannot fail at runtime",
         "mapped": true,
         "executed": false
@@ -20641,8 +21310,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 386,
-        "targetLine": 386,
+        "line": 394,
+        "targetLine": 394,
         "reason": "a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses",
         "mapped": true,
         "executed": false
@@ -20653,8 +21322,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 389,
-        "targetLine": 389,
+        "line": 397,
+        "targetLine": 397,
         "reason": "post-MkdirAll write into a fresh temp dir cannot fail in practice",
         "mapped": true,
         "executed": false
@@ -20665,8 +21334,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 394,
-        "targetLine": 394,
+        "line": 402,
+        "targetLine": 402,
         "reason": "a freshly-scaffolded default config always opens",
         "mapped": true,
         "executed": false
@@ -20677,8 +21346,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 398,
-        "targetLine": 398,
+        "line": 406,
+        "targetLine": 406,
         "reason": "rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail",
         "mapped": true,
         "executed": false

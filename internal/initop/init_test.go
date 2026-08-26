@@ -1,17 +1,22 @@
 package initop
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
 type scaffoldLinkResult struct {
@@ -30,9 +35,46 @@ func (f *scaffoldFaultFilesystem) LinkInfo(string) (fs.FileInfo, error) {
 	f.links = f.links[1:]
 	return result.info, result.err
 }
-func (f *scaffoldFaultFilesystem) MkdirAll(string, fs.FileMode) error { return f.mkdirErr }
+func (f *scaffoldFaultFilesystem) Mkdir(string, fs.FileMode) error { return f.mkdirErr }
 func (f *scaffoldFaultFilesystem) Publish(string, []byte, fs.FileMode) error {
 	return f.publishErr
+}
+
+func TestCreateScaffoldDoesNotClaimDirectoryWonByConcurrentCreator(t *testing.T) {
+	directory := t.TempDir()
+	dirInfo, err := os.Lstat(directory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	configFile := filepath.Join(directory, "config")
+	if err := os.WriteFile(configFile, []byte("config"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	configInfo, err := os.Lstat(configFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	filesystem := &scaffoldFaultFilesystem{
+		links:    []scaffoldLinkResult{{err: fs.ErrNotExist}, {info: dirInfo}, {info: configInfo}},
+		mkdirErr: fs.ErrExist,
+	}
+	scaffold, err := createScaffold(filesystem, []byte("config"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if scaffold.createdDir || !scaffold.configCommitted {
+		t.Fatalf("scaffold ownership = %#v; want only config committed", scaffold)
+	}
+}
+
+func TestCreateScaffoldPreservesExclusiveDirectoryCreationFailure(t *testing.T) {
+	want := errors.New("mkdir failed")
+	scaffold, err := createScaffold(&scaffoldFaultFilesystem{
+		links: []scaffoldLinkResult{{err: fs.ErrNotExist}}, mkdirErr: want,
+	}, []byte("config"))
+	if !errors.Is(err, want) || scaffold.committed() {
+		t.Fatalf("exclusive mkdir outcome = %#v, %v; want unchanged failure", scaffold, err)
+	}
 }
 
 func TestCreateScaffoldReportsEveryPostDirectoryAndPublicationEffect(t *testing.T) {
@@ -145,6 +187,50 @@ func TestRollbackScaffoldRestoresOwnedTreeOrReportsChangedIdentity(t *testing.T)
 			}
 			if _, err := os.Stat(filepath.Join(root, config.DirName)); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("owned scaffold survived rollback: %v", err)
+			}
+		})
+	}
+}
+
+func TestRunPostPublicationFailuresPresentCompletePublisherAndScaffoldEffects(t *testing.T) {
+	for _, releaseFailure := range []bool{false, true} {
+		t.Run(map[bool]string{false: "advisory", true: "lease-release"}[releaseFailure], func(t *testing.T) {
+			root := t.TempDir()
+			loader := func(string) (*project.Loader, error) {
+				return project.NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, selected string) string { return selected }), nil
+			}
+			want := errors.New("post-publication failure")
+			advisory := func(state *project.ProjectState, cfg *config.Config, prepared publisher.Preparation) ([]string, error) {
+				if !releaseFailure {
+					return nil, want
+				}
+				return project.AdvisoryNotes(state, cfg, prepared.Plan(), projectSemantics(prepared))
+			}
+			release := func(lease *filesystem.Lease) error {
+				err := lease.Release()
+				if releaseFailure {
+					return errors.Join(err, want)
+				}
+				return err
+			}
+			outcome, err := runWithDependencies(context.Background(), Input{Root: root, Force: true}, loader, func(context.Context, string) error { return nil }, advisory, release)
+			var partial *PartialError
+			if !errors.Is(err, want) || !errors.As(err, &partial) {
+				t.Fatalf("post-publication outcome = %#v, %v; want typed partial", outcome, err)
+			}
+			document, renderErr := outcome.Document()
+			if renderErr != nil {
+				t.Fatal(renderErr)
+			}
+			var rendered bytes.Buffer
+			if err := presentation.Render(&rendered, document); err != nil {
+				t.Fatal(err)
+			}
+			got := rendered.String()
+			for _, wantEffect := range []string{"config-created .awf/config.yaml", "directory-created .awf", "lock-replaced .awf/awf.lock", "recovery:"} {
+				if !strings.Contains(got, wantEffect) {
+					t.Fatalf("partial output missing %q:\n%s", wantEffect, got)
+				}
 			}
 		})
 	}

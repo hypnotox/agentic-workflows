@@ -7,7 +7,6 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path"
 	"path/filepath"
 	"syscall"
 	"unsafe"
@@ -19,23 +18,26 @@ import (
 var replaceFileW = windows.NewLazySystemDLL("kernel32.dll").NewProc("ReplaceFileW")
 
 func exchangeExpected(root *os.Root, temporary, destination string, expected fs.FileInfo, remove bool) (bool, error) {
-	parentPath := path.Dir(destination)
-	parent, err := root.Open(parentPath)
+	anchor, err := root.Open(".")
 	if err != nil {
-		return false, fmt.Errorf("filesystem: open atomic parent %q: %w", parentPath, err)
+		return false, fmt.Errorf("filesystem: open atomic root: %w", err)
 	}
-	defer parent.Close()
-	parentName, err := finalWindowsPath(windows.Handle(parent.Fd()))
+	defer anchor.Close()
+	return exchangeExpectedAnchored(root, anchor, temporary, destination, expected, remove)
+}
+
+func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destination string, expected fs.FileInfo, remove bool) (bool, error) {
+	rootName, err := finalWindowsPath(windows.Handle(anchor.Fd()))
 	if err != nil {
 		return false, err
 	}
-	temporaryAbs := filepath.Join(parentName, path.Base(temporary))
-	destinationAbs := filepath.Join(parentName, path.Base(destination))
+	temporaryAbs := filepath.Join(rootName, filepath.FromSlash(temporary))
+	destinationAbs := filepath.Join(rootName, filepath.FromSlash(destination))
 	if remove {
 		return removeExpectedWindows(root, temporary, temporaryAbs, destination, destinationAbs, expected)
 	}
 	displaced := temporary + ".displaced"
-	displacedAbs := filepath.Join(parentName, path.Base(displaced))
+	displacedAbs := filepath.Join(rootName, filepath.FromSlash(displaced))
 	if err := replaceWindowsFile(destinationAbs, temporaryAbs, displacedAbs); err != nil {
 		return false, fmt.Errorf("filesystem: exchange expected entry %q: %w", destination, err)
 	}

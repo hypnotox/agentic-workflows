@@ -7,22 +7,23 @@ import (
 	"fmt"
 	"io/fs"
 	"os"
-	"path"
 
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"golang.org/x/sys/unix"
 )
 
 func exchangeExpected(root *os.Root, temporary, destination string, expected fs.FileInfo, remove bool) (bool, error) {
-	parentPath := path.Dir(destination)
-	parent, err := root.Open(parentPath)
+	anchor, err := root.Open(".")
 	if err != nil {
-		return false, fmt.Errorf("filesystem: open atomic parent %q: %w", parentPath, err)
+		return false, fmt.Errorf("filesystem: open atomic root: %w", err)
 	}
-	defer parent.Close()
-	temporaryLeaf, destinationLeaf := path.Base(temporary), path.Base(destination)
+	defer anchor.Close()
+	return exchangeExpectedAnchored(root, anchor, temporary, destination, expected, remove)
+}
+
+func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destination string, expected fs.FileInfo, remove bool) (bool, error) {
 	exchange := func() error {
-		return unix.RenameatxNp(int(parent.Fd()), temporaryLeaf, int(parent.Fd()), destinationLeaf, unix.RENAME_SWAP)
+		return unix.RenameatxNp(int(anchor.Fd()), temporary, int(anchor.Fd()), destination, unix.RENAME_SWAP)
 	}
 	if err := exchange(); err != nil {
 		return false, fmt.Errorf("filesystem: exchange expected entry %q: %w", destination, err)

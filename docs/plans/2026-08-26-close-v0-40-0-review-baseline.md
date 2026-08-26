@@ -480,3 +480,12 @@ candidate; ordinary phase review and independent implementation assurance bind t
 postcommit range before integration. The verify pass added the filesystem claim's authored source
 and removed a self-referential Notes requirement: final staged identity and outputs stay in ignored
 execution evidence for postcommit review rather than changing the candidate they identify.
+
+Phase 3 review settlement keeps expected-identity commit rooted at the selected filesystem after a
+prepared parent is relocated, uses exclusive scaffold-directory creation so Init claims only its own
+winner, and preserves complete Publisher plus Init effects through advisory and lease-release
+failures. Direct claim markers bind the ADR adapter contention proof and the sole production lock
+owner census. A Linux destination-disappearance regression now reaches the native exchange refusal,
+replacing its prior coverage admission; the remaining native cleanup admissions name their exact
+uninjectable branches. These changes preserve the approved filesystem and operation ownership
+boundaries and require no protected-contract deviation.
