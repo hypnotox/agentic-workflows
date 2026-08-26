@@ -949,6 +949,18 @@ func filesystemConsumerFinding(rel, src string) string {
 	capability := false
 	ast.Inspect(f, func(n ast.Node) bool {
 		switch n := n.(type) {
+		case *ast.Field:
+			star, ok := n.Type.(*ast.StarExpr)
+			if !ok {
+				break
+			}
+			selector, ok := star.X.(*ast.SelectorExpr)
+			if !ok || selector.Sel.Name != "Handle" || !importedOS(selector.X, imports) {
+				break
+			}
+			for _, name := range n.Names {
+				bound[name.Name] = true
+			}
 		case *ast.AssignStmt:
 			for i, rhs := range n.Rhs {
 				call, ok := rhs.(*ast.CallExpr)

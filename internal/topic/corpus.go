@@ -1,10 +1,7 @@
 package topic
 
 import (
-	"errors"
 	"fmt"
-	"io/fs"
-	"os"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -160,21 +157,6 @@ func hasAppliedOperation(progress adr.OperationProgress, verb adr.OpVerb, id str
 		}
 	}
 	return false
-}
-
-func collectFiles(root string, fn func(string) error) error {
-	return filepath.WalkDir(root, func(path string, de fs.DirEntry, err error) error {
-		if err != nil {
-			if path == root && errors.Is(err, os.ErrNotExist) {
-				return nil
-			}
-			return err // coverage-ignore: after the missing-root case, WalkDir errors require a permission or concurrent filesystem fault
-		}
-		if de.IsDir() {
-			return nil
-		}
-		return fn(path)
-	})
 }
 
 // Clone returns a fully independent semantic corpus projection.

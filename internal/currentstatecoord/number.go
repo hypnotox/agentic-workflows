@@ -3,12 +3,14 @@ package currentstatecoord
 import (
 	"errors"
 	"fmt"
+	"io/fs"
 	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -24,6 +26,76 @@ type NumberAssignment struct {
 // order, so its caller can present it after a partial completion.
 type NumberingReport struct {
 	Assignments []NumberAssignment
+}
+
+// PublicationOutcome is the owner-rendered Publisher result retained by ADR
+// numbering when publication crosses its own mutation boundary.
+type PublicationOutcome interface {
+	HasCommittedEffects() bool
+	PartialMutation() (presentation.Mutation, error)
+}
+
+// NumberingEffect is one exact root-relative path fact committed before a
+// later numbering failure.
+type NumberingEffect struct {
+	Kind string
+	Path string
+}
+
+// PartialNumberingError retains exact numbering, provenance, and Publisher
+// effects after numbering has crossed its first mutation. It preserves the
+// mechanism cause and supplies a residue-first recovery boundary.
+type PartialNumberingError struct {
+	Report      NumberingReport
+	Effects     []NumberingEffect
+	Publication PublicationOutcome
+	Cause       error
+	Recovery    []string
+}
+
+func (e *PartialNumberingError) Error() string { return e.Cause.Error() }
+func (e *PartialNumberingError) Unwrap() error { return e.Cause }
+func (e *PartialNumberingError) Document() (presentation.Document, error) {
+	assignments := make([]presentation.Value, 0, len(e.Report.Assignments))
+	for _, assignment := range e.Report.Assignments {
+		value, err := presentation.Literal(assignment.Slug + " -> " + assignment.Number)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		assignments = append(assignments, value)
+	}
+	effects := make([]presentation.Value, 0, len(e.Effects))
+	for _, effect := range e.Effects {
+		value, err := presentation.Literal(effect.Kind + " " + effect.Path)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		effects = append(effects, value)
+	}
+	changes := make([]presentation.MutationChange, 0, 3)
+	if len(assignments) != 0 {
+		changes = append(changes, presentation.MutationChange{Label: "assignments", Values: assignments})
+	}
+	if len(effects) != 0 {
+		changes = append(changes, presentation.MutationChange{Label: "numbering and provenance effects", Values: effects})
+	}
+	next := []presentation.Value{}
+	if e.Publication != nil && e.Publication.HasCommittedEffects() {
+		publication, err := e.Publication.PartialMutation()
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		changes = append(changes, publication.Changes...)
+		next = append(next, publication.NextActions...)
+	}
+	for _, action := range e.Recovery {
+		value, err := presentation.Prose(action)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		next = append(next, value)
+	}
+	return (presentation.Mutation{Status: "ADR numbering partially committed", Changes: changes, NextActions: next}).Document()
 }
 
 // Document maps numbering assignments to their semantic presentation.
@@ -57,16 +129,25 @@ func (r NumberingReport) Document() (presentation.Document, error) {
 const duplicateNumbersRecipe = "duplicate ADR numbers with no pending record: if a stale numbering commit collided, " +
 	"run: git reset --hard HEAD~1 && git merge <integration branch> && awf adr number, then gate and merge back"
 
-// NumberPendingADRs loads the pre-mutation authority universe, numbers its
-// pending records, substitutes their topic provenance, and then runs publish
-// against the separately selected post-mutation universe.
-//
-// The callback keeps Publisher composition with its caller. Refusals happen
-// before the first rename and return no assignments. Once a rename succeeds,
-// later substitution or publication errors retain the assignments that describe
-// the partial completion.
-func NumberPendingADRs(root string, slugs []string, publish func() error) (NumberingReport, error) {
-	corpus, duplicates, err := numberingCorpus(root)
+// NumberPendingADRsLeased loads the pre-mutation authority universe through
+// the selected-root handle, numbers its pending records, substitutes topic
+// provenance, and then runs publish against the separately selected
+// post-mutation universe. The caller retains the covering lease through
+// presentation of the returned complete or partial outcome.
+func NumberPendingADRsLeased(root string, slugs []string, publish func() (PublicationOutcome, error), lease *filesystem.Lease) (NumberingReport, error) {
+	if !lease.CoversTracked(root) {
+		return NumberingReport{}, errors.New("ADR numbering requires a covering tracked lease")
+	}
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return NumberingReport{}, err
+	}
+	defer files.Close()
+	return numberPendingADRs(slugs, publish, files)
+}
+
+func numberPendingADRs(slugs []string, publish func() (PublicationOutcome, error), files *filesystem.Handle) (NumberingReport, error) {
+	corpus, duplicates, err := numberingCorpus(files)
 	if err != nil {
 		return NumberingReport{}, err
 	}
@@ -78,41 +159,84 @@ func NumberPendingADRs(root string, slugs []string, publish func() error) (Numbe
 		return NumberingReport{}, err
 	}
 	next, err := corpus.NextIdentity()
-	if err != nil { // coverage-ignore: the corpus seam rejected any record whose number is not the four-digit group FilenameRe captured
+	if err != nil {
 		return NumberingReport{}, err
 	}
 	report := NumberingReport{}
+	effects := []NumberingEffect{}
 	renames := make(map[string]string, len(order))
+	decisions := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
 	for i, slug := range order {
 		// Highest-plus-one at assignment time: every prior assignment in this
 		// run has already raised the corpus's highest number by exactly one.
 		number := next + i
-		if err := adr.RenumberPending(decisionsDir(root), slug, number); err != nil { // coverage-ignore: every named slug came from the corpus, whose pending records all parsed from a `<slug>.md` file carrying the slug-form heading
-			return NumberingReport{}, err
+		numbered := fmt.Sprintf("%04d", number)
+		if err := adr.RenumberPendingConfined(files, decisions, slug, number); err != nil {
+			var partial *adr.PartialRenumberError
+			if errors.As(err, &partial) && partial.DestinationPublished {
+				report.Assignments = append(report.Assignments, NumberAssignment{Slug: slug, Number: numbered})
+				effects = append(effects,
+					NumberingEffect{Kind: "destination-published", Path: partial.Destination},
+					NumberingEffect{Kind: "source-retained", Path: partial.Source},
+				)
+				return report, &PartialNumberingError{Report: report, Effects: effects, Cause: err, Recovery: []string{"verify the listed numbered destination, remove only the listed retained pending source, then run awf render"}}
+			}
+			return report, err
 		}
-		renames[slug] = fmt.Sprintf("%04d", number)
-		report.Assignments = append(report.Assignments, NumberAssignment{Slug: slug, Number: renames[slug]})
+		renames[slug] = numbered
+		report.Assignments = append(report.Assignments, NumberAssignment{Slug: slug, Number: numbered})
+		effects = append(effects,
+			NumberingEffect{Kind: "destination-published", Path: filepath.ToSlash(filepath.Join(decisions, numbered+"-"+slug+".md"))},
+			NumberingEffect{Kind: "source-retired", Path: filepath.ToSlash(filepath.Join(decisions, slug+".md"))},
+		)
 	}
-	if err := topic.SubstituteProvenance(root, renames); err != nil { // coverage-ignore: SubstituteProvenance's own error paths are unreachable, so this propagation cannot be driven from here
-		return report, err
+	provenance, err := topic.SubstituteProvenanceConfined(files, renames)
+	for _, path := range provenance.Paths {
+		effects = append(effects, NumberingEffect{Kind: "provenance-replaced", Path: path})
 	}
-	if err := publish(); err != nil {
-		return report, err
+	if err != nil {
+		return report, &PartialNumberingError{Report: report, Effects: effects, Cause: err, Recovery: []string{"inspect the listed provenance replacements, complete remaining assigned-slug replacements under .awf/topics/parts, then run awf render"}}
+	}
+	publication, err := publish()
+	if err != nil {
+		return report, &PartialNumberingError{Report: report, Effects: effects, Publication: publication, Cause: err, Recovery: []string{"repair the reported publication fault, then run awf render"}}
 	}
 	return report, nil
 }
 
-func decisionsDir(root string) string {
-	return filepath.Join(root, config.DocsDir, "decisions")
+type confinedCorpusReader struct {
+	files *filesystem.Handle
 }
 
-// numberingCorpus loads the corpus through the construction seam, keeping a
+func (r confinedCorpusReader) ReadFile(path string) ([]byte, bool, error) {
+	data, err := r.files.Read(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return nil, false, nil
+	}
+	return data, err == nil, err
+}
+
+func (r confinedCorpusReader) Paths(prefix string) ([]string, error) {
+	root := strings.TrimSuffix(prefix, "/")
+	paths := []string{}
+	err := r.files.Walk(root, func(path string, info fs.FileInfo) (bool, error) {
+		if info.Mode()&fs.ModeSymlink != 0 {
+			return false, fmt.Errorf("ADR authority path %q is a symlink", path)
+		}
+		if !info.IsDir() {
+			paths = append(paths, path)
+		}
+		return true, nil
+	})
+	return paths, err
+}
+
+// numberingCorpus loads authority through the selected-root handle, keeping a
 // duplicate-identity corpus rather than aborting on it: duplicate numbers are
 // the input to a refusal the caller needs, not a reason to refuse to look. A
-// duplicate slug is different - it makes the pending set itself ambiguous, so
-// there is nothing coherent to refuse with and the error stands.
-func numberingCorpus(root string) (adr.Corpus, *adr.DuplicateIdentityError, error) {
-	corpus, err := adr.LoadCorpus(decisionsDir(root))
+// duplicate slug is different because it makes the pending set ambiguous.
+func numberingCorpus(files *filesystem.Handle) (adr.Corpus, *adr.DuplicateIdentityError, error) {
+	corpus, err := adr.LoadCorpusFromTree(confinedCorpusReader{files: files}, filepath.ToSlash(filepath.Join(config.DocsDir, "decisions")))
 	if err == nil {
 		return corpus, nil, nil
 	}

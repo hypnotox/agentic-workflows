@@ -12,10 +12,26 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
+// TopologyEffects records independently observable Git topology axes. Git
+// remains the reconciliation owner: uncertainty is explicit when a probe could
+// not establish an axis after a failed native operation.
+type TopologyEffects struct {
+	ManagedPath     bool
+	GitRegistration bool
+	Branch          bool
+	ReceivingHEAD   bool
+	Uncertain       bool
+}
+
+func (e TopologyEffects) Changed() bool {
+	return e.ManagedPath || e.GitRegistration || e.Branch || e.ReceivingHEAD || e.Uncertain
+}
+
 type RefusalError struct {
 	Category        string
 	Condition       string
-	ChangedTopology bool
+	ChangedTopology bool // legacy summary; Topology carries exact axes.
+	Topology        TopologyEffects
 	NextAction      string
 	NextActions     []string
 	Err             error
@@ -44,6 +60,7 @@ type CreationError struct {
 	Condition       string
 	ChangedEffort   bool
 	ChangedTopology bool
+	Topology        TopologyEffects
 	Cause           error
 	RollbackCause   error
 	Steps           []string

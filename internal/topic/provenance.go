@@ -1,6 +1,9 @@
 package topic
 
 import (
+	"errors"
+	"fmt"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
@@ -8,6 +11,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 )
 
 const (
@@ -16,44 +20,63 @@ const (
 	partFileName    = "current-state.md"
 )
 
-// SubstituteProvenance rewrites the authored claim parts under root so every
-// `ADR-<slug>` provenance entry whose slug is a key of renames takes that
-// record's assigned `ADR-NNNN` form, and every touched `Revised-by:` list is
-// rewritten to the duplicate-free ascending order ADR-0191 requires.
-//
-// This is the substitution half of numbering (ADR-0202 item 9), and it lives
-// here because the `Origin:`/`Revised-by:` line grammar is this package's. Two
-// scoping rules keep the effect exhaustive: it is anchored on those two
-// metadata lines, so a slug named in claim prose is never rewritten, and it
-// walks only .awf/topics/parts, so no generated topic doc, no domain part, no
-// ADR body, and no plan is reachable from here. Generated outputs follow from
-// the caller's re-render.
-func SubstituteProvenance(root string, renames map[string]string) error {
+// ProvenanceResult identifies every authored topic part whose replacement
+// committed, in walk order.
+type ProvenanceResult struct {
+	Paths []string
+}
+
+// PartialProvenanceError retains the exact committed part paths when a later
+// provenance observation or replacement fails.
+type PartialProvenanceError struct {
+	Result ProvenanceResult
+	Cause  error
+}
+
+func (e *PartialProvenanceError) Error() string { return e.Cause.Error() }
+func (e *PartialProvenanceError) Unwrap() error { return e.Cause }
+
+// SubstituteProvenanceConfined rewrites authored claim parts through the
+// caller-held selected-root handle. It touches only Origin and Revised-by
+// values under .awf/topics/parts and canonicalizes touched lists. Numbering
+// owns the transaction lease; topic retains metadata grammar and replacement
+// policy.
+func SubstituteProvenanceConfined(files *filesystem.Handle, renames map[string]string) (ProvenanceResult, error) {
+	result := ProvenanceResult{}
 	if len(renames) == 0 {
-		return nil
+		return result, nil
 	}
-	partsRoot := filepath.Join(root, config.DirName, "topics", "parts")
-	err := collectFiles(partsRoot, func(path string) error {
-		if filepath.Base(path) != partFileName {
-			return nil
+	partsRoot := filepath.ToSlash(filepath.Join(config.DirName, "topics", "parts"))
+	if _, err := files.LinkInfo(partsRoot); errors.Is(err, os.ErrNotExist) {
+		return result, nil
+	} else if err != nil {
+		return result, err
+	}
+	err := files.Walk(partsRoot, func(path string, info fs.FileInfo) (bool, error) {
+		if info.Mode()&os.ModeSymlink != 0 {
+			return false, fmt.Errorf("topic provenance path %q is a symlink", path)
 		}
-		data, err := os.ReadFile(path)
-		if err != nil { // coverage-ignore: the walk just discovered this file; failure requires a concurrent filesystem race
-			return err
+		if info.IsDir() || filepath.Base(path) != partFileName {
+			return true, nil
+		}
+		data, err := files.Read(path)
+		if err != nil {
+			return false, err
 		}
 		body, changed := substituteProvenanceLines(string(data), renames)
 		if !changed {
-			return nil
+			return true, nil
 		}
-		if err := os.WriteFile(path, []byte(body), 0o644); err != nil { // coverage-ignore: the file was just read from the same path; a write fails only on a permission fault a test cannot trigger
-			return err
+		if err := files.ReplaceExpected(path, info, []byte(body), info.Mode().Perm()); err != nil {
+			return false, err
 		}
-		return nil
+		result.Paths = append(result.Paths, path)
+		return true, nil
 	})
-	if err != nil { // coverage-ignore: collectFiles tolerates a missing parts root and the callback's own error paths are unreachable
-		return err
+	if err != nil && len(result.Paths) != 0 {
+		return result, &PartialProvenanceError{Result: result, Cause: err}
 	}
-	return nil
+	return result, err
 }
 
 // substituteProvenanceLines applies the substitution to one part's bytes,

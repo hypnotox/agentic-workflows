@@ -22,9 +22,20 @@ func runUninstall(ctx context.Context, root string, stdout io.Writer) (returnErr
 		return err
 	}
 	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-	report, err := resident.Uninstall(ctx, root, publisher.IsLocalDocTemplate)
-	if err != nil {
-		return err
+	report, uninstallErr := resident.Uninstall(ctx, root, publisher.IsLocalDocTemplate)
+	if uninstallErr != nil {
+		var partial *resident.PartialUninstallError
+		if !errors.As(uninstallErr, &partial) {
+			return uninstallErr
+		}
+		document, documentErr := partial.Document()
+		if documentErr != nil {
+			return errors.Join(uninstallErr, documentErr)
+		}
+		if renderErr := presentation.Render(stdout, document); renderErr != nil {
+			return errors.Join(uninstallErr, renderErr)
+		}
+		return uninstallErr
 	}
 	document, err := report.Document()
 	if err != nil { // coverage-ignore: Uninstall returns a count and validated resident-root names; the owner mapping uses fixed grammar

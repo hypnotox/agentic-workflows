@@ -306,7 +306,7 @@ func TestAddFailureReportsActualTopologyAndPreservesEffort(t *testing.T) {
 	if !errors.As(err, &refusal) || !errors.Is(err, refusal.Err) {
 		t.Fatalf("add failure lost typed refusal identity: %v", err)
 	}
-	const want = "condition: git worktree add failed\nstate: operation\ncause: injected post-add failure\n\ndiagnostic:\n  changed:\n    managed topology: yes\n  steps:\n    step 1: inspect actual Git topology\n    step 2: clean only the named managed path, registration, and branch with native Git\n    step 3: retry add\n"
+	const want = "condition: git worktree add failed\nstate: operation\ncause: injected post-add failure\n\ndiagnostic:\n  changed:\n    managed path: yes\n    git registration: yes\n    branch: yes\n  steps:\n    step 1: inspect actual Git topology\n    step 2: clean only the named managed path, registration, and branch with native Git\n    step 3: retry add\n"
 	if got := renderedTopologyDiagnostic(t, refusal); got != want {
 		t.Fatalf("worktree refusal diagnostic = %q, want %q", got, want)
 	}
@@ -833,7 +833,7 @@ func TestAddPreconditionAndRunnerFailureBranches(t *testing.T) {
 		old := managedLstat
 		managedLstat = func(string) (os.FileInfo, error) { return nil, os.ErrNotExist }
 		defer func() { managedLstat = old }()
-		if !m.topologyPresent(testContext(t), "topology-probe", path) {
+		if !m.topologyEffects(testContext(t), "topology-probe", path).Changed() {
 			t.Fatal("registration topology was not observed")
 		}
 	})
@@ -1623,4 +1623,46 @@ func commitWorktree(t *testing.T, root, message string) {
 	repo := gitfixture.At(root)
 	gitfixture.NativeAddAllExcept(t, repo, ".awf")
 	gitfixture.NativeCommit(t, repo, message)
+}
+
+func TestAddReportsExactTopologyAxes(t *testing.T) {
+	m, _ := newManagerWithEffort(t, "exact-axes", "Exact axes")
+	result, err := m.Add(testContext(t), "exact-axes", "HEAD")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !result.Topology.ManagedPath || !result.Topology.GitRegistration || !result.Topology.Branch || result.Topology.ReceivingHEAD || result.Topology.Uncertain {
+		t.Fatalf("topology = %#v", result.Topology)
+	}
+}
+
+func TestWorktreeMutationPresentsExactAndLegacyTopologyAxes(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		result Result
+		wants  []string
+	}{
+		{"exact", Result{Condition: "partial", ChangedTopology: true, Topology: TopologyEffects{ManagedPath: true, Branch: true}, NextAction: "retry"}, []string{"managed path", "branch"}},
+		{"legacy", Result{Condition: "legacy", ChangedTopology: true, NextAction: "retry"}, []string{"managed topology"}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mutation, err := tc.result.Mutation()
+			if err != nil {
+				t.Fatal(err)
+			}
+			document, err := mutation.Document()
+			if err != nil {
+				t.Fatal(err)
+			}
+			var rendered bytes.Buffer
+			if err := presentation.Render(&rendered, document); err != nil {
+				t.Fatal(err)
+			}
+			for _, want := range tc.wants {
+				if !strings.Contains(rendered.String(), want) {
+					t.Errorf("mutation omitted %q: %s", want, rendered.String())
+				}
+			}
+		})
+	}
 }

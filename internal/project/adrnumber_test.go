@@ -1,6 +1,7 @@
 package project
 
 import (
+	"context"
 	"errors"
 	"io/fs"
 	"os"
@@ -10,6 +11,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -127,7 +129,7 @@ func numberingReportText(report currentstatecoord.NumberingReport) string {
 func TestNumberPendingADRsPropagatesPublisherPlanFailure(t *testing.T) {
 	state, _ := numberingProject(t, numberingFixture(t))
 	boom := errors.New("plan failure")
-	_, err := currentstatecoord.NumberPendingADRs(state.Root(), []string{"early", "late"}, func() error { return boom })
+	_, err := numberPendingADRsWithPublisherProject(state, []string{"early", "late"}, func(*filesystem.Lease) (currentstatecoord.PublicationOutcome, error) { return nil, boom })
 	if !errors.Is(err, boom) {
 		t.Fatalf("plan error = %v", err)
 	}
@@ -135,16 +137,15 @@ func TestNumberPendingADRsPropagatesPublisherPlanFailure(t *testing.T) {
 
 func TestNumberPendingADRsPropagatesPublicationFailure(t *testing.T) {
 	state, _ := numberingProject(t, numberingFixture(t))
-	report, err := currentstatecoord.NumberPendingADRs(state.Root(), []string{"early", "late"}, func() error {
+	report, err := numberPendingADRsWithPublisherProject(state, []string{"early", "late"}, func(lease *filesystem.Lease) (currentstatecoord.PublicationOutcome, error) {
 		agentsPath := filepath.Join(state.Root(), "AGENTS.md")
 		if err := os.Remove(agentsPath); err != nil {
-			return err
+			return nil, err
 		}
 		if err := os.Mkdir(agentsPath, 0o755); err != nil {
-			return err
+			return nil, err
 		}
-		_, err := publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Sync()
-		return err
+		return publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).SyncLeased(context.Background(), lease)
 	})
 	if err == nil || len(report.Assignments) != 2 {
 		t.Fatalf("publication result = %#v, %v", report, err)

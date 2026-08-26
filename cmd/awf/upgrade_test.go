@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"crypto/sha256"
 	"encoding/json"
 	"errors"
@@ -11,8 +12,10 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -93,8 +96,8 @@ func TestPublicSyncPartialResultIsPresentedByEveryCommandBoundary(t *testing.T) 
 		if stdout.Len() != 0 {
 			t.Fatalf("stdout = %q, want no partial success mutation", stdout.String())
 		}
-		if got := stderr.String(); !strings.Contains(got, "outputs: changed AGENTS.md (internal)") || !strings.Contains(got, "publication partially committed") || !strings.Contains(got, "filesystem: read \"CLAUDE.md\"") {
-			t.Fatalf("upgrade failure diagnostic = %q, want committed output and typed sync cause", got)
+		if got := stderr.String(); !strings.Contains(got, "committed effects: output-replaced AGENTS.md") || !strings.Contains(got, "publication partially committed") || !strings.Contains(got, "filesystem: read \"CLAUDE.md\"") || !strings.Contains(got, "recovery:") {
+			t.Fatalf("upgrade failure diagnostic = %q, want complete committed effects and typed sync cause", got)
 		}
 	})
 
@@ -337,7 +340,7 @@ func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
 	if err := os.WriteFile(upgradeJournalPath(root), append(b, '\n'), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runRecover(root, io.Discard); err != nil {
+	if err := runRecover(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("recover: %v", err)
 	}
 	if _, err := os.Stat(prepared); !os.IsNotExist(err) {
@@ -475,5 +478,24 @@ func TestRunUpgradeAlreadyCurrentStillSyncs(t *testing.T) {
 	// re-renders every managed file and re-pins the bootstrap (ADR-0085).
 	if !strings.Contains(out.String(), "status: completed") || !strings.Contains(out.String(), "continue with the rendered project state") {
 		t.Errorf("expected the schema-current upgrade to run a sync, got %q", out.String())
+	}
+}
+
+func TestRunRecoverHonorsCommandContextWhileWaitingForLease(t *testing.T) {
+	root := scaffoldProject(t)
+	lease, err := filesystem.AcquireTrackedLease(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := lease.Release(); err != nil {
+			t.Errorf("release recover test lease: %v", err)
+		}
+	}()
+	ctx, cancel := context.WithTimeout(testContext(t), 50*time.Millisecond)
+	defer cancel()
+	err = runRecover(ctx, root, io.Discard)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("recover lease error = %v, want command deadline", err)
 	}
 }

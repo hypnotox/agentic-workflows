@@ -71,6 +71,16 @@ func (l *Lease) Release() error {
 	return result
 }
 
+// CoversTracked reports whether this live lease contains the selected
+// checkout's tracked-tree identity.
+func (l *Lease) CoversTracked(root string) bool {
+	if l == nil || l.released {
+		return false
+	}
+	want, err := canonicalIdentities([]leaseRequest{{scope: "project-tracked-locks", root: root}})
+	return err == nil && slices.Contains(l.identities, want[0])
+}
+
 // CoversProject reports whether this live lease contains the complete tracked
 // and resident identity set for roots.
 func (l *Lease) CoversProject(tracked, resident string) bool {

@@ -13,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
@@ -263,10 +264,21 @@ func checkCurrentStateProject(state *ProjectState, ctx context.Context) (Current
 	return currentstatecoord.CheckWorking(state.Root(), testRepo(state), ctx)
 }
 func numberPendingADRsProject(state *ProjectState, slugs []string) (currentstatecoord.NumberingReport, error) {
-	return currentstatecoord.NumberPendingADRs(state.Root(), slugs, func() error {
-		_, err := publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Sync()
-		return err
+	return numberPendingADRsWithPublisherProject(state, slugs, func(lease *filesystem.Lease) (currentstatecoord.PublicationOutcome, error) {
+		return publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).SyncLeased(context.Background(), lease)
 	})
+}
+
+func numberPendingADRsWithPublisherProject(state *ProjectState, slugs []string, publish func(*filesystem.Lease) (currentstatecoord.PublicationOutcome, error)) (currentstatecoord.NumberingReport, error) {
+	ctx := context.Background()
+	lease, err := filesystem.AcquireProjectLease(ctx, state.Root(), awfgit.ProjectResidentRoot(ctx, state.Root()))
+	if err != nil {
+		return currentstatecoord.NumberingReport{}, err
+	}
+	report, numberErr := currentstatecoord.NumberPendingADRsLeased(state.Root(), slugs, func() (currentstatecoord.PublicationOutcome, error) {
+		return publish(lease)
+	}, lease)
+	return report, errors.Join(numberErr, lease.Release())
 }
 
 func newADRProject(state *ProjectState, ctx context.Context, title string) (string, error) {

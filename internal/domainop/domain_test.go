@@ -2,6 +2,7 @@ package domainop
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -11,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -20,6 +22,24 @@ const fixtureConfig = "prefix: example\nprofile: full\nintegrationBranch: master
 
 func operationLoader() *project.Loader {
 	return project.NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot)
+}
+
+func Add(ctx context.Context, root, name string, loader *project.Loader) (outcome Outcome, returnErr error) {
+	lease, err := loader.AcquireProjectLease(ctx, root)
+	if err != nil {
+		return Outcome{}, err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	return AddLeased(ctx, root, name, loader, lease)
+}
+
+func Remove(ctx context.Context, root, name string, loader *project.Loader) (outcome Outcome, returnErr error) {
+	lease, err := loader.AcquireProjectLease(ctx, root)
+	if err != nil {
+		return Outcome{}, err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	return RemoveLeased(ctx, root, name, loader, lease)
 }
 
 func initializedLoader(t *testing.T, root string) *project.Loader {
@@ -45,16 +65,16 @@ func TestAddScaffoldsConfiguredDomainAndRemoveReportsOrphan(t *testing.T) {
 	if got, err := os.ReadFile(part); err != nil || !strings.Contains(string(got), "\"payments\" domain") {
 		t.Fatalf("part = %q, %v", got, err)
 	}
-	_, orphaned, err := Remove(context.Background(), root, "payments", operationLoader())
-	if err != nil || !orphaned {
-		t.Fatalf("remove = orphaned %t, %v", orphaned, err)
+	outcome, err := Remove(context.Background(), root, "payments", operationLoader())
+	if err != nil || !outcome.Orphaned {
+		t.Fatalf("remove = orphaned %t, %v", outcome.Orphaned, err)
 	}
 }
 
 func TestRemoveRejectsAbsentConfiguredDomain(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
-	if _, _, err := Remove(context.Background(), root, "payments", initializedLoader(t, root)); err == nil || !strings.Contains(err.Error(), "not configured") {
+	if _, err := Remove(context.Background(), root, "payments", initializedLoader(t, root)); err == nil || !strings.Contains(err.Error(), "not configured") {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -63,9 +83,9 @@ func TestDomainOperationsRejectInvalidAndUnavailableInputs(t *testing.T) {
 	loader := operationLoader()
 	for _, operation := range []func() error{
 		func() error { _, err := Add(context.Background(), t.TempDir(), "not valid", loader); return err },
-		func() error { _, _, err := Remove(context.Background(), t.TempDir(), "not valid", loader); return err },
+		func() error { _, err := Remove(context.Background(), t.TempDir(), "not valid", loader); return err },
 		func() error { _, err := Add(context.Background(), t.TempDir(), "payments", loader); return err },
-		func() error { _, _, err := Remove(context.Background(), t.TempDir(), "payments", loader); return err },
+		func() error { _, err := Remove(context.Background(), t.TempDir(), "payments", loader); return err },
 	} {
 		if err := operation(); err == nil {
 			t.Fatal("invalid or unavailable operation succeeded")
@@ -113,7 +133,7 @@ func TestDomainOperationsReportSynchronizationFailure(t *testing.T) {
 			t.Fatal(err)
 		}
 		breakRendering(t, root)
-		if _, _, err := Remove(context.Background(), root, "payments", loader); err == nil {
+		if _, err := Remove(context.Background(), root, "payments", loader); err == nil {
 			t.Fatal("remove accepted a synchronization failure")
 		}
 	})
@@ -159,5 +179,34 @@ func TestScaffoldCurrentStatePreservesExistingAndReportsFilesystemFailures(t *te
 	orphaned, err := hasSidecarOrParts(root, "absent")
 	if err != nil || orphaned {
 		t.Fatalf("absent authored inputs = %t, %v", orphaned, err)
+	}
+}
+
+func TestAddRetainsTypedPartialOutcomeAfterSynchronizationFailure(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, fixtureConfig)
+	loader := initializedLoader(t, root)
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "parts", "workflow", "commit-discipline.md"), "{{=awf:unknown-placeholder}}\n")
+	_, err := Add(context.Background(), root, "payments", loader)
+	var partial *PartialError
+	if !errors.As(err, &partial) || !partial.Outcome.ConfigReplaced || !partial.Outcome.ScaffoldCreated {
+		t.Fatalf("partial outcome = %#v, err = %v", partial, err)
+	}
+}
+
+func TestPartialErrorDocumentRetainsEffectsAndDefaultRecovery(t *testing.T) {
+	partial := &PartialError{Outcome: Outcome{ConfigReplaced: true, ScaffoldCreated: true, Orphaned: true, Publisher: publisher.Result{}}}
+	document, err := partial.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rendered strings.Builder
+	if err := presentation.Render(&rendered, document); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"domain mutation partially committed", "config replacement: true", "authored scaffold: true", "orphaned authored inputs: true", "inspect the reported cause, then retry the domain command"} {
+		if !strings.Contains(rendered.String(), want) {
+			t.Errorf("document omitted %q: %s", want, rendered.String())
+		}
 	}
 }

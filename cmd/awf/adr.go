@@ -38,14 +38,17 @@ func runADR(c *cmdCtx) (returnErr error) {
 	// no assignments, so nothing is printed for them; past the first rename the
 	// renames are on disk, and the operator needs the mapping for the
 	// integration commit message whatever failed afterwards.
-	report, numberErr := currentstatecoord.NumberPendingADRs(state.Root(), c.inv.positionals, func() error {
-		_, syncErr := composePublisher(state, cfg).SyncLeased(c.ctx, lease)
-		return syncErr
-	})
+	report, numberErr := currentstatecoord.NumberPendingADRsLeased(state.Root(), c.inv.positionals, func() (currentstatecoord.PublicationOutcome, error) {
+		return composePublisher(state, cfg).SyncLeased(c.ctx, lease)
+	}, lease)
 	if len(report.Assignments) == 0 {
 		return numberErr
 	}
 	document, presentationErr := report.Document()
+	var partial *currentstatecoord.PartialNumberingError
+	if errors.As(numberErr, &partial) {
+		document, presentationErr = partial.Document()
+	}
 	if presentationErr != nil { // coverage-ignore: numbering emits validated slugs and four-digit numeric assignments
 		return errors.Join(numberErr, presentationErr)
 	}

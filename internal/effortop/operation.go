@@ -9,9 +9,45 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
+
+// AcquireMutationLease is the sole effort application-composition policy for
+// resident and dual-root mutation transactions. Command code supplies only the
+// parsed operation shape and holds the returned capability through rendering.
+func AcquireMutationLease(ctx context.Context, root, subcommand string, noWorktree bool) (*filesystem.Lease, error) {
+	if !mutates(subcommand) {
+		return nil, nil
+	}
+	residentRoot := awfgit.ProjectResidentRoot(ctx, root)
+	if needsProjectLease(subcommand, noWorktree) {
+		return filesystem.AcquireProjectLease(ctx, root, residentRoot)
+	}
+	return filesystem.AcquireResidentLease(ctx, residentRoot)
+}
+
+func mutates(subcommand string) bool {
+	switch subcommand {
+	case "new", "finish", "worktree", "integrate", "memory edit", "memory update", "activity attach", "activity heartbeat", "activity detach":
+		return true
+	default:
+		return false
+	}
+}
+
+func needsProjectLease(subcommand string, noWorktree bool) bool {
+	switch subcommand {
+	case "finish", "worktree", "integrate":
+		return true
+	case "new":
+		return !noWorktree
+	default:
+		return false
+	}
+}
 
 // New creates an effort resident and, unless excluded, its managed worktree.
 func New(ctx context.Context, service *effort.Service, manager *worktree.Manager, input effort.NewInput, base string, noWorktree bool) (presentation.Document, error) {

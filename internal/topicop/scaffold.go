@@ -14,6 +14,50 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
+// PartialScaffoldError retains rollback facts when a topic creation cannot
+// remove every path it created. Cause identity remains available to callers.
+type PartialScaffoldError struct {
+	Created, Removed, Remaining []string
+	Cause                       error
+	Recovery                    []string
+}
+
+func (e *PartialScaffoldError) Error() string { return e.Cause.Error() }
+func (e *PartialScaffoldError) Unwrap() error { return e.Cause }
+func (e *PartialScaffoldError) Document() (presentation.Document, error) {
+	changes := []presentation.MutationChange{}
+	for _, group := range []struct {
+		label string
+		paths []string
+	}{{"created paths", e.Created}, {"removed paths", e.Removed}, {"remaining paths", e.Remaining}} {
+		if len(group.paths) == 0 {
+			continue
+		}
+		values := []presentation.Value{}
+		for _, path := range group.paths {
+			value, err := presentation.Literal(path)
+			if err != nil {
+				return presentation.Document{}, err
+			}
+			values = append(values, value)
+		}
+		changes = append(changes, presentation.MutationChange{Label: group.label, Values: values})
+	}
+	recovery := e.Recovery
+	if len(recovery) == 0 {
+		recovery = []string{"remove only the listed remaining topic paths, then retry"}
+	}
+	next := make([]presentation.Value, 0, len(recovery))
+	for _, action := range recovery {
+		value, err := presentation.Prose(action)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		next = append(next, value)
+	}
+	return (presentation.Mutation{Status: "topic scaffold partially committed", Changes: changes, NextActions: next}).Document()
+}
+
 // Scaffold creates one topic's paired authored inputs atomically enough to
 // remove every input and newly-created parent when a later step fails.
 func Scaffold(root string, cfg *config.Config, domain, title string) (presentation.Document, error) {
@@ -45,14 +89,20 @@ func scaffoldConfined(files *filesystem.Handle, cfg *config.Config, domain, titl
 	}
 	created := make([]string, 0, len(planned))
 	rollbackCreated := func(cause error) (presentation.Document, error) {
+		removed, remaining := []string{}, []string{}
 		var failures []error
-		failures = append(failures, cause)
 		for i := len(created) - 1; i >= 0; i-- {
 			if err := files.Remove(created[i]); err != nil && !errors.Is(err, os.ErrNotExist) {
 				failures = append(failures, fmt.Errorf("remove topic scaffold path %q: %w", created[i], err))
+				remaining = append(remaining, created[i])
+			} else {
+				removed = append(removed, created[i])
 			}
 		}
-		return presentation.Document{}, errors.Join(failures...)
+		if len(failures) != 0 {
+			return presentation.Document{}, &PartialScaffoldError{Created: append([]string(nil), created...), Removed: removed, Remaining: remaining, Cause: errors.Join(append([]error{cause}, failures...)...), Recovery: []string{"remove only the listed remaining topic paths, then retry"}}
+		}
+		return presentation.Document{}, cause
 	}
 	for _, file := range planned {
 		rel := filepath.ToSlash(file.Path)
@@ -67,13 +117,11 @@ func scaffoldConfined(files *filesystem.Handle, cfg *config.Config, domain, titl
 	return topic.CreatedDocument(planned)
 }
 
-// Create opens the selected project and performs one topic-scaffolding operation.
-func Create(ctx context.Context, root, domain, title string, loader *project.Loader) (document presentation.Document, err error) {
-	lease, err := loader.AcquireTrackedLease(ctx, root)
-	if err != nil {
-		return presentation.Document{}, err
+// CreateLeased opens the selected project and performs one topic-scaffolding operation under a caller-held tracked transaction.
+func CreateLeased(ctx context.Context, root, domain, title string, loader *project.Loader, lease *filesystem.Lease) (document presentation.Document, err error) {
+	if lease == nil || !lease.CoversTracked(root) {
+		return presentation.Document{}, errors.New("topic operation requires a covering tracked lease")
 	}
-	defer func() { err = errors.Join(err, lease.Release()) }()
 	_, cfg, err := loader.OpenForOperation(ctx, root)
 	if err != nil {
 		return presentation.Document{}, err

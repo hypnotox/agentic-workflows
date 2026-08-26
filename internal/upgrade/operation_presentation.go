@@ -57,13 +57,14 @@ type migrationDiagnostic interface {
 }
 
 type upgradeFailure struct {
+	applied []string
 	changes []string
 	sync    presentation.Mutation
 	cause   error
 }
 
-func newUpgradeFailure(_ []string, changes []string, sync presentation.Mutation, cause error) error {
-	return upgradeFailure{changes: append([]string(nil), changes...), sync: sync, cause: cause}
+func newUpgradeFailure(applied []string, changes []string, sync presentation.Mutation, cause error) error {
+	return upgradeFailure{applied: append([]string(nil), applied...), changes: append([]string(nil), changes...), sync: sync, cause: cause}
 }
 
 func (e upgradeFailure) Error() string { return e.cause.Error() }
@@ -73,7 +74,18 @@ func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
 	if errors.As(e.cause, &special) {
 		return special.UpgradeDiagnostic(e.changes)
 	}
-	changed := make([]presentation.Field, 0, len(e.changes))
+	changed := make([]presentation.Field, 0, len(e.applied)+len(e.changes))
+	for _, name := range e.applied {
+		value, err := presentation.Prose("applied: " + name)
+		if err != nil {
+			return presentation.Diagnostic{}, err
+		}
+		field, err := presentation.NewField("applied migration", value)
+		if err != nil {
+			return presentation.Diagnostic{}, err
+		}
+		changed = append(changed, field)
+	}
 	for _, change := range e.changes {
 		if _, err := presentation.Prose(change); err != nil {
 			return presentation.Diagnostic{}, err

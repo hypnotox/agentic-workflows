@@ -41,7 +41,7 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 	root := commandRepo(t)
 	managed := filepath.Join(root, ".awf", "worktrees", "default-cli")
 	text := runNewEffortCommand(t, root, "default-cli", "Default CLI", nil)
-	wantText := "status: managed worktree added for default-cli\n\nmutation:\n  identity:\n    effort: default-cli\n    title: Default CLI\n    memory: .awf/efforts/default-cli/memory.md\n    worktree: " + managed + "\n    branch: awf/default-cli\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue the effort in " + managed + "\n"
+	wantText := "status: managed worktree added for default-cli\n\nmutation:\n  identity:\n    effort: default-cli\n    title: Default CLI\n    memory: .awf/efforts/default-cli/memory.md\n    worktree: " + managed + "\n    branch: awf/default-cli\n  changes:\n    completed:\n      managed path\n      git registration\n      branch\n  next actions:\n    step 1: continue the effort in " + managed + "\n"
 	if text != wantText {
 		t.Fatalf("default new text =\n%q\nwant\n%q", text, wantText)
 	}
@@ -137,7 +137,7 @@ func TestEffortWorktreeCLIComposition(t *testing.T) {
 	if err := runEffort(add, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "managed topology") {
+	if !strings.Contains(output.String(), "managed path") && strings.Contains(output.String(), "git registration") && strings.Contains(output.String(), "branch") {
 		t.Fatalf("add output = %q", output.String())
 	}
 	output.Reset()
@@ -151,7 +151,7 @@ func TestEffortWorktreeCLIComposition(t *testing.T) {
 	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "worktree", inv: invocation{positionals: []string{"remove", "cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &output}, openEffortComposition); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(output.String(), "managed topology") {
+	if !strings.Contains(output.String(), "managed path") && strings.Contains(output.String(), "git registration") && strings.Contains(output.String(), "branch") {
 		t.Fatalf("remove output = %q", output.String())
 	}
 	if _, err := filepath.Abs(root); err != nil {

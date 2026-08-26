@@ -156,8 +156,9 @@ func (c Corpus) Clone() Corpus {
 func (c Corpus) All() []ADR { return c.all }
 
 // NextIdentity returns one more than the highest ADR identity, or 1 for an
-// empty corpus. Migration code uses this semantic query rather than adding a
-// raw decisions-directory reader.
+// empty corpus. It refuses once the four-digit identity space is exhausted.
+// Migration code uses this semantic query rather than adding a raw
+// decisions-directory reader.
 func (c Corpus) NextIdentity() (int, error) {
 	max := 0
 	for _, a := range c.all {
@@ -171,6 +172,9 @@ func (c Corpus) NextIdentity() (int, error) {
 		if n > max {
 			max = n
 		}
+	}
+	if max >= 9999 {
+		return 0, fmt.Errorf("ADR identity space exhausted at %04d", max)
 	}
 	return max + 1, nil
 }

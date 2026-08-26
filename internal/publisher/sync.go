@@ -147,7 +147,12 @@ func (r Result) Backups() []Backup { return slices.Clone(r.backups) }
 func (r Result) Changes() []Change { return slices.Clone(r.changes) }
 func (r Result) Pruned() []string  { return slices.Clone(r.pruned) }
 func (r Result) Effects() []Effect { return slices.Clone(r.effects) }
-func (r Result) committed() bool   { return len(r.effects) != 0 }
+
+// HasCommittedEffects reports whether publication crossed a mutation boundary.
+// It lets a composing operation retain Publisher's owner-rendered partial
+// outcome without depending on Publisher's concrete effect representation.
+func (r Result) HasCommittedEffects() bool { return len(r.effects) != 0 }
+func (r Result) committed() bool           { return r.HasCommittedEffects() }
 
 func partialOrError(result Result, err error) error {
 	if err == nil || !result.committed() {

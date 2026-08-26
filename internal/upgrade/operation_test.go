@@ -417,6 +417,9 @@ func TestRunFailureRetainsMigrationAndSyncFacts(t *testing.T) {
 	if !errors.As(err, &partial) {
 		t.Fatalf("error type = %T", err)
 	}
+	if got := strings.Join(partial.applied, ","); got != "first" {
+		t.Fatalf("applied = %q", got)
+	}
 	if got := strings.Join(partial.changes, ","); got != "changed config" {
 		t.Fatalf("changes = %q", got)
 	}
@@ -424,7 +427,7 @@ func TestRunFailureRetainsMigrationAndSyncFacts(t *testing.T) {
 	if diagnosticErr != nil {
 		t.Fatal(diagnosticErr)
 	}
-	if len(diagnostic.Changed) != 2 || len(diagnostic.Steps) != 3 {
+	if len(diagnostic.Changed) != 3 || len(diagnostic.Steps) != 3 {
 		t.Fatalf("diagnostic = %#v", diagnostic)
 	}
 }

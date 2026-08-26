@@ -46,14 +46,14 @@ func newADR(ctx context.Context, root string, titleWords []string, stdout io.Wri
 	if len(titleWords) == 0 {
 		return &usageErr{"usage: awf new adr <title>"}
 	}
-	if err := gate(ctx, root); err != nil {
-		return err
-	}
 	lease, err := filesystem.AcquireTrackedLease(ctx, root)
 	if err != nil {
 		return err
 	}
 	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	if err := gate(ctx, root); err != nil {
+		return err
+	}
 	state, cfg, repo, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
@@ -69,14 +69,14 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 	if len(titleWords) == 0 {
 		return &usageErr{"usage: awf new plan <title>"}
 	}
-	if err := gate(ctx, root); err != nil {
-		return err
-	}
 	lease, err := filesystem.AcquireTrackedLease(ctx, root)
 	if err != nil {
 		return err
 	}
 	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	if err := gate(ctx, root); err != nil {
+		return err
+	}
 	state, _, _, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
@@ -88,12 +88,9 @@ func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Wr
 	return writeStatus(stdout, "created: "+path)
 }
 
-func newDoc(ctx context.Context, root string, args []string, title *string, stdout io.Writer) error {
+func newDoc(ctx context.Context, root string, args []string, title *string, stdout io.Writer) (returnErr error) {
 	if len(args) != 2 {
 		return &usageErr{"usage: awf new doc <name> <description> [--title <title>]"}
-	}
-	if err := gate(ctx, root); err != nil {
-		return err
 	}
 	resolvedTitle := derivedLocalDocTitle(args[0])
 	if title != nil {
@@ -103,10 +100,31 @@ func newDoc(ctx context.Context, root string, args []string, title *string, stdo
 	if err != nil {
 		return err
 	}
-	if err := localdocop.Run(ctx, root, config.LocalDoc{Name: args[0], Title: resolvedTitle, Description: args[1]}, loader); err != nil {
+	lease, err := loader.AcquireProjectLease(ctx, root)
+	if err != nil {
 		return err
 	}
-	return writeStatus(stdout, "created: "+"docs/"+args[0]+".md")
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	if err := gate(ctx, root); err != nil {
+		return err
+	}
+	outcome, err := localdocop.RunLeased(ctx, root, config.LocalDoc{Name: args[0], Title: resolvedTitle, Description: args[1]}, loader, lease)
+	if err != nil {
+		var partial *localdocop.PartialError
+		if !errors.As(err, &partial) {
+			return err
+		}
+		document, documentErr := partial.Document()
+		if documentErr != nil {
+			return errors.Join(err, documentErr)
+		}
+		return errors.Join(err, presentation.Render(stdout, document))
+	}
+	document, err := outcome.Document()
+	if err != nil {
+		return err
+	}
+	return presentation.Render(stdout, document)
 }
 
 func derivedLocalDocTitle(name string) string {
@@ -124,14 +142,14 @@ func newPitfall(ctx context.Context, root string, args []string, stdout io.Write
 	if len(args) != 1 {
 		return &usageErr{"usage: awf new pitfall <title>"}
 	}
-	if err := gate(ctx, root); err != nil {
-		return err
-	}
 	lease, err := filesystem.AcquireTrackedLease(ctx, root)
 	if err != nil {
 		return err
 	}
 	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	if err := gate(ctx, root); err != nil {
+		return err
+	}
 	state, _, _, err := openProjectOperation(ctx, root)
 	if err != nil {
 		return err
@@ -143,10 +161,15 @@ func newPitfall(ctx context.Context, root string, args []string, stdout io.Write
 	return presentation.Render(stdout, document)
 }
 
-func newTopic(ctx context.Context, root string, args []string, stdout io.Writer) error {
+func newTopic(ctx context.Context, root string, args []string, stdout io.Writer) (returnErr error) {
 	if len(args) < 2 {
 		return &usageErr{"usage: awf new topic <domain> <title>"}
 	}
+	lease, err := filesystem.AcquireTrackedLease(ctx, root)
+	if err != nil {
+		return err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
@@ -154,9 +177,17 @@ func newTopic(ctx context.Context, root string, args []string, stdout io.Writer)
 	if err != nil {
 		return err
 	}
-	document, err := topicop.Create(ctx, root, args[0], strings.Join(args[1:], " "), loader)
+	document, err := topicop.CreateLeased(ctx, root, args[0], strings.Join(args[1:], " "), loader, lease)
 	if err != nil {
-		return err
+		var partial *topicop.PartialScaffoldError
+		if !errors.As(err, &partial) {
+			return err
+		}
+		partialDocument, documentErr := partial.Document()
+		if documentErr != nil {
+			return errors.Join(err, documentErr)
+		}
+		return errors.Join(err, presentation.Render(stdout, partialDocument))
 	}
 	return presentation.Render(stdout, document)
 }

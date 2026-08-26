@@ -148,7 +148,7 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 		if err := runRemoveDomain(ctx, root, "payments", &out); err != nil {
 			t.Fatal(err)
 		}
-		if strings.Contains(out.String(), "orphaned") {
+		if strings.Contains(out.String(), "orphaned authored inputs: true") {
 			t.Fatalf("unexpected orphan note: %q", out.String())
 		}
 	})

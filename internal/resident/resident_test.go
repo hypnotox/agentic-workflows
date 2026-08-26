@@ -498,3 +498,37 @@ func TestCollisionsAtIgnoresManagedPaths(t *testing.T) {
 		t.Fatalf("collisions = %v, want [AGENTS.md]", got)
 	}
 }
+
+func TestUninstallReportPartialDocumentPreservesCommittedFactsAndRecovery(t *testing.T) {
+	document, err := (UninstallReport{Removed: 2, Backups: []Backup{{Path: "docs/local.md", Bak: "docs/local.md.awf-bak.1"}}}).PartialDocument()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rendered strings.Builder
+	if err := presentation.Render(&rendered, document); err != nil {
+		t.Fatal(err)
+	}
+	got := rendered.String()
+	if !strings.Contains(got, "status: uninstall partially committed") || !strings.Contains(got, "generated files removed: 2") || !strings.Contains(got, "backed up docs/local.md to docs/local.md.awf-bak.1") || !strings.Contains(got, "retry awf uninstall") {
+		t.Fatalf("partial uninstall document = %q", got)
+	}
+}
+
+func TestUninstallPartialErrorRetainsReportCauseAndRecovery(t *testing.T) {
+	cause := errors.New("remove failed")
+	partial := &PartialUninstallError{Report: UninstallReport{Removed: 1, PreservedRoots: []string{"efforts"}}, Cause: cause}
+	if !errors.Is(partial, cause) {
+		t.Fatal("partial uninstall lost cause identity")
+	}
+	document, err := partial.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rendered strings.Builder
+	if err := presentation.Render(&rendered, document); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered.String(), "uninstall partially committed") || !strings.Contains(rendered.String(), "preserved resident data under .awf/efforts") || !strings.Contains(rendered.String(), "inspect the reported cause, then retry awf uninstall") {
+		t.Fatalf("document = %q", rendered.String())
+	}
+}

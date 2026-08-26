@@ -11,6 +11,9 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
+
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
@@ -74,8 +77,8 @@ func TestRunNewDocScaffoldsLocalDocument(t *testing.T) {
 		if err := newDoc(testContext(t), root, []string{"runbooks/api-v2", "How to operate API v2"}, nil, &out); err != nil {
 			t.Fatal(err)
 		}
-		if got, want := out.String(), "status: created: docs/runbooks/api-v2.md\n"; got != want {
-			t.Fatalf("output = %q, want %q", got, want)
+		if got := out.String(); !strings.Contains(got, "status: local document created") || !strings.Contains(got, "local-document declaration replacement: true") || !strings.Contains(got, "docs/runbooks/api-v2.md") {
+			t.Fatalf("output does not retain complete outcome: %q", got)
 		}
 		assertLocalDocs(t, root, config.LocalDocs{{Name: "runbooks/api-v2", Title: "Api V2", Description: "How to operate API v2"}})
 		if _, err := os.Stat(filepath.Join(root, "docs/runbooks/api-v2.md")); err != nil {
@@ -481,5 +484,37 @@ func TestRunNewDomainRejectsInvalidNameBeforeWriting(t *testing.T) {
 func TestRunNewRetiredKind(t *testing.T) {
 	if err := runNew(testContext(t), t.TempDir(), "skill", []string{"x"}, io.Discard); err == nil || !strings.Contains(err.Error(), "unknown kind") {
 		t.Fatalf("retired kind error = %v", err)
+	}
+}
+
+func TestNewPlanWaitsForLeaseBeforeGateObservation(t *testing.T) {
+	root := scaffoldProject(t)
+	testsupport.WriteAwfConfig(t, root, minimalYAML+"unknown: true\n")
+	lease, err := filesystem.AcquireTrackedLease(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := lease.Release(); err != nil {
+			t.Errorf("release new-plan test lease: %v", err)
+		}
+	}()
+	result := make(chan error, 1)
+	go func() { result <- newPlan(testContext(t), root, []string{"blocked"}, io.Discard) }()
+	select {
+	case err := <-result:
+		t.Fatalf("new plan returned before the held transaction released: %v", err)
+	case <-time.After(100 * time.Millisecond):
+	}
+	if err := lease.Release(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-result:
+		if err == nil || !strings.Contains(err.Error(), "parse config") {
+			t.Fatalf("new plan error after release = %v, want gate refusal", err)
+		}
+	case <-time.After(time.Second):
+		t.Fatal("new plan did not complete after lease release")
 	}
 }

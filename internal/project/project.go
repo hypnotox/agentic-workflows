@@ -225,17 +225,16 @@ func (l *Loader) Open(ctx context.Context, root string) (*ProjectState, error) {
 	return state, err
 }
 
-// AcquireTrackedLease obtains the selected checkout's transaction capability.
-// Focused operation packages request it through their composed Loader rather
-// than importing filesystem merely to acquire a neutral capability.
-func (l *Loader) AcquireTrackedLease(ctx context.Context, root string) (*filesystem.Lease, error) {
-	return filesystem.AcquireTrackedLease(ctx, root)
-}
-
 // AcquireProjectLease obtains both the selected-checkout and shared-resident
 // transaction capabilities in filesystem's deterministic canonical order.
 func (l *Loader) AcquireProjectLease(ctx context.Context, root string) (*filesystem.Lease, error) {
 	return filesystem.AcquireProjectLease(ctx, root, l.resolveResidentRoot(ctx, root))
+}
+
+// CoversProjectLease verifies that a supplied transaction covers this loader's
+// selected checkout and its resolved shared-resident root.
+func (l *Loader) CoversProjectLease(ctx context.Context, root string, lease *filesystem.Lease) bool {
+	return lease.CoversProject(root, l.resolveResidentRoot(ctx, root))
 }
 
 // OpenForMutation loads authority through the supplied confined handle and

@@ -10,12 +10,8 @@ import (
 
 // Diagnostic maps a typed refusal into the common readable diagnostic.
 func (e *RefusalError) Diagnostic() (presentation.Diagnostic, error) {
-	value, err := presentation.Prose(yesNo(e.ChangedTopology))
-	if err != nil { // coverage-ignore: yesNo always returns a nonempty prose value
-		return presentation.Diagnostic{}, err
-	}
-	axis, err := presentation.NewField("managed topology", value)
-	if err != nil { // coverage-ignore: fixed grammar-valid topology label always validates
+	changed, err := topologyDiagnosticFields(e.Topology, e.ChangedTopology)
+	if err != nil {
 		return presentation.Diagnostic{}, err
 	}
 	if len(e.NextActions) == 0 {
@@ -30,18 +26,18 @@ func (e *RefusalError) Diagnostic() (presentation.Diagnostic, error) {
 		steps = append(steps, step)
 	}
 	return presentation.Diagnostic{
-		Condition: e.Condition, State: e.Category, Changed: []presentation.Field{axis},
+		Condition: e.Condition, State: e.Category, Changed: changed,
 		Cause: mechanismCauseText(e), Steps: steps,
 	}, nil
 }
 
 // Diagnostic maps failed creation while retaining both mechanism identities.
 func (e *CreationError) Diagnostic() (presentation.Diagnostic, error) {
-	changed := make([]presentation.Field, 0, 2)
+	changed := make([]presentation.Field, 0, 6)
 	for _, fact := range []struct {
 		label string
 		value bool
-	}{{"effort resident", e.ChangedEffort}, {"managed topology", e.ChangedTopology}} {
+	}{{"effort resident", e.ChangedEffort}} {
 		value, err := presentation.Prose(yesNo(fact.value))
 		if err != nil { // coverage-ignore: yesNo always returns a nonempty prose value
 			return presentation.Diagnostic{}, err
@@ -52,6 +48,11 @@ func (e *CreationError) Diagnostic() (presentation.Diagnostic, error) {
 		}
 		changed = append(changed, field)
 	}
+	topology, err := topologyDiagnosticFields(e.Topology, e.ChangedTopology)
+	if err != nil {
+		return presentation.Diagnostic{}, err
+	}
+	changed = append(changed, topology...)
 	steps := make([]presentation.Value, 0, len(e.Steps))
 	for _, text := range e.Steps {
 		step, err := presentation.Literal(text)
@@ -61,6 +62,40 @@ func (e *CreationError) Diagnostic() (presentation.Diagnostic, error) {
 		steps = append(steps, step)
 	}
 	return presentation.Diagnostic{Condition: e.Condition, State: "operation", Changed: changed, Cause: mechanismCauseText(e), Steps: steps}, nil
+}
+
+func topologyDiagnosticFields(topology TopologyEffects, legacy bool) ([]presentation.Field, error) {
+	facts := []struct {
+		label   string
+		changed bool
+	}{{"managed path", topology.ManagedPath}, {"git registration", topology.GitRegistration}, {"branch", topology.Branch}, {"receiving HEAD", topology.ReceivingHEAD}, {"topology uncertainty", topology.Uncertain}}
+	fields := make([]presentation.Field, 0, len(facts))
+	for _, fact := range facts {
+		if !fact.changed {
+			continue
+		}
+		value, err := presentation.Prose("yes")
+		if err != nil {
+			return nil, err
+		}
+		field, err := presentation.NewField(fact.label, value)
+		if err != nil {
+			return nil, err
+		}
+		fields = append(fields, field)
+	}
+	if len(fields) == 0 {
+		value, err := presentation.Prose(yesNo(legacy))
+		if err != nil {
+			return nil, err
+		}
+		field, err := presentation.NewField("managed topology", value)
+		if err != nil {
+			return nil, err
+		}
+		fields = append(fields, field)
+	}
+	return fields, nil
 }
 
 // mechanismCauseText exposes only failed-call mechanisms, never a typed
@@ -127,11 +162,29 @@ func (r Result) Mutation() (presentation.Mutation, error) {
 	}
 	changes := []presentation.MutationChange{}
 	if r.ChangedTopology {
-		value, err := presentation.Prose("managed topology")
-		if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
-			return presentation.Mutation{}, err
+		axes := []struct {
+			label   string
+			changed bool
+		}{{"managed path", r.Topology.ManagedPath}, {"git registration", r.Topology.GitRegistration}, {"branch", r.Topology.Branch}, {"receiving HEAD", r.Topology.ReceivingHEAD}, {"topology uncertainty", r.Topology.Uncertain}}
+		values := []presentation.Value{}
+		for _, axis := range axes {
+			if !axis.changed {
+				continue
+			}
+			value, err := presentation.Prose(axis.label)
+			if err != nil {
+				return presentation.Mutation{}, err
+			}
+			values = append(values, value)
 		}
-		changes = append(changes, presentation.MutationChange{Label: "completed", Values: []presentation.Value{value}})
+		if len(values) == 0 {
+			value, err := presentation.Prose("managed topology")
+			if err != nil {
+				return presentation.Mutation{}, err
+			}
+			values = append(values, value)
+		}
+		changes = append(changes, presentation.MutationChange{Label: "completed", Values: values})
 	}
 	next, err := presentation.Literal(r.NextAction)
 	if err != nil {

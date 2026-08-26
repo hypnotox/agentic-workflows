@@ -126,6 +126,29 @@ type UninstallReport struct {
 	Backups        []Backup
 }
 
+// PartialUninstallError retains the committed uninstall report when a later
+// removal fails. It preserves the mechanism error for errors.Is/As and names
+// the convergent recovery the resident operation owns.
+type PartialUninstallError struct {
+	Report   UninstallReport
+	Cause    error
+	Recovery []string
+}
+
+func (e *PartialUninstallError) Error() string { return e.Cause.Error() }
+func (e *PartialUninstallError) Unwrap() error { return e.Cause }
+func (e *PartialUninstallError) Document() (presentation.Document, error) {
+	recovery := e.Recovery
+	if len(recovery) == 0 {
+		recovery = []string{"inspect the reported cause, then retry awf uninstall"}
+	}
+	return e.Report.partialDocument(recovery)
+}
+
+func partialUninstall(report UninstallReport, cause error) error {
+	return &PartialUninstallError{Report: report, Cause: cause, Recovery: []string{"inspect the reported cause, then retry awf uninstall"}}
+}
+
 // Document maps an uninstall result into its complete ordinary presentation.
 func (r UninstallReport) Document() (presentation.Document, error) {
 	removed, err := presentation.Literal(strconv.Itoa(r.Removed))
@@ -156,6 +179,47 @@ func (r UninstallReport) Document() (presentation.Document, error) {
 		notes = append(notes, value)
 	}
 	return (presentation.Mutation{Status: "uninstall completed", Identity: []presentation.Field{removedField}, Notes: notes}).Document()
+}
+
+// PartialDocument retains every completed uninstall fact when a later removal
+// fails and gives the caller a convergent retry action.
+func (r UninstallReport) PartialDocument() (presentation.Document, error) {
+	return r.partialDocument([]string{"inspect the reported cause, then retry awf uninstall"})
+}
+
+func (r UninstallReport) partialDocument(recovery []string) (presentation.Document, error) {
+	removed, err := presentation.Literal(strconv.Itoa(r.Removed))
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	removedField, err := presentation.NewField("generated files removed", removed)
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	values := make([]presentation.Value, 0, len(r.PreservedRoots)+len(r.Backups))
+	for _, root := range r.PreservedRoots {
+		value, err := presentation.Prose("preserved resident data under .awf/" + root)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		values = append(values, value)
+	}
+	for _, backup := range r.Backups {
+		value, err := presentation.Prose("backed up " + backup.Path + " to " + backup.Bak)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		values = append(values, value)
+	}
+	next := make([]presentation.Value, 0, len(recovery))
+	for _, action := range recovery {
+		value, err := presentation.Prose(action)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		next = append(next, value)
+	}
+	return (presentation.Mutation{Status: "uninstall partially committed", Identity: []presentation.Field{removedField}, Notes: values, NextActions: next}).Document()
 }
 
 // InspectRoots examines direct children only. It never traverses a
@@ -293,32 +357,32 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 			}
 			handle, openErr := ops.open(backupRoot)
 			if openErr != nil {
-				return report, fmt.Errorf("open local-document root: %w", openErr)
+				return report, partialUninstall(report, fmt.Errorf("open local-document root: %w", openErr))
 			}
 			info, statErr := handle.LinkInfo(backupPath)
 			if statErr != nil && !errors.Is(statErr, os.ErrNotExist) {
 				_ = handle.Close()
-				return report, fmt.Errorf("inspect local document %s: %w", path, statErr)
+				return report, partialUninstall(report, fmt.Errorf("inspect local document %s: %w", path, statErr))
 			}
 			if statErr == nil {
 				if info.Mode()&os.ModeSymlink != 0 || !info.Mode().IsRegular() {
 					_ = handle.Close()
-					return report, fmt.Errorf("unsafe local document %s", path)
+					return report, partialUninstall(report, fmt.Errorf("unsafe local document %s", path))
 				}
 				bak, backupErr := handle.Backup(backupPath)
 				if backupErr != nil {
 					_ = handle.Close()
-					return report, fmt.Errorf("back up local document %s: %w", path, backupErr)
+					return report, partialUninstall(report, fmt.Errorf("back up local document %s: %w", path, backupErr))
 				}
 				report.Backups = append(report.Backups, Backup{Path: path, Bak: bak})
 			}
 			if closeErr := handle.Close(); closeErr != nil {
-				return report, fmt.Errorf("close local-document root: %w", closeErr)
+				return report, partialUninstall(report, fmt.Errorf("close local-document root: %w", closeErr))
 			}
 		}
 		removed, err := ops.removeFile(abs)
 		if err != nil {
-			return report, err
+			return report, partialUninstall(report, err)
 		}
 		if removed {
 			report.Removed++
@@ -338,7 +402,7 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 		_ = os.Remove(d)
 	}
 	if err := ops.remove(lockPath); err != nil {
-		return report, fmt.Errorf("remove lock: %w", err)
+		return report, partialUninstall(report, fmt.Errorf("remove lock: %w", err))
 	}
 	return report, nil
 }

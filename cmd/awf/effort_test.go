@@ -787,9 +787,9 @@ func TestEffortPublicTextProtocol(t *testing.T) {
 	}{
 		{[]string{"effort", "list"}, "effort list:\n  efforts:\n    public-output: Public output\n"},
 		{[]string{"effort", "show", "public-output"}, "slug: public-output\ntitle: Public output\nmemory: .awf/efforts/public-output/memory.md\n"},
-		{[]string{"effort", "worktree", "add", "public-output"}, fmt.Sprintf("status: managed worktree added for public-output\n\nmutation:\n  identity:\n    worktree: %s\n    branch: awf/public-output\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue the effort in %s\n", managed, managed)},
+		{[]string{"effort", "worktree", "add", "public-output"}, fmt.Sprintf("status: managed worktree added for public-output\n\nmutation:\n  identity:\n    worktree: %s\n    branch: awf/public-output\n  changes:\n    completed:\n      managed path\n      git registration\n      branch\n  next actions:\n    step 1: continue the effort in %s\n", managed, managed)},
 		{[]string{"effort", "integrate", "public-output"}, "status: effort tip is already integrated into the target\n\nmutation:\n  next actions:\n    step 1: run `awf effort worktree remove public-output` after terminal review is settled\n"},
-		{[]string{"effort", "worktree", "remove", "public-output"}, "status: managed worktree topology is absent\n\nmutation:\n  changes:\n    completed:\n      managed topology\n  next actions:\n    step 1: continue to retrospective, then finish the effort\n"},
+		{[]string{"effort", "worktree", "remove", "public-output"}, "status: managed worktree topology is absent\n\nmutation:\n  changes:\n    completed:\n      managed path\n      git registration\n      branch\n  next actions:\n    step 1: continue to retrospective, then finish the effort\n"},
 		{[]string{"effort", "finish", "public-output"}, ""},
 	} {
 		if got := run(test.args...); test.want == "" {

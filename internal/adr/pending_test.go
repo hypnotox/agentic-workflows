@@ -198,6 +198,19 @@ func TestParseDirRefusesStraysAndCarriesPendingRecords(t *testing.T) {
 	if next, err := corpus.NextIdentity(); err != nil || next != 2 {
 		t.Fatalf("NextIdentity = %d err=%v", next, err)
 	}
+	exhausted := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(exhausted, "9999-max.md"), testsupport.ADR("Implemented", testsupport.WithDate("2026-07-31"), testsupport.WithTitle("9999: Max"), testsupport.WithBody("## Context\nx\n## Consequences\nc\n")))
+	exhaustedRecords, err := adr.ParseDir(exhausted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	exhaustedCorpus, err := adr.NewCorpus(exhaustedRecords)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if next, err := exhaustedCorpus.NextIdentity(); err == nil || next != 0 || !strings.Contains(err.Error(), "exhausted") {
+		t.Fatalf("exhausted NextIdentity = %d err=%v", next, err)
+	}
 	stray := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(stray, "notes.md"), "# Just notes\n")
 	if _, err := adr.ParseDir(stray); err == nil || !strings.Contains(err.Error(), "notes.md: not an ADR record") {

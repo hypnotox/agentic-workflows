@@ -18,13 +18,13 @@ import (
 // the command-selected stream.
 func runUpgradeFlags(ctx context.Context, root string, recoverMode bool, stdout io.Writer) error {
 	if recoverMode {
-		return runRecover(root, stdout)
+		return runRecover(ctx, root, stdout)
 	}
 	return runUpgrade(ctx, root, stdout)
 }
 
-func runRecover(root string, stdout io.Writer) (returnErr error) {
-	lease, err := filesystem.AcquireTrackedLease(context.Background(), root)
+func runRecover(ctx context.Context, root string, stdout io.Writer) (returnErr error) {
+	lease, err := filesystem.AcquireTrackedLease(ctx, root)
 	if err != nil {
 		return err
 	}
@@ -69,11 +69,14 @@ func upgradeSyncMutationLeased(ctx context.Context, root string, lease *filesyst
 		return presentation.Mutation{}, err
 	}
 	result, syncErr := composePublisher(state, cfg).SyncLeased(ctx, lease)
-	mutation, mutationErr := result.Mutation()
-	if mutationErr != nil {
-		return presentation.Mutation{}, mutationErr
+	if syncErr != nil {
+		mutation, mutationErr := result.PartialMutation()
+		if mutationErr != nil {
+			return presentation.Mutation{}, mutationErr
+		}
+		return mutation, syncErr
 	}
-	return mutation, syncErr
+	return result.Mutation()
 }
 
 func presentUpgradeRefusal(err error) error {

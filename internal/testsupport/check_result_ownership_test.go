@@ -494,7 +494,7 @@ func TestAuthorityOperationProductionRouteCensus(t *testing.T) {
 	production := []struct {
 		path, function, legacy string
 	}{
-		{"cmd/awf/adr.go", "NumberPendingADRs", "NumberPendingADRs"},
+		{"cmd/awf/adr.go", "NumberPendingADRsLeased", "NumberPendingADRs"},
 		{"cmd/awf/read.go", "ReadPlan", "ReadPlan"},
 		{"cmd/awf/commitgate.go", "CheckCommitAuthorization", "CheckCommitAuthorization"},
 	}

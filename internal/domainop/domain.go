@@ -18,82 +18,154 @@ import (
 
 const currentStateStub = "Describe where the %q domain stands today: its current shape, load-bearing constraints, and what a newcomer must know before changing it. Refresh by hand when the position materially shifts. Follow `docs/doc-standard.md` for tone: terse, present tense, reference other docs rather than restate them.\n"
 
-// Add configures name, creates its initial current-state part, and synchronizes.
-func Add(ctx context.Context, root, name string, loader *project.Loader) (document presentation.Document, err error) {
+// Outcome is the complete observed state of a domain mutation. Publisher
+// remains the publication owner; this operation owns config and authored-source facts.
+type Outcome struct {
+	ConfigReplaced  bool
+	ScaffoldCreated bool
+	Orphaned        bool
+	Publisher       publisher.Result
+}
+
+// PartialError retains every committed domain effect and the original cause.
+type PartialError struct {
+	Outcome  Outcome
+	Cause    error
+	Recovery []string
+}
+
+func (e *PartialError) Error() string { return e.Cause.Error() }
+func (e *PartialError) Unwrap() error { return e.Cause }
+
+func domainDocument(status string, o Outcome, recovery []string) (presentation.Document, error) {
+	fields := []presentation.Field{}
+	for _, fact := range []struct {
+		label   string
+		changed bool
+	}{{"config replacement", o.ConfigReplaced}, {"authored scaffold", o.ScaffoldCreated}, {"orphaned authored inputs", o.Orphaned}} {
+		value, err := presentation.Literal(fmt.Sprintf("%t", fact.changed))
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		field, err := presentation.NewField(fact.label, value)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		fields = append(fields, field)
+	}
+	changes := []presentation.MutationChange{}
+	for _, effect := range o.Publisher.Effects() {
+		value, err := presentation.Literal(fmt.Sprintf("%s %s; recovery: %s", effect.Kind, effect.Path, effect.Recovery))
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		changes = append(changes, presentation.MutationChange{Label: "publisher effects", Values: []presentation.Value{value}})
+	}
+	next := make([]presentation.Value, 0, len(recovery))
+	for _, action := range recovery {
+		value, err := presentation.Prose(action)
+		if err != nil {
+			return presentation.Document{}, err
+		}
+		next = append(next, value)
+	}
+	return (presentation.Mutation{Status: status, Identity: fields, Changes: changes, NextActions: next}).Document()
+}
+func (o Outcome) Document() (presentation.Document, error) {
+	return domainDocument("domain mutation completed", o, nil)
+}
+func (e *PartialError) Document() (presentation.Document, error) {
+	recovery := e.Recovery
+	if len(recovery) == 0 {
+		recovery = []string{"inspect the reported cause, then retry the domain command"}
+	}
+	return domainDocument("domain mutation partially committed", e.Outcome, recovery)
+}
+
+// AddLeased configures name, creates its initial current-state part, and synchronizes under a caller-held complete project transaction.
+func AddLeased(ctx context.Context, root, name string, loader *project.Loader, lease *filesystem.Lease) (outcome Outcome, err error) {
 	if err := config.ValidateDomainName(name); err != nil {
-		return presentation.Document{}, err
+		return Outcome{}, err
 	}
-	lease, err := loader.AcquireProjectLease(ctx, root)
-	if err != nil {
-		return presentation.Document{}, err
+	if !loader.CoversProjectLease(ctx, root, lease) {
+		return Outcome{}, errors.New("domain operation requires a covering project lease")
 	}
-	defer func() { err = errors.Join(err, lease.Release()) }()
 	files, err := filesystem.Open(root)
 	if err != nil {
-		return presentation.Document{}, err
+		return Outcome{}, err
 	}
 	defer files.Close()
 	_, cfg, configIdentity, err := loader.OpenForMutation(ctx, root, files)
 	if err != nil {
-		return presentation.Document{}, err
+		return Outcome{}, err
 	}
 	for _, domain := range cfg.Domains {
 		if domain == name {
-			return presentation.Document{}, fmt.Errorf("domain %q already exists", name)
+			return Outcome{}, fmt.Errorf("domain %q already exists", name)
 		}
 	}
 	updated, err := config.SetArrayMember(cfg.Source(), "domains", name, true)
 	if err != nil {
-		return presentation.Document{}, err
+		return Outcome{}, err
 	}
 	if err := replaceConfig(files, configIdentity, updated); err != nil {
-		return presentation.Document{}, err
+		return Outcome{}, err
 	}
+	outcome.ConfigReplaced = true
 	if err := scaffoldCurrentStateConfined(files, root, cfg, name); err != nil {
-		return presentation.Document{}, err
+		return outcome, &PartialError{Outcome: outcome, Cause: err, Recovery: []string{"repair the authored domain path, then retry"}}
 	}
-	return synchronize(ctx, root, loader, lease)
+	outcome.ScaffoldCreated = true
+	result, syncErr := synchronize(ctx, root, loader, lease)
+	outcome.Publisher = result
+	if syncErr != nil {
+		return outcome, &PartialError{Outcome: outcome, Cause: syncErr, Recovery: []string{"repair the reported publication fault, then retry"}}
+	}
+	return outcome, nil
 }
 
-// Remove unconfigures name, synchronizes, and reports whether authored domain inputs remain orphaned.
-func Remove(ctx context.Context, root, name string, loader *project.Loader) (document presentation.Document, orphaned bool, err error) {
+// RemoveLeased unconfigures name, synchronizes, and reports whether authored domain inputs remain orphaned under a caller-held complete project transaction.
+func RemoveLeased(ctx context.Context, root, name string, loader *project.Loader, lease *filesystem.Lease) (outcome Outcome, err error) {
 	if err := config.ValidateDomainName(name); err != nil {
-		return presentation.Document{}, false, err
+		return Outcome{}, err
 	}
-	lease, err := loader.AcquireProjectLease(ctx, root)
-	if err != nil {
-		return presentation.Document{}, false, err
+	if !loader.CoversProjectLease(ctx, root, lease) {
+		return Outcome{}, errors.New("domain operation requires a covering project lease")
 	}
-	defer func() { err = errors.Join(err, lease.Release()) }()
 	files, err := filesystem.Open(root)
 	if err != nil {
-		return presentation.Document{}, false, err
+		return Outcome{}, err
 	}
 	defer files.Close()
 	_, cfg, configIdentity, err := loader.OpenForMutation(ctx, root, files)
 	if err != nil {
-		return presentation.Document{}, false, err
+		return Outcome{}, err
 	}
 	found := false
 	for _, domain := range cfg.Domains {
 		found = found || domain == name
 	}
 	if !found {
-		return presentation.Document{}, false, fmt.Errorf("domain %q is not configured", name)
+		return Outcome{}, fmt.Errorf("domain %q is not configured", name)
 	}
 	updated, err := config.SetArrayMember(cfg.Source(), "domains", name, false)
 	if err != nil {
-		return presentation.Document{}, false, err
+		return Outcome{}, err
 	}
 	if err := replaceConfig(files, configIdentity, updated); err != nil {
-		return presentation.Document{}, false, err
+		return Outcome{}, err
 	}
-	document, err = synchronize(ctx, root, loader, lease)
+	outcome.ConfigReplaced = true
+	result, syncErr := synchronize(ctx, root, loader, lease)
+	outcome.Publisher = result
+	if syncErr != nil {
+		return outcome, &PartialError{Outcome: outcome, Cause: syncErr, Recovery: []string{"repair the reported publication fault, then retry"}}
+	}
+	outcome.Orphaned, err = hasSidecarOrParts(root, name)
 	if err != nil {
-		return presentation.Document{}, false, err
+		return outcome, &PartialError{Outcome: outcome, Cause: err, Recovery: []string{"inspect authored domain paths, then retry"}}
 	}
-	orphaned, err = hasSidecarOrParts(root, name)
-	return document, orphaned, err
+	return outcome, nil
 }
 
 func replaceConfig(files *filesystem.Handle, expected fs.FileInfo, updated []byte) error {
@@ -124,10 +196,10 @@ func scaffoldCurrentStateConfined(files *filesystem.Handle, root string, cfg *co
 	return nil
 }
 
-func synchronize(ctx context.Context, root string, loader *project.Loader, leases ...*filesystem.Lease) (presentation.Document, error) {
+func synchronize(ctx context.Context, root string, loader *project.Loader, leases ...*filesystem.Lease) (publisher.Result, error) {
 	state, cfg, err := loader.OpenForOperation(ctx, root)
 	if err != nil {
-		return presentation.Document{}, err
+		return publisher.Result{}, err
 	}
 	composed := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version)
 	var result publisher.Result
@@ -136,14 +208,7 @@ func synchronize(ctx context.Context, root string, loader *project.Loader, lease
 	} else {
 		result, err = composed.SyncLeased(ctx, leases[0])
 	}
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	mutation, err := result.Mutation()
-	if err != nil { // coverage-ignore: a nil Sync error returns a completed result with a mutation
-		return presentation.Document{}, err
-	}
-	return mutation.Document()
+	return result, err
 }
 
 func hasSidecarOrParts(root, name string) (bool, error) {

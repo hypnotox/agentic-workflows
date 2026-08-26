@@ -144,7 +144,7 @@ func TestRunDispatchesEveryFullOnlyCommandFamilyByProfile(t *testing.T) {
 		{"new adr", []string{"awf", "new", "adr", "Dispatch Proof"}, 0, "status: created:"},
 		{"new plan", []string{"awf", "new", "plan", "Dispatch Proof"}, 0, "status: created:"},
 		{"new topic", []string{"awf", "new", "topic", "rendering", "Dispatch Proof"}, 1, `topic domain "rendering" is not configured`},
-		{"new domain", []string{"awf", "new", "domain", "dispatch-proof"}, 0, "added docs/domains/dispatch-proof.md"},
+		{"new domain", []string{"awf", "new", "domain", "dispatch-proof"}, 0, "status: domain mutation completed"},
 		{"remove domain", []string{"awf", "remove", "domain", "rendering"}, 1, `domain "rendering" is not configured`},
 	}
 	var declared []string

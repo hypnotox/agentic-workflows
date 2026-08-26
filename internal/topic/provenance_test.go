@@ -1,13 +1,26 @@
 package topic_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
+
+func substituteProvenance(t *testing.T, root string, renames map[string]string) (topic.ProvenanceResult, error) {
+	t.Helper()
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return topic.ProvenanceResult{}, err
+	}
+	defer files.Close()
+	return topic.SubstituteProvenanceConfined(files, renames)
+}
 
 // writePart writes one authored claim part under the topics tree. Every case
 // here needs exactly one in-scope part, so its topic is fixed.
@@ -33,7 +46,7 @@ func TestSubstituteProvenanceRewritesOnlyProvenanceLines(t *testing.T) {
 		"### `rule: revised-kept`\nProse.\nOrigin: ADR-0001\nRevised-by: ADR-0002, ADR-untouched\n"
 	path := writePart(t, root, body)
 
-	if err := topic.SubstituteProvenance(root, map[string]string{"alpha": "0200"}); err != nil {
+	if _, err := substituteProvenance(t, root, map[string]string{"alpha": "0200"}); err != nil {
 		t.Fatalf("SubstituteProvenance: %v", err)
 	}
 	got, err := os.ReadFile(path)
@@ -58,7 +71,7 @@ func TestSubstituteProvenanceDeduplicatesTouchedList(t *testing.T) {
 	path := writePart(t, root,
 		"Intro.\n\n## Claims\n\n### `rule: x`\nProse.\nOrigin: ADR-0001\nRevised-by: ADR-0200, ADR-alpha\n")
 
-	if err := topic.SubstituteProvenance(root, map[string]string{"alpha": "0200"}); err != nil {
+	if _, err := substituteProvenance(t, root, map[string]string{"alpha": "0200"}); err != nil {
 		t.Fatalf("SubstituteProvenance: %v", err)
 	}
 	got, err := os.ReadFile(path)
@@ -87,10 +100,10 @@ func TestSubstituteProvenanceLeavesUnrelatedInputsAlone(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := topic.SubstituteProvenance(root, nil); err != nil {
+	if _, err := substituteProvenance(t, root, nil); err != nil {
 		t.Fatalf("empty rename set: %v", err)
 	}
-	if err := topic.SubstituteProvenance(root, map[string]string{"alpha": "0200"}); err != nil {
+	if _, err := substituteProvenance(t, root, map[string]string{"alpha": "0200"}); err != nil {
 		t.Fatalf("SubstituteProvenance: %v", err)
 	}
 	after, err := os.ReadFile(part)
@@ -106,6 +119,38 @@ func TestSubstituteProvenanceLeavesUnrelatedInputsAlone(t *testing.T) {
 	}
 	if string(notes) != "Origin: ADR-alpha\n" {
 		t.Errorf("a non-part file under the parts tree must not be rewritten: %s", notes)
+	}
+}
+
+func TestSubstituteProvenanceReportsExactPathsBeforeLaterWalkFailure(t *testing.T) {
+	root := t.TempDir()
+	part := writePart(t, root, "Intro.\n\n## Claims\n\n### `rule: x`\nProse.\nOrigin: ADR-alpha\n")
+	outside := filepath.Join(t.TempDir(), "outside.md")
+	testsupport.WriteFile(t, outside, "outside\n")
+	symlink := filepath.Join(root, ".awf", "topics", "parts", "z-link")
+	if err := os.Symlink(outside, symlink); err != nil {
+		t.Fatal(err)
+	}
+
+	result, err := substituteProvenance(t, root, map[string]string{"alpha": "0200"})
+	var partial *topic.PartialProvenanceError
+	if !errors.As(err, &partial) {
+		t.Fatalf("partial provenance error = %T %v", err, err)
+	}
+	if !errors.Is(err, partial.Cause) {
+		t.Fatalf("partial provenance lost cause identity: %v", err)
+	}
+	wantPath := filepath.ToSlash(strings.TrimPrefix(part, root+string(filepath.Separator)))
+	if len(result.Paths) != 1 || result.Paths[0] != wantPath || len(partial.Result.Paths) != 1 || partial.Result.Paths[0] != wantPath {
+		t.Fatalf("committed paths = %#v, partial = %#v, want %q", result.Paths, partial.Result.Paths, wantPath)
+	}
+	got, readErr := os.ReadFile(part)
+	if readErr != nil || !strings.Contains(string(got), "Origin: ADR-0200") {
+		t.Fatalf("committed part = %q, %v", got, readErr)
+	}
+	outsideBody, readErr := os.ReadFile(outside)
+	if readErr != nil || string(outsideBody) != "outside\n" {
+		t.Fatalf("outside path changed: %q, %v", outsideBody, readErr)
 	}
 }
 
@@ -127,7 +172,7 @@ func TestSubstituteProvenanceWalksOnlyTheTopicsPartsTree(t *testing.T) {
 		testsupport.WriteFile(t, path, body)
 	}
 
-	if err := topic.SubstituteProvenance(root, map[string]string{"alpha": "0200"}); err != nil {
+	if _, err := substituteProvenance(t, root, map[string]string{"alpha": "0200"}); err != nil {
 		t.Fatalf("SubstituteProvenance: %v", err)
 	}
 

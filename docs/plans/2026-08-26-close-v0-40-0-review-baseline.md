@@ -507,3 +507,13 @@ classification of intentionally Git-owned topology effects. The ADR already appl
 lease add and sync claim update in Phase 3, so Phase 4 applies only the two remaining CLI operations
 and semantically rechecks the sync claim. These corrections preserve the approved phase outcome and
 ownership boundary.
+
+Phase 4 review found that its initial commits closed only part of the writer population and released
+or acquired leases outside several authority-to-presentation boundaries. Settlement centralizes
+effort scope selection, classifies exact topology and upgrade recovery effects, completes focused
+operation result models, and keeps creation, ADR numbering, uninstall, upgrade, and lifecycle leases
+through presentation. ADR numbering now loads its corpus and mutates records and provenance through
+one selected-root handle, removes unleased compatibility writers, and composes exact numbering,
+provenance, and Publisher effects. These authority-determined corrections preserve Publisher,
+upgrade-journal, Git-integration, and focused lifecycle ownership rather than introducing parallel
+policy.

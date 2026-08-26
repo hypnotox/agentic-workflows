@@ -11,7 +11,9 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
@@ -28,6 +30,15 @@ func (w faultWriter) Write(p []byte) (int, error) {
 	return n, w.err
 }
 func (w faultWriter) Close() error { return w.file.Close() }
+
+func Create(ctx context.Context, root, domain, title string, loader *project.Loader) (document presentation.Document, returnErr error) {
+	lease, err := filesystem.AcquireTrackedLease(ctx, root)
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	return CreateLeased(ctx, root, domain, title, loader, lease)
+}
 
 func TestCreateReportsUnavailableProject(t *testing.T) {
 	loader := project.NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot)
@@ -174,5 +185,22 @@ func TestScaffoldDoesNotReplaceLateCollision(t *testing.T) {
 	got, readErr := os.ReadFile(part)
 	if readErr != nil || string(got) != existing {
 		t.Fatalf("bytes = %q, %v", got, readErr)
+	}
+}
+
+func TestPartialScaffoldErrorDocumentRetainsEveryPathGroupAndDefaultRecovery(t *testing.T) {
+	partial := &PartialScaffoldError{Created: []string{"metadata.yaml"}, Removed: []string{"part.md"}, Remaining: []string{"part.md"}}
+	document, err := partial.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rendered strings.Builder
+	if err := presentation.Render(&rendered, document); err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"topic scaffold partially committed", "created paths", "metadata.yaml", "removed paths", "remaining paths", "remove only the listed remaining topic paths, then retry"} {
+		if !strings.Contains(rendered.String(), want) {
+			t.Errorf("document omitted %q: %s", want, rendered.String())
+		}
 	}
 }

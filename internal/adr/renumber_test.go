@@ -1,14 +1,26 @@
 package adr_test
 
 import (
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
+
+func renumberPending(t *testing.T, dir, slug string, number int) error {
+	t.Helper()
+	files, err := filesystem.Open(dir)
+	if err != nil {
+		return err
+	}
+	defer files.Close()
+	return adr.RenumberPendingConfined(files, "", slug, number)
+}
 
 // TestRenumberPendingRewritesNameAndHeadingOnly pins numbering's record-level
 // effect surface: the file takes the NNNN-<slug>.md name, the heading takes the
@@ -20,7 +32,7 @@ func TestRenumberPendingRewritesNameAndHeadingOnly(t *testing.T) {
 	before := pendingFixture("numbering-target")
 	testsupport.WriteFile(t, filepath.Join(dir, "numbering-target.md"), before)
 
-	if err := adr.RenumberPending(dir, "numbering-target", 217); err != nil {
+	if err := renumberPending(t, dir, "numbering-target", 217); err != nil {
 		t.Fatalf("RenumberPending: %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "numbering-target.md")); !os.IsNotExist(err) {
@@ -55,7 +67,7 @@ func TestRenumberPendingRewritesOnlyTheRecordsOwnHeading(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	if err := adr.RenumberPending(dir, "quoting", 218); err != nil {
+	if err := renumberPending(t, dir, "quoting", 218); err != nil {
 		t.Fatalf("RenumberPending: %v", err)
 	}
 	numbered := filepath.Join(dir, "0218-quoting.md")
@@ -86,10 +98,10 @@ func TestRenumberPendingRefusals(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(dir, "headless.md"),
 		strings.Replace(pendingFixture("headless"), "# ADR-headless: Test Decision", "# Some other heading", 1))
 
-	if err := adr.RenumberPending(dir, "absent", 1); err == nil || !strings.Contains(err.Error(), "read pending record absent") {
+	if err := renumberPending(t, dir, "absent", 1); err == nil || !strings.Contains(err.Error(), "read pending record absent") {
 		t.Errorf("absent slug error = %v", err)
 	}
-	if err := adr.RenumberPending(dir, "headless", 1); err == nil || !strings.Contains(err.Error(), "has no \"# ADR-headless:\" heading") {
+	if err := renumberPending(t, dir, "headless", 1); err == nil || !strings.Contains(err.Error(), "has no \"# ADR-headless:\" heading") {
 		t.Errorf("heading-less record error = %v", err)
 	}
 	if _, err := os.Stat(filepath.Join(dir, "0001-headless.md")); !os.IsNotExist(err) {
@@ -128,5 +140,22 @@ func TestHistoriesEqualComparesEveryEventField(t *testing.T) {
 	}
 	if adr.HistoriesEqual(base, adr.ADR{History: append(append([]adr.StatusEntry(nil), base.History...), adr.StatusEntry{Kind: adr.HistoryStatus, Date: "2026-08-01", Status: "Implemented"})}) {
 		t.Error("an appended event must not compare equal")
+	}
+}
+
+func TestRenumberPendingRefusesDestinationCollisionAndPreservesSource(t *testing.T) {
+	dir := t.TempDir()
+	testsupport.WriteFile(t, filepath.Join(dir, "pending.md"), pendingFixture("pending"))
+	destination := filepath.Join(dir, "0002-pending.md")
+	testsupport.WriteFile(t, destination, "existing destination\n")
+	err := renumberPending(t, dir, "pending", 2)
+	if err == nil || !errors.Is(err, os.ErrExist) {
+		t.Fatalf("collision error = %v", err)
+	}
+	if got, readErr := os.ReadFile(destination); readErr != nil || string(got) != "existing destination\n" {
+		t.Fatalf("destination = %q, %v", got, readErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(dir, "pending.md")); statErr != nil {
+		t.Fatalf("source was retired after destination collision: %v", statErr)
 	}
 }
