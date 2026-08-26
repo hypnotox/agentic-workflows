@@ -17,7 +17,7 @@ Context must retain its neutral boundary below application coordination and keep
 
 ## Decision
 
-1. `decision: focused-ordinary-context-universe` Ordinary explicit context consumes one operation-owned, type-distinct repository view containing complete path and mode inventory plus immutable bytes selected for the answer. Selection remains within the current practical sequential filesystem consistency model, without persistent caching, mutation detection, or retry. Staged, range-selected, and uncovered context retain their existing preparation routes.
+1. `decision: focused-ordinary-context-universe` Application coordination selects the focused route only for ordinary explicit context. Git and snapshot ownership capture one operation-owned, type-distinct repository view containing complete path and mode inventory plus immutable bytes selected for the answer. Selection remains within the current practical sequential filesystem consistency model, without persistent caching, mutation detection, or retry. Staged, range-selected, and uncovered context retain their existing preparation routes.
 2. `decision: context-semantic-declaration-projection` Publisher provides ordinary context with its semantic corpora, plans, and output declarations without rendering output bytes or applying validations unrelated to the answer. Successful ordinary context output remains byte-identical, while unrelated rendering failures no longer prevent orientation.
 3. `decision: demand-driven-context-projection` Context classification and projection remain owned by the context query boundary and become demand-driven: exact requests compute only their required impacts, and directory requests expand only their matching descendants from indexed inventory.
 
@@ -43,6 +43,7 @@ Ordinary context intentionally stops acting as an incidental render validator. A
 | Add a persistent context cache | Invalidation and stale-authority risks would add mutable cross-operation state that ordinary orientation does not require. |
 | Reuse historical audit selections | A sparse historical selection cannot represent complete live path inventory or distinguish an unread path from repository absence. |
 | Preserve every current Publisher failure | Retaining unrelated render and output validation would keep substantial unnecessary work and preserve an accidental context contract. |
+| Detect concurrent mutation and retry | It would add coordination complexity without restoring an existing consistency guarantee. |
 
 ## Status history
 
