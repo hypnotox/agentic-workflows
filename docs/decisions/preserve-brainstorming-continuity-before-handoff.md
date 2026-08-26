@@ -33,23 +33,24 @@ necessary context transfer, and the existing safe finish/archive lifecycle.
 1. `decision: establish-continuity-before-further-brainstorming` Evaluate continuity when
    brainstorming begins and whenever continuity-relevant facts change. Brainstorming may begin
    effort-free, but if work continues after its first settled material decision, continuity has become
-   materially useful and effort-workflow creates or resumes ownership before further decision work.
+   materially useful and effort-workflow creates or resumes ownership before proceeding further.
    This timing rule is load-bearing because it bounds how much settled context can exist only in a
    volatile conversation without making every clarification or single-decision brainstorm create an
    effort.
 
-2. `decision: initialize-late-created-memory` Creation after relevant discussion is incomplete for
-   checkpoint and handoff purposes until the one user-managed writer initializes the owned memory
-   from retained evidence. Initialization records the current outcome in the Brief, every already
-   settled decision with the provenance and `Record:` evidence required by ADR-0186, relevant
-   observations, and current phase and next action. If exact required user evidence is unavailable,
-   reconfirm it instead of fabricating or weakening the record.
+2. `decision: initialize-late-created-memory` Creation after relevant discussion does not permit
+   handoff until the owned memory is initialized from retained evidence. Initialization records the
+   current outcome in the Brief, every already settled decision with the provenance and `Record:`
+   evidence required by ADR-0186, relevant observations, and current phase and next action. If exact
+   required user evidence is unavailable, reconfirm it instead of fabricating or weakening the
+   record.
 
 3. `decision: preserve-fixed-outcome-identity` Keep the effort title and slug fixed. Refinements
    inside the owned outcome remain in that effort. Material outcome drift deliberately creates a new
    fixed-identity successor, transfers the necessary still-valid context, verifies that the successor
    is resumable, and closes the obsolete effort through existing topology safety and finish/archive
-   lifecycle. Add no retitle operation, effort schema change, or history-deleting lifecycle.
+   lifecycle. Add no retitle operation, effort schema change, or history-deleting lifecycle. Fixed
+   continuity ownership is clearer than routine identity or title mutation.
 
 ## State changes
 
@@ -78,8 +79,10 @@ but continuity remains auditable and no routine rename must rewrite resident or 
 Temporary coexistence during a deliberate successor transfer does not authorize unrelated parallel
 efforts or silent reuse.
 
-The workflow, rendered skills, current-state claims, and deterministic semantic tests change. The
-effort record schema, CLI, worktree implementation, and Pi handoff kickoff remain unchanged.
+The workflow, rendered skills, current-state claims, and deterministic semantic tests change.
+Affected templates retain coherent missingkey-zero and empty-string rendering without unresolved
+value tokens. The effort record schema, CLI, worktree implementation, and Pi handoff kickoff remain
+unchanged.
 
 ## Alternatives Considered
 
