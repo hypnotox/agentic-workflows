@@ -1074,6 +1074,7 @@ func TestFactsAndOperationTreeZeroValues(t *testing.T) {
 	}
 }
 
+// invariant: config/configuration:root-sidecar-keys-rejected (TestConfigAndSidecarRejectMultipleYAMLDocuments)
 func TestConfigAndSidecarRejectMultipleYAMLDocuments(t *testing.T) {
 	for _, source := range []string{"prefix: example\n---\nprefix: other\n", "prefix: example\ntrailing", "prefix: example\n---\n["} {
 		if _, err := Parse(".awf", []byte(source)); err == nil {

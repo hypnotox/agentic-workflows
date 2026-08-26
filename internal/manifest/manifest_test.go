@@ -335,6 +335,7 @@ func TestParseRejectsRetiredBridgeField(t *testing.T) {
 	}
 }
 
+// invariant: config/migrations-and-locks:corrupt-lock-refuses (TestParseLiveRejectsAmbiguousOrEmptyPermanentInventory)
 func TestParseLiveRejectsAmbiguousOrEmptyPermanentInventory(t *testing.T) {
 	for _, source := range []string{
 		`{"awfVersion":"0.40.0","schemaVersion":46,"files":{},"typo":true}`,
@@ -350,6 +351,7 @@ func TestParseLiveRejectsAmbiguousOrEmptyPermanentInventory(t *testing.T) {
 	}
 }
 
+// invariant: config/migrations-and-locks:corrupt-lock-refuses (TestParseLiveRejectsMalformedInventoryForms)
 func TestParseLiveRejectsMalformedInventoryForms(t *testing.T) {
 	for _, files := range []string{"null", "[]", `{"":{}}`, `{"x":{},"x":{}}`, `{"x":1}`, `{"x":{"unknown":true}}`} {
 		source := `{"awfVersion":"0.40.0","schemaVersion":46,"files":` + files + `}`

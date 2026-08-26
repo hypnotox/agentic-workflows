@@ -102,8 +102,8 @@ Completes: ["strict-authority-inputs"]
 
 ### Task 2.1: Apply strict mutable-authority claims after Phase 1 review
 Applying: ["require-complete-and-unambiguous-mutable-authority:mutable-authority-fails-closed"]
-Paths: ["internal/config/strictyaml.go", "internal/manifest/manifest.go", "internal/upgrade/journal.go", ".awf/topics/parts/config/configuration/current-state.md", ".awf/topics/parts/config/migrations-and-locks/current-state.md", ".awf/topics/parts/tooling/upgrade-runtime/current-state.md", "docs/decisions/require-complete-and-unambiguous-mutable-authority.md", "changelog/CHANGELOG.md"]
-Post-check: "Move the reviewed ADR through Accepted to Implementing, update exactly `config/configuration:root-sidecar-keys-rejected`, `config/migrations-and-locks:corrupt-lock-refuses`, and `tooling/upgrade-runtime:upgrade-failure-is-recoverable`, add direct production proof markers at their parser boundaries, append one matching Applied event, and render. Current claims state complete one-document config and sidecars, closed nonempty live locks, and journal-to-final-lock binding before recovery mutation. The Unreleased changelog names the fail-closed authority boundary; drift, staged transition checks, and the full gate pass."
+Paths: ["internal/config/config_test.go", "internal/manifest/manifest_test.go", ".awf/topics/parts/config/configuration/current-state.md", ".awf/topics/parts/config/migrations-and-locks/current-state.md", ".awf/topics/parts/tooling/upgrade-runtime/current-state.md", "docs/decisions/require-complete-and-unambiguous-mutable-authority.md", "changelog/CHANGELOG.md"]
+Post-check: "Move the reviewed ADR through Accepted to Implementing, update exactly `config/configuration:root-sidecar-keys-rejected`, `config/migrations-and-locks:corrupt-lock-refuses`, and `tooling/upgrade-runtime:upgrade-failure-is-recoverable`, add named test proof markers for the two test-backed claims, retain the upgrade claim as unbacked with strengthened verification, append one matching Applied event, and render. Current claims state complete one-document config and sidecars, closed nonempty live locks, and journal-to-final-lock binding before recovery mutation. The Unreleased changelog names the fail-closed authority boundary; drift, staged transition checks, and the full gate pass."
 
 This is the focused post-review settlement for the already landed parser implementation. Keep all
 three operations in one lifecycle transaction so current authority and the ADR history agree.
@@ -457,7 +457,9 @@ require an ADR operation, the reviewed pending ADR
 `require-complete-and-unambiguous-mutable-authority` was added after the code commit. Phase 1 is the
 only completed affected phase, at commit `517f8aade`; Phases 2 through 9 are unstarted. Task 2.1 owns
 one focused lifecycle and documentation settlement, and renewed Phase 1 assurance must pass before
-Phase 3 progression.
+Phase 3 progression. During Phase 2, the marker gate corrected the recorded route from impossible
+production proof markers to named test-scoped proofs for the two backed claims; the unbacked upgrade
+claim instead retains its strengthened `Verify:` evidence.
 
 Initial plan review corrected one scope error and one lifecycle-ordering ambiguity. Bootstrap cache
 hardening was removed because the approved outline explicitly deferred it. Archive metadata
