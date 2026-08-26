@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-prepare-ordinary-context-without-full-rendering: Prepare ordinary context without full rendering](prepare-ordinary-context-without-full-rendering.md) (Proposed)
 
 ## History
 
