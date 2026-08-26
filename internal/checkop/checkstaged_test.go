@@ -31,7 +31,7 @@ func stagedCheckProject(t *testing.T, commit map[string]string) string {
 		committed[path] = body
 	}
 	if _, ok := committed[".awf/awf.lock"]; !ok {
-		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+		lock := &manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}}}
 		body, err := lock.Marshal()
 		if err != nil {
 			t.Fatal(err)
@@ -55,7 +55,7 @@ func TestCollectCheckStagedRetainsMissingLockFailureAndReportsVersionSkew(t *tes
 		t.Fatalf("missing staged lock operational errors = %v", collection.operational)
 	}
 
-	lock := &manifest.Lock{AWFVersion: "v0.0.0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: "v0.0.0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}}}
 	body, err := lock.Marshal()
 	if err != nil {
 		t.Fatal(err)

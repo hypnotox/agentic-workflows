@@ -170,7 +170,7 @@ func TestContextADRLinkedPlansUseResolvedSnapshotReferences(t *testing.T) {
 	files["docs/plans/2026-08-01-a.md"] = linkedPlanFixture("[7]", "Implemented")
 	files["docs/plans/2026-08-02-z.md"] = linkedPlanFixture("[7, still-pending]", "Proposed")
 	p := ctxRepo(t, ctxConfig, files)
-	lock := &manifest.Lock{AWFVersion: "0.0.0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: "0.0.0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}}}
 	if err := lock.Save(lockFile(p.Root())); err != nil {
 		t.Fatal(err)
 	}

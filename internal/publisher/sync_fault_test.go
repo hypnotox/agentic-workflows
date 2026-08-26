@@ -691,3 +691,45 @@ func TestSyncPrunesBeforeWritingReplacementLock(t *testing.T) {
 		t.Fatalf("pruned=%v sequence=%v", pruned, replaces)
 	}
 }
+
+func TestSyncRefusesInvalidPermanentLockBeforeMutation(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		lock string
+	}{
+		{name: "empty inventory", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{}}`},
+		{name: "misspelled inventory", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"fiels":{"x":{}}}`},
+		{name: "duplicate inventory entry", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"x":{},"x":{}}}`},
+		{name: "unknown entry field", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"x":{"typo":true}}}`},
+		{name: "trailing document", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"x":{}}} {}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffold(t, sampleYAML)
+			state, err := Open(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			output := filepath.Join(root, "AGENTS.md")
+			testsupport.WriteFile(t, output, "foreign bytes\n")
+			testsupport.WriteFile(t, lockFile(root), tc.lock)
+			filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer closeAll()
+			backups, changes, pruned, err := syncWithFilesystems(t, state, filesystems)
+			if err == nil || len(backups) != 0 || len(changes) != 0 || len(pruned) != 0 {
+				t.Fatalf("invalid lock sync = backups=%v changes=%v pruned=%v err=%v", backups, changes, pruned, err)
+			}
+			if got, readErr := os.ReadFile(output); readErr != nil || string(got) != "foreign bytes\n" {
+				t.Fatalf("output after refusal = %q, %v", got, readErr)
+			}
+			if got, readErr := os.ReadFile(lockFile(root)); readErr != nil || string(got) != tc.lock {
+				t.Fatalf("lock after refusal = %q, %v", got, readErr)
+			}
+			if _, statErr := os.Stat(output + ".awf-bak"); !errors.Is(statErr, os.ErrNotExist) {
+				t.Fatalf("backup after refusal = %v", statErr)
+			}
+		})
+	}
+}

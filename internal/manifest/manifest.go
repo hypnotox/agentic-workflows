@@ -2,11 +2,13 @@
 package manifest
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"maps"
 	"os"
 	"path/filepath"
@@ -94,9 +96,11 @@ func Load(path string) (*Lock, error) {
 
 // Parse rejects retired routing keys at every schema. Historical decoding is
 // owned by audit rather than the live manifest model.
-func Parse(b []byte) (*Lock, error) {
-	var raw map[string]json.RawMessage
-	if err := json.Unmarshal(b, &raw); err != nil {
+func Parse(b []byte) (*Lock, error) { return parse(b, false) }
+
+func parse(b []byte, requireInventory bool) (*Lock, error) {
+	raw, err := decodeJSONObject(b, "lock")
+	if err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)
 	}
 	schema, err := parseSchemaVersion(b)
@@ -112,14 +116,126 @@ func Parse(b []byte) (*Lock, error) {
 		}
 	}
 	var l Lock
-	if err := json.Unmarshal(b, &l); err != nil {
+	dec := json.NewDecoder(bytes.NewReader(b))
+	dec.DisallowUnknownFields()
+	if err := dec.Decode(&l); err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)
+	}
+	if requireInventory {
+		if err := validateInventory(raw["files"]); err != nil {
+			return nil, fmt.Errorf("parse lock: %w", err)
+		}
 	}
 	if _, err := l.AuthorityState(); err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)
 	}
 	return &l, nil
 }
+
+func requireJSONEOF(dec *json.Decoder) error {
+	var extra any
+	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return errors.New("trailing JSON value")
+		}
+		return fmt.Errorf("trailing input: %w", err)
+	}
+	return nil
+}
+
+func decodeJSONObject(b []byte, label string) (map[string]json.RawMessage, error) {
+	dec := json.NewDecoder(bytes.NewReader(b))
+	tok, err := dec.Token()
+	if err != nil {
+		return nil, err
+	}
+	if d, ok := tok.(json.Delim); !ok || d != '{' {
+		return nil, fmt.Errorf("%s must be an object", label)
+	}
+	fields := map[string]json.RawMessage{}
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
+			return nil, err
+		}
+		name := tok.(string)
+		if _, exists := fields[name]; exists {
+			return nil, fmt.Errorf("duplicate %s field %q", label, name)
+		}
+		var value json.RawMessage
+		if err := dec.Decode(&value); err != nil {
+			return nil, err
+		}
+		fields[name] = value
+	}
+	if _, err := dec.Token(); err != nil {
+		return nil, err
+	}
+	if err := requireJSONEOF(dec); err != nil {
+		return nil, err
+	}
+	return fields, nil
+}
+
+func validateInventory(raw json.RawMessage) error {
+	if raw == nil {
+		return errors.New("missing files inventory")
+	}
+	dec := json.NewDecoder(bytes.NewReader(raw))
+	tok, err := dec.Token()
+	if err != nil {
+		return fmt.Errorf("malformed files inventory: %w", err)
+	}
+	if d, ok := tok.(json.Delim); !ok || d != '{' {
+		return errors.New("files inventory must be an object")
+	}
+	seen := map[string]bool{}
+	count := 0
+	for dec.More() {
+		tok, err := dec.Token()
+		if err != nil {
+			return fmt.Errorf("malformed files inventory: %w", err)
+		}
+		name := tok.(string)
+		if name == "" || seen[name] {
+			return fmt.Errorf("duplicate or empty files inventory entry %q", name)
+		}
+		seen[name] = true
+		count++
+		var entryRaw json.RawMessage
+		if err := dec.Decode(&entryRaw); err != nil {
+			return fmt.Errorf("malformed files inventory entry %q: %w", name, err)
+		}
+		if _, err := decodeJSONObject(entryRaw, "files inventory entry"); err != nil {
+			return fmt.Errorf("malformed files inventory entry %q: %w", name, err)
+		}
+		var entry Entry
+		entryDec := json.NewDecoder(bytes.NewReader(entryRaw))
+		entryDec.DisallowUnknownFields()
+		if err := entryDec.Decode(&entry); err != nil {
+			return fmt.Errorf("malformed files inventory entry %q: %w", name, err)
+		}
+	}
+	if _, err := dec.Token(); err != nil {
+		return fmt.Errorf("malformed files inventory: %w", err)
+	}
+	if count == 0 {
+		return errors.New("permanent files inventory must be nonempty")
+	}
+	return nil
+}
+
+func ParseLive(b []byte, floor, current int) (*Lock, error) {
+	schema, err := parseSchemaVersion(b)
+	if err != nil {
+		return nil, fmt.Errorf("parse lock: %w", err)
+	}
+	if err := ValidateLive(&Lock{SchemaVersion: schema}, floor, current); err != nil {
+		return nil, err
+	}
+	return parse(b, true)
+}
+
 func (l *Lock) Save(path string) error {
 	b, err := l.Marshal()
 	if err != nil {
@@ -175,17 +291,6 @@ func parseSchemaVersion(b []byte) (int, error) {
 		return 0, err
 	}
 	return stamp.SchemaVersion, nil
-}
-
-func ParseLive(b []byte, floor, current int) (*Lock, error) {
-	schema, err := parseSchemaVersion(b)
-	if err != nil {
-		return nil, fmt.Errorf("parse lock: %w", err)
-	}
-	if err := ValidateLive(&Lock{SchemaVersion: schema}, floor, current); err != nil {
-		return nil, err
-	}
-	return Parse(b)
 }
 
 // LoadSchemaOptional reads only the schema stamp. Migration classification uses

@@ -26,7 +26,7 @@ func gateFixture(t *testing.T, awfVersion string, schema int) string {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: ex\n")
 	if schema >= 0 {
-		l := &manifest.Lock{AWFVersion: awfVersion, SchemaVersion: schema, Files: map[string]manifest.Entry{}}
+		l := &manifest.Lock{AWFVersion: awfVersion, SchemaVersion: schema, Files: map[string]manifest.Entry{"prior": {}}}
 		if err := l.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 			t.Fatal(err)
 		}

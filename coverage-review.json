@@ -2230,6 +2230,19 @@
       "identity": {
         "file": "internal/config/config.go",
         "start": {
+          "line": 318,
+          "column": 64
+        },
+        "end": {
+          "line": 320,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/config/config.go:319.64,321.5 1 in function UnmarshalYAML, beginning `{ // coverage-ignore: a yaml bool scalar is fully decoded by yaml.v3 after the kind and tag chec...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "internal/config/config.go",
+        "start": {
           "line": 319,
           "column": 64
         },
@@ -2238,11 +2251,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/config/config.go:319.64,321.5 1 in function UnmarshalYAML, beginning `{ // coverage-ignore: a yaml bool scalar is fully decoded by yaml.v3 after the kind and tag chec...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/config/config.go",
+        "start": {
+          "line": 678,
+          "column": 51
+        },
+        "end": {
+          "line": 680,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/config/config.go:680.51,682.3 1 in function ParseTree, beginning `{ // coverage-ignore: the strict decoder accepted the same YAML bytes above`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/config/config.go",
         "start": {
           "line": 680,
@@ -2253,11 +2278,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/config/config.go:680.51,682.3 1 in function ParseTree, beginning `{ // coverage-ignore: the strict decoder accepted the same YAML bytes above`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/config/config.go",
+        "start": {
+          "line": 785,
+          "column": 16
+        },
+        "end": {
+          "line": 787,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/config/config.go:789.16,791.3 1 in function ReadPartPath, beginning `{ // coverage-ignore: selected config root and consumed part paths are absolute paths on the sam...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/config/config.go",
         "start": {
           "line": 789,
@@ -2268,8 +2305,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/config/config.go:789.16,791.3 1 in function ReadPartPath, beginning `{ // coverage-ignore: selected config root and consumed part paths are absolute paths on the sam...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
@@ -6344,21 +6380,6 @@
     },
     {
       "identity": {
-        "file": "internal/manifest/manifest.go",
-        "start": {
-          "line": 181,
-          "column": 16
-        },
-        "end": {
-          "line": 183,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/manifest/manifest.go:181.16,185.3 1 in function Marshal, beginning `{ // coverage-ignore: Lock contains only JSON-supported fields`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
         "file": "internal/memorycite/presentation.go",
         "start": {
           "line": 15,
@@ -9541,19 +9562,6 @@
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 274,
-          "column": 18
-        },
-        "end": {
-          "line": 276,
-          "column": 5
-        },
-        "statements": 1
-      },
-      "reason": "Journal contains only JSON-representable scalars, slices, and byte content, so marshal failure is a closed defensive arm.",
-      "movedFrom": {
-        "file": "internal/upgrade/journal.go",
-        "start": {
           "line": 276,
           "column": 18
         },
@@ -9562,10 +9570,36 @@
           "column": 5
         },
         "statements": 1
+      },
+      "reason": "Journal contains only JSON-representable scalars, slices, and byte content, so marshal failure is a closed defensive arm.",
+      "movedFrom": {
+        "file": "internal/upgrade/journal.go",
+        "start": {
+          "line": 274,
+          "column": 18
+        },
+        "end": {
+          "line": 276,
+          "column": 5
+        },
+        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/upgrade/journal.go",
+        "start": {
+          "line": 549,
+          "column": 48
+        },
+        "end": {
+          "line": 551,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Transaction planners validate the operation set before the bound commit owner receives it; this defensive revalidation arm remains fail-closed.",
+      "movedFrom": {
         "file": "internal/upgrade/journal.go",
         "start": {
           "line": 529,
@@ -9576,30 +9610,17 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Transaction planners validate the operation set before the bound commit owner receives it; this defensive revalidation arm remains fail-closed.",
-      "movedFrom": {
-        "file": "internal/upgrade/journal.go",
-        "start": {
-          "line": 531,
-          "column": 48
-        },
-        "end": {
-          "line": 533,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 641,
+          "line": 661,
           "column": 2
         },
         "end": {
-          "line": 641,
+          "line": 661,
           "column": 16
         },
         "statements": 1
@@ -9608,11 +9629,11 @@
       "movedFrom": {
         "file": "internal/upgrade/journal.go",
         "start": {
-          "line": 643,
+          "line": 641,
           "column": 2
         },
         "end": {
-          "line": 643,
+          "line": 641,
           "column": 16
         },
         "statements": 1
@@ -10489,6 +10510,19 @@
       "identity": {
         "file": "internal/manifest/manifest.go",
         "start": {
+          "line": 251,
+          "column": 16
+        },
+        "end": {
+          "line": 253,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Lock contains only JSON-supported fields, so json.MarshalIndent cannot fail for a valid lock and this defensive error arm does not justify a test-only production seam.",
+      "movedFrom": {
+        "file": "internal/manifest/manifest.go",
+        "start": {
           "line": 135,
           "column": 16
         },
@@ -10497,8 +10531,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Phase 3 compatibility-pruning reconciliation: retired bridge deletion shifted this defensive or closed-state arm; permanent-authority and generic journal behavior retain direct replacement coverage."
+      }
     },
     {
       "identity": {
@@ -11963,38 +11996,38 @@
     {
       "directive": {
         "file": "internal/config/config.go",
-        "line": 319,
-        "targetLine": 319,
+        "line": 318,
+        "targetLine": 318,
         "reason": "a yaml bool scalar is fully decoded by yaml.v3 after the kind and tag check above",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err := value.Decode(&c.RequireSignedCommits); err != nil {` at internal/config/config.go:319 is `}` (internal/config/config.go:318). Within `func (c *CommitPolicyConfig) UnmarshalYAML(node *yaml.Node) error` at internal/config/config.go:294, source review establishes a yaml bool scalar is fully decoded by yaml.v3 after the kind and tag check above; this is therefore a closed-state fail-closed branch."
+      "evidence": "The kind and tag check immediately before `value.Decode` admits only a yaml.v3 boolean scalar. Decoding that already validated scalar into bool cannot fail, so this is a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/config/config.go",
-        "line": 680,
-        "targetLine": 680,
+        "line": 678,
+        "targetLine": 678,
         "reason": "the strict decoder accepted the same YAML bytes above",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/config/config.go:680, `if err := yaml.Unmarshal(b, &source); err != nil {` is guarded by the preceding `var source yaml.Node` at internal/config/config.go:679; in `func ParseTree(awfDir string, b []byte, read TreeReader) (*Config, error)` (internal/config/config.go:672), the predecessor invariant is the strict decoder accepted the same YAML bytes above. Only violation of that closed state reaches this guard."
+      "evidence": "ParseTree first strictly decodes the same bytes through yaml.v3, including exact one-document EOF validation. Re-decoding those accepted bytes into yaml.Node cannot fail without a dependency invariant breach."
     },
     {
       "directive": {
         "file": "internal/config/config.go",
-        "line": 789,
-        "targetLine": 789,
+        "line": 785,
+        "targetLine": 785,
         "reason": "selected config root and consumed part paths are absolute paths on the same volume",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (c *Config) ReadPartPath(full string) ([]byte, error)` (starts internal/config/config.go:787) checks `if err != nil {` at internal/config/config.go:789 after `rel, err := filepath.Rel(c.root, full)` at internal/config/config.go:788. Here selected config root and consumed part paths are absolute paths on the same volume; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "ReadPartPath receives the selected absolute config root and an absolute consumed part path on the same volume. filepath.Rel can fail here only through an unportable volume mismatch or malformed environmental path, so the fail-closed arm does not justify a test seam."
     },
     {
       "directive": {
@@ -17807,8 +17840,8 @@
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 274,
-        "targetLine": 274,
+        "line": 276,
+        "targetLine": 276,
         "reason": "Journal holds only JSON-representable scalars, slices, and byte content",
         "mapped": true,
         "executed": false
@@ -17819,8 +17852,8 @@
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 529,
-        "targetLine": 529,
+        "line": 549,
+        "targetLine": 549,
         "reason": "the supported-migration planner validated the same set before this call",
         "mapped": true,
         "executed": false
@@ -17831,8 +17864,8 @@
     {
       "directive": {
         "file": "internal/upgrade/journal.go",
-        "line": 641,
-        "targetLine": 641,
+        "line": 661,
+        "targetLine": 661,
         "reason": "no caller provides a changed set without its path",
         "mapped": true,
         "executed": false

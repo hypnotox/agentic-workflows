@@ -68,7 +68,7 @@ func ctxCmdFixture(t *testing.T) string {
 	testsupport.WriteAwfConfig(t, root, ctxCmdYAML)
 	lock := &manifest.Lock{
 		AWFVersion: awfVersion(), SchemaVersion: migrate.Current(),
-		Files: map[string]manifest.Entry{},
+		Files: map[string]manifest.Entry{"prior": {}},
 	}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)

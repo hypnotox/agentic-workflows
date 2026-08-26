@@ -111,7 +111,7 @@ func contextPreparationFixture(t *testing.T) string {
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, contextPreparationYAML)
 	lock := &manifest.Lock{
-		AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{},
+		AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}},
 	}
 	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 		t.Fatal(err)

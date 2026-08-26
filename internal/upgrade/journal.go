@@ -5,11 +5,13 @@
 package upgrade
 
 import (
+	"bytes"
 	"crypto/sha256"
 	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -460,7 +462,7 @@ func LoadJournal(root string) (Journal, error) {
 // contract without materializing index bytes into the working tree.
 func ParseJournal(b []byte) (Journal, error) {
 	var j Journal
-	dec := json.NewDecoder(strings.NewReader(string(b)))
+	dec := json.NewDecoder(bytes.NewReader(b))
 	dec.DisallowUnknownFields()
 	if err := dec.Decode(&j); err != nil {
 		return Journal{}, fmt.Errorf("malformed upgrade journal: %w; %s", err, gitRestorationGuidance)
@@ -473,10 +475,28 @@ func ParseJournal(b []byte) (Journal, error) {
 	default:
 		return Journal{}, fmt.Errorf("unknown upgrade journal phase %q; %s", j.Phase, gitRestorationGuidance)
 	}
+	if err := requireJSONEOF(dec); err != nil {
+		return Journal{}, fmt.Errorf("malformed upgrade journal: %w; %s", err, gitRestorationGuidance)
+	}
 	if err := validateOperations(j.Operations); err != nil {
 		return Journal{}, fmt.Errorf("invalid upgrade journal: %w; %s", err, gitRestorationGuidance)
 	}
+	if err := validateFinalLock(j); err != nil {
+		return Journal{}, fmt.Errorf("invalid upgrade journal: %w; %s", err, gitRestorationGuidance)
+	}
 	return j, nil
+}
+
+// validateFinalLock binds recovery's commitment proof to the actual final lock replacement.
+func validateFinalLock(j Journal) error {
+	lock := j.Operations[len(j.Operations)-1]
+	if lock.Kind != KindFile || !lock.Replacement.Present {
+		return errors.New("final operation must replace a present lock file")
+	}
+	if j.FinalLockSHA256 == "" || j.FinalLockSHA256 != imageSHA(lock.Replacement) {
+		return errors.New("final lock digest does not match the final lock replacement")
+	}
+	return nil
 }
 
 // commitTransaction journals ops, makes the journal durable, applies every
@@ -761,4 +781,16 @@ func appliedOperations(root string, j Journal, operation journalOperation) ([]Ev
 func imageSHA(img Image) string {
 	sum := sha256.Sum256(img.Content)
 	return hex.EncodeToString(sum[:])
+}
+
+// requireJSONEOF rejects a second JSON value or any trailing non-whitespace input.
+func requireJSONEOF(dec *json.Decoder) error {
+	var extra any
+	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return errors.New("trailing JSON value")
+		}
+		return fmt.Errorf("trailing input: %w", err)
+	}
+	return nil
 }

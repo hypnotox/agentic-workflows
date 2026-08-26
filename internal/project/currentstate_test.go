@@ -107,7 +107,7 @@ func csRepo(t *testing.T, cfg string, files map[string]string) *ProjectState {
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, cfg)
 	if _, ok := files[".awf/awf.lock"]; !ok {
-		testsupport.WriteFile(t, filepath.Join(dir, ".awf/awf.lock"), `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)
+		testsupport.WriteFile(t, filepath.Join(dir, ".awf/awf.lock"), `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
 	}
 	if _, ok := files["docs/decisions/0001-first.md"]; !ok {
 		files["docs/decisions/0001-first.md"] = testsupport.ADR("Implemented",
@@ -226,7 +226,7 @@ func TestCheckStagedRootOutsideRepo(t *testing.T) {
 
 func TestCheckCurrentStateOutsideRepo(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", nil)
-	testsupport.WriteFile(t, filepath.Join(root, ".awf/awf.lock"), `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/awf.lock"), `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

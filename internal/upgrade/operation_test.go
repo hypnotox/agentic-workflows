@@ -21,7 +21,7 @@ func operationLock(t *testing.T, root string) string {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 46, Files: map[string]manifest.Entry{}}).Save(path); err != nil {
+	if err := (&manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 46, Files: map[string]manifest.Entry{"prior": {}}}).Save(path); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: test\nprofile: full\nintegrationBranch: main\n"), 0o644); err != nil {
@@ -139,7 +139,7 @@ func TestRunSequencingAndCurrentSchemaPresentation(t *testing.T) {
 func TestRunPropagatesAuthorityAndSchemaFailures(t *testing.T) {
 	root := t.TempDir()
 	path := operationLock(t, root)
-	testsupport.WriteFile(t, path, `{"awfVersion":"0.19.0","schemaVersion":46,"initializedWithVersion":"bad","files":{}}`)
+	testsupport.WriteFile(t, path, `{"awfVersion":"0.19.0","schemaVersion":46,"initializedWithVersion":"bad","files":{"prior":{}}}`)
 	_, err := Run(testContext(t), root, nil, nil, func(string) (bool, error) { return true, nil }, testLiveSchemaRange, nil, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "invalid lock authority") {
 		t.Fatalf("authority error = %v", err)

@@ -78,3 +78,16 @@ func TestParseTreeReaderSidecarsAndParts(t *testing.T) {
 		t.Fatal("nil part reader")
 	}
 }
+
+func TestSnapshotConfigAndSidecarRejectMultipleYAMLDocuments(t *testing.T) {
+	if _, err := ParseTree(".awf", []byte("prefix: x\n---\nprefix: y\n"), memoryTreeReader{}); err == nil {
+		t.Fatal("accepted multiple snapshot config documents")
+	}
+	cfg, err := ParseTree(".awf", []byte("prefix: x\n"), memoryTreeReader{"skills/s.yaml": []byte("data: {}\n---\ndata: {}\n")})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cfg.Sidecar("skills", "s"); err == nil {
+		t.Fatal("accepted multiple snapshot sidecar documents")
+	}
+}

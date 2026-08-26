@@ -1,9 +1,12 @@
 package upgrade
 
 import (
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -130,6 +133,51 @@ func writeRawJournal(t *testing.T, root string, j Journal) {
 
 func presentImg(content string) Image {
 	return Image{Present: true, Mode: 0o644, Content: []byte(content)}
+}
+
+func testImageSHA(img Image) string {
+	sum := sha256.Sum256(img.Content)
+	return hex.EncodeToString(sum[:])
+}
+
+type treeEntry struct {
+	path    string
+	mode    fs.FileMode
+	content string
+}
+
+func captureTree(t *testing.T, root string) []treeEntry {
+	t.Helper()
+	var state []treeEntry
+	if err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if path == root {
+			return nil
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		rel, err := filepath.Rel(root, path)
+		if err != nil {
+			return err
+		}
+		item := treeEntry{path: filepath.ToSlash(rel), mode: info.Mode()}
+		if info.Mode().IsRegular() {
+			b, err := os.ReadFile(path)
+			if err != nil {
+				return err
+			}
+			item.content = string(b)
+		}
+		state = append(state, item)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return state
 }
 
 // lockJournal builds a valid two-op journal (a.txt then the lock) in the given
@@ -1428,4 +1476,115 @@ func TestJournalResidentRenameHelpersPropagateParentCreationFailures(t *testing.
 			}
 		})
 	}
+}
+
+func TestRecoverRefusesUnboundOrTrailingJournalBeforeMutation(t *testing.T) {
+	for _, tc := range []struct {
+		name        string
+		phase       string
+		currentLock string
+		mut         func(*Journal)
+		tail        string
+	}{
+		{name: "trailing JSON", phase: phaseApplying, currentLock: "old-lock", tail: "\n{}"},
+		{name: "trailing malformed input", phase: phaseApplying, currentLock: "old-lock", tail: "\nnot-json"},
+		{name: "final operation is not a file lock", phase: phaseApplying, currentLock: "old-lock", mut: func(j *Journal) {
+			j.Operations[len(j.Operations)-1].Kind = KindResidentTree
+			j.Operations[len(j.Operations)-1].Quarantine = QuarantineRel() + "/lock"
+		}},
+		{name: "missing final replacement", phase: phaseApplying, currentLock: "old-lock", mut: func(j *Journal) {
+			j.Operations[len(j.Operations)-1].Replacement = Image{}
+			j.FinalLockSHA256 = ""
+		}},
+		{name: "missing digest", phase: phaseApplying, currentLock: "old-lock", mut: func(j *Journal) { j.FinalLockSHA256 = "" }},
+		{name: "mismatched digest", phase: phaseApplying, currentLock: "old-lock", mut: func(j *Journal) { j.FinalLockSHA256 = strings.Repeat("0", 64) }},
+		{name: "forged committed hash", phase: phaseLockCommitted, currentLock: "forged", mut: func(j *Journal) {
+			j.FinalLockSHA256 = testImageSHA(presentImg("forged"))
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			j := lockJournal(tc.phase)
+			if tc.mut != nil {
+				tc.mut(&j)
+			}
+			writeRawJournal(t, root, j)
+			if tc.tail != "" {
+				f, err := os.OpenFile(JournalPath(root), os.O_APPEND|os.O_WRONLY, 0)
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, err := f.WriteString(tc.tail); err != nil {
+					t.Fatal(err)
+				}
+				if err := f.Close(); err != nil {
+					t.Fatal(err)
+				}
+			}
+			mustWrite(t, filepath.Join(root, "a.txt"), []byte("unchanged"))
+			mustWrite(t, filepath.Join(root, LockRel()), []byte(tc.currentLock))
+			mustMkdir(t, filepath.Join(root, QuarantineRel(), "resident"))
+			mustWrite(t, filepath.Join(root, QuarantineRel(), "resident", "kept.txt"), []byte("quarantined"))
+			before := captureTree(t, root)
+			if _, err := Recover(root); err == nil {
+				t.Fatal("accepted unbound journal")
+			}
+			if after := captureTree(t, root); !slices.Equal(after, before) {
+				t.Fatalf("tree mutated on refusal\nbefore: %#v\nafter:  %#v", before, after)
+			}
+		})
+	}
+}
+
+func FuzzParseJournal(f *testing.F) {
+	validJournal := lockJournal(phaseApplying)
+	valid, err := json.Marshal(validJournal)
+	if err != nil {
+		f.Fatal(err)
+	}
+	mismatched := validJournal
+	mismatched.FinalLockSHA256 = strings.Repeat("0", 64)
+	mismatchedBytes, err := json.Marshal(mismatched)
+	if err != nil {
+		f.Fatal(err)
+	}
+	unsorted := validJournal
+	unsorted.Operations = append([]Operation{{Path: "z.txt", Replacement: presentImg("z")}}, unsorted.Operations...)
+	unsortedBytes, err := json.Marshal(unsorted)
+	if err != nil {
+		f.Fatal(err)
+	}
+	for _, seed := range [][]byte{valid, append(append([]byte(nil), valid...), []byte("\n{}")...), mismatchedBytes, unsortedBytes, []byte(`{"version":1,"phase":"prepared","finalLockSHA256":"","operations":[]}`), []byte(`{"version":1`)} {
+		f.Add(seed)
+	}
+	f.Fuzz(func(t *testing.T, input []byte) {
+		// Fuzzing intentionally spans phase, digest, operation ordering, truncation,
+		// and trailing values through arbitrary serialized journal bytes. Parsing is
+		// pure, so an independent oracle can inspect every accepted value.
+		j, err := ParseJournal(input)
+		if err != nil {
+			return
+		}
+		dec := json.NewDecoder(strings.NewReader(string(input)))
+		var one json.RawMessage
+		if err := dec.Decode(&one); err != nil {
+			t.Fatalf("accepted input that an independent decoder rejects: %v", err)
+		}
+		var extra any
+		if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+			t.Fatalf("accepted trailing journal input: %v", err)
+		}
+		if len(j.Operations) == 0 {
+			t.Fatal("accepted journal without operations")
+		}
+		last := j.Operations[len(j.Operations)-1]
+		if last.Path != LockRel() || last.Kind != KindFile || !last.Replacement.Present || j.FinalLockSHA256 != testImageSHA(last.Replacement) {
+			t.Fatalf("accepted unbound final lock: %#v", j)
+		}
+		for i, op := range j.Operations[:len(j.Operations)-1] {
+			if op.Path == LockRel() || (i > 0 && op.Path <= j.Operations[i-1].Path) {
+				t.Fatalf("accepted invalid operation order: %#v", j.Operations)
+			}
+		}
+	})
 }

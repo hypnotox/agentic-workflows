@@ -19,7 +19,7 @@ func TestIncrementalADRLifecyclePublicPairs(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	files := stagedHeadFiles()
-	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 46, Files: map[string]manifest.Entry{}})
+	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 46, Files: map[string]manifest.Entry{"prior": {}}})
 	v1Ops := "- add `alpha/one:v1`"
 	files["docs/decisions/0002-v1-direct.md"] = strings.Replace(publicV2ADR(t, "0002", "V1 direct", "Proposed", v1Ops, ""), adr.V2FormatMarker, adr.V1FormatMarker, 1)
 	gitfixture.Stage(t, repo, files)

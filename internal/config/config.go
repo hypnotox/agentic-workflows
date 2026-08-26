@@ -3,7 +3,6 @@
 package config
 
 import (
-	"bytes"
 	"encoding/base64"
 	"encoding/binary"
 	"errors"
@@ -671,11 +670,10 @@ func Parse(awfDir string, b []byte) (*Config, error) {
 // ParseTree decodes config bytes and injects the selected config-tree reader.
 func ParseTree(awfDir string, b []byte, read TreeReader) (*Config, error) {
 	c := Config{}
-	dec := yaml.NewDecoder(bytes.NewReader(b))
-	dec.KnownFields(true)
-	if err := dec.Decode(&c); err != nil {
+	if err := decodeOneYAML(b, &c); err != nil {
 		return nil, fmt.Errorf("parse config: %w", err)
 	}
+
 	var source yaml.Node
 	if err := yaml.Unmarshal(b, &source); err != nil { // coverage-ignore: the strict decoder accepted the same YAML bytes above
 		return nil, fmt.Errorf("parse config presence: %w", err)
@@ -737,9 +735,7 @@ func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
 		}
 	}
 	var s Sidecar
-	dec := yaml.NewDecoder(bytes.NewReader(b))
-	dec.KnownFields(true)
-	if err := dec.Decode(&s); err != nil {
+	if err := decodeOneYAML(b, &s); err != nil {
 		return Sidecar{}, fmt.Errorf("parse sidecar %s: %w", rel, err)
 	}
 	if kind == "domains" {

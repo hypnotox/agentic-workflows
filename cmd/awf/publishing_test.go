@@ -53,7 +53,7 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(adrDir, "INDEX.md"), []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}).Save(config.LockPath(root)); err != nil {
+	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}}}).Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })

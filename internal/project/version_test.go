@@ -121,7 +121,7 @@ func TestSchema41RefusesBeforeEffortOrUpgrade(t *testing.T) {
 
 	root := scaffold(t, "prefix: archive\nintegrationBranch: main\n")
 	lockPath := filepath.Join(root, ".awf", "awf.lock")
-	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 41, Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 41, Files: map[string]manifest.Entry{"prior": {}}}
 	if err := lock.Save(lockPath); err != nil {
 		t.Fatal(err)
 	}
@@ -141,7 +141,7 @@ func TestCheckStagedRejectsInitializedVersionMutation(t *testing.T) {
 	gitfixture.Stage(t, repo, stagedHeadFiles())
 	gitfixture.Commit(t, repo, "head", nil)
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/awf.lock": lockJSON(t, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 46, InitializedWithVersion: "0.18.0", Files: map[string]manifest.Entry{}}),
+		".awf/awf.lock": lockJSON(t, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 46, InitializedWithVersion: "0.18.0", Files: map[string]manifest.Entry{"prior": {}}}),
 	})
 	p := openStaged(t, repo.Root())
 	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "initializedWithVersion") {

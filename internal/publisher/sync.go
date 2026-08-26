@@ -186,7 +186,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 	var old *manifest.Lock
 	found := lockErr == nil
 	if found {
-		old, err = manifest.Parse(lockBytes)
+		old, err = manifest.ParseLive(lockBytes, migrate.Current(), migrate.Current())
 		if err != nil {
 			return nil, nil, nil, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
 		}

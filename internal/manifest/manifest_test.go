@@ -1,6 +1,7 @@
 package manifest
 
 import (
+	"encoding/json"
 	"errors"
 	"fmt"
 	"os"
@@ -49,7 +50,7 @@ func TestParseLiveAcceptsOnlyCurrentLiveSchema(t *testing.T) {
 		{name: "ahead", schema: 46 + 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := ParseLive([]byte(fmt.Sprintf(`{"awfVersion":"0.39.2","schemaVersion":%d,"files":{}}`, tc.schema)), 46, 46)
+			_, err := ParseLive([]byte(fmt.Sprintf(`{"awfVersion":"0.39.2","schemaVersion":%d,"files":{"prior":{}}}`, tc.schema)), 46, 46)
 			if tc.wantOK && err != nil {
 				t.Fatalf("ParseLive() error = %v", err)
 			}
@@ -331,5 +332,57 @@ func TestParseRejectsRetiredBridgeField(t *testing.T) {
 	_, err := Parse([]byte(`{"awfVersion":"0.39.2","schemaVersion":46,"files":{},"bridgeAttestation":{}}`))
 	if err == nil || !strings.Contains(err.Error(), `unknown field "bridgeAttestation"`) {
 		t.Fatalf("bridge field error = %v", err)
+	}
+}
+
+func TestParseLiveRejectsAmbiguousOrEmptyPermanentInventory(t *testing.T) {
+	for _, source := range []string{
+		`{"awfVersion":"0.40.0","schemaVersion":46,"files":{},"typo":true}`,
+		`{"awfVersion":"0.40.0","schemaVersion":46,"files":{}}`,
+		`{"awfVersion":"0.40.0","schemaVersion":46,"files":{"x":{"templateId":"t","templateHash":"h","configHash":"c","outputHash":"o","typo":true}}}`,
+		`{"awfVersion":"0.40.0","schemaVersion":46,"files":{}} {}`,
+		`{"awfVersion":"0.40.0","schemaVersion":46,"schemaVersion":46,"files":{"x":{}}}`,
+		`{"awfVersion":"0.40.0","schemaVersion":46,"files":{"x":{"templateId":"a","templateId":"b"}}}`,
+	} {
+		if _, err := ParseLive([]byte(source), 46, 46); err == nil {
+			t.Fatalf("accepted live lock %s", source)
+		}
+	}
+}
+
+func TestParseLiveRejectsMalformedInventoryForms(t *testing.T) {
+	for _, files := range []string{"null", "[]", `{"":{}}`, `{"x":{},"x":{}}`, `{"x":1}`, `{"x":{"unknown":true}}`} {
+		source := `{"awfVersion":"0.40.0","schemaVersion":46,"files":` + files + `}`
+		if _, err := ParseLive([]byte(source), 46, 46); err == nil {
+			t.Fatalf("accepted files=%s", files)
+		}
+	}
+}
+
+func TestStrictJSONHelpersRejectMalformedStructure(t *testing.T) {
+	for _, source := range [][]byte{
+		nil,
+		[]byte(`[]`),
+		[]byte(`{"x":`),
+		[]byte(`{"x":1`),
+		[]byte(`{"x":1} {}`),
+		[]byte(`{"x":1} trailing`),
+	} {
+		if _, err := decodeJSONObject(source, "test object"); err == nil {
+			t.Fatalf("accepted object %q", source)
+		}
+	}
+	for _, source := range []json.RawMessage{
+		nil,
+		json.RawMessage(` `),
+		json.RawMessage(`[]`),
+		json.RawMessage(`{"`),
+		json.RawMessage(`{"x":`),
+		json.RawMessage(`{"x":{}`),
+		json.RawMessage(`{"x":{"unknown":true}}`),
+	} {
+		if err := validateInventory(source); err == nil {
+			t.Fatalf("accepted inventory %q", source)
+		}
 	}
 }

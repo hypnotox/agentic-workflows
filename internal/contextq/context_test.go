@@ -61,7 +61,7 @@ func ctxRepo(t *testing.T, cfg string, files map[string]string) *project.Project
 	// stay untracked-nonignored and are still part of the working universe.
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, dir, cfg)
-	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}).Save(lockFile(dir)); err != nil {
+	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}}}).Save(lockFile(dir)); err != nil {
 		t.Fatal(err)
 	}
 	if _, ok := files["docs/decisions/0001-first.md"]; !ok {
@@ -232,7 +232,7 @@ func TestContextForOptionsDetectsNestedAdopter(t *testing.T) {
 func TestContextWorkingIndexDivergenceAndErrors(t *testing.T) {
 	t.Parallel()
 	p := ctxRepo(t, ctxConfig, ctxFiles())
-	lock := &manifest.Lock{AWFVersion: "0.0.0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: "0.0.0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}}}
 	if err := lock.Save(lockFile(p.Root())); err != nil {
 		t.Fatal(err)
 	}
@@ -256,7 +256,7 @@ func TestStagedContextInputErrors(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	lock := &manifest.Lock{AWFVersion: "0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: "0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}}}
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +276,7 @@ func TestStagedContextInputErrors(t *testing.T) {
 			for rel, body := range tc.extra {
 				testsupport.WriteFile(t, filepath.Join(p.Root(), filepath.FromSlash(rel)), body)
 			}
-			lock := &manifest.Lock{AWFVersion: "0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+			lock := &manifest.Lock{AWFVersion: "0", SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}}}
 			if err := lock.Save(lockFile(p.Root())); err != nil {
 				t.Fatal(err)
 			}

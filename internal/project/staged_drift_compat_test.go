@@ -54,7 +54,7 @@ func TestCheckStagedRefusesHistoricalWorkflowTelemetry(t *testing.T) {
 
 func TestCheckStagedRefusesHistoricalMalformedOrDuplicateConfigAndCurrentInvalidBlock(t *testing.T) {
 	t.Parallel()
-	currentLock := fmt.Sprintf(`{"schemaVersion":%d,"files":{}}`, migrate.Current())
+	currentLock := fmt.Sprintf(`{"schemaVersion":%d,"files":{"prior":{}}}`, migrate.Current())
 	for _, tc := range []struct {
 		name, headConfig, headLock, stagedConfig, stagedLock string
 	}{

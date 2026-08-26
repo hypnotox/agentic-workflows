@@ -35,7 +35,7 @@ currentState:
   testGlobs: ["internal/**/*_test.go"]
 `)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/schedule.yaml"), "paths: [\"internal/**\"]\n")
-	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}}}
 	if err := lock.Save(filepath.Join(root, ".awf/awf.lock")); err != nil {
 		t.Fatal(err)
 	}
@@ -303,7 +303,7 @@ func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	}
 	root = t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: \"\"\n")
-	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{}}
+	lock := &manifest.Lock{AWFVersion: awfVersion(), SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}}}
 	if err := lock.Save(filepath.Join(root, ".awf/awf.lock")); err != nil {
 		t.Fatal(err)
 	}

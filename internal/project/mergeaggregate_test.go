@@ -18,7 +18,7 @@ func TestCheckStagedMergeUsesTheAggregateContract(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	files := stagedHeadFiles()
-	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 46, Files: map[string]manifest.Entry{}})
+	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 46, Files: map[string]manifest.Entry{"prior": {}}})
 
 	ops := "- add `alpha/one:c`\n- add `alpha/one:d`"
 	corrected := "- 2026-07-21: Implementing; content-sha256: %s\n" +
@@ -67,7 +67,7 @@ func TestAuditTransitionsMergeUsesTheAggregateContract(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	files := stagedHeadFiles()
-	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 46, Files: map[string]manifest.Entry{}})
+	files[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.20.0", SchemaVersion: 46, Files: map[string]manifest.Entry{"prior": {}}})
 	ops := "- add `alpha/one:a`\n- add `alpha/one:b`\n- add `alpha/one:c`\n- add `alpha/one:d`"
 	oneBatch := "- 2026-07-21: Implementing; content-sha256: %s\n" +
 		"- 2026-07-21: Applied; operations: add `alpha/one:a`"

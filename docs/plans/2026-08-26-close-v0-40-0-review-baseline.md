@@ -413,6 +413,19 @@ transfer, punctuation retirement, unrelated-defect routing, coverage redesign, o
 lanes, bootstrap cache hardening, platform expansion, immutable releases, attestations, and other
 provenance work remain outside this plan.
 
+Phase 1 reconstructed red-first evidence by applying the complete test-only diff to detached baseline
+`6ce178c9d`: focused config, manifest, Publisher, and recovery tests failed on ignored second YAML
+documents, ambiguous or empty locks, mutation before lock refusal, and unbound journals. The green
+implementation passes `go test ./...`; `FuzzParseJournal` passed 357,099 executions over six seconds
+without a panic or invalid acceptance. Dirty-tree review found that the initial implementation limited
+nonempty inventory enforcement to Publisher and did not independently prove duplicate JSON fields or
+recovery immutability. Settlement moved the complete contract to the ordinary live-lock seam, rejected
+duplicate outer and entry fields, compared the full recovery tree before and after refusal, added a
+forged committed-hash case, strengthened the independent fuzz oracle, and updated synthetic live-lock
+fixtures to carry inventory. Replacing the production digest with a constant made both the recovery
+case and fuzz seeds fail against an independently computed SHA-256. This is an authority-determined
+route correction, not a protected-contract change.
+
 Initial plan review corrected one scope error and one lifecycle-ordering ambiguity. Bootstrap cache
 hardening was removed because the approved outline explicitly deferred it. Archive metadata
 normalization remains because it corrects restricted extraction of the existing Linux release asset

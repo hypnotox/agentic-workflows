@@ -1073,3 +1073,25 @@ func TestFactsAndOperationTreeZeroValues(t *testing.T) {
 		t.Fatalf("bound operation config = %#v", bound)
 	}
 }
+
+func TestConfigAndSidecarRejectMultipleYAMLDocuments(t *testing.T) {
+	for _, source := range []string{"prefix: example\n---\nprefix: other\n", "prefix: example\ntrailing", "prefix: example\n---\n["} {
+		if _, err := Parse(".awf", []byte(source)); err == nil {
+			t.Fatalf("accepted multiple/trailing config %q", source)
+		}
+	}
+	dir := writeConfig(t, "prefix: example\n")
+	if err := os.MkdirAll(filepath.Join(dir, "skills"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "skills", "tdd.yaml"), []byte("data: {}\n---\ndata: {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	cfg, err := Load(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, err := cfg.Sidecar("skills", "tdd"); err == nil {
+		t.Fatal("accepted multiple sidecar documents")
+	}
+}
