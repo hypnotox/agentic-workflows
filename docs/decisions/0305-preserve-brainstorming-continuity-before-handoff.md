@@ -4,7 +4,7 @@ slug: preserve-brainstorming-continuity-before-handoff
 status: Implementing
 date: 2026-08-26
 ---
-# ADR-preserve-brainstorming-continuity-before-handoff: Preserve brainstorming continuity before handoff
+# ADR-0305: Preserve brainstorming continuity before handoff
 
 
 ## Context
