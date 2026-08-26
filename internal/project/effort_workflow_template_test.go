@@ -319,7 +319,6 @@ func TestEffortWorkflowTemplate(t *testing.T) {
 
 func TestEffortWorkflowSkillContract(t *testing.T) { TestEffortWorkflowTemplate(t) }
 
-// invariant: rendering/workflow-skill-templates:effort-workflow (TestEffortWorkflowSkillContract)
 func TestRoadmapGraduationTemplate(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",

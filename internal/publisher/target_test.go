@@ -130,9 +130,13 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 		t.Error("selected effort-workflow did not render awf-effort client")
 	}
 	usingEffort := ""
+	effortWorkflow := ""
 	for _, file := range files {
-		if file.Path == ".pi/skills/example-using-effort/SKILL.md" {
+		switch file.Path {
+		case ".pi/skills/example-using-effort/SKILL.md":
 			usingEffort = file.Content
+		case ".pi/skills/example-effort-workflow/SKILL.md":
+			effortWorkflow = file.Content
 		}
 	}
 	for _, want := range []string{"Use `using_effort` explicitly", "{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "use the supplied relative memory path `.awf/efforts/<slug>/memory.md`", "when present, managed-worktree path `.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock", "When attached, prefer `effort_memory_read` for pathless reads", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available", "After a persisted formal phase checkpoint", "a persisted approval checkpoint", "another safe resumable effort point", "current `[session context]` model-window and active-branch-compaction evidence", "No fixed threshold controls this choice", "invoke `handoff_session` alone with kickoff exactly `Continue with effort <slug>.`", "The kickoff identifies only the effort: it carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction.", "If relevant discussion predates late effort creation, handoff is prohibited until effort-workflow initializes the owned memory from retained evidence.", "reorient from repository authority and the owned memory", "governed primary checkout for integration, deferred lifecycle closure, worktree removal, and retrospective", "Handoff validates only canonical YAML effort identity", "it does not validate mutable metadata, parse state or activity, select an effort, or mutate memory", "actual boundary to `## Handoff log` before substantive work", "Continuation, cancellation, or failure that leaves the old session active appends none"} {
@@ -149,6 +153,32 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	lateHandoff := strings.Replace(usingEffort, handoffProhibition, "handoff may proceed before memory initialization", 1)
 	if strings.Contains(lateHandoff, handoffProhibition) {
 		t.Error("Pi handoff oracle accepted late-creation handoff before memory initialization")
+	}
+	// The Pi handoff projection owns the prohibition; the rendered Pi lifecycle
+	// skill owns the required initialization contents. Together they prove the
+	// complete late-memory contract without duplicating its lifecycle policy.
+	for _, want := range []string{
+		"current outcome in `## Brief`", "every already settled decision in `## Decision log` with required user-provenance and `Record:` evidence",
+		"relevant observations in `## Observations`", "current phase and next action", "reconfirmed, not reconstructed",
+		"Do not hand off until this initialization is complete",
+	} {
+		if !strings.Contains(effortWorkflow, want) {
+			t.Errorf("rendered Pi effort-workflow missing late-memory handoff contract %q", want)
+		}
+	}
+	for clause, mutation := range map[string]string{
+		"Brief":               strings.Replace(effortWorkflow, "current outcome in `## Brief`", "current outcome omitted", 1),
+		"decision provenance": strings.Replace(effortWorkflow, "every already settled decision in `## Decision log` with required user-provenance and `Record:` evidence", "decision evidence omitted", 1),
+		"observations":        strings.Replace(effortWorkflow, "relevant observations in `## Observations`", "observations omitted", 1),
+		"phase and next":      strings.Replace(effortWorkflow, "current phase and next action", "phase omitted", 1),
+		"reconfirmation":      strings.Replace(effortWorkflow, "reconfirmed, not reconstructed", "reconstructed", 1),
+	} {
+		if strings.Contains(mutation, map[string]string{
+			"Brief": "current outcome in `## Brief`", "decision provenance": "every already settled decision in `## Decision log` with required user-provenance and `Record:` evidence",
+			"observations": "relevant observations in `## Observations`", "phase and next": "current phase and next action", "reconfirmation": "reconfirmed, not reconstructed",
+		}[clause]) {
+			t.Errorf("Pi late-memory mutation did not remove %s", clause)
+		}
 	}
 	for _, unique := range []string{"## Pi session replacement", "invoke `handoff_session` alone", "`Continue with effort <slug>.`"} {
 		count := 0

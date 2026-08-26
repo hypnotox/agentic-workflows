@@ -10,7 +10,7 @@ description: Use when a material decision is unresolved, such as an ambiguous ou
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
 # awf-brainstorming
 
-Brainstorming is the sole workflow owner of concise implementation outlines and fuller material-choice design: it owns clarification, design exploration, proportionate presentation, conditional grounding invocation, and the explicit pre-artifact outline approval. It does not create an effort or require one.
+Brainstorming is the sole workflow owner of concise implementation outlines and fuller material-choice design: it owns clarification, design exploration, proportionate presentation, conditional grounding invocation, and the explicit pre-artifact outline approval. It does not create an effort or require one merely to begin brainstorming.
 
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl#when-to-invoke -->
 <!-- awf:edit when-to-invoke: default; create .awf/skills/parts/brainstorming/when-to-invoke.md to override -->
@@ -24,7 +24,7 @@ Use when a material choice or clarification is unresolved and no explicit approv
 <!-- awf:template-source templates/skills/brainstorming/SKILL.md.tmpl -->
 ## Procedure
 
-1. **Evaluate continuity independently.** Evaluate it when brainstorming begins and whenever a continuity-relevant fact changes. Brainstorming may begin effort-free, but if it continues after its first settled material decision, invoke `awf-effort-workflow` to create or resume ownership before proceeding further. A single-decision brainstorm may remain effort-free only when no independent continuity need fires. Brainstorming itself never creates an effort.
+1. **Evaluate continuity independently.** Evaluate it when brainstorming begins and whenever a continuity-relevant fact changes. When independent entry continuity evaluation fires, immediately invoke `awf-effort-workflow`. Brainstorming may begin effort-free, but if it continues after its first settled material decision, invoke it to create or resume ownership before proceeding further. A single-decision brainstorm may remain effort-free only when no independent continuity need fires. Brainstorming itself never creates an effort.
 2. **Orient in the topic.** Invoke `awf-orienting` when its repository-truth moments apply. Then run `./awf context <relevant paths>`.
 <!-- awf:template-source templates/partials/context-spill.md -->
 On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
