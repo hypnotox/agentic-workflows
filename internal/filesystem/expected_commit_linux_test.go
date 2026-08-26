@@ -8,8 +8,43 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"golang.org/x/sys/unix"
 )
+
+func TestRetirementReservationRemovalFailureRestoresDestinationAndReportsResidue(t *testing.T) {
+	rootPath := t.TempDir()
+	if err := os.MkdirAll(filepath.Join(rootPath, "destination", "payload"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(rootPath, "temporary", "concurrent"), 0o700); err != nil {
+		t.Fatal(err)
+	}
+	h, err := Open(rootPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	expected, err := h.root.Lstat("destination")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	consumed, err := exchangeExpected(h.root, "temporary", "destination", expected, true, true)
+	var cleanup *filepublication.CommittedCleanupError
+	if !consumed || !errors.As(err, &cleanup) {
+		t.Fatalf("retirement failure = consumed %t, error %v; want structured committed residue", consumed, err)
+	}
+	if cleanup.DestinationPath != "destination" || cleanup.ResiduePath != "temporary" {
+		t.Fatalf("retirement paths = destination %q, residue %q", cleanup.DestinationPath, cleanup.ResiduePath)
+	}
+	if _, err := os.Stat(filepath.Join(rootPath, "destination", "payload")); err != nil {
+		t.Fatalf("observed destination was not restored: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(rootPath, "temporary", "concurrent")); err != nil {
+		t.Fatalf("concurrent residue was not preserved: %v", err)
+	}
+}
 
 func TestExpectedMutationNeverTouchesRelocatedParentThroughEscapingSymlink(t *testing.T) {
 	for _, remove := range []bool{false, true} {

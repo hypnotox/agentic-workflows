@@ -5629,76 +5629,76 @@
       "identity": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
-          "line": 43,
-          "column": 50
+          "line": 44,
+          "column": 53
         },
         "end": {
-          "line": 45,
-          "column": 4
+          "line": 47,
+          "column": 5
         },
-        "statements": 1
+        "statements": 2
       },
-      "reason": "After atomic exchange, destination is the newly created empty retirement reservation. Removing that empty directory fails only for a concurrent namespace change or kernel/filesystem fault; successful nonempty retirement and same-name successor preservation are directly tested."
+      "reason": "The destination-reservation removal already failed after the native exchange, and this branch requires the immediate compensating native exchange to fail independently. The deterministic retirement regression covers the first failure with successful restoration and exact destination-plus-residue reporting; inducing the second kernel/filesystem fault would require a test-only native mutation seam that would violate the released-platform single owner."
     },
     {
       "identity": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
-          "line": 48,
+          "line": 53,
           "column": 47
         },
         "end": {
-          "line": 49,
+          "line": 54,
           "column": 52
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:48.47,43.52 1 in exchangeExpectedAnchored, beginning `if err := root.Remove(temporary); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:53.47,43.52 1 in exchangeExpectedAnchored, beginning `if err := root.Remove(temporary); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
     },
     {
       "identity": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
-          "line": 49,
+          "line": 54,
           "column": 52
         },
         "end": {
-          "line": 52,
+          "line": 57,
           "column": 4
         },
         "statements": 2
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:49.52,46.4 2 in exchangeExpectedAnchored, beginning `if rollbackErr := exchange(); rollbackErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:54.52,46.4 2 in exchangeExpectedAnchored, beginning `if rollbackErr := exchange(); rollbackErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
     },
     {
       "identity": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
-          "line": 53,
+          "line": 58,
           "column": 3
         },
         "end": {
-          "line": 53,
+          "line": 58,
           "column": 20
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:53.3,47.20 1 in exchangeExpectedAnchored, beginning `return false, err`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:58.3,47.20 1 in exchangeExpectedAnchored, beginning `return false, err`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
     },
     {
       "identity": {
         "file": "internal/filesystem/expected_commit_linux.go",
         "start": {
-          "line": 56,
+          "line": 61,
           "column": 50
         },
         "end": {
-          "line": 58,
+          "line": 63,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:56.50,52.4 1 in exchangeExpectedAnchored, beginning `if err := root.Remove(destination); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:61.50,52.4 1 in exchangeExpectedAnchored, beginning `if err := root.Remove(destination); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested."
     },
     {
       "identity": {
@@ -11974,21 +11974,6 @@
       "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 26,
-          "column": 47
-        },
-        "end": {
-          "line": 26,
-          "column": 65
-        },
-        "statements": 1
-      },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/topicop/scaffold.go:26.47,26.65 1 in Unwrap, beginning `func (e *PartialScaffoldError) Unwrap() error { return e.Cause }`. This is the mechanical error-identity projection of the stored typed partial outcome; focused partial-outcome tests exercise the carried effects, recovery, and errors.As identity, while this one-line delegation remains visible raw debt."
-    },
-    {
-      "identity": {
-        "file": "internal/topicop/scaffold.go",
-        "start": {
           "line": 33,
           "column": 28
         },
@@ -12065,7 +12050,7 @@
         "file": "internal/topicop/scaffold.go",
         "start": {
           "line": 80,
-          "column": 70
+          "column": 80
         },
         "end": {
           "line": 83,
@@ -12073,7 +12058,7 @@
         },
         "statements": 3
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/topicop/scaffold.go:80.70,83.42 3 in scaffoldConfined, beginning `rollbackCreated := func(cause error) (presentation.Document, error) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+      "reason": "This rollback closure runs only after concrete confined parent creation or exclusive publication fails after successful authority planning. Reaching it deterministically requires a concurrent late namespace collision or storage fault through the production os.Root; rollback ordering and typed partial path rendering are covered by the existing controlled scaffold harness and operation tests without adding a second injectable filesystem owner."
     },
     {
       "identity": {
@@ -12159,11 +12144,11 @@
         },
         "end": {
           "line": 94,
-          "column": 40
+          "column": 49
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/topicop/scaffold.go:94.3,94.40 1 in scaffoldConfined, beginning `return presentation.Document{}, cause`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+      "reason": "This return requires a concrete confined scaffold write to fail after planning while every already-created path is then removed successfully. The controlled scaffold fault harness proves successful reverse rollback and primary-cause preservation; inducing the same storage or late-collision fault through the production os.Root would require a parallel test-only filesystem seam."
     },
     {
       "identity": {
@@ -12199,31 +12184,76 @@
       "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 111,
+          "line": 131,
           "column": 48
         },
         "end": {
-          "line": 113,
+          "line": 133,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/topicop/scaffold.go:111.48,113.3 1 in CreateLeased, beginning `if lease == nil || !lease.CoversTracked(root) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/topicop/scaffold.go:131.48,113.3 1 in CreateLeased, beginning `if lease == nil || !lease.CoversTracked(root) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/topicop/scaffold.go",
         "start": {
-          "line": 119,
+          "line": 135,
           "column": 16
         },
         "end": {
-          "line": 121,
+          "line": 137,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/topicop/scaffold.go:119.16,121.3 1 in CreateLeased, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/topicop/scaffold.go:135.16,121.3 1 in CreateLeased, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 141,
+          "column": 16
+        },
+        "end": {
+          "line": 143,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The selected root was opened and identified immediately before this first RootMatches call. An error, rather than the directly handled identity mismatch, requires the named root to disappear or a filesystem fault in that narrow interval; the authority-load root-replacement regression proves fail-closed identity handling before publication."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 144,
+          "column": 14
+        },
+        "end": {
+          "line": 146,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This branch requires the selected root path to be replaced between filesystem.Open and the immediately following RootMatches call. It refuses before authority loading or mutation; the deterministic replacement-during-authority-load regression covers the same identity sentinel and no-mutation contract at the later revalidation boundary."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 152,
+          "column": 16
+        },
+        "end": {
+          "line": 154,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The opened handle already survived the initial identity check and authority loading immediately before this revalidation. An inspection error requires concurrent disappearance or a filesystem fault; the deterministic root-replacement regression directly covers the adjacent mismatched-identity refusal and proves neither tree is mutated."
     },
     {
       "identity": {
@@ -12484,56 +12514,56 @@
       "identity": {
         "file": "internal/worktree/manager.go",
         "start": {
-          "line": 157,
+          "line": 158,
           "column": 45
         },
         "end": {
-          "line": 159,
+          "line": 160,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/worktree/manager.go:156.45,136.4 1 in function operationFree, beginning `{ // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/worktree/manager.go:157.45,136.4 1 in function operationFree, beginning `{ // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/worktree/manager.go",
         "start": {
-          "line": 315,
+          "line": 322,
           "column": 20
         },
         "end": {
-          "line": 317,
+          "line": 324,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:315.20,290.3 1 in rollback, beginning `if pathErr != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:322.20,290.3 1 in rollback, beginning `if pathErr != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/worktree/manager.go",
         "start": {
-          "line": 345,
+          "line": 352,
           "column": 40
         },
         "end": {
-          "line": 350,
+          "line": 358,
           "column": 4
         },
-        "statements": 1
+        "statements": 2
       },
-      "reason": "This presentation branch consumes the typed committed-cleanup residue from failed effort-creation rollback. Producing it requires a post-commit filesystem cleanup fault; exact residue rendering is owner-mapped here while rollback interruption and same-name successor preservation are directly tested."
+      "reason": "This branch maps a typed committed-cleanup residue from identity-bound failed-creation rollback into exact reservation and residue recovery actions. Producing it end to end requires a post-exchange kernel/filesystem cleanup fault; the native retirement regression proves both paths are preserved, the effort service maps the typed residue, and worktree diagnostic tests cover exact residue presentation at the lifecycle boundary."
     },
     {
       "identity": {
         "file": "internal/worktree/manager.go",
         "start": {
-          "line": 353,
+          "line": 361,
           "column": 24
         },
         "end": {
-          "line": 355,
+          "line": 363,
           "column": 4
         },
         "statements": 1
@@ -12544,46 +12574,46 @@
       "identity": {
         "file": "internal/worktree/manager.go",
         "start": {
-          "line": 382,
+          "line": 390,
           "column": 44
         },
         "end": {
-          "line": 384,
+          "line": 392,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:382.44,347.3 1 in topologyEffects, beginning `} else if !errors.Is(err, os.ErrNotExist) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:390.44,347.3 1 in topologyEffects, beginning `} else if !errors.Is(err, os.ErrNotExist) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/worktree/manager.go",
         "start": {
-          "line": 465,
+          "line": 473,
           "column": 15
         },
         "end": {
-          "line": 467,
+          "line": 475,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:465.15,430.5 1 in Integrate, beginning `if changed {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:473.15,430.5 1 in Integrate, beginning `if changed {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/worktree/manager.go",
         "start": {
-          "line": 594,
+          "line": 602,
           "column": 49
         },
         "end": {
-          "line": 596,
+          "line": 604,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:594.49,558.4 1 in Remove, beginning `} else if !errors.Is(statErr, os.ErrNotExist) {`. The source exclusion records that local lstat reports an inode or os.ErrNotExist absent a kernel fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:602.49,558.4 1 in Remove, beginning `} else if !errors.Is(statErr, os.ErrNotExist) {`. The source exclusion records that local lstat reports an inode or os.ErrNotExist absent a kernel fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
     },
     {
       "identity": {
@@ -20123,26 +20153,26 @@
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 157,
-        "targetLine": 157,
+        "line": 158,
+        "targetLine": 158,
         "reason": "local lstat reports an inode or os.ErrNotExist absent a kernel fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/worktree/manager.go:543, `} else if !errors.Is(statErr, os.ErrNotExist) {` follows the concrete operation `pathPresent = true` at internal/worktree/manager.go:542 in `func (m *Manager) Remove(ctx context.Context, slug string) (Result, error)` (internal/worktree/manager.go:521). The reviewed failure condition is local lstat reports an inode or os.ErrNotExist absent a kernel fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/worktree/manager.go:551, `} else if !errors.Is(statErr, os.ErrNotExist) {` follows the concrete operation `pathPresent = true` at internal/worktree/manager.go:550 in `func (m *Manager) Remove(ctx context.Context, slug string) (Result, error)` (internal/worktree/manager.go:529). The reviewed failure condition is local lstat reports an inode or os.ErrNotExist absent a kernel fault; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 594,
-        "targetLine": 594,
+        "line": 602,
+        "targetLine": 602,
         "reason": "local lstat reports an inode or os.ErrNotExist absent a kernel fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 4 post-review coverage reconciliation reviewed directive internal/worktree/manager.go:594 targeting line 556: `local lstat reports an inode or os.ErrNotExist absent a kernel fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Phase 4 post-review coverage reconciliation reviewed directive internal/worktree/manager.go:602 targeting line 556: `local lstat reports an inode or os.ErrNotExist absent a kernel fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
     },
     {
       "directive": {

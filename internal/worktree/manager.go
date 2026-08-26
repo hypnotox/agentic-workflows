@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
@@ -265,9 +266,15 @@ func (m *Manager) Add(ctx context.Context, slug, base string) (Result, error) {
 	if err != nil {
 		return Result{}, fmt.Errorf("open managed worktree root: %w", err)
 	}
-	defer resident.Close()
 	if err := resident.MkdirAll(".", 0o700); err != nil {
-		return Result{}, fmt.Errorf("create managed worktree root: %w", err)
+		createErr := fmt.Errorf("create managed worktree root: %w", err)
+		if closeErr := resident.Close(); closeErr != nil {
+			return Result{}, errors.Join(createErr, fmt.Errorf("close managed worktree root: %w", closeErr))
+		}
+		return Result{}, createErr
+	}
+	if err := resident.Close(); err != nil {
+		return Result{}, fmt.Errorf("close managed worktree root: %w", err)
 	}
 	if err := m.validateLiveInvokingCheckout(ctx); err != nil {
 		return Result{}, err
@@ -343,10 +350,11 @@ func (m *Manager) rollback(ctx context.Context, record effort.Record, addErr err
 			Steps: []string{fmt.Sprintf("verify `.awf/efforts/%s` is absent", slug), fmt.Sprintf("verify `%s` is absent", reservation), "retry effort creation only after both paths are absent"},
 		}
 	case rollbackResult.ResiduePath != "":
+		reservation := rollbackResult.ReservationPath
 		return &CreationError{
-			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s deletion left identity-bound cleanup residue %s: %v", addErr, slug, rollbackResult.ResiduePath, rollbackErr),
-			Condition: "managed worktree creation failed and effort deletion left identity-bound cleanup residue", ChangedEffort: true, ChangedTopology: changedTopology, Topology: effects, ManagedPath: path, ManagedBranch: branch(slug), Cause: addErr, RollbackCause: rollbackErr,
-			Steps: []string{"inspect `" + rollbackResult.ResiduePath + "`", "remove only the verified identity-bound cleanup residue", "retry effort creation only after the active resident and cleanup residue are absent"},
+			Message:   fmt.Sprintf("worktree creation failed: %v; effort %s deletion restored reservation %s and left identity-bound cleanup residue %s: %v", addErr, slug, reservation, rollbackResult.ResiduePath, rollbackErr),
+			Condition: "managed worktree creation failed and effort deletion retained its reservation plus identity-bound cleanup residue", ChangedEffort: true, ChangedTopology: changedTopology, Topology: effects, ManagedPath: path, ManagedBranch: branch(slug), Cause: addErr, RollbackCause: rollbackErr,
+			Steps: []string{"inspect `" + reservation + "`", "inspect `" + rollbackResult.ResiduePath + "`", "remove only paths whose identities are verified", "retry effort creation only after the active resident, reservation, and cleanup residue are absent"},
 		}
 	case rollbackResult.Reserved:
 		reservation := rollbackResult.ReservationPath
@@ -658,7 +666,13 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 				}
 				closeErr := resident.Close()
 				if infoErr != nil || closeErr != nil {
-					return Result{}, m.removalMutationFailure(ctx, slug, path, effects, observed, "proven unregistered managed path cleanup failed", errors.Join(infoErr, closeErr), "inspect the path", "retry ordinary removal")
+					actions := []string{"inspect the path", "retry ordinary removal"}
+					var cleanup *filepublication.CommittedCleanupError
+					if errors.As(infoErr, &cleanup) {
+						residuePath := filepath.Join(filepath.Dir(path), filepath.FromSlash(cleanup.ResiduePath))
+						actions = []string{"inspect `" + path + "`", "inspect `" + residuePath + "`", "remove only paths whose identities are verified", "retry ordinary removal"}
+					}
+					return Result{}, m.removalMutationFailure(ctx, slug, path, effects, observed, "proven unregistered managed path cleanup failed", errors.Join(infoErr, closeErr), actions...)
 				}
 				effects.ManagedPath = true
 			}

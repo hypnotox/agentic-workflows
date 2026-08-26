@@ -62,7 +62,7 @@ func (e *PartialScaffoldError) Document() (presentation.Document, error) {
 // Every source is exclusive, and rollback removes only paths this invocation
 // published. Parent directories are deliberately retained when another actor
 // could have contributed to them, so rollback never claims ownership it lacks.
-func scaffoldConfined(files *filesystem.Handle, cfg *config.Config, domain, title string) (presentation.Document, error) {
+func scaffoldConfined(files *filesystem.Handle, cfg *config.Config, domain, title string) (presentation.Document, []string, error) {
 	planned, err := topic.ScaffoldFilesWithExists(cfg, domain, title, func(path string) (bool, error) {
 		_, err := files.LinkInfo(path)
 		if err == nil {
@@ -74,10 +74,10 @@ func scaffoldConfined(files *filesystem.Handle, cfg *config.Config, domain, titl
 		return false, err
 	})
 	if err != nil {
-		return presentation.Document{}, err
+		return presentation.Document{}, nil, err
 	}
 	created := make([]string, 0, len(planned))
-	rollbackCreated := func(cause error) (presentation.Document, error) {
+	rollbackCreated := func(cause error) (presentation.Document, []string, error) {
 		removed, remaining := []string{}, []string{}
 		var failures []error
 		for i := len(created) - 1; i >= 0; i-- {
@@ -89,9 +89,9 @@ func scaffoldConfined(files *filesystem.Handle, cfg *config.Config, domain, titl
 			}
 		}
 		if len(failures) != 0 {
-			return presentation.Document{}, &PartialScaffoldError{Created: append([]string(nil), created...), Removed: removed, Remaining: remaining, Cause: errors.Join(append([]error{cause}, failures...)...), Recovery: []string{"remove only the listed remaining topic paths, then retry"}}
+			return presentation.Document{}, created, &PartialScaffoldError{Created: append([]string(nil), created...), Removed: removed, Remaining: remaining, Cause: errors.Join(append([]error{cause}, failures...)...), Recovery: []string{"remove only the listed remaining topic paths, then retry"}}
 		}
-		return presentation.Document{}, cause
+		return presentation.Document{}, created, cause
 	}
 	for _, file := range planned {
 		rel := filepath.ToSlash(file.Path)
@@ -103,7 +103,27 @@ func scaffoldConfined(files *filesystem.Handle, cfg *config.Config, domain, titl
 		}
 		created = append(created, rel)
 	}
-	return topic.CreatedDocument(planned)
+	document, err := topic.CreatedDocument(planned)
+	return document, created, err
+}
+
+func finishScaffoldClose(created []string, operationErr, closeErr error) error {
+	if closeErr == nil {
+		return operationErr
+	}
+	if operationErr != nil || len(created) == 0 {
+		return errors.Join(operationErr, closeErr)
+	}
+	paths := append([]string(nil), created...)
+	return &PartialScaffoldError{
+		Created:   paths,
+		Remaining: append([]string(nil), paths...),
+		Cause:     fmt.Errorf("close selected root after topic scaffold: %w", closeErr),
+		Recovery: []string{
+			"inspect the listed created topic paths",
+			"do not retry scaffolding until the listed paths are reconciled",
+		},
+	}
 }
 
 // CreateLeased opens the selected project and performs one topic-scaffolding operation under a caller-held tracked transaction.
@@ -111,14 +131,30 @@ func CreateLeased(ctx context.Context, root, domain, title string, loader *proje
 	if lease == nil || !lease.CoversTracked(root) {
 		return presentation.Document{}, errors.New("topic operation requires a covering tracked lease")
 	}
-	_, cfg, err := loader.OpenForOperation(ctx, root)
-	if err != nil {
-		return presentation.Document{}, err
-	}
 	files, err := filesystem.Open(root)
 	if err != nil {
 		return presentation.Document{}, err
 	}
-	defer files.Close()
-	return scaffoldConfined(files, cfg, domain, title)
+	var created []string
+	defer func() { err = finishScaffoldClose(created, err, files.Close()) }()
+	matches, err := files.RootMatches(root)
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	if !matches {
+		return presentation.Document{}, filesystem.ErrIdentityChanged
+	}
+	_, cfg, _, err := loader.OpenForMutation(ctx, root, files)
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	matches, err = files.RootMatches(root)
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	if !matches {
+		return presentation.Document{}, filesystem.ErrIdentityChanged
+	}
+	document, created, err = scaffoldConfined(files, cfg, domain, title)
+	return document, err
 }

@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -365,9 +366,12 @@ func TestNewEffortCreatesTheManagedWorktreeByDefault(t *testing.T) {
 }
 
 // invariant: tooling/effort-management:default-worktree-creation (TestNewEffortRollsBackOnlyWhenTopologyIsProvenAbsent)
-type residentFaultHandle struct{ failure error }
+type residentFaultHandle struct {
+	failure      error
+	closeFailure error
+}
 
-func (h residentFaultHandle) Close() error                             { return nil }
+func (h residentFaultHandle) Close() error                             { return h.closeFailure }
 func (h residentFaultHandle) MkdirAll(string, fs.FileMode) error       { return h.failure }
 func (h residentFaultHandle) LinkInfo(string) (fs.FileInfo, error)     { return nil, h.failure }
 func (h residentFaultHandle) RetireExpected(string, fs.FileInfo) error { return h.failure }
@@ -386,6 +390,12 @@ func TestAddReportsResidentCapabilityFailures(t *testing.T) {
 	}{
 		{name: "open", open: func(awfgit.ResidentName) (ResidentHandle, error) { return nil, failure }, want: "open managed worktree root"},
 		{name: "prepare", open: func(awfgit.ResidentName) (ResidentHandle, error) { return residentFaultHandle{failure: failure}, nil }, want: "create managed worktree root"},
+		{name: "prepare and close", open: func(awfgit.ResidentName) (ResidentHandle, error) {
+			return residentFaultHandle{failure: failure, closeFailure: failure}, nil
+		}, want: "create managed worktree root"},
+		{name: "close", open: func(awfgit.ResidentName) (ResidentHandle, error) {
+			return residentFaultHandle{closeFailure: failure}, nil
+		}, want: "close managed worktree root"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			manager, err := Open(roots, invokingStub(root, func(*checkoutStub) {}), tc.open, service)
@@ -1676,6 +1686,57 @@ func TestRemoveUnregisteredPathReportsResidentOpenFailure(t *testing.T) {
 	}
 	if _, err := manager.Remove(testContext(t), slug); !errors.Is(err, failure) || !strings.Contains(err.Error(), "open unregistered managed path cleanup root failed") {
 		t.Fatalf("resident open failure = %v", err)
+	}
+}
+
+type retireFailureHandle struct {
+	*filesystem.Handle
+	failure error
+}
+
+func (h *retireFailureHandle) RetireExpected(string, fs.FileInfo) error { return h.failure }
+
+func TestRemoveUnregisteredPathReportsExactDestinationAndRetirementResidue(t *testing.T) {
+	root := initWorktreeRepo(t, "sha1")
+	const slug = "remove-residue"
+	createEffort(t, root, slug, "Remove residue")
+	if _, err := freshWorktreeManager(t, root).Add(testContext(t), slug, "HEAD"); err != nil {
+		t.Fatal(err)
+	}
+	managedPath := filepath.Join(root, ".awf", "worktrees", slug)
+	residueName := ".awf-retire-residue"
+	residuePath := filepath.Join(filepath.Dir(managedPath), residueName)
+	roots := worktreeControlRoots(t, root)
+	service := newEffortService(t, roots, nil, nil)
+	failure := &filepublication.CommittedCleanupError{DestinationPath: slug, ResiduePath: residueName, Cause: errors.New("remove reservation")}
+	manager, err := Open(roots, invokingStub(root, func(stub *checkoutStub) {
+		stub.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) {
+			return []awfgit.WorktreeRegistration{{Path: root, HEAD: "abc", Branch: "refs/heads/main"}}, nil
+		}
+	}), func(name awfgit.ResidentName) (ResidentHandle, error) {
+		residentRoot, rootErr := roots.ResidentRoot(name)
+		if rootErr != nil {
+			return nil, rootErr
+		}
+		handle, openErr := filesystem.Open(residentRoot)
+		if openErr != nil {
+			return nil, openErr
+		}
+		return &retireFailureHandle{Handle: handle, failure: failure}, nil
+	}, service)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = manager.Remove(testContext(t), slug)
+	var refusal *RefusalError
+	if !errors.As(err, &refusal) {
+		t.Fatalf("retirement residue error = %v", err)
+	}
+	diagnostic := renderedTopologyDiagnostic(t, refusal)
+	for _, want := range []string{managedPath, residuePath} {
+		if !strings.Contains(diagnostic, want) {
+			t.Fatalf("retirement diagnostic omitted %q: %s", want, diagnostic)
+		}
 	}
 }
 

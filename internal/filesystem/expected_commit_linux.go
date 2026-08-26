@@ -41,7 +41,12 @@ func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destina
 	}
 	if retain {
 		if err := root.Remove(destination); err != nil {
-			return true, &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: temporary, Cause: fmt.Errorf("remove retirement reservation: %w", err)}
+			if rollbackErr := exchange(); rollbackErr != nil {
+				cause := errors.Join(err, fmt.Errorf("restore expected entry at %q: %w", destination, rollbackErr))
+				return true, &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: temporary, Cause: cause}
+			}
+			cause := fmt.Errorf("remove retirement reservation before restoring expected entry: %w", err)
+			return true, &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: temporary, Cause: cause}
 		}
 		return true, nil
 	}

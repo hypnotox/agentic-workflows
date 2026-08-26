@@ -15,6 +15,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 type faultWriter struct {
@@ -47,6 +48,44 @@ func TestCreateReportsUnavailableProject(t *testing.T) {
 	}
 }
 
+func TestCreateLeasedRefusesRootReplacementBetweenAuthorityLoadAndPublication(t *testing.T) {
+	root := t.TempDir()
+	relocated := root + ".opened"
+	t.Cleanup(func() { _ = os.RemoveAll(relocated) })
+	const oldConfig = "prefix: example\nprofile: full\nintegrationBranch: master\nvars: {testCmd: go test ./..., gateCmd: make gate}\ndomains: [rendering]\n"
+	const replacementConfig = "prefix: example\nprofile: full\nintegrationBranch: master\nvars: {testCmd: go test ./..., gateCmd: make gate}\ndomains: [payments]\n"
+	testsupport.WriteAwfConfig(t, root, oldConfig)
+	loader := project.NewLoaderWithoutRepository(func(awfDir string) (*config.Config, error) {
+		cfg, err := config.Load(awfDir)
+		if err != nil {
+			return nil, err
+		}
+		if err := os.Rename(root, relocated); err != nil {
+			return nil, err
+		}
+		testsupport.WriteAwfConfig(t, root, replacementConfig)
+		return cfg, nil
+	}, catalog.Standard, awfgit.ProjectResidentRoot)
+	lease, err := filesystem.AcquireTrackedLease(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := lease.Release(); err != nil {
+			t.Errorf("release tracked lease: %v", err)
+		}
+	}()
+
+	if _, err := CreateLeased(context.Background(), root, "rendering", "Root Swap", loader, lease); !errors.Is(err, filesystem.ErrIdentityChanged) {
+		t.Fatalf("root replacement = %v, want identity refusal", err)
+	}
+	for _, tree := range []string{root, relocated} {
+		if _, err := os.Lstat(filepath.Join(tree, ".awf", "topics", "metadata", "rendering", "root-swap.yaml")); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("topic scaffold mutated %s: %v", tree, err)
+		}
+	}
+}
+
 func TestScaffoldCreatesPairedAuthoredInputs(t *testing.T) {
 	root := t.TempDir()
 	files, err := filesystem.Open(root)
@@ -54,7 +93,7 @@ func TestScaffoldCreatesPairedAuthoredInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	defer files.Close()
-	_, err = scaffoldConfined(files, &config.Config{Domains: []string{"rendering"}}, "rendering", "Current State")
+	_, _, err = scaffoldConfined(files, &config.Config{Domains: []string{"rendering"}}, "rendering", "Current State")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -190,6 +229,43 @@ func TestScaffoldDoesNotReplaceLateCollision(t *testing.T) {
 	got, readErr := os.ReadFile(part)
 	if readErr != nil || string(got) != existing {
 		t.Fatalf("bytes = %q, %v", got, readErr)
+	}
+}
+
+func TestScaffoldCloseFailureReportsEveryCommittedPath(t *testing.T) {
+	closeFailure := errors.New("close selected root")
+	created := []string{"metadata.yaml", "part.md"}
+	err := finishScaffoldClose(created, nil, closeFailure)
+	var partial *PartialScaffoldError
+	if !errors.As(err, &partial) || !errors.Is(err, closeFailure) {
+		t.Fatalf("close outcome = %v, want typed partial scaffold preserving cause", err)
+	}
+	if !slices.Equal(partial.Created, created) || !slices.Equal(partial.Remaining, created) {
+		t.Fatalf("close paths = created %v, remaining %v; want %v", partial.Created, partial.Remaining, created)
+	}
+	if len(partial.Recovery) != 2 || !strings.Contains(partial.Recovery[0], "inspect") || !strings.Contains(partial.Recovery[1], "do not retry") {
+		t.Fatalf("close recovery = %v", partial.Recovery)
+	}
+
+	operationFailure := errors.New("operation failed")
+	for _, test := range []struct {
+		name      string
+		created   []string
+		operation error
+	}{
+		{name: "pre-publication close", created: nil},
+		{name: "operation and close", created: created, operation: operationFailure},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			err := finishScaffoldClose(test.created, test.operation, closeFailure)
+			if !errors.Is(err, closeFailure) || (test.operation != nil && !errors.Is(err, operationFailure)) {
+				t.Fatalf("combined close outcome = %v", err)
+			}
+			var gotPartial *PartialScaffoldError
+			if errors.As(err, &gotPartial) {
+				t.Fatalf("uncommitted or already-classified operation became a new partial outcome: %v", err)
+			}
+		})
 	}
 }
 

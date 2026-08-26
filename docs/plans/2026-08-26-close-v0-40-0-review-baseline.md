@@ -529,3 +529,12 @@ only the observed identity while preserving a same-name successor and reporting 
 or committed cleanup residue. Worktree failures report the exact managed path and branch. Root-swap,
 same-name successor, mismatched-handle, confined-preservation, and exact diagnostic regressions pass;
 these corrections preserve the approved transaction model without widening lifecycle policy.
+
+The Phase 4 verify-pass remediation restores a retirement reservation after native cleanup refusal
+while retaining and reporting concurrent residue, binds topic authority loading and publication to
+one opened selected-root identity, and closes the resident capability before worktree Git mutation.
+Focused red-first regressions prove all three defects and exact residue presentation. Parent semantic
+inspection additionally found that a selected-root close failure after successful topic publication
+lost the created-path outcome; a red-first operation regression now requires the typed partial result
+to retain every created path and prohibit unsafe retry. These corrections remain inside the approved
+confinement and complete-outcome boundaries.
