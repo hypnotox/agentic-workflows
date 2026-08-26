@@ -170,7 +170,7 @@ Completes: ["root-scoped-mutation-safety", "complete-mutation-outcomes"]
 ### Task 4.1: Convert tracked authority and authored-source operations
 Kind: batch
 Applying: ["serialize-project-mutations-by-physical-root:lease-by-physical-root", "serialize-project-mutations-by-physical-root:lease-covers-authority-to-outcome", "serialize-project-mutations-by-physical-root:confined-transaction-primitives", "serialize-project-mutations-by-physical-root:explicit-partial-outcomes"]
-Paths: ["internal/domainop", "internal/localdocop", "internal/topicop", "internal/adr", "internal/currentstatecoord", "internal/initop", "internal/project", "internal/upgrade", "cmd/awf"]
+Paths: ["internal/domainop", "internal/localdocop", "internal/topicop", "internal/topic", "internal/adr", "internal/plan", "internal/currentstatecoord", "internal/initop", "internal/project", "internal/upgrade", "cmd/awf"]
 Representative: "A domain or local-document operation acquires the selected-checkout lease before loading `.awf/config.yaml`, checks the loaded identity before atomic replacement, exclusively creates authored input, synchronizes while still leased, and returns every committed effect if a later step fails."
 Edge: "ADR numbering that publishes a destination and then cannot retire the pending source reports the exact assignment, both path states, and the safe retry or recovery action instead of losing the committed destination."
 Post-check: "For the complete production call population under the named packages, a source and call-graph census leaves no direct host-path mutation of selected-checkout config, authored sources, or generated outputs outside the confined transaction boundary. Focused red-then-green tests cover same-authority concurrent updates, stale config identity, authored-file collision, parent symlink swap, destination-success/source-remove-failure numbering, Publisher late failure, init cleanup, topic rollback, and supported-upgrade journal recovery. Every refusal either preserves the pre-command tree digest or returns a typed complete partial outcome; command output retains every committed fact."
@@ -182,7 +182,7 @@ rather than retaining a parallel lock implementation.
 ### Task 4.2: Convert shared-resident and dual-root lifecycle operations
 Kind: batch
 Applying: ["serialize-project-mutations-by-physical-root:lease-by-physical-root", "serialize-project-mutations-by-physical-root:lease-covers-authority-to-outcome", "serialize-project-mutations-by-physical-root:confined-transaction-primitives", "serialize-project-mutations-by-physical-root:explicit-partial-outcomes"]
-Paths: ["internal/effort", "internal/worktree", "internal/resident", "cmd/awf/effort.go", "cmd/awf/uninstall.go"]
+Paths: ["internal/effort", "internal/effortop", "internal/worktree", "internal/resident", "internal/git", "cmd/awf/effort.go", "cmd/awf/uninstall.go"]
 Representative: "A memory edit or archive reservation takes only the shared resident lease; a worktree operation that changes tracked and resident state takes both canonical leases in the shared order."
 Edge: "A partially completed effort finish or worktree removal retains its focused typed recovery action and exact committed topology facts; the neutral filesystem package never decides lifecycle recovery."
 Post-check: "Cross-process integration tests exercise same-checkout tracked contention, independent linked-worktree tracked mutation, shared-resident contention from distinct worktrees, deterministic dual-root lifecycle mutation, and process death while holding either lease. Memory publication, effort finish, worktree add/remove, resident uninstall, archive uncertainty, and retry tests remain green. A production mutation census classifies every selected-checkout or resident writer under tracked, resident, dual-root, intentionally Git-owned integration, or read-only behavior with no unexplained direct writer."
@@ -194,7 +194,7 @@ or finish through an effort worktree.
 ### Task 4.3: Apply operation and CLI authority changes
 Applying: ["serialize-project-mutations-by-physical-root:explicit-partial-outcomes"]
 Paths: [".awf/topics/parts/tooling/cli/current-state.md", ".awf/topics/parts/rendering/sync-and-drift/current-state.md", "docs/decisions/serialize-project-mutations-by-physical-root.md", "changelog/CHANGELOG.md"]
-Post-check: "Apply the mutation ADR updates to `tooling/cli:cli-creation-and-inventory`, `tooling/cli:domain-lifecycle-commands`, and `rendering/sync-and-drift:sync-mutations-root-confined`, append matching Applied events, and render. Current claims and changelog describe typed complete or partial results without claiming crash atomicity. Focused presentation tests, semantic review of every changed command example, `./awf context --show pending` for the ADR, render, drift, and staged checks report no unapplied operation or contradictory generated prose."
+Post-check: "Apply the two remaining mutation ADR updates to `tooling/cli:cli-creation-and-inventory` and `tooling/cli:domain-lifecycle-commands`, append their matching Applied event, and render. Semantically recheck the already-applied `rendering/sync-and-drift:sync-mutations-root-confined` claim without duplicating its operation. Current claims and changelog describe typed complete or partial results without claiming crash atomicity. Focused presentation tests, semantic review of every changed command example, `./awf context --show pending` for the ADR, render, drift, and staged checks report no unapplied operation or contradictory generated prose."
 
 ### Phase close
 
@@ -500,3 +500,10 @@ identity before exclusive no-replace publication, with `internal/filepublication
 single released-platform publication owner. The scaffold keeps that returned identity without a
 post-publication lookup. Both regressions pass, released-platform filesystem packages compile, and
 this reasoned settlement preserves the approved confinement and focused-owner boundaries.
+
+Phase 4 grounding added the omitted authored-source owners `internal/plan` and `internal/topic`, the
+focused effort command-operation boundary `internal/effortop`, and `internal/git` for explicit
+classification of intentionally Git-owned topology effects. The ADR already applied the filesystem
+lease add and sync claim update in Phase 3, so Phase 4 applies only the two remaining CLI operations
+and semantically rechecks the sync claim. These corrections preserve the approved phase outcome and
+ownership boundary.
