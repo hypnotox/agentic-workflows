@@ -19,11 +19,10 @@ Parent-session commands and generic file operations remain a separate boundary. 
 
 ## Decision
 
-1. `decision: selected-checkout-governs-child-execution` When an implementation invocation supplies a verification checkout, the same validated checkout is both the child working directory and the before-and-after commit-policy snapshot identity. Verification and mutation may not target different checkouts.
+1. `decision: selected-checkout-governs-child-execution` When an implementation invocation supplies a verification checkout, the same validated checkout is both the child base working directory and the before-and-after commit-policy snapshot identity. This aligns relative execution with verification; it does not confine deliberately targeted paths.
 2. `decision: omitted-checkout-retains-root-default` An invocation that omits the checkout continues to execute and verify at the project root. The profile never infers an effort or worktree from activity, branch names, modification time, or repository topology.
 3. `decision: effort-workflows-supply-managed-checkout` Effort-backed pre-integration implementation owners supply the managed-worktree checkout explicitly. Lifecycle operations that intentionally belong in the primary checkout retain their governed primary-root transition.
 4. `decision: parent-session-root-remains-stable` Awf does not change or globally reroute the main Pi session working directory. Parent-session pre-integration mutation uses the supplied managed-worktree path explicitly, and adopter-facing guidance states this limitation and mitigation while it remains open.
-5. `decision: retain-handshake-runtime-boundary` The adopter pi-tools runtime remains revision-independent. Successful compatible protocol handshake and final profile registration, not a runtime revision pin, establish availability.
 
 ## State changes
 
@@ -34,7 +33,9 @@ Parent-session commands and generic file operations remain a separate boundary. 
 
 ## Consequences
 
-Implementation children can no longer pass commit verification for one checkout while executing from another. The existing checkout validation becomes the single identity for both execution and postcondition evidence.
+Implementation children with an explicit checkout begin relative execution in the same checkout whose commit policy is verified. The existing checkout validation becomes the single identity for base CWD and postcondition evidence, without claiming confinement against deliberately targeted paths.
+
+This changes existing explicit-checkout calls whose tasks rely on root-relative execution while verifying another checkout. Those callers must revise their invocation or task paths; omitted-checkout calls retain their current project-root behavior.
 
 The parent session remains stable, and no effort identity becomes hidden routing authority. Callers must continue to name the managed worktree. A checkout outside the parent session's permitted execution root is refused by the existing runtime confinement rather than reached through CWD mutation.
 
@@ -49,7 +50,7 @@ Pi-tools can continue independent development and patching. Awf tests its profil
 | Change the main Pi session CWD to the effort worktree | It breaks extensions, skills, and other integrations that rely on a stable session root. |
 | Keep execution at root and use the managed worktree only for verification | It can approve commit policy for a checkout the child did not mutate. |
 | Infer the active effort inside the implementation profile | Advisory activity is not routing authority, and implicit selection would obscure the caller's mutation target. |
-| Pin the adopter pi-tools runtime revision | It would couple independent pi-tools development and updates to awf releases. |
+| Add a separate execution-checkout field | Two independently supplied checkout identities could diverge; requiring equality would create redundant public inputs. |
 | Claim complete wrong-checkout closure from child routing | Parent-session shell and file operations remain explicitly path-targeted rather than confined. |
 
 ## Status history
