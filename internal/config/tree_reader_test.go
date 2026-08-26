@@ -79,6 +79,7 @@ func TestParseTreeReaderSidecarsAndParts(t *testing.T) {
 	}
 }
 
+// invariant: config/configuration:root-sidecar-keys-rejected (TestSnapshotConfigAndSidecarRejectMultipleYAMLDocuments)
 func TestSnapshotConfigAndSidecarRejectMultipleYAMLDocuments(t *testing.T) {
 	if _, err := ParseTree(".awf", []byte("prefix: x\n---\nprefix: y\n"), memoryTreeReader{}); err == nil {
 		t.Fatal("accepted multiple snapshot config documents")

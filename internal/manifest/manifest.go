@@ -96,9 +96,9 @@ func Load(path string) (*Lock, error) {
 
 // Parse rejects retired routing keys at every schema. Historical decoding is
 // owned by audit rather than the live manifest model.
-func Parse(b []byte) (*Lock, error) { return parse(b, false) }
+func Parse(b []byte) (*Lock, error) { return parse(b) }
 
-func parse(b []byte, requireInventory bool) (*Lock, error) {
+func parse(b []byte) (*Lock, error) {
 	raw, err := decodeJSONObject(b, "lock")
 	if err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)
@@ -121,10 +121,8 @@ func parse(b []byte, requireInventory bool) (*Lock, error) {
 	if err := dec.Decode(&l); err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)
 	}
-	if requireInventory {
-		if err := validateInventory(raw["files"]); err != nil {
-			return nil, fmt.Errorf("parse lock: %w", err)
-		}
+	if err := validateInventory(raw["files"]); err != nil {
+		return nil, fmt.Errorf("parse lock: %w", err)
 	}
 	if _, err := l.AuthorityState(); err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)
@@ -233,7 +231,7 @@ func ParseLive(b []byte, floor, current int) (*Lock, error) {
 	if err := ValidateLive(&Lock{SchemaVersion: schema}, floor, current); err != nil {
 		return nil, err
 	}
-	return parse(b, true)
+	return Parse(b)
 }
 
 func (l *Lock) Save(path string) error {

@@ -10510,24 +10510,24 @@
       "identity": {
         "file": "internal/manifest/manifest.go",
         "start": {
+          "line": 249,
+          "column": 16
+        },
+        "end": {
+          "line": 251,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Strict permanent-inventory validation removed the obsolete permissive branch and shifted this existing defensive arm. Lock contains only JSON-supported fields, so json.MarshalIndent cannot fail for a valid lock and this defensive error arm does not justify a test-only production seam.",
+      "movedFrom": {
+        "file": "internal/manifest/manifest.go",
+        "start": {
           "line": 251,
           "column": 16
         },
         "end": {
           "line": 253,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Lock contains only JSON-supported fields, so json.MarshalIndent cannot fail for a valid lock and this defensive error arm does not justify a test-only production seam.",
-      "movedFrom": {
-        "file": "internal/manifest/manifest.go",
-        "start": {
-          "line": 135,
-          "column": 16
-        },
-        "end": {
-          "line": 137,
           "column": 3
         },
         "statements": 1

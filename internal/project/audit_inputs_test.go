@@ -25,7 +25,7 @@ func TestRangePairUniversesUsesEachFirstParentSnapshotBoundary(t *testing.T) {
 	gitfixture.Stage(t, repo, files)
 	base := gitfixture.Commit(t, repo, "v1 boundary", nil)
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/awf.lock":                   lockJSON(t, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14}),
+		".awf/awf.lock":                   lockJSON(t, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 14, Files: map[string]manifest.Entry{"prior": {}}}),
 		"docs/decisions/0002-boundary.md": boundaryADR(adr.V2FormatMarker, "V2 side"),
 	})
 	head := gitfixture.Commit(t, repo, "v2 boundary", nil)

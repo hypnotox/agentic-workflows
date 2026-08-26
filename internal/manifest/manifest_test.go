@@ -26,7 +26,7 @@ func TestHashStableAndPrefixed(t *testing.T) {
 func TestLoadOldLockZeroSchema(t *testing.T) {
 	// A lock JSON predating the schemaVersion field unmarshals with the zero value.
 	p := filepath.Join(t.TempDir(), "awf.lock")
-	old := `{"awfVersion":"0.1.0","files":{}}` + "\n"
+	old := `{"awfVersion":"0.1.0","files":{"prior":{}}}` + "\n"
 	if err := os.WriteFile(p, []byte(old), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -202,7 +202,7 @@ func TestLoadOptional(t *testing.T) {
 		}
 	}
 	// Valid → the lock.
-	good := &Lock{AWFVersion: "0.1.0", SchemaVersion: 6, Files: map[string]Entry{}}
+	good := &Lock{AWFVersion: "0.1.0", SchemaVersion: 6, Files: map[string]Entry{"prior": {}}}
 	if err := good.Save(p); err != nil {
 		t.Fatal(err)
 	}
@@ -261,9 +261,9 @@ func TestAuthorityStateValidation(t *testing.T) {
 		want         AuthorityState
 		bad          bool
 	}{
-		{"bad initialized", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"initializedWithVersion":"bad"}`, 0, true},
-		{"later initialized", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{},"initializedWithVersion":"0.2.0"}`, 0, true},
-		{"ordinary", `{"awfVersion":"0.1.0","schemaVersion":31,"files":{}}`, AuthorityPermanent, false},
+		{"bad initialized", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{"prior":{}},"initializedWithVersion":"bad"}`, 0, true},
+		{"later initialized", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{"prior":{}},"initializedWithVersion":"0.2.0"}`, 0, true},
+		{"ordinary", `{"awfVersion":"0.1.0","schemaVersion":31,"files":{"prior":{}}}`, AuthorityPermanent, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			l, err := Parse([]byte(tc.source))

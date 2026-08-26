@@ -454,12 +454,17 @@ route correction, not a protected-contract change.
 Phase 1 review found no implementation defect but identified three stale current-state claims,
 missing direct proof markers, and a missing Unreleased changelog entry. Because current-state updates
 require an ADR operation, the reviewed pending ADR
-`require-complete-and-unambiguous-mutable-authority` was added after the code commit. Phase 1 is the
-only completed affected phase, at commit `517f8aade`; Phases 2 through 9 are unstarted. Task 2.1 owns
-one focused lifecycle and documentation settlement, and renewed Phase 1 assurance must pass before
-Phase 3 progression. During Phase 2, the marker gate corrected the recorded route from impossible
+`require-complete-and-unambiguous-mutable-authority` was added after the code commit. At initial
+review, Phase 1 was the only completed affected phase, at commit `517f8aade`; Phases 2 through 9 were
+unstarted. Task 2.1 owns one focused lifecycle and documentation settlement, and renewed Phase 1
+assurance must pass before Phase 3 progression. During Phase 2, the marker gate corrected the recorded route from impossible
 production proof markers to named test-scoped proofs for the two backed claims; the unbacked upgrade
-claim instead retains its strengthened `Verify:` evidence.
+claim instead retains its strengthened `Verify:` evidence. Renewed Phase 1 and Phase 2 review found
+that `manifest.Parse` and `LoadOptional` still bypassed permanent-inventory validation for live
+consumers. The settlement makes the ordinary parser own that validation, adds an Uninstall regression
+that proves ambiguous or empty inventory refuses without removing the generated file or lock, and
+adds the missing snapshot-config proof marker. The Uninstall regression failed against the reviewed
+range and passes with the seam correction.
 
 Initial plan review corrected one scope error and one lifecycle-ordering ambiguity. Bootstrap cache
 hardening was removed because the approved outline explicitly deferred it. Archive metadata

@@ -32,6 +32,34 @@ func TestUninstallReportOwnsCompletePresentation(t *testing.T) {
 	}
 }
 
+// invariant: config/migrations-and-locks:corrupt-lock-refuses (TestUninstallRefusesAmbiguousOrEmptyLiveLockBeforeMutation)
+func TestUninstallRefusesAmbiguousOrEmptyLiveLockBeforeMutation(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		lock string
+	}{
+		{name: "empty inventory", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{}}`},
+		{name: "duplicate inventory entry", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"generated.txt":{},"generated.txt":{}}}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			generated := filepath.Join(root, "generated.txt")
+			testsupport.WriteFile(t, generated, "must survive refusal\n")
+			lockPath := config.LockPath(root)
+			testsupport.WriteFile(t, lockPath, tc.lock)
+
+			if _, err := Uninstall(testsupport.Context(t), root, nil); err == nil || !strings.Contains(err.Error(), "unreadable .awf/awf.lock") {
+				t.Fatalf("Uninstall() error = %v, want corrupt-lock refusal", err)
+			}
+			for _, path := range []string{generated, lockPath} {
+				if _, err := os.Stat(path); err != nil {
+					t.Fatalf("Uninstall() mutated %s despite refusal: %v", path, err)
+				}
+			}
+		})
+	}
+}
+
 // A lock entry escaping the repo root (corrupted or malicious lock) must be
 // skipped: the out-of-tree target survives and the empty-dir ancestor walk
 // terminates instead of looping forever below the root.

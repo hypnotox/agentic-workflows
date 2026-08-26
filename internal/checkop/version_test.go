@@ -5,8 +5,15 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
+
+func TestLockVsBinaryLockRejectsMissingVersion(t *testing.T) {
+	if lockV, binV, ok := lockVsBinaryLock(&manifest.Lock{Files: map[string]manifest.Entry{"prior": {}}}); ok || lockV != "" || binV != "" {
+		t.Fatalf("lockVsBinaryLock() = %q, %q, %t, want empty invalid result", lockV, binV, ok)
+	}
+}
 
 func TestStagedLockRejectsMalformedLockAndNormalizeSemverRejectsInvalidVersion(t *testing.T) {
 	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML})
