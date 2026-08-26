@@ -135,33 +135,10 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 		if openErr != nil {
 			return initspec.Outcome{}, openErr
 		}
-		dirInfo, dirErr := handle.LinkInfo(config.DirName)
-		if dirErr != nil && !errors.Is(dirErr, fs.ErrNotExist) {
-			_ = handle.Close()
-			return initspec.Outcome{}, dirErr
-		}
-		if errors.Is(dirErr, fs.ErrNotExist) {
-			if err := handle.MkdirAll(config.DirName, 0o755); err != nil {
-				_ = handle.Close()
-				return initspec.Outcome{}, err
-			}
-			scaffold.createdDir = true
-			dirInfo, dirErr = handle.LinkInfo(config.DirName)
-			if dirErr != nil {
-				_ = handle.Close()
-				return initspec.Outcome{}, dirErr
-			}
-		}
-		configRel := filepath.ToSlash(filepath.Join(config.DirName, "config.yaml"))
-		publishErr := handle.Publish(configRel, contents, 0o644)
-		if publishErr == nil {
-			scaffold.configInfo, publishErr = handle.LinkInfo(configRel)
-			scaffold.dirInfo = dirInfo
-			scaffold.committed = publishErr == nil
-		}
+		scaffold, err = createScaffold(handle, contents)
 		closeErr := handle.Close()
-		if publishErr != nil || closeErr != nil {
-			return initspec.Outcome{}, errors.Join(publishErr, closeErr)
+		if err != nil || closeErr != nil {
+			return rollbackScaffold(root, cfgPath, scaffold, errors.Join(err, closeErr))
 		}
 	}
 
@@ -200,17 +177,21 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 	}
 	if err != nil {
 		var publisherPartial *publisher.PartialError
-		if errors.As(err, &publisherPartial) || scaffold.committed {
+		if errors.As(err, &publisherPartial) || scaffold.committed() {
 			partialMutation, mutationErr := result.PartialMutation()
 			if mutationErr != nil {
-				return initspec.Outcome{}, errors.Join(err, mutationErr)
-			}
-			if scaffold.committed {
-				configValue, valueErr := presentation.Literal("config-created " + filepath.ToSlash(filepath.Join(config.DirName, "config.yaml")) + "; recovery: retain it and rerun awf init --force, or remove it only after restoring the pre-init tree")
-				if valueErr != nil { // coverage-ignore: fixed path and prose contain no line break
-					return initspec.Outcome{}, errors.Join(err, valueErr)
+				partialOutcome, partialErr := scaffoldPartialOutcome(cfgPath, scaffold.configCommitted, scaffold.createdDir, scaffold.residue, errors.Join(err, mutationErr))
+				if partialErr != nil {
+					return partialOutcome, partialErr
 				}
-				partialMutation.Changes = append([]presentation.MutationChange{{Label: "committed init effects", Values: []presentation.Value{configValue}}}, partialMutation.Changes...)
+			}
+			if scaffold.committed() {
+				values, valueErr := scaffoldEffectValues(scaffold.configCommitted, scaffold.createdDir, scaffold.residue)
+				if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break
+					partialOutcome := initspec.Outcome{Status: "initialization partially committed", ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: partialMutation}
+					return partialOutcome, &PartialError{Outcome: partialOutcome, Cause: errors.Join(err, valueErr)}
+				}
+				partialMutation.Changes = append([]presentation.MutationChange{{Label: "committed init effects", Values: values}}, partialMutation.Changes...)
 			}
 			partialOutcome := initspec.Outcome{
 				Status: "initialization partially committed", ConfigPath: cfgPath,
@@ -248,26 +229,82 @@ func projectSemantics(prepared publisher.Preparation) project.OperationSemantics
 	}
 }
 
+type scaffoldFilesystem interface {
+	MkdirAll(string, fs.FileMode) error
+	Publish(string, []byte, fs.FileMode) error
+	LinkInfo(string) (fs.FileInfo, error)
+}
+
 type scaffoldCommit struct {
-	committed  bool
-	createdDir bool
-	configInfo fs.FileInfo
-	dirInfo    fs.FileInfo
+	configCommitted bool
+	createdDir      bool
+	configInfo      fs.FileInfo
+	dirInfo         fs.FileInfo
+	residue         []string
+}
+
+func (s scaffoldCommit) committed() bool {
+	return s.configCommitted || s.createdDir || len(s.residue) > 0
+}
+
+func createScaffold(handle scaffoldFilesystem, contents []byte) (scaffold scaffoldCommit, returnErr error) {
+	dirInfo, dirErr := handle.LinkInfo(config.DirName)
+	if dirErr != nil && !errors.Is(dirErr, fs.ErrNotExist) {
+		return scaffold, dirErr
+	}
+	if errors.Is(dirErr, fs.ErrNotExist) {
+		mkdirErr := handle.MkdirAll(config.DirName, 0o755)
+		if mkdirErr == nil {
+			scaffold.createdDir = true
+		}
+		dirInfo, dirErr = handle.LinkInfo(config.DirName)
+		if dirErr == nil {
+			scaffold.createdDir = true
+			scaffold.dirInfo = dirInfo
+		}
+		if mkdirErr != nil || dirErr != nil {
+			return scaffold, errors.Join(mkdirErr, dirErr)
+		}
+	}
+	scaffold.dirInfo = dirInfo
+	configRel := filepath.ToSlash(filepath.Join(config.DirName, "config.yaml"))
+	if err := handle.Publish(configRel, contents, 0o644); err != nil {
+		_, residue, committed := filesystem.CommittedPublication(err)
+		scaffold.configCommitted = committed
+		if residue != "" {
+			scaffold.residue = append(scaffold.residue, residue)
+		}
+		return scaffold, err
+	}
+	scaffold.configCommitted = true
+	configInfo, err := handle.LinkInfo(configRel)
+	if err != nil {
+		return scaffold, err
+	}
+	scaffold.configInfo = configInfo
+	return scaffold, nil
 }
 
 func rollbackScaffold(root, cfgPath string, scaffold scaffoldCommit, cause error) (initspec.Outcome, error) {
-	if !scaffold.committed {
+	if !scaffold.committed() {
 		return initspec.Outcome{}, cause
 	}
 	handle, openErr := filesystem.Open(root)
 	if openErr != nil {
-		return scaffoldPartialOutcome(cfgPath, true, scaffold.createdDir, errors.Join(cause, openErr))
+		return scaffoldPartialOutcome(cfgPath, scaffold.configCommitted, scaffold.createdDir, scaffold.residue, errors.Join(cause, openErr))
 	}
 	configRel := filepath.ToSlash(filepath.Join(config.DirName, "config.yaml"))
-	removeConfigErr := handle.RemoveExpected(configRel, scaffold.configInfo)
+	configRemains := scaffold.configCommitted
+	var removeConfigErr error
+	if scaffold.configCommitted && scaffold.configInfo != nil {
+		removeConfigErr = handle.RemoveExpected(configRel, scaffold.configInfo)
+		if removeConfigErr == nil {
+			configRemains = false
+		}
+	}
 	dirRemains := scaffold.createdDir
 	var removeDirErr error
-	if removeConfigErr == nil && scaffold.createdDir {
+	if !configRemains && scaffold.createdDir && scaffold.dirInfo != nil {
 		removeDirErr = handle.RemoveExpected(config.DirName, scaffold.dirInfo)
 		if removeDirErr == nil {
 			dirRemains = false
@@ -278,24 +315,39 @@ func rollbackScaffold(root, cfgPath string, scaffold scaffoldCommit, cause error
 	if rollbackErr == nil {
 		return initspec.Outcome{}, cause
 	}
-	return scaffoldPartialOutcome(cfgPath, removeConfigErr != nil, dirRemains, errors.Join(cause, rollbackErr))
+	return scaffoldPartialOutcome(cfgPath, configRemains, dirRemains, scaffold.residue, errors.Join(cause, rollbackErr))
 }
 
-func scaffoldPartialOutcome(cfgPath string, configRemains, dirRemains bool, cause error) (initspec.Outcome, error) {
-	values := make([]presentation.Value, 0, 2)
+func scaffoldEffectValues(configRemains, dirRemains bool, residue []string) ([]presentation.Value, error) {
+	values := make([]presentation.Value, 0, 2+len(residue))
 	if configRemains {
 		value, err := presentation.Literal("config-created " + filepath.ToSlash(filepath.Join(config.DirName, "config.yaml")) + "; recovery: retain it and rerun awf init --force, or remove it only after restoring the pre-init tree")
 		if err != nil { // coverage-ignore: fixed path and prose contain no line break
-			return initspec.Outcome{}, errors.Join(cause, err)
+			return nil, err
 		}
 		values = append(values, value)
 	}
 	if dirRemains {
 		value, err := presentation.Literal("directory-created " + config.DirName + "; recovery: remove only if empty after restoring the pre-init tree")
 		if err != nil { // coverage-ignore: fixed path and prose contain no line break
-			return initspec.Outcome{}, errors.Join(cause, err)
+			return nil, err
 		}
 		values = append(values, value)
+	}
+	for _, path := range residue {
+		value, err := presentation.Literal("publication-residue " + path + "; recovery: remove this temporary residue, then rerun awf init --force")
+		if err != nil {
+			return nil, err
+		}
+		values = append(values, value)
+	}
+	return values, nil
+}
+
+func scaffoldPartialOutcome(cfgPath string, configRemains, dirRemains bool, residue []string, cause error) (initspec.Outcome, error) {
+	values, valueErr := scaffoldEffectValues(configRemains, dirRemains, residue)
+	if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break
+		return initspec.Outcome{}, errors.Join(cause, valueErr)
 	}
 	mutation := presentation.Mutation{Status: "partially committed"}
 	if len(values) > 0 {

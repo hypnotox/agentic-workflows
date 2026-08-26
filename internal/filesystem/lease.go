@@ -13,6 +13,32 @@ import (
 	"github.com/gofrs/flock"
 )
 
+// LeaseErrorKind identifies the lease stage that failed so focused callers can
+// preserve their own diagnostics without branching on filesystem error text.
+type LeaseErrorKind string
+
+const (
+	LeaseCanonicalRoot LeaseErrorKind = "canonical-root"
+	LeaseCacheLocation LeaseErrorKind = "cache-location"
+	LeaseCacheCreation LeaseErrorKind = "cache-creation"
+	LeaseCacheMode     LeaseErrorKind = "cache-mode"
+	LeaseAcquisition   LeaseErrorKind = "acquisition"
+	LeaseFileMode      LeaseErrorKind = "file-mode"
+)
+
+// LeaseError preserves the failed lease stage and underlying error identity.
+type LeaseError struct {
+	Kind  LeaseErrorKind
+	Cause error
+}
+
+func (e *LeaseError) Error() string { return "lease " + string(e.Kind) + ": " + e.Cause.Error() }
+func (e *LeaseError) Unwrap() error { return e.Cause }
+
+func leaseError(kind LeaseErrorKind, cause error) error {
+	return &LeaseError{Kind: kind, Cause: cause}
+}
+
 type leaseRequest struct {
 	scope string
 	root  string
@@ -87,7 +113,7 @@ func canonicalIdentities(requests []leaseRequest) ([]leaseIdentity, error) {
 	for _, request := range requests {
 		identity, err := CanonicalRoot(request.root)
 		if err != nil {
-			return nil, fmt.Errorf("canonicalize lease root %s: %w", request.root, err)
+			return nil, leaseError(LeaseCanonicalRoot, fmt.Errorf("canonicalize lease root %s: %w", request.root, err))
 		}
 		identities = append(identities, leaseIdentity{scope: request.scope, root: identity})
 	}
@@ -130,7 +156,7 @@ func acquire(ctx context.Context, requests []leaseRequest) (*Lease, error) {
 			if err != nil {
 				_ = lock.Close()
 				_ = lease.Release()
-				return nil, fmt.Errorf("acquire lease for %s: %w", identity.root, err)
+				return nil, leaseError(LeaseAcquisition, fmt.Errorf("acquire lease for %s: %w", identity.root, err))
 			}
 			if locked {
 				break
@@ -139,14 +165,14 @@ func acquire(ctx context.Context, requests []leaseRequest) (*Lease, error) {
 			case <-ctx.Done():
 				_ = lock.Close()
 				_ = lease.Release()
-				return nil, fmt.Errorf("acquire lease for %s: %w", identity.root, ctx.Err())
+				return nil, leaseError(LeaseAcquisition, fmt.Errorf("acquire lease for %s: %w", identity.root, ctx.Err()))
 			case <-time.After(20 * time.Millisecond):
 			}
 		}
 		if err := os.Chmod(lock.Path(), 0o600); err != nil {
 			_ = lock.Close()
 			_ = lease.Release()
-			return nil, fmt.Errorf("restrict lease file %s: %w", lock.Path(), err)
+			return nil, leaseError(LeaseFileMode, fmt.Errorf("restrict lease file %s: %w", lock.Path(), err))
 		}
 		lease.locks = append(lease.locks, lock)
 	}
@@ -156,14 +182,14 @@ func acquire(ctx context.Context, requests []leaseRequest) (*Lease, error) {
 func leaseCache(scope string) (string, error) {
 	cache, err := os.UserCacheDir()
 	if err != nil {
-		return "", fmt.Errorf("locate lease cache: %w", err)
+		return "", leaseError(LeaseCacheLocation, fmt.Errorf("locate lease cache: %w", err))
 	}
 	cache = filepath.Join(cache, "awf", scope)
 	if err := os.MkdirAll(cache, 0o700); err != nil {
-		return "", fmt.Errorf("create lease cache %s: %w", cache, err)
+		return "", leaseError(LeaseCacheCreation, fmt.Errorf("create lease cache %s: %w", cache, err))
 	}
 	if err := os.Chmod(cache, 0o700); err != nil {
-		return "", fmt.Errorf("restrict lease cache %s: %w", cache, err)
+		return "", leaseError(LeaseCacheMode, fmt.Errorf("restrict lease cache %s: %w", cache, err))
 	}
 	return cache, nil
 }

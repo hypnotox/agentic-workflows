@@ -25,6 +25,22 @@ type replacementFaultFilesystem struct {
 	err  error
 }
 
+type committedReplacementFaultFilesystem struct {
+	syncFilesystem
+	path, residue string
+	cause         error
+}
+
+func (f committedReplacementFaultFilesystem) ReplaceExpected(path string, expected fs.FileInfo, contents []byte, mode fs.FileMode) error {
+	if err := f.syncFilesystem.ReplaceExpected(path, expected, contents, mode); err != nil {
+		return err
+	}
+	if path == f.path {
+		return &filepublication.CommittedCleanupError{DestinationPath: path, ResiduePath: f.residue, Cause: f.cause}
+	}
+	return nil
+}
+
 func (f replacementFaultFilesystem) Replace(path string, contents []byte, mode fs.FileMode) error {
 	if path == f.path {
 		return f.err
@@ -53,6 +69,22 @@ type removalFaultFilesystem struct {
 	syncFilesystem
 	path string
 	err  error
+}
+
+type committedRemovalFaultFilesystem struct {
+	syncFilesystem
+	path, residue string
+	cause         error
+}
+
+func (f committedRemovalFaultFilesystem) RemoveExpected(path string, expected fs.FileInfo) error {
+	if err := f.syncFilesystem.RemoveExpected(path, expected); err != nil {
+		return err
+	}
+	if path == f.path {
+		return &filepublication.CommittedCleanupError{DestinationPath: path, ResiduePath: f.residue, Cause: f.cause}
+	}
+	return nil
 }
 
 func (f removalFaultFilesystem) Remove(path string) error {
@@ -107,6 +139,19 @@ type chmodFaultFilesystem struct {
 }
 
 func (f chmodFaultFilesystem) Chmod(string, fs.FileMode) error { return f.err }
+
+type recordedChmodFilesystem struct {
+	syncFilesystem
+	path  string
+	calls *int
+}
+
+func (f recordedChmodFilesystem) Chmod(path string, mode fs.FileMode) error {
+	if path == f.path {
+		*f.calls++
+	}
+	return f.syncFilesystem.Chmod(path, mode)
+}
 
 type recordedFilesystem struct {
 	syncFilesystem
@@ -490,6 +535,182 @@ func TestSyncReportsCommittedBackupAndCleanupResidue(t *testing.T) {
 	}
 }
 
+// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncReportsEveryCommittedPublicationCleanup)
+func TestSyncReportsEveryCommittedPublicationCleanup(t *testing.T) {
+	const residue = ".awf-publication-residue"
+	failure := errors.New("committed cleanup failed")
+	assertEffects := func(t *testing.T, effects []Effect, wants ...Effect) {
+		t.Helper()
+		for _, want := range wants {
+			if !slices.Contains(effects, want) {
+				t.Fatalf("effects = %#v, want %#v", effects, want)
+			}
+		}
+	}
+
+	t.Run("output replacement", func(t *testing.T) {
+		root := scaffold(t, sampleYAML)
+		state, _ := Open(testContext(t), root)
+		if err := syncProject(state); err != nil {
+			t.Fatal(err)
+		}
+		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closeAll()
+		filesystems.tracked = committedReplacementFaultFilesystem{syncFilesystem: filesystems.tracked, path: "AGENTS.md", residue: residue, cause: failure}
+		inputs, plan := testSyncPlan(t, state)
+		_, _, _, effects, err := syncReportWithPlan(inputs, nil, filesystems, plan)
+		if !errors.Is(err, failure) {
+			t.Fatalf("sync error = %v", err)
+		}
+		assertEffects(t, effects,
+			Effect{Kind: "output-replaced", Path: "AGENTS.md", Recovery: "rerun awf render to complete authority publication"},
+			Effect{Kind: "publication-residue", Path: residue, Recovery: "remove this temporary residue, then rerun awf render"},
+		)
+	})
+
+	t.Run("prune", func(t *testing.T) {
+		root := scaffold(t, sampleYAML)
+		state, _ := Open(testContext(t), root)
+		if err := syncProject(state); err != nil {
+			t.Fatal(err)
+		}
+		lock, err := manifest.Load(lockFile(root))
+		if err != nil {
+			t.Fatal(err)
+		}
+		const retired = "retired/output"
+		lock.Files[retired] = manifest.Entry{}
+		if err := lock.Save(lockFile(root)); err != nil {
+			t.Fatal(err)
+		}
+		testsupport.WriteFile(t, filepath.Join(root, retired), "retired\n")
+		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closeAll()
+		filesystems.tracked = committedRemovalFaultFilesystem{syncFilesystem: filesystems.tracked, path: retired, residue: residue, cause: failure}
+		inputs, plan := testSyncPlan(t, state)
+		_, _, pruned, effects, err := syncReportWithPlan(inputs, nil, filesystems, plan)
+		if !errors.Is(err, failure) || !slices.Contains(pruned, retired) {
+			t.Fatalf("sync error = %v, pruned = %v", err, pruned)
+		}
+		assertEffects(t, effects,
+			Effect{Kind: "output-removed", Path: retired, Recovery: "rerun awf render to complete pruning and lock publication"},
+			Effect{Kind: "publication-residue", Path: residue, Recovery: "remove this temporary residue, then rerun awf render"},
+		)
+	})
+
+	t.Run("empty directory cleanup", func(t *testing.T) {
+		root := scaffold(t, sampleYAML)
+		state, _ := Open(testContext(t), root)
+		if err := syncProject(state); err != nil {
+			t.Fatal(err)
+		}
+		lock, err := manifest.Load(lockFile(root))
+		if err != nil {
+			t.Fatal(err)
+		}
+		const retired, cleanup = "cleanup/child/output", "cleanup/child"
+		lock.Files[retired] = manifest.Entry{}
+		if err := lock.Save(lockFile(root)); err != nil {
+			t.Fatal(err)
+		}
+		testsupport.WriteFile(t, filepath.Join(root, retired), "retired\n")
+		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closeAll()
+		filesystems.tracked = committedRemovalFaultFilesystem{syncFilesystem: filesystems.tracked, path: cleanup, residue: residue, cause: failure}
+		inputs, plan := testSyncPlan(t, state)
+		_, _, _, effects, err := syncReportWithPlan(inputs, nil, filesystems, plan)
+		if !errors.Is(err, failure) {
+			t.Fatalf("sync error = %v", err)
+		}
+		assertEffects(t, effects,
+			Effect{Kind: "empty-directory-removed", Path: cleanup, Recovery: "rerun awf render"},
+			Effect{Kind: "publication-residue", Path: residue, Recovery: "remove this temporary residue, then rerun awf render"},
+		)
+	})
+
+	t.Run("final lock replacement", func(t *testing.T) {
+		root := scaffold(t, sampleYAML)
+		state, _ := Open(testContext(t), root)
+		if err := syncProject(state); err != nil {
+			t.Fatal(err)
+		}
+		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
+		if err != nil {
+			t.Fatal(err)
+		}
+		defer closeAll()
+		filesystems.tracked = committedReplacementFaultFilesystem{syncFilesystem: filesystems.tracked, path: ".awf/awf.lock", residue: residue, cause: failure}
+		inputs, plan := testSyncPlan(t, state)
+		_, _, _, effects, err := syncReportWithPlan(inputs, nil, filesystems, plan)
+		if !errors.Is(err, failure) {
+			t.Fatalf("sync error = %v", err)
+		}
+		assertEffects(t, effects,
+			Effect{Kind: "lock-replaced", Path: ".awf/awf.lock", Recovery: "rerun awf render to verify and complete publication"},
+			Effect{Kind: "publication-residue", Path: residue, Recovery: "remove this temporary residue, then rerun awf render"},
+		)
+	})
+}
+
+func TestSyncCommittedEffectOrderingIsStable(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	state, _ := Open(testContext(t), root)
+	if err := syncProject(state); err != nil {
+		t.Fatal(err)
+	}
+	retired := []string{"b/one", "c/deep/three", "a/two"}
+	want := []Effect{
+		{Kind: "output-removed", Path: "a/two", Recovery: "rerun awf render to complete pruning and lock publication"},
+		{Kind: "output-removed", Path: "b/one", Recovery: "rerun awf render to complete pruning and lock publication"},
+		{Kind: "output-removed", Path: "c/deep/three", Recovery: "rerun awf render to complete pruning and lock publication"},
+		{Kind: "empty-directory-removed", Path: "c/deep", Recovery: "rerun awf render"},
+		{Kind: "empty-directory-removed", Path: "a", Recovery: "rerun awf render"},
+		{Kind: "empty-directory-removed", Path: "b", Recovery: "rerun awf render"},
+		{Kind: "empty-directory-removed", Path: "c", Recovery: "rerun awf render"},
+	}
+	for iteration := range 8 {
+		lock, err := manifest.Load(lockFile(root))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, path := range retired {
+			lock.Files[path] = manifest.Entry{}
+			testsupport.WriteFile(t, filepath.Join(root, path), "retired\n")
+		}
+		if err := lock.Save(lockFile(root)); err != nil {
+			t.Fatal(err)
+		}
+		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
+		if err != nil {
+			t.Fatal(err)
+		}
+		inputs, plan := testSyncPlan(t, state)
+		_, _, _, effects, syncErr := syncReportWithPlan(inputs, nil, filesystems, plan)
+		closeAll()
+		if syncErr != nil {
+			t.Fatal(syncErr)
+		}
+		got := make([]Effect, 0, len(want))
+		for _, effect := range effects {
+			if effect.Kind == "output-removed" || effect.Kind == "empty-directory-removed" {
+				got = append(got, effect)
+			}
+		}
+		if !slices.Equal(got, want) {
+			t.Fatalf("iteration %d effects = %#v, want %#v", iteration, got, want)
+		}
+	}
+}
+
 func TestSyncReportDoesNotReportOutputWhenReplacementFails(t *testing.T) { syncFailedOutput(t, true) }
 func TestSyncReportDoesNotReportOutputWhenWriteFails(t *testing.T)       { syncFailedOutput(t, false) }
 func syncFailedOutput(t *testing.T, corruptHash bool) {
@@ -527,6 +748,31 @@ func syncFailedOutput(t *testing.T, corruptHash bool) {
 	got, e := os.ReadFile(output)
 	if e != nil || string(got) != "hand edit\n" {
 		t.Fatalf("output=%q %v", got, e)
+	}
+}
+
+func TestSyncRefusesResidentModeMutationAfterObservationFailure(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	state, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(state); err != nil {
+		t.Fatal(err)
+	}
+	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer closeAll()
+	failure := errors.New("resident mode observation failed")
+	chmodCalls := 0
+	recorded := recordedChmodFilesystem{syncFilesystem: filesystems.resident, path: ".awf/efforts", calls: &chmodCalls}
+	filesystems.resident = linkInfoFaultFilesystem{syncFilesystem: recorded, path: ".awf/efforts", err: failure}
+	inputs, plan := testSyncPlan(t, state)
+	_, _, _, _, err = syncReportWithPlan(inputs, nil, filesystems, plan)
+	if !errors.Is(err, failure) || chmodCalls != 0 {
+		t.Fatalf("sync error = %v, chmod calls = %d", err, chmodCalls)
 	}
 }
 
@@ -663,8 +909,8 @@ func TestSyncAncestorCleanupRefusesParentSwap(t *testing.T) {
 	swapping := &swapAfterPruneFilesystem{syncFilesystem: filesystems.tracked, root: root, outside: outside}
 	filesystems.tracked = swapping
 	_, _, pruned, err := syncWithFilesystems(t, state, filesystems)
-	if err != nil || !slices.Contains(pruned, retired) {
-		t.Fatalf("pruned=%v err=%v", pruned, err)
+	if err == nil || !slices.Contains(pruned, retired) {
+		t.Fatalf("pruned=%v err=%v, want committed prune and cleanup refusal", pruned, err)
 	}
 	if !slices.Equal(swapping.calls, []string{retired}) {
 		t.Fatalf("calls=%v, want cleanup refusal immediately after parent swap", swapping.calls)
@@ -677,8 +923,8 @@ func TestSyncAncestorCleanupRefusesParentSwap(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, ok := updated.Files[retired]; ok {
-		t.Fatal("retired remained")
+	if _, ok := updated.Files[retired]; !ok {
+		t.Fatal("cleanup refusal advanced the old lock")
 	}
 }
 

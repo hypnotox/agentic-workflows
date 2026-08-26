@@ -2,8 +2,8 @@ package adr
 
 import (
 	"context"
+	"errors"
 	"fmt"
-	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 )
@@ -21,15 +21,21 @@ func acquireScaffoldLock(dir string) (func() error, error) {
 	if err == nil {
 		return release, nil
 	}
-	// Preserve the ADR-facing diagnostics without retaining a second mechanism.
-	message := err.Error()
-	switch {
-	case strings.Contains(message, "canonicalize lease root"):
+	// Preserve the ADR-facing diagnostics through the shared owner's typed stage
+	// identity rather than coupling control flow to its message text.
+	var leaseErr *filesystem.LeaseError
+	if !errors.As(err, &leaseErr) {
+		return nil, err
+	}
+	switch leaseErr.Kind {
+	case filesystem.LeaseCanonicalRoot:
 		return nil, fmt.Errorf("canonicalize decisions directory %s: %w", dir, err)
-	case strings.Contains(message, "locate lease cache"):
+	case filesystem.LeaseCacheLocation:
 		return nil, fmt.Errorf("locate ADR lock cache: %w", err)
-	case strings.Contains(message, "create lease cache"):
+	case filesystem.LeaseCacheCreation:
 		return nil, fmt.Errorf("create ADR lock cache: %w", err)
+	case filesystem.LeaseCacheMode:
+		return nil, fmt.Errorf("restrict ADR lock cache: %w", err)
 	default:
 		return nil, err
 	}

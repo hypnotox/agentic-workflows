@@ -99,7 +99,7 @@ func TestADRLockProcess(t *testing.T) {
 		}
 		fmt.Fprintln(os.Stdout, "contended")
 	}
-	release, err := filesystem.Acquire(context.Background(), "adr-locks", os.Getenv("ADR_LOCK_DIR"))
+	release, err := acquireScaffoldLock(os.Getenv("ADR_LOCK_DIR"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -346,8 +346,9 @@ func TestAcquireScaffoldLockRejectsMissingUserCache(t *testing.T) {
 		t.Setenv("HOME", "")
 	}
 	_, err := acquireScaffoldLock(t.TempDir())
-	if err == nil || !strings.Contains(err.Error(), "locate ADR lock cache") {
-		t.Fatalf("missing user cache error = %v", err)
+	var leaseErr *filesystem.LeaseError
+	if err == nil || !strings.Contains(err.Error(), "locate ADR lock cache") || !errors.As(err, &leaseErr) || leaseErr.Kind != filesystem.LeaseCacheLocation {
+		t.Fatalf("missing user cache error = %v, lease identity = %#v", err, leaseErr)
 	}
 }
 
@@ -366,7 +367,8 @@ func TestAcquireScaffoldLockRejectsCacheFile(t *testing.T) {
 		t.Setenv("XDG_CACHE_HOME", cacheFile)
 	}
 	_, err := acquireScaffoldLock(t.TempDir())
-	if err == nil || !strings.Contains(err.Error(), "create ADR lock cache") {
-		t.Fatalf("cache-file error = %v", err)
+	var leaseErr *filesystem.LeaseError
+	if err == nil || !strings.Contains(err.Error(), "create ADR lock cache") || !errors.As(err, &leaseErr) || leaseErr.Kind != filesystem.LeaseCacheCreation {
+		t.Fatalf("cache-file error = %v, lease identity = %#v", err, leaseErr)
 	}
 }

@@ -194,6 +194,21 @@ func committedPublication(err error) (string, string, bool) {
 	return filesystem.CommittedPublication(err)
 }
 
+func appendCommittedOperationEffects(effects []Effect, err error, effect Effect) ([]Effect, bool) {
+	committedPath, residuePath, committed := committedPublication(err)
+	if !committed {
+		return effects, false
+	}
+	if effect.Path == "" {
+		effect.Path = committedPath
+	}
+	effects = append(effects, effect)
+	if residuePath != "" {
+		effects = append(effects, Effect{Kind: "publication-residue", Path: residuePath, Recovery: "remove this temporary residue, then rerun awf render"})
+	}
+	return effects, true
+}
+
 func backupFileConfined(rel string, handle syncFilesystem) (string, error) {
 	return filesystem.Backup(rel, func(source string) ([]byte, fs.FileMode, error) {
 		data, mode, err := handle.ReadWithMode(source)
@@ -342,7 +357,10 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			effects = appendCreatedDirectories(effects, filesystem, missing)
 		}
 		if strings.HasPrefix(f.Path(), config.DirName+"/") && strings.HasSuffix(f.Path(), "/.gitignore") && resident.IsResidentPath(strings.TrimSuffix(f.Path(), "/.gitignore")) {
-			beforeMode, _ := filesystem.LinkInfo(dir)
+			beforeMode, observeErr := filesystem.LinkInfo(dir)
+			if observeErr != nil {
+				return backups, changes, pruned, effects, fmt.Errorf("inspect resident directory mode %s: %w", dir, observeErr)
+			}
 			if err := filesystem.Chmod(dir, 0o700); err != nil {
 				return backups, changes, pruned, effects, err
 			}
@@ -411,12 +429,13 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			}
 			changes = append(changes, Change{Path: f.Path(), Cause: cause})
 		}
-		if err := filesystem.ReplaceExpected(outputPath, info, []byte(f.Content()), perm); err != nil {
-			return backups, changes, pruned, effects, err
-		}
 		effectKind := "output-replaced"
 		if info == nil {
 			effectKind = "output-created"
+		}
+		if err := filesystem.ReplaceExpected(outputPath, info, []byte(f.Content()), perm); err != nil {
+			effects, _ = appendCommittedOperationEffects(effects, err, Effect{Kind: effectKind, Path: f.Path(), Recovery: "rerun awf render to complete authority publication"})
+			return backups, changes, pruned, effects, err
 		}
 		effects = append(effects, Effect{Kind: effectKind, Path: f.Path(), Recovery: "rerun awf render to complete authority publication"})
 		// Replacement commits bytes and final mode together, so a change becomes
@@ -439,9 +458,12 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 		type cleanupDir struct {
 			filesystem syncFilesystem
 			path       string
+			resident   bool
 		}
 		dirs := map[string]cleanupDir{}
-		for path, entry := range old.Files {
+		retiredPaths := slices.Sorted(maps.Keys(old.Files))
+		for _, path := range retiredPaths {
+			entry := old.Files[path]
 			if want[path] || resident.PreserveRemoval(path, preservedResidents) {
 				continue
 			}
@@ -483,6 +505,11 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 				err = filesystem.RemoveExpected(outputPath, removeIdentity)
 			}
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
+				var committed bool
+				effects, committed = appendCommittedOperationEffects(effects, err, Effect{Kind: "output-removed", Path: path, Recovery: "rerun awf render to complete pruning and lock publication"})
+				if committed {
+					pruned = append(pruned, path)
+				}
 				return backups, changes, pruned, effects, fmt.Errorf("remove retired output %s: %w", path, err)
 			}
 			if err == nil {
@@ -491,18 +518,41 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			}
 			for d := filepath.ToSlash(filepath.Dir(filepath.FromSlash(outputPath))); d != "."; d = filepath.ToSlash(filepath.Dir(filepath.FromSlash(d))) {
 				key := fmt.Sprintf("%t:%s", resident.IsResidentPath(path), d)
-				dirs[key] = cleanupDir{filesystem: filesystem, path: d}
+				dirs[key] = cleanupDir{filesystem: filesystem, path: d, resident: resident.IsResidentPath(path)}
 			}
 		}
 		dirList := slices.Collect(maps.Values(dirs))
-		slices.SortFunc(dirList, func(a, b cleanupDir) int { return len(b.path) - len(a.path) })
+		slices.SortFunc(dirList, func(a, b cleanupDir) int {
+			if aDepth, bDepth := strings.Count(a.path, "/"), strings.Count(b.path, "/"); aDepth != bDepth {
+				return bDepth - aDepth
+			}
+			if a.resident != b.resident {
+				if a.resident {
+					return 1
+				}
+				return -1
+			}
+			return strings.Compare(a.path, b.path)
+		})
 		for _, d := range dirList {
 			info, infoErr := d.filesystem.LinkInfo(d.path)
-			if infoErr == nil && info.IsDir() {
-				if err := d.filesystem.RemoveExpected(d.path, info); err == nil {
-					effects = append(effects, Effect{Kind: "empty-directory-removed", Path: d.path, Recovery: "rerun awf render"})
+			if infoErr != nil {
+				if errors.Is(infoErr, fs.ErrNotExist) {
+					continue
 				}
+				return backups, changes, pruned, effects, fmt.Errorf("inspect empty directory %s: %w", d.path, infoErr)
 			}
+			if !info.IsDir() {
+				continue
+			}
+			if err := d.filesystem.RemoveExpected(d.path, info); err != nil {
+				if errors.Is(err, filesystem.ErrDirectoryNotEmpty) {
+					continue
+				}
+				effects, _ = appendCommittedOperationEffects(effects, err, Effect{Kind: "empty-directory-removed", Path: d.path, Recovery: "rerun awf render"})
+				return backups, changes, pruned, effects, fmt.Errorf("remove empty directory %s: %w", d.path, err)
+			}
+			effects = append(effects, Effect{Kind: "empty-directory-removed", Path: d.path, Recovery: "rerun awf render"})
 		}
 	}
 	lockBytes, err = lock.Marshal()
@@ -510,6 +560,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 		return backups, changes, pruned, effects, err // coverage-ignore: sync constructs only authority-valid lock fields, so marshal failure requires a future representation change
 	}
 	if err := filesystems.tracked.ReplaceExpected(lockPath, lockIdentity, lockBytes, 0o644); err != nil {
+		effects, _ = appendCommittedOperationEffects(effects, err, Effect{Kind: "lock-replaced", Path: lockPath, Recovery: "rerun awf render to verify and complete publication"})
 		return backups, changes, pruned, effects, err
 	}
 	effects = append(effects, Effect{Kind: "lock-replaced", Path: lockPath, Recovery: "none; publication is complete"})

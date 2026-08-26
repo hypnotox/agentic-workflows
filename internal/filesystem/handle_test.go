@@ -581,8 +581,8 @@ func TestExpectedIdentityRemovalPreservesNonemptyDirectory(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := h.RemoveExpected("owned", expected); err == nil {
-		t.Fatal("nonempty directory removal succeeded")
+	if err := h.RemoveExpected("owned", expected); !errors.Is(err, ErrDirectoryNotEmpty) {
+		t.Fatalf("nonempty directory removal error = %v, want typed identity", err)
 	}
 	if got, err := os.ReadFile(filepath.Join(root, "owned", "child")); err != nil || string(got) != "preserve" {
 		t.Fatalf("nonempty directory child = %q, %v", got, err)
@@ -624,6 +624,9 @@ func TestRootConfinedFilesystemSingleHome(t *testing.T) {
 		} else if rel != "internal/filesystem/handle.go" && strings.Contains(string(body), "internal/filesystem") {
 			consumers = append(consumers, rel)
 		}
+		if finding := advisoryLeaseOwnerFinding(rel, string(body)); finding != "" {
+			t.Fatalf("production advisory-lease ownership: %s", finding)
+		}
 	})
 	if finding := filesystemPackageFinding(filesystemSources); finding != "" {
 		t.Fatalf("filesystem package shape: %s", finding)
@@ -644,10 +647,14 @@ func TestRootConfinedFilesystemSingleHome(t *testing.T) {
 		{"unexported interface", "internal/filesystem/handle.go", "package filesystem\ntype Handle struct{}\ntype filesystem interface{ Read(string) }", "interface filesystem"},
 		{"compile-only reference", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Open", "filesystem import without constructor/capability flow"},
 		{"arbitrary selector", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Handle", "filesystem import without constructor/capability flow"},
+		{"second flock owner", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/gofrs/flock\"\nvar _ = flock.New", "outside filesystem imports advisory-lock implementation"},
 	} {
 		got := rootSourceFinding(tc.path, tc.src)
 		if got == "" {
 			got = filesystemConsumerFinding(tc.path, tc.src)
+		}
+		if got == "" {
+			got = advisoryLeaseOwnerFinding(tc.path, tc.src)
 		}
 		if got == "" && strings.HasPrefix(tc.path, "internal/filesystem/") {
 			got = filesystemPackageFinding(map[string]string{tc.path: tc.src})
@@ -668,6 +675,19 @@ func TestRootConfinedFilesystemSingleHome(t *testing.T) {
 			t.Fatalf("%s finding = %q, want category %q", tc.name, got, tc.want)
 		}
 	}
+}
+
+func advisoryLeaseOwnerFinding(rel, src string) string {
+	f, err := parser.ParseFile(token.NewFileSet(), rel, src, parser.ImportsOnly)
+	if err != nil {
+		return rel + ": parse: " + err.Error()
+	}
+	for _, im := range f.Imports {
+		if strings.Trim(im.Path.Value, `"`) == "github.com/gofrs/flock" && rel != "internal/filesystem/lease.go" {
+			return rel + ": outside filesystem imports advisory-lock implementation"
+		}
+	}
+	return ""
 }
 
 func rootSourceFinding(rel, src string) string {
@@ -863,7 +883,7 @@ func filesystemPackageFinding(sources map[string]string) string {
 				if !typeSpec.Name.IsExported() {
 					continue
 				}
-				if typeSpec.Name.Name == "Lease" {
+				if typeSpec.Name.Name == "Lease" || typeSpec.Name.Name == "LeaseError" || typeSpec.Name.Name == "LeaseErrorKind" {
 					continue
 				}
 				if typeSpec.Name.Name != "Handle" {

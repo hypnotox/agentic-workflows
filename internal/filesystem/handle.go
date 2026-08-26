@@ -23,6 +23,10 @@ type Handle struct {
 // the caller. It is stable under wrapping.
 var ErrIdentityChanged = errors.New("filesystem: observed identity changed")
 
+// ErrDirectoryNotEmpty reports that expected removal safely preserved a
+// directory containing another entry.
+var ErrDirectoryNotEmpty = errors.New("filesystem: directory not empty")
+
 // CommittedPublication reports the confined destination and cleanup residue
 // carried by a committed exclusive-publication error.
 func CommittedPublication(err error) (destination, residue string, committed bool) {
@@ -273,7 +277,7 @@ func (h *Handle) RemoveExpected(destination string, expected fs.FileInfo) (retur
 		_, readErr := directory.Readdirnames(1)
 		closeErr := directory.Close()
 		if readErr == nil {
-			return fmt.Errorf("filesystem: remove %q: directory not empty", destination)
+			return fmt.Errorf("filesystem: remove %q: %w", destination, ErrDirectoryNotEmpty)
 		}
 		if !errors.Is(readErr, io.EOF) || closeErr != nil {
 			return fmt.Errorf("filesystem: inspect removable directory %q: %w", destination, errors.Join(readErr, closeErr))

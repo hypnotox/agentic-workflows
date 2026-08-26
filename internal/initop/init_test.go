@@ -3,14 +3,100 @@ package initop
 import (
 	"context"
 	"errors"
+	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
+
+type scaffoldLinkResult struct {
+	info fs.FileInfo
+	err  error
+}
+
+type scaffoldFaultFilesystem struct {
+	links      []scaffoldLinkResult
+	mkdirErr   error
+	publishErr error
+}
+
+func (f *scaffoldFaultFilesystem) LinkInfo(string) (fs.FileInfo, error) {
+	result := f.links[0]
+	f.links = f.links[1:]
+	return result.info, result.err
+}
+func (f *scaffoldFaultFilesystem) MkdirAll(string, fs.FileMode) error { return f.mkdirErr }
+func (f *scaffoldFaultFilesystem) Publish(string, []byte, fs.FileMode) error {
+	return f.publishErr
+}
+
+func TestCreateScaffoldReportsEveryPostDirectoryAndPublicationEffect(t *testing.T) {
+	dir := t.TempDir()
+	dirInfo, err := os.Lstat(dir)
+	if err != nil {
+		t.Fatal(err)
+	}
+	failure := errors.New("injected scaffold failure")
+	for _, tc := range []struct {
+		name          string
+		filesystem    *scaffoldFaultFilesystem
+		wantConfig    bool
+		wantDirectory bool
+		wantResidue   int
+	}{
+		{
+			name:          "post-mkdir-observation",
+			filesystem:    &scaffoldFaultFilesystem{links: []scaffoldLinkResult{{err: fs.ErrNotExist}, {err: failure}}},
+			wantDirectory: true,
+		},
+		{
+			name: "committed-publication-cleanup",
+			filesystem: &scaffoldFaultFilesystem{
+				links: []scaffoldLinkResult{{info: dirInfo}},
+				publishErr: &filepublication.CommittedCleanupError{
+					DestinationPath: ".awf/config.yaml", ResiduePath: ".awf/.config-residue", Cause: failure,
+				},
+			},
+			wantConfig: true, wantResidue: 1,
+		},
+		{
+			name:       "post-publish-observation",
+			filesystem: &scaffoldFaultFilesystem{links: []scaffoldLinkResult{{info: dirInfo}, {err: failure}}},
+			wantConfig: true,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			scaffold, err := createScaffold(tc.filesystem, []byte("config"))
+			if err == nil {
+				t.Fatal("createScaffold succeeded")
+			}
+			if scaffold.configCommitted != tc.wantConfig || scaffold.createdDir != tc.wantDirectory || len(scaffold.residue) != tc.wantResidue {
+				t.Fatalf("scaffold = %#v", scaffold)
+			}
+			outcome, partialErr := scaffoldPartialOutcome("config", scaffold.configCommitted, scaffold.createdDir, scaffold.residue, err)
+			var partial *PartialError
+			if !errors.As(partialErr, &partial) || outcome.ConfigPath == "" || len(outcome.Sync.Changes) != 1 {
+				t.Fatalf("partial outcome = %#v, %v", outcome, partialErr)
+			}
+			wantValues := 0
+			if tc.wantConfig {
+				wantValues++
+			}
+			if tc.wantDirectory {
+				wantValues++
+			}
+			wantValues += tc.wantResidue
+			if got := len(outcome.Sync.Changes[0].Values); got != wantValues {
+				t.Fatalf("effect values = %d, want %d", got, wantValues)
+			}
+		})
+	}
+}
 
 func TestRollbackScaffoldRestoresOwnedTreeOrReportsChangedIdentity(t *testing.T) {
 	for _, changed := range []bool{false, true} {
@@ -40,7 +126,7 @@ func TestRollbackScaffoldRestoresOwnedTreeOrReportsChangedIdentity(t *testing.T)
 				}
 			}
 			want := errors.New("later failure")
-			outcome, gotErr := rollbackScaffold(root, cfgPath, scaffoldCommit{committed: true, createdDir: true, configInfo: configInfo, dirInfo: dirInfo}, want)
+			outcome, gotErr := rollbackScaffold(root, cfgPath, scaffoldCommit{configCommitted: true, createdDir: true, configInfo: configInfo, dirInfo: dirInfo}, want)
 			if !errors.Is(gotErr, want) {
 				t.Fatalf("rollback error = %v, want %v", gotErr, want)
 			}

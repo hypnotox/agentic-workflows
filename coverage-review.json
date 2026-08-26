@@ -1295,30 +1295,60 @@
         "file": "internal/adr/scaffold_lock.go",
         "start": {
           "line": 27,
-          "column": 60
+          "column": 32
         },
         "end": {
-          "line": 28,
-          "column": 78
+          "line": 29,
+          "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/adr/scaffold_lock.go:27.60,28.78 1 in acquireScaffoldLock, beginning `case strings.Contains(message, \"canonicalize lease root\"):`. This is the ADR-specific adapter error return around the shared lease owner; shared lease acquisition, release, cancellation, and cross-process behavior are directly tested at the filesystem boundary."
+      "reason": "Phase 3 renewed review of internal/adr/scaffold_lock.go:27.32,29.3 1, beginning `if !errors.As(err, &leaseErr) {`. This passes through a non-LeaseError unchanged so the adapter does not misclassify errors from a future shared-owner wrapper. ADR adapter routing is asserted in scaffold_lock_test.go, while canonical identity and acquisition stages are exercised at the filesystem owner."
     },
     {
       "identity": {
         "file": "internal/adr/scaffold_lock.go",
         "start": {
-          "line": 33,
+          "line": 31,
+          "column": 37
+        },
+        "end": {
+          "line": 32,
+          "column": 78
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/adr/scaffold_lock.go:31.37,32.78 1, beginning `case filesystem.LeaseCanonicalRoot:`. This preserves the established ADR diagnostic if canonical identity changes between ADR prevalidation and shared-owner acquisition; the shared owner supplies the typed stage. ADR adapter routing is asserted in scaffold_lock_test.go, while canonical identity and acquisition stages are exercised at the filesystem owner."
+    },
+    {
+      "identity": {
+        "file": "internal/adr/scaffold_lock.go",
+        "start": {
+          "line": 37,
+          "column": 33
+        },
+        "end": {
+          "line": 38,
+          "column": 61
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/adr/scaffold_lock.go:37.33,38.61 1, beginning `case filesystem.LeaseCacheMode:`. This maps the shared owner's cache-permission stage to the established ADR-facing diagnostic; inducing chmod failure after successful cache creation is host-dependent. ADR adapter routing is asserted in scaffold_lock_test.go, while canonical identity and acquisition stages are exercised at the filesystem owner."
+    },
+    {
+      "identity": {
+        "file": "internal/adr/scaffold_lock.go",
+        "start": {
+          "line": 39,
           "column": 10
         },
         "end": {
-          "line": 34,
+          "line": 40,
           "column": 18
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/adr/scaffold_lock.go:33.10,34.18 1 in acquireScaffoldLock, beginning `default:`. This is the ADR-specific adapter error return around the shared lease owner; shared lease acquisition, release, cancellation, and cross-process behavior are directly tested at the filesystem boundary."
+      "reason": "Phase 3 renewed review of internal/adr/scaffold_lock.go:39.10,40.18 1, beginning `default:`. This passes through acquisition, file-mode, and any future typed stages rather than incorrectly labeling them as ADR cache failures. ADR adapter routing is asserted in scaffold_lock_test.go, while canonical identity and acquisition stages are exercised at the filesystem owner."
     },
     {
       "identity": {
@@ -4594,23 +4624,8 @@
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 65,
-          "column": 21
-        },
-        "end": {
-          "line": 67,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:65.21,67.4 1 in Walk, beginning `if walkErr != nil {`. The source exclusion records that permission controls are execution-identity-dependent; otherwise an underlying WalkDir error requires a concurrent filesystem change. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
           "line": 69,
-          "column": 17
+          "column": 21
         },
         "end": {
           "line": 71,
@@ -4618,472 +4633,487 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:69.17,71.4 1 in Walk, beginning `if err != nil {`. The source exclusion records that permission controls are execution-identity-dependent; otherwise this requires a concurrent filesystem change. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:69.21,71.4 1, beginning `if walkErr != nil { // coverage-ignore: permission controls are execution-identity-dependent; otherwise an underlying WalkDir error requires a concurrent filesystem change`. The source directive records that permission controls are execution-identity-dependent; otherwise an underlying WalkDir error requires a concurrent filesystem change. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 164,
-          "column": 47
+          "line": 73,
+          "column": 17
         },
         "end": {
-          "line": 166,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:164.47,166.3 1 in ReplaceExpected, beginning `if err := validPath(destination); err != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 183,
-          "column": 48
-        },
-        "end": {
-          "line": 185,
+          "line": 75,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:183.48,185.4 1 in ReplaceExpected, beginning `if _, err := rand.Read(token[:]); err != nil {`. The source exclusion records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:73.17,75.4 1, beginning `if err != nil { // coverage-ignore: permission controls are execution-identity-dependent; otherwise this requires a concurrent filesystem change`. The source directive records that permission controls are execution-identity-dependent; otherwise this requires a concurrent filesystem change. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 189,
-          "column": 34
+          "line": 168,
+          "column": 47
         },
         "end": {
-          "line": 190,
-          "column": 12
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:189.34,190.12 1 in ReplaceExpected, beginning `if errors.Is(err, fs.ErrExist) {`. The source exclusion records that a collision requires predicting the cryptographically random temporary name before this operation. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/handle.go",
-        "start": {
-          "line": 197,
-          "column": 17
-        },
-        "end": {
-          "line": 199,
+          "line": 170,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:197.17,199.3 1 in ReplaceExpected, beginning `if file == nil {`. The source exclusion records that exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:168.47,170.3 1, beginning `if err := validPath(destination); err != nil {`. This rejects an invalid confined destination before namespace mutation; production callers pass validated project-relative paths and the common path validator is directly exercised. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 187,
+          "column": 48
+        },
+        "end": {
+          "line": 189,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:187.48,189.4 1, beginning `if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The source directive records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 193,
+          "column": 34
+        },
+        "end": {
+          "line": 194,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:193.34,194.12 1, beginning `if errors.Is(err, fs.ErrExist) { // coverage-ignore: a collision requires predicting the cryptographically random temporary name before this operation`. The source directive records that a collision requires predicting the cryptographically random temporary name before this operation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 201,
-          "column": 18
+          "column": 17
         },
         "end": {
           "line": 203,
-          "column": 4
+          "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:201.18,203.4 1 in ReplaceExpected, beginning `if file != nil {`. The source exclusion records that this remains non-nil only after a local temporary write storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:201.17,203.3 1, beginning `if file == nil { // coverage-ignore: exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle`. The source directive records that exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
           "line": 205,
-          "column": 86
+          "column": 18
         },
         "end": {
           "line": 207,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:205.18,207.4 1, beginning `if file != nil { // coverage-ignore: this remains non-nil only after a local temporary write storage fault`. The source directive records that this remains non-nil only after a local temporary write storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 209,
+          "column": 86
+        },
+        "end": {
+          "line": 211,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:205.86,207.5 1 in ReplaceExpected, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {`. The source exclusion records that the concrete root can fault here only through a concurrent namespace change or storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:209.86,211.5 1, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) { // coverage-ignore: the concrete root can fault here only through a concurrent namespace change or storage fault`. The source directive records that the concrete root can fault here only through a concurrent namespace change or storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 210,
+          "line": 214,
           "column": 48
         },
         "end": {
-          "line": 212,
+          "line": 216,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:210.48,212.3 1 in ReplaceExpected, beginning `if n, err := file.Write(contents); err != nil {`. The source exclusion records that writing a locally-created regular temporary requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:214.48,216.3 1, beginning `if n, err := file.Write(contents); err != nil { // coverage-ignore: writing a locally-created regular temporary requires a storage fault`. The source directive records that writing a locally-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 212,
+          "line": 216,
           "column": 31
         },
         "end": {
-          "line": 214,
+          "line": 218,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:212.31,214.3 1 in ReplaceExpected, beginning `} else if n != len(contents) {`. The source exclusion records that os.File.Write returns a non-nil error when it writes fewer bytes than requested. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:216.31,218.3 1, beginning `} else if n != len(contents) { // coverage-ignore: os.File.Write returns a non-nil error when it writes fewer bytes than requested`. The source directive records that os.File.Write returns a non-nil error when it writes fewer bytes than requested. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 215,
+          "line": 219,
           "column": 41
         },
         "end": {
-          "line": 217,
+          "line": 221,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:215.41,217.3 1 in ReplaceExpected, beginning `if err := file.Chmod(mode); err != nil {`. The source exclusion records that chmod of a newly-created regular temporary requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:219.41,221.3 1, beginning `if err := file.Chmod(mode); err != nil { // coverage-ignore: chmod of a newly-created regular temporary requires a storage fault`. The source directive records that chmod of a newly-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 218,
+          "line": 222,
           "column": 36
         },
         "end": {
-          "line": 220,
+          "line": 224,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:218.36,220.3 1 in ReplaceExpected, beginning `if err := file.Sync(); err != nil {`. The source exclusion records that syncing a locally-created regular temporary requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:222.36,224.3 1, beginning `if err := file.Sync(); err != nil { // coverage-ignore: syncing a locally-created regular temporary requires a storage fault`. The source directive records that syncing a locally-created regular temporary requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 221,
+          "line": 225,
           "column": 37
         },
         "end": {
-          "line": 223,
+          "line": 227,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:221.37,223.3 1 in ReplaceExpected, beginning `if err := file.Close(); err != nil {`. The source exclusion records that closing a locally-created regular temporary after a successful sync requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:225.37,227.3 1, beginning `if err := file.Close(); err != nil { // coverage-ignore: closing a locally-created regular temporary after a successful sync requires a storage fault`. The source directive records that closing a locally-created regular temporary after a successful sync requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 262,
+          "line": 266,
           "column": 47
         },
         "end": {
-          "line": 264,
+          "line": 268,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:262.47,264.3 1 in RemoveExpected, beginning `if err := validPath(destination); err != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:266.47,268.3 1, beginning `if err := validPath(destination); err != nil {`. This rejects an invalid confined destination before namespace mutation; production callers pass validated project-relative paths and the common path validator is directly exercised. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 265,
+          "line": 269,
           "column": 21
         },
         "end": {
-          "line": 267,
+          "line": 271,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:265.21,267.3 1 in RemoveExpected, beginning `if expected == nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:269.21,271.3 1, beginning `if expected == nil {`. This rejects removal without a previously observed entry identity, preserving the expected-identity contract before any namespace mutation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 270,
+          "line": 274,
           "column": 17
         },
         "end": {
-          "line": 272,
+          "line": 276,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:270.17,272.4 1 in RemoveExpected, beginning `if err != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:274.17,276.4 1, beginning `if err != nil {`. This reports failure to open an observed directory before installing the exchange temporary; it requires a concurrent namespace change or host I/O fault after observation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 278,
+          "line": 282,
           "column": 53
         },
         "end": {
-          "line": 280,
+          "line": 284,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:278.53,280.4 1 in RemoveExpected, beginning `if !errors.Is(readErr, io.EOF) || closeErr != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:282.53,284.4 1, beginning `if !errors.Is(readErr, io.EOF) || closeErr != nil {`. This distinguishes an empty directory from a read or close fault before exchange; empty and nonempty directory outcomes are directly tested, while the I/O-fault arm is not portably inducible. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 286,
+          "line": 290,
           "column": 48
         },
         "end": {
-          "line": 288,
+          "line": 292,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:286.48,288.4 1 in RemoveExpected, beginning `if _, err := rand.Read(token[:]); err != nil {`. The source exclusion records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:290.48,292.4 1, beginning `if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The source directive records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 296,
+          "line": 300,
           "column": 50
         },
         "end": {
-          "line": 299,
+          "line": 303,
           "column": 6
         },
         "statements": 2
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:296.50,299.6 2 in RemoveExpected, beginning `if closeErr := file.Close(); closeErr != nil {`. The source exclusion records that closing a newly-created empty regular file requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:300.50,303.6 2, beginning `if closeErr := file.Close(); closeErr != nil { // coverage-ignore: closing a newly-created empty regular file requires a storage fault`. The source directive records that closing a newly-created empty regular file requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 302,
+          "line": 306,
           "column": 40
         },
         "end": {
-          "line": 303,
+          "line": 307,
           "column": 12
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:302.40,303.12 1 in RemoveExpected, beginning `if errors.Is(returnErr, fs.ErrExist) {`. The source exclusion records that collision requires predicting a cryptographically random temporary. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:306.40,307.12 1, beginning `if errors.Is(returnErr, fs.ErrExist) { // coverage-ignore: collision requires predicting a cryptographically random temporary`. The source directive records that collision requires predicting a cryptographically random temporary. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 305,
+          "line": 309,
           "column": 23
         },
         "end": {
-          "line": 307,
+          "line": 311,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:305.23,307.4 1 in RemoveExpected, beginning `if returnErr != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:309.23,311.4 1, beginning `if returnErr != nil {`. This reports inability to create the same-directory exchange temporary, a host permission or storage fault before mutation. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 311,
+          "line": 315,
           "column": 14
         },
         "end": {
-          "line": 313,
+          "line": 317,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:311.14,313.3 1 in RemoveExpected, beginning `if !created {`. The source exclusion records that exhausting random temporary names is not practically triggerable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:315.14,317.3 1, beginning `if !created { // coverage-ignore: exhausting random temporary names is not practically triggerable`. The source directive records that exhausting random temporary names is not practically triggerable. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 316,
+          "line": 320,
           "column": 86
         },
         "end": {
-          "line": 318,
+          "line": 322,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:316.86,318.5 1 in RemoveExpected, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:320.86,322.5 1, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {`. This reports failure to clean the same-directory exchange temporary after an uncommitted native-exchange refusal; reaching it requires a second concurrent namespace or storage fault during cleanup. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 369,
+          "line": 373,
           "column": 20
         },
         "end": {
-          "line": 371,
+          "line": 375,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:369.20,371.3 1 in ReadWithMode, beginning `if statErr != nil {`. The source exclusion records that stat on a successfully read confined regular file requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:373.20,375.3 1, beginning `if statErr != nil { // coverage-ignore: stat on a successfully read confined regular file requires a storage fault`. The source directive records that stat on a successfully read confined regular file requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/handle.go",
         "start": {
-          "line": 372,
+          "line": 376,
           "column": 21
         },
         "end": {
-          "line": 374,
+          "line": 378,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/handle.go:372.21,374.3 1 in ReadWithMode, beginning `if closeErr != nil {`. The source exclusion records that close after a successful confined read requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/filesystem/handle.go:376.21,378.3 1, beginning `if closeErr != nil { // coverage-ignore: close after a successful confined read requires a storage fault`. The source directive records that close after a successful confined read requires a storage fault. Handle tests directly cover successful file and empty-directory mutation, changed-entry refusal, nonempty-directory preservation, and temporary-residue cleanup semantics without adding a test-only production fault seam."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 37,
+          "line": 63,
           "column": 28
         },
         "end": {
-          "line": 39,
+          "line": 65,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/lease.go:37.28,39.3 1 in Release, beginning `if l == nil || l.released {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
+      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:63.28,65.3 1, beginning `if l == nil || l.released {`. This is the nil-or-already-released guard that makes release idempotent or prevents a stale Lease from being accepted as transaction authority. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 51,
+          "line": 77,
           "column": 28
         },
         "end": {
-          "line": 53,
+          "line": 79,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/lease.go:51.28,53.3 1 in CoversProject, beginning `if l == nil || l.released {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 104,
-          "column": 3
-        },
-        "end": {
-          "line": 104,
-          "column": 24
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/lease.go:104.3,104.24 1 in canonicalIdentities, beginning `if a.scope > b.scope {`. This comparator arm depends on the standard library sort comparison schedule; canonical, reversed, and duplicate root inputs directly prove the resulting deterministic order without binding tests to comparator call order."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 104,
-          "column": 24
-        },
-        "end": {
-          "line": 106,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/lease.go:104.24,106.4 1 in canonicalIdentities, beginning `if a.scope > b.scope {`. This comparator arm depends on the standard library sort comparison schedule; canonical, reversed, and duplicate root inputs directly prove the resulting deterministic order without binding tests to comparator call order."
-    },
-    {
-      "identity": {
-        "file": "internal/filesystem/lease.go",
-        "start": {
-          "line": 107,
-          "column": 3
-        },
-        "end": {
-          "line": 107,
-          "column": 11
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/filesystem/lease.go:107.3,107.11 1 in canonicalIdentities, beginning `return 0`. This comparator arm depends on the standard library sort comparison schedule; canonical, reversed, and duplicate root inputs directly prove the resulting deterministic order without binding tests to comparator call order."
+      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:77.28,79.3 1, beginning `if l == nil || l.released {`. This is the nil-or-already-released guard that makes release idempotent or prevents a stale Lease from being accepted as transaction authority. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
           "line": 130,
+          "column": 3
+        },
+        "end": {
+          "line": 130,
+          "column": 24
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:130.3,130.24 1, beginning `if a.scope > b.scope {`. This is a comparator arm whose execution depends on the standard-library sort schedule; canonical, reversed, and duplicate requests prove the resulting root-then-scope order without coupling tests to comparator calls. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 130,
+          "column": 24
+        },
+        "end": {
+          "line": 132,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:130.24,132.4 1, beginning `if a.scope > b.scope {`. This is a comparator arm whose execution depends on the standard-library sort schedule; canonical, reversed, and duplicate requests prove the resulting root-then-scope order without coupling tests to comparator calls. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 133,
+          "column": 3
+        },
+        "end": {
+          "line": 133,
+          "column": 11
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:133.3,133.11 1, beginning `return 0`. This is a comparator arm whose execution depends on the standard-library sort schedule; canonical, reversed, and duplicate requests prove the resulting root-then-scope order without coupling tests to comparator calls. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/lease.go",
+        "start": {
+          "line": 156,
           "column": 18
         },
         "end": {
-          "line": 134,
+          "line": 160,
           "column": 5
         },
         "statements": 3
       },
-      "reason": "Phase 3 reviewed internal/filesystem/lease.go:130.18,134.5 3 in acquire, beginning `if err != nil {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
+      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:156.18,160.5 3, beginning `if err != nil {`. This releases already-acquired identities when a later lease cache cannot be prepared; the error requires a host cache-location, creation, or mode fault during multi-root acquisition. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 146,
+          "line": 172,
           "column": 54
         },
         "end": {
-          "line": 150,
+          "line": 176,
           "column": 4
         },
         "statements": 3
       },
-      "reason": "Phase 3 reviewed internal/filesystem/lease.go:146.54,150.4 3 in acquire, beginning `if err := os.Chmod(lock.Path(), 0o600); err != nil {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
+      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:172.54,176.4 3, beginning `if err := os.Chmod(lock.Path(), 0o600); err != nil {`. This closes the new lock and all earlier identities if restrictive lock-file mode cannot be applied, a host permission or storage fault after successful acquisition. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
     },
     {
       "identity": {
         "file": "internal/filesystem/lease.go",
         "start": {
-          "line": 165,
+          "line": 191,
           "column": 47
         },
         "end": {
-          "line": 167,
+          "line": 193,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/filesystem/lease.go:165.47,167.3 1 in leaseCache, beginning `if err := os.Chmod(cache, 0o700); err != nil {`. This is an idempotent release, host permission, lock creation, or acquisition cleanup return; cross-process exclusion, deterministic multi-root acquisition, cancellation, explicit release, and process-exit release are directly tested."
+      "reason": "Phase 3 renewed review of internal/filesystem/lease.go:191.47,193.3 1, beginning `if err := os.Chmod(cache, 0o700); err != nil {`. This returns a typed cache-mode stage when restrictive cache-directory mode cannot be applied, a host permission or storage fault after successful creation. Lease tests directly cover typed stages, canonical and alias identity, deterministic root ordering, cancellation, explicit release, cross-process contention, and process-exit release."
     },
     {
       "identity": {
@@ -5968,7 +5998,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:41.39,43.2 1 in Error, beginning `func (e *PartialError) Error() string {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:41.39,43.2 1, beginning `func (e *PartialError) Error() string {`. This fixed typed-error formatter is exercised through errors.As and user-facing partial-outcome assertions rather than by an isolated string-only test. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
@@ -5983,7 +6013,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:66.16,68.3 1 in Run, beginning `if err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:66.16,68.3 1, beginning `if err != nil {`. This returns a pre-authority lease acquisition failure with no committed Init effect. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
@@ -5998,7 +6028,7 @@
         },
         "statements": 2
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:70.55,72.32 2 in Run, beginning `if releaseErr := lease.Release(); releaseErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:70.55,72.32 2, beginning `if releaseErr := lease.Release(); releaseErr != nil {`. This joins a host lock-release failure with the terminal result and upgrades it to PartialError only when the config path proves initialization committed authority. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
@@ -6013,7 +6043,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:72.32,74.5 1 in Run, beginning `if outcome.ConfigPath != \"\" {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:72.32,74.5 1, beginning `if outcome.ConfigPath != \"\" {`. This selects typed partial versus ordinary release failure from the already-constructed outcome; real flock close failure is not safely injectable through the production lease. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
@@ -6028,7 +6058,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:74.10,76.5 1 in Run, beginning `} else {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:74.10,76.5 1, beginning `} else {`. This selects typed partial versus ordinary release failure from the already-constructed outcome; real flock close failure is not safely injectable through the production lease. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
@@ -6043,7 +6073,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:101.17,103.4 1 in Run, beginning `if err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:101.17,103.4 1, beginning `if err != nil {`. This is an existing-authority load, absence, validation, or permanent-state refusal before Init mutates the tree. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
@@ -6058,7 +6088,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:104.13,106.4 1 in Run, beginning `if !found {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:104.13,106.4 1, beginning `if !found {`. This is an existing-authority load, absence, validation, or permanent-state refusal before Init mutates the tree. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
@@ -6073,7 +6103,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:108.17,110.4 1 in Run, beginning `if err != nil {`. The source exclusion records that LoadOptional parsed and validated this unchanged lock immediately above. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:108.17,110.4 1, beginning `if err != nil { // coverage-ignore: LoadOptional parsed and validated this unchanged lock immediately above`. The source directive records that LoadOptional parsed and validated this unchanged lock immediately above. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
@@ -6088,7 +6118,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:111.43,113.4 1 in Run, beginning `if state != manifest.AuthorityPermanent {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:111.43,113.4 1, beginning `if state != manifest.AuthorityPermanent {`. This is an existing-authority load, absence, validation, or permanent-state refusal before Init mutates the tree. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
@@ -6103,7 +6133,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:131.17,133.4 1 in Run, beginning `if err != nil {`. The source exclusion records that ScaffoldConfig renders a static template over a dir basename; cannot fail in practice. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:131.17,133.4 1, beginning `if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice`. The source directive records that ScaffoldConfig renders a static template over a dir basename; cannot fail in practice. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
@@ -6118,337 +6148,352 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:135.21,137.4 1 in Run, beginning `if openErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:135.21,137.4 1, beginning `if openErr != nil {`. This reports failure to open the confined root before scaffold creation, so no Init effect has committed. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 139,
-          "column": 58
+          "line": 140,
+          "column": 36
         },
         "end": {
           "line": 142,
           "column": 4
         },
-        "statements": 2
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:139.58,142.4 2 in Run, beginning `if dirErr != nil && !errors.Is(dirErr, fs.ErrNotExist) {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 144,
-          "column": 65
-        },
-        "end": {
-          "line": 147,
-          "column": 5
-        },
-        "statements": 2
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:144.65,147.5 2 in Run, beginning `if err := handle.MkdirAll(config.DirName, 0o755); err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 150,
-          "column": 21
-        },
-        "end": {
-          "line": 153,
-          "column": 5
-        },
-        "statements": 2
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:150.21,153.5 2 in Run, beginning `if dirErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 163,
-          "column": 43
-        },
-        "end": {
-          "line": 165,
-          "column": 4
-        },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:163.43,165.4 1 in Run, beginning `if publishErr != nil || closeErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:140.36,142.4 1, beginning `if err != nil || closeErr != nil {`. This routes scaffold publication or handle-close failure through identity-checked rollback so committed directory, config, or residue effects cannot escape the typed outcome. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 185,
+          "line": 162,
           "column": 16
         },
         "end": {
-          "line": 187,
+          "line": 164,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:185.16,187.3 1 in Run, beginning `if err != nil {`. The source exclusion records that preparation validated every planned path; failure now requires an unportable root-confined filesystem fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:162.16,164.3 1, beginning `if err != nil { // coverage-ignore: preparation validated every planned path; failure now requires an unportable root-confined filesystem fault`. The source directive records that preparation validated every planned path; failure now requires an unportable root-confined filesystem fault. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 165,
+          "column": 41
+        },
+        "end": {
+          "line": 167,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:165.41,167.3 1, beginning `if len(collisions) > 0 && !input.Force { // coverage-ignore: the non-force probe plans the same full catalog; force makes this condition false`. The source directive records that the non-force probe plans the same full catalog; force makes this condition false. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 182,
+          "column": 26
+        },
+        "end": {
+          "line": 184,
+          "column": 26
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:182.26,184.26 2, beginning `if mutationErr != nil {`. This fallback inventories scaffold effects when Publisher result presentation itself fails, preserving both causes rather than dropping committed Init state. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 184,
+          "column": 26
+        },
+        "end": {
+          "line": 186,
+          "column": 6
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:184.26,186.6 1, beginning `if partialErr != nil {`. This returns the already-complete scaffold PartialError if fallback effect presentation also fails, rather than constructing an incomplete Publisher outcome. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 188,
-          "column": 41
+          "column": 28
         },
         "end": {
           "line": 190,
-          "column": 3
+          "column": 24
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:188.28,190.24 2, beginning `if scaffold.committed() {`. This adds Init-owned directory, config, and publication-residue effects only when the scaffold inventory proves one remains committed. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 190,
+          "column": 24
+        },
+        "end": {
+          "line": 193,
+          "column": 6
+        },
+        "statements": 2
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:190.24,193.6 2, beginning `if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break`. The source directive records that fixed paths and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 194,
+          "column": 5
+        },
+        "end": {
+          "line": 194,
+          "column": 147
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:188.41,190.3 1 in Run, beginning `if len(collisions) > 0 && !input.Force {`. The source exclusion records that the non-force probe plans the same full catalog; force makes this condition false. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:194.5,194.147 1, beginning `partialMutation.Changes = append([]presentation.MutationChange{{Label: \"committed init effects\", Values: values}}, partialMutation.Changes...)`. This prepends Init-owned effects ahead of Publisher effects so the cross-owner partial outcome has deterministic causal ordering. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 202,
+          "column": 3
+        },
+        "end": {
+          "line": 202,
+          "column": 27
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:202.3,202.27 1, beginning `return failScaffold(err)`. This uses expected-identity rollback when Publisher fails before either Publisher or scaffold reports a committed effect. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 205,
-          "column": 26
+          "column": 16
         },
         "end": {
-          "line": 207,
-          "column": 5
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:205.26,207.5 1 in Run, beginning `if mutationErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
           "line": 208,
-          "column": 26
-        },
-        "end": {
-          "line": 210,
-          "column": 24
+          "column": 3
         },
         "statements": 2
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:208.26,210.24 2 in Run, beginning `if scaffold.committed {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:205.16,208.3 2, beginning `if err != nil { // coverage-ignore: typed Publisher results and fixed presentation grammar make this mapping failure unreachable`. The source directive records that typed Publisher results and fixed presentation grammar make this mapping failure unreachable. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 210,
-          "column": 24
-        },
-        "end": {
-          "line": 212,
-          "column": 6
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:210.24,212.6 1 in Run, beginning `if valueErr != nil {`. The source exclusion records that fixed path and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 213,
-          "column": 5
-        },
-        "end": {
-          "line": 213,
-          "column": 174
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:213.5,213.174 1 in Run, beginning `partialMutation.Changes = append([]presentation.MutationChange{{Label: \"committed init effects\", Values: []presentation.Value{configValue}}}, parti...`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 221,
-          "column": 3
-        },
-        "end": {
-          "line": 221,
-          "column": 27
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:221.3,221.27 1 in Run, beginning `return failScaffold(err)`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 224,
           "column": 16
         },
         "end": {
-          "line": 227,
+          "line": 213,
           "column": 3
         },
         "statements": 2
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:224.16,227.3 2 in Run, beginning `if err != nil {`. The source exclusion records that typed Publisher results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:210.16,213.3 2, beginning `if err != nil { // coverage-ignore: Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation`. The source directive records that Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 229,
-          "column": 16
+          "line": 252,
+          "column": 57
         },
         "end": {
-          "line": 232,
+          "line": 254,
           "column": 3
         },
-        "statements": 2
+        "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:229.16,232.3 2 in Run, beginning `if err != nil {`. The source exclusion records that Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:252.57,254.3 1, beginning `if dirErr != nil && !errors.Is(dirErr, fs.ErrNotExist) {`. This preserves a committed scaffold directory in the partial inventory when identity-checked cleanup fails for a reason other than already-absent. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 263,
+          "line": 293,
           "column": 20
         },
         "end": {
-          "line": 265,
+          "line": 295,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:263.20,265.3 1 in rollbackScaffold, beginning `if openErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 288,
-          "column": 17
-        },
-        "end": {
-          "line": 290,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:288.17,290.4 1 in scaffoldPartialOutcome, beginning `if err != nil {`. The source exclusion records that fixed path and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
-    },
-    {
-      "identity": {
-        "file": "internal/initop/init.go",
-        "start": {
-          "line": 295,
-          "column": 17
-        },
-        "end": {
-          "line": 297,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/initop/init.go:295.17,297.4 1 in scaffoldPartialOutcome, beginning `if err != nil {`. The source exclusion records that fixed path and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:293.20,295.3 1, beginning `if openErr != nil {`. This returns a complete typed scaffold inventory when the confined rollback handle cannot be opened after scaffold commitment. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
           "line": 325,
-          "column": 16
+          "column": 17
         },
         "end": {
           "line": 327,
-          "column": 3
+          "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:325.16,327.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:325.17,327.4 1, beginning `if err != nil { // coverage-ignore: fixed path and prose contain no line break`. The source directive records that fixed path and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 330,
+          "line": 332,
+          "column": 17
+        },
+        "end": {
+          "line": 334,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:332.17,334.4 1, beginning `if err != nil { // coverage-ignore: fixed path and prose contain no line break`. The source directive records that fixed path and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 339,
+          "column": 17
+        },
+        "end": {
+          "line": 341,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:339.17,341.4 1, beginning `if err != nil {`. This preserves the underlying presentation error if a committed publication-residue path cannot be represented, rather than omitting that residue from recovery. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 349,
+          "column": 21
+        },
+        "end": {
+          "line": 351,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:349.21,351.3 1, beginning `if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break`. The source directive records that fixed paths and prose contain no line break. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 377,
           "column": 16
         },
         "end": {
-          "line": 332,
+          "line": 379,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:330.16,332.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that ScaffoldConfig over the embedded catalog cannot fail at runtime. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:377.16,379.3 1, beginning `if err != nil { // coverage-ignore: MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably`. The source directive records that MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 334,
+          "line": 382,
+          "column": 16
+        },
+        "end": {
+          "line": 384,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/initop/init.go:382.16,384.3 1, beginning `if err != nil { // coverage-ignore: ScaffoldConfig over the embedded catalog cannot fail at runtime`. The source directive records that ScaffoldConfig over the embedded catalog cannot fail at runtime. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 386,
           "column": 66
         },
         "end": {
-          "line": 336,
+          "line": 388,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:334.66,336.3 1 in probeCollisions, beginning `if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {`. The source exclusion records that a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:386.66,388.3 1, beginning `if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses`. The source directive records that a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 337,
+          "line": 389,
           "column": 63
         },
         "end": {
-          "line": 339,
+          "line": 391,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:337.63,339.3 1 in probeCollisions, beginning `if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil {`. The source exclusion records that post-MkdirAll write into a fresh temp dir cannot fail in practice. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:389.63,391.3 1, beginning `if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write into a fresh temp dir cannot fail in practice`. The source directive records that post-MkdirAll write into a fresh temp dir cannot fail in practice. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 342,
+          "line": 394,
           "column": 16
         },
         "end": {
-          "line": 344,
+          "line": 396,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:342.16,344.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that a freshly-scaffolded default config always opens. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:394.16,396.3 1, beginning `if err != nil { // coverage-ignore: a freshly-scaffolded default config always opens`. The source directive records that a freshly-scaffolded default config always opens. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
         "file": "internal/initop/init.go",
         "start": {
-          "line": 346,
+          "line": 398,
           "column": 16
         },
         "end": {
-          "line": 348,
+          "line": 400,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/initop/init.go:346.16,348.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/initop/init.go:398.16,400.3 1, beginning `if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail`. The source directive records that rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail. Init tests directly cover loader and gate rollback, changed-winner preservation, directory/config/residue inventories, Publisher partial results, and successful initialization."
     },
     {
       "identity": {
@@ -8578,7 +8623,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:75.18,77.3 1 in InitializeLeased, beginning `if lease == nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:75.18,77.3 1, beginning `if lease == nil {`. This compatibility route delegates unleased initialization to run, which immediately acquires the project lease before preparation; leased Init uses the supplied-lease route directly. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
@@ -8593,7 +8638,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:94.64,96.3 1 in run, beginning `} else if !lease.CoversProject(roots.Tracked, roots.Resident) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:94.64,96.3 1, beginning `} else if !lease.CoversProject(roots.Tracked, roots.Resident) {`. This refuses a supplied Lease whose live canonical identities do not cover both selected roots before Publisher preparation or mutation. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
@@ -8608,7 +8653,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:99.42,101.5 1 in run, beginning `if err := lease.Release(); err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:99.42,101.5 1, beginning `if err := lease.Release(); err != nil {`. This converts an owned lease-release failure into a PartialError exactly when the accumulated Result proves committed effects. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
@@ -8623,7 +8668,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:157.30,159.3 1 in partialOrError, beginning `if errors.As(err, &partial) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:157.30,159.3 1, beginning `if errors.As(err, &partial) {`. This preserves an existing complete PartialError rather than wrapping it with a different or incomplete Result. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
@@ -8638,7 +8683,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:173.17,175.4 1 in PartialMutation, beginning `if err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:173.17,175.4 1, beginning `if err != nil {`. This refuses to render an effect whose path or recovery text violates presentation grammar rather than silently omitting a committed effect. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
@@ -8653,172 +8698,262 @@
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:179.16,181.3 1 in PartialMutation, beginning `if err != nil {`. The source exclusion records that fixed presentation text. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:179.16,181.3 1, beginning `if err != nil { // coverage-ignore: fixed presentation text`. The source directive records that fixed presentation text. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 260,
-          "column": 16
+          "line": 202,
+          "column": 23
         },
         "end": {
-          "line": 262,
+          "line": 204,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:260.16,262.3 1 in sync, beginning `if err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:202.23,204.3 1, beginning `if effect.Path == \"\" {`. This fills an operation effect's path from the native publication error when the caller intentionally left the committed path to the filesystem owner. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 293,
+          "line": 275,
+          "column": 16
+        },
+        "end": {
+          "line": 277,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:275.16,277.3 1, beginning `if err != nil {`. This returns failure to open the confined tracked or resident handle before Publisher mutation, with an empty Result. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 308,
           "column": 12
         },
         "end": {
-          "line": 295,
+          "line": 310,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:293.12,295.4 1 in syncReportWithPlan, beginning `if found {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
-    },
-    {
-      "identity": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 297,
-          "column": 13
-        },
-        "end": {
-          "line": 299,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:297.13,299.4 1 in syncReportWithPlan, beginning `if !found {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
-    },
-    {
-      "identity": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 301,
-          "column": 62
-        },
-        "end": {
-          "line": 303,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:301.62,303.4 1 in syncReportWithPlan, beginning `if stateErr != nil || state != manifest.AuthorityPermanent {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:308.12,310.4 1, beginning `if found {`. This is a lock-presence or permanent-authority refusal before output planning mutates any tracked or resident path. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
           "line": 312,
-          "column": 102
+          "column": 13
         },
         "end": {
           "line": 314,
-          "column": 5
-        },
-        "statements": 1
-      },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:312.102,314.5 1 in syncReportWithPlan, beginning `if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil {`. The source exclusion records that rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
-    },
-    {
-      "identity": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 354,
-          "column": 60
-        },
-        "end": {
-          "line": 356,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:354.60,356.4 1 in syncReportWithPlan, beginning `if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:312.13,314.4 1, beginning `if !found {`. This is a lock-presence or permanent-authority refusal before output planning mutates any tracked or resident path. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 458,
-          "column": 91
+          "line": 316,
+          "column": 62
         },
         "end": {
-          "line": 462,
-          "column": 29
-        },
-        "statements": 4
-      },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:458.91,462.29 4 in syncReportWithPlan, beginning `if committedPath, residuePath, committed := committedPublication(bakErr); committed {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
-    },
-    {
-      "identity": {
-        "file": "internal/publisher/sync.go",
-        "start": {
-          "line": 462,
-          "column": 29
-        },
-        "end": {
-          "line": 464,
-          "column": 9
+          "line": 318,
+          "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:462.29,464.9 1 in syncReportWithPlan, beginning `if residuePath != \"\" {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:316.62,318.4 1, beginning `if stateErr != nil || state != manifest.AuthorityPermanent {`. This is a lock-presence or permanent-authority refusal before output planning mutates any tracked or resident path. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 476,
-          "column": 67
+          "line": 327,
+          "column": 102
         },
         "end": {
-          "line": 478,
+          "line": 329,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:476.67,478.5 1 in syncReportWithPlan, beginning `if observeErr != nil && !errors.Is(observeErr, fs.ErrNotExist) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:327.102,329.5 1, beginning `if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil { // coverage-ignore: rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time`. The source directive records that rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 509,
-          "column": 16
+          "line": 372,
+          "column": 60
         },
         "end": {
-          "line": 511,
-          "column": 3
+          "line": 374,
+          "column": 4
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:509.16,511.3 1 in syncReportWithPlan, beginning `if err != nil {`. The source exclusion records that sync constructs only authority-valid lock fields, so marshal failure requires a future representation change. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:372.60,374.4 1, beginning `if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {`. This reports an unexpected output identity-observation failure before backup or replacement, preserving the effects already accumulated for earlier outputs. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
         "file": "internal/publisher/sync.go",
         "start": {
-          "line": 593,
+          "line": 480,
+          "column": 91
+        },
+        "end": {
+          "line": 484,
+          "column": 29
+        },
+        "statements": 4
+      },
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:480.91,484.29 4, beginning `if committedPath, residuePath, committed := committedPublication(bakErr); committed {`. This records a backup as committed when native atomic publication reports that its destination changed despite a later cleanup failure, so the partial Result never loses the backup fact. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 484,
+          "column": 29
+        },
+        "end": {
+          "line": 486,
+          "column": 9
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:484.29,486.9 1, beginning `if residuePath != \"\" {`. This separately records native publication temporary residue when backup destination commit succeeded but cleanup failed. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 498,
+          "column": 67
+        },
+        "end": {
+          "line": 500,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:498.67,500.5 1, beginning `if observeErr != nil && !errors.Is(observeErr, fs.ErrNotExist) {`. This reports a retired-output identity observation fault before removal while preserving prior backup and output effects. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 529,
+          "column": 32
+        },
+        "end": {
+          "line": 530,
+          "column": 19
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:529.32,530.19 1, beginning `if a.resident != b.resident {`. This comparator arm gives cleanup effects a total depth-first, tracked-before-resident, lexical order; tests assert the resulting stable order without binding to sort callback scheduling. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 530,
+          "column": 19
+        },
+        "end": {
+          "line": 532,
+          "column": 6
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:530.19,532.6 1, beginning `if a.resident {`. This comparator arm gives cleanup effects a total depth-first, tracked-before-resident, lexical order; tests assert the resulting stable order without binding to sort callback scheduling. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 533,
+          "column": 5
+        },
+        "end": {
+          "line": 533,
+          "column": 14
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:533.5,533.14 1, beginning `return -1`. This comparator arm gives cleanup effects a total depth-first, tracked-before-resident, lexical order; tests assert the resulting stable order without binding to sort callback scheduling. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 540,
+          "column": 43
+        },
+        "end": {
+          "line": 541,
+          "column": 14
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:540.43,541.14 1, beginning `if errors.Is(infoErr, fs.ErrNotExist) {`. This treats an already-absent cleanup directory as complete and continues without claiming a removal effect. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 545,
+          "column": 21
+        },
+        "end": {
+          "line": 546,
+          "column": 13
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:545.21,546.13 1, beginning `if !info.IsDir() {`. This skips a cleanup candidate whose observed entry is no longer a directory, avoiding mutation of a changed winner. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 559,
           "column": 16
         },
         "end": {
-          "line": 595,
+          "line": 561,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Phase 3 reviewed internal/publisher/sync.go:593.16,595.3 1 in syncMutation, beginning `if err != nil {`. The source exclusion records that fixed nonempty completion action always validates as prose. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced."
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:559.16,561.3 1, beginning `if err != nil { // coverage-ignore: sync constructs only authority-valid lock fields, so marshal failure requires a future representation change`. The source directive records that sync constructs only authority-valid lock fields, so marshal failure requires a future representation change. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 644,
+          "column": 16
+        },
+        "end": {
+          "line": 646,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 3 renewed review of internal/publisher/sync.go:644.16,646.3 1, beginning `if err != nil { // coverage-ignore: fixed nonempty completion action always validates as prose`. The source directive records that fixed nonempty completion action always validates as prose. Publisher fault tests directly cover output, backup, prune, directory-cleanup, and final-lock commit boundaries, including residue accounting and stable effect ordering."
     },
     {
       "identity": {
@@ -13697,398 +13832,398 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 65,
-        "targetLine": 65,
+        "line": 69,
+        "targetLine": 69,
         "reason": "permission controls are execution-identity-dependent; otherwise an underlying WalkDir error requires a concurrent filesystem change",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `err = fs.WalkDir(h.root.FS(), subtree, func(path string, entry fs.DirEntry, walkErr error) error {` at internal/filesystem/handle.go:50 feeds `if walkErr != nil {` at internal/filesystem/handle.go:51 in `func (h *Handle) Walk(subtree string, visit func(path string, info fs.FileInfo) (bool, error)) error` (internal/filesystem/handle.go:35). Its concrete fault condition is permission controls are execution-identity-dependent; otherwise an underlying WalkDir error requires a concurrent filesystem change, so no safe portable production input induces this error path."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:69 records `permission controls are execution-identity-dependent; otherwise an underlying WalkDir error requires a concurrent filesystem change`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 69,
-        "targetLine": 69,
+        "line": 73,
+        "targetLine": 73,
         "reason": "permission controls are execution-identity-dependent; otherwise this requires a concurrent filesystem change",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/filesystem/handle.go:55, `if err != nil {` follows the concrete operation `info, err := entry.Info()` at internal/filesystem/handle.go:54 in `func (h *Handle) Walk(subtree string, visit func(path string, info fs.FileInfo) (bool, error)) error` (internal/filesystem/handle.go:35). The reviewed failure condition is permission controls are execution-identity-dependent; otherwise this requires a concurrent filesystem change; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:73 records `permission controls are execution-identity-dependent; otherwise this requires a concurrent filesystem change`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 183,
-        "targetLine": 183,
+        "line": 187,
+        "targetLine": 187,
         "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:183 targeting line 183: `the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:187 records `the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 189,
-        "targetLine": 189,
+        "line": 193,
+        "targetLine": 193,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:189 targeting line 189: `a collision requires predicting the cryptographically random temporary name before this operation`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:193 records `a collision requires predicting the cryptographically random temporary name before this operation`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 190,
-        "targetLine": 190,
+        "line": 194,
+        "targetLine": 194,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:190 targeting line 190: `a collision requires predicting the cryptographically random temporary name before this operation`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 197,
-        "targetLine": 197,
-        "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:197 targeting line 197: `exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 198,
-        "targetLine": 198,
-        "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:198 targeting line 198: `exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:194 records `a collision requires predicting the cryptographically random temporary name before this operation`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 201,
         "targetLine": 201,
-        "reason": "this remains non-nil only after a local temporary write storage fault",
+        "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:201 targeting line 201: `this remains non-nil only after a local temporary write storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:201 records `exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 202,
         "targetLine": 202,
-        "reason": "a second close failure after a replacement write failure requires a second storage fault",
+        "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:202 targeting line 202: `a second close failure after a replacement write failure requires a second storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:202 records `exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 205,
         "targetLine": 205,
-        "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
+        "reason": "this remains non-nil only after a local temporary write storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:205 targeting line 205: `the concrete root can fault here only through a concurrent namespace change or storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:205 records `this remains non-nil only after a local temporary write storage fault`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 206,
         "targetLine": 206,
-        "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
+        "reason": "a second close failure after a replacement write failure requires a second storage fault",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:206 targeting line 206: `the concrete root can fault here only through a concurrent namespace change or storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:206 records `a second close failure after a replacement write failure requires a second storage fault`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 209,
+        "targetLine": 209,
+        "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:209 records `the concrete root can fault here only through a concurrent namespace change or storage fault`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 210,
         "targetLine": 210,
+        "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:210 records `the concrete root can fault here only through a concurrent namespace change or storage fault`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 214,
+        "targetLine": 214,
         "reason": "writing a locally-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:210 targeting line 210: `writing a locally-created regular temporary requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 211,
-        "targetLine": 211,
-        "reason": "writing a locally-created regular temporary requires a storage fault",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:211 targeting line 211: `writing a locally-created regular temporary requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 212,
-        "targetLine": 212,
-        "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:212 targeting line 212: `os.File.Write returns a non-nil error when it writes fewer bytes than requested`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 213,
-        "targetLine": 213,
-        "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:213 targeting line 213: `os.File.Write returns a non-nil error when it writes fewer bytes than requested`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:214 records `writing a locally-created regular temporary requires a storage fault`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 215,
         "targetLine": 215,
-        "reason": "chmod of a newly-created regular temporary requires a storage fault",
-        "mapped": true,
+        "reason": "writing a locally-created regular temporary requires a storage fault",
+        "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:215 targeting line 215: `chmod of a newly-created regular temporary requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:215 records `writing a locally-created regular temporary requires a storage fault`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 216,
         "targetLine": 216,
-        "reason": "chmod of a newly-created regular temporary requires a storage fault",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:216 targeting line 216: `chmod of a newly-created regular temporary requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 218,
-        "targetLine": 218,
-        "reason": "syncing a locally-created regular temporary requires a storage fault",
+        "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:218 targeting line 218: `syncing a locally-created regular temporary requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:216 records `os.File.Write returns a non-nil error when it writes fewer bytes than requested`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 217,
+        "targetLine": 217,
+        "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:217 records `os.File.Write returns a non-nil error when it writes fewer bytes than requested`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 219,
         "targetLine": 219,
-        "reason": "syncing a locally-created regular temporary requires a storage fault",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:219 targeting line 219: `syncing a locally-created regular temporary requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 221,
-        "targetLine": 221,
-        "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
+        "reason": "chmod of a newly-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:221 targeting line 221: `closing a locally-created regular temporary after a successful sync requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:219 records `chmod of a newly-created regular temporary requires a storage fault`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 220,
+        "targetLine": 220,
+        "reason": "chmod of a newly-created regular temporary requires a storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:220 records `chmod of a newly-created regular temporary requires a storage fault`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 222,
         "targetLine": 222,
+        "reason": "syncing a locally-created regular temporary requires a storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:222 records `syncing a locally-created regular temporary requires a storage fault`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 223,
+        "targetLine": 223,
+        "reason": "syncing a locally-created regular temporary requires a storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:223 records `syncing a locally-created regular temporary requires a storage fault`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 225,
+        "targetLine": 225,
+        "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:225 records `closing a locally-created regular temporary after a successful sync requires a storage fault`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 226,
+        "targetLine": 226,
         "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:222 targeting line 222: `closing a locally-created regular temporary after a successful sync requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:226 records `closing a locally-created regular temporary after a successful sync requires a storage fault`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 286,
-        "targetLine": 286,
+        "line": 290,
+        "targetLine": 290,
         "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:286 targeting line 286: `the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:290 records `the operating-system random source is required by the Go runtime and cannot be faulted through this seam`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 296,
-        "targetLine": 296,
+        "line": 300,
+        "targetLine": 300,
         "reason": "closing a newly-created empty regular file requires a storage fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:296 targeting line 296: `closing a newly-created empty regular file requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:300 records `closing a newly-created empty regular file requires a storage fault`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 297,
-        "targetLine": 297,
+        "line": 301,
+        "targetLine": 301,
         "reason": "cleanup after a close storage fault requires the same unportable fault source",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:297 targeting line 297: `cleanup after a close storage fault requires the same unportable fault source`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 298,
-        "targetLine": 298,
-        "reason": "closing a newly-created empty regular file requires a storage fault",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:298 targeting line 298: `closing a newly-created empty regular file requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:301 records `cleanup after a close storage fault requires the same unportable fault source`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 302,
         "targetLine": 302,
+        "reason": "closing a newly-created empty regular file requires a storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:302 records `closing a newly-created empty regular file requires a storage fault`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 306,
+        "targetLine": 306,
         "reason": "collision requires predicting a cryptographically random temporary",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:302 targeting line 302: `collision requires predicting a cryptographically random temporary`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:306 records `collision requires predicting a cryptographically random temporary`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 303,
-        "targetLine": 303,
+        "line": 307,
+        "targetLine": 307,
         "reason": "collision requires predicting a cryptographically random temporary",
         "mapped": false,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:303 targeting line 303: `collision requires predicting a cryptographically random temporary`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:307 records `collision requires predicting a cryptographically random temporary`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 311,
-        "targetLine": 311,
+        "line": 315,
+        "targetLine": 315,
         "reason": "exhausting random temporary names is not practically triggerable",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:311 targeting line 311: `exhausting random temporary names is not practically triggerable`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:315 records `exhausting random temporary names is not practically triggerable`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 312,
-        "targetLine": 312,
+        "line": 316,
+        "targetLine": 316,
         "reason": "exhausting random temporary names is not practically triggerable",
         "mapped": false,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:312 targeting line 312: `exhausting random temporary names is not practically triggerable`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 369,
-        "targetLine": 369,
-        "reason": "stat on a successfully read confined regular file requires a storage fault",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:369 targeting line 369: `stat on a successfully read confined regular file requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 370,
-        "targetLine": 370,
-        "reason": "stat on a successfully read confined regular file requires a storage fault",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:370 targeting line 370: `stat on a successfully read confined regular file requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/filesystem/handle.go",
-        "line": 372,
-        "targetLine": 372,
-        "reason": "close after a successful confined read requires a storage fault",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:372 targeting line 372: `close after a successful confined read requires a storage fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:316 records `exhausting random temporary names is not practically triggerable`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
         "line": 373,
         "targetLine": 373,
+        "reason": "stat on a successfully read confined regular file requires a storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:373 records `stat on a successfully read confined regular file requires a storage fault`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 374,
+        "targetLine": 374,
+        "reason": "stat on a successfully read confined regular file requires a storage fault",
+        "mapped": false,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:374 records `stat on a successfully read confined regular file requires a storage fault`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 376,
+        "targetLine": 376,
+        "reason": "close after a successful confined read requires a storage fault",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:376 records `close after a successful confined read requires a storage fault`. The current profile state is mapped=true, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
+    },
+    {
+      "directive": {
+        "file": "internal/filesystem/handle.go",
+        "line": 377,
+        "targetLine": 377,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/filesystem/handle.go:373 targeting line 373: `close after a successful confined read requires a storage fault`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/filesystem/handle.go:377 records `close after a successful confined read requires a storage fault`. The current profile state is mapped=false, executed=false. Focused Handle tests cover the adjacent successful mutation, changed-entry refusal, nonempty-directory preservation, and temporary cleanup contract without a test-only production fault seam."
     },
     {
       "directive": {
@@ -14784,7 +14919,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:108 targeting line 108: `LoadOptional parsed and validated this unchanged lock immediately above`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:108 records `LoadOptional parsed and validated this unchanged lock immediately above`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
@@ -14796,175 +14931,187 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:131 targeting line 131: `ScaffoldConfig renders a static template over a dir basename; cannot fail in practice`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:131 records `ScaffoldConfig renders a static template over a dir basename; cannot fail in practice`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 185,
-        "targetLine": 185,
+        "line": 162,
+        "targetLine": 162,
         "reason": "preparation validated every planned path; failure now requires an unportable root-confined filesystem fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:185 targeting line 185: `preparation validated every planned path; failure now requires an unportable root-confined filesystem fault`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:162 records `preparation validated every planned path; failure now requires an unportable root-confined filesystem fault`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 188,
-        "targetLine": 188,
+        "line": 165,
+        "targetLine": 165,
         "reason": "the non-force probe plans the same full catalog; force makes this condition false",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:188 targeting line 188: `the non-force probe plans the same full catalog; force makes this condition false`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:165 records `the non-force probe plans the same full catalog; force makes this condition false`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 189,
-        "targetLine": 189,
+        "line": 166,
+        "targetLine": 166,
         "reason": "the identical pre-prompt probe makes this path unreachable",
         "mapped": false,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:189 targeting line 189: `the identical pre-prompt probe makes this path unreachable`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:166 records `the identical pre-prompt probe makes this path unreachable`. The current profile state is mapped=false, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
+    },
+    {
+      "directive": {
+        "file": "internal/initop/init.go",
+        "line": 190,
+        "targetLine": 190,
+        "reason": "fixed paths and prose contain no line break",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:190 records `fixed paths and prose contain no line break`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
+    },
+    {
+      "directive": {
+        "file": "internal/initop/init.go",
+        "line": 205,
+        "targetLine": 205,
+        "reason": "typed Publisher results and fixed presentation grammar make this mapping failure unreachable",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:205 records `typed Publisher results and fixed presentation grammar make this mapping failure unreachable`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
         "line": 210,
         "targetLine": 210,
-        "reason": "fixed path and prose contain no line break",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:210 targeting line 210: `fixed path and prose contain no line break`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/initop/init.go",
-        "line": 224,
-        "targetLine": 224,
-        "reason": "typed Publisher results and fixed presentation grammar make this mapping failure unreachable",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:224 targeting line 224: `typed Publisher results and fixed presentation grammar make this mapping failure unreachable`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/initop/init.go",
-        "line": 229,
-        "targetLine": 229,
         "reason": "Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:229 targeting line 229: `Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/initop/init.go",
-        "line": 288,
-        "targetLine": 288,
-        "reason": "fixed path and prose contain no line break",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:288 targeting line 288: `fixed path and prose contain no line break`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
-    },
-    {
-      "directive": {
-        "file": "internal/initop/init.go",
-        "line": 295,
-        "targetLine": 295,
-        "reason": "fixed path and prose contain no line break",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:295 targeting line 295: `fixed path and prose contain no line break`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:210 records `Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
         "line": 325,
         "targetLine": 325,
+        "reason": "fixed path and prose contain no line break",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:325 records `fixed path and prose contain no line break`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
+    },
+    {
+      "directive": {
+        "file": "internal/initop/init.go",
+        "line": 332,
+        "targetLine": 332,
+        "reason": "fixed path and prose contain no line break",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:332 records `fixed path and prose contain no line break`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
+    },
+    {
+      "directive": {
+        "file": "internal/initop/init.go",
+        "line": 349,
+        "targetLine": 349,
+        "reason": "fixed paths and prose contain no line break",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:349 records `fixed paths and prose contain no line break`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
+    },
+    {
+      "directive": {
+        "file": "internal/initop/init.go",
+        "line": 377,
+        "targetLine": 377,
         "reason": "MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:325 targeting line 325: `MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:377 records `MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 330,
-        "targetLine": 330,
+        "line": 382,
+        "targetLine": 382,
         "reason": "ScaffoldConfig over the embedded catalog cannot fail at runtime",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:330 targeting line 330: `ScaffoldConfig over the embedded catalog cannot fail at runtime`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:382 records `ScaffoldConfig over the embedded catalog cannot fail at runtime`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 334,
-        "targetLine": 334,
+        "line": 386,
+        "targetLine": 386,
         "reason": "a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:334 targeting line 334: `a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:386 records `a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 337,
-        "targetLine": 337,
+        "line": 389,
+        "targetLine": 389,
         "reason": "post-MkdirAll write into a fresh temp dir cannot fail in practice",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:337 targeting line 337: `post-MkdirAll write into a fresh temp dir cannot fail in practice`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:389 records `post-MkdirAll write into a fresh temp dir cannot fail in practice`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 342,
-        "targetLine": 342,
+        "line": 394,
+        "targetLine": 394,
         "reason": "a freshly-scaffolded default config always opens",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:342 targeting line 342: `a freshly-scaffolded default config always opens`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:394 records `a freshly-scaffolded default config always opens`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 346,
-        "targetLine": 346,
+        "line": 398,
+        "targetLine": 398,
         "reason": "rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/initop/init.go:346 targeting line 346: `rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:398 records `rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
     },
     {
       "directive": {
@@ -16692,55 +16839,55 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "Phase 3 reviewed directive internal/publisher/sync.go:179 targeting line 179: `fixed presentation text`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/publisher/sync.go:179 records `fixed presentation text`. The current profile state is mapped=true, executed=false. Focused Publisher tests cover complete partial effects at output, backup, prune, cleanup, and lock boundaries around this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 312,
-        "targetLine": 312,
+        "line": 327,
+        "targetLine": 327,
         "reason": "rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/publisher/sync.go:312 targeting line 312: `rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/publisher/sync.go:327 records `rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time`. The current profile state is mapped=true, executed=false. Focused Publisher tests cover complete partial effects at output, backup, prune, cleanup, and lock boundaries around this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 509,
-        "targetLine": 509,
+        "line": 559,
+        "targetLine": 559,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/publisher/sync.go:509 targeting line 509: `sync constructs only authority-valid lock fields, so marshal failure requires a future representation change`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/publisher/sync.go:559 records `sync constructs only authority-valid lock fields, so marshal failure requires a future representation change`. The current profile state is mapped=true, executed=false. Focused Publisher tests cover complete partial effects at output, backup, prune, cleanup, and lock boundaries around this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 510,
-        "targetLine": 510,
+        "line": 560,
+        "targetLine": 560,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": false,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/publisher/sync.go:510 targeting line 510: `sync constructs only authority-valid lock fields, so marshal failure requires a future representation change`. The measured state is mapped=false, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/publisher/sync.go:560 records `sync constructs only authority-valid lock fields, so marshal failure requires a future representation change`. The current profile state is mapped=false, executed=false. Focused Publisher tests cover complete partial effects at output, backup, prune, cleanup, and lock boundaries around this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 593,
-        "targetLine": 593,
+        "line": 644,
+        "targetLine": 644,
         "reason": "fixed nonempty completion action always validates as prose",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Phase 3 reviewed directive internal/publisher/sync.go:593 targeting line 593: `fixed nonempty completion action always validates as prose`. The measured state is mapped=true, executed=false; focused tests exercise the adjacent supported behavior without adding a production-only fault injector."
+      "evidence": "Renewed Phase 3 review of directive internal/publisher/sync.go:644 records `fixed nonempty completion action always validates as prose`. The current profile state is mapped=true, executed=false. Focused Publisher tests cover complete partial effects at output, backup, prune, cleanup, and lock boundaries around this guard."
     },
     {
       "directive": {
