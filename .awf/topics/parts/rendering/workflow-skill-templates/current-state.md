@@ -71,7 +71,7 @@ Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
 
-In both governance footprints, effort-workflow autonomously creates or resumes when continuity fires. Brainstorming may begin effort-free, but continuing after its first settled material decision requires ownership before proceeding further; a single-decision brainstorm remains effort-free. Brainstorming stops for explicit pre-artifact outline approval when an unresolved material decision fires it. Full ADR review continues to linked-plan handling; Core has no ADR or plan governance artifacts.
+In both governance footprints, effort-workflow autonomously creates or resumes when continuity fires. Brainstorming may begin effort-free, but continuing after its first settled material decision requires ownership before proceeding further; a single-decision brainstorm may remain effort-free only when no independent continuity need fires. Brainstorming stops for explicit pre-artifact outline approval when an unresolved material decision fires it. Full ADR review continues to linked-plan handling; Core has no ADR or plan governance artifacts.
 Origin: ADR-0152
 Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-0266, ADR-0278, ADR-0286, ADR-0292, ADR-preserve-brainstorming-continuity-before-handoff
 Backing: test

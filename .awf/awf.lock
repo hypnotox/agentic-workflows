@@ -94,9 +94,9 @@
     },
     ".claude/skills/awf-brainstorming/SKILL.md": {
       "templateId": "skills/brainstorming/SKILL.md.tmpl",
-      "templateHash": "sha256:c9926508f31ff6c98ecc9b5a1773609ea3d71fe03a6737c75a7277ce7908ea2f",
+      "templateHash": "sha256:f3afcaeed852698b97609dabf52b01a29a0c07a82885451c168188c91a8ed127",
       "configHash": "sha256:c78bbc4158ef0e72c44dd5b134fad7bffa37a923ee40673cfda5befe9b412d29",
-      "outputHash": "sha256:080f24528e052c913e48971a367ad9f7a9334d7397484c783c5cafdd04d3cb9c"
+      "outputHash": "sha256:8ac108ed58d75be5c26ac98715780a2ec8da238c225d8c013bc771324c9296a3"
     },
     ".claude/skills/awf-bugfix/SKILL.md": {
       "templateId": "skills/bugfix/SKILL.md.tmpl",
@@ -286,9 +286,9 @@
     },
     ".pi/skills/awf-brainstorming/SKILL.md": {
       "templateId": "skills/brainstorming/SKILL.md.tmpl",
-      "templateHash": "sha256:c9926508f31ff6c98ecc9b5a1773609ea3d71fe03a6737c75a7277ce7908ea2f",
+      "templateHash": "sha256:f3afcaeed852698b97609dabf52b01a29a0c07a82885451c168188c91a8ed127",
       "configHash": "sha256:72c8a8ada44541ad1e88ae5abf75062b42b6aca048f036f97603b54db7662b59",
-      "outputHash": "sha256:080f24528e052c913e48971a367ad9f7a9334d7397484c783c5cafdd04d3cb9c"
+      "outputHash": "sha256:8ac108ed58d75be5c26ac98715780a2ec8da238c225d8c013bc771324c9296a3"
     },
     ".pi/skills/awf-bugfix/SKILL.md": {
       "templateId": "skills/bugfix/SKILL.md.tmpl",
@@ -1053,8 +1053,8 @@
     "docs/topics/rendering/workflow-skill-templates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:ec1dd4c22c3249c143d25cc269117111190d6c7d5378b87f232515cfef7a2438",
-      "outputHash": "sha256:70ddaa41211ddb801ae8cbdffe412100dbfd80718a57b622fa2d81fa4bb73491"
+      "configHash": "sha256:63fcb7af436642e4356833420022efdfaff2ad673a3ed9de5dc87e36110521ea",
+      "outputHash": "sha256:60877424f56008a338d100f1594d7ee4a10749fdb7b5a0b82cff7b84dad90ea6"
     },
     "docs/topics/tooling/audit-and-snapshots.md": {
       "templateId": "topics/topic.md.tmpl",

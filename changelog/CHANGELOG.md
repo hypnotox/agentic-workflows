@@ -10,7 +10,7 @@ query a single version or a range.
 
 ### Features
 
-- Brainstorming now evaluates continuity at entry and when relevant facts change. Continuing beyond its first settled material decision creates or resumes effort ownership before further work; late-created effort memory is initialized from retained evidence before Pi handoff, while single-decision brainstorming remains effort-free.
+- Brainstorming now evaluates continuity at entry and when relevant facts change. Continuing beyond its first settled material decision creates or resumes effort ownership before further work; a single-decision brainstorm may remain effort-free only when no independent continuity need fires. Late-created effort memory is initialized from retained evidence before Pi handoff. Material outcome drift creates a fixed-title, fixed-slug successor that receives still-valid context and proves resumability before the obsolete effort archives.
 
 ## [0.40.0] - 2026-08-25
 

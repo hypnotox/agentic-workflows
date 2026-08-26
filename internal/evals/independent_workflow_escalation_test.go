@@ -164,11 +164,6 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:independent-workflow-escalation (TestBrainstormContinuityBoundary)
-// invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestBrainstormContinuityBoundary)
-// invariant: rendering/workflow-skill-templates:memory-checkpoint-chain-coverage (TestBrainstormContinuityBoundary)
-// invariant: rendering/workflow-skill-templates:unified-effort-workflow-coverage (TestBrainstormContinuityBoundary)
-// invariant: rendering/workflow-skill-templates:effort-workflow (TestBrainstormContinuityBoundary)
 func TestBrainstormContinuityBoundary(t *testing.T) {
 	for _, profile := range []string{"core", "full"} {
 		t.Run(profile, func(t *testing.T) {
@@ -181,7 +176,10 @@ func TestBrainstormContinuityBoundary(t *testing.T) {
 
 					assertContainsAll(t, target+" "+profile+" brainstorming continuity", brainstorming,
 						"Evaluate it when brainstorming begins and whenever a continuity-relevant fact changes",
-						"may begin effort-free", "first settled material decision", "before proceeding further", "single-decision brainstorm may still remain effort-free")
+						"may begin effort-free", "first settled material decision", "before proceeding further", "single-decision brainstorm may remain effort-free only when no independent continuity need fires")
+					assertOrderedPhrases(t, brainstorming,
+						"**Evaluate continuity independently.**", "**Orient in the topic.**",
+						"**Clarify one question at a time.**", "**Present proportionate approaches.**")
 					assertOrderedPhrases(t, brainstorming, "first settled material decision", "create or resume ownership before proceeding further")
 					lateOwnership := strings.Replace(brainstorming, "create or resume ownership before proceeding further", "proceed further before creating or resuming ownership", 1)
 					if hasOrderedPhrases(lateOwnership, "first settled material decision", "create or resume ownership before proceeding further") {
