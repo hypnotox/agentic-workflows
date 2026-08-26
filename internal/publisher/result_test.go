@@ -5,21 +5,15 @@ import (
 	"testing"
 )
 
-func TestPreparationPublicationRequiresPublisherBinding(t *testing.T) {
+func TestPreparationIsReadOnlyAndRequiresBinding(t *testing.T) {
 	unbound := Preparation{}
-	if _, err := unbound.Sync(); err == nil || !strings.Contains(err.Error(), "unbound preparation") {
-		t.Fatalf("unbound sync error = %v", err)
-	}
-	if _, err := unbound.Initialize(InitAuthority{}); err == nil || !strings.Contains(err.Error(), "unbound preparation") {
-		t.Fatalf("unbound initialize error = %v", err)
-	}
 	if _, err := unbound.InitCollisions(); err == nil || !strings.Contains(err.Error(), "unbound preparation") {
 		t.Fatalf("unbound collision error = %v", err)
 	}
 }
 
 func TestResultDefensivelyProjectsCommittedMutations(t *testing.T) {
-	result := newResult([]Backup{{Path: "one", Bak: "one.awf-bak"}}, []Change{{Path: "two", Cause: "added"}}, []string{"three"})
+	result := newResult([]Backup{{Path: "one", Bak: "one.awf-bak"}}, []Change{{Path: "two", Cause: "added"}}, []string{"three"}, []Effect{{Kind: "replace", Path: "two", Recovery: "rerun"}})
 	backups := result.Backups()
 	changes := result.Changes()
 	pruned := result.Pruned()

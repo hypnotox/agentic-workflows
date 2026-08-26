@@ -3,11 +3,13 @@ package main
 import (
 	"bytes"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"os"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/initop"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
@@ -39,10 +41,16 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 		return err
 	}
 	outcome, err := initop.Run(ctx, initop.Input{
-		Root: root, Force: force, Answers: answers,
+		Root: root, ResidentRoot: awfgit.ProjectResidentRoot(ctx, root), Force: force, Answers: answers,
 		PromptInput: promptInput, PromptOutput: stdout, Interactive: interactive,
 	}, loadProject, compatibilityGate)
 	if err != nil {
+		var partial *initop.PartialError
+		if errors.As(err, &partial) {
+			if presentErr := renderInitOutcome(partial.Outcome, stdout); presentErr != nil {
+				return errors.Join(err, presentErr)
+			}
+		}
 		return err
 	}
 	return renderInitOutcome(outcome, stdout)

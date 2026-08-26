@@ -6,6 +6,7 @@ import "github.com/hypnotox/agentic-workflows/internal/presentation"
 // It combines config adoption, sync mutation, advisories, and ordered next
 // actions without owning any mutation behavior.
 type Outcome struct {
+	Status         string
 	ConfigPath     string
 	ExistingConfig bool
 	IgnoredAnswers bool
@@ -57,7 +58,11 @@ func (o Outcome) Document() (presentation.Document, error) {
 		return presentation.Document{}, err
 	}
 	nextActions = append(nextActions, actions...)
-	return (presentation.Mutation{Status: "initialization completed", Identity: identity, Changes: changes, Notes: notes, NextActions: nextActions}).Document()
+	status := o.Status
+	if status == "" {
+		status = "initialization completed"
+	}
+	return (presentation.Mutation{Status: status, Identity: identity, Changes: changes, Notes: notes, NextActions: nextActions}).Document()
 }
 
 func proseValues(values []string) ([]presentation.Value, error) {

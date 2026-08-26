@@ -1,0 +1,198 @@
+package filesystem
+
+import (
+	"context"
+	"crypto/sha256"
+	"errors"
+	"fmt"
+	"os"
+	"os/exec"
+	"path/filepath"
+	"runtime"
+	"strings"
+	"testing"
+	"time"
+)
+
+// invariant: tooling/filesystem-access:root-scoped-project-mutation-leases (TestRootScopedProjectMutationLeases)
+func TestRootScopedProjectMutationLeases(t *testing.T) {
+	root := t.TempDir()
+	alias := filepath.Join(filepath.Dir(root), "alias")
+	if runtime.GOOS != "windows" {
+		if err := os.Symlink(root, alias); err != nil {
+			t.Fatal(err)
+		}
+		defer os.Remove(alias)
+		canonical, err := CanonicalRoot(root)
+		if err != nil {
+			t.Fatal(err)
+		}
+		aliased, err := CanonicalRoot(alias)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if canonical != aliased {
+			t.Fatalf("alias identity = %q, want %q", aliased, canonical)
+		}
+	}
+	release, err := Acquire(context.Background(), "lease-test", root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	_, err = Acquire(ctx, "lease-test", root)
+	if !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("contended acquire = %v, want context deadline", err)
+	}
+	if err := release(); err != nil {
+		t.Fatal(err)
+	}
+	second, err := Acquire(context.Background(), "lease-test", root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := second(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestAcquireProjectRetainsDistinctScopesAtSameRoot(t *testing.T) {
+	root := t.TempDir()
+	lease, err := AcquireProjectLease(context.Background(), root, root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := lease.Release(); err != nil {
+			t.Error(err)
+		}
+	}()
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+	defer cancel()
+	if _, err := Acquire(ctx, "project-tracked-locks", root); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("tracked scope acquired through project lease = %v, want deadline", err)
+	}
+	if _, err := Acquire(ctx, "project-resident-locks", root); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("resident scope acquired through project lease = %v, want deadline", err)
+	}
+}
+
+func TestLeaseHelperProcess(t *testing.T) {
+	if os.Getenv("AWF_LEASE_HELPER") != "1" {
+		return
+	}
+	roots := strings.Split(os.Getenv("AWF_LEASE_ROOTS"), string(os.PathListSeparator))
+	release, err := Acquire(context.Background(), os.Getenv("AWF_LEASE_SCOPE"), roots...)
+	if err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(2)
+	}
+	if err := os.WriteFile(os.Getenv("AWF_LEASE_READY"), []byte("ready"), 0o600); err != nil {
+		os.Exit(3)
+	}
+	defer func() { _ = release() }()
+	time.Sleep(time.Hour)
+}
+
+func TestLeaseCrossProcessContentionAndProcessDeathRelease(t *testing.T) {
+	root := t.TempDir()
+	ready := filepath.Join(t.TempDir(), "ready")
+	cmd := exec.Command(os.Args[0], "-test.run=^TestLeaseHelperProcess$")
+	cmd.Env = append(os.Environ(), "AWF_LEASE_HELPER=1", "AWF_LEASE_SCOPE=cross-process-test", "AWF_LEASE_ROOTS="+root, "AWF_LEASE_READY="+ready)
+	if err := cmd.Start(); err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = cmd.Process.Kill(); _ = cmd.Wait() }()
+	deadline := time.Now().Add(5 * time.Second)
+	for {
+		if _, err := os.Stat(ready); err == nil {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("helper did not acquire lease")
+		}
+		time.Sleep(10 * time.Millisecond)
+	}
+	ctx, cancel := context.WithTimeout(context.Background(), 50*time.Millisecond)
+	defer cancel()
+	if _, err := Acquire(ctx, "cross-process-test", root); !errors.Is(err, context.DeadlineExceeded) {
+		t.Fatalf("cross-process contention = %v, want deadline", err)
+	}
+	if err := cmd.Process.Kill(); err != nil {
+		t.Fatal(err)
+	}
+	if err := cmd.Wait(); err == nil {
+		t.Fatal("killed helper exited successfully")
+	}
+	release, err := Acquire(context.Background(), "cross-process-test", root)
+	if err != nil {
+		t.Fatalf("lease remained after process death: %v", err)
+	}
+	if err := release(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestLeaseOrderingAndRestrictivePersistentModes(t *testing.T) {
+	first, second := t.TempDir(), t.TempDir()
+	one, err := Acquire(context.Background(), "ordered-test", first, second)
+	if err != nil {
+		t.Fatal(err)
+	}
+	acquired := make(chan error, 1)
+	go func() {
+		two, err := Acquire(context.Background(), "ordered-test", second, first)
+		if err == nil {
+			err = two()
+		}
+		acquired <- err
+	}()
+	select {
+	case err := <-acquired:
+		t.Fatalf("reverse acquisition passed before release: %v", err)
+	case <-time.After(40 * time.Millisecond):
+	}
+	if err := one(); err != nil {
+		t.Fatal(err)
+	}
+	select {
+	case err := <-acquired:
+		if err != nil {
+			t.Fatal(err)
+		}
+	case <-time.After(5 * time.Second):
+		t.Fatal("reverse ordered acquisition deadlocked")
+	}
+	cache, err := leaseCache("ordered-test")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(cache); err != nil || info.Mode().Perm() != 0o700 {
+		t.Fatalf("cache mode = %v, %v", info, err)
+	}
+	identity, _ := CanonicalRoot(first)
+	lockPath := filepath.Join(cache, fmt.Sprintf("%x.lock", sha256.Sum256([]byte(identity))))
+	if info, err := os.Stat(lockPath); err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("lock mode = %v, %v", info, err)
+	}
+}
+
+func TestAcquireProjectAllowsIndependentTrackedRoots(t *testing.T) {
+	first := t.TempDir()
+	second := t.TempDir()
+	one, err := Acquire(context.Background(), "project-tracked-locks", first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() { _ = one() }()
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second)
+	defer cancel()
+	two, err := Acquire(ctx, "project-tracked-locks", second)
+	if err != nil {
+		t.Fatalf("independent tracked lease: %v", err)
+	}
+	if err := two(); err != nil {
+		t.Fatal(err)
+	}
+}

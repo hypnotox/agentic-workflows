@@ -82,7 +82,7 @@ func preparePublicSyncLaterFailure(t *testing.T, root string) {
 	}
 }
 
-func TestPublicSyncPartialResultHasDivergentUpgradeAndSyncPresentation(t *testing.T) {
+func TestPublicSyncPartialResultIsPresentedByEveryCommandBoundary(t *testing.T) {
 	t.Run("upgrade retains the real partial result", func(t *testing.T) {
 		root := scaffoldProject(t)
 		preparePublicSyncLaterFailure(t, root)
@@ -93,20 +93,20 @@ func TestPublicSyncPartialResultHasDivergentUpgradeAndSyncPresentation(t *testin
 		if stdout.Len() != 0 {
 			t.Fatalf("stdout = %q, want no partial success mutation", stdout.String())
 		}
-		if got := stderr.String(); !strings.Contains(got, "outputs: changed AGENTS.md (internal)") || !strings.Contains(got, "cause: filesystem: read \"CLAUDE.md\"") {
-			t.Fatalf("upgrade failure diagnostic = %q, want committed output and sync cause", got)
+		if got := stderr.String(); !strings.Contains(got, "outputs: changed AGENTS.md (internal)") || !strings.Contains(got, "publication partially committed") || !strings.Contains(got, "filesystem: read \"CLAUDE.md\"") {
+			t.Fatalf("upgrade failure diagnostic = %q, want committed output and typed sync cause", got)
 		}
 	})
 
-	t.Run("ordinary sync discards the real partial result", func(t *testing.T) {
+	t.Run("ordinary sync presents the real partial result", func(t *testing.T) {
 		root := scaffoldProject(t)
 		preparePublicSyncLaterFailure(t, root)
 		var stdout bytes.Buffer
 		if err := runSync(testContext(t), root, &stdout); err == nil {
 			t.Fatal("ordinary sync accepted an unreplaceable later output")
 		}
-		if stdout.Len() != 0 {
-			t.Fatalf("ordinary sync stdout = %q, want no partial output", stdout.String())
+		if got := stdout.String(); !strings.Contains(got, "status: partially committed") || !strings.Contains(got, "output-replaced AGENTS.md") || !strings.Contains(got, "recovery:") {
+			t.Fatalf("ordinary sync stdout = %q, want complete partial-effect presentation", got)
 		}
 	})
 }

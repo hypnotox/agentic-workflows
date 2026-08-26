@@ -30,11 +30,7 @@ func initializeProject(ctx context.Context, root string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	prepared, err := composePublisher(state, cfg).Prepare()
-	if err != nil {
-		return err
-	}
-	result, err := prepared.Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version})
+	result, err := composePublisher(state, cfg).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version})
 	if err != nil {
 		return err
 	}

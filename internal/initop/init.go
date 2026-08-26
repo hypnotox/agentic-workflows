@@ -13,8 +13,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
@@ -28,9 +30,22 @@ type LoadProject func(string) (*project.Loader, error)
 // existing project is republished.
 type Gate func(context.Context, string) error
 
+// PartialError carries the complete initialization outcome after a committed
+// config or publication effect, while preserving the underlying error identity.
+type PartialError struct {
+	Outcome initspec.Outcome
+	Cause   error
+}
+
+func (e *PartialError) Error() string {
+	return "initialization partially committed: " + e.Cause.Error()
+}
+func (e *PartialError) Unwrap() error { return e.Cause }
+
 // Input contains parsed initialization values and CLI-selected prompt streams.
 type Input struct {
 	Root         string
+	ResidentRoot string
 	Force        bool
 	Answers      map[string]string
 	PromptInput  io.Reader
@@ -40,8 +55,26 @@ type Input struct {
 
 // Run performs one complete initialization operation and returns its semantic
 // outcome. Rendering and protocol selection remain with the command.
-func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error) {
+func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (outcome initspec.Outcome, returnErr error) {
 	root := input.Root
+	residentRoot := input.ResidentRoot
+	if residentRoot == "" {
+		residentRoot = root
+	}
+	lease, err := filesystem.AcquireProjectLease(ctx, root, residentRoot)
+	if err != nil {
+		return initspec.Outcome{}, err
+	}
+	defer func() {
+		if releaseErr := lease.Release(); releaseErr != nil {
+			joined := errors.Join(returnErr, releaseErr)
+			if outcome.ConfigPath != "" {
+				returnErr = &PartialError{Outcome: outcome, Cause: joined}
+			} else {
+				returnErr = joined
+			}
+		}
+	}()
 	cfgPath := config.ConfigPath(root)
 	lockPath := config.LockPath(root)
 	_, statErr := os.Stat(cfgPath)
@@ -100,8 +133,14 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return initspec.Outcome{}, err
 		}
-		if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write; fails only on a permission fault that root bypasses
-			return initspec.Outcome{}, err
+		handle, openErr := filesystem.Open(root)
+		if openErr != nil {
+			return initspec.Outcome{}, openErr
+		}
+		publishErr := handle.Publish(filepath.ToSlash(filepath.Join(config.DirName, "config.yaml")), scaffold, 0o644)
+		closeErr := handle.Close()
+		if publishErr != nil || closeErr != nil {
+			return initspec.Outcome{}, errors.Join(publishErr, closeErr)
 		}
 		scaffolded = true
 	}
@@ -135,11 +174,30 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 
 	var result publisher.Result
 	if !configExists && !lockExists {
-		result, err = prepared.Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version})
+		result, err = composed.InitializeLeased(ctx, lease, publisher.InitAuthority{InitializedWithVersion: project.Version})
 	} else {
-		result, err = prepared.Sync()
+		result, err = composed.SyncLeased(ctx, lease)
 	}
 	if err != nil {
+		var publisherPartial *publisher.PartialError
+		if errors.As(err, &publisherPartial) || scaffolded {
+			partialMutation, mutationErr := result.PartialMutation()
+			if mutationErr != nil {
+				return initspec.Outcome{}, errors.Join(err, mutationErr)
+			}
+			if scaffolded {
+				configValue, valueErr := presentation.Literal("config-created " + filepath.ToSlash(filepath.Join(config.DirName, "config.yaml")) + "; recovery: retain it and rerun awf init --force, or remove it only after restoring the pre-init tree")
+				if valueErr != nil { // coverage-ignore: fixed path and prose contain no line break
+					return initspec.Outcome{}, errors.Join(err, valueErr)
+				}
+				partialMutation.Changes = append([]presentation.MutationChange{{Label: "committed init effects", Values: []presentation.Value{configValue}}}, partialMutation.Changes...)
+			}
+			partialOutcome := initspec.Outcome{
+				Status: "initialization partially committed", ConfigPath: cfgPath,
+				ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers, Sync: partialMutation,
+			}
+			return partialOutcome, &PartialError{Outcome: partialOutcome, Cause: err}
+		}
 		cleanupScaffold(cfgPath, scaffolded)
 		return initspec.Outcome{}, err
 	}

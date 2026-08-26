@@ -88,7 +88,7 @@ type commandRoute struct {
 func commandRoutes() map[string]commandRoute {
 	entries := []commandRoute{
 		{"init", "init", "runInitWithProjectLoader", []string{"github.com/hypnotox/agentic-workflows/internal/initspec.Describe", "github.com/hypnotox/agentic-workflows/internal/initop.Run"}, false},
-		{"render", "render", "runSyncPrinting", []string{"github.com/hypnotox/agentic-workflows/internal/publisher.Sync"}, false},
+		{"render", "render", "runSyncPrinting", []string{"github.com/hypnotox/agentic-workflows/internal/publisher.SyncLeased"}, false},
 		{"check", "check", "runCheck", []string{"github.com/hypnotox/agentic-workflows/internal/checkop.Run"}, false},
 		{"check commit-policy", "check", "runCommitPolicy", []string{"github.com/hypnotox/agentic-workflows/internal/project.VerifyCommitPolicyAt"}, false},
 		{"check repo", "check", "runCheckRepo", []string{"github.com/hypnotox/agentic-workflows/internal/checkop.Run"}, false},
@@ -743,6 +743,7 @@ func allowedOwnerBoundaryFunctions() map[string]bool {
 		module + "publisher.BuildConfigReference":       true,
 		module + "publisher.IsLocalDocTemplate":         true,
 		module + "publisher.Mutation":                   true,
+		module + "publisher.PartialMutation":            true,
 		module + "publisher.New":                        true,
 		module + "publisher.NewFilesystemReader":        true,
 		module + "resident.Document":                    true,

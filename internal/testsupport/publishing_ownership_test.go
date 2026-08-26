@@ -216,16 +216,16 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	}
 	initSource := readProduction(t, root, "internal/initop/init.go")
 	for route, want := range map[string]int{
-		"composed.Prepare()":        1,
-		"prepared.InitCollisions()": 1,
-		"prepared.Initialize(":      1,
-		"prepared.Sync()":           1,
+		"composed.Prepare()":         1,
+		"prepared.InitCollisions()":  1,
+		"composed.InitializeLeased(": 1,
+		"composed.SyncLeased(":       1,
 	} {
 		if got := strings.Count(initSource, route); got != want {
 			t.Errorf("initialization prepared-universe route %q count = %d, want %d", route, got, want)
 		}
 	}
-	for _, forbidden := range []string{"composed.InitCollisions()", "composed.Initialize(", "composed.Sync()"} {
+	for _, forbidden := range []string{"composed.InitCollisions()", "prepared.Initialize(", "prepared.Sync()", "composed.Initialize(", "composed.Sync()"} {
 		if strings.Contains(initSource, forbidden) {
 			t.Errorf("initialization reconstructs its prepared universe through %q", forbidden)
 		}
@@ -235,7 +235,7 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	preparedRoutes := map[string]bool{"Sync": false, "Initialize": false, "InitCollisions": false}
+	preparedRoutes := map[string]bool{"InitCollisions": false}
 	for _, declaration := range publisherFile.Decls {
 		fn, ok := declaration.(*ast.FuncDecl)
 		if !ok || fn.Recv == nil || len(fn.Recv.List) != 1 || fn.Body == nil {
@@ -271,7 +271,13 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 	}
 	for route, found := range preparedRoutes {
 		if !found {
-			t.Errorf("Publisher prepared-universe route Preparation.%s not inspected", route)
+			t.Errorf("Publisher prepared read-model route Preparation.%s not inspected", route)
+		}
+	}
+	publisherSource := readProduction(t, root, "internal/publisher/sync.go")
+	for _, forbidden := range []string{"func (p Preparation) Sync", "func (p Preparation) Initialize"} {
+		if strings.Contains(publisherSource, forbidden) {
+			t.Errorf("stale Preparation mutator remains: %s", forbidden)
 		}
 	}
 }

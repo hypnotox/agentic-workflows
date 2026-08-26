@@ -12,9 +12,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -48,14 +50,50 @@ func TestRunSyncPrintingUsesInjectedLoader(t *testing.T) {
 	var loadPaths []string
 	loader := project.NewLoader(func(path string) (*config.Config, error) {
 		loadPaths = append(loadPaths, path)
+		assertProjectLeaseHeld(t, root)
 		return config.Load(path)
 	}, catalog.Standard, func(_ context.Context, got string) string { return got }, mustOpenGit(t, root))
-	if err := runSyncPrinting(ctx, loader, root, io.Discard); err != nil {
+	writer := &leaseAssertingWriter{t: t, root: root}
+	if err := runSyncPrinting(ctx, loader, root, writer); err != nil {
+		t.Fatal(err)
+	}
+	if !writer.called {
+		t.Fatal("result presentation did not run under the project lease")
+	}
+	lease, err := filesystem.AcquireProjectLease(ctx, root, root)
+	if err != nil {
+		t.Fatalf("lease not released after outcome: %v", err)
+	}
+	if err := lease.Release(); err != nil {
 		t.Fatal(err)
 	}
 	want := config.RootDir(root)
 	if len(loadPaths) != 1 || loadPaths[0] != want {
 		t.Fatalf("config load paths = %v, want [%q]", loadPaths, want)
+	}
+}
+
+type leaseAssertingWriter struct {
+	t      *testing.T
+	root   string
+	called bool
+}
+
+func (w *leaseAssertingWriter) Write(payload []byte) (int, error) {
+	w.called = true
+	assertProjectLeaseHeld(w.t, w.root)
+	return len(payload), nil
+}
+
+func assertProjectLeaseHeld(t *testing.T, root string) {
+	t.Helper()
+	ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+	defer cancel()
+	if lease, err := filesystem.AcquireProjectLease(ctx, root, root); !errors.Is(err, context.DeadlineExceeded) {
+		if lease != nil {
+			_ = lease.Release()
+		}
+		t.Fatalf("project lease was not held: %v", err)
 	}
 }
 
@@ -74,7 +112,7 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "sync.go", owner: "newProjectLoader", name: "NewLoader"}:                               1,
 		{file: "sync.go", owner: "newProjectLoader", name: "NewLoaderWithoutRepository"}:              1,
 		{file: "sync.go", owner: "runSyncPrinting", name: "OpenForOperation"}:                         1,
-		{file: "sync.go", owner: "runSyncPrinting", name: "Sync"}:                                     1,
+		{file: "sync.go", owner: "runSyncPrinting", name: "SyncLeased"}:                               1,
 		{file: "upgrade_presentation.go", owner: "productionUpgradeSyncDependencies", name: "Sync"}:   1,
 		{file: "upgrade_presentation.go", owner: "upgradeSyncMutationWith", name: "OpenForOperation"}: 1,
 		{file: "adr.go", owner: "runADR", name: "Sync"}:                                               1,
@@ -172,7 +210,7 @@ func syncCompositionCalls(pkg *packages.Package) map[syncCompositionCall]int {
 				return true
 			}
 			switch object.Name() {
-			case "NewLoader", "NewLoaderWithoutRepository", "Open", "OpenForOperation", "Sync":
+			case "NewLoader", "NewLoaderWithoutRepository", "Open", "OpenForOperation", "Sync", "SyncLeased":
 				owner := owners[call.Pos()]
 				if owner == "" {
 					owner = "<package>"

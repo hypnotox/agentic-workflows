@@ -19,6 +19,20 @@ type Handle struct {
 	root *os.Root
 }
 
+// ErrIdentityChanged reports that a path no longer names the entry observed by
+// the caller. It is stable under wrapping.
+var ErrIdentityChanged = errors.New("filesystem: observed identity changed")
+
+// CommittedPublication reports the confined destination and cleanup residue
+// carried by a committed exclusive-publication error.
+func CommittedPublication(err error) (destination, residue string, committed bool) {
+	var cleanup *filepublication.CommittedCleanupError
+	if !errors.As(err, &cleanup) {
+		return "", "", false
+	}
+	return cleanup.DestinationPath, cleanup.ResiduePath, true
+}
+
 // Open opens root as a root-confined filesystem handle.
 func Open(root string) (*Handle, error) {
 	r, err := os.OpenRoot(root)
@@ -134,10 +148,30 @@ func Backup(source string, readWithMode func(string) ([]byte, fs.FileMode, error
 }
 
 // Replace atomically replaces path with one complete file beneath the selected
-// root, preserving the requested final mode.
-func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) (returnErr error) {
+// root, preserving the requested final mode. Callers that previously observed
+// the destination should use ReplaceExpected.
+func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) error {
+	expected, err := h.root.Lstat(destination)
+	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+		return fmt.Errorf("filesystem: inspect replacement %q: %w", destination, err)
+	}
+	return h.ReplaceExpected(destination, expected, contents, mode)
+}
+
+// ReplaceExpected publishes only while destination still has expected's entry
+// identity. A nil expected identity creates exclusively rather than clobbering.
+func (h *Handle) ReplaceExpected(destination string, expected fs.FileInfo, contents []byte, mode fs.FileMode) (returnErr error) {
 	if err := validPath(destination); err != nil {
 		return fmt.Errorf("filesystem: replace %q: %w", destination, err)
+	}
+	if expected == nil {
+		if err := h.Publish(destination, contents, mode); err != nil {
+			if errors.Is(err, fs.ErrExist) {
+				return fmt.Errorf("filesystem: replace %q: %w", destination, ErrIdentityChanged)
+			}
+			return err
+		}
+		return nil
 	}
 	var temporary string
 	var file *os.File
@@ -182,6 +216,13 @@ func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) 
 		return fmt.Errorf("filesystem: close replacement temporary for %q: %w", destination, err) // coverage-ignore: closing a locally-created regular temporary after a successful write requires a storage fault
 	}
 	file = nil
+	current, err := h.root.Lstat(destination)
+	if errors.Is(err, fs.ErrNotExist) || (err == nil && !os.SameFile(expected, current)) {
+		return fmt.Errorf("filesystem: replace %q: %w", destination, ErrIdentityChanged)
+	}
+	if err != nil {
+		return fmt.Errorf("filesystem: inspect expected replacement %q: %w", destination, err)
+	}
 	if err := h.root.Rename(temporary, destination); err != nil {
 		return fmt.Errorf("filesystem: replace %q: %w", destination, err)
 	}
@@ -209,6 +250,24 @@ func (h *Handle) RemoveAll(path string) error {
 	}
 	if err := h.root.RemoveAll(path); err != nil {
 		return fmt.Errorf("filesystem: remove-all %q: %w", path, err)
+	}
+	return nil
+}
+
+// RemoveExpected removes path only while it still has expected's identity.
+func (h *Handle) RemoveExpected(path string, expected fs.FileInfo) error {
+	if err := validPath(path); err != nil {
+		return fmt.Errorf("filesystem: remove %q: %w", path, err)
+	}
+	current, err := h.root.Lstat(path)
+	if errors.Is(err, fs.ErrNotExist) || expected == nil || (err == nil && !os.SameFile(expected, current)) {
+		return fmt.Errorf("filesystem: remove %q: %w", path, ErrIdentityChanged)
+	}
+	if err != nil {
+		return fmt.Errorf("filesystem: inspect expected removal %q: %w", path, err)
+	}
+	if err := h.root.Remove(path); err != nil {
+		return fmt.Errorf("filesystem: remove %q: %w", path, err)
 	}
 	return nil
 }

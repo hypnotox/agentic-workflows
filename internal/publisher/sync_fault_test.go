@@ -30,6 +30,12 @@ func (f replacementFaultFilesystem) Replace(path string, contents []byte, mode f
 	}
 	return f.syncFilesystem.Replace(path, contents, mode)
 }
+func (f replacementFaultFilesystem) ReplaceExpected(path string, expected fs.FileInfo, contents []byte, mode fs.FileMode) error {
+	if path == f.path {
+		return f.err
+	}
+	return f.syncFilesystem.ReplaceExpected(path, expected, contents, mode)
+}
 
 type publicationFaultFilesystem struct {
 	syncFilesystem
@@ -53,6 +59,12 @@ func (f removalFaultFilesystem) Remove(path string) error {
 		return f.err
 	}
 	return f.syncFilesystem.Remove(path)
+}
+func (f removalFaultFilesystem) RemoveExpected(path string, expected fs.FileInfo) error {
+	if path == f.path {
+		return f.err
+	}
+	return f.syncFilesystem.RemoveExpected(path, expected)
 }
 
 type readFaultFilesystem struct {
@@ -103,6 +115,10 @@ type recordedFilesystem struct {
 func (f recordedFilesystem) Replace(path string, contents []byte, mode fs.FileMode) error {
 	*f.replaces = append(*f.replaces, path)
 	return f.syncFilesystem.Replace(path, contents, mode)
+}
+func (f recordedFilesystem) ReplaceExpected(path string, expected fs.FileInfo, contents []byte, mode fs.FileMode) error {
+	*f.replaces = append(*f.replaces, path)
+	return f.syncFilesystem.ReplaceExpected(path, expected, contents, mode)
 }
 
 type collisionFilesystem struct {
@@ -169,7 +185,11 @@ type swapAfterPruneFilesystem struct {
 
 func (f *swapAfterPruneFilesystem) Remove(path string) error {
 	f.calls = append(f.calls, path)
-	err := f.syncFilesystem.Remove(path)
+	return f.syncFilesystem.Remove(path)
+}
+func (f *swapAfterPruneFilesystem) RemoveExpected(path string, expected fs.FileInfo) error {
+	f.calls = append(f.calls, path)
+	err := f.syncFilesystem.RemoveExpected(path, expected)
 	if path == "cleanup/child/file" && err == nil {
 		dir := filepath.Join(f.root, "cleanup")
 		if e := os.Rename(dir, dir+"-saved"); e != nil {
@@ -189,6 +209,9 @@ type swapBeforeLockReplaceFilesystem struct {
 }
 
 func (f *swapBeforeLockReplaceFilesystem) Replace(path string, contents []byte, mode fs.FileMode) error {
+	return f.ReplaceExpected(path, nil, contents, mode)
+}
+func (f *swapBeforeLockReplaceFilesystem) ReplaceExpected(path string, expected fs.FileInfo, contents []byte, mode fs.FileMode) error {
 	if path == ".awf/awf.lock" && !f.swapped {
 		if err := os.Rename(filepath.Join(f.root, ".awf"), filepath.Join(f.root, "saved-awf")); err != nil {
 			return err
@@ -198,7 +221,7 @@ func (f *swapBeforeLockReplaceFilesystem) Replace(path string, contents []byte, 
 		}
 		f.swapped = true
 	}
-	return f.syncFilesystem.Replace(path, contents, mode)
+	return f.syncFilesystem.ReplaceExpected(path, expected, contents, mode)
 }
 
 func testSyncPlan(t *testing.T, state *ProjectState) (renderInputs, *outputplan.Plan) {
@@ -213,7 +236,8 @@ func testSyncPlan(t *testing.T, state *ProjectState) (renderInputs, *outputplan.
 func syncWithFilesystems(t *testing.T, state *ProjectState, filesystems syncFilesystems) ([]Backup, []Change, []string, error) {
 	t.Helper()
 	inputs, plan := testSyncPlan(t, state)
-	return syncReportWithPlan(inputs, nil, filesystems, plan)
+	backups, changes, pruned, _, err := syncReportWithPlan(inputs, nil, filesystems, plan)
+	return backups, changes, pruned, err
 }
 func assertPerm(t *testing.T, path string, want fs.FileMode) {
 	t.Helper()
@@ -500,6 +524,13 @@ func TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure(t *t
 	if err == nil {
 		t.Fatal("Sync accepted an unreplaceable later output")
 	}
+	var partial *PartialError
+	if !errors.As(err, &partial) || !slices.Equal(partial.Result.Effects(), result.Effects()) {
+		t.Fatalf("error = %v, want typed partial outcome matching returned result", err)
+	}
+	if len(result.Effects()) == 0 || !slices.ContainsFunc(result.Effects(), func(effect Effect) bool { return effect.Path == "AGENTS.md" && effect.Recovery != "" }) {
+		t.Fatalf("effects = %#v, want stable AGENTS.md effect and recovery", result.Effects())
+	}
 	if got := result.Changes(); len(got) != 1 || got[0] != (Change{Path: "AGENTS.md", Cause: "internal"}) {
 		t.Fatalf("changes=%v, want committed AGENTS.md mode correction", got)
 	}
@@ -573,10 +604,8 @@ func TestSyncAncestorCleanupRefusesParentSwap(t *testing.T) {
 	if err != nil || !slices.Contains(pruned, retired) {
 		t.Fatalf("pruned=%v err=%v", pruned, err)
 	}
-	for _, want := range []string{retired, "cleanup/child", "cleanup"} {
-		if !slices.Contains(swapping.calls, want) {
-			t.Fatalf("calls=%v", swapping.calls)
-		}
+	if !slices.Equal(swapping.calls, []string{retired}) {
+		t.Fatalf("calls=%v, want cleanup refusal immediately after parent swap", swapping.calls)
 	}
 	if got, err := os.ReadFile(sentinel); err != nil || string(got) != "outside cleanup\n" {
 		t.Fatalf("outside sentinel = %q, %v", got, err)

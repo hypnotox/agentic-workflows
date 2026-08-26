@@ -51,11 +51,7 @@ func syncPlanFlexibilityProfile(t *testing.T, profile string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prepared, err := publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Prepare()
-	if err != nil {
-		t.Fatalf("prepare %s profile: %v", profile, err)
-	}
-	if _, err := prepared.Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	if _, err := publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatalf("initialize %s profile: %v", profile, err)
 	}
 	return root

@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: serialize-project-mutations-by-physical-root
-status: Proposed
+status: Implementing
 date: 2026-08-26
 ---
 # ADR-serialize-project-mutations-by-physical-root: Serialize Project Mutations by Physical Root
@@ -50,3 +50,6 @@ A process can block behind another mutation. The lock mechanism must release own
 ## Status history
 
 - 2026-08-26: Proposed
+- 2026-08-26: Accepted; content-sha256: e34f096e2b16a723e58062a02f443817d1bf80af66c9f70a338348a16cbe7faa
+- 2026-08-26: Implementing; content-sha256: e34f096e2b16a723e58062a02f443817d1bf80af66c9f70a338348a16cbe7faa
+- 2026-08-26: Applied; operations: add `tooling/filesystem-access:root-scoped-project-mutation-leases`, update `rendering/sync-and-drift:sync-mutations-root-confined`

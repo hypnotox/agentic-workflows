@@ -1,55 +1,36 @@
 package adr
 
 import (
-	"crypto/sha256"
-	"errors"
+	"context"
 	"fmt"
-	"os"
-	"path/filepath"
+	"strings"
 
-	"github.com/gofrs/flock"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 )
 
-// acquireScaffoldLock serializes one decisions directory's identity transaction.
-// The persistent lock file is deliberately retained: deleting it could split
-// concurrent users across distinct inodes.
+// acquireScaffoldLock configures the neutral lease owner with the established
+// ADR cache namespace. The persistent protocol itself lives in filesystem so
+// ADR scaffolding cannot diverge from project mutation serialization.
 func acquireScaffoldLock(dir string) (func() error, error) {
-	lock, identity, err := newScaffoldLock(dir)
-	if err != nil {
+	// Preserve the platform-specific ADR identity validation and diagnostics;
+	// filesystem remains the sole lock allocation and acquisition owner.
+	if _, err := canonicalDecisionsDirectory(dir); err != nil {
+		return nil, fmt.Errorf("canonicalize decisions directory %s: %w", dir, err)
+	}
+	release, err := filesystem.Acquire(context.Background(), "adr-locks", dir)
+	if err == nil {
+		return release, nil
+	}
+	// Preserve the ADR-facing diagnostics without retaining a second mechanism.
+	message := err.Error()
+	switch {
+	case strings.Contains(message, "canonicalize lease root"):
+		return nil, fmt.Errorf("canonicalize decisions directory %s: %w", dir, err)
+	case strings.Contains(message, "locate lease cache"):
+		return nil, fmt.Errorf("locate ADR lock cache: %w", err)
+	case strings.Contains(message, "create lease cache"):
+		return nil, fmt.Errorf("create ADR lock cache: %w", err)
+	default:
 		return nil, err
 	}
-	if err := lock.Lock(); err != nil { // coverage-ignore: flock acquisition faults require host filesystem failure; contention blocks instead
-		return nil, fmt.Errorf("lock ADR decisions directory %s: %w", identity, err)
-	}
-	if err := restrictScaffoldLock(lock); err != nil { // coverage-ignore: restricting the just-created user-owned lock needs a host filesystem fault
-		return nil, err // coverage-ignore: restricting the just-created user-owned lock needs a host filesystem fault
-	}
-	return lock.Close, nil
-}
-
-func newScaffoldLock(dir string) (*flock.Flock, string, error) {
-	identity, err := canonicalDecisionsDirectory(dir)
-	if err != nil {
-		return nil, "", fmt.Errorf("canonicalize decisions directory %s: %w", dir, err)
-	}
-	cache, err := os.UserCacheDir()
-	if err != nil {
-		return nil, "", fmt.Errorf("locate ADR lock cache: %w", err)
-	}
-	cache = filepath.Join(cache, "awf", "adr-locks")
-	if err := os.MkdirAll(cache, 0o700); err != nil {
-		return nil, "", fmt.Errorf("create ADR lock cache %s: %w", cache, err)
-	}
-	if err := os.Chmod(cache, 0o700); err != nil { // coverage-ignore: chmod of this user-owned cache needs a host filesystem fault
-		return nil, "", fmt.Errorf("restrict ADR lock cache %s: %w", cache, err)
-	}
-	key := fmt.Sprintf("%x", sha256.Sum256([]byte(identity)))
-	return flock.New(filepath.Join(cache, key+".lock")), identity, nil
-}
-
-func restrictScaffoldLock(lock *flock.Flock) error {
-	if err := os.Chmod(lock.Path(), 0o600); err != nil { // coverage-ignore: chmod of the just-created lock needs a host filesystem fault
-		return fmt.Errorf("restrict ADR lock file %s: %w", lock.Path(), errors.Join(err, lock.Close()))
-	}
-	return nil
 }

@@ -467,6 +467,46 @@ func TestReadWithModeUsesOneOpenedFileForBytesAndMode(t *testing.T) {
 	}
 }
 
+func TestExpectedIdentityReplacementAndRemovalRefuseStaleEntries(t *testing.T) {
+	root := t.TempDir()
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	if err := os.WriteFile(filepath.Join(root, "artifact"), []byte("observed"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := h.LinkInfo("artifact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "artifact")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "artifact"), []byte("winner"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.ReplaceExpected("artifact", expected, []byte("replacement"), 0o644); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("stale replacement = %v, want identity change", err)
+	}
+	if err := h.RemoveExpected("artifact", expected); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("stale removal = %v, want identity change", err)
+	}
+	if got, err := os.ReadFile(filepath.Join(root, "artifact")); err != nil || string(got) != "winner" {
+		t.Fatalf("concurrent winner = %q, %v", got, err)
+	}
+	if err := h.ReplaceExpected("absent", nil, []byte("created"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(filepath.Join(root, "absent")); err != nil || info.Mode().Perm() != 0o640 {
+		t.Fatalf("exclusive creation = %v, %v", info, err)
+	}
+	if err := h.ReplaceExpected("absent", nil, []byte("clobber"), 0o644); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("absent-identity clobber = %v, want identity change", err)
+	}
+}
+
 func TestOpenFailureAndWalkErrors(t *testing.T) {
 	if _, err := Open(filepath.Join(t.TempDir(), "missing")); err == nil {
 		t.Fatal("open missing succeeded")
@@ -679,7 +719,7 @@ func filesystemConsumerFinding(rel, src string) string {
 				if id, ok := s.X.(*ast.Ident); ok && bound[id.Name] {
 					capability = true
 				}
-				if id, ok := s.X.(*ast.Ident); ok && imports[id.Name] && s.Sel.Name == "Backup" {
+				if id, ok := s.X.(*ast.Ident); ok && imports[id.Name] && (s.Sel.Name == "Backup" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireProjectLease") {
 					capability = true
 				}
 			}
@@ -741,6 +781,9 @@ func filesystemPackageFinding(sources map[string]string) string {
 				if !typeSpec.Name.IsExported() {
 					continue
 				}
+				if typeSpec.Name.Name == "Lease" {
+					continue
+				}
 				if typeSpec.Name.Name != "Handle" {
 					return rel + ": exported concrete " + typeSpec.Name.Name
 				}
@@ -759,7 +802,9 @@ func filesystemPackageFinding(sources map[string]string) string {
 
 func isFilesystemConstructor(call *ast.CallExpr, imports map[string]bool) bool {
 	s, ok := call.Fun.(*ast.SelectorExpr)
-	return ok && s.Sel.Name == "Open" && importedOS(s.X, imports)
+	// Handle construction and the neutral lease capability are the two allowed
+	// production flows from this package; neither exports another concrete type.
+	return ok && (s.Sel.Name == "Open" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireProjectLease") && importedOS(s.X, imports)
 }
 
 func importedOS(expr ast.Expr, names map[string]bool) bool {

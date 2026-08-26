@@ -2,6 +2,7 @@ package adr
 
 import (
 	"bufio"
+	"context"
 	"crypto/sha256"
 	"errors"
 	"fmt"
@@ -17,8 +18,10 @@ import (
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -85,28 +88,23 @@ func TestADRLockProcess(t *testing.T) {
 		return
 	}
 	fmt.Fprintln(os.Stdout, "attempt")
-	lock, identity, err := newScaffoldLock(os.Getenv("ADR_LOCK_DIR"))
-	if err != nil {
-		t.Fatal(err)
-	}
 	if os.Getenv("ADR_LOCK_TRY_FIRST") != "" {
-		locked, err := lock.TryLock()
-		if err != nil {
-			t.Fatal(err)
-		}
-		if locked {
-			t.Fatal("waiter acquired while the holder was alive")
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Millisecond)
+		defer cancel()
+		if release, err := filesystem.Acquire(ctx, "adr-locks", os.Getenv("ADR_LOCK_DIR")); !errors.Is(err, context.DeadlineExceeded) {
+			if release != nil {
+				_ = release()
+			}
+			t.Fatalf("contended acquisition = %v, want deadline", err)
 		}
 		fmt.Fprintln(os.Stdout, "contended")
 	}
-	if err := lock.Lock(); err != nil {
-		t.Fatalf("lock ADR decisions directory %s: %v", identity, err)
-	}
-	if err := restrictScaffoldLock(lock); err != nil {
+	release, err := filesystem.Acquire(context.Background(), "adr-locks", os.Getenv("ADR_LOCK_DIR"))
+	if err != nil {
 		t.Fatal(err)
 	}
 	defer func() {
-		if err := lock.Close(); err != nil {
+		if err := release(); err != nil {
 			t.Error(err)
 		}
 	}()
@@ -187,7 +185,7 @@ func proveCanonicalProcessContentionAndDeathRelease(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	identity, err := canonicalDecisionsDirectory(dir)
+	identity, err := filesystem.CanonicalRoot(dir)
 	if err != nil {
 		t.Fatal(err)
 	}

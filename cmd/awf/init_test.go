@@ -281,7 +281,7 @@ func TestInitProjectLoaderPropagatesFailure(t *testing.T) {
 	}
 }
 
-func TestInitSyncFailureKeepsExistingAuthorityAndSuppressesOutcome(t *testing.T) {
+func TestInitSyncFailureKeepsExistingAuthorityAndPresentsPartialOutcome(t *testing.T) {
 	root := scaffoldProject(t)
 	configPath := config.ConfigPath(root)
 	lockPath := config.LockPath(root)
@@ -300,8 +300,8 @@ func TestInitSyncFailureKeepsExistingAuthorityAndSuppressesOutcome(t *testing.T)
 	if err == nil {
 		t.Fatal("init accepted a later sync failure")
 	}
-	if out.Len() != 0 {
-		t.Fatalf("init stdout = %q, want no outcome after sync failure", out.String())
+	if got := out.String(); !strings.Contains(got, "status: initialization partially committed") || !strings.Contains(got, "output-replaced AGENTS.md") || !strings.Contains(got, "recovery:") {
+		t.Fatalf("init stdout = %q, want complete partial outcome", got)
 	}
 	if got, readErr := os.ReadFile(configPath); readErr != nil || !bytes.Equal(got, beforeConfig) {
 		t.Fatalf("config after sync failure = %q, read error = %v", got, readErr)

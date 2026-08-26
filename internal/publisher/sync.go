@@ -2,6 +2,7 @@
 package publisher
 
 import (
+	"context"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -55,32 +56,61 @@ type Change struct {
 // files its prune actually removed (both path-sorted; a file whose output is
 // byte-identical, and first-adoption initialization with no prior lock reports
 // no change - a routine re-sync stays silent).
-func (p *Publisher) Sync() (Result, error) {
+func (p *Publisher) Sync() (Result, error) { return p.run(context.Background(), nil, nil) }
+
+// Initialize derives and publishes a first adoption in one transaction.
+func (p *Publisher) Initialize(seed InitAuthority) (Result, error) {
+	return p.run(context.Background(), nil, &seed)
+}
+
+// SyncLeased derives and publishes under a lease acquired before mutable
+// authority loading by the operation owner.
+func (p *Publisher) SyncLeased(ctx context.Context, lease *filesystem.Lease) (Result, error) {
+	return p.run(ctx, lease, nil)
+}
+
+// InitializeLeased derives and publishes first-adoption output under the
+// operation's pre-authority lease. Preparation intentionally has no mutator.
+func (p *Publisher) InitializeLeased(ctx context.Context, lease *filesystem.Lease, seed InitAuthority) (Result, error) {
+	if lease == nil {
+		return p.Initialize(seed)
+	}
+	return p.run(ctx, lease, &seed)
+}
+
+// run owns the complete publication transaction. Lease acquisition precedes
+// planning, mutable lock observation, resident inspection, and every effect.
+func (p *Publisher) run(ctx context.Context, supplied *filesystem.Lease, seed *InitAuthority) (result Result, returnErr error) {
+	roots := p.inputs.state.Roots()
+	lease := supplied
+	owned := false
+	if lease == nil {
+		var err error
+		lease, err = filesystem.AcquireProjectLease(ctx, roots.Tracked, roots.Resident)
+		if err != nil {
+			return Result{}, err
+		}
+		owned = true
+	} else if !lease.CoversProject(roots.Tracked, roots.Resident) {
+		return Result{}, errors.New("publisher: supplied lease does not cover project roots")
+	}
+	if owned {
+		defer func() {
+			if err := lease.Release(); err != nil {
+				returnErr = partialOrError(result, errors.Join(returnErr, err))
+			}
+		}()
+	}
+	if seed == nil {
+		if err := configcheck.ValidateCommandWiring(p.inputs.cfg); err != nil {
+			return Result{}, err
+		}
+	}
 	prepared, err := p.Prepare()
 	if err != nil {
 		return Result{}, err
 	}
-	return prepared.Sync()
-}
-
-// Sync publishes the exact operation universe captured by this preparation.
-func (p Preparation) Sync() (Result, error) {
-	if p.publisher == nil {
-		return Result{}, errors.New("publisher: unbound preparation")
-	}
-	if err := configcheck.ValidateCommandWiring(p.publisher.inputs.cfg); err != nil {
-		return Result{}, err
-	}
-	return p.publisher.sync(nil, &p.plan)
-}
-
-// Initialize publishes a first adoption from the exact operation universe
-// captured by this preparation.
-func (p Preparation) Initialize(seed InitAuthority) (Result, error) {
-	if p.publisher == nil {
-		return Result{}, errors.New("publisher: unbound preparation")
-	}
-	return p.publisher.sync(&seed, &p.plan)
+	return p.sync(seed, &prepared.plan)
 }
 
 // InitAuthority is the explicit provenance supplied only by first adoption.
@@ -91,18 +121,77 @@ type Result struct {
 	backups []Backup
 	changes []Change
 	pruned  []string
+	effects []Effect
 }
 
-func newResult(backups []Backup, changes []Change, pruned []string) Result {
-	return Result{backups: slices.Clone(backups), changes: slices.Clone(changes), pruned: slices.Clone(pruned)}
+// Effect is one committed filesystem fact and its stable retry or recovery action.
+type Effect struct {
+	Kind     string
+	Path     string
+	Recovery string
+}
+
+// PartialError reports a failed publication after one or more committed effects.
+type PartialError struct {
+	Result Result
+	Cause  error
+}
+
+func (e *PartialError) Error() string { return "publication partially committed: " + e.Cause.Error() }
+func (e *PartialError) Unwrap() error { return e.Cause }
+
+func newResult(backups []Backup, changes []Change, pruned []string, effects []Effect) Result {
+	return Result{backups: slices.Clone(backups), changes: slices.Clone(changes), pruned: slices.Clone(pruned), effects: slices.Clone(effects)}
 }
 func (r Result) Backups() []Backup { return slices.Clone(r.backups) }
 func (r Result) Changes() []Change { return slices.Clone(r.changes) }
 func (r Result) Pruned() []string  { return slices.Clone(r.pruned) }
+func (r Result) Effects() []Effect { return slices.Clone(r.effects) }
+func (r Result) committed() bool   { return len(r.effects) != 0 }
+
+func partialOrError(result Result, err error) error {
+	if err == nil || !result.committed() {
+		return err
+	}
+	var partial *PartialError
+	if errors.As(err, &partial) {
+		return err
+	}
+	return &PartialError{Result: result, Cause: err}
+}
 
 // Mutation maps this semantic result to the central presentation grammar.
 func (r Result) Mutation() (presentation.Mutation, error) {
 	return syncMutation(r.Backups(), r.Changes(), r.Pruned())
+}
+
+// PartialMutation presents every committed effect and its recovery action.
+func (r Result) PartialMutation() (presentation.Mutation, error) {
+	values := make([]presentation.Value, 0, len(r.effects))
+	for _, effect := range r.effects {
+		value, err := presentation.Literal(fmt.Sprintf("%s %s; recovery: %s", effect.Kind, effect.Path, effect.Recovery))
+		if err != nil {
+			return presentation.Mutation{}, err
+		}
+		values = append(values, value)
+	}
+	next, err := presentation.Prose("apply the listed recovery actions, then rerun awf render")
+	if err != nil { // coverage-ignore: fixed presentation text
+		return presentation.Mutation{}, err
+	}
+	changes := []presentation.MutationChange(nil)
+	if len(values) > 0 {
+		changes = append(changes, presentation.MutationChange{Label: "committed effects", Values: values})
+	}
+	return presentation.Mutation{
+		Status:      "partially committed",
+		Changes:     changes,
+		NextActions: []presentation.Value{next},
+	}, nil
+}
+
+func committedPublication(err error) (string, string, bool) {
+	return filesystem.CommittedPublication(err)
 }
 
 func backupFileConfined(rel string, handle syncFilesystem) (string, error) {
@@ -126,7 +215,9 @@ type syncFilesystem interface {
 	Chmod(string, fs.FileMode) error
 	Publish(string, []byte, fs.FileMode) error
 	Replace(string, []byte, fs.FileMode) error
+	ReplaceExpected(string, fs.FileInfo, []byte, fs.FileMode) error
 	Remove(string) error
+	RemoveExpected(string, fs.FileInfo) error
 	Read(string) ([]byte, error)
 	ReadWithMode(string) ([]byte, fs.FileMode, error)
 	LinkInfo(string) (fs.FileInfo, error)
@@ -170,11 +261,12 @@ func (p *Publisher) sync(seed *InitAuthority, op *outputplan.Plan) (Result, erro
 		return Result{}, err
 	}
 	defer closeAll()
-	backups, changes, pruned, err := syncReportWithPlan(p.inputs, seed, filesystems, op)
-	return newResult(backups, changes, pruned), err
+	backups, changes, pruned, effects, err := syncReportWithPlan(p.inputs, seed, filesystems, op)
+	result := newResult(backups, changes, pruned, effects)
+	return result, partialOrError(result, err)
 }
 
-func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, err error) {
+func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFilesystems, op *outputplan.Plan) (backups []Backup, changes []Change, pruned []string, effects []Effect, err error) {
 	defer func() {
 		slices.Sort(pruned)
 		slices.SortFunc(changes, func(a, b Change) int { return strings.Compare(a.Path, b.Path) })
@@ -182,39 +274,43 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 	// Refuse before rendering or writing anything: a corrupt lock must never
 	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
 	lockPath := path.Join(config.DirName, "awf.lock")
+	lockIdentity, identityErr := filesystems.tracked.LinkInfo(lockPath)
+	if identityErr != nil && !errors.Is(identityErr, fs.ErrNotExist) {
+		return nil, nil, nil, nil, fmt.Errorf("inspect .awf/awf.lock identity: %w", identityErr)
+	}
 	lockBytes, lockErr := filesystems.tracked.Read(lockPath)
 	var old *manifest.Lock
 	found := lockErr == nil
 	if found {
 		old, err = manifest.ParseLive(lockBytes, migrate.Current(), migrate.Current())
 		if err != nil {
-			return nil, nil, nil, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
+			return nil, nil, nil, nil, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
 		}
 	} else if !errors.Is(lockErr, fs.ErrNotExist) {
-		return nil, nil, nil, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", lockErr)
+		return nil, nil, nil, nil, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", lockErr)
 	}
 	if seed != nil {
 		if found {
-			return nil, nil, nil, errors.New("first-adoption initialization requires an absent lock")
+			return nil, nil, nil, nil, errors.New("first-adoption initialization requires an absent lock")
 		}
 	} else {
 		if !found {
-			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a supported permanent lock; restore .awf/awf.lock from version control")
+			return nil, nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a supported permanent lock; restore .awf/awf.lock from version control")
 		}
 		state, stateErr := old.AuthorityState()
 		if stateErr != nil || state != manifest.AuthorityPermanent {
-			return nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a supported permanent lock; restore .awf/awf.lock from version control")
+			return nil, nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a supported permanent lock; restore .awf/awf.lock from version control")
 		}
 	}
 	preservedResidents, err := resident.InspectRoots(p.state.Roots().Resident)
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, nil, nil, err
 	}
 	files := op.Outputs()
 	for _, f := range files {
 		if f.Policy().ValidateFrontmatter {
 			if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil { // coverage-ignore: rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time
-				return nil, nil, nil, fmt.Errorf("invalid agent artifact in %s: %w", f.Path(), err)
+				return nil, nil, nil, nil, fmt.Errorf("invalid agent artifact in %s: %w", f.Path(), err)
 			}
 		}
 	}
@@ -238,26 +334,39 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 		filesystem, outputPath := filesystems.output(f.Path())
 		dir := path.Dir(outputPath)
 		if dir != "." {
+			missing := missingAncestors(filesystem, dir)
 			if err := filesystem.MkdirAll(dir, 0o755); err != nil {
-				return backups, changes, pruned, err
+				effects = appendCreatedDirectories(effects, filesystem, missing)
+				return backups, changes, pruned, effects, err
 			}
+			effects = appendCreatedDirectories(effects, filesystem, missing)
 		}
 		if strings.HasPrefix(f.Path(), config.DirName+"/") && strings.HasSuffix(f.Path(), "/.gitignore") && resident.IsResidentPath(strings.TrimSuffix(f.Path(), "/.gitignore")) {
+			beforeMode, _ := filesystem.LinkInfo(dir)
 			if err := filesystem.Chmod(dir, 0o700); err != nil {
-				return backups, changes, pruned, err
+				return backups, changes, pruned, effects, err
+			}
+			if beforeMode != nil && beforeMode.Mode().Perm() != 0o700 {
+				effects = append(effects, Effect{Kind: "mode-corrected", Path: f.Path(), Recovery: "rerun awf render"})
 			}
 		}
 		info, infoErr := filesystem.LinkInfo(outputPath)
 		if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {
-			return backups, changes, pruned, infoErr
+			return backups, changes, pruned, effects, infoErr
 		}
 		if !prior[f.Path()] && infoErr == nil {
 			// touches-state: rendering/sync-and-drift:sync-backs-up-foreign - foreign-file backup on sync; proof in publication_sync_test.go
 			bak, err := backupFileConfined(outputPath, filesystem)
 			if err != nil {
-				return backups, changes, pruned, fmt.Errorf("back up %s: %w", f.Path(), err)
+				if committedPath, _, committed := committedPublication(err); committed {
+					bak = committedPath
+					backups = append(backups, Backup{Path: f.Path(), Bak: bak, Index: f.RegenChecked()})
+					effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: "remove the reported residue, then rerun awf render"})
+				}
+				return backups, changes, pruned, effects, fmt.Errorf("back up %s: %w", f.Path(), err)
 			}
 			backups = append(backups, Backup{Path: f.Path(), Bak: bak, Index: f.RegenChecked()})
+			effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: "retain until the render completes, then review or remove"})
 		}
 		perm := fs.FileMode(0o644)
 		if strings.HasPrefix(f.Content(), "#!") {
@@ -268,7 +377,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 		if infoErr == nil && info.Mode()&fs.ModeSymlink == 0 {
 			before, mode, readErr := filesystem.ReadWithMode(outputPath)
 			if readErr != nil {
-				return backups, changes, pruned, readErr
+				return backups, changes, pruned, effects, readErr
 			}
 			modeChanged = mode != perm
 			changedOutput = string(before) != f.Content()
@@ -299,9 +408,14 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			}
 			changes = append(changes, Change{Path: f.Path(), Cause: cause})
 		}
-		if err := filesystem.Replace(outputPath, []byte(f.Content()), perm); err != nil {
-			return backups, changes, pruned, err
+		if err := filesystem.ReplaceExpected(outputPath, info, []byte(f.Content()), perm); err != nil {
+			return backups, changes, pruned, effects, err
 		}
+		effectKind := "output-replaced"
+		if info == nil {
+			effectKind = "output-created"
+		}
+		effects = append(effects, Effect{Kind: effectKind, Path: f.Path(), Recovery: "rerun awf render to complete authority publication"})
 		// Replacement commits bytes and final mode together, so a change becomes
 		// reportable only after the namespace commit succeeds.
 		if changedOutput || modeChanged {
@@ -331,27 +445,43 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			filesystem, outputPath := filesystems.output(path)
 			if entry.TemplateID == localDocTID {
 				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr != nil && !errors.Is(existsErr, fs.ErrNotExist) {
-					return backups, changes, pruned, fmt.Errorf("inspect pruned local document %s: %w", path, existsErr)
+					return backups, changes, pruned, effects, fmt.Errorf("inspect pruned local document %s: %w", path, existsErr)
 				} else if existsErr == nil {
 					if info.Mode()&fs.ModeSymlink != 0 {
-						return backups, changes, pruned, fmt.Errorf("unsafe pruned local document %s", path)
+						return backups, changes, pruned, effects, fmt.Errorf("unsafe pruned local document %s", path)
 					}
 					bak, bakErr := backupFileConfined(outputPath, filesystem)
 					if bakErr != nil {
-						return backups, changes, pruned, fmt.Errorf("back up pruned local document %s: %w", path, bakErr)
+						if committedPath, _, committed := committedPublication(bakErr); committed {
+							bak = committedPath
+							backups = append(backups, Backup{Path: path, Bak: bak})
+							effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: "remove the reported residue, then rerun awf render"})
+						}
+						return backups, changes, pruned, effects, fmt.Errorf("back up pruned local document %s: %w", path, bakErr)
 					}
 					backups = append(backups, Backup{Path: path, Bak: bak})
+					effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: "retain as recovery for the removed local document"})
 				}
 			}
 			// Report only an actual removal - a path whose file is already gone
 			// must not be claimed pruned. Any other failure preserves the old lock
 			// so the managed path remains visible and the operation can be retried.
-			err := filesystem.Remove(outputPath)
+			removeIdentity, observeErr := filesystem.LinkInfo(outputPath)
+			if observeErr != nil && !errors.Is(observeErr, fs.ErrNotExist) {
+				return backups, changes, pruned, effects, fmt.Errorf("inspect retired output %s: %w", path, observeErr)
+			}
+			var err error
+			if removeIdentity == nil {
+				err = fs.ErrNotExist
+			} else {
+				err = filesystem.RemoveExpected(outputPath, removeIdentity)
+			}
 			if err != nil && !errors.Is(err, fs.ErrNotExist) {
-				return backups, changes, pruned, fmt.Errorf("remove retired output %s: %w", path, err)
+				return backups, changes, pruned, effects, fmt.Errorf("remove retired output %s: %w", path, err)
 			}
 			if err == nil {
 				pruned = append(pruned, path)
+				effects = append(effects, Effect{Kind: "output-removed", Path: path, Recovery: "rerun awf render to complete pruning and lock publication"})
 			}
 			for d := filepath.ToSlash(filepath.Dir(filepath.FromSlash(outputPath))); d != "."; d = filepath.ToSlash(filepath.Dir(filepath.FromSlash(d))) {
 				key := fmt.Sprintf("%t:%s", resident.IsResidentPath(path), d)
@@ -361,14 +491,43 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 		dirList := slices.Collect(maps.Values(dirs))
 		slices.SortFunc(dirList, func(a, b cleanupDir) int { return len(b.path) - len(a.path) })
 		for _, d := range dirList {
-			_ = d.filesystem.Remove(d.path) // removes only if now empty
+			info, infoErr := d.filesystem.LinkInfo(d.path)
+			if infoErr == nil && info.IsDir() {
+				if err := d.filesystem.RemoveExpected(d.path, info); err == nil {
+					effects = append(effects, Effect{Kind: "empty-directory-removed", Path: d.path, Recovery: "rerun awf render"})
+				}
+			}
 		}
 	}
 	lockBytes, err = lock.Marshal()
 	if err != nil { // coverage-ignore: sync constructs only authority-valid lock fields, so marshal failure requires a future representation change
-		return backups, changes, pruned, err // coverage-ignore: sync constructs only authority-valid lock fields, so marshal failure requires a future representation change
+		return backups, changes, pruned, effects, err // coverage-ignore: sync constructs only authority-valid lock fields, so marshal failure requires a future representation change
 	}
-	return backups, changes, pruned, filesystems.tracked.Replace(lockPath, lockBytes, 0o644)
+	if err := filesystems.tracked.ReplaceExpected(lockPath, lockIdentity, lockBytes, 0o644); err != nil {
+		return backups, changes, pruned, effects, err
+	}
+	effects = append(effects, Effect{Kind: "lock-replaced", Path: lockPath, Recovery: "none; publication is complete"})
+	return backups, changes, pruned, effects, nil
+}
+
+func missingAncestors(filesystem syncFilesystem, dir string) []string {
+	var missing []string
+	for current := dir; current != "."; current = path.Dir(current) {
+		if _, err := filesystem.LinkInfo(current); errors.Is(err, fs.ErrNotExist) {
+			missing = append(missing, current)
+		}
+	}
+	slices.Reverse(missing)
+	return missing
+}
+
+func appendCreatedDirectories(effects []Effect, filesystem syncFilesystem, paths []string) []Effect {
+	for _, created := range paths {
+		if info, err := filesystem.LinkInfo(created); err == nil && info.IsDir() {
+			effects = append(effects, Effect{Kind: "directory-created", Path: created, Recovery: "rerun awf render; remove only if still empty after recovery"})
+		}
+	}
+	return effects
 }
 
 // SyncMutation maps the completed sync outcome into presentation-owned syntax.
