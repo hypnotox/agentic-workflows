@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-load-curated-release-notes-through-goreleaser: Load curated release notes through GoReleaser](load-curated-release-notes-through-goreleaser.md) (Proposed)
+- [ADR-load-curated-release-notes-through-goreleaser: Load curated release notes through GoReleaser](load-curated-release-notes-through-goreleaser.md) (Accepted)
 
 ## History
 
