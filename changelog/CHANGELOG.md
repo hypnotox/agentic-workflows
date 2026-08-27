@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Bug fixes
+
+- GitHub Releases now publish the tagged version's curated changelog section exactly while excluding commit-derived notes; affected blank release bodies from v0.18.0 through v0.40.0 are restored.
+
 ## [0.41.0] - 2026-08-27
 
 ### Features
