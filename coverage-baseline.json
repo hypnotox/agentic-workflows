@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "39408007a7b8c1c0001ae0c4be717febb9b2c8a61982c99c0f0a6549f7267538",
+  "universeSHA256": "396af85fea0c952001eb6541a9f2cd4d5b51778d2229ba6173f46dbfb341c579",
   "repository": [
     {
       "identity": {
@@ -1552,16 +1552,16 @@
       "identity": {
         "file": "cmd/releasecheck/main.go",
         "start": {
-          "line": 29,
+          "line": 30,
           "column": 13
         },
         "end": {
-          "line": 31,
+          "line": 32,
           "column": 2
         },
         "statements": 1
       },
-      "reason": "Complete-range verify-pass settlement: releasecheck main is the terminating os.Exit composition wrapper; local dispatch, exact-CI success and refusal, multi-run selection, transport error identity, and evidence validation are directly exercised through dispatch and verifyCI."
+      "reason": "Curated release-note verification moved the terminating os.Exit composition wrapper by importing URL escaping; dispatch success and refusal paths, including hosted-release API failure propagation, are directly exercised without invoking process exit."
     },
     {
       "identity": {
@@ -21625,14 +21625,14 @@
     {
       "directive": {
         "file": "cmd/releasecheck/main.go",
-        "line": 29,
-        "targetLine": 29,
+        "line": 30,
+        "targetLine": 30,
         "reason": "os.Exit wrapper; dispatch is unit-tested",
         "mapped": true,
         "executed": false
       },
       "class": "tested-process-exit",
-      "evidence": "cmd/releasecheck/main.go:29 is the terminating process-composition statement; dispatch local mode, exact-CI success and refusal, multi-run selection, transport error identity, and evidence validation are directly exercised by cmd/releasecheck/main_test.go."
+      "evidence": "cmd/releasecheck/main.go:30 is the terminating process-composition statement; dispatch local mode, exact-CI behavior, hosted-release success and API refusal, transport error identity, and evidence validation are directly exercised by cmd/releasecheck/main_test.go."
     },
     {
       "directive": {

@@ -899,6 +899,16 @@ func TestDispatchRoutesLocalAndExactCIModes(t *testing.T) {
 	if code := dispatch([]string{"--verify-release-notes", notesPath + ".missing"}, fstest.MapFS{}, fstest.MapFS{}, &out, &errb, server.Client(), server.URL, getenv); code != 1 || !strings.Contains(errb.String(), "read curated release notes") {
 		t.Fatalf("missing-notes dispatch = %d, %q", code, errb.String())
 	}
+	errb.Reset()
+	missingReleaseEnv := func(key string) string {
+		if key == "GITHUB_REF_NAME" {
+			return "v0.42.0"
+		}
+		return getenv(key)
+	}
+	if code := dispatch([]string{"--verify-release-notes", notesPath}, fstest.MapFS{}, fstest.MapFS{}, &out, &errb, server.Client(), server.URL, missingReleaseEnv); code != 1 || !strings.Contains(errb.String(), "GitHub API") {
+		t.Fatalf("missing-release dispatch = %d, %q", code, errb.String())
+	}
 }
 
 func TestVerifyCIRefusesTrailingDocumentsAndGarbage(t *testing.T) {
