@@ -16,6 +16,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -378,7 +379,6 @@ func TestVerifyCIRefusesIncompleteOrWrongEvidence(t *testing.T) {
 	}
 }
 
-// invariant: tooling/quality-gates:exact-revision-repository-acceptance (TestExactRevisionWorkflowContract)
 func TestVerifyCIRefusesTransportAndEvidenceFaults(t *testing.T) {
 	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	validRuns := fmt.Sprintf(`{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
@@ -443,6 +443,7 @@ func TestVerifyCIRefusesTransportAndEvidenceFaults(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:exact-revision-repository-acceptance (TestExactRevisionWorkflowContract)
 func TestExactRevisionWorkflowContract(t *testing.T) {
 	read := func(name string) map[string]any {
 		t.Helper()
@@ -463,20 +464,30 @@ func TestExactRevisionWorkflowContract(t *testing.T) {
 		{"missing stable gate job", func(ci, _ map[string]any) { delete(workflowJobs(ci), "gate") }},
 		{"missing stable release-config job", func(ci, _ map[string]any) { delete(workflowJobs(ci), "release-config") }},
 		{"missing macOS dependency", func(ci, _ map[string]any) { workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"linux-full"} }},
-		{"wrong Linux architecture", func(ci, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(ci)["linux-full"]), "Verify native Linux amd64")["run"] = "false"
+		{"no-op Linux architecture", func(ci, _ map[string]any) {
+			run := stringValue(workflowStep(workflowMap(workflowJobs(ci)["linux-full"]), "Verify native Linux amd64")["run"])
+			workflowStep(workflowMap(workflowJobs(ci)["linux-full"]), "Verify native Linux amd64")["run"] = "echo " + strconv.Quote(run)
 		}},
-		{"wrong macOS architecture", func(ci, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(ci)["macos-go"]), "Verify native macOS arm64")["run"] = "false"
+		{"no-op macOS architecture", func(ci, _ map[string]any) {
+			run := stringValue(workflowStep(workflowMap(workflowJobs(ci)["macos-go"]), "Verify native macOS arm64")["run"])
+			workflowStep(workflowMap(workflowJobs(ci)["macos-go"]), "Verify native macOS arm64")["run"] = "echo " + strconv.Quote(run)
 		}},
-		{"missing exact SHA verification", func(_, release map[string]any) {
-			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify bridge readiness and exact CI conclusions")["run"] = "false"
+		{"no-op macOS native Go", func(ci, _ map[string]any) {
+			steps := workflowSteps(workflowMap(workflowJobs(ci)["macos-go"]))
+			workflowMap(steps[len(steps)-1])["run"] = "echo 'go test ./...'"
+		}},
+		{"no-op exact SHA verification", func(_, release map[string]any) {
+			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify bridge readiness and exact CI conclusions")["run"] = `echo 'go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"'`
 		}},
 		{"release uses fast gate", func(_, release map[string]any) {
 			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Gate (full release assurance)")["run"] = "./x gate"
 		}},
 		{"release full gate lacks range", func(_, release map[string]any) {
 			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Gate (full release assurance)")["run"] = "./x gate full"
+		}},
+		{"no-op release range script", func(_, release map[string]any) {
+			run := stringValue(workflowStep(workflowMap(workflowJobs(release)["verify"]), "Gate (full release assurance)")["run"])
+			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Gate (full release assurance)")["run"] = "echo " + strconv.Quote(run)
 		}},
 		{"release checkout is not exact", func(_, release map[string]any) {
 			workflowMap(workflowMap(workflowSteps(workflowMap(workflowJobs(release)["verify"]))[0])["with"])["ref"] = "HEAD"
@@ -528,20 +539,29 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 	if !workflowNeeds(gate, "linux-full") || !workflowNeeds(gate, "macos-go") {
 		problems = append(problems, "gate native dependencies")
 	}
-	if !strings.Contains(stringValue(workflowStep(linux, "Verify native Linux amd64")["run"]), `go env GOOS)" = linux`) || !strings.Contains(stringValue(workflowStep(linux, "Verify native Linux amd64")["run"]), `go env GOARCH)" = amd64`) {
+	runEquals := func(job map[string]any, step, want string) bool {
+		return strings.TrimSpace(stringValue(workflowStep(job, step)["run"])) == strings.TrimSpace(want)
+	}
+	const linuxNative = `[ "$(go env GOOS)" = linux ] && [ "$(go env GOARCH)" = amd64 ]`
+	const linuxFull = `case "$EVENT" in pull_request) base="$PR_BASE";; push) base="$PUSH_BASE";; *) base=invalid-base;; esac
+./x gate full --range "$base" "$CANDIDATE"`
+	const macOSNative = `[ "$(go env GOOS)" = darwin ] && [ "$(go env GOARCH)" = arm64 ]`
+	if !runEquals(linux, "Verify native Linux amd64", linuxNative) {
 		problems = append(problems, "Linux amd64 assertion")
 	}
-	if !strings.Contains(stringValue(workflowStep(linux, "Gate (full Linux assurance)")["run"]), "./x gate full --range") {
+	if !runEquals(linux, "Gate (full Linux assurance)", linuxFull) {
 		problems = append(problems, "Linux full gate")
 	}
-	if !strings.Contains(stringValue(workflowStep(macOS, "Verify native macOS arm64")["run"]), `go env GOOS)" = darwin`) || !strings.Contains(stringValue(workflowStep(macOS, "Verify native macOS arm64")["run"]), `go env GOARCH)" = arm64`) {
+	if !runEquals(macOS, "Verify native macOS arm64", macOSNative) {
 		problems = append(problems, "macOS arm64 assertion")
 	}
-	macOSNativeGo := false
+	macOSNativeGo := 0
 	for _, step := range workflowSteps(macOS) {
-		macOSNativeGo = macOSNativeGo || strings.Contains(stringValue(workflowMap(step)["run"]), "go test ./...")
+		if strings.TrimSpace(stringValue(workflowMap(step)["run"])) == "go test ./..." {
+			macOSNativeGo++
+		}
 	}
-	if !macOSNativeGo {
+	if macOSNativeGo != 1 {
 		problems = append(problems, "macOS native Go lane")
 	}
 	for _, step := range workflowSteps(macOS) {
@@ -552,8 +572,7 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 		}
 	}
 	verify, publish := workflowMap(releaseJobs["verify"]), workflowMap(releaseJobs["publish"])
-	verifyRun := stringValue(workflowStep(verify, "Verify bridge readiness and exact CI conclusions")["run"])
-	if !strings.Contains(verifyRun, `go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"`) {
+	if !runEquals(verify, "Verify bridge readiness and exact CI conclusions", `go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"`) {
 		problems = append(problems, "exact CI verification")
 	}
 	if !workflowPermissions(verify, "actions", "read") || !workflowPermissions(verify, "contents", "read") {
@@ -568,12 +587,16 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 			problems = append(problems, "checkout exact SHA")
 		}
 	}
-	identity := stringValue(workflowStep(publish, "Repeat tag identity before publication")["run"])
-	if !strings.Contains(identity, "git rev-parse HEAD") || !strings.Contains(identity, "${GITHUB_REF_NAME}^{}") || !strings.Contains(identity, "${{ github.sha }}") {
+	const publicationIdentity = `[ "$(git rev-parse HEAD)" = '${{ github.sha }}' ]
+[ "$(git rev-parse "${GITHUB_REF_NAME}^{}")" = '${{ github.sha }}' ]`
+	if !runEquals(publish, "Repeat tag identity before publication", publicationIdentity) {
 		problems = append(problems, "publication tag identity")
 	}
+	const releaseFull = `candidate='${{ github.sha }}'
+previous="$(git tag --merged "$candidate" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vu | awk -v current="$GITHUB_REF_NAME" '$0 == current { found = 1; print prior; exit } { prior = $0 } END { if (!found) exit 2 }')"
+./x gate full --range "${previous:-invalid-base}" "$candidate"`
 	releaseGate := stringValue(workflowStep(verify, "Gate (full release assurance)")["run"])
-	if !strings.Contains(releaseGate, "./x gate full --range") || !strings.Contains(releaseGate, "git tag --merged") || !strings.Contains(releaseGate, "sort -Vu") || !strings.Contains(releaseGate, "${previous:-invalid-base}") {
+	if strings.TrimSpace(releaseGate) != strings.TrimSpace(releaseFull) {
 		problems = append(problems, "release full-gate range")
 	}
 	if strings.Contains(releaseGate, "covercheck-mutants") {

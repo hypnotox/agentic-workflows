@@ -22,7 +22,7 @@ import (
 // the fast composition and additive full composition cannot drift by text shape alone.
 func TestGateRunnerModes(t *testing.T) {
 	root, logPath := gateRunnerFixture(t)
-	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\nif [[ \"$*\" == *cat-file* ]]; then exit 0; fi\nif [[ \"$*\" == *diff* ]]; then exit 0; fi\nexit 0\n")
+	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\nif [[ \"$*\" == *'rev-parse --show-toplevel'* ]]; then pwd; exit 0; fi\nif [[ \"$*\" == *cat-file* ]]; then exit 0; fi\nif [[ \"$*\" == *diff* ]]; then [ -z \"${FAKE_GIT_CHANGED_PATH:-}\" ] || printf '%s\\0' \"$FAKE_GIT_CHANGED_PATH\"; exit 0; fi\nexit 0\n")
 	if err := os.Chmod(filepath.Join(root, "fake-bin", "git"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -107,6 +107,24 @@ func TestGateRunnerModes(t *testing.T) {
 		t.Fatalf("timed full status=%d output=%q", status, out)
 	}
 	assertTimingLines(t, out, []string{"versioncheck", "build", "lint", "pincheck", "go-test", "covercheck", "pi-runtime-smoke", "vet", "advisory-lint", "deadcode", "build-linux-amd64", "build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64"})
+
+	t.Run("owned range runs mutation last and preserves failure", func(t *testing.T) {
+		t.Setenv("FAKE_GIT_CHANGED_PATH", "cmd/covercheck/main.go")
+		out, status, lines := run("gate", "full", "timings", "--range", "base", "head")
+		if status != 0 {
+			t.Fatalf("owned full status=%d output=%q", status, out)
+		}
+		if len(lines) == 0 || !strings.HasPrefix(lines[len(lines)-1], "timeout 1800s bash ./x __covercheck-mutants-inner ") {
+			t.Fatalf("mutation invocation missing or misplaced: %q", lines)
+		}
+		assertTimingLines(t, out, []string{"versioncheck", "build", "lint", "pincheck", "go-test", "covercheck", "pi-runtime-smoke", "vet", "advisory-lint", "deadcode", "build-linux-amd64", "build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64", "covercheck-mutation-regression"})
+
+		t.Setenv("FAKE_TIMEOUT_STATUS", "23")
+		out, status, _ = run("gate", "full", "timings", "--range", "base", "head")
+		if status != 23 || strings.Count(out, "gate timing: covercheck-mutation-regression ") != 1 {
+			t.Fatalf("mutation failure status=%d output=%q", status, out)
+		}
+	})
 	for _, args := range [][]string{{"gate", "--range", "base", "head"}, {"gate", "full", "full"}, {"gate", "full", "--range", "base"}, {"gate", "unknown"}} {
 		out, status, lines := run(args...)
 		if status != 2 || !strings.Contains(out, "usage: ./x gate [full] [timings] [--range <base> <head>]") || len(lines) != 0 {
@@ -569,6 +587,7 @@ fi
 	fakeTimeout := `#!/usr/bin/env bash
 set -euo pipefail
 printf 'timeout %s\n' "$*" >>"$INVOCATION_LOG"
+exit "${FAKE_TIMEOUT_STATUS:-0}"
 `
 	testsupport.WriteFile(t, filepath.Join(fakeBin, "timeout"), fakeTimeout)
 	if err := os.Chmod(filepath.Join(fakeBin, "timeout"), 0o755); err != nil {
