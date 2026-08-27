@@ -176,7 +176,7 @@ func hasAliasOrMerge(node *yaml.Node) bool {
 	if node == nil {
 		return false
 	}
-	if node.Kind == yaml.AliasNode || node.Anchor != "" {
+	if node.Kind == yaml.AliasNode || node.Anchor != "" || node.Tag == "!!merge" {
 		return true
 	}
 	for _, child := range node.Content {

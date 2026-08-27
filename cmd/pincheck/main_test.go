@@ -183,6 +183,7 @@ func TestRunRefusesMalformedWorkflowShapesAndReusableUses(t *testing.T) {
 		"version sequence":   "jobs:\n  gate:\n    steps:\n      - uses: goreleaser/goreleaser-action@" + sha + "\n        with: {version: [v2.17.0]}\n",
 		"unpinned reusable":  "jobs:\n  reusable:\n    uses: acme/reusable@v1\n",
 		"merged uses":        "jobs:\n  gate:\n    steps:\n      - &step {uses: actions/checkout@" + sha + "}\n      - <<: *step\n",
+		"direct merged uses": "jobs:\n  gate:\n    steps:\n      - <<: {uses: actions/checkout@v6}\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if code, _, errb := runOn(t, wfFS(map[string]string{"ci.yml": workflow})); code != 1 || !strings.Contains(errb, "pincheck:") {
