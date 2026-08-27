@@ -656,7 +656,7 @@ func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
 		t.Fatal("pre-commit still carries preparation-only bridge behavior")
 	}
 	last := -1
-	for _, required := range []string{"check_slice \"$tmp\" \"the repository\"", "rm -rf -- \"$tmp\"", "trap - EXIT", "exec bash .awf/hooks/pre-commit.sh"} {
+	for _, required := range []string{"worktree add", "checkout-index -a -f", "AWF_GATE_SELECT_RANGE=", "bash .awf/hooks/pre-commit.sh"} {
 		index := strings.Index(body, required)
 		if index == -1 {
 			t.Errorf("pre-commit missing permanent step %q", required)
@@ -673,10 +673,12 @@ func TestRepositoryPreCommitRemovesSliceBeforePayload(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	repo := gitfixture.InitRepo(t)
+	gitfixture.Stage(t, repo, map[string]string{"base": "base\n"})
+	gitfixture.Commit(t, repo, "initial", nil)
 	dir := repo.Root()
 	marker := filepath.Join(t.TempDir(), "payload-ran")
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/hooks/pre-commit.sh": "#!/bin/sh\nif [ -n \"$(find \"$TMPDIR\" -mindepth 1 -maxdepth 1 -print -quit)\" ]; then\n  echo \"payload inherited staged slice\" >&2\n  exit 1\nfi\ntouch \"$AWF_PAYLOAD_MARKER\"\n",
+		".awf/hooks/pre-commit.sh": "#!/bin/sh\ntouch \"$AWF_PAYLOAD_MARKER\"\n",
 	})
 
 	tools := t.TempDir()

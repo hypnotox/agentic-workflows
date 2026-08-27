@@ -63,7 +63,11 @@ select_gate_tests() {
   local LC_ALL=C diff path size consumed=0 saw=false
   diff="$(mktemp)"
   cleanup_paths+=("$diff")
-  if ! git diff --cached --name-only -z --no-renames >"$diff"; then
+  if [ -n "${AWF_GATE_SELECT_RANGE:-}" ]; then
+    read -r gate_base gate_head extra <<<"$AWF_GATE_SELECT_RANGE"
+    [ -z "${extra:-}" ] && git cat-file -e "$gate_base^{commit}" && git cat-file -e "$gate_head^{commit}" || return 1
+    git diff --name-only -z --no-renames "$gate_base" "$gate_head" -- >"$diff" || return 1
+  elif ! git diff --cached --name-only -z --no-renames >"$diff"; then
     return 1
   fi
   gate_go_tests=false
@@ -77,8 +81,8 @@ select_gate_tests() {
     # Each recognized category explicitly selects its dependent suites. New or
     # uncertain paths deliberately select both rather than inheriting a lane.
     case "$path" in
-      # Exact test-free data and documentation inputs select neither suite.
-      docs/*|README.md|changelog/CHANGELOG.md|.awf/docs/parts/*|templates/docs/*|internal/project/VERSION|.awf/awf.lock) ;;
+      # Only this census-proven independent editor metadata skips both suites.
+      .editorconfig) ;;
       # Pi templates and generated guidance are consumed by Go tests as well.
       templates/pi/*|templates/embed.go|.pi/agents/*|.pi/skills/*|x|internal/project/*|internal/render/*|internal/config/*|internal/catalog/*|.awf/*|go.mod|go.sum) gate_go_tests=true; gate_pi_tests=true ;;
       # These Pi harness proving inputs have direct Go-test consumers.

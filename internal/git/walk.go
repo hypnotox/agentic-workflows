@@ -237,17 +237,30 @@ func (r *Repo) MergeBase(ctx context.Context, a, b string) (string, error) {
 }
 
 // RangeChangedPaths returns paths changed between base and head, rerooted to
-// the handle root, using native Git's --name-only semantics.
+// the handle root. Native Git transports names as terminal-NUL records so a
+// filename is never interpreted as quoted, trimmed, or line-delimited text.
 func (r *Repo) RangeChangedPaths(ctx context.Context, base, head string) ([]string, error) {
-	out, err := r.runner.run(ctx, "diff", "--name-only", base, head)
+	out, err := r.runner.run(ctx, "diff", "--name-only", "-z", "--no-renames", base, head, "--")
 	if err != nil {
 		return nil, err
 	}
+	if len(out) > 0 && out[len(out)-1] != 0 {
+		return nil, fmt.Errorf("malformed NUL-delimited changed-path transport")
+	}
 	set := map[string]bool{}
-	for _, path := range strings.Split(strings.TrimSpace(string(out)), "\n") {
+	for len(out) > 0 {
+		i := 0
+		for i < len(out) && out[i] != 0 {
+			i++
+		}
+		if i == 0 {
+			return nil, fmt.Errorf("malformed empty changed-path record")
+		}
+		path := string(out[:i])
 		if path, ok := rerootPath(path, r.prefix); ok && path != "" {
 			set[path] = true
 		}
+		out = out[i+1:]
 	}
 	return sortedPaths(set), nil
 }

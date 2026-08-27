@@ -13,6 +13,9 @@ import (
 func wfFS(files map[string]string) fstest.MapFS {
 	m := fstest.MapFS{}
 	for name, content := range files {
+		if strings.HasPrefix(strings.TrimSpace(content), "- ") {
+			content = "jobs:\n  gate:\n    steps:\n" + content
+		}
 		m[name] = &fstest.MapFile{Data: []byte(content)}
 	}
 	return m
@@ -138,5 +141,18 @@ func TestRepoWorkflowsPinned(t *testing.T) {
 	code, _, errb := runOn(t, os.DirFS("../../.github/workflows"))
 	if code != 0 {
 		t.Fatalf("repo workflows are not pin-clean:\n%s", errb)
+	}
+}
+
+func TestRunRefusesMalformedAndDuplicateWorkflowYAML(t *testing.T) {
+	for name, workflow := range map[string]string{
+		"malformed":      "jobs: [",
+		"duplicate uses": "jobs:\n  gate:\n    steps:\n      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n        uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if code, _, errb := runOn(t, wfFS(map[string]string{"ci.yml": workflow})); code != 1 || !strings.Contains(errb, "malformed YAML") {
+				t.Fatalf("invalid YAML accepted: %d %s", code, errb)
+			}
+		})
 	}
 }

@@ -6,6 +6,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"slices"
 	"strings"
 	"testing"
 
@@ -1106,5 +1107,36 @@ func TestObjectReadsReportAMissingParentInAShallowClone(t *testing.T) {
 	deepBase := gitfixture.NativeRevParse(t, gitfixture.At(deeper), "HEAD~2")
 	if _, _, err := collectWalkRange(t, deepHandle, deepBase, deepHead); err == nil {
 		t.Error("RangeCommits resolved a merge base across the shallow boundary")
+	}
+}
+
+func TestRangeChangedPathsPreservesAdversarialNames(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{"deleted": "x\n", "rename-old": "x\n"})
+	for _, name := range []string{"deleted", "rename-old"} {
+		if err := os.Remove(filepath.Join(repo.Root(), name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	for _, name := range []string{"line\nbreak.go", "tab\tname.go", "quote'\\unicode-π.go", "-leading.go", "rename-new"} {
+		if err := os.WriteFile(filepath.Join(repo.Root(), name), []byte("x\n"), 0o600); err != nil {
+			t.Fatal(err)
+		}
+	}
+	lifecycleGit(t, repo.Root(), "add", "-A")
+	lifecycleGit(t, repo.Root(), "commit", "-m", "feat(awf): names")
+	headBytes, err := exec.Command("git", "-C", repo.Root(), "rev-parse", "HEAD").Output()
+	if err != nil {
+		t.Fatal(err)
+	}
+	head := strings.TrimSpace(string(headBytes))
+	got, err := walkRepo(t, repo.Root()).RangeChangedPaths(testContext(t), base, head)
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{"deleted", "rename-old", "line\nbreak.go", "tab\tname.go", "quote'\\unicode-π.go", "-leading.go", "rename-new"} {
+		if !slices.Contains(got, want) {
+			t.Errorf("paths %#v missing exact %q", got, want)
+		}
 	}
 }

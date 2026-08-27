@@ -14,6 +14,8 @@ import (
 	"os"
 	"regexp"
 	"strings"
+
+	"gopkg.in/yaml.v3"
 )
 
 func main() { os.Exit(run(os.DirFS(".github/workflows"), os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run is unit-tested
@@ -57,51 +59,106 @@ func run(fsys fs.FS, stdout, stderr io.Writer) int {
 	return 0
 }
 
-// checkFile scans one workflow's lines and reports every violation. Line-based
-// on purpose: the workflow YAML here is flat enough that `uses:`/`version:`
-// key scans are exact, and a parser dependency would outweigh the rule.
+// checkFile parses workflow structure so a version belongs only to the same
+// jobs.*.steps[] mapping as its goreleaser action.
 func checkFile(name, content string, stderr io.Writer) int {
+	var root yaml.Node
+	if err := yaml.Unmarshal([]byte(content), &root); err != nil {
+		fmt.Fprintf(stderr, "pincheck: %s: malformed YAML: %v\n", name, err)
+		return 1
+	}
+	if err := uniqueMappingKeys(&root); err != nil {
+		fmt.Fprintf(stderr, "pincheck: %s: malformed YAML: %v\n", name, err)
+		return 1
+	}
 	fails := 0
-	lastUses := ""
-	// Line of a goreleaser-action uses: still awaiting its version: key - a step
-	// without one floats the tool to latest, the same hole as a floated range.
-	pendingVersion := 0
-	flushPending := func() {
-		if pendingVersion > 0 {
-			fmt.Fprintf(stderr, "pincheck: %s:%d: goreleaser-action step has no version: input; the tool would float to latest\n", name, pendingVersion)
+	for _, step := range workflowSteps(&root) {
+		uses, usesLine, hasUses := mappingValue(step, "uses")
+		if !hasUses || uses.Kind != yaml.ScalarNode {
+			continue
+		}
+		ref := uses.Value
+		if bad := usesViolation(ref); bad != "" {
+			fmt.Fprintf(stderr, "pincheck: %s:%d: %s: %s\n", name, usesLine, bad, ref)
 			fails++
-			pendingVersion = 0
+		}
+		if !strings.HasPrefix(ref, "goreleaser/goreleaser-action@") {
+			continue
+		}
+		with, _, hasWith := mappingValue(step, "with")
+		var version *yaml.Node
+		line := usesLine
+		if hasWith && with.Kind == yaml.MappingNode {
+			version, line, _ = mappingValue(with, "version")
+		}
+		if version == nil || version.Kind != yaml.ScalarNode {
+			fmt.Fprintf(stderr, "pincheck: %s:%d: goreleaser-action step has no version: input; the tool would float to latest\n", name, usesLine)
+			fails++
+			continue
+		}
+		if !exactSemver.MatchString(version.Value) {
+			fmt.Fprintf(stderr, "pincheck: %s:%d: goreleaser version must be an exact vX.Y.Z, got: %s\n", name, line, version.Value)
+			fails++
 		}
 	}
-	for i, raw := range strings.Split(content, "\n") {
-		ln := strings.TrimSpace(raw)
-		if c := strings.Index(ln, " #"); c >= 0 {
-			ln = strings.TrimSpace(ln[:c])
-		}
-		ln = strings.TrimPrefix(ln, "- ")
-		switch {
-		case strings.HasPrefix(ln, "uses:"):
-			flushPending()
-			ref := unquote(strings.TrimSpace(strings.TrimPrefix(ln, "uses:")))
-			lastUses = ref
-			if strings.HasPrefix(ref, "goreleaser/goreleaser-action@") {
-				pendingVersion = i + 1
-			}
-			if bad := usesViolation(ref); bad != "" {
-				fmt.Fprintf(stderr, "pincheck: %s:%d: %s: %s\n", name, i+1, bad, ref)
-				fails++
-			}
-		case strings.HasPrefix(ln, "version:") && strings.HasPrefix(lastUses, "goreleaser/goreleaser-action@"):
-			pendingVersion = 0
-			v := unquote(strings.TrimSpace(strings.TrimPrefix(ln, "version:")))
-			if !exactSemver.MatchString(v) {
-				fmt.Fprintf(stderr, "pincheck: %s:%d: goreleaser version must be an exact vX.Y.Z, got: %s\n", name, i+1, v)
-				fails++
-			}
-		}
-	}
-	flushPending()
 	return fails
+}
+
+func uniqueMappingKeys(node *yaml.Node) error {
+	if node == nil {
+		return nil
+	}
+	if node.Kind == yaml.MappingNode {
+		seen := map[string]bool{}
+		for i := 0; i+1 < len(node.Content); i += 2 {
+			key := node.Content[i].Value
+			if seen[key] {
+				return fmt.Errorf("duplicate key %q at line %d", key, node.Content[i].Line)
+			}
+			seen[key] = true
+		}
+	}
+	for _, child := range node.Content {
+		if err := uniqueMappingKeys(child); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func mappingValue(mapping *yaml.Node, key string) (*yaml.Node, int, bool) {
+	if mapping == nil || mapping.Kind != yaml.MappingNode {
+		return nil, 0, false
+	}
+	for i := 0; i+1 < len(mapping.Content); i += 2 {
+		if mapping.Content[i].Value == key {
+			return mapping.Content[i+1], mapping.Content[i].Line, true
+		}
+	}
+	return nil, 0, false
+}
+
+func workflowSteps(root *yaml.Node) []*yaml.Node {
+	if root == nil || len(root.Content) != 1 {
+		return nil
+	}
+	jobs, _, ok := mappingValue(root.Content[0], "jobs")
+	if !ok || jobs.Kind != yaml.MappingNode {
+		return nil
+	}
+	var steps []*yaml.Node
+	for i := 1; i < len(jobs.Content); i += 2 {
+		sequence, _, ok := mappingValue(jobs.Content[i], "steps")
+		if !ok || sequence.Kind != yaml.SequenceNode {
+			continue
+		}
+		for _, step := range sequence.Content {
+			if step.Kind == yaml.MappingNode {
+				steps = append(steps, step)
+			}
+		}
+	}
+	return steps
 }
 
 // usesViolation classifies a uses: reference; empty means acceptably pinned.
@@ -121,8 +178,4 @@ func usesViolation(ref string) string {
 		}
 		return "action must pin a full 40-hex commit SHA"
 	}
-}
-
-func unquote(s string) string {
-	return strings.Trim(s, `'"`)
 }

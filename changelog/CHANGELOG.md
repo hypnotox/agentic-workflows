@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Pre-commit verification now runs behavioral gates against the materialized staged candidate, and release publication requires exact-SHA CI evidence before its credential-bearing job.
+
 - Mutable project authority now fails closed: config and sidecars require one complete YAML document, live locks require closed nonempty permanent inventory, and upgrade recovery binds a complete journal to its terminal lock replacement before mutation.
 
 - Project rendering now serializes tracked and shared resident mutations by canonical physical root, prepares inside the lease, commits through confined identity-aware operations, and reports stable partial effects with recovery guidance.

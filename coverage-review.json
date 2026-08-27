@@ -12899,6 +12899,516 @@
         "statements": 2
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at tools/pi-extension-test/lockrun/lockrun_unix.go:60.3,61.11 2 in function run, beginning `fmt.Fprintf(os.Stderr, \"pi-extension-test: wait for worker: %v\\n\", err) // coverage-ignore: Wait...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "cmd/pincheck/main.go",
+        "start": {
+          "line": 21,
+          "column": 13
+        },
+        "end": {
+          "line": 21,
+          "column": 82
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/pincheck/main.go:21.13,21.82 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/pincheck/main.go",
+        "start": {
+          "line": 108,
+          "column": 17
+        },
+        "end": {
+          "line": 110,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/pincheck/main.go:108.17,110.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/pincheck/main.go",
+        "start": {
+          "line": 130,
+          "column": 56
+        },
+        "end": {
+          "line": 132,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/pincheck/main.go:130.56,132.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/pincheck/main.go",
+        "start": {
+          "line": 142,
+          "column": 43
+        },
+        "end": {
+          "line": 144,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/pincheck/main.go:142.43,144.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/pincheck/main.go",
+        "start": {
+          "line": 146,
+          "column": 42
+        },
+        "end": {
+          "line": 148,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/pincheck/main.go:146.42,148.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/pincheck/main.go",
+        "start": {
+          "line": 152,
+          "column": 48
+        },
+        "end": {
+          "line": 153,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/pincheck/main.go:152.48,153.12 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/pincheck/main.go",
+        "start": {
+          "line": 183,
+          "column": 31
+        },
+        "end": {
+          "line": 185,
+          "column": 2
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/pincheck/main.go:183.31,185.2 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 28,
+          "column": 13
+        },
+        "end": {
+          "line": 29,
+          "column": 54
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:28.13,29.54 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 29,
+          "column": 54
+        },
+        "end": {
+          "line": 30,
+          "column": 173
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:29.54,30.173 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 30,
+          "column": 173
+        },
+        "end": {
+          "line": 33,
+          "column": 4
+        },
+        "statements": 2
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:30.173,33.4 2: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 34,
+          "column": 3
+        },
+        "end": {
+          "line": 34,
+          "column": 9
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:34.3,34.9 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 36,
+          "column": 2
+        },
+        "end": {
+          "line": 36,
+          "column": 67
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:36.2,36.67 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 134,
+          "column": 61
+        },
+        "end": {
+          "line": 136,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:134.61,136.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 139,
+          "column": 17
+        },
+        "end": {
+          "line": 141,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:139.17,141.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 145,
+          "column": 17
+        },
+        "end": {
+          "line": 147,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:145.17,147.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 149,
+          "column": 39
+        },
+        "end": {
+          "line": 151,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:149.39,151.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 152,
+          "column": 36
+        },
+        "end": {
+          "line": 154,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:152.36,154.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 155,
+          "column": 64
+        },
+        "end": {
+          "line": 157,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:155.64,157.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 161,
+          "column": 131
+        },
+        "end": {
+          "line": 163,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:161.131,163.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 173,
+          "column": 22
+        },
+        "end": {
+          "line": 175,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:173.22,175.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 182,
+          "column": 114
+        },
+        "end": {
+          "line": 184,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:182.114,184.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 185,
+          "column": 34
+        },
+        "end": {
+          "line": 187,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:185.34,187.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 190,
+          "column": 39
+        },
+        "end": {
+          "line": 191,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:190.39,191.12 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 193,
+          "column": 63
+        },
+        "end": {
+          "line": 195,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:193.63,195.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 196,
+          "column": 25
+        },
+        "end": {
+          "line": 198,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:196.25,198.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "line": 202,
+          "column": 10
+        },
+        "end": {
+          "line": 204,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for cmd/releasecheck/main.go:202.10,204.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "internal/git/walk.go",
+        "start": {
+          "line": 247,
+          "column": 42
+        },
+        "end": {
+          "line": 249,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for internal/git/walk.go:247.42,249.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "internal/git/walk.go",
+        "start": {
+          "line": 256,
+          "column": 13
+        },
+        "end": {
+          "line": 258,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for internal/git/walk.go:256.13,258.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "internal/git/walk.go",
+        "start": {
+          "line": 304,
+          "column": 17
+        },
+        "end": {
+          "line": 306,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for internal/git/walk.go:304.17,306.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "internal/git/walk.go",
+        "start": {
+          "line": 320,
+          "column": 3
+        },
+        "end": {
+          "line": 320,
+          "column": 23
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for internal/git/walk.go:320.3,320.23 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "internal/git/walk.go",
+        "start": {
+          "line": 335,
+          "column": 17
+        },
+        "end": {
+          "line": 337,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for internal/git/walk.go:335.17,337.4 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "internal/git/walk.go",
+        "start": {
+          "line": 351,
+          "column": 16
+        },
+        "end": {
+          "line": 353,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for internal/git/walk.go:351.16,353.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "internal/git/walk.go",
+        "start": {
+          "line": 434,
+          "column": 16
+        },
+        "end": {
+          "line": 436,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for internal/git/walk.go:434.16,436.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+    },
+    {
+      "identity": {
+        "file": "internal/git/walk.go",
+        "start": {
+          "line": 485,
+          "column": 16
+        },
+        "end": {
+          "line": 487,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 exact reviewed reconciliation for internal/git/walk.go:485.16,487.3 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
     }
   ],
   "directives": [
@@ -13325,8 +13835,8 @@
     {
       "directive": {
         "file": "cmd/pincheck/main.go",
-        "line": 19,
-        "targetLine": 19,
+        "line": 21,
+        "targetLine": 21,
         "reason": "os.Exit wrapper; run is unit-tested",
         "mapped": true,
         "executed": false
@@ -13337,8 +13847,8 @@
     {
       "directive": {
         "file": "cmd/releasecheck/main.go",
-        "line": 25,
-        "targetLine": 25,
+        "line": 28,
+        "targetLine": 28,
         "reason": "os.Exit wrapper; run is unit-tested",
         "mapped": true,
         "executed": false
@@ -17213,8 +17723,8 @@
     {
       "directive": {
         "file": "internal/git/walk.go",
-        "line": 291,
-        "targetLine": 291,
+        "line": 304,
+        "targetLine": 304,
         "reason": "unlike the same lookup in RangeBlobs this is unreachable through a range walk, because enumerating the ancestry already failed on the absent object before any commit reached toCommit; a shallow clone errors during iteration, not here",
         "mapped": true,
         "executed": false
@@ -17225,8 +17735,8 @@
     {
       "directive": {
         "file": "internal/git/walk.go",
-        "line": 307,
-        "targetLine": 307,
+        "line": 320,
+        "targetLine": 320,
         "reason": "the validated change frontier leaves cancellation as the only reachable diff failure",
         "mapped": true,
         "executed": false
@@ -17237,8 +17747,8 @@
     {
       "directive": {
         "file": "internal/git/walk.go",
-        "line": 322,
-        "targetLine": 322,
+        "line": 335,
+        "targetLine": 335,
         "reason": "toFileChange fails only on a malformed change",
         "mapped": true,
         "executed": false
@@ -17249,8 +17759,8 @@
     {
       "directive": {
         "file": "internal/git/walk.go",
-        "line": 338,
-        "targetLine": 338,
+        "line": 351,
+        "targetLine": 351,
         "reason": "range iteration already traversed the merge's first parent",
         "mapped": true,
         "executed": false
@@ -17261,8 +17771,8 @@
     {
       "directive": {
         "file": "internal/git/walk.go",
-        "line": 421,
-        "targetLine": 421,
+        "line": 434,
+        "targetLine": 434,
         "reason": "Action() fails only on a malformed change entry",
         "mapped": true,
         "executed": false
@@ -17273,8 +17783,8 @@
     {
       "directive": {
         "file": "internal/git/walk.go",
-        "line": 472,
-        "targetLine": 472,
+        "line": 485,
+        "targetLine": 485,
         "reason": "a valid tree entry's blob contents read back without error",
         "mapped": true,
         "executed": false

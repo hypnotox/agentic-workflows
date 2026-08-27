@@ -2,11 +2,18 @@ package main
 
 import (
 	"bytes"
+	"context"
+	"fmt"
+	"io"
+	"net/http"
+	"net/http/httptest"
 	"os"
 	"os/exec"
 	"strings"
 	"testing"
 	"testing/fstest"
+
+	"gopkg.in/yaml.v3"
 
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
@@ -158,6 +165,7 @@ func TestUnreleasedBodyAtEOF(t *testing.T) {
 // Release workflow must run the ancestry check, ./x gate, and ./x check before
 // the GoReleaser step, so an untested or off-main tag cannot publish.
 // invariant: tooling/changelog-and-release:release-gate-on-tag (TestReleaseWorkflowGatesOnTag)
+// invariant: tooling/quality-gates:exact-revision-repository-acceptance (TestReleaseWorkflowGatesOnTag)
 func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 	b, err := os.ReadFile("../../.github/workflows/release.yml")
 	if err != nil {
@@ -267,5 +275,71 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 	}
 	if strings.Contains(gl, "use: github") {
 		t.Error(".goreleaser.yaml still derives release notes from commits (use: github)")
+	}
+}
+
+func TestVerifyCIRequiresExactSuccessfulWorkflowAndJobs(t *testing.T) {
+	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if r.Header.Get("Authorization") != "Bearer token" {
+			t.Errorf("authorization = %q", r.Header.Get("Authorization"))
+			w.WriteHeader(http.StatusUnauthorized)
+			return
+		}
+		w.Header().Set("Content-Type", "application/json")
+		switch r.URL.Path {
+		case "/repos/acme/repo/actions/workflows/ci.yml/runs":
+			if r.URL.Query().Get("head_sha") != sha {
+				t.Errorf("head_sha = %q", r.URL.Query().Get("head_sha"))
+			}
+			fmt.Fprintf(w, `{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
+		case "/repos/acme/repo/actions/runs/7/jobs":
+			_, _ = io.WriteString(w, `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`)
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	if err := verifyCI(context.Background(), server.Client(), server.URL, "acme/repo", "token", sha); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestVerifyCIRefusesIncompleteOrWrongEvidence(t *testing.T) {
+	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	for name, response := range map[string]string{
+		"nearby SHA":        `{"total_count":1,"workflow_runs":[{"id":7,"head_sha":"bbbb","status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`,
+		"wrong workflow":    `{"total_count":1,"workflow_runs":[{"id":7,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","status":"completed","conclusion":"success","path":"other.yml","name":"CI"}]}`,
+		"failed conclusion": `{"total_count":1,"workflow_runs":[{"id":7,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","status":"completed","conclusion":"failure","path":".github/workflows/ci.yml","name":"CI"}]}`,
+		"pagination count":  `{"total_count":2,"workflow_runs":[{"id":7,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`,
+	} {
+		t.Run(name, func(t *testing.T) {
+			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = io.WriteString(w, response) }))
+			defer s.Close()
+			if err := verifyCI(context.Background(), s.Client(), s.URL, "a/r", "t", sha); err == nil {
+				t.Fatal("invalid CI evidence accepted")
+			}
+		})
+	}
+}
+
+func TestReleaseWorkflowSeparatesReadVerificationFromPublish(t *testing.T) {
+	b, err := os.ReadFile("../../.github/workflows/release.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var root yaml.Node
+	if err := yaml.Unmarshal(b, &root); err != nil {
+		t.Fatal(err)
+	}
+	text := string(b)
+	for _, required := range []string{"needs: verify", "actions: read", "GITHUB_TOKEN: ${{ github.token }}", "--verify-ci \"${{ github.sha }}\"", "Repeat tag identity before publication", "contents: write"} {
+		if !strings.Contains(text, required) {
+			t.Errorf("release workflow missing %q", required)
+		}
+	}
+	if strings.Index(text, "--verify-ci") > strings.Index(text, "goreleaser/goreleaser-action") {
+		t.Error("exact CI verification follows publication")
 	}
 }

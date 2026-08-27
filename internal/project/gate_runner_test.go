@@ -460,15 +460,15 @@ func TestCoverageActivationContracts(t *testing.T) {
 	ci := string(workflow)
 	for _, required := range []string{
 		"fetch-depth: 0",
-		"MUTATION_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}",
-		"MUTATION_HEAD: ${{ github.sha }}",
-		`./x covercheck-mutants --select-range "$MUTATION_BASE" "$MUTATION_HEAD"`,
+		"EVENT: ${{ github.event_name }}",
+		"PR_BASE: ${{ github.event.pull_request.base.sha }}",
+		`./x covercheck-mutants --select-range "$base" "$CANDIDATE"`,
 	} {
 		if !strings.Contains(ci, required) {
 			t.Errorf("CI missing mutation contract %q", required)
 		}
 	}
-	if strings.Index(ci, "run: ./x gate") > strings.Index(ci, `./x covercheck-mutants --select-range "$MUTATION_BASE" "$MUTATION_HEAD"`) {
+	if strings.Index(ci, "run: ./x gate") > strings.Index(ci, `./x covercheck-mutants --select-range "$base" "$CANDIDATE"`) {
 		t.Error("CI invokes the mutation blocker before the shared gate")
 	}
 }
@@ -585,7 +585,7 @@ func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
 		want       []string
 		notices    []string
 	}{
-		{"docs-only skips both suites", "docs/odd name [1].md", nil, []string{"gate: skipping Go tests and coverage for test-free staged changes", "gate: skipping Pi runtime smoke for test-free staged changes"}},
+		{"docs run both suites", "docs/odd name [1].md", both, nil},
 		{"Pi extension is Pi-only", ".pi/extensions/extension.ts", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
 		{"Pi harness input without Go consumer is Pi-only", "tools/pi-extension-test/package.json", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
 		{"ordinary Go is Go-only", "cmd/example/main.go", goTests, []string{"gate: skipping Pi runtime smoke for Go-only staged changes"}},
@@ -605,7 +605,7 @@ func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
 			"docs/guide.md": "changed\n", "README.md": "changed\n", "changelog/CHANGELOG.md": "changed\n",
 			".awf/docs/parts/a.md": "changed\n", "templates/docs/a.md": "changed\n",
 		})
-		assertGateSelection(t, root, logPath, nil, []string{"gate: skipping Go tests and coverage for test-free staged changes", "gate: skipping Pi runtime smoke for test-free staged changes"})
+		assertGateSelection(t, root, logPath, both, nil)
 	})
 
 	for _, tc := range []struct {
@@ -623,7 +623,7 @@ func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
 		t.Run(tc.name+" skips both suites", func(t *testing.T) {
 			root, logPath := committedGateRunnerFixture(t)
 			gitfixture.Stage(t, gitfixture.At(root), tc.files)
-			assertGateSelection(t, root, logPath, nil, []string{"gate: skipping Go tests and coverage for test-free staged changes", "gate: skipping Pi runtime smoke for test-free staged changes"})
+			assertGateSelection(t, root, logPath, both, nil)
 		})
 	}
 
@@ -690,7 +690,7 @@ func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
 		want       []string
 		notices    []string
 	}{
-		{"newline filename remains docs-only", "printf 'docs/line\\nbreak.md\\0'\n", nil, []string{"gate: skipping Go tests and coverage for test-free staged changes", "gate: skipping Pi runtime smoke for test-free staged changes"}},
+		{"newline filename runs both", "printf 'docs/line\\nbreak.md\\0'\n", both, nil},
 		{"space filename remains Pi-only", "printf '.pi/extensions/with space.ts\\0'\n", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

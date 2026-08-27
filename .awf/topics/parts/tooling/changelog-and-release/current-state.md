@@ -40,8 +40,9 @@ Backing: test
 
 ### `invariant: release-gate-on-tag`
 
-The release workflow runs the origin/main ancestry check, ./x gate, and ./x check before the GoReleaser publish step.
+The release workflow verifies successful exact-SHA CI conclusions, checkout and tag identity, prior-release mutation selection, origin/main ancestry, ./x gate, and ./x check before its needs-bound credential-bearing GoReleaser publish step.
 Origin: ADR-0079
+Revised-by: ADR-bind-repository-and-release-acceptance-to-exact-revisions
 Backing: test
 
 ### `invariant: release-notes-from-changelog`

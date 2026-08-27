@@ -69,3 +69,7 @@ Prebuilt downloads are canonical; `go install` is the source fallback. The publi
 ## Adopter upgrade recovery
 
 Adopter projects use permanent lock authority. A supported schema upgrade journals its mutations and publishes the replacement lock last. If `.awf/current-state-upgrade.journal` remains after interruption, run only `awf upgrade --recover`; precommit recovery restores prior bytes and residents, while postcommit recovery cleans transaction residue without rolling authority back. If the journal is unusable, restore the project from Git and retry from a supported source.
+
+### Exact revision acceptance
+
+Release verification reads the successful `CI / gate` and `CI / release-config` conclusions for the exact tag SHA before publication. It checks out and rechecks that tag SHA immediately before GoReleaser. The verification job has read-only Actions credentials; the credential-bearing publish job needs it and retains curated notes, the project version, ancestry, and the deterministic previous-release-tag-to-candidate mutation range.

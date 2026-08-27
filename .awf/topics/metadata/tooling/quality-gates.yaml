@@ -6,3 +6,5 @@ paths:
   - internal/memorycite/**
   - tools/**
   - x
+  - .githooks/pre-commit
+  - .github/workflows/ci.yml

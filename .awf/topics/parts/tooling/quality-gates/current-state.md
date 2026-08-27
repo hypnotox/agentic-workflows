@@ -30,8 +30,9 @@ Backing: test
 
 ### `invariant: covercheck-mutation-regression`
 
-An exact `cmd/covercheck` owned-path change selected from either the local staged snapshot or an explicit CI range runs the pinned, hermetic whole-target mutation blocker; missing, malformed, or unavailable selection evidence runs rather than skips it. The blocker requires the whole-repository preflight, package-test and dependency censuses, dry-to-actual exact identity equality, complete timeout-free trusted reports, and only killed or independently reviewed equivalent survivors. Mutation remains advisory outside that owned path.
+An exact `cmd/covercheck` owned-path change selected from the preserved local parent-to-candidate snapshot or a validated explicit CI range runs the pinned, hermetic whole-target mutation blocker; missing, malformed, or unavailable selection evidence runs rather than skips it. The blocker requires the whole-repository preflight, package-test and dependency censuses, dry-to-actual exact identity equality, complete timeout-free trusted reports, and only killed or independently reviewed equivalent survivors. Mutation remains advisory outside that owned path.
 Origin: ADR-0302
+Revised-by: ADR-bind-repository-and-release-acceptance-to-exact-revisions
 Backing: test
 
 ### `invariant: coverage-ignore-reason`
@@ -68,9 +69,9 @@ Backing: test
 
 ### `invariant: staged-test-selection`
 
-The command runner reads one NUL-delimited, rename-disabled staged-index name diff and independently selects profiled Go tests with coverage and Pi runtime smoke from explicit dependency categories. The exact documentation allowlist, exact `internal/project/VERSION`, and exact root `.awf/awf.lock` select neither suite; Pi-only paths run only Pi; Go-only paths run only Go; overlap paths run both; and absent, unreadable, malformed, empty, or unrecognized snapshots run both. Neighboring project and `.awf` paths retain their overlap classification. Versioncheck, vet, builds, lint, dead code, and pin checks always run; each skipped suite prints an explicit notice, and timings name only executed stages.
+The command runner materializes the staged candidate before behavioral verification and selects from the preserved parent-to-candidate NUL-delimited, rename-disabled name diff. Only census-proven independent inputs skip their owning lanes; README, documentation, changelog, VERSION, lock, and authored inputs run their dependent lanes; Pi-only paths run only Pi; Go-only paths run only Go; overlap paths run both; and absent, unreadable, malformed, empty, or unrecognized snapshots run both. Neighboring project and `.awf` paths retain their overlap classification. Versioncheck, vet, builds, lint, dead code, and pin checks always run; each skipped suite prints an explicit notice, and timings name only executed stages.
 Origin: ADR-0275
-Revised-by: ADR-0276, ADR-0284
+Revised-by: ADR-0276, ADR-0284, ADR-bind-repository-and-release-acceptance-to-exact-revisions
 Backing: test
 
 ### `invariant: pi-extension-container-gate`
@@ -111,4 +112,10 @@ Backing: test
 
 The pincheck gate exits non-zero when any remote uses: reference under .github/workflows is not pinned to a full 40-hex commit SHA (repo-local ./ refs exempt, docker:// refs digest-pinned) or when a goreleaser-action version input is not an exact semver version.
 Origin: ADR-0079
+Backing: test
+
+### `invariant: exact-revision-repository-acceptance`
+
+CI requires successful `CI / gate` and `CI / release-config` conclusions for the exact candidate SHA. Release publication verifies the same exact SHA before a credential-bearing publish job.
+Origin: ADR-bind-repository-and-release-acceptance-to-exact-revisions
 Backing: test

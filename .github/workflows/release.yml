@@ -2,30 +2,35 @@ name: Release
 
 on:
   push:
-    tags:
-      - 'v*'
+    tags: ['v*']
 
 permissions:
-  contents: write
+  contents: read
 
 jobs:
-  goreleaser:
+  verify:
+    name: verify-exact-tag
     runs-on: ubuntu-latest
+    permissions:
+      actions: read
+      contents: read
     env:
-      # setup-node is the authority in hosted CI; the runner still validates .nvmrc exactly.
-      AWF_PI_TEST_SKIP_NVM: "1"
+      GITHUB_TOKEN: ${{ github.token }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
+          ref: ${{ github.sha }}
           fetch-depth: 0
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: tools/pi-extension-test/package-lock.json
+      - name: Verify checkout and tag identity
+        run: |
+          candidate='${{ github.sha }}'
+          [ "$(git rev-parse HEAD)" = "$candidate" ]
+          [ "$(git rev-parse "${GITHUB_REF_NAME}^{}")" = "$candidate" ]
+      - name: Verify bridge readiness and exact CI conclusions
+        run: go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"
       - name: Verify tag matches project.Version
         run: |
           tag="${GITHUB_REF_NAME#v}"
@@ -40,23 +45,41 @@ jobs:
             { bad = 1; exit }
             END { if (!bad && found == 1) print value; else exit 1 }
           ')"
-          if [ "$tag" != "$want" ]; then
-            echo "tag v${tag} does not match project.Version ${want}" >&2
-            exit 1
-          fi
-      - name: Verify bridge readiness and changelog pins
-        run: go run ./cmd/releasecheck
+          [ "$tag" = "$want" ]
       - name: Verify tagged commit is on main
         run: |
           git fetch origin main
-          if ! git merge-base --is-ancestor HEAD origin/main; then
-            echo "tagged commit $(git rev-parse HEAD) is not on origin/main - push main first" >&2
-            exit 1
-          fi
+          git merge-base --is-ancestor HEAD origin/main
       - name: Gate (test + 100% coverage + vet + lint)
         run: ./x gate
+      - name: Covercheck mutation regression from previous release
+        run: |
+          candidate='${{ github.sha }}'
+          previous="$(git tag --merged "$candidate" --sort=-version:refname | grep -Fxv "$GITHUB_REF_NAME" | head -n1)"
+          [ -n "$previous" ]
+          git cat-file -e "$previous^{commit}"
+          ./x covercheck-mutants --select-range "$previous" "$candidate"
       - name: Drift check (rendered output matches config)
         run: ./x check
+      - name: Prepare release notes from the curated changelog
+        run: go run ./cmd/awf changelog --version "${GITHUB_REF_NAME#v}" > "${RUNNER_TEMP}/release-notes.md"
+  publish:
+    needs: verify
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ github.sha }}
+          fetch-depth: 0
+      - name: Repeat tag identity before publication
+        run: |
+          [ "$(git rev-parse HEAD)" = '${{ github.sha }}' ]
+          [ "$(git rev-parse "${GITHUB_REF_NAME}^{}")" = '${{ github.sha }}' ]
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
       - name: Prepare release notes from the curated changelog
         run: go run ./cmd/awf changelog --version "${GITHUB_REF_NAME#v}" > "${RUNNER_TEMP}/release-notes.md"
       - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3

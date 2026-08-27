@@ -32,9 +32,21 @@ jobs:
         run: ./x gate
       - name: Covercheck mutation regression
         env:
-          MUTATION_BASE: ${{ github.event.pull_request.base.sha || github.event.before }}
-          MUTATION_HEAD: ${{ github.sha }}
-        run: ./x covercheck-mutants --select-range "$MUTATION_BASE" "$MUTATION_HEAD"
+          EVENT: ${{ github.event_name }}
+          PR_BASE: ${{ github.event.pull_request.base.sha }}
+          PUSH_BASE: ${{ github.event.before }}
+          CANDIDATE: ${{ github.sha }}
+        run: |
+          case "$EVENT" in
+            pull_request) base="$PR_BASE" ;;
+            push) base="$PUSH_BASE" ;;
+            workflow_dispatch) base="$(git rev-parse "$CANDIDATE^")" ;;
+            *) echo "unknown event has no trustworthy mutation base" >&2; exit 1 ;;
+          esac
+          case "$base" in 0000000000000000000000000000000000000000|'') echo "mutation base unavailable" >&2; exit 1;; esac
+          git cat-file -e "$base^{commit}"
+          git cat-file -e "$CANDIDATE^{commit}"
+          ./x covercheck-mutants --select-range "$base" "$CANDIDATE"
       - name: Drift check (rendered output matches config)
         run: ./x check
       # The scans run in the pre-commit hook payload locally; hooks are

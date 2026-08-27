@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: bind-repository-and-release-acceptance-to-exact-revisions
-status: Proposed
+status: Implementing
 date: 2026-08-26
 ---
 # ADR-bind-repository-and-release-acceptance-to-exact-revisions: Bind Repository and Release Acceptance to Exact Revisions
@@ -57,3 +57,6 @@ Hosted settings remain an operator transaction outside an ordinary commit. Repos
 ## Status history
 
 - 2026-08-26: Proposed
+- 2026-08-26: Accepted; content-sha256: 7045a15a13bcc82d96d287fdce8b4f7a2ac5c20d7762fddad9899236e9ca365b
+- 2026-08-26: Implementing; content-sha256: 7045a15a13bcc82d96d287fdce8b4f7a2ac5c20d7762fddad9899236e9ca365b
+- 2026-08-26: Applied; operations: update `tooling/quality-gates:covercheck-mutation-regression`, update `tooling/quality-gates:staged-test-selection`, add `tooling/quality-gates:exact-revision-repository-acceptance`, update `tooling/changelog-and-release:release-gate-on-tag`

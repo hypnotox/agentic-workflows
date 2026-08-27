@@ -1,45 +1,28 @@
 #!/usr/bin/env bash
-# Repo wiring for the rendered pre-commit payload, plus a repo-local staged-slice
-# validation: concurrent sessions share this worktree's index, and a commit is a
-# slice of the index while the payload below validates the worktree - a
-# cross-session or partial-staging accident can therefore land a commit that, on
-# its own, does not BUILD (bit the ADR-0088 session) or is DRIFT-inconsistent (a
-# rendered/lock hunk left unstaged; bit commit a85bd6a - HEAD's `./x check`
-# failed while the worktree was clean). Build AND drift-check the exact staged
-# slice in a throwaway checkout so a non-hermetic or drifted commit refuses here.
+# Verify the exact index tree in an isolated child worktree. The disposable
+# candidate retains HEAD..candidate as the original parent-to-index selection.
 set -euo pipefail
-repo_root=$(pwd -P)
+repo_root=$(git rev-parse --show-toplevel)
+head=$(git rev-parse HEAD)
 tmp=$(mktemp -d)
-trap 'rm -rf "$tmp"' EXIT
-git checkout-index --prefix="$tmp/" -a
-# Hooks inherit GIT_DIR/GIT_WORK_TREE for the caller. Clear those before using
-# Git inside the foreign temporary repository; later commands rediscover this
-# linked worktree from its .git file.
-unset $(git rev-parse --local-env-vars)
-# Current-state checks read one Git snapshot. Give the exact staged slice its
-# own temporary identity so it can resolve a HEAD without observing the caller's
-# unstaged worktree.
-# The slice repository is initialized on a branch that is deliberately NOT the
-# configured integrationBranch. A fresh init lands on main, and a pending
-# slug-identified ADR is refused on the integration branch by design, so the
-# slice would reject a record that is perfectly legal on the real branch.
-git -C "$tmp" init -q -b awf-staged-slice
-git -C "$tmp" add -f .
-git -C "$tmp" -c core.hooksPath=/dev/null -c user.name=awf-hook -c user.email=awf-hook@localhost commit -q -m staged-slice
+deleted=$(mktemp)
+cleanup() { rm -f -- "$deleted"; git -C "$repo_root" worktree remove --force "$tmp" >/dev/null 2>&1 || rm -rf -- "$tmp"; }
+trap cleanup EXIT
+# Read the caller's index before clearing hook Git environment variables.
+git -C "$repo_root" diff --cached --name-only -z --diff-filter=D >"$deleted"
+# A worktree shares object storage but has its own index and HEAD, so neither
+# the caller's index nor its unstaged bytes participate in verification.
+git -C "$repo_root" worktree add --quiet --detach "$tmp" "$head"
+git -C "$repo_root" --work-tree="$tmp" checkout-index -a -f
+while IFS= read -r -d '' path; do rm -f -- "$tmp/$path"; done <"$deleted"
+# Hooks inherit the caller's GIT_INDEX_FILE. Clear it before operating on the
+# child, otherwise git add would silently rewrite the real commit index.
+unset $(git -C "$repo_root" rev-parse --local-env-vars)
+git -C "$tmp" add -A
+git -C "$tmp" -c core.hooksPath=/dev/null -c user.name=awf-hook -c user.email=awf-hook@localhost commit -q -m staged-candidate
+candidate=$(git -C "$tmp" rev-parse HEAD)
 if ! (cd "$tmp" && go build ./... >/dev/null); then
-  echo "pre-commit: the staged slice does not build on its own - a foreign or missing hunk is staged" >&2
+  echo "pre-commit: the staged candidate does not build on its own" >&2
   exit 1
 fi
-(cd "$tmp" && go build -o awf-slice ./cmd/awf)
-awf_slice="$tmp/awf-slice"
-check_slice() {
-  dir="$1"; label="$2"
-  if ! (cd "$dir" && "$awf_slice" check >/dev/null); then
-    echo "pre-commit: the staged slice has drift in $label - run ./x render and stage the result" >&2
-    exit 1
-  fi
-}
-check_slice "$tmp" "the repository"
-rm -rf -- "$tmp"
-trap - EXIT
-exec bash .awf/hooks/pre-commit.sh "$@"
+(cd "$tmp" && AWF_GATE_SELECT_RANGE="$head $candidate" bash .awf/hooks/pre-commit.sh "$@")
