@@ -74,10 +74,40 @@ func Verify(root fs.FS) error {
 	return errors.Join(errs...)
 }
 
+// archiveFiles accepts GoReleaser's compact string form and its structured
+// file form. The project-license boundary needs only the source path, while
+// GoReleaser owns per-entry archive metadata such as portable ownership.
+type archiveFiles []string
+
+func (files *archiveFiles) UnmarshalYAML(node *yaml.Node) error {
+	if node.Kind != yaml.SequenceNode {
+		return fmt.Errorf("files must be a sequence")
+	}
+	var sources []string
+	for _, entry := range node.Content {
+		switch entry.Kind {
+		case yaml.ScalarNode:
+			sources = append(sources, entry.Value)
+		case yaml.MappingNode:
+			var file struct {
+				Source string `yaml:"src"`
+			}
+			if err := entry.Decode(&file); err != nil {
+				return err
+			}
+			sources = append(sources, file.Source)
+		default:
+			return fmt.Errorf("archive file must be a string or mapping")
+		}
+	}
+	*files = sources
+	return nil
+}
+
 func verifyArchiveLicenses(raw []byte) []error {
 	var config struct {
 		Archives []struct {
-			Files []string `yaml:"files"`
+			Files archiveFiles `yaml:"files"`
 		} `yaml:"archives"`
 	}
 	if err := yaml.Unmarshal(raw, &config); err != nil {

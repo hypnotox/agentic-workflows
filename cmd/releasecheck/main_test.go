@@ -1,7 +1,10 @@
 package main
 
 import (
+	"archive/tar"
+	"archive/zip"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"fmt"
 	"io"
@@ -10,6 +13,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"runtime"
+	"slices"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -671,5 +676,154 @@ func TestVerifyCIRefusesTrailingDocumentsAndGarbage(t *testing.T) {
 				t.Fatal("trailing API data accepted")
 			}
 		})
+	}
+}
+
+// TestReleaseArchivesPortableSnapshot runs the pinned snapshot production path.
+// A root-mapped user namespace can represent root:root archive entries as its own
+// identity but cannot represent this checkout's uid/gid. It therefore catches
+// ownership metadata rather than masking it with tar's --no-same-owner fallback.
+func TestReleaseArchivesPortableSnapshot(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("restricted rootless extraction fixture requires Linux user namespaces")
+	}
+	root, err := filepath.Abs("../..")
+	if err != nil {
+		t.Fatal(err)
+	}
+	dist := filepath.Join(root, "dist")
+	if err := os.RemoveAll(dist); err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = os.RemoveAll(dist) })
+	cmd := exec.Command("go", "run", "github.com/goreleaser/goreleaser/v2@v2.17.0", "release", "--snapshot", "--clean")
+	cmd.Dir = root
+	if out, err := cmd.CombinedOutput(); err != nil {
+		t.Fatalf("build snapshot release: %v\n%s", err, out)
+	}
+
+	archives, err := filepath.Glob(filepath.Join(dist, "awf_*"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var names []string
+	for _, archive := range archives {
+		name := filepath.Base(archive)
+		if strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".zip") {
+			names = append(names, name)
+		}
+	}
+	slices.Sort(names)
+	if len(names) != 6 {
+		t.Fatalf("snapshot archive count = %d, want 6: %q", len(names), names)
+	}
+	for _, suffix := range []string{
+		"_darwin_amd64.tar.gz", "_darwin_arm64.tar.gz", "_linux_amd64.tar.gz",
+		"_linux_arm64.tar.gz", "_windows_amd64.zip", "_windows_arm64.zip",
+	} {
+		found := false
+		for _, name := range names {
+			found = found || strings.HasSuffix(name, suffix)
+		}
+		if !found {
+			t.Errorf("snapshot archives = %q; missing target suffix %q", names, suffix)
+		}
+	}
+
+	for _, name := range names {
+		archive := filepath.Join(dist, name)
+		if strings.HasSuffix(name, ".zip") {
+			assertZipArchivePaths(t, archive, []string{"LICENSE", "README.md", "awf.exe"})
+			continue
+		}
+		entries := assertTarArchivePaths(t, archive, []string{"LICENSE", "README.md", "awf"})
+		if strings.Contains(name, "_linux_") {
+			for _, entry := range entries {
+				if entry.Uid != 0 || entry.Gid != 0 || entry.Uname != "root" || entry.Gname != "root" {
+					t.Errorf("%s entry %s ownership = %d:%d %q:%q, want 0:0 root:root", name, entry.Name, entry.Uid, entry.Gid, entry.Uname, entry.Gname)
+				}
+				wantMode := int64(0o644)
+				if entry.Name == "awf" {
+					wantMode = 0o755
+				}
+				if entry.Mode != wantMode {
+					t.Errorf("%s entry %s mode = %#o, want %#o", name, entry.Name, entry.Mode, wantMode)
+				}
+			}
+		}
+	}
+
+	linux, err := filepath.Glob(filepath.Join(dist, "awf_*_linux_amd64.tar.gz"))
+	if err != nil || len(linux) != 1 {
+		t.Fatalf("linux amd64 snapshot archive = %q, err = %v", linux, err)
+	}
+	extracted := t.TempDir()
+	// Do not add --no-same-owner: successful extraction must exercise the archive
+	// ownership metadata in the restricted rootless namespace.
+	extract := exec.Command("unshare", "--user", "--map-root-user", "tar", "-xzf", linux[0], "-C", extracted)
+	if out, err := extract.CombinedOutput(); err != nil {
+		t.Fatalf("restricted rootless extraction failed: %v\n%s", err, out)
+	}
+	entries, err := os.ReadDir(extracted)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var extractedNames []string
+	for _, entry := range entries {
+		extractedNames = append(extractedNames, entry.Name())
+	}
+	slices.Sort(extractedNames)
+	if !slices.Equal(extractedNames, []string{"LICENSE", "README.md", "awf"}) {
+		t.Fatalf("restricted rootless extracted paths = %q, want exactly binary, LICENSE, and README", extractedNames)
+	}
+}
+
+func assertTarArchivePaths(t *testing.T, archive string, want []string) []*tar.Header {
+	t.Helper()
+	file, err := os.Open(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer file.Close()
+	compressed, err := gzip.NewReader(file)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer compressed.Close()
+	reader := tar.NewReader(compressed)
+	var entries []*tar.Header
+	var names []string
+	for {
+		entry, err := reader.Next()
+		if err == io.EOF {
+			break
+		}
+		if err != nil {
+			t.Fatal(err)
+		}
+		entries = append(entries, entry)
+		names = append(names, entry.Name)
+	}
+	slices.Sort(names)
+	if !slices.Equal(names, want) {
+		t.Fatalf("archive %s paths = %q, want %q", filepath.Base(archive), names, want)
+	}
+	return entries
+}
+
+func assertZipArchivePaths(t *testing.T, archive string, want []string) {
+	t.Helper()
+	reader, err := zip.OpenReader(archive)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer reader.Close()
+	names := make([]string, 0, len(reader.File))
+	for _, entry := range reader.File {
+		names = append(names, entry.Name)
+	}
+	slices.Sort(names)
+	if !slices.Equal(names, want) {
+		t.Fatalf("archive %s paths = %q, want %q", filepath.Base(archive), names, want)
 	}
 }

@@ -99,6 +99,38 @@ func TestProjectLicenseAGPL(t *testing.T) {
 			want: ".goreleaser.yaml archive 2 must include LICENSE",
 		},
 		{
+			name: "structured archive source requires license",
+			path: goreleaserPath,
+			data: func([]byte) []byte {
+				return []byte("archives:\n  - files:\n      - src: README.md\n")
+			},
+			want: ".goreleaser.yaml archive 1 must include LICENSE",
+		},
+		{
+			name: "archive files must be a sequence",
+			path: goreleaserPath,
+			data: func([]byte) []byte {
+				return []byte("archives:\n  - files: LICENSE\n")
+			},
+			want: "files must be a sequence",
+		},
+		{
+			name: "archive file must be a string or mapping",
+			path: goreleaserPath,
+			data: func([]byte) []byte {
+				return []byte("archives:\n  - files:\n      - [LICENSE]\n")
+			},
+			want: "archive file must be a string or mapping",
+		},
+		{
+			name: "structured archive source must decode",
+			path: goreleaserPath,
+			data: func([]byte) []byte {
+				return []byte("archives:\n  - files:\n      - src: [LICENSE]\n")
+			},
+			want: "cannot unmarshal !!seq into string",
+		},
+		{
 			name: "archive set exists",
 			path: goreleaserPath,
 			data: func([]byte) []byte { return []byte("version: 2\n") },

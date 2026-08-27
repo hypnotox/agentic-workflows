@@ -51,7 +51,10 @@ or a later compatible build. See all
 
 Download a binary from the
 [latest awf release](https://github.com/hypnotox/agentic-workflows/releases/latest),
-extract it, and place `awf` on your `PATH`.
+extract it, and place `awf` on your `PATH`. Linux tarballs carry portable
+`root:root` ownership and ordinary executable and regular-file modes, so a
+restricted rootless user namespace can extract them without mapping the release
+builder's account.
 
 To install from source with Go 1.26 or later:
 

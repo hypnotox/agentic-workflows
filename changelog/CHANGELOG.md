@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Linux release tarballs now use portable root ownership and expected executable and regular-file modes, so restricted rootless extraction does not depend on the release builder's account.
+
 - Terminal plan closure now freezes Implemented plan history and validates a parsed complete reconciliation against a selected repository implementation range. Proposed plans remain amendable; closure does not require original plan choreography.
 
 - Pre-commit verification now runs behavioral gates against the materialized staged candidate, and release publication requires exact-SHA CI evidence before its credential-bearing job.
