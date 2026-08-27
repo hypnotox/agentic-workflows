@@ -31,10 +31,11 @@ snapshots independently.
 1. `decision: custom-notes-own-publication` Published GitHub Release notes remain sourced
    exclusively from the tagged version's curated changelog section supplied as GoReleaser's
    custom release-notes file. GoReleaser's changelog pipe remains enabled so it can load that
-   file, while commit-derived changelog configuration remains absent.
-2. `decision: prove-composed-semantics` Release verification must protect the composed
-   configuration and workflow semantics that produce a nonempty curated body, rather than
-   treating a disabled changelog pipe and a custom notes argument as independently sufficient.
+   file, while commit-derived `use`, groups, and filters remain absent.
+2. `decision: prove-composed-semantics` Release verification must include both the corrected
+   configuration-and-workflow contract and regression evidence that exercises their composed
+   behavior, proving the supplied curated file becomes the exact release body without
+   commit-derived output.
 
 ## State changes
 
@@ -45,9 +46,10 @@ snapshots independently.
 - GoReleaser can load and publish the curated notes file, restoring the outcome ADR-0096
   intended without reintroducing commit-derived release notes.
 - The configuration no longer uses `changelog.disable: true`; absence of commit-derived
-  `use`, grouping, and filtering configuration plus the custom notes input preserves one
-  adopter-facing source of truth.
-- Verification must catch the exact incompatible configuration that produced blank bodies.
+  `use`, groups, and filters plus the custom notes input preserves one adopter-facing source
+  of truth.
+- Verification must catch the exact incompatible configuration that produced blank bodies
+  and exercise the composed release-note behavior rather than checking its parts alone.
 - Existing blank historical release bodies require an operational backfill from their exact
   curated changelog sections. That repair changes hosted presentation only; it does not move
   tags or replace assets.
