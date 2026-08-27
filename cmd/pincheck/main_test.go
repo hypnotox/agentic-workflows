@@ -146,8 +146,9 @@ func TestRepoWorkflowsPinned(t *testing.T) {
 
 func TestRunRefusesMalformedAndDuplicateWorkflowYAML(t *testing.T) {
 	for name, workflow := range map[string]string{
-		"malformed":      "jobs: [",
-		"duplicate uses": "jobs:\n  gate:\n    steps:\n      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n        uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
+		"malformed":          "jobs: [",
+		"multiple documents": pinnedWorkflow + "---\njobs:\n  gate:\n    steps:\n      - uses: actions/checkout@v6\n",
+		"duplicate uses":     "jobs:\n  gate:\n    steps:\n      - uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n        uses: actions/checkout@aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\n",
 	} {
 		t.Run(name, func(t *testing.T) {
 			if code, _, errb := runOn(t, wfFS(map[string]string{"ci.yml": workflow})); code != 1 || !strings.Contains(errb, "malformed YAML") {

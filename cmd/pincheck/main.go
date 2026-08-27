@@ -8,6 +8,7 @@
 package main
 
 import (
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -64,7 +65,15 @@ func run(fsys fs.FS, stdout, stderr io.Writer) int {
 // security boundary.
 func checkFile(name, content string, stderr io.Writer) int {
 	var root yaml.Node
-	if err := yaml.Unmarshal([]byte(content), &root); err != nil {
+	decoder := yaml.NewDecoder(strings.NewReader(content))
+	if err := decoder.Decode(&root); err != nil {
+		fmt.Fprintf(stderr, "pincheck: %s: malformed YAML: %v\n", name, err)
+		return 1
+	}
+	if err := decoder.Decode(&struct{}{}); !errors.Is(err, io.EOF) {
+		if err == nil {
+			err = fmt.Errorf("multiple YAML documents are not supported")
+		}
 		fmt.Fprintf(stderr, "pincheck: %s: malformed YAML: %v\n", name, err)
 		return 1
 	}

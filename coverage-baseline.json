@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "2832016fc3e168288efc5f00bc3934a45d90a65963b612b138ae2ffa8bf3e6fd",
+  "universeSHA256": "6ce7b0587b920eba3ed8c439782cbe6122d4752f46e02435cc1656a13e32aac1",
   "repository": [
     {
       "identity": {
@@ -1537,16 +1537,16 @@
       "identity": {
         "file": "cmd/pincheck/main.go",
         "start": {
-          "line": 21,
+          "line": 22,
           "column": 13
         },
         "end": {
-          "line": 21,
+          "line": 22,
           "column": 82
         },
         "statements": 1
       },
-      "reason": "Phase 5 exact reviewed reconciliation for cmd/pincheck/main.go:21.13,21.82 1: this refusal or transport edge is exercised by focused adversarial tests where injectable; the remaining command or native-Git failure branch requires unavailable external process or transport failure and remains explicit coverage debt."
+      "reason": "Complete-range assurance settlement for cmd/pincheck/main.go:22.13,22.82 1: this is the terminating process wrapper; run and its one-document refusal behavior are directly exercised through injectable filesystems and writers."
     },
     {
       "identity": {
@@ -19981,14 +19981,14 @@
     {
       "directive": {
         "file": "cmd/pincheck/main.go",
-        "line": 21,
-        "targetLine": 21,
+        "line": 22,
+        "targetLine": 22,
         "reason": "os.Exit wrapper; run is unit-tested",
         "mapped": true,
         "executed": false
       },
       "class": "tested-process-exit",
-      "evidence": "cmd/pincheck/main.go:19 is the terminating process-composition statement `func main() { os.Exit(run(os.DirFS(\".github/workflows\"), os.Stdout, os.Stderr)) }` in `func main()` (starts at cmd/pincheck/main.go:19); non-exiting run/runWith behavior is directly exercised by cmd/pincheck/main_test.go:42 TestRunPassesPinned."
+      "evidence": "cmd/pincheck/main.go:22 is the terminating process-composition statement `func main() { os.Exit(run(os.DirFS(\".github/workflows\"), os.Stdout, os.Stderr)) }`; non-exiting run behavior is directly exercised by cmd/pincheck/main_test.go, including TestRunPassesPinned and malformed-input refusal cases."
     },
     {
       "directive": {

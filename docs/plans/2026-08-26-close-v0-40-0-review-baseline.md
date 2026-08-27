@@ -671,3 +671,12 @@ the two new rule additions. The settlement appends a distinct Reapplied occurren
 add operation, preserving its first-application provenance while authorizing the material claim
 correction. This is the lifecycle handshake required by current authority, not a protected-contract
 change.
+
+Complete-range implementation assurance found two acceptance-input residuals. Pincheck accepted a
+second YAML document after a valid workflow, and releasecheck treated multiple successful exact-SHA
+CI runs as ambiguous even when one run carried complete required-job evidence. Both regressions were
+observed red against `d2104ef0e`. Pincheck now requires EOF after one document. Releasecheck treats
+same-revision successful runs as equivalent candidates and accepts only a candidate whose `gate` and
+`release-config` jobs are complete and successful; incomplete candidates remain refusals. This
+reasoned selection correction follows the exact-revision authority without weakening required-job
+proof.

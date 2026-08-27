@@ -312,6 +312,28 @@ func TestVerifyCIRequiresExactSuccessfulWorkflowAndJobs(t *testing.T) {
 	}
 }
 
+func TestVerifyCIAcceptsAnyCompleteExactSuccessfulRun(t *testing.T) {
+	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/acme/repo/actions/workflows/ci.yml/runs":
+			fmt.Fprintf(w, `{"total_count":2,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"},{"id":8,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha, sha)
+		case "/repos/acme/repo/actions/runs/7/jobs":
+			_, _ = io.WriteString(w, `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"failure"},{"name":"release-config","status":"completed","conclusion":"success"}]}`)
+		case "/repos/acme/repo/actions/runs/8/jobs":
+			_, _ = io.WriteString(w, `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`)
+		default:
+			t.Errorf("unexpected path %s", r.URL.Path)
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+
+	if err := verifyCI(context.Background(), server.Client(), server.URL, "acme/repo", "token", sha); err != nil {
+		t.Fatalf("equivalent exact-SHA rerun evidence rejected: %v", err)
+	}
+}
+
 func TestVerifyCIRefusesIncompleteOrWrongEvidence(t *testing.T) {
 	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 	for name, response := range map[string]string{
@@ -357,7 +379,6 @@ func TestVerifyCIRefusesTransportAndEvidenceFaults(t *testing.T) {
 		{name: "runs status", runsStatus: http.StatusBadGateway, wantErr: true},
 		{name: "runs link pagination", runsLink: true, runsBody: validRuns, wantErr: true},
 		{name: "runs malformed JSON", runsBody: `{`, wantErr: true},
-		{name: "ambiguous successful runs", runsBody: fmt.Sprintf(`{"total_count":2,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"},{"id":8,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha, sha), wantErr: true},
 		{name: "jobs status", runsBody: validRuns, jobsStatus: http.StatusBadGateway, wantErr: true},
 		{name: "jobs count", runsBody: validRuns, jobsBody: `{"total_count":3,"jobs":[]}`, wantErr: true},
 		{name: "failed required job", runsBody: validRuns, jobsBody: `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"failure"},{"name":"release-config","status":"completed","conclusion":"success"}]}`, wantErr: true},

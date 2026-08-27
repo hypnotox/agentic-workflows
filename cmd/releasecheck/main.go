@@ -181,24 +181,32 @@ func verifyCI(ctx context.Context, client *http.Client, baseURL, repo, token, sh
 	if runs.Total != len(runs.Runs) {
 		return fmt.Errorf("CI run pagination is incomplete")
 	}
-	var selected *workflowRun
-	for i := range runs.Runs {
-		r := &runs.Runs[i]
-		if r.HeadSHA != sha || r.Status != "completed" || r.Conclusion != "success" || r.Path != ".github/workflows/ci.yml" || r.Name != "CI" {
-			continue
+	var candidates []workflowRun
+	for _, run := range runs.Runs {
+		if run.HeadSHA == sha && run.Status == "completed" && run.Conclusion == "success" && run.Path == ".github/workflows/ci.yml" && run.Name == "CI" {
+			candidates = append(candidates, run)
 		}
-		if selected != nil {
-			return fmt.Errorf("multiple successful exact CI runs are ambiguous")
-		}
-		selected = r
 	}
-	if selected == nil {
+	if len(candidates) == 0 {
 		return fmt.Errorf("no completed successful CI run for exact SHA %s", sha)
 	}
-	var jobs jobsResponse
-	if err := get(fmt.Sprintf("/repos/%s/actions/runs/%d/jobs?per_page=100", repo, selected.ID), &jobs); err != nil {
-		return err
+	var candidateErrors []string
+	for _, candidate := range candidates {
+		var jobs jobsResponse
+		if err := get(fmt.Sprintf("/repos/%s/actions/runs/%d/jobs?per_page=100", repo, candidate.ID), &jobs); err != nil {
+			candidateErrors = append(candidateErrors, fmt.Sprintf("run %d: %v", candidate.ID, err))
+			continue
+		}
+		if err := verifyRequiredJobs(jobs); err != nil {
+			candidateErrors = append(candidateErrors, fmt.Sprintf("run %d: %v", candidate.ID, err))
+			continue
+		}
+		return nil
 	}
+	return fmt.Errorf("no completed successful CI run for exact SHA %s has complete required evidence: %s", sha, strings.Join(candidateErrors, "; "))
+}
+
+func verifyRequiredJobs(jobs jobsResponse) error {
 	if jobs.Total != len(jobs.Jobs) {
 		return fmt.Errorf("CI jobs pagination is incomplete")
 	}
