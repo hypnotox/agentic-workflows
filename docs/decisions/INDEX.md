@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-load-curated-release-notes-through-goreleaser: Load curated release notes through GoReleaser](load-curated-release-notes-through-goreleaser.md) (Proposed)
 
 ## History
 
