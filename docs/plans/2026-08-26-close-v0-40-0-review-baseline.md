@@ -1,7 +1,7 @@
 ---
 format: plan-v2
 date: 2026-08-26
-adrs: [serialize-project-mutations-by-physical-root, bind-repository-and-release-acceptance-to-exact-revisions, bind-implementation-subagent-execution-to-the-selected-checkout, require-complete-and-unambiguous-mutable-authority]
+adrs: [serialize-project-mutations-by-physical-root, bind-repository-and-release-acceptance-to-exact-revisions, bind-implementation-subagent-execution-to-the-selected-checkout, require-complete-and-unambiguous-mutable-authority, bind-terminal-plan-closure-to-selected-implementation-evidence]
 status: Proposed
 ---
 # Plan: Close v0.40.0 Review Baseline
@@ -50,9 +50,9 @@ policy choices identified by the review remain explicitly deferred.
 
 Before the first application transaction for each linked ADR, move it through Accepted to
 Implementing by the ordinary lifecycle handshake. Apply each State change only with the transaction
-that makes it true. Keep all four ADRs Implementing and this plan Proposed through implementation
-assurance; effort finalization owns terminal status-only closure after integration and verified live
-settings.
+that makes it true. Keep all five linked ADRs Implementing and this plan Proposed through
+implementation assurance; effort finalization owns terminal status-only closure after integration
+and verified live settings.
 
 **Plan flexibility.**
 
@@ -312,6 +312,7 @@ Edge: "Standalone ADR review without an explicit selected path refuses instead o
 Post-check: "Semantic fixtures fail before correction for an omitted non-user-decision finding and implicit most-recent ADR selection, then pass with every mechanical, reasoned, and user-decision finding present exactly once in the structured array and an explicit ADR path in the review brief. Pi and Claude outputs contain no modification-time authority selection or optional-exhaustive-inventory wording. Existing one-verify-pass and lifecycle routing contracts remain green."
 
 ### Task 7.3: Enforce terminal plan immutability and reconciliation
+Applying: ["bind-terminal-plan-closure-to-selected-implementation-evidence:implemented-plan-is-frozen-history", "bind-terminal-plan-closure-to-selected-implementation-evidence:closure-is-bound-to-selected-implementation-evidence", "bind-terminal-plan-closure-to-selected-implementation-evidence:terminal-validation-fails-closed"]
 Paths: ["internal/plan", "internal/plancheck", "cmd/awf/checkstaged.go", "cmd/awf", "docs/known-issues.md", ".awf/topics/parts/adr-system/plan-artifacts/current-state.md"]
 Post-check: "Observe staged transition tests fail before implementation for an edited Implemented body and an unreconciled terminal flip. After correction, a selected before/after history proves an already Implemented plan is byte-stable, permits the authorized Proposed-to-Implemented status transaction only after actual touched-path and material-deviation reconciliation, rejects malformed or unavailable comparison evidence, and preserves ordinary Proposed-plan amendments. `awf check staged`, direct plancheck tests, and transition fixtures cover both boundaries without relying only on prose markers. Close the known issue only if its exact completion criteria and durable oracle both hold."
 
@@ -377,7 +378,7 @@ If live settings cannot be applied, leave the two operations Remaining, keep the
 record the blocker in plan Notes and effort memory, and stop terminal closure.
 
 ### Task 9.3: Verify the staged final transaction
-Paths: ["pathspec::(top)**", "docs/decisions/serialize-project-mutations-by-physical-root.md", "docs/decisions/bind-repository-and-release-acceptance-to-exact-revisions.md", "docs/decisions/bind-implementation-subagent-execution-to-the-selected-checkout.md", "docs/decisions/require-complete-and-unambiguous-mutable-authority.md", "docs/plans/2026-08-26-close-v0-40-0-review-baseline.md"]
+Paths: ["pathspec::(top)**", "docs/decisions/serialize-project-mutations-by-physical-root.md", "docs/decisions/bind-repository-and-release-acceptance-to-exact-revisions.md", "docs/decisions/bind-implementation-subagent-execution-to-the-selected-checkout.md", "docs/decisions/require-complete-and-unambiguous-mutable-authority.md", "docs/decisions/bind-terminal-plan-closure-to-selected-implementation-evidence.md", "docs/plans/2026-08-26-close-v0-40-0-review-baseline.md"]
 Post-check: "Stage the complete Phase 9 transaction and materialize that exact index candidate while retaining its parent-to-index changed set and implementation-range endpoints. Against that candidate, run focused parser, recovery, filesystem, concurrency, operation, Publisher, gate-runner, workflow, release, profile, plancheck, archive, and semantic-render tests; `go test ./...`; fuzz smoke targets; `./x render`; `./x check`; `./awf check staged`; `./x gate`; releasecheck and GoReleaser config/snapshot verification; production reachability; binary-version validation; the complete-range repo audit; and the selected coverage and mutation blockers. All blocking checks exit zero, generated drift is empty, no new unreviewed coverage identity remains, every controlled falsification has been restored, live GitHub settings still match Task 9.1, and only explicitly documented nonblocking advisories remain. Re-read every staged mutation target before phase close and require the staged tree identity to remain unchanged from verification through commit."
 
 Record candidate-independent commands, intended ranges, fuzz parameters, generated meaning-review
@@ -385,8 +386,8 @@ boundaries, rootless archive environment, live-setting normalized read-back, and
 dispositions in Notes before final staging. After staging, retain the final tree identity, command
 outputs, audit evidence, and unchanged-through-commit proof in ignored effort-local execution
 evidence for postcommit phase and implementation review; do not mutate the verified candidate to
-record its own identity. All four ADRs remain Implementing and the plan remains Proposed through the
-closing commit.
+record its own identity. All five linked ADRs remain Implementing and the plan remains Proposed
+through the closing commit.
 
 ### Phase close
 
@@ -398,7 +399,7 @@ docs(awf): record v0.40 review baseline assurance (applies ADR batch)
 ```
 
 After this commit exists, ordinary phase review and independent implementation assurance inspect the
-exact complete implementation range against all four ADRs, this Definition of done, current
+exact complete implementation range against all five linked ADRs, this Definition of done, current
 authority, and reconciled Notes. Any settlement commit receives its own required checks and renewed
 review. Effort workflow performs integration and terminal lifecycle closure only after that
 postcommit assurance settles.
@@ -565,3 +566,13 @@ toolkit lifecycle proving unit rather than accepting any green Pi suite. Testing
 the narrow test-only scheduler and prepared-CWD composition while preserving revision-independent
 adopter handshake compatibility and pi-tools ownership of general runtime mechanics. These
 corrections preserve the selected-checkout and independent-runtime decisions.
+
+Phase 7 review found that terminal-plan enforcement lacked lawful current-state authority and used
+only the status-flip diff plus prose substrings rather than selected implementation history and parsed
+reconciliation. The focused ADR `bind-terminal-plan-closure-to-selected-implementation-evidence`
+records the already approved terminal-freeze boundary and adds its one plan-artifact claim. ADR review
+removed an unsupported permanent path-identity guarantee, retaining only byte stability, selected
+implementation evidence, fail-closed reconciliation, and Proposed-plan mutability. Task 7.3 now
+applies that reviewed decision. The implementation settlement must receive renewed exact-range
+Phase 7 assurance from settled Phase 6 boundary `5f9c68ba3` through the corrected settlement tip,
+resolved from Git, and that assurance must settle before Phase 8 begins.
