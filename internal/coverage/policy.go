@@ -685,6 +685,12 @@ func LoadBaselineForRegeneration(path string) (Baseline, error) {
 	return loadBaseline(path, false)
 }
 
+// LoadBaselineForHistoricalComparison loads structurally valid canonical
+// evidence without applying the current repository-specific ledger membership.
+func LoadBaselineForHistoricalComparison(path string) (Baseline, error) {
+	return loadBaseline(path, false)
+}
+
 func loadBaseline(path string, validateRepositoryPolicy bool) (Baseline, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {

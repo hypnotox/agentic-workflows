@@ -204,7 +204,7 @@ func baselineAt(ctx context.Context, git gitReader, rev string) (coverage.Baseli
 	if err := file.Close(); err != nil {
 		return coverage.Baseline{}, false, err
 	}
-	baseline, err := coverage.LoadBaseline(name)
+	baseline, err := coverage.LoadBaselineForHistoricalComparison(name)
 	if err != nil {
 		return coverage.Baseline{}, false, err
 	}
