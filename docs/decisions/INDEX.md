@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0306: Prepare ordinary context without full rendering](0306-prepare-ordinary-context-without-full-rendering.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -311,3 +311,4 @@
 - [ADR-0303: Separate Live Upgrade Support from Historical Audit Decoding](0303-separate-live-upgrade-support-from-historical-audit-decoding.md) (Implemented)
 - [ADR-0304: Retire Unrepresented Live Compatibility Recognition](0304-retire-unrepresented-live-compatibility-recognition.md) (Implemented)
 - [ADR-0305: Preserve brainstorming continuity before handoff](0305-preserve-brainstorming-continuity-before-handoff.md) (Implemented)
+- [ADR-0306: Prepare ordinary context without full rendering](0306-prepare-ordinary-context-without-full-rendering.md) (Implemented)

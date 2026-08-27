@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-26
 adrs: [prepare-ordinary-context-without-full-rendering]
-status: Proposed
+status: Implemented
 ---
 # Plan: Speed Up Ordinary Context Queries
 

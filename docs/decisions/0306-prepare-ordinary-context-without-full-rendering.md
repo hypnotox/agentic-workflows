@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: prepare-ordinary-context-without-full-rendering
-status: Implementing
+status: Implemented
 date: 2026-08-26
 ---
 # ADR-0306: Prepare ordinary context without full rendering
@@ -51,3 +51,4 @@ Ordinary context intentionally stops acting as an incidental render validator. A
 - 2026-08-27: Implementing; content-sha256: fa1c313502b27f3cbd366801954f536f886b1d37ec7f2b9e7211f98792f12ea4
 - 2026-08-27: Applied; operations: update `rendering/project-output-plan:check-report-single-plan`
 - 2026-08-27: Applied; operations: update `tooling/context-and-topic:context-query-boundary`, update `tooling/context-and-topic:context-read-only`
+- 2026-08-27: Implemented; content-sha256: fa1c313502b27f3cbd366801954f536f886b1d37ec7f2b9e7211f98792f12ea4
