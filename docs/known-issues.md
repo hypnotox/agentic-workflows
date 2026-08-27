@@ -40,7 +40,9 @@ Each issue below is reproducible from repository state and remains open until it
 
 ## Effort mutations can target the wrong checkout
 
-**Reproduction.** Associate a session with an effort that has a managed worktree while leaving the process rooted at the primary checkout, then run a mutating repository command such as `./x render`. The mutation applies to the primary checkout rather than the effort transaction.
+**Reproduction.** Associate a session with an effort worktree. An implementation child that omits `verificationCheckout` performs relative writes at the primary checkout; an explicit managed checkout aligns those relative writes with the effort worktree. Parent shell and file mutations such as `./x render` still apply wherever their explicit path or root CWD names.
+
+**Mitigation.** Effort-backed pre-integration implementation dispatch passes the exact managed-worktree path as `verificationCheckout`; parent mutations name that path explicitly. Child CWD alignment is not filesystem confinement, so deliberate outside targets remain possible.
 
 **Completion criteria.** Pre-integration effort mutations bind to or validate the managed checkout and refuse ambiguity. Read-only commands remain usable from either checkout, and integration, topology removal, retrospective, and finish remain valid from the primary checkout.
 

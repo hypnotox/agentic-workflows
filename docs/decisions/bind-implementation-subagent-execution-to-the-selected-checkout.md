@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: bind-implementation-subagent-execution-to-the-selected-checkout
-status: Proposed
+status: Implementing
 date: 2026-08-26
 ---
 # ADR-bind-implementation-subagent-execution-to-the-selected-checkout: Bind Implementation Subagent Execution to the Selected Checkout
@@ -37,7 +37,7 @@ Implementation children with an explicit checkout begin relative execution in th
 
 This changes existing explicit-checkout calls whose tasks rely on root-relative execution while verifying another checkout. Those callers must revise their invocation or task paths; omitted-checkout calls retain their current project-root behavior.
 
-The parent session remains stable, and no effort identity becomes hidden routing authority. Callers must continue to name the managed worktree. A checkout outside the parent session's permitted execution root is refused by the existing runtime confinement rather than reached through CWD mutation.
+The parent session remains stable, and no effort identity becomes hidden routing authority. Callers must continue to name the managed worktree. Awf preparation explicitly refuses a checkout outside the canonical parent-session checkout or one that is not live and accessible before dispatch. This preserves the descendant boundary without attributing refusal to pi-tools runtime confinement.
 
 The parent-session half of the wrong-checkout issue is mitigated, not closed. Documentation must not claim session-wide confinement, and the known issue remains until its existing completion criteria are satisfied or deliberately revised by a later decision.
 
@@ -56,3 +56,6 @@ Pi-tools can continue independent development and patching. Awf tests its profil
 ## Status history
 
 - 2026-08-26: Proposed
+- 2026-08-26: Accepted; content-sha256: bf244f2900e3565356a4ab9e493ff63f6751f6351c0cc1e69dc80f4c419264a4
+- 2026-08-26: Implementing; content-sha256: bf244f2900e3565356a4ab9e493ff63f6751f6351c0cc1e69dc80f4c419264a4
+- 2026-08-26: Applied; operations: update `rendering/pi-runtime:pi-implementation-state-boundary`, update `rendering/pi-workflows:pi-structured-exploration-contract`, update `rendering/pi-workflows:pi-implement-role-artifact`, update `rendering/workflow-skill-templates:phase-transaction-ownership`

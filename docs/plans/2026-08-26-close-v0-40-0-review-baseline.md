@@ -547,3 +547,5 @@ The single Phase 5 verify pass found that direct, unaliased YAML merge keys coul
 unpinned action. A red-first regression proves the bypass, and pincheck now rejects the YAML merge
 tag itself before workflow inspection. This mechanical correction completes fail-closed structured
 pin validation without changing the phase boundary.
+
+Phase 6 corrected the route: pi-tools v0.3.0 accepts a prepared CWD and does not supply the required runtime confinement refusal. Preparation now resolves and caches the one canonical accessible descendant checkout before dispatch, returns it as child CWD, and snapshots that same identity before and after both completed and failed outcomes. The recorder red test failed with prepared CWD `/repo` instead of `/repo/.awf/worktrees/w`; it passes after the change. Root omission remains root/root, and explicit outside paths remain possible rather than falsely refused as confinement.

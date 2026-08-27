@@ -14,8 +14,7 @@ which takes a required review `task`; and `subagent_implement`, which takes requ
 `allowCommits` plus optional `verificationCheckout`. Full additionally exposes
 `subagent_review_adr` and `subagent_review_plan`, each with a required review `task`. Omission verifies the project-root checkout.
 An explicit value resolves relative to the project root after one leading `@` is removed, must be
-an exact live checkout root for the same Git common directory, and selects only the before-and-after
-commit-policy snapshots. It does not change either Pi process CWD or bind the task's mutation paths.
+an exact live checkout root for the same Git common directory, and must be the parent checkout or a canonical accessible descendant. It is the implementation child's base CWD and the before-and-after commit-policy snapshot identity. Omission keeps both at the project root. This alignment does not bind deliberately targeted mutation paths or move the parent Pi session.
 Every closed schema also accepts optional canonical `model` as
 `provider/model-id`. Omission resolves configured preferences, then inherits the active parent
 model, while an explicit value is resolved exactly through Pi's model registry and must have

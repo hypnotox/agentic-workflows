@@ -1090,7 +1090,8 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"same repository as the project root",
 		"snapshot(pi, verificationCheckout)",
 		"retry with verificationCheckout set to that checkout root",
-		"cwd: root",
+		"invocationCheckout",
+		"cwd: verificationCheckout",
 	} {
 		if !strings.Contains(src, want) {
 			t.Errorf("rendered Pi extension missing %q", want)
@@ -1133,7 +1134,7 @@ func TestPiRoleContractLoader(t *testing.T) {
 	if got := strings.Count(body, "systemPrompt: await loadAgentContract(deps, root, source)"); got != 1 {
 		t.Errorf("shared role-contract loader calls = %d, want exactly 1 prepare-boundary call", got)
 	}
-	if got := strings.Count(body, "prepare: (c: any) => prepare("); got != 4 {
+	if got := strings.Count(body, "prepare: (c: any) => prepare(") + strings.Count(body, "prepare: async (c: any) => {"); got != 4 {
 		t.Errorf("profiles using the shared role prepare/loader boundary = %d, want 4", got)
 	}
 	// These durable role clauses belong only to rendered agent artifacts. Their

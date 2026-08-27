@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- Pi implementation children now use an explicitly supplied, validated managed checkout as both their base CWD and commit-policy snapshot identity. Root omission remains root/root; parent path targeting remains explicit and is not filesystem confinement.
+
 ### Bug fixes
 
 - Pre-commit verification now runs behavioral gates against the materialized staged candidate, and release publication requires exact-SHA CI evidence before its credential-bearing job.
