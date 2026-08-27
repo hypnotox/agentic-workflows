@@ -487,6 +487,9 @@ func TestExactRevisionWorkflowContract(t *testing.T) {
 		{"verification read-only", func(_, release map[string]any) {
 			workflowMap(workflowJobs(release)["verify"])["permissions"] = map[string]any{"actions": "write", "contents": "read"}
 		}},
+		{"release Node runtime", func(_, release map[string]any) {
+			delete(workflowMap(workflowMap(workflowJobs(release)["verify"])["env"]), "AWF_PI_TEST_SKIP_NVM")
+		}},
 		{"publication dependency", func(_, release map[string]any) { delete(workflowMap(workflowJobs(release)["publish"]), "needs") }},
 		{"publication write permission", func(_, release map[string]any) {
 			workflowMap(workflowJobs(release)["publish"])["permissions"] = map[string]any{"contents": "read"}
@@ -605,6 +608,18 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 	}
 	if !workflowPermissions(verify, "actions", "read") || !workflowPermissions(verify, "contents", "read") {
 		problems = append(problems, "read-only verification")
+	}
+	nodeProvisioned := false
+	for _, rawStep := range workflowSteps(verify) {
+		step := workflowMap(rawStep)
+		if stringValue(step["uses"]) != "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020" {
+			continue
+		}
+		with := workflowMap(step["with"])
+		nodeProvisioned = with["node-version-file"] == ".nvmrc" && with["cache"] == "npm" && with["cache-dependency-path"] == "tools/pi-extension-test/package-lock.json"
+	}
+	if !nodeProvisioned || workflowMap(verify["env"])["AWF_PI_TEST_SKIP_NVM"] != "1" {
+		problems = append(problems, "release Node runtime")
 	}
 	if !workflowNeeds(publish, "verify") || !workflowPermissions(publish, "contents", "write") {
 		problems = append(problems, "needs-bound publication")
