@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Live GitHub main and release-tag rulesets now require the app-bound `CI / gate` and `CI / release-config` conclusions for the exact candidate revision while retaining signed-commit, deletion, and non-fast-forward main protections.
+
 - Pi implementation children now use an explicitly supplied, validated managed checkout as both their base CWD and commit-policy snapshot identity. Root omission remains root/root; parent path targeting remains explicit and is not filesystem confinement.
 
 ### Bug fixes

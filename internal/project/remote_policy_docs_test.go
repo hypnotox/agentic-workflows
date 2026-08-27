@@ -20,10 +20,12 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	workflow := read("docs/workflow.md")
 	for _, want := range []string{
 		"optional client-side preflight",
-		"These checks do not gate remote updates.",
+		"These checks do not gate remote updates by themselves.",
 		"ruleset `main` (ID `18766557`)",
-		"with no bypass actors, it requires signed commits and blocks non-fast-forward updates and deletion",
-		"does not require CI status checks before accepting an update",
+		"with no bypass actors, it requires signed commits, blocks non-fast-forward updates and deletion",
+		"requires the GitHub Actions checks `CI / gate` and `CI / release-config` on the exact candidate revision",
+		"`release tags` ruleset (ID `21631403`)",
+		"before `refs/tags/v*` can be created or updated",
 		"provide post-push detection and a backstop for bypassed hooks",
 	} {
 		if !strings.Contains(workflow, want) {
@@ -33,6 +35,7 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	for _, stale := range []string{
 		"GitHub branch protection is the final publication boundary.",
 		"CI is the enforcement backstop",
+		"does not require CI status checks before accepting an update",
 	} {
 		if strings.Contains(workflow, stale) {
 			t.Errorf("self-hosted workflow retains stale remote-policy claim %q", stale)
@@ -42,13 +45,28 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	releasing := read("docs/releasing.md")
 	for _, want := range []string{
 		"Local hooks are optional preflight.",
-		"wait for that commit's `CI` workflow run to succeed",
-		"No verified protected-tag ruleset gates tag creation.",
-		"`.github/workflows/release.yml` is the final artifact-publication gate",
+		"wait for that commit's `CI / gate` and `CI / release-config` checks to succeed",
+		"live GitHub `release tags` ruleset covers `refs/tags/v*` without bypass actors",
+		"requires successful `CI / gate` and `CI / release-config` checks",
+		"needs-bound credential-bearing GoReleaser job",
 		"`./x gate && ./x check` before",
 	} {
 		if !strings.Contains(releasing, want) {
 			t.Errorf("self-hosted release guidance missing remote-policy contract %q", want)
 		}
+	}
+
+	testingGuide := read("docs/testing.md")
+	for _, want := range []string{
+		"Codecov is informational",
+		"exact coverage policy is enforced by `./x gate`",
+		"hosted `CI / gate` check required for protected `main` and release tags",
+	} {
+		if !strings.Contains(testingGuide, want) {
+			t.Errorf("self-hosted testing guidance missing remote-policy contract %q", want)
+		}
+	}
+	if strings.Contains(testingGuide, "the gate blocks merges") {
+		t.Error("self-hosted testing guidance retains stale local merge-gating claim")
 	}
 }

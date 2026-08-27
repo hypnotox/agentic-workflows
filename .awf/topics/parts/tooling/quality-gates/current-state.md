@@ -116,6 +116,11 @@ Backing: test
 
 ### `invariant: exact-revision-repository-acceptance`
 
-Repository wiring keeps stable `CI / gate` and `CI / release-config` jobs and verifies their successful conclusions for the exact release SHA before the credential-bearing publish job. Hosted main required-check enforcement remains pending the separate hosted-setting operations.
+Repository wiring keeps stable `CI / gate` and `CI / release-config` jobs and verifies their successful conclusions for the exact release SHA before the credential-bearing publish job.
 Origin: ADR-bind-repository-and-release-acceptance-to-exact-revisions
 Backing: test
+
+### `rule: hosted-main-acceptance-settings`
+
+The live GitHub `main` ruleset requires the GitHub Actions checks `CI / gate` and `CI / release-config` for the exact candidate revision, permits no bypass actor, and retains deletion, non-fast-forward, and signed-commit protections.
+Origin: ADR-bind-repository-and-release-acceptance-to-exact-revisions

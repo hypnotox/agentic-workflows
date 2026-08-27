@@ -45,6 +45,11 @@ Origin: ADR-0079
 Revised-by: ADR-bind-repository-and-release-acceptance-to-exact-revisions
 Backing: test
 
+### `rule: hosted-release-protection`
+
+The live GitHub `release tags` ruleset applies to `refs/tags/v*` with no bypass actor and requires GitHub Actions checks `CI / gate` and `CI / release-config` on the exact tagged revision before the ref can be created or updated.
+Origin: ADR-bind-repository-and-release-acceptance-to-exact-revisions
+
 ### `invariant: release-notes-from-changelog`
 
 The GitHub Release body is sourced from the curated changelog: the release workflow extracts the tagged version's section via `awf changelog --version` and passes it to GoReleaser through --release-notes before the GoReleaser step runs, and .goreleaser.yaml disables GoReleaser's own commit-derived changelog, so a commit subject can never reach the release notes.

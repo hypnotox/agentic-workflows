@@ -22,7 +22,7 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
 
    A schema-coupled bump often already changed the version mid-cycle. It changes the version file and lock, not the changelog. During development the gate requires descending changelog entries with the newest at or below `project.Version`; releasecheck requires an exact newest-version match and an empty `[Unreleased]`. The canonical three-file release-prep transaction skips Go and Pi test suites locally while versioncheck and every static gate still run. The clean tag checkout later fails safe to both suites and reruns the complete gate before publication.
 
-3. Push `main` and wait for that commit's `CI` workflow run to succeed. Then tag and push the matching version:
+3. Push `main` and wait for that commit's `CI / gate` and `CI / release-config` checks to succeed. The live `main` ruleset requires both checks from GitHub Actions without bypass actors. Then tag and push the matching version:
 
    ```
    git push origin main
@@ -33,7 +33,7 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
 
 4. Watch the `Release` workflow. On success, Releases contains six archives, `checksums.txt`, and curated changelog notes. Linux tarballs record portable `root:root` ownership, executable mode for `awf`, and regular-file modes for `LICENSE` and `README.md`, so they extract under a restricted rootless user namespace as well as an ordinary user.
 
-No verified protected-tag ruleset gates tag creation. After GitHub accepts the pushed tag, `.github/workflows/release.yml` is the final artifact-publication gate. It verifies the canonical AGPL-3.0-only license artifacts, tag ancestry on `main`, `project.Version`, the changelog, and `./x gate && ./x check` before extracting notes with `awf changelog --version` and running GoReleaser. GoReleaser builds linux/darwin/windows archives for amd64/arm64, bundles `LICENSE` and `README.md`, writes `checksums.txt`, and uses those notes through `--release-notes`. It refuses a dirty checkout, including untracked files; workflow artifacts therefore belong under `$RUNNER_TEMP` or a deliberately ignored path. Release notes use `"$RUNNER_TEMP/release-notes.md"`. Commit-derived GoReleaser notes are disabled (ADR-0096).
+The live GitHub `release tags` ruleset covers `refs/tags/v*` without bypass actors and requires successful `CI / gate` and `CI / release-config` checks from GitHub Actions on the exact target revision before tag creation or update. After GitHub accepts the tag, `.github/workflows/release.yml` verifies the canonical AGPL-3.0-only license artifacts, the same exact-SHA conclusions, tag ancestry on `main`, `project.Version`, the changelog, and `./x gate && ./x check` before its needs-bound credential-bearing GoReleaser job. GoReleaser builds linux/darwin/windows archives for amd64/arm64, bundles `LICENSE` and `README.md`, writes `checksums.txt`, and uses curated notes through `--release-notes`. It refuses a dirty checkout, including untracked files; workflow artifacts therefore belong under `$RUNNER_TEMP` or a deliberately ignored path. Release notes use `"$RUNNER_TEMP/release-notes.md"`. Commit-derived GoReleaser notes are disabled (ADR-0096).
 
 ## Versioning
 
@@ -62,7 +62,7 @@ gh release delete v0.2.0
 
 Prebuilt downloads are canonical; `go install` is the source fallback. The public repository permits unauthenticated downloads, including `gh release download v0.2.0` and `go install github.com/hypnotox/agentic-workflows/cmd/awf@latest`.
 
-The archive and `checksums.txt` travel through the same GitHub Release channel. Comparing them detects transfer corruption, but does not independently establish publisher authenticity: a compromised release workflow or token can replace both. SHA-pinned actions, Dependabot currency, and tag gate-and-ancestry checks are the accepted mitigations; artifact attestation and cosign remain deferred (ADR-0079).
+The archive and `checksums.txt` travel through the same GitHub Release channel. Comparing them detects transfer corruption, but does not independently establish publisher authenticity: a compromised release workflow or token can replace both. SHA-pinned actions, exact-revision main and tag rulesets, Dependabot currency, and tag gate-and-ancestry checks are the accepted mitigations; immutable releases, artifact attestation, and cosign remain deferred (ADR-0079).
 
 `.goreleaser.yaml` and workflow files are hand-maintained outside the awf render/lock set, like `.golangci.yml` and `./x`.
 
@@ -72,4 +72,4 @@ Adopter projects use permanent lock authority. A supported schema upgrade journa
 
 ### Exact revision acceptance
 
-Release verification reads the successful `CI / gate` and `CI / release-config` conclusions for the exact tag SHA before publication, the exact-SHA gate added in Phase 5. It checks out and rechecks that tag SHA immediately before GoReleaser. The verification job has read-only Actions credentials; the credential-bearing publish job needs it and retains curated notes, the project version, ancestry, and the deterministic previous-release-tag-to-candidate mutation range. This repository gate constrains publication; it is not an independent authenticity system for artifacts and checksums distributed through the same channel.
+Release verification reads the successful `CI / gate` and `CI / release-config` conclusions for the exact tag SHA before publication. The live tag ruleset requires the same app-bound conclusions before `refs/tags/v*` can be created or updated. The workflow checks out and rechecks that tag SHA immediately before GoReleaser. The verification job has read-only Actions credentials; the credential-bearing publish job needs it and retains curated notes, the project version, ancestry, and the deterministic previous-release-tag-to-candidate mutation range. These controls constrain publication; they are not an independent authenticity system for artifacts and checksums distributed through the same channel.

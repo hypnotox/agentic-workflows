@@ -618,3 +618,56 @@ matrix remain stable. The snapshot oracle now rejects non-Linux ownership normal
 wraps its cause. These corrections preserve the existing release boundary without adding platforms
 or provenance machinery. Renewed review found that the structured-entry test did not pin the new
 error context; a focused mutation proved the strengthened assertion fails when wrapping is removed.
+
+Phase 9 captured the live GitHub ruleset, branch-protection, environment, tag-protection, workflow,
+and exact-main check state before mutation. The existing active `main` ruleset retained deletion,
+non-fast-forward, and required-signature rules and had no bypass actors, but required no checks. The
+operator transaction added app-bound `gate` and `release-config` required-status rules to that
+ruleset and created an active `release tags` ruleset for `refs/tags/v*` with the same GitHub Actions
+app-bound checks and no bypass actors. Exact normalized API read-back matched both intended policies.
+A safe non-publishing probe confirmed active remote `CI` and `Release` workflow identities, successful
+current-main conclusions from GitHub Actions, applicable main rules, and the release ref pattern
+without creating a ref, release, or publication. The release-tag rule deliberately adds no deletion
+or non-fast-forward rule because immutable releases remain outside this plan.
+
+Before final staging, the candidate-independent verification command set is the focused owner suite
+for `cmd/awf`, `cmd/releasecheck`, `cmd/pincheck`, `internal/config`, `internal/manifest`,
+`internal/publisher`, `internal/upgrade`, `internal/currentstate`, `internal/currentstatecoord`,
+`internal/filesystem`, `internal/project`, `internal/topic`, `internal/evals`, and
+`internal/coverage`; `go test ./...`; `go test ./internal/upgrade -run=^$ -fuzz=FuzzParseJournal
+-fuzztime=10s`; `go test ./cmd/releasecheck -run '^TestReleaseArchivesPortableSnapshot$' -count=1`;
+`./x render`; `./x check`; `./awf check staged`; `./x gate`; `goreleaser check`; and a clean
+GoReleaser snapshot. The gate owns version validation, released-platform compilation, production
+reachability, exact coverage policy, staged lane selection, and the targeted mutation blocker when
+its exact owner paths are selected. The complete implementation audit and review range begins at
+`6ce178c9d3db433b246dde8ddc6b89517b84ceec`; Phase 9 review begins after
+`456639859091df2d54cc5341ca8c5762f7d01415`; both end at the closing commit resolved from Git after
+it exists. Run `./awf audit` and `./x audit-local` over the complete range. Do not transcribe a
+prospective closing SHA.
+
+The pre-stage journal fuzz smoke ran for ten seconds with the default twelve workers and completed
+705,425 executions without a failure. The restricted archive oracle runs on Linux through
+`unshare --user --map-root-user` and extracts with `tar` without `--no-same-owner`; it requires
+exactly `awf`, `LICENSE`, and `README.md`. The generated meaning review covers release guidance,
+testing guidance, local-hook workflow guidance, both changed tooling topic pages, and the lock that
+binds each source to its rendered output. `TestSelfHostedRemotePolicyDocumentation` pins the hosted
+main and tag checks and rejects the stale claim that a local gate itself blocks merges. The focused
+archive oracle, complete Go suite, render, drift check, GoReleaser validation, six-target snapshot,
+and normalized live-settings read-back were green before staging; the exact staged candidate must
+repeat its applicable checks.
+
+Final live-setting verification compares normalized authenticated API reads of rulesets `18766557`
+and `21631403` with their intended documents and requires exact equality immediately before commit.
+Residual dispositions remain explicit rather than closed: adopter pi-tools stays revision-independent
+and handshake-gated; parent-session mutation stays path-targeted and non-confined; archives and
+checksums retain same-channel integrity; non-Linux targets retain compile and archive rather than
+hosted behavioral assurance; immutable releases, attestations, broader provenance and platform work,
+coverage redesign, and broader mutation sampling remain deferred; and every known issue whose
+completion criteria are unmet remains open.
+
+The first final staged check correctly refused removal of the now-satisfied hosted-settings pending
+sentence from `exact-revision-repository-acceptance` because the transaction initially recorded only
+the two new rule additions. The settlement appends a distinct Reapplied occurrence for that existing
+add operation, preserving its first-application provenance while authorizing the material claim
+correction. This is the lifecycle handshake required by current authority, not a protected-contract
+change.

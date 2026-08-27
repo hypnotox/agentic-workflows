@@ -40,6 +40,24 @@ Each issue below is reproducible from repository state and remains open until it
 
 **Completion criteria.** Pre-integration effort mutations bind to or validate the managed checkout and refuse ambiguity. Read-only commands remain usable from either checkout, and integration, topology removal, retrospective, and finish remain valid from the primary checkout.
 
+## Release assets lack independent provenance
+
+**Reproduction.** Download a release archive and `checksums.txt` from the same GitHub Release. Their comparison detects transfer corruption, but a compromised publication workflow or credential can replace both through the same channel. Exact-revision main and tag rulesets constrain accepted revisions but do not create independent artifact authenticity.
+
+**Completion criteria.** Published assets have immutable retention and independently verifiable provenance or attestations whose trust root is not the mutable release payload channel.
+
+## Released non-Linux targets lack behavioral CI
+
+**Reproduction.** Inspect hosted CI and release targets. Behavioral gates run on Linux, while Darwin and Windows artifacts receive compile and archive checks without hosted platform-behavior execution.
+
+**Completion criteria.** Every released platform either runs the safety-critical behavioral lanes in its native hosted environment with declared prerequisites, or is removed from the supported release matrix and documentation.
+
+## Coverage policy retains a large exact-identity exception ledger
+
+**Reproduction.** Generate the canonical raw-miss and directive policy. Exact source-span identities provide a strict regression ratchet, but ordinary source movement can require broad reviewed ledger reconciliation and focused mutation runs do not sample unrelated owners.
+
+**Completion criteria.** Regression protection stays fail-closed while exception review is concise and owner-oriented, new fault and platform admissions retain concrete evidence, and mutation sampling covers the selected broader risk boundary without weakening the current ratchet.
+
 ## Lifecycle Git mutations lose configured identity
 
 **Reproduction.** Give the owner a valid global-only Git identity and no repository-local override, then integrate a divergent effort. The isolated native Git runner suppresses global and system configuration, so `git merge --no-ff --no-commit` fails with `Committer identity unknown` and reports the failure as a merge conflict.

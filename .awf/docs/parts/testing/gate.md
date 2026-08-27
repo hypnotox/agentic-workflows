@@ -36,7 +36,7 @@ The gate enables `TestPiRealRuntimeSmoke` once with test caching disabled; `./x 
 | `raw` | Whole-tree line coverage. |
 | `covered` | Line coverage after `covercheck --emit-filtered` removes `// coverage-ignore` blocks. |
 
-Codecov is informational; the gate blocks merges.
+Codecov is informational; exact coverage policy is enforced by `./x gate`, including the hosted `CI / gate` check required for protected `main` and release tags.
 
 ### Mutation testing
 
