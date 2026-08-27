@@ -6,7 +6,7 @@ description: Use when a material decision is unresolved, such as an ambiguous ou
 <!-- awf:section preamble -->
 # {{ .prefix }}-brainstorming
 
-Brainstorming is the sole workflow owner of concise implementation outlines and fuller material-choice design: it owns clarification, design exploration, proportionate presentation, conditional grounding invocation, and the explicit pre-artifact outline approval. It does not create an effort or require one.
+Brainstorming is the sole workflow owner of concise implementation outlines and fuller material-choice design: it owns clarification, design exploration, proportionate presentation, conditional grounding invocation, and the explicit pre-artifact outline approval. It does not create an effort or require one merely to begin brainstorming.
 <!-- awf:end -->
 
 <!-- awf:section when-to-invoke -->
@@ -18,11 +18,11 @@ Use when a material choice or clarification is unresolved and no explicit approv
 <!-- awf:section procedure -->
 ## Procedure
 
-1. **Orient in the topic.** Invoke `{{ .prefix }}-orienting` when its repository-truth moments apply.{{if ne .profile "core"}} Then run `./awf context <relevant paths>`.{{end}}
+1. **Evaluate continuity independently.** Evaluate it when brainstorming begins and whenever a continuity-relevant fact changes. When independent entry continuity evaluation fires, immediately invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}`. Brainstorming may begin effort-free, but if it continues after its first settled material decision, invoke it to create or resume ownership before proceeding further. A single-decision brainstorm may remain effort-free only when no independent continuity need fires. Brainstorming itself never creates an effort.
+2. **Orient in the topic.** Invoke `{{ .prefix }}-orienting` when its repository-truth moments apply.{{if ne .profile "core"}} Then run `./awf context <relevant paths>`.{{end}}
 <!-- awf:include context-spill -->
-2. **Clarify one question at a time.** Narrow the outcome without inventing requirements.
-3. **Present proportionate approaches.** Offer alternatives with trade-offs and a recommendation when a material choice exists; a straightforward choice may need only a concise comparison.
-4. **Evaluate continuity independently.** Invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` only when durable continuity materially helps. Brainstorming itself never creates an effort, and design may remain effort-free.
+3. **Clarify one question at a time.** Narrow the outcome without inventing requirements.
+4. **Present proportionate approaches.** Offer alternatives with trade-offs and a recommendation when a material choice exists; a straightforward choice may need only a concise comparison.
 5. **Evaluate repository-premise risk independently.** If correctness depends on broad or uncertain repository facts, hidden coupling, cross-domain effects, unfamiliar architecture, or high-consequence assumptions, invoke `{{ .prefix }}-grounding`. A localized design choice may skip grounding, while a clear broad-repository design may ground without further brainstorming. Resolve its mechanical, reasoned, or user-decision findings in this workflow; do not dispatch the grounding checker directly or loop grounding.
 <!-- awf:end -->
 

@@ -4,7 +4,7 @@ slug: prepare-ordinary-context-without-full-rendering
 status: Implementing
 date: 2026-08-26
 ---
-# ADR-prepare-ordinary-context-without-full-rendering: Prepare ordinary context without full rendering
+# ADR-0306: Prepare ordinary context without full rendering
 
 
 ## Context
