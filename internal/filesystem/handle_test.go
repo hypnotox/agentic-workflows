@@ -642,6 +642,9 @@ func TestExpectedIdentityCannotAuthorizeAfterReleaseOrConsumption(t *testing.T) 
 	if err := h.ReplaceExpected("artifact", released, []byte("released"), 0o600); !errors.Is(err, ErrIdentityChanged) {
 		t.Fatalf("released identity replacement = %v, want identity change", err)
 	}
+	if err := h.RemoveExpected("artifact", released); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("released identity removal = %v, want identity change", err)
+	}
 
 	consumed, err := h.ExpectedIdentity("artifact")
 	if err != nil {

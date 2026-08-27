@@ -20461,11 +20461,11 @@
       "identity": {
         "file": "internal/filesystem/expected_identity_linux.go",
         "start": {
-          "line": 25,
+          "line": 27,
           "column": 16
         },
         "end": {
-          "line": 27,
+          "line": 29,
           "column": 3
         },
         "statements": 1
@@ -20476,11 +20476,11 @@
       "identity": {
         "file": "internal/filesystem/expected_identity_linux.go",
         "start": {
-          "line": 35,
+          "line": 37,
           "column": 16
         },
         "end": {
-          "line": 38,
+          "line": 40,
           "column": 3
         },
         "statements": 2
