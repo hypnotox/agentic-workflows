@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: require-complete-and-unambiguous-mutable-authority
-status: Implementing
+status: Implemented
 date: 2026-08-26
 ---
 # ADR-0310: Require Complete and Unambiguous Mutable Authority
@@ -66,3 +66,4 @@ allowing downstream operations to infer whether partially decoded authority was 
 - 2026-08-26: Accepted; content-sha256: 67fc6a030b11cb116d23bb7b186b0d50dd4c1408539ab1346fb6b370b28a48b7
 - 2026-08-26: Implementing; content-sha256: 67fc6a030b11cb116d23bb7b186b0d50dd4c1408539ab1346fb6b370b28a48b7
 - 2026-08-26: Applied; operations: update `config/configuration:root-sidecar-keys-rejected`, update `config/migrations-and-locks:corrupt-lock-refuses`, update `tooling/upgrade-runtime:upgrade-failure-is-recoverable`
+- 2026-08-27: Implemented; content-sha256: 67fc6a030b11cb116d23bb7b186b0d50dd4c1408539ab1346fb6b370b28a48b7

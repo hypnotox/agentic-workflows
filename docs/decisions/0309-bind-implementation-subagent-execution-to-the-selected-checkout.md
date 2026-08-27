@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: bind-implementation-subagent-execution-to-the-selected-checkout
-status: Implementing
+status: Implemented
 date: 2026-08-26
 ---
 # ADR-0309: Bind Implementation Subagent Execution to the Selected Checkout
@@ -59,3 +59,4 @@ Pi-tools can continue independent development and patching. Awf tests its profil
 - 2026-08-26: Accepted; content-sha256: bf244f2900e3565356a4ab9e493ff63f6751f6351c0cc1e69dc80f4c419264a4
 - 2026-08-26: Implementing; content-sha256: bf244f2900e3565356a4ab9e493ff63f6751f6351c0cc1e69dc80f4c419264a4
 - 2026-08-26: Applied; operations: update `rendering/pi-runtime:pi-implementation-state-boundary`, update `rendering/pi-workflows:pi-structured-exploration-contract`, update `rendering/pi-workflows:pi-implement-role-artifact`, update `rendering/workflow-skill-templates:phase-transaction-ownership`
+- 2026-08-27: Implemented; content-sha256: bf244f2900e3565356a4ab9e493ff63f6751f6351c0cc1e69dc80f4c419264a4

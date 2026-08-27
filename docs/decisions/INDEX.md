@@ -2,11 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0307: Serialize Project Mutations by Physical Root](0307-serialize-project-mutations-by-physical-root.md) (Implementing)
-- [ADR-0308: Bind Repository and Release Acceptance to Exact Revisions](0308-bind-repository-and-release-acceptance-to-exact-revisions.md) (Implementing)
-- [ADR-0309: Bind Implementation Subagent Execution to the Selected Checkout](0309-bind-implementation-subagent-execution-to-the-selected-checkout.md) (Implementing)
-- [ADR-0310: Require Complete and Unambiguous Mutable Authority](0310-require-complete-and-unambiguous-mutable-authority.md) (Implementing)
-- [ADR-0311: Bind Terminal Plan Closure to Selected Implementation Evidence](0311-bind-terminal-plan-closure-to-selected-implementation-evidence.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -316,3 +312,8 @@
 - [ADR-0304: Retire Unrepresented Live Compatibility Recognition](0304-retire-unrepresented-live-compatibility-recognition.md) (Implemented)
 - [ADR-0305: Preserve brainstorming continuity before handoff](0305-preserve-brainstorming-continuity-before-handoff.md) (Implemented)
 - [ADR-0306: Prepare ordinary context without full rendering](0306-prepare-ordinary-context-without-full-rendering.md) (Implemented)
+- [ADR-0307: Serialize Project Mutations by Physical Root](0307-serialize-project-mutations-by-physical-root.md) (Implemented)
+- [ADR-0308: Bind Repository and Release Acceptance to Exact Revisions](0308-bind-repository-and-release-acceptance-to-exact-revisions.md) (Implemented)
+- [ADR-0309: Bind Implementation Subagent Execution to the Selected Checkout](0309-bind-implementation-subagent-execution-to-the-selected-checkout.md) (Implemented)
+- [ADR-0310: Require Complete and Unambiguous Mutable Authority](0310-require-complete-and-unambiguous-mutable-authority.md) (Implemented)
+- [ADR-0311: Bind Terminal Plan Closure to Selected Implementation Evidence](0311-bind-terminal-plan-closure-to-selected-implementation-evidence.md) (Implemented)

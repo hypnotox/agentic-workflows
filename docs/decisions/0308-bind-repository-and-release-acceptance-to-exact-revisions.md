@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: bind-repository-and-release-acceptance-to-exact-revisions
-status: Implementing
+status: Implemented
 date: 2026-08-26
 ---
 # ADR-0308: Bind Repository and Release Acceptance to Exact Revisions
@@ -63,3 +63,4 @@ Hosted settings remain an operator transaction outside an ordinary commit. Repos
 - 2026-08-26: Reapplied; operations: add `tooling/quality-gates:exact-revision-repository-acceptance`
 - 2026-08-27: Applied; operations: add `tooling/quality-gates:hosted-main-acceptance-settings`, add `tooling/changelog-and-release:hosted-release-protection`
 - 2026-08-27: Reapplied; operations: add `tooling/quality-gates:exact-revision-repository-acceptance`
+- 2026-08-27: Implemented; content-sha256: 7045a15a13bcc82d96d287fdce8b4f7a2ac5c20d7762fddad9899236e9ca365b
