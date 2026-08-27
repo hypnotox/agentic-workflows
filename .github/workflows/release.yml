@@ -112,3 +112,10 @@ jobs:
           args: release --clean --release-notes ${{ runner.temp }}/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Verify published release notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          actual="${RUNNER_TEMP}/published-release-notes.md"
+          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${GITHUB_REF_NAME}" --jq .body > "$actual"
+          { cat "${RUNNER_TEMP}/release-notes.md"; printf '\n'; } | cmp - "$actual"

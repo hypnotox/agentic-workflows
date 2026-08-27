@@ -52,6 +52,7 @@ Origin: ADR-0308
 
 ### `invariant: release-notes-from-changelog`
 
-The GitHub Release body is sourced from the curated changelog: the release workflow extracts the tagged version's section via `awf changelog --version` and passes it to GoReleaser through --release-notes before the GoReleaser step runs, and .goreleaser.yaml disables GoReleaser's own commit-derived changelog, so a commit subject can never reach the release notes.
+The GitHub Release body is sourced from the curated changelog: the release workflow extracts the tagged version's section via `awf changelog --version`, passes it to GoReleaser through `--release-notes` while commit-derived `use`, groups, and filters remain absent, and verifies the published body against that exact file. A commit subject cannot reach the release notes.
 Origin: ADR-0096
+Revised-by: ADR-load-curated-release-notes-through-goreleaser
 Backing: test

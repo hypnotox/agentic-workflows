@@ -226,10 +226,9 @@ func TestReleaseWorkflowRunsReleasecheck(t *testing.T) {
 }
 
 // TestReleaseNotesFromCuratedChangelog backs inv: release-notes-from-changelog
-// (ADR-0096) - the Release workflow must extract the tagged version's section from
-// the curated changelog via `awf changelog --version` before the GoReleaser step and
-// pass it through `--release-notes`, and `.goreleaser.yaml` must disable GoReleaser's
-// commit-derived changelog, so a commit subject can no longer reach the release notes.
+// (ADR-0096, ADR-load-curated-release-notes-through-goreleaser). The Release workflow
+// must feed the tagged curated section through GoReleaser's enabled changelog pipe, then
+// compare the published body with that exact file. Commit-derived configuration stays absent.
 // invariant: tooling/changelog-and-release:release-notes-from-changelog (TestReleaseNotesFromCuratedChangelog)
 func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 	wfb, err := os.ReadFile("../../.github/workflows/release.yml")
@@ -274,18 +273,41 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 		}
 	}
 
+	verify := strings.Index(wf, "Verify published release notes")
+	if verify < 0 {
+		t.Error("release.yml does not verify the published release body")
+	} else {
+		verifyBlock := wf[verify:]
+		if verify < build {
+			t.Error("published release-note verification must run after GoReleaser")
+		}
+		for _, token := range []string{"gh api", "releases/tags", "cmp", notesFile} {
+			if !strings.Contains(verifyBlock, token) {
+				t.Errorf("published release-note verification does not contain %q", token)
+			}
+		}
+	}
+
 	glb, err := os.ReadFile("../../.goreleaser.yaml")
 	if err != nil {
 		t.Fatalf("read goreleaser config: %v", err)
 	}
-	gl := string(glb)
-	// Scope the assertion to the changelog block's stable two-line token, so an unrelated
-	// `disable: true` elsewhere cannot mask a revert of the changelog disable.
-	if !strings.Contains(gl, "changelog:\n  disable: true") {
-		t.Error(".goreleaser.yaml does not disable the commit-derived changelog (changelog:\\n  disable: true)")
+	var config struct {
+		Changelog struct {
+			Disable bool             `yaml:"disable"`
+			Use     string           `yaml:"use"`
+			Groups  []map[string]any `yaml:"groups"`
+			Filters map[string]any   `yaml:"filters"`
+		} `yaml:"changelog"`
 	}
-	if strings.Contains(gl, "use: github") {
-		t.Error(".goreleaser.yaml still derives release notes from commits (use: github)")
+	if err := yaml.Unmarshal(glb, &config); err != nil {
+		t.Fatalf("parse .goreleaser.yaml: %v", err)
+	}
+	if config.Changelog.Disable {
+		t.Error(".goreleaser.yaml disables the changelog pipe that must load --release-notes")
+	}
+	if config.Changelog.Use != "" || len(config.Changelog.Groups) != 0 || len(config.Changelog.Filters) != 0 {
+		t.Error(".goreleaser.yaml configures commit-derived changelog use, groups, or filters")
 	}
 }
 

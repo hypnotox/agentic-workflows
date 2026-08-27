@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: load-curated-release-notes-through-goreleaser
-status: Accepted
+status: Implementing
 date: 2026-08-27
 ---
 # ADR-load-curated-release-notes-through-goreleaser: Load curated release notes through GoReleaser
@@ -66,3 +66,5 @@ snapshots independently.
 
 - 2026-08-27: Proposed
 - 2026-08-27: Accepted; content-sha256: 108e3a761d46e65811b92b3641c645b6e21d3a36136f23bad0b4f51aa2a897d1
+- 2026-08-27: Implementing; content-sha256: 108e3a761d46e65811b92b3641c645b6e21d3a36136f23bad0b4f51aa2a897d1
+- 2026-08-27: Applied; operations: update `tooling/changelog-and-release:release-notes-from-changelog`

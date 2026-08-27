@@ -74,12 +74,9 @@ archives:
 checksum:
   name_template: checksums.txt
 
-# Release notes come from the curated changelog/CHANGELOG.md, not commit messages:
-# release.yml extracts the tagged version's section with `awf changelog --version`
-# and passes it via `--release-notes` (ADR-0096). Deriving notes from commit subjects
-# leaked internal commits whose scopes dodged the exclude filters.
-changelog:
-  disable: true
+# Release notes come from the curated changelog/CHANGELOG.md, not commit messages.
+# release.yml passes the tagged section through `--release-notes`; that custom input
+# makes GoReleaser skip commit-derived generation while leaving its notes-loading pipe enabled.
 
 release:
   draft: false

@@ -463,7 +463,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:afef7d1d7fd8f515a8ac11ea2990deb6ac0ecde09509ddc8acc8f161aa11b984",
+      "outputHash": "sha256:e9b58428a5ab08d462a6daa1fd263dbe1c943ae1e5a55737fe539e045842497d",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -1071,8 +1071,8 @@
     "docs/topics/tooling/changelog-and-release.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:99e4ef3e24542c20bf682e79f1fa50171c793862a475b572e5bed2a72dc88eae",
-      "outputHash": "sha256:135f06f84cb24f9b7540cb34d90cfbfe151262c0dd7918c2db27f1ad216b6404"
+      "configHash": "sha256:844f552e8a9571728dceca53c517f310f4f9c193dcaf3b631564f46965b5d450",
+      "outputHash": "sha256:4343ea8f54e656b0023b86a602eba624de6d61977799f74920d32250b7c89ff9"
     },
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
