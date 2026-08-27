@@ -50,6 +50,12 @@ jobs:
         run: |
           git fetch origin main
           git merge-base --is-ancestor HEAD origin/main
+      - name: Enable restricted rootless extraction
+        run: |
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
+            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
+          fi
+          unshare --user --map-root-user true
       - name: Gate (test + 100% coverage + vet + lint)
         run: ./x gate
       - name: Covercheck mutation regression from previous release

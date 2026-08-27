@@ -70,3 +70,21 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 		t.Error("self-hosted testing guidance retains stale local merge-gating claim")
 	}
 }
+
+func TestHostedGatesProvideRestrictedRootlessExtraction(t *testing.T) {
+	for _, path := range []string{".github/workflows/ci.yml", ".github/workflows/release.yml"} {
+		body, err := os.ReadFile(filepath.Join(repoRootDir(t), path))
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		workflow := string(body)
+		for _, want := range []string{
+			"kernel.apparmor_restrict_unprivileged_userns",
+			"unshare --user --map-root-user true",
+		} {
+			if !strings.Contains(workflow, want) {
+				t.Errorf("%s does not provide the restricted rootless extraction prerequisite %q", path, want)
+			}
+		}
+	}
+}
