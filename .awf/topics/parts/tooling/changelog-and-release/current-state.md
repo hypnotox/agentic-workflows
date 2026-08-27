@@ -54,5 +54,5 @@ Origin: ADR-0308
 
 The GitHub Release body is sourced from the curated changelog: the release workflow extracts the tagged version's section via `awf changelog --version`, passes it to GoReleaser through `--release-notes` while commit-derived `use`, groups, and filters remain absent, and verifies the published body against that exact file. A commit subject cannot reach the release notes.
 Origin: ADR-0096
-Revised-by: ADR-load-curated-release-notes-through-goreleaser
+Revised-by: ADR-0312
 Backing: test

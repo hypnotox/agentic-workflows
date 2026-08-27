@@ -4,7 +4,7 @@ slug: load-curated-release-notes-through-goreleaser
 status: Implementing
 date: 2026-08-27
 ---
-# ADR-load-curated-release-notes-through-goreleaser: Load curated release notes through GoReleaser
+# ADR-0312: Load curated release notes through GoReleaser
 
 ## Context
 
