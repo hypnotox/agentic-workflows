@@ -13,8 +13,8 @@ Implementation plans remain amendable while Proposed and become terminal history
 The workflow already requires the terminal transaction to reconcile what actually landed, including
 material route deviations, but that contract was prose-only. A status-only staged diff cannot prove
 the implementation paths accumulated before closure, and substring markers cannot prove a complete
-reconciliation. Once terminal, deletion, rename, status regression, or later body editing would all
-rewrite history even if one representation happened to remain byte-identical.
+reconciliation. Once terminal, a status regression or later body edit rewrites history even if one
+portion of the representation happens to remain byte-identical.
 
 The staged checker already compares selected repository states and parses plans. Terminal enforcement
 belongs at that owner. It must preserve plan flexibility: actual outcome and authorization drift are
@@ -23,7 +23,7 @@ requirements.
 
 ## Decision
 
-1. `decision: implemented-plan-is-frozen-history` Treat an Implemented plan as byte-stable history at its retained identity. Later deletion, rename, status regression, or content change is invalid.
+1. `decision: implemented-plan-is-frozen-history` Treat an Implemented plan's bytes, including its terminal status, as frozen history. Later status regression or content change is invalid.
 2. `decision: closure-is-bound-to-selected-implementation-evidence` Permit Proposed-to-Implemented closure only when selected before-and-after repository evidence proves the complete actual touched-path set and the plan explicitly reconciles that set and every material route deviation. The contemporaneous status-only diff and unparsed marker presence are not sufficient evidence.
 3. `decision: terminal-validation-fails-closed` Refuse terminal closure when comparison or reconciliation evidence is absent, malformed, ambiguous, or incomplete. Preserve ordinary Proposed-plan amendments and do not require original planned path, task, phase, or commit identity.
 
