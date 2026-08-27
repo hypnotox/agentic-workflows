@@ -2,7 +2,6 @@ package adr
 
 import (
 	"errors"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"testing"
@@ -22,7 +21,7 @@ func TestRenumberPendingRetainsDestinationWhenSourceRetirementFails(t *testing.T
 		t.Fatal(err)
 	}
 	defer files.Close()
-	err = renumberPending(files, "", "pending", 2, func(string, fs.FileInfo) error { return cause })
+	err = renumberPending(files, "", "pending", 2, func(string, *filesystem.ExpectedIdentity) error { return cause })
 	var partial *PartialRenumberError
 	if !errors.As(err, &partial) || !partial.DestinationPublished || partial.SourceRetired || !errors.Is(err, cause) {
 		t.Fatalf("partial = %#v, err = %v", partial, err)

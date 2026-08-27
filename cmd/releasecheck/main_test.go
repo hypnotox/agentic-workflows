@@ -739,16 +739,25 @@ func TestReleaseArchivesPortableSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dist := filepath.Join(root, "dist")
-	if err := os.RemoveAll(dist); err != nil {
+	dist := filepath.Join(t.TempDir(), "dist")
+	relativeDist, err := filepath.Rel(root, dist)
+	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := os.RemoveAll(dist); err != nil {
-			t.Errorf("remove snapshot dist: %v", err)
-		}
-	})
-	cmd := exec.Command("go", "run", "github.com/goreleaser/goreleaser/v2@v2.17.0", "release", "--snapshot", "--clean")
+	if relativeDist != ".." && !strings.HasPrefix(relativeDist, ".."+string(os.PathSeparator)) {
+		t.Fatalf("snapshot dist %q is inside checkout %q", dist, root)
+	}
+	config, err := os.ReadFile(filepath.Join(root, ".goreleaser.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(t.TempDir(), ".goreleaser.yaml")
+	isolatedConfig := fmt.Appendf(nil, "dist: %q\n", dist)
+	isolatedConfig = append(isolatedConfig, config...)
+	if err := os.WriteFile(configPath, isolatedConfig, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("go", "run", "github.com/goreleaser/goreleaser/v2@v2.17.0", "release", "--snapshot", "--clean", "--config", configPath)
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build snapshot release: %v\n%s", err, out)

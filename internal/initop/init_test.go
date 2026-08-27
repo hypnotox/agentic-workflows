@@ -25,10 +25,12 @@ type scaffoldLinkResult struct {
 }
 
 type scaffoldFaultFilesystem struct {
-	links      []scaffoldLinkResult
-	mkdirInfo  fs.FileInfo
-	mkdirErr   error
-	publishErr error
+	links            []scaffoldLinkResult
+	mkdirInfo        fs.FileInfo
+	mkdirIdentity    *filesystem.ExpectedIdentity
+	expectedIdentity *filesystem.ExpectedIdentity
+	mkdirErr         error
+	publishErr       error
 }
 
 func (f *scaffoldFaultFilesystem) LinkInfo(string) (fs.FileInfo, error) {
@@ -36,8 +38,16 @@ func (f *scaffoldFaultFilesystem) LinkInfo(string) (fs.FileInfo, error) {
 	f.links = f.links[1:]
 	return result.info, result.err
 }
-func (f *scaffoldFaultFilesystem) CreateDirectory(string, fs.FileMode) (fs.FileInfo, error) {
-	return f.mkdirInfo, f.mkdirErr
+func (f *scaffoldFaultFilesystem) CreateDirectory(string, fs.FileMode) (*filesystem.ExpectedIdentity, error) {
+	return f.mkdirIdentity, f.mkdirErr
+}
+func (f *scaffoldFaultFilesystem) ExpectedIdentity(string) (*filesystem.ExpectedIdentity, error) {
+	if f.expectedIdentity != nil {
+		return f.expectedIdentity, nil
+	}
+	result := f.links[0]
+	f.links = f.links[1:]
+	return nil, result.err
 }
 func (f *scaffoldFaultFilesystem) Publish(string, []byte, fs.FileMode) error {
 	return f.publishErr
@@ -84,12 +94,25 @@ func TestCreateScaffoldRetainsIdentityReturnedByDirectoryCreation(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
+	h, err := filesystem.Open(createdDirectory)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	dirIdentity, err := h.ExpectedIdentity(".")
+	if err != nil {
+		t.Fatal(err)
+	}
+	configIdentity, err := h.ExpectedIdentity("config")
+	if err != nil {
+		t.Fatal(err)
+	}
 	filesystem := &scaffoldFaultFilesystem{
 		links:     []scaffoldLinkResult{{err: fs.ErrNotExist}, {info: configInfo}},
-		mkdirInfo: createdInfo,
+		mkdirInfo: createdInfo, mkdirIdentity: dirIdentity, expectedIdentity: configIdentity,
 	}
 	scaffold, err := createScaffold(filesystem, []byte("config"))
-	if err != nil || !scaffold.createdDir || !os.SameFile(scaffold.dirInfo, createdInfo) {
+	if err != nil || !scaffold.createdDir || !scaffold.dirInfo.SameFile(createdInfo) {
 		t.Fatalf("scaffold creation identity = %#v, %v", scaffold, err)
 	}
 }
@@ -193,14 +216,19 @@ func TestRollbackScaffoldRestoresOwnedTreeOrReportsChangedIdentity(t *testing.T)
 			if err := os.WriteFile(cfgPath, []byte("owned"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			configInfo, err := os.Lstat(cfgPath)
+			h, err := filesystem.Open(root)
 			if err != nil {
 				t.Fatal(err)
 			}
-			dirInfo, err := os.Lstat(filepath.Dir(cfgPath))
+			configIdentity, err := h.ExpectedIdentity(".awf/config.yaml")
 			if err != nil {
 				t.Fatal(err)
 			}
+			dirIdentity, err := h.ExpectedIdentity(".awf")
+			if err != nil {
+				t.Fatal(err)
+			}
+			_ = h.Close()
 			if changed {
 				if err := os.Remove(cfgPath); err != nil {
 					t.Fatal(err)
@@ -210,7 +238,7 @@ func TestRollbackScaffoldRestoresOwnedTreeOrReportsChangedIdentity(t *testing.T)
 				}
 			}
 			want := errors.New("later failure")
-			outcome, gotErr := rollbackScaffold(root, cfgPath, scaffoldCommit{configCommitted: true, createdDir: true, configInfo: configInfo, dirInfo: dirInfo}, want)
+			outcome, gotErr := rollbackScaffold(root, cfgPath, scaffoldCommit{configCommitted: true, createdDir: true, configInfo: configIdentity, dirInfo: dirIdentity}, want)
 			if !errors.Is(gotErr, want) {
 				t.Fatalf("rollback error = %v, want %v", gotErr, want)
 			}

@@ -371,10 +371,15 @@ type residentFaultHandle struct {
 	closeFailure error
 }
 
-func (h residentFaultHandle) Close() error                             { return h.closeFailure }
-func (h residentFaultHandle) MkdirAll(string, fs.FileMode) error       { return h.failure }
-func (h residentFaultHandle) LinkInfo(string) (fs.FileInfo, error)     { return nil, h.failure }
-func (h residentFaultHandle) RetireExpected(string, fs.FileInfo) error { return h.failure }
+func (h residentFaultHandle) Close() error                         { return h.closeFailure }
+func (h residentFaultHandle) MkdirAll(string, fs.FileMode) error   { return h.failure }
+func (h residentFaultHandle) LinkInfo(string) (fs.FileInfo, error) { return nil, h.failure }
+func (h residentFaultHandle) ExpectedIdentity(string) (*filesystem.ExpectedIdentity, error) {
+	return nil, h.failure
+}
+func (h residentFaultHandle) RetireExpected(string, *filesystem.ExpectedIdentity) error {
+	return h.failure
+}
 
 func TestAddReportsResidentCapabilityFailures(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")
@@ -1659,7 +1664,7 @@ type retireRaceHandle struct {
 	beforeRetire func() error
 }
 
-func (h *retireRaceHandle) RetireExpected(path string, expected os.FileInfo) error {
+func (h *retireRaceHandle) RetireExpected(path string, expected *filesystem.ExpectedIdentity) error {
 	if err := h.beforeRetire(); err != nil {
 		return err
 	}
@@ -1694,7 +1699,9 @@ type retireFailureHandle struct {
 	failure error
 }
 
-func (h *retireFailureHandle) RetireExpected(string, fs.FileInfo) error { return h.failure }
+func (h *retireFailureHandle) RetireExpected(string, *filesystem.ExpectedIdentity) error {
+	return h.failure
+}
 
 func TestRemoveUnregisteredPathReportsExactDestinationAndRetirementResidue(t *testing.T) {
 	root := initWorktreeRepo(t, "sha1")

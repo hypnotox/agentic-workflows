@@ -356,16 +356,27 @@ func (s *Service) RollbackCreation(ctx context.Context, identity Record) (Rollba
 		return RollbackResult{}, fmt.Errorf("reserve failed-creation rollback: %w", err)
 	}
 	result := RollbackResult{Reserved: true, ReservationPath: reservation}
+	files, err := filesystem.Open(s.paths.efforts)
+	if err != nil {
+		return result, fmt.Errorf("open identity-bound failed-creation reservation root: %w", err)
+	}
+	closed := false
+	defer func() {
+		if !closed {
+			_ = files.Close()
+		}
+	}()
+	reservedIdentity, err := files.ExpectedIdentity(tombstoneName(record))
+	if err != nil {
+		return result, fmt.Errorf("identify identity-bound failed-creation reservation: %w", err)
+	}
+	defer reservedIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	reservedRecord, err := s.store.loadDirectory(reservation, identity.Slug, true)
 	if err != nil {
 		return result, fmt.Errorf("validate identity-bound failed-creation reservation: %w", err)
 	}
 	if reservedRecord.ID != identity.ID || reservedRecord.Slug != identity.Slug {
 		return result, fmt.Errorf("validate identity-bound failed-creation reservation: immutable identity changed")
-	}
-	reservedIdentity, err := os.Lstat(reservation)
-	if err != nil {
-		return result, fmt.Errorf("identify identity-bound failed-creation reservation: %w", err)
 	}
 	if err := s.store.hit("rollback.root-fsync"); err != nil {
 		return result, fmt.Errorf("sync efforts parent after rollback reservation: %w", err)
@@ -376,12 +387,9 @@ func (s *Service) RollbackCreation(ctx context.Context, identity Record) (Rollba
 	if err := s.store.hit("rollback.delete"); err != nil {
 		return result, err
 	}
-	files, err := filesystem.Open(s.paths.efforts)
-	if err != nil {
-		return result, fmt.Errorf("open identity-bound failed-creation reservation root: %w", err)
-	}
 	err = files.RetireExpected(tombstoneName(record), reservedIdentity)
 	closeErr := files.Close()
+	closed = true
 	if err == nil {
 		result.Removed = true
 		result.ReservationPath = ""

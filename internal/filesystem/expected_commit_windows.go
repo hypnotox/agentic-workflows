@@ -5,7 +5,6 @@ package filesystem
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 	"syscall"
@@ -25,7 +24,7 @@ var replaceFileW = windows.NewLazySystemDLL("kernel32.dll").NewProc("ReplaceFile
 // of the native syscall prevents a replaced parent symlink from redirecting
 // the exchange outside the selected root while preserving one native owner
 // for each released platform's atomic replacement operation.
-func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destination string, expected fs.FileInfo, remove, retain bool) (bool, error) {
+func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destination string, expected *ExpectedIdentity, remove, retain bool) (bool, error) {
 	rootName, err := finalWindowsPath(windows.Handle(anchor.Fd()))
 	if err != nil {
 		return false, err
@@ -41,7 +40,7 @@ func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destina
 		return false, fmt.Errorf("filesystem: exchange expected entry %q: %w", destination, err)
 	}
 	displacedInfo, inspectErr := root.Lstat(displaced)
-	if inspectErr != nil || !os.SameFile(expected, displacedInfo) {
+	if inspectErr != nil || !expected.same(displacedInfo) {
 		mismatch := error(ErrIdentityChanged)
 		if inspectErr != nil {
 			mismatch = errors.Join(mismatch, inspectErr)
@@ -60,7 +59,7 @@ func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destina
 	return true, nil
 }
 
-func removeExpectedWindows(root *os.Root, temporary, temporaryAbs, destination, destinationAbs string, expected fs.FileInfo, retain bool) (bool, error) {
+func removeExpectedWindows(root *os.Root, temporary, temporaryAbs, destination, destinationAbs string, expected *ExpectedIdentity, retain bool) (bool, error) {
 	if err := root.Remove(temporary); err != nil {
 		return false, fmt.Errorf("filesystem: remove atomic marker %q: %w", temporary, err)
 	}
@@ -68,7 +67,7 @@ func removeExpectedWindows(root *os.Root, temporary, temporaryAbs, destination, 
 		return true, fmt.Errorf("filesystem: move expected entry %q aside: %w", destination, err)
 	}
 	displaced, inspectErr := root.Lstat(temporary)
-	if inspectErr != nil || !os.SameFile(expected, displaced) {
+	if inspectErr != nil || !expected.same(displaced) {
 		mismatch := error(ErrIdentityChanged)
 		if inspectErr != nil {
 			mismatch = errors.Join(mismatch, inspectErr)

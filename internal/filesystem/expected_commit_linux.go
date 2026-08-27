@@ -5,7 +5,6 @@ package filesystem
 import (
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
@@ -20,7 +19,7 @@ import (
 // of the native syscall prevents a replaced parent symlink from redirecting
 // the exchange outside the selected root while preserving one native owner
 // for each released platform's atomic replacement operation.
-func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destination string, expected fs.FileInfo, remove, retain bool) (bool, error) {
+func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destination string, expected *ExpectedIdentity, remove, retain bool) (bool, error) {
 	exchange := func() error {
 		return unix.Renameat2(int(anchor.Fd()), temporary, int(anchor.Fd()), destination, unix.RENAME_EXCHANGE)
 	}
@@ -28,7 +27,7 @@ func exchangeExpectedAnchored(root *os.Root, anchor *os.File, temporary, destina
 		return false, fmt.Errorf("filesystem: exchange expected entry %q: %w", destination, err)
 	}
 	displaced, inspectErr := root.Lstat(temporary)
-	if inspectErr != nil || !os.SameFile(expected, displaced) {
+	if inspectErr != nil || !expected.same(displaced) {
 		mismatch := ErrIdentityChanged
 		if inspectErr != nil {
 			mismatch = errors.Join(mismatch, inspectErr)

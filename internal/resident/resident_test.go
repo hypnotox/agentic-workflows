@@ -148,7 +148,7 @@ type failingHandle struct {
 	failure error
 }
 
-func (h failingHandle) RemoveExpected(path string, info fs.FileInfo) error {
+func (h failingHandle) RemoveExpected(path string, info *filesystem.ExpectedIdentity) error {
 	if path == h.fail {
 		return h.failure
 	}

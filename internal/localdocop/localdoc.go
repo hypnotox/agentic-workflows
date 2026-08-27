@@ -93,6 +93,7 @@ func RunLeased(ctx context.Context, root string, doc config.LocalDoc, loader *pr
 	if err != nil {
 		return Outcome{}, err
 	}
+	defer configIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	composed := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version)
 	if err := composed.PreflightLocalDoc(doc); err != nil {
 		return Outcome{}, err

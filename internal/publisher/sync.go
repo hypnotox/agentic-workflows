@@ -226,12 +226,13 @@ type syncFilesystem interface {
 	Chmod(string, fs.FileMode) error
 	Publish(string, []byte, fs.FileMode) error
 	Replace(string, []byte, fs.FileMode) error
-	ReplaceExpected(string, fs.FileInfo, []byte, fs.FileMode) error
+	ReplaceExpected(string, *filesystem.ExpectedIdentity, []byte, fs.FileMode) error
 	Remove(string) error
-	RemoveExpected(string, fs.FileInfo) error
+	RemoveExpected(string, *filesystem.ExpectedIdentity) error
 	Read(string) ([]byte, error)
 	ReadWithMode(string) ([]byte, fs.FileMode, error)
 	LinkInfo(string) (fs.FileInfo, error)
+	ExpectedIdentity(string) (*filesystem.ExpectedIdentity, error)
 }
 
 type syncFilesystems struct {
@@ -285,10 +286,11 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 	// Refuse before rendering or writing anything: a corrupt lock must never
 	// produce a backup, skip a prune, or be overwritten (ADR-0076 Decision 2).
 	lockPath := path.Join(config.DirName, "awf.lock")
-	lockIdentity, identityErr := filesystems.tracked.LinkInfo(lockPath)
+	lockIdentity, identityErr := filesystems.tracked.ExpectedIdentity(lockPath)
 	if identityErr != nil && !errors.Is(identityErr, fs.ErrNotExist) {
 		return nil, nil, nil, nil, fmt.Errorf("inspect .awf/awf.lock identity: %w", identityErr)
 	}
+	defer lockIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	lockBytes, lockErr := filesystems.tracked.Read(lockPath)
 	var old *manifest.Lock
 	found := lockErr == nil
@@ -364,7 +366,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 				effects = append(effects, Effect{Kind: "mode-corrected", Path: dir, Recovery: "rerun awf render"})
 			}
 		}
-		info, infoErr := filesystem.LinkInfo(outputPath)
+		info, infoErr := filesystem.ExpectedIdentity(outputPath)
 		if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {
 			return backups, changes, pruned, effects, infoErr
 		}
@@ -372,6 +374,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			// touches-state: rendering/sync-and-drift:sync-backs-up-foreign - foreign-file backup on sync; proof in publication_sync_test.go
 			bak, err := backupFileConfined(outputPath, filesystem)
 			if err != nil {
+				_ = info.Release()
 				if committedPath, residuePath, committed := committedPublication(err); committed {
 					bak = committedPath
 					backups = append(backups, Backup{Path: f.Path(), Bak: bak, Index: f.RegenChecked()})
@@ -394,6 +397,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 		if infoErr == nil && info.Mode()&fs.ModeSymlink == 0 {
 			before, mode, readErr := filesystem.ReadWithMode(outputPath)
 			if readErr != nil {
+				_ = info.Release()
 				return backups, changes, pruned, effects, readErr
 			}
 			modeChanged = mode != perm
@@ -464,15 +468,21 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 				continue
 			}
 			filesystem, outputPath := filesystems.output(path)
+			// Acquire before backup reads: both backup bytes and removal must refer
+			// to this same observed entry.
+			removeIdentity, observeErr := filesystem.ExpectedIdentity(outputPath)
+			if observeErr != nil && !errors.Is(observeErr, fs.ErrNotExist) {
+				return backups, changes, pruned, effects, fmt.Errorf("inspect retired output %s: %w", path, observeErr)
+			}
 			if entry.TemplateID == localDocTID {
-				if info, existsErr := filesystem.LinkInfo(outputPath); existsErr != nil && !errors.Is(existsErr, fs.ErrNotExist) {
-					return backups, changes, pruned, effects, fmt.Errorf("inspect pruned local document %s: %w", path, existsErr)
-				} else if existsErr == nil {
-					if info.Mode()&fs.ModeSymlink != 0 {
+				if removeIdentity != nil {
+					if removeIdentity.Mode()&fs.ModeSymlink != 0 {
+						_ = removeIdentity.Release()
 						return backups, changes, pruned, effects, fmt.Errorf("unsafe pruned local document %s", path)
 					}
 					bak, bakErr := backupFileConfined(outputPath, filesystem)
 					if bakErr != nil {
+						_ = removeIdentity.Release()
 						if committedPath, residuePath, committed := committedPublication(bakErr); committed {
 							bak = committedPath
 							backups = append(backups, Backup{Path: path, Bak: bak})
@@ -490,10 +500,6 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			// Report only an actual removal - a path whose file is already gone
 			// must not be claimed pruned. Any other failure preserves the old lock
 			// so the managed path remains visible and the operation can be retried.
-			removeIdentity, observeErr := filesystem.LinkInfo(outputPath)
-			if observeErr != nil && !errors.Is(observeErr, fs.ErrNotExist) {
-				return backups, changes, pruned, effects, fmt.Errorf("inspect retired output %s: %w", path, observeErr)
-			}
 			var err error
 			if removeIdentity == nil {
 				err = fs.ErrNotExist
@@ -531,7 +537,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			return strings.Compare(a.path, b.path)
 		})
 		for _, d := range dirList {
-			info, infoErr := d.filesystem.LinkInfo(d.path)
+			info, infoErr := d.filesystem.ExpectedIdentity(d.path)
 			if infoErr != nil {
 				if errors.Is(infoErr, fs.ErrNotExist) {
 					continue
@@ -539,6 +545,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 				return backups, changes, pruned, effects, fmt.Errorf("inspect empty directory %s: %w", d.path, infoErr)
 			}
 			if !info.IsDir() {
+				_ = info.Release()
 				continue
 			}
 			if err := d.filesystem.RemoveExpected(d.path, info); err != nil {

@@ -175,8 +175,10 @@ func Backup(source string, readWithMode func(string) ([]byte, fs.FileMode, error
 // root, preserving the requested final mode. Callers that previously observed
 // the destination should use ReplaceExpected.
 func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) error {
-	expected, err := h.root.Lstat(destination)
-	if err != nil && !errors.Is(err, fs.ErrNotExist) {
+	expected, err := h.ExpectedIdentity(destination)
+	if errors.Is(err, fs.ErrNotExist) {
+		expected = nil
+	} else if err != nil {
 		return fmt.Errorf("filesystem: inspect replacement %q: %w", destination, err)
 	}
 	return h.ReplaceExpected(destination, expected, contents, mode)
@@ -184,7 +186,10 @@ func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) 
 
 // ReplaceExpected publishes only while destination still has expected's entry
 // identity. A nil expected identity creates exclusively rather than clobbering.
-func (h *Handle) ReplaceExpected(destination string, expected fs.FileInfo, contents []byte, mode fs.FileMode) (returnErr error) {
+func (h *Handle) ReplaceExpected(destination string, expected *ExpectedIdentity, contents []byte, mode fs.FileMode) (returnErr error) {
+	if expected != nil {
+		defer expected.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
+	}
 	if err := validPath(destination); err != nil {
 		return fmt.Errorf("filesystem: replace %q: %w", destination, err)
 	}
@@ -196,6 +201,9 @@ func (h *Handle) ReplaceExpected(destination string, expected fs.FileInfo, conte
 			return err
 		}
 		return nil
+	}
+	if !expected.valid() {
+		return fmt.Errorf("filesystem: replace %q: %w", destination, ErrIdentityChanged)
 	}
 	if expected.IsDir() {
 		return fmt.Errorf("filesystem: replace %q: destination is a directory", destination)
@@ -284,11 +292,14 @@ func (h *Handle) RemoveAll(path string) error {
 // RetireExpected atomically detaches the expected directory before deleting its
 // contents. A same-name successor installed after the exchange is never
 // traversed or removed.
-func (h *Handle) RetireExpected(destination string, expected fs.FileInfo) (returnErr error) {
+func (h *Handle) RetireExpected(destination string, expected *ExpectedIdentity) (returnErr error) {
+	if expected != nil {
+		defer expected.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
+	}
 	if err := validPath(destination); err != nil {
 		return fmt.Errorf("filesystem: retire %q: %w", destination, err)
 	}
-	if expected == nil || !expected.IsDir() {
+	if !expected.valid() || !expected.IsDir() {
 		return fmt.Errorf("filesystem: retire %q: %w", destination, ErrIdentityChanged)
 	}
 	var temporary string
@@ -337,11 +348,14 @@ func (h *Handle) RetireExpected(destination string, expected fs.FileInfo) (retur
 }
 
 // RemoveExpected removes path only while it still has expected's identity.
-func (h *Handle) RemoveExpected(destination string, expected fs.FileInfo) (returnErr error) {
+func (h *Handle) RemoveExpected(destination string, expected *ExpectedIdentity) (returnErr error) {
+	if expected != nil {
+		defer expected.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
+	}
 	if err := validPath(destination); err != nil {
 		return fmt.Errorf("filesystem: remove %q: %w", destination, err)
 	}
-	if expected == nil {
+	if !expected.valid() {
 		return fmt.Errorf("filesystem: remove %q: %w", destination, ErrIdentityChanged)
 	}
 	if expected.IsDir() {

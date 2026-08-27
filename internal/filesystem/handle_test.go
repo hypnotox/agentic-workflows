@@ -479,7 +479,7 @@ func TestExpectedIdentityReplacementAndRemovalRefuseStaleEntries(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "artifact"), []byte("observed"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	expected, err := h.LinkInfo("artifact")
+	expected, err := h.ExpectedIdentity("artifact")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -492,7 +492,17 @@ func TestExpectedIdentityReplacementAndRemovalRefuseStaleEntries(t *testing.T) {
 	if err := h.ReplaceExpected("artifact", expected, []byte("replacement"), 0o644); !errors.Is(err, ErrIdentityChanged) {
 		t.Fatalf("stale replacement = %v, want identity change", err)
 	}
-	if err := h.RemoveExpected("artifact", expected); !errors.Is(err, ErrIdentityChanged) {
+	removeExpected, err := h.ExpectedIdentity("artifact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "artifact")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "artifact"), []byte("winner"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RemoveExpected("artifact", removeExpected); !errors.Is(err, ErrIdentityChanged) {
 		t.Fatalf("stale removal = %v, want identity change", err)
 	}
 	if got, err := os.ReadFile(filepath.Join(root, "artifact")); err != nil || string(got) != "winner" {
@@ -525,7 +535,7 @@ func TestCreateDirectoryReturnsPublishedIdentityAndRefusesExistingDestination(t 
 		t.Fatal(err)
 	}
 	owned := filepath.Join(root, "owned")
-	if info, err := os.Lstat(owned); err != nil || !os.SameFile(created, info) || info.Mode().Perm() != 0o750 {
+	if info, err := os.Lstat(owned); err != nil || !created.SameFile(info) || info.Mode().Perm() != 0o750 {
 		t.Fatalf("created identity = %v, path identity = %v, error %v", created, info, err)
 	}
 	if _, err := h.CreateDirectory("owned", 0o700); !errors.Is(err, fs.ErrExist) {
@@ -559,11 +569,15 @@ func TestCreateDirectoryReturnsPublishedIdentityAndRefusesExistingDestination(t 
 	if err := os.Mkdir(owned, 0o700); err != nil {
 		t.Fatal(err)
 	}
+	relocatedBefore, err := os.Lstat(relocated)
+	if err != nil || !created.SameFile(relocatedBefore) {
+		t.Fatalf("returned identity does not name created directory after relocation: %v, %v", relocatedBefore, err)
+	}
 	if err := h.RemoveExpected("owned", created); !errors.Is(err, ErrIdentityChanged) {
 		t.Fatalf("replacement removal = %v, want identity change", err)
 	}
-	if info, err := os.Lstat(relocated); err != nil || !os.SameFile(created, info) {
-		t.Fatalf("returned identity does not name created directory after relocation: %v, %v", info, err)
+	if info, err := os.Lstat(relocated); err != nil || !os.SameFile(relocatedBefore, info) {
+		t.Fatalf("relocated created directory changed: %v, %v", info, err)
 	}
 	if info, err := os.Lstat(owned); err != nil || os.SameFile(created, info) {
 		t.Fatalf("replacement directory was claimed or removed: %v, %v", info, err)
@@ -583,7 +597,7 @@ func TestRetireExpectedRemovesOnlyTheObservedNonemptyDirectory(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "retired", "payload"), []byte("old"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	expected, err := h.LinkInfo("retired")
+	expected, err := h.ExpectedIdentity("retired")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -607,6 +621,46 @@ func TestRetireExpectedRemovesOnlyTheObservedNonemptyDirectory(t *testing.T) {
 	}
 }
 
+func TestExpectedIdentityCannotAuthorizeAfterReleaseOrConsumption(t *testing.T) {
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, "artifact"), []byte("before"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+
+	released, err := h.ExpectedIdentity("artifact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := released.Release(); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.ReplaceExpected("artifact", released, []byte("released"), 0o600); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("released identity replacement = %v, want identity change", err)
+	}
+	if err := h.RemoveExpected("artifact", released); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("released identity removal = %v, want identity change", err)
+	}
+
+	consumed, err := h.ExpectedIdentity("artifact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := h.ReplaceExpected("artifact", consumed, []byte("after"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.ReplaceExpected("artifact", consumed, []byte("reused"), 0o600); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("consumed identity replacement = %v, want identity change", err)
+	}
+	if got, err := os.ReadFile(filepath.Join(root, "artifact")); err != nil || string(got) != "after" {
+		t.Fatalf("artifact = %q, %v", got, err)
+	}
+}
+
 func TestExpectedIdentityReplacementAndRemovalCommitFilesAndEmptyDirectories(t *testing.T) {
 	root := t.TempDir()
 	h, err := Open(root)
@@ -618,7 +672,7 @@ func TestExpectedIdentityReplacementAndRemovalCommitFilesAndEmptyDirectories(t *
 	if err := os.WriteFile(artifact, []byte("observed"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	expected, err := h.LinkInfo("artifact")
+	expected, err := h.ExpectedIdentity("artifact")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -631,7 +685,7 @@ func TestExpectedIdentityReplacementAndRemovalCommitFilesAndEmptyDirectories(t *
 	if info, err := os.Stat(artifact); err != nil || info.Mode().Perm() != 0o640 {
 		t.Fatalf("replacement mode = %v, %v", info, err)
 	}
-	expected, err = h.LinkInfo("artifact")
+	expected, err = h.ExpectedIdentity("artifact")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -644,7 +698,7 @@ func TestExpectedIdentityReplacementAndRemovalCommitFilesAndEmptyDirectories(t *
 	if err := os.Mkdir(filepath.Join(root, "empty"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	expected, err = h.LinkInfo("empty")
+	expected, err = h.ExpectedIdentity("empty")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -689,7 +743,7 @@ func TestExpectedMutationRootAnchorRefusesRelocatedParent(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(rootPath, "parent", "temporary"), []byte("replacement"), 0o640); err != nil {
 				t.Fatal(err)
 			}
-			expected, err := h.root.Lstat("parent/destination")
+			expected, err := h.ExpectedIdentity("parent/destination")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -727,7 +781,7 @@ func TestExpectedMutationRefusesDisappearedDestination(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "temporary"), []byte("replacement"), 0o640); err != nil {
 		t.Fatal(err)
 	}
-	expected, err := h.root.Lstat("destination")
+	expected, err := h.ExpectedIdentity("destination")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -756,7 +810,7 @@ func TestExpectedIdentityRemovalPreservesNonemptyDirectory(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "owned", "child"), []byte("preserve"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	expected, err := h.LinkInfo("owned")
+	expected, err := h.ExpectedIdentity("owned")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -786,7 +840,7 @@ func TestHandleIdentityAndRetirementInputRefusals(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "file"), []byte("content"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	regular, err := h.LinkInfo("file")
+	regular, err := h.ExpectedIdentity("file")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -1024,7 +1078,14 @@ func filesystemConsumerFinding(rel, src string) string {
 				break
 			}
 			selector, ok := star.X.(*ast.SelectorExpr)
-			if !ok || selector.Sel.Name != "Handle" || !importedOS(selector.X, imports) {
+			if !ok || !importedOS(selector.X, imports) {
+				break
+			}
+			if selector.Sel.Name == "ExpectedIdentity" {
+				capability = true
+				break
+			}
+			if selector.Sel.Name != "Handle" {
 				break
 			}
 			for _, name := range n.Names {
@@ -1110,7 +1171,7 @@ func filesystemPackageFinding(sources map[string]string) string {
 				if !typeSpec.Name.IsExported() {
 					continue
 				}
-				if typeSpec.Name.Name == "Lease" || typeSpec.Name.Name == "LeaseError" || typeSpec.Name.Name == "LeaseErrorKind" {
+				if typeSpec.Name.Name == "Lease" || typeSpec.Name.Name == "LeaseError" || typeSpec.Name.Name == "LeaseErrorKind" || typeSpec.Name.Name == "ExpectedIdentity" {
 					continue
 				}
 				if typeSpec.Name.Name != "Handle" {

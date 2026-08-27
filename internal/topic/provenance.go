@@ -59,15 +59,25 @@ func SubstituteProvenanceConfined(files *filesystem.Handle, renames map[string]s
 		if info.IsDir() || filepath.Base(path) != partFileName {
 			return true, nil
 		}
+		expected, err := files.ExpectedIdentity(path)
+		if err != nil {
+			return false, err
+		}
+		if expected.Mode()&os.ModeSymlink != 0 || !expected.Mode().IsRegular() {
+			_ = expected.Release()
+			return false, fmt.Errorf("topic provenance path %q is not a regular file", path)
+		}
 		data, err := files.Read(path)
 		if err != nil {
+			_ = expected.Release()
 			return false, err
 		}
 		body, changed := substituteProvenanceLines(string(data), renames)
 		if !changed {
+			_ = expected.Release()
 			return true, nil
 		}
-		if err := files.ReplaceExpected(path, info, []byte(body), info.Mode().Perm()); err != nil {
+		if err := files.ReplaceExpected(path, expected, []byte(body), expected.Mode().Perm()); err != nil {
 			return false, err
 		}
 		result.Paths = append(result.Paths, path)

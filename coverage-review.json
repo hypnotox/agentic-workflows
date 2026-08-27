@@ -2674,7 +2674,7 @@
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation of internal/adr/renumber.go:53.16,55.3 1 in renumberPending, beginning `if err != nil { return fmt.Errorf(\"adr: stat pending record %s: %w\", slug, err) }`. This is a confined pending-record observation or symlink-refusal boundary before destination publication. Renumbering tests directly cover success, invalid records, destination-success/source-retention partial outcomes, and confined identity behavior; the remaining concurrent filesystem observation fault has no existing deterministic seam."
+      "reason": "After a pinned identity is acquired, this branch requires a path-based read fault before publication. Renumbering tests cover success, symlink refusal, invalid records, destination-success/source-retention partial outcomes, and confined identity behavior; a deterministic read fault would require a metric-only production seam."
     },
     {
       "identity": {
@@ -16214,6 +16214,4278 @@
         "statements": 2
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at tools/pi-extension-test/lockrun/lockrun_unix.go:60.3,61.11 2 in function run, beginning `fmt.Fprintf(os.Stderr, \"pi-extension-test: wait for worker: %v\\n\", err) // coverage-ignore: Wait...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/adr/renumber.go",
+        "start": {
+          "line": 25,
+          "column": 47
+        },
+        "end": {
+          "line": 25,
+          "column": 73
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation of internal/adr/renumber.go:26.47,26.73 1 in Error, beginning `func (e *PartialRenumberError) Error() string { return e.Cause.Error() }`. This is the mechanical error-identity projection of the stored typed partial outcome; focused partial-outcome tests exercise the carried effects, recovery, and errors.As identity, while this one-line delegation remains visible raw debt.",
+      "movedFrom": {
+        "file": "internal/adr/renumber.go",
+        "start": {
+          "line": 26,
+          "column": 47
+        },
+        "end": {
+          "line": 26,
+          "column": 73
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 36,
+          "column": 39
+        },
+        "end": {
+          "line": 36,
+          "column": 65
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation of internal/domainop/domain.go:37.39,37.65 1 in Error, beginning `func (e *PartialError) Error() string { return e.Cause.Error() }`. This is the mechanical error-identity projection of the stored typed partial outcome; focused partial-outcome tests exercise the carried effects, recovery, and errors.As identity, while this one-line delegation remains visible raw debt.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 37,
+          "column": 39
+        },
+        "end": {
+          "line": 37,
+          "column": 65
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 37,
+          "column": 39
+        },
+        "end": {
+          "line": 37,
+          "column": 57
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation of internal/domainop/domain.go:38.39,38.57 1 in Unwrap, beginning `func (e *PartialError) Unwrap() error { return e.Cause }`. This is the mechanical error-identity projection of the stored typed partial outcome; focused partial-outcome tests exercise the carried effects, recovery, and errors.As identity, while this one-line delegation remains visible raw debt.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 38,
+          "column": 39
+        },
+        "end": {
+          "line": 38,
+          "column": 57
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 46,
+          "column": 17
+        },
+        "end": {
+          "line": 48,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation of internal/domainop/domain.go:47.17,49.4 1 in domainDocument, beginning `if err != nil { return presentation.Document{}, err }`. This is a presentation-construction failure for fixed labels and owner-normalized typed effects or recovery steps. Focused partial-outcome tests exercise every semantic effect and default recovery; invalid presentation grammar cannot arise from the closed model.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 47,
+          "column": 17
+        },
+        "end": {
+          "line": 49,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 50,
+          "column": 17
+        },
+        "end": {
+          "line": 52,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation of internal/domainop/domain.go:51.17,53.4 1 in domainDocument, beginning `if err != nil { return presentation.Document{}, err }`. This is a presentation-construction failure for fixed labels and owner-normalized typed effects or recovery steps. Focused partial-outcome tests exercise every semantic effect and default recovery; invalid presentation grammar cannot arise from the closed model.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 51,
+          "column": 17
+        },
+        "end": {
+          "line": 53,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 58,
+          "column": 17
+        },
+        "end": {
+          "line": 60,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation of internal/domainop/domain.go:59.17,61.4 1 in domainDocument, beginning `if err != nil { return presentation.Document{}, err }`. This is a presentation-construction failure for fixed labels and owner-normalized typed effects or recovery steps. Focused partial-outcome tests exercise every semantic effect and default recovery; invalid presentation grammar cannot arise from the closed model.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 59,
+          "column": 17
+        },
+        "end": {
+          "line": 61,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 66,
+          "column": 17
+        },
+        "end": {
+          "line": 68,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation of internal/domainop/domain.go:67.17,69.4 1 in domainDocument, beginning `if err != nil { return presentation.Document{}, err }`. This is a presentation-construction failure for fixed labels and owner-normalized typed effects or recovery steps. Focused partial-outcome tests exercise every semantic effect and default recovery; invalid presentation grammar cannot arise from the closed model.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 67,
+          "column": 17
+        },
+        "end": {
+          "line": 69,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 89,
+          "column": 50
+        },
+        "end": {
+          "line": 91,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation of internal/domainop/domain.go:90.50,92.3 1 in add, beginning `} else if !loader.CoversProjectLease(ctx, root, lease) { return Outcome{}, errors.New(\"domain operation requires a covering project lease\") }`. This is the defensive rejection of a supplied lease that does not cover the selected project root. Transaction tests exercise lease acquisition, covered mutation, contention, stale authority, collision, and confinement; the collaborator-only mismatch remains visible raw debt.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 90,
+          "column": 50
+        },
+        "end": {
+          "line": 92,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 93,
+          "column": 16
+        },
+        "end": {
+          "line": 95,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/domainop/domain.go:109.16,111.3 1 to internal/domainop/domain.go:94.16,96.3 1 without changing its behavior. Phase 4 transaction review: internal/domainop/domain.go:32.16,34.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 94,
+          "column": 16
+        },
+        "end": {
+          "line": 96,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 154,
+          "column": 16
+        },
+        "end": {
+          "line": 156,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/domainop/domain.go:153.16,155.3 1 in RemoveLeased, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 153,
+          "column": 16
+        },
+        "end": {
+          "line": 155,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 157,
+          "column": 70
+        },
+        "end": {
+          "line": 159,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/domainop/domain.go:156.70,158.3 1 in RemoveLeased, beginning `if err := replaceConfig(files, configIdentity, updated); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 156,
+          "column": 70
+        },
+        "end": {
+          "line": 158,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 167,
+          "column": 16
+        },
+        "end": {
+          "line": 169,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/domainop/domain.go:166.16,168.3 1 in RemoveLeased, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 166,
+          "column": 16
+        },
+        "end": {
+          "line": 168,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 179,
+          "column": 16
+        },
+        "end": {
+          "line": 181,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/domainop/domain.go:178.16,180.3 1 in scaffoldCurrentStateConfined, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 178,
+          "column": 16
+        },
+        "end": {
+          "line": 180,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 187,
+          "column": 35
+        },
+        "end": {
+          "line": 189,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/domainop/domain.go:186.35,188.4 1 in scaffoldCurrentStateConfined, beginning `if !errors.Is(err, os.ErrExist) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 186,
+          "column": 35
+        },
+        "end": {
+          "line": 188,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 191,
+          "column": 24
+        },
+        "end": {
+          "line": 193,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/domainop/domain.go:190.24,192.4 1 in scaffoldCurrentStateConfined, beginning `if inspectErr != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 190,
+          "column": 24
+        },
+        "end": {
+          "line": 192,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 207,
+          "column": 16
+        },
+        "end": {
+          "line": 209,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/domainop/domain.go:206.16,208.3 1 in synchronize, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 206,
+          "column": 16
+        },
+        "end": {
+          "line": 208,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 218,
+          "column": 45
+        },
+        "end": {
+          "line": 220,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/domainop/domain.go:217.45,219.4 1 in hasSidecarOrParts, beginning `} else if !errors.Is(err, os.ErrNotExist) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 217,
+          "column": 45
+        },
+        "end": {
+          "line": 219,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/effort/service.go",
+        "start": {
+          "line": 378,
+          "column": 78
+        },
+        "end": {
+          "line": 380,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The service atomically moved the just-validated UUID and slug resident to its private reservation immediately before reloading it. A changed immutable identity requires concurrent mutation of the private reservation; ordinary identity mismatch and successor preservation are directly tested.",
+      "movedFrom": {
+        "file": "internal/effort/service.go",
+        "start": {
+          "line": 363,
+          "column": 78
+        },
+        "end": {
+          "line": 365,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/effort/service.go",
+        "start": {
+          "line": 384,
+          "column": 55
+        },
+        "end": {
+          "line": 386,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/effort/service.go:373.55,366.3 1 in function RollbackCreation, beginning `{ // coverage-ignore: injected rollback.root-fsync covers this kernel boundary`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "internal/effort/service.go",
+        "start": {
+          "line": 373,
+          "column": 55
+        },
+        "end": {
+          "line": 375,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/effort/service.go",
+        "start": {
+          "line": 399,
+          "column": 31
+        },
+        "end": {
+          "line": 401,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "This branch records the exact residue of a committed cleanup failure returned by the released-platform expected-identity retirement owner. Producing that outcome requires a post-commit namespace or storage cleanup fault; the typed mapping is reviewed here while successful retirement and same-name successor refusal are directly tested.",
+      "movedFrom": {
+        "file": "internal/effort/service.go",
+        "start": {
+          "line": 391,
+          "column": 31
+        },
+        "end": {
+          "line": 393,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/effort/service.go",
+        "start": {
+          "line": 407,
+          "column": 55
+        },
+        "end": {
+          "line": 409,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/effort/service.go:399.55,379.3 1 in function RollbackCreation, beginning `{ // coverage-ignore: injected rollback.delete-fsync covers this kernel boundary`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "internal/effort/service.go",
+        "start": {
+          "line": 399,
+          "column": 55
+        },
+        "end": {
+          "line": 401,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/directory.go",
+        "start": {
+          "line": 69,
+          "column": 16
+        },
+        "end": {
+          "line": 71,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The parent Root was successfully opened immediately before this anchor and remains live until its deferred close, so this defensive branch requires an invariant breach or platform fault.",
+      "movedFrom": {
+        "file": "internal/filesystem/directory.go",
+        "start": {
+          "line": 74,
+          "column": 16
+        },
+        "end": {
+          "line": 76,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit.go",
+        "start": {
+          "line": 20,
+          "column": 16
+        },
+        "end": {
+          "line": 22,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The parent Root was successfully opened immediately before this anchor and remains live until its deferred close, so this defensive branch requires an invariant breach or platform fault.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit.go",
+        "start": {
+          "line": 21,
+          "column": 16
+        },
+        "end": {
+          "line": 23,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 32,
+          "column": 24
+        },
+        "end": {
+          "line": 34,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:33.24,35.4 1 in exchangeExpectedAnchored, beginning `if inspectErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 33,
+          "column": 24
+        },
+        "end": {
+          "line": 35,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 35,
+          "column": 52
+        },
+        "end": {
+          "line": 38,
+          "column": 4
+        },
+        "statements": 2
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:36.52,39.4 2 in exchangeExpectedAnchored, beginning `if rollbackErr := exchange(); rollbackErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 36,
+          "column": 52
+        },
+        "end": {
+          "line": 39,
+          "column": 4
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 43,
+          "column": 53
+        },
+        "end": {
+          "line": 46,
+          "column": 5
+        },
+        "statements": 2
+      },
+      "reason": "The destination-reservation removal already failed after the native exchange, and this branch requires the immediate compensating native exchange to fail independently. The deterministic retirement regression covers the first failure with successful restoration and exact destination-plus-residue reporting; inducing the second kernel/filesystem fault would require a test-only native mutation seam that would violate the released-platform single owner.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 44,
+          "column": 53
+        },
+        "end": {
+          "line": 47,
+          "column": 5
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 52,
+          "column": 47
+        },
+        "end": {
+          "line": 53,
+          "column": 52
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:53.47,43.52 1 in exchangeExpectedAnchored, beginning `if err := root.Remove(temporary); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 53,
+          "column": 47
+        },
+        "end": {
+          "line": 54,
+          "column": 52
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 53,
+          "column": 52
+        },
+        "end": {
+          "line": 56,
+          "column": 4
+        },
+        "statements": 2
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:54.52,46.4 2 in exchangeExpectedAnchored, beginning `if rollbackErr := exchange(); rollbackErr != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 54,
+          "column": 52
+        },
+        "end": {
+          "line": 57,
+          "column": 4
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 57,
+          "column": 3
+        },
+        "end": {
+          "line": 57,
+          "column": 20
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:58.3,47.20 1 in exchangeExpectedAnchored, beginning `return false, err`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 58,
+          "column": 3
+        },
+        "end": {
+          "line": 58,
+          "column": 20
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 60,
+          "column": 50
+        },
+        "end": {
+          "line": 62,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/expected_commit_linux.go:61.50,52.4 1 in exchangeExpectedAnchored, beginning `if err := root.Remove(destination); err != nil {`. This is a native rename-exchange syscall, post-exchange identity inspection, rollback, or cleanup failure that the concrete confined filesystem cannot inject deterministically; successful exchange, changed-winner refusal, and residue-free cleanup are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/expected_commit_linux.go",
+        "start": {
+          "line": 61,
+          "column": 50
+        },
+        "end": {
+          "line": 63,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 193,
+          "column": 47
+        },
+        "end": {
+          "line": 195,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:188.47,170.3 1 in ReplaceExpected, beginning `if err := validPath(destination); err != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 188,
+          "column": 47
+        },
+        "end": {
+          "line": 190,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 215,
+          "column": 48
+        },
+        "end": {
+          "line": 217,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:207.48,189.4 1 in ReplaceExpected, beginning `if _, err := rand.Read(token[:]); err != nil {`. The source exclusion records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 207,
+          "column": 48
+        },
+        "end": {
+          "line": 209,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 221,
+          "column": 34
+        },
+        "end": {
+          "line": 222,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:213.34,194.12 1 in ReplaceExpected, beginning `if errors.Is(err, fs.ErrExist) {`. The source exclusion records that a collision requires predicting the cryptographically random temporary name before this operation. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 213,
+          "column": 34
+        },
+        "end": {
+          "line": 214,
+          "column": 12
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 229,
+          "column": 17
+        },
+        "end": {
+          "line": 231,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:221.17,203.3 1 in ReplaceExpected, beginning `if file == nil {`. The source exclusion records that exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 221,
+          "column": 17
+        },
+        "end": {
+          "line": 223,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 233,
+          "column": 18
+        },
+        "end": {
+          "line": 235,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:225.18,207.4 1 in ReplaceExpected, beginning `if file != nil {`. The source exclusion records that this remains non-nil only after a local temporary write storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 225,
+          "column": 18
+        },
+        "end": {
+          "line": 227,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 237,
+          "column": 86
+        },
+        "end": {
+          "line": 239,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:229.86,211.5 1 in ReplaceExpected, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {`. The source exclusion records that the concrete root can fault here only through a concurrent namespace change or storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 229,
+          "column": 86
+        },
+        "end": {
+          "line": 231,
+          "column": 5
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 242,
+          "column": 48
+        },
+        "end": {
+          "line": 244,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:234.48,216.3 1 in ReplaceExpected, beginning `if n, err := file.Write(contents); err != nil {`. The source exclusion records that writing a locally-created regular temporary requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 234,
+          "column": 48
+        },
+        "end": {
+          "line": 236,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 244,
+          "column": 31
+        },
+        "end": {
+          "line": 246,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:236.31,218.3 1 in ReplaceExpected, beginning `} else if n != len(contents) {`. The source exclusion records that os.File.Write returns a non-nil error when it writes fewer bytes than requested. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 236,
+          "column": 31
+        },
+        "end": {
+          "line": 238,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 247,
+          "column": 41
+        },
+        "end": {
+          "line": 249,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:239.41,221.3 1 in ReplaceExpected, beginning `if err := file.Chmod(mode); err != nil {`. The source exclusion records that chmod of a newly-created regular temporary requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 239,
+          "column": 41
+        },
+        "end": {
+          "line": 241,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 250,
+          "column": 36
+        },
+        "end": {
+          "line": 252,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:242.36,224.3 1 in ReplaceExpected, beginning `if err := file.Sync(); err != nil {`. The source exclusion records that syncing a locally-created regular temporary requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 242,
+          "column": 36
+        },
+        "end": {
+          "line": 244,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 253,
+          "column": 37
+        },
+        "end": {
+          "line": 255,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:245.37,227.3 1 in ReplaceExpected, beginning `if err := file.Close(); err != nil {`. The source exclusion records that closing a locally-created regular temporary after a successful sync requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 245,
+          "column": 37
+        },
+        "end": {
+          "line": 247,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 308,
+          "column": 48
+        },
+        "end": {
+          "line": 310,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "crypto/rand.Read failure requires an operating-system entropy failure. The production path deliberately uses the real cryptographic source, so adding a test-only randomness seam would weaken the single production owner without improving behavior evidence.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 297,
+          "column": 48
+        },
+        "end": {
+          "line": 299,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 312,
+          "column": 73
+        },
+        "end": {
+          "line": 313,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "A collision requires an existing entry with the freshly generated 128-bit retirement token. Exhaustive collision behavior is bounded and fail-closed; ordinary retirement and successor preservation are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 301,
+          "column": 73
+        },
+        "end": {
+          "line": 302,
+          "column": 12
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 314,
+          "column": 24
+        },
+        "end": {
+          "line": 316,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Creating a private retirement reservation beneath an already-open validated root fails only for a namespace, permission, or storage fault. Invalid inputs and the successful atomic retirement path are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 303,
+          "column": 24
+        },
+        "end": {
+          "line": 305,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 319,
+          "column": 21
+        },
+        "end": {
+          "line": 321,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This branch requires one hundred independent 128-bit retirement-name collisions. It is a closed exhaustion guard rather than a safely reproducible behavior path.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 308,
+          "column": 21
+        },
+        "end": {
+          "line": 310,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 324,
+          "column": 89
+        },
+        "end": {
+          "line": 326,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "This deferred error requires an earlier uncommitted retirement refusal followed by a second cleanup fault on the private empty reservation. Primary identity refusal and cleanup ownership are directly tested; a deterministic double-fault would require a test-only filesystem seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 313,
+          "column": 89
+        },
+        "end": {
+          "line": 315,
+          "column": 5
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 331,
+          "column": 15
+        },
+        "end": {
+          "line": 335,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Consumed-with-error is the released-platform signal that atomic retirement committed but cleanup residue remains. It requires a post-commit kernel or filesystem cleanup fault; the branch preserves the residue by construction and the successful commit plus successor-refusal paths are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 320,
+          "column": 15
+        },
+        "end": {
+          "line": 324,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 338,
+          "column": 15
+        },
+        "end": {
+          "line": 340,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Every released-platform expected-exchange helper returns consumed=true on success, while unsupported platforms return an error. This is a fail-closed impossible-state guard.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 327,
+          "column": 15
+        },
+        "end": {
+          "line": 329,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 342,
+          "column": 50
+        },
+        "end": {
+          "line": 345,
+          "column": 3
+        },
+        "statements": 2
+      },
+      "reason": "The old nonempty tree has already been atomically detached to a private residue. Recursive cleanup failure requires a filesystem fault or concurrent permission change; the typed committed-residue result is retained for recovery, while successful retirement is directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 331,
+          "column": 50
+        },
+        "end": {
+          "line": 334,
+          "column": 3
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 355,
+          "column": 47
+        },
+        "end": {
+          "line": 357,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:341.47,268.3 1 in RemoveExpected, beginning `if err := validPath(destination); err != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 341,
+          "column": 47
+        },
+        "end": {
+          "line": 343,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 363,
+          "column": 17
+        },
+        "end": {
+          "line": 365,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:349.17,276.4 1 in RemoveExpected, beginning `if err != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 349,
+          "column": 17
+        },
+        "end": {
+          "line": 351,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 371,
+          "column": 53
+        },
+        "end": {
+          "line": 373,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:357.53,284.4 1 in RemoveExpected, beginning `if !errors.Is(readErr, io.EOF) || closeErr != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 357,
+          "column": 53
+        },
+        "end": {
+          "line": 359,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 379,
+          "column": 48
+        },
+        "end": {
+          "line": 381,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:365.48,292.4 1 in RemoveExpected, beginning `if _, err := rand.Read(token[:]); err != nil {`. The source exclusion records that the operating-system random source is required by the Go runtime and cannot be faulted through this seam. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 365,
+          "column": 48
+        },
+        "end": {
+          "line": 367,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 389,
+          "column": 50
+        },
+        "end": {
+          "line": 392,
+          "column": 6
+        },
+        "statements": 2
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:375.50,303.6 2 in RemoveExpected, beginning `if closeErr := file.Close(); closeErr != nil {`. The source exclusion records that closing a newly-created empty regular file requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 375,
+          "column": 50
+        },
+        "end": {
+          "line": 378,
+          "column": 6
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 395,
+          "column": 40
+        },
+        "end": {
+          "line": 396,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:381.40,307.12 1 in RemoveExpected, beginning `if errors.Is(returnErr, fs.ErrExist) {`. The source exclusion records that collision requires predicting a cryptographically random temporary. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 381,
+          "column": 40
+        },
+        "end": {
+          "line": 382,
+          "column": 12
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 398,
+          "column": 23
+        },
+        "end": {
+          "line": 400,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:384.23,311.4 1 in RemoveExpected, beginning `if returnErr != nil {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 384,
+          "column": 23
+        },
+        "end": {
+          "line": 386,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 404,
+          "column": 14
+        },
+        "end": {
+          "line": 406,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:390.14,317.3 1 in RemoveExpected, beginning `if !created {`. The source exclusion records that exhausting random temporary names is not practically triggerable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 390,
+          "column": 14
+        },
+        "end": {
+          "line": 392,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 409,
+          "column": 86
+        },
+        "end": {
+          "line": 411,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:395.86,322.5 1 in RemoveExpected, beginning `if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {`. This is an invalid capability, concurrent namespace, or concrete filesystem error return; confined success, identity-change refusal, directory preservation, and residue cleanup are directly tested without adding a test-only filesystem fault seam.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 395,
+          "column": 86
+        },
+        "end": {
+          "line": 397,
+          "column": 5
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 446,
+          "column": 39
+        },
+        "end": {
+          "line": 448,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "ReadDir and Close failure after successfully opening the confined directory requires a filesystem or descriptor fault. Invalid paths, missing entries, and successful direct-child inspection are directly tested.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 432,
+          "column": 39
+        },
+        "end": {
+          "line": 434,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 479,
+          "column": 20
+        },
+        "end": {
+          "line": 481,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:465.20,375.3 1 in ReadWithMode, beginning `if statErr != nil {`. The source exclusion records that stat on a successfully read confined regular file requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 465,
+          "column": 20
+        },
+        "end": {
+          "line": 467,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 482,
+          "column": 21
+        },
+        "end": {
+          "line": 484,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/filesystem/handle.go:468.21,378.3 1 in ReadWithMode, beginning `if closeErr != nil {`. The source exclusion records that close after a successful confined read requires a storage fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/filesystem/handle.go",
+        "start": {
+          "line": 468,
+          "column": 21
+        },
+        "end": {
+          "line": 470,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 156,
+          "column": 36
+        },
+        "end": {
+          "line": 158,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:152.36,154.4 1 in runWithDependencies, beginning `if err != nil || closeErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 152,
+          "column": 36
+        },
+        "end": {
+          "line": 154,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 181,
+          "column": 41
+        },
+        "end": {
+          "line": 183,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:177.41,179.3 1 in runWithDependencies, beginning `if len(collisions) > 0 && !input.Force {`. The source exclusion records that the non-force probe plans the same full catalog; force makes this condition false. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 177,
+          "column": 41
+        },
+        "end": {
+          "line": 179,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 198,
+          "column": 3
+        },
+        "end": {
+          "line": 198,
+          "column": 27
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:194.3,194.27 1 in runWithDependencies, beginning `return failScaffold(err)`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 194,
+          "column": 3
+        },
+        "end": {
+          "line": 194,
+          "column": 27
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 201,
+          "column": 16
+        },
+        "end": {
+          "line": 203,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:197.16,199.3 1 in runWithDependencies, beginning `if err != nil {`. The source exclusion records that typed Publisher results and fixed presentation grammar make this mapping failure unreachable. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 197,
+          "column": 16
+        },
+        "end": {
+          "line": 199,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 247,
+          "column": 57
+        },
+        "end": {
+          "line": 249,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:242.57,244.3 1 in createScaffold, beginning `if dirErr != nil && !errors.Is(dirErr, fs.ErrNotExist) {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 242,
+          "column": 57
+        },
+        "end": {
+          "line": 244,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 286,
+          "column": 20
+        },
+        "end": {
+          "line": 288,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:282.20,284.3 1 in rollbackScaffold, beginning `if openErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 282,
+          "column": 20
+        },
+        "end": {
+          "line": 284,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 316,
+          "column": 24
+        },
+        "end": {
+          "line": 318,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:312.24,314.3 1 in publisherPartialOutcome, beginning `if mutationErr != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 312,
+          "column": 24
+        },
+        "end": {
+          "line": 314,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 321,
+          "column": 22
+        },
+        "end": {
+          "line": 325,
+          "column": 4
+        },
+        "statements": 3
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:317.22,321.4 3 in publisherPartialOutcome, beginning `if valueErr != nil {`. The source exclusion records that fixed paths and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 317,
+          "column": 22
+        },
+        "end": {
+          "line": 321,
+          "column": 4
+        },
+        "statements": 3
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 337,
+          "column": 17
+        },
+        "end": {
+          "line": 339,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:333.17,335.4 1 in scaffoldEffectValues, beginning `if err != nil {`. The source exclusion records that fixed path and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 333,
+          "column": 17
+        },
+        "end": {
+          "line": 335,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 344,
+          "column": 17
+        },
+        "end": {
+          "line": 346,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:340.17,342.4 1 in scaffoldEffectValues, beginning `if err != nil {`. The source exclusion records that fixed path and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 340,
+          "column": 17
+        },
+        "end": {
+          "line": 342,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 351,
+          "column": 17
+        },
+        "end": {
+          "line": 353,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:347.17,349.4 1 in scaffoldEffectValues, beginning `if err != nil {`. This is a loader, lease release, scaffold host-fault, rollback, or presentation error return; loader and gate rollback, changed-winner preservation, successful initialization, and typed committed-effect reporting are directly tested.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 347,
+          "column": 17
+        },
+        "end": {
+          "line": 349,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 361,
+          "column": 21
+        },
+        "end": {
+          "line": 363,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:357.21,359.3 1 in scaffoldPartialOutcome, beginning `if valueErr != nil {`. The source exclusion records that fixed paths and prose contain no line break. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 357,
+          "column": 21
+        },
+        "end": {
+          "line": 359,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 389,
+          "column": 16
+        },
+        "end": {
+          "line": 391,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:385.16,387.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 385,
+          "column": 16
+        },
+        "end": {
+          "line": 387,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 394,
+          "column": 16
+        },
+        "end": {
+          "line": 396,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:390.16,392.3 1 in probeCollisions, beginning `if err != nil {`. The source exclusion records that ScaffoldConfig over the embedded catalog cannot fail at runtime. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 390,
+          "column": 16
+        },
+        "end": {
+          "line": 392,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 398,
+          "column": 66
+        },
+        "end": {
+          "line": 400,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:394.66,396.3 1 in probeCollisions, beginning `if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {`. The source exclusion records that a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 394,
+          "column": 66
+        },
+        "end": {
+          "line": 396,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 401,
+          "column": 63
+        },
+        "end": {
+          "line": 403,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/initop/init.go:397.63,399.3 1 in probeCollisions, beginning `if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil {`. The source exclusion records that post-MkdirAll write into a fresh temp dir cannot fail in practice. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 397,
+          "column": 63
+        },
+        "end": {
+          "line": 399,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 109,
+          "column": 44
+        },
+        "end": {
+          "line": 111,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation of internal/localdocop/localdoc.go:108.44,110.3 1 in run, beginning `} else if !errors.Is(err, os.ErrNotExist) { return Outcome{}, fmt.Errorf(\"inspect local document destination: %w\", err) }`. This is an authority observation, confined identity check, or external filesystem race boundary. Focused tests exercise success, refusal without mutation, stale config, authored collision, rollback, and typed partial effects; the remaining boundary is not deterministically faultable through an existing real seam.",
+      "movedFrom": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 108,
+          "column": 44
+        },
+        "end": {
+          "line": 110,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 112,
+          "column": 98
+        },
+        "end": {
+          "line": 114,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/localdocop/localdoc.go:126.98,128.3 1 to internal/localdocop/localdoc.go:111.98,113.3 1 without changing its behavior. Phase 4 transaction review: internal/localdocop/localdoc.go:49.98,51.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
+      "movedFrom": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 111,
+          "column": 98
+        },
+        "end": {
+          "line": 113,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 118,
+          "column": 16
+        },
+        "end": {
+          "line": 120,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation of internal/localdocop/localdoc.go:117.16,119.3 1 in run, beginning `if err != nil { return outcome, &PartialError{Outcome: outcome, Cause: err, Recovery: []string{\"repair config authority, then retry\"}} }`. This returns the owner-built typed partial outcome when a later sync or authority step fails. Focused fault tests exercise committed config, scaffold, declaration, Publisher effects, recovery, and cause identity; this additional external boundary combination is not deterministically inducible through an existing real seam.",
+      "movedFrom": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 117,
+          "column": 16
+        },
+        "end": {
+          "line": 119,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 245,
+          "column": 18
+        },
+        "end": {
+          "line": 247,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/project/project.go:253.18,255.3 1 to internal/project/project.go:246.18,248.3 1 without changing its behavior. Phase 4 transaction review: internal/project/project.go:247.18,249.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
+      "movedFrom": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 246,
+          "column": 18
+        },
+        "end": {
+          "line": 248,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 290,
+          "column": 16
+        },
+        "end": {
+          "line": 292,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 dead-code cleanup moved the reviewed branch from internal/project/project.go:295.16,297.3 1 to internal/project/project.go:288.16,290.3 1 without changing its behavior. Phase 4 transaction review: internal/project/project.go:289.16,291.3 is an error or race boundary not deterministically faultable through an existing real seam; success, refusal, and confined mutation behavior remain exercised without a test-only production seam.",
+      "movedFrom": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 288,
+          "column": 16
+        },
+        "end": {
+          "line": 290,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 272,
+          "column": 16
+        },
+        "end": {
+          "line": 274,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:280.16,282.3 1 in sync, beginning `if err != nil {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 271,
+          "column": 16
+        },
+        "end": {
+          "line": 273,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 306,
+          "column": 12
+        },
+        "end": {
+          "line": 308,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:313.12,315.4 1 in syncReportWithPlan, beginning `if found {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 304,
+          "column": 12
+        },
+        "end": {
+          "line": 306,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 310,
+          "column": 13
+        },
+        "end": {
+          "line": 312,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:317.13,319.4 1 in syncReportWithPlan, beginning `if !found {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 308,
+          "column": 13
+        },
+        "end": {
+          "line": 310,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 314,
+          "column": 62
+        },
+        "end": {
+          "line": 316,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:321.62,323.4 1 in syncReportWithPlan, beginning `if stateErr != nil || state != manifest.AuthorityPermanent {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 312,
+          "column": 62
+        },
+        "end": {
+          "line": 314,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 325,
+          "column": 102
+        },
+        "end": {
+          "line": 327,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:332.102,334.5 1 in syncReportWithPlan, beginning `if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil {`. The source exclusion records that rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 323,
+          "column": 102
+        },
+        "end": {
+          "line": 325,
+          "column": 5
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 370,
+          "column": 60
+        },
+        "end": {
+          "line": 372,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:377.60,379.4 1 in syncReportWithPlan, beginning `if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 368,
+          "column": 60
+        },
+        "end": {
+          "line": 370,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 486,
+          "column": 91
+        },
+        "end": {
+          "line": 490,
+          "column": 29
+        },
+        "statements": 4
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:485.91,489.29 4 in syncReportWithPlan, beginning `if committedPath, residuePath, committed := committedPublication(bakErr); committed {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 476,
+          "column": 91
+        },
+        "end": {
+          "line": 480,
+          "column": 29
+        },
+        "statements": 4
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 490,
+          "column": 29
+        },
+        "end": {
+          "line": 492,
+          "column": 9
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:489.29,491.9 1 in syncReportWithPlan, beginning `if residuePath != \"\" {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 480,
+          "column": 29
+        },
+        "end": {
+          "line": 482,
+          "column": 9
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 531,
+          "column": 32
+        },
+        "end": {
+          "line": 532,
+          "column": 19
+        },
+        "statements": 1
+      },
+      "reason": "This reachable comparator arm requires one synchronization to prune empty-directory candidates from both tracked and resident roots. Separate tracked and resident pruning tests exercise each capability; the retained miss records the uncombined mixed-root ordering case without changing production design for coverage.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 525,
+          "column": 32
+        },
+        "end": {
+          "line": 526,
+          "column": 19
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 532,
+          "column": 19
+        },
+        "end": {
+          "line": 534,
+          "column": 6
+        },
+        "statements": 1
+      },
+      "reason": "This reachable comparator arm orders a resident cleanup candidate after a tracked candidate when one synchronization prunes both roots. Separate root-specific pruning tests exercise cleanup; the retained miss records the uncombined mixed-root ordering case.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 526,
+          "column": 19
+        },
+        "end": {
+          "line": 528,
+          "column": 6
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 535,
+          "column": 5
+        },
+        "end": {
+          "line": 535,
+          "column": 14
+        },
+        "statements": 1
+      },
+      "reason": "This reachable comparator arm orders a tracked cleanup candidate before a resident candidate when one synchronization prunes both roots. Separate root-specific pruning tests exercise cleanup; the retained miss records the uncombined mixed-root ordering case.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 529,
+          "column": 5
+        },
+        "end": {
+          "line": 529,
+          "column": 14
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 542,
+          "column": 43
+        },
+        "end": {
+          "line": 543,
+          "column": 14
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:545.43,546.14 1 in syncReportWithPlan, beginning `if errors.Is(infoErr, fs.ErrNotExist) {`. This is a Publisher observation, backup, cleanup, or presentation error return; lease ordering, committed backup residue, resident mode effects, expected-identity refusal, and stable partial outcomes are directly tested.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 536,
+          "column": 43
+        },
+        "end": {
+          "line": 537,
+          "column": 14
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 562,
+          "column": 16
+        },
+        "end": {
+          "line": 564,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:564.16,566.3 1 in syncReportWithPlan, beginning `if err != nil {`. The source exclusion records that sync constructs only authority-valid lock fields, so marshal failure requires a future representation change. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 555,
+          "column": 16
+        },
+        "end": {
+          "line": 557,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 647,
+          "column": 16
+        },
+        "end": {
+          "line": 649,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/publisher/sync.go:649.16,651.3 1 in syncMutation, beginning `if err != nil {`. The source exclusion records that fixed nonempty completion action always validates as prose. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 640,
+          "column": 16
+        },
+        "end": {
+          "line": 642,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 309,
+          "column": 16
+        },
+        "end": {
+          "line": 311,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:308.16,294.3 1 in productionUninstallOpen, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 308,
+          "column": 16
+        },
+        "end": {
+          "line": 310,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 334,
+          "column": 16
+        },
+        "end": {
+          "line": 336,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:333.16,319.3 1 in uninstallWith, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 333,
+          "column": 16
+        },
+        "end": {
+          "line": 335,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 345,
+          "column": 26
+        },
+        "end": {
+          "line": 347,
+          "column": 17
+        },
+        "statements": 2
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:344.26,330.17 2 in uninstallWith, beginning `if residentRoot != root {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 344,
+          "column": 26
+        },
+        "end": {
+          "line": 346,
+          "column": 17
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 347,
+          "column": 17
+        },
+        "end": {
+          "line": 349,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:346.17,332.4 1 in uninstallWith, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 346,
+          "column": 17
+        },
+        "end": {
+          "line": 348,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 350,
+          "column": 3
+        },
+        "end": {
+          "line": 351,
+          "column": 16
+        },
+        "statements": 2
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:349.3,334.16 2 in uninstallWith, beginning `residentClosed = false`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 349,
+          "column": 3
+        },
+        "end": {
+          "line": 350,
+          "column": 16
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 351,
+          "column": 16
+        },
+        "end": {
+          "line": 352,
+          "column": 23
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:350.16,335.23 1 in uninstallWith, beginning `defer func() {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 350,
+          "column": 16
+        },
+        "end": {
+          "line": 351,
+          "column": 23
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 352,
+          "column": 23
+        },
+        "end": {
+          "line": 354,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:351.23,337.5 1 in uninstallWith, beginning `if !residentClosed {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 351,
+          "column": 23
+        },
+        "end": {
+          "line": 353,
+          "column": 5
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 361,
+          "column": 16
+        },
+        "end": {
+          "line": 363,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:360.16,346.3 1 in uninstallWith, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 360,
+          "column": 16
+        },
+        "end": {
+          "line": 362,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 365,
+          "column": 73
+        },
+        "end": {
+          "line": 367,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:363.73,349.3 1 in uninstallWith, beginning `if lockInfo.Mode()&fs.ModeSymlink != 0 || !lockInfo.Mode().IsRegular() {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 363,
+          "column": 73
+        },
+        "end": {
+          "line": 365,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 369,
+          "column": 16
+        },
+        "end": {
+          "line": 371,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:367.16,353.3 1 in uninstallWith, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 367,
+          "column": 16
+        },
+        "end": {
+          "line": 369,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 428,
+          "column": 37
+        },
+        "end": {
+          "line": 429,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:424.37,409.12 1 in uninstallWith, beginning `if errors.Is(err, fs.ErrNotExist) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 424,
+          "column": 37
+        },
+        "end": {
+          "line": 425,
+          "column": 12
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 431,
+          "column": 17
+        },
+        "end": {
+          "line": 433,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:427.17,413.4 1 in uninstallWith, beginning `if err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 427,
+          "column": 17
+        },
+        "end": {
+          "line": 429,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 442,
+          "column": 4
+        },
+        "end": {
+          "line": 442,
+          "column": 98
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:437.4,421.98 1 in uninstallWith, beginning `return report, partialUninstall(report, fmt.Errorf(\"remove empty directory %s: %w\", dir, err))`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 437,
+          "column": 4
+        },
+        "end": {
+          "line": 437,
+          "column": 98
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 450,
+          "column": 25
+        },
+        "end": {
+          "line": 451,
+          "column": 42
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:445.25,430.42 1 in uninstallWith, beginning `if resident != tracked {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 445,
+          "column": 25
+        },
+        "end": {
+          "line": 446,
+          "column": 42
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 451,
+          "column": 42
+        },
+        "end": {
+          "line": 453,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:446.42,432.4 1 in uninstallWith, beginning `if err := resident.Close(); err != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 446,
+          "column": 42
+        },
+        "end": {
+          "line": 448,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 454,
+          "column": 3
+        },
+        "end": {
+          "line": 454,
+          "column": 24
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/resident/resident.go:449.3,433.24 1 in uninstallWith, beginning `residentClosed = true`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 449,
+          "column": 3
+        },
+        "end": {
+          "line": 449,
+          "column": 24
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/topic/provenance.go",
+        "start": {
+          "line": 80,
+          "column": 101
+        },
+        "end": {
+          "line": 82,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation of internal/topic/provenance.go:70.93,72.4 1 in SubstituteProvenanceConfined, beginning `if err := files.ReplaceExpected(path, info, []byte(body), info.Mode().Perm()); err != nil { return false, err }`. This is a confined provenance observation or expected-identity replacement boundary. Provenance tests exercise exact changed paths, no-op substitution, symlink refusal, mutation followed by walk failure, and typed partial cause preservation; the remaining concurrent namespace or replacement fault has no existing deterministic seam.",
+      "movedFrom": {
+        "file": "internal/topic/provenance.go",
+        "start": {
+          "line": 70,
+          "column": 93
+        },
+        "end": {
+          "line": 72,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 153,
+          "column": 16
+        },
+        "end": {
+          "line": 155,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The opened handle already survived the initial identity check and authority loading immediately before this revalidation. An inspection error requires concurrent disappearance or a filesystem fault; the deterministic root-replacement regression directly covers the adjacent mismatched-identity refusal and proves neither tree is mutated.",
+      "movedFrom": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 152,
+          "column": 16
+        },
+        "end": {
+          "line": 154,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 160,
+          "column": 45
+        },
+        "end": {
+          "line": 162,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/worktree/manager.go:157.45,136.4 1 in function operationFree, beginning `{ // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 158,
+          "column": 45
+        },
+        "end": {
+          "line": 160,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 324,
+          "column": 20
+        },
+        "end": {
+          "line": 326,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:322.20,290.3 1 in rollback, beginning `if pathErr != nil {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 322,
+          "column": 20
+        },
+        "end": {
+          "line": 324,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 354,
+          "column": 40
+        },
+        "end": {
+          "line": 360,
+          "column": 4
+        },
+        "statements": 2
+      },
+      "reason": "This branch maps a typed committed-cleanup residue from identity-bound failed-creation rollback into exact reservation and residue recovery actions. Producing it end to end requires a post-exchange kernel/filesystem cleanup fault; the native retirement regression proves both paths are preserved, the effort service maps the typed residue, and worktree diagnostic tests cover exact residue presentation at the lifecycle boundary.",
+      "movedFrom": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 352,
+          "column": 40
+        },
+        "end": {
+          "line": 358,
+          "column": 4
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 363,
+          "column": 24
+        },
+        "end": {
+          "line": 365,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "RollbackCreation sets ReservationPath whenever Reserved is true. The fallback protects compatibility with an incomplete internal result and is unreachable from the sole production service; exact reservation-path presentation is directly tested.",
+      "movedFrom": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 361,
+          "column": 24
+        },
+        "end": {
+          "line": 363,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 392,
+          "column": 44
+        },
+        "end": {
+          "line": 394,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:390.44,347.3 1 in topologyEffects, beginning `} else if !errors.Is(err, os.ErrNotExist) {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 390,
+          "column": 44
+        },
+        "end": {
+          "line": 392,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 475,
+          "column": 15
+        },
+        "end": {
+          "line": 477,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:473.15,430.5 1 in Integrate, beginning `if changed {`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam.",
+      "movedFrom": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 473,
+          "column": 15
+        },
+        "end": {
+          "line": 475,
+          "column": 5
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 604,
+          "column": 49
+        },
+        "end": {
+          "line": 606,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/worktree/manager.go:602.49,558.4 1 in Remove, beginning `} else if !errors.Is(statErr, os.ErrNotExist) {`. The source exclusion records that local lstat reports an inode or os.ErrNotExist absent a kernel fault. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "internal/worktree/manager.go",
+        "start": {
+          "line": 602,
+          "column": 49
+        },
+        "end": {
+          "line": 604,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 56,
+          "column": 47
+        },
+        "end": {
+          "line": 58,
+          "column": 17
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 61,
+          "column": 3
+        },
+        "end": {
+          "line": 61,
+          "column": 122
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 73,
+          "column": 60
+        },
+        "end": {
+          "line": 75,
+          "column": 2
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 86,
+          "column": 56
+        },
+        "end": {
+          "line": 88,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 102,
+          "column": 37
+        },
+        "end": {
+          "line": 103,
+          "column": 21
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 103,
+          "column": 21
+        },
+        "end": {
+          "line": 105,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/domainop/domain.go",
+        "start": {
+          "line": 130,
+          "column": 56
+        },
+        "end": {
+          "line": 132,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/effort/service.go",
+        "start": {
+          "line": 124,
+          "column": 41
+        },
+        "end": {
+          "line": 124,
+          "column": 78
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an injected or operating-system lifecycle fault; focused effort and worktree tests exercise identity refusal and committed-cleanup outcomes without adding a metric-only seam."
+    },
+    {
+      "identity": {
+        "file": "internal/effort/service.go",
+        "start": {
+          "line": 370,
+          "column": 16
+        },
+        "end": {
+          "line": 372,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an injected or operating-system lifecycle fault; focused effort and worktree tests exercise identity refusal and committed-cleanup outcomes without adding a metric-only seam."
+    },
+    {
+      "identity": {
+        "file": "internal/effort/service.go",
+        "start": {
+          "line": 375,
+          "column": 16
+        },
+        "end": {
+          "line": 377,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an injected or operating-system lifecycle fault; focused effort and worktree tests exercise identity refusal and committed-cleanup outcomes without adding a metric-only seam."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 63,
+          "column": 164
+        },
+        "end": {
+          "line": 65,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 99,
+          "column": 85
+        },
+        "end": {
+          "line": 101,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 103,
+          "column": 18
+        },
+        "end": {
+          "line": 105,
+          "column": 17
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 105,
+          "column": 17
+        },
+        "end": {
+          "line": 107,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 108,
+          "column": 3
+        },
+        "end": {
+          "line": 108,
+          "column": 26
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 108,
+          "column": 26
+        },
+        "end": {
+          "line": 110,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 112,
+          "column": 32
+        },
+        "end": {
+          "line": 114,
+          "column": 17
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 117,
+          "column": 3
+        },
+        "end": {
+          "line": 117,
+          "column": 13
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 120,
+          "column": 3
+        },
+        "end": {
+          "line": 121,
+          "column": 17
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 124,
+          "column": 3
+        },
+        "end": {
+          "line": 124,
+          "column": 43
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 136,
+          "column": 17
+        },
+        "end": {
+          "line": 138,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 165,
+          "column": 16
+        },
+        "end": {
+          "line": 167,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 178,
+          "column": 16
+        },
+        "end": {
+          "line": 180,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 190,
+          "column": 8
+        },
+        "end": {
+          "line": 192,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 193,
+          "column": 16
+        },
+        "end": {
+          "line": 195,
+          "column": 64
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 195,
+          "column": 64
+        },
+        "end": {
+          "line": 197,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 282,
+          "column": 27
+        },
+        "end": {
+          "line": 284,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 372,
+          "column": 50
+        },
+        "end": {
+          "line": 374,
+          "column": 2
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 382,
+          "column": 3
+        },
+        "end": {
+          "line": 383,
+          "column": 17
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 383,
+          "column": 17
+        },
+        "end": {
+          "line": 385,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 386,
+          "column": 3
+        },
+        "end": {
+          "line": 386,
+          "column": 55
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 388,
+          "column": 2
+        },
+        "end": {
+          "line": 389,
+          "column": 16
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 392,
+          "column": 2
+        },
+        "end": {
+          "line": 394,
+          "column": 16
+        },
+        "statements": 3
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 397,
+          "column": 2
+        },
+        "end": {
+          "line": 398,
+          "column": 66
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 401,
+          "column": 2
+        },
+        "end": {
+          "line": 401,
+          "column": 63
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 404,
+          "column": 2
+        },
+        "end": {
+          "line": 404,
+          "column": 126
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 404,
+          "column": 126
+        },
+        "end": {
+          "line": 404,
+          "column": 145
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 405,
+          "column": 2
+        },
+        "end": {
+          "line": 406,
+          "column": 16
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 409,
+          "column": 2
+        },
+        "end": {
+          "line": 410,
+          "column": 16
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 410,
+          "column": 16
+        },
+        "end": {
+          "line": 412,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/initop/init.go",
+        "start": {
+          "line": 413,
+          "column": 2
+        },
+        "end": {
+          "line": 413,
+          "column": 61
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 54,
+          "column": 47
+        },
+        "end": {
+          "line": 56,
+          "column": 17
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 59,
+          "column": 3
+        },
+        "end": {
+          "line": 59,
+          "column": 122
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/localdocop/localdoc.go",
+        "start": {
+          "line": 71,
+          "column": 60
+        },
+        "end": {
+          "line": 73,
+          "column": 2
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 253,
+          "column": 16
+        },
+        "end": {
+          "line": 256,
+          "column": 3
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external read, publication, or cleanup fault; focused project and Publisher tests exercise successful, refusal, and partial outcomes without adding a metric-only fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 258,
+          "column": 16
+        },
+        "end": {
+          "line": 261,
+          "column": 3
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external read, publication, or cleanup fault; focused project and Publisher tests exercise successful, refusal, and partial outcomes without adding a metric-only fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 262,
+          "column": 45
+        },
+        "end": {
+          "line": 265,
+          "column": 3
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external read, publication, or cleanup fault; focused project and Publisher tests exercise successful, refusal, and partial outcomes without adding a metric-only fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 355,
+          "column": 107
+        },
+        "end": {
+          "line": 357,
+          "column": 16
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external read, publication, or cleanup fault; focused project and Publisher tests exercise successful, refusal, and partial outcomes without adding a metric-only fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 357,
+          "column": 16
+        },
+        "end": {
+          "line": 359,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external read, publication, or cleanup fault; focused project and Publisher tests exercise successful, refusal, and partial outcomes without adding a metric-only fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/project/project.go",
+        "start": {
+          "line": 360,
+          "column": 2
+        },
+        "end": {
+          "line": 360,
+          "column": 59
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external read, publication, or cleanup fault; focused project and Publisher tests exercise successful, refusal, and partial outcomes without adding a metric-only fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 547,
+          "column": 21
+        },
+        "end": {
+          "line": 549,
+          "column": 13
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external read, publication, or cleanup fault; focused project and Publisher tests exercise successful, refusal, and partial outcomes without adding a metric-only fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 659,
+          "column": 2
+        },
+        "end": {
+          "line": 659,
+          "column": 61
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external read, publication, or cleanup fault; focused project and Publisher tests exercise successful, refusal, and partial outcomes without adding a metric-only fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/sync.go",
+        "start": {
+          "line": 672,
+          "column": 49
+        },
+        "end": {
+          "line": 672,
+          "column": 85
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external read, publication, or cleanup fault; focused project and Publisher tests exercise successful, refusal, and partial outcomes without adding a metric-only fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 397,
+          "column": 67
+        },
+        "end": {
+          "line": 400,
+          "column": 5
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 402,
+          "column": 24
+        },
+        "end": {
+          "line": 405,
+          "column": 5
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/resident/resident.go",
+        "start": {
+          "line": 434,
+          "column": 20
+        },
+        "end": {
+          "line": 436,
+          "column": 12
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/topic/provenance.go",
+        "start": {
+          "line": 50,
+          "column": 73
+        },
+        "end": {
+          "line": 52,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/topic/provenance.go",
+        "start": {
+          "line": 66,
+          "column": 74
+        },
+        "end": {
+          "line": 69,
+          "column": 4
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/topic/provenance.go",
+        "start": {
+          "line": 71,
+          "column": 17
+        },
+        "end": {
+          "line": 74,
+          "column": 4
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 76,
+          "column": 16
+        },
+        "end": {
+          "line": 78,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/topicop/scaffold.go",
+        "start": {
+          "line": 159,
+          "column": 2
+        },
+        "end": {
+          "line": 160,
+          "column": 22
+        },
+        "statements": 2
+      },
+      "reason": "This expected-identity capability cleanup arm depends on an external operation fault or invariant breach; focused package tests exercise supported success, refusal, and partial outcomes without weakening the production boundary for coverage."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_identity.go",
+        "start": {
+          "line": 22,
+          "column": 48
+        },
+        "end": {
+          "line": 22,
+          "column": 72
+        },
+        "statements": 1
+      },
+      "reason": "The opaque expected-identity accessor is representation-only and exercised through expected-mutation callers; distinguishing this forwarding arm further would require a metric-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_identity.go",
+        "start": {
+          "line": 23,
+          "column": 48
+        },
+        "end": {
+          "line": 23,
+          "column": 72
+        },
+        "statements": 1
+      },
+      "reason": "The opaque expected-identity accessor is representation-only and exercised through expected-mutation callers; distinguishing this forwarding arm further would require a metric-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_identity.go",
+        "start": {
+          "line": 25,
+          "column": 48
+        },
+        "end": {
+          "line": 25,
+          "column": 75
+        },
+        "statements": 1
+      },
+      "reason": "The opaque expected-identity accessor is representation-only and exercised through expected-mutation callers; distinguishing this forwarding arm further would require a metric-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_identity.go",
+        "start": {
+          "line": 27,
+          "column": 48
+        },
+        "end": {
+          "line": 27,
+          "column": 71
+        },
+        "statements": 1
+      },
+      "reason": "The opaque expected-identity accessor is representation-only and exercised through expected-mutation callers; distinguishing this forwarding arm further would require a metric-only production seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_identity_linux.go",
+        "start": {
+          "line": 27,
+          "column": 16
+        },
+        "end": {
+          "line": 29,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The dedicated Linux identity holds a live O_PATH descriptor; this uncovered arm requires failure while opening or statting that already-live confined kernel handle, which has no deterministic standard-library fault seam."
+    },
+    {
+      "identity": {
+        "file": "internal/filesystem/expected_identity_linux.go",
+        "start": {
+          "line": 37,
+          "column": 16
+        },
+        "end": {
+          "line": 40,
+          "column": 3
+        },
+        "statements": 2
+      },
+      "reason": "The dedicated Linux identity holds a live O_PATH descriptor; this uncovered arm requires failure while opening or statting that already-live confined kernel handle, which has no deterministic standard-library fault seam."
     }
   ],
   "directives": [
@@ -17036,8 +21308,8 @@
     {
       "directive": {
         "file": "internal/adr/renumber.go",
-        "line": 28,
-        "targetLine": 28,
+        "line": 26,
+        "targetLine": 26,
         "reason": "the same path was read one statement earlier, so a stat failure needs a concurrent filesystem race",
         "mapped": true,
         "executed": false
@@ -17048,8 +21320,8 @@
     {
       "directive": {
         "file": "internal/adr/renumber.go",
-        "line": 50,
-        "targetLine": 50,
+        "line": 54,
+        "targetLine": 54,
         "reason": "the numbered path sits beside the file just read, so a write fails only on a permission fault a test cannot trigger",
         "mapped": true,
         "executed": false
@@ -18416,8 +22688,8 @@
     {
       "directive": {
         "file": "internal/domainop/domain.go",
-        "line": 34,
-        "targetLine": 34,
+        "line": 32,
+        "targetLine": 32,
         "reason": "Loader parsed and validated this exact domains sequence immediately above",
         "mapped": true,
         "executed": false
@@ -18428,8 +22700,8 @@
     {
       "directive": {
         "file": "internal/domainop/domain.go",
-        "line": 37,
-        "targetLine": 37,
+        "line": 35,
+        "targetLine": 35,
         "reason": "the config was just read from this path; failure requires a permission, storage, or concurrent namespace fault",
         "mapped": true,
         "executed": false
@@ -18440,8 +22712,8 @@
     {
       "directive": {
         "file": "internal/domainop/domain.go",
-        "line": 63,
-        "targetLine": 63,
+        "line": 61,
+        "targetLine": 61,
         "reason": "Loader parsed and validated this exact domains sequence immediately above",
         "mapped": true,
         "executed": false
@@ -18452,8 +22724,8 @@
     {
       "directive": {
         "file": "internal/domainop/domain.go",
-        "line": 66,
-        "targetLine": 66,
+        "line": 64,
+        "targetLine": 64,
         "reason": "the config was just read from this path; failure requires a permission, storage, or concurrent namespace fault",
         "mapped": true,
         "executed": false
@@ -18464,8 +22736,8 @@
     {
       "directive": {
         "file": "internal/domainop/domain.go",
-        "line": 100,
-        "targetLine": 100,
+        "line": 98,
+        "targetLine": 98,
         "reason": "a nil Sync error returns a completed result with a mutation",
         "mapped": true,
         "executed": false
@@ -19580,8 +23852,8 @@
     {
       "directive": {
         "file": "internal/effort/service.go",
-        "line": 364,
-        "targetLine": 364,
+        "line": 384,
+        "targetLine": 384,
         "reason": "injected rollback.root-fsync covers this kernel boundary",
         "mapped": true,
         "executed": false
@@ -19592,8 +23864,8 @@
     {
       "directive": {
         "file": "internal/effort/service.go",
-        "line": 373,
-        "targetLine": 373,
+        "line": 391,
+        "targetLine": 391,
         "reason": "injected rollback.root-fsync covers this kernel boundary",
         "mapped": true,
         "executed": false
@@ -19604,8 +23876,8 @@
     {
       "directive": {
         "file": "internal/effort/service.go",
-        "line": 377,
-        "targetLine": 377,
+        "line": 396,
+        "targetLine": 396,
         "reason": "injected rollback.delete-fsync covers this kernel boundary",
         "mapped": true,
         "executed": false
@@ -19616,8 +23888,8 @@
     {
       "directive": {
         "file": "internal/effort/service.go",
-        "line": 399,
-        "targetLine": 399,
+        "line": 415,
+        "targetLine": 415,
         "reason": "injected rollback.delete-fsync covers this kernel boundary",
         "mapped": true,
         "executed": false
@@ -20192,8 +24464,8 @@
     {
       "directive": {
         "file": "internal/filesystem/directory.go",
-        "line": 74,
-        "targetLine": 74,
+        "line": 64,
+        "targetLine": 64,
         "reason": "the newly opened parent remains live until its deferred close",
         "mapped": true,
         "executed": false
@@ -20204,8 +24476,8 @@
     {
       "directive": {
         "file": "internal/filesystem/directory.go",
-        "line": 75,
-        "targetLine": 75,
+        "line": 65,
+        "targetLine": 65,
         "reason": "the newly opened parent remains live until its deferred close",
         "mapped": false,
         "executed": false
@@ -20216,8 +24488,8 @@
     {
       "directive": {
         "file": "internal/filesystem/expected_commit.go",
-        "line": 21,
-        "targetLine": 21,
+        "line": 19,
+        "targetLine": 19,
         "reason": "the newly opened parent remains live until its deferred close",
         "mapped": true,
         "executed": false
@@ -20228,8 +24500,8 @@
     {
       "directive": {
         "file": "internal/filesystem/expected_commit.go",
-        "line": 22,
-        "targetLine": 22,
+        "line": 20,
+        "targetLine": 20,
         "reason": "the newly opened parent remains live until its deferred close",
         "mapped": false,
         "executed": false
@@ -20468,8 +24740,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 181,
-        "targetLine": 181,
+        "line": 185,
+        "targetLine": 185,
         "reason": "closing a locally-created regular temporary after a successful write requires a storage fault",
         "mapped": true,
         "executed": false
@@ -20480,8 +24752,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 182,
-        "targetLine": 182,
+        "line": 186,
+        "targetLine": 186,
         "reason": "closing a locally-created regular temporary after a successful write requires a storage fault",
         "mapped": false,
         "executed": false
@@ -20492,8 +24764,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 207,
-        "targetLine": 207,
+        "line": 223,
+        "targetLine": 223,
         "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
         "mapped": true,
         "executed": false
@@ -20504,8 +24776,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 213,
-        "targetLine": 213,
+        "line": 229,
+        "targetLine": 229,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": true,
         "executed": false
@@ -20516,8 +24788,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 214,
-        "targetLine": 214,
+        "line": 230,
+        "targetLine": 230,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": false,
         "executed": false
@@ -20528,8 +24800,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 221,
-        "targetLine": 221,
+        "line": 237,
+        "targetLine": 237,
         "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
         "mapped": true,
         "executed": false
@@ -20540,8 +24812,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 222,
-        "targetLine": 222,
+        "line": 238,
+        "targetLine": 238,
         "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
         "mapped": false,
         "executed": false
@@ -20552,8 +24824,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 225,
-        "targetLine": 225,
+        "line": 241,
+        "targetLine": 241,
         "reason": "this remains non-nil only after a local temporary write storage fault",
         "mapped": true,
         "executed": false
@@ -20564,8 +24836,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 226,
-        "targetLine": 226,
+        "line": 242,
+        "targetLine": 242,
         "reason": "a second close failure after a replacement write failure requires a second storage fault",
         "mapped": false,
         "executed": false
@@ -20576,8 +24848,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 229,
-        "targetLine": 229,
+        "line": 245,
+        "targetLine": 245,
         "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
         "mapped": true,
         "executed": false
@@ -20588,8 +24860,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 230,
-        "targetLine": 230,
+        "line": 246,
+        "targetLine": 246,
         "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
         "mapped": false,
         "executed": false
@@ -20600,8 +24872,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 234,
-        "targetLine": 234,
+        "line": 250,
+        "targetLine": 250,
         "reason": "writing a locally-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -20612,8 +24884,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 235,
-        "targetLine": 235,
+        "line": 251,
+        "targetLine": 251,
         "reason": "writing a locally-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -20624,8 +24896,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 236,
-        "targetLine": 236,
+        "line": 252,
+        "targetLine": 252,
         "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
         "mapped": true,
         "executed": false
@@ -20636,8 +24908,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 237,
-        "targetLine": 237,
+        "line": 253,
+        "targetLine": 253,
         "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
         "mapped": false,
         "executed": false
@@ -20648,8 +24920,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 239,
-        "targetLine": 239,
+        "line": 255,
+        "targetLine": 255,
         "reason": "chmod of a newly-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -20660,8 +24932,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 240,
-        "targetLine": 240,
+        "line": 256,
+        "targetLine": 256,
         "reason": "chmod of a newly-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -20672,8 +24944,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 242,
-        "targetLine": 242,
+        "line": 258,
+        "targetLine": 258,
         "reason": "syncing a locally-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -20684,8 +24956,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 243,
-        "targetLine": 243,
+        "line": 259,
+        "targetLine": 259,
         "reason": "syncing a locally-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -20696,8 +24968,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 245,
-        "targetLine": 245,
+        "line": 261,
+        "targetLine": 261,
         "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
         "mapped": true,
         "executed": false
@@ -20708,8 +24980,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 246,
-        "targetLine": 246,
+        "line": 262,
+        "targetLine": 262,
         "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
         "mapped": false,
         "executed": false
@@ -20720,8 +24992,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 254,
-        "targetLine": 254,
+        "line": 270,
+        "targetLine": 270,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": true,
         "executed": false
@@ -20732,8 +25004,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 255,
-        "targetLine": 255,
+        "line": 271,
+        "targetLine": 271,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": false,
         "executed": false
@@ -20744,8 +25016,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 257,
-        "targetLine": 257,
+        "line": 273,
+        "targetLine": 273,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": true,
         "executed": false
@@ -20756,8 +25028,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 258,
-        "targetLine": 258,
+        "line": 274,
+        "targetLine": 274,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": false,
         "executed": false
@@ -20768,8 +25040,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 308,
-        "targetLine": 308,
+        "line": 330,
+        "targetLine": 330,
         "reason": "random collision exhaustion is not practical",
         "mapped": true,
         "executed": false
@@ -20780,8 +25052,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 327,
-        "targetLine": 327,
+        "line": 349,
+        "targetLine": 349,
         "reason": "a successful expected exchange always consumes the temporary",
         "mapped": true,
         "executed": false
@@ -20792,8 +25064,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 328,
-        "targetLine": 328,
+        "line": 350,
+        "targetLine": 350,
         "reason": "platform helpers cannot report success without consumption",
         "mapped": false,
         "executed": false
@@ -20804,8 +25076,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 365,
-        "targetLine": 365,
+        "line": 393,
+        "targetLine": 393,
         "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
         "mapped": true,
         "executed": false
@@ -20816,8 +25088,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 375,
-        "targetLine": 375,
+        "line": 403,
+        "targetLine": 403,
         "reason": "closing a newly-created empty regular file requires a storage fault",
         "mapped": true,
         "executed": false
@@ -20828,8 +25100,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 376,
-        "targetLine": 376,
+        "line": 404,
+        "targetLine": 404,
         "reason": "cleanup after a close storage fault requires the same unportable fault source",
         "mapped": false,
         "executed": false
@@ -20840,8 +25112,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 377,
-        "targetLine": 377,
+        "line": 405,
+        "targetLine": 405,
         "reason": "closing a newly-created empty regular file requires a storage fault",
         "mapped": false,
         "executed": false
@@ -20852,8 +25124,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 381,
-        "targetLine": 381,
+        "line": 409,
+        "targetLine": 409,
         "reason": "collision requires predicting a cryptographically random temporary",
         "mapped": true,
         "executed": false
@@ -20864,8 +25136,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 382,
-        "targetLine": 382,
+        "line": 410,
+        "targetLine": 410,
         "reason": "collision requires predicting a cryptographically random temporary",
         "mapped": false,
         "executed": false
@@ -20876,8 +25148,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 390,
-        "targetLine": 390,
+        "line": 418,
+        "targetLine": 418,
         "reason": "exhausting random temporary names is not practically triggerable",
         "mapped": true,
         "executed": false
@@ -20888,8 +25160,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 391,
-        "targetLine": 391,
+        "line": 419,
+        "targetLine": 419,
         "reason": "exhausting random temporary names is not practically triggerable",
         "mapped": false,
         "executed": false
@@ -20900,8 +25172,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 465,
-        "targetLine": 465,
+        "line": 493,
+        "targetLine": 493,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": true,
         "executed": false
@@ -20912,8 +25184,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 466,
-        "targetLine": 466,
+        "line": 494,
+        "targetLine": 494,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": false,
         "executed": false
@@ -20924,8 +25196,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 468,
-        "targetLine": 468,
+        "line": 496,
+        "targetLine": 496,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": true,
         "executed": false
@@ -20936,8 +25208,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 469,
-        "targetLine": 469,
+        "line": 497,
+        "targetLine": 497,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": false,
         "executed": false
@@ -21824,8 +26096,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 152,
-        "targetLine": 152,
+        "line": 160,
+        "targetLine": 160,
         "reason": "Publisher preparation already validated the same advisory semantic inputs; failure requires a concurrent tree mutation",
         "mapped": true,
         "executed": false
@@ -21836,8 +26108,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 174,
-        "targetLine": 174,
+        "line": 182,
+        "targetLine": 182,
         "reason": "preparation validated every planned path; failure now requires an unportable root-confined filesystem fault",
         "mapped": true,
         "executed": false
@@ -21848,8 +26120,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 177,
-        "targetLine": 177,
+        "line": 185,
+        "targetLine": 185,
         "reason": "the non-force probe plans the same full catalog; force makes this condition false",
         "mapped": true,
         "executed": false
@@ -21860,8 +26132,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 178,
-        "targetLine": 178,
+        "line": 186,
+        "targetLine": 186,
         "reason": "the identical pre-prompt probe makes this path unreachable",
         "mapped": false,
         "executed": false
@@ -21872,8 +26144,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 197,
-        "targetLine": 197,
+        "line": 205,
+        "targetLine": 205,
         "reason": "typed Publisher results and fixed presentation grammar make this mapping failure unreachable",
         "mapped": true,
         "executed": false
@@ -21884,8 +26156,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 198,
-        "targetLine": 198,
+        "line": 206,
+        "targetLine": 206,
         "reason": "MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably",
         "mapped": true,
         "executed": false
@@ -21896,8 +26168,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 203,
-        "targetLine": 203,
+        "line": 211,
+        "targetLine": 211,
         "reason": "ScaffoldConfig over the embedded catalog cannot fail at runtime",
         "mapped": true,
         "executed": false
@@ -21908,8 +26180,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 207,
-        "targetLine": 207,
+        "line": 215,
+        "targetLine": 215,
         "reason": "a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses",
         "mapped": true,
         "executed": false
@@ -21920,8 +26192,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 210,
-        "targetLine": 210,
+        "line": 218,
+        "targetLine": 218,
         "reason": "post-MkdirAll write into a fresh temp dir cannot fail in practice",
         "mapped": true,
         "executed": false
@@ -21932,8 +26204,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 215,
-        "targetLine": 215,
+        "line": 223,
+        "targetLine": 223,
         "reason": "a freshly-scaffolded default config always opens",
         "mapped": true,
         "executed": false
@@ -21944,8 +26216,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 219,
-        "targetLine": 219,
+        "line": 410,
+        "targetLine": 410,
         "reason": "rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail",
         "mapped": true,
         "executed": false
@@ -21956,8 +26228,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 317,
-        "targetLine": 317,
+        "line": 325,
+        "targetLine": 325,
         "reason": "fixed paths and prose contain no line break",
         "mapped": true,
         "executed": false
@@ -21968,8 +26240,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 333,
-        "targetLine": 333,
+        "line": 341,
+        "targetLine": 341,
         "reason": "fixed path and prose contain no line break",
         "mapped": true,
         "executed": false
@@ -21980,8 +26252,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 340,
-        "targetLine": 340,
+        "line": 348,
+        "targetLine": 348,
         "reason": "fixed path and prose contain no line break",
         "mapped": true,
         "executed": false
@@ -21992,8 +26264,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 357,
-        "targetLine": 357,
+        "line": 365,
+        "targetLine": 365,
         "reason": "fixed paths and prose contain no line break",
         "mapped": true,
         "executed": false
@@ -22004,8 +26276,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 385,
-        "targetLine": 385,
+        "line": 393,
+        "targetLine": 393,
         "reason": "MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably",
         "mapped": true,
         "executed": false
@@ -22016,8 +26288,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 390,
-        "targetLine": 390,
+        "line": 398,
+        "targetLine": 398,
         "reason": "ScaffoldConfig over the embedded catalog cannot fail at runtime",
         "mapped": true,
         "executed": false
@@ -22028,8 +26300,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 394,
-        "targetLine": 394,
+        "line": 402,
+        "targetLine": 402,
         "reason": "a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses",
         "mapped": true,
         "executed": false
@@ -22040,8 +26312,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 397,
-        "targetLine": 397,
+        "line": 405,
+        "targetLine": 405,
         "reason": "post-MkdirAll write into a fresh temp dir cannot fail in practice",
         "mapped": true,
         "executed": false
@@ -22052,8 +26324,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 402,
-        "targetLine": 402,
+        "line": 410,
+        "targetLine": 410,
         "reason": "a freshly-scaffolded default config always opens",
         "mapped": true,
         "executed": false
@@ -22064,8 +26336,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 406,
-        "targetLine": 406,
+        "line": 414,
+        "targetLine": 414,
         "reason": "rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail",
         "mapped": true,
         "executed": false
@@ -23864,8 +28136,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 323,
-        "targetLine": 323,
+        "line": 327,
+        "targetLine": 327,
         "reason": "rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time",
         "mapped": true,
         "executed": false
@@ -23876,8 +28148,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 373,
-        "targetLine": 373,
+        "line": 378,
+        "targetLine": 378,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": true,
         "executed": false
@@ -23888,8 +28160,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 374,
-        "targetLine": 374,
+        "line": 379,
+        "targetLine": 379,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": false,
         "executed": false
@@ -23900,8 +28172,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 433,
-        "targetLine": 433,
+        "line": 441,
+        "targetLine": 441,
         "reason": "fixed nonempty completion action always validates as prose",
         "mapped": true,
         "executed": false
@@ -23912,8 +28184,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 555,
-        "targetLine": 555,
+        "line": 569,
+        "targetLine": 569,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": true,
         "executed": false
@@ -23924,8 +28196,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 556,
-        "targetLine": 556,
+        "line": 570,
+        "targetLine": 570,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": false,
         "executed": false
@@ -23936,8 +28208,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 640,
-        "targetLine": 640,
+        "line": 654,
+        "targetLine": 654,
         "reason": "fixed nonempty completion action always validates as prose",
         "mapped": true,
         "executed": false
@@ -25124,8 +29396,8 @@
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 134,
-        "targetLine": 134,
+        "line": 138,
+        "targetLine": 138,
         "reason": "local lstat reports an inode or os.ErrNotExist absent a kernel fault",
         "mapped": true,
         "executed": false
@@ -25136,8 +29408,8 @@
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 158,
-        "targetLine": 158,
+        "line": 162,
+        "targetLine": 162,
         "reason": "local lstat reports an inode or os.ErrNotExist absent a kernel fault",
         "mapped": true,
         "executed": false
@@ -25148,8 +29420,8 @@
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 241,
-        "targetLine": 241,
+        "line": 245,
+        "targetLine": 245,
         "reason": "ResidentRoot proved the owned resident ancestry; failure requires a concurrent namespace or storage fault",
         "mapped": true,
         "executed": false
@@ -25160,8 +29432,8 @@
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 506,
-        "targetLine": 506,
+        "line": 510,
+        "targetLine": 510,
         "reason": "local lstat reports an inode or os.ErrNotExist absent a kernel fault",
         "mapped": true,
         "executed": false
@@ -25172,8 +29444,8 @@
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 561,
-        "targetLine": 561,
+        "line": 565,
+        "targetLine": 565,
         "reason": "path identity and cleanliness were just proven; recursive removal failure requires a concurrent namespace or storage fault",
         "mapped": true,
         "executed": false
@@ -25184,8 +29456,8 @@
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 602,
-        "targetLine": 602,
+        "line": 606,
+        "targetLine": 606,
         "reason": "local lstat reports an inode or os.ErrNotExist absent a kernel fault",
         "mapped": true,
         "executed": false

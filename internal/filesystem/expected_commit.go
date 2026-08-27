@@ -2,12 +2,11 @@ package filesystem
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path"
 )
 
-func exchangeExpected(root *os.Root, temporary, destination string, expected fs.FileInfo, remove, retain bool) (bool, error) {
+func exchangeExpected(root *os.Root, temporary, destination string, expected *ExpectedIdentity, remove, retain bool) (bool, error) {
 	parent := path.Dir(destination)
 	if path.Dir(temporary) != parent {
 		return false, fmt.Errorf("filesystem: expected mutation paths have different parents")
