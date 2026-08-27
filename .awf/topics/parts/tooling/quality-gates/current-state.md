@@ -116,6 +116,6 @@ Backing: test
 
 ### `invariant: exact-revision-repository-acceptance`
 
-CI requires successful `CI / gate` and `CI / release-config` conclusions for the exact candidate SHA. Release publication verifies the same exact SHA before a credential-bearing publish job.
+Repository wiring keeps stable `CI / gate` and `CI / release-config` jobs and verifies their successful conclusions for the exact release SHA before the credential-bearing publish job. Hosted main required-check enforcement remains pending the separate hosted-setting operations.
 Origin: ADR-bind-repository-and-release-acceptance-to-exact-revisions
 Backing: test

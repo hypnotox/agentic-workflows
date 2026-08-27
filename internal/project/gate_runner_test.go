@@ -577,6 +577,9 @@ printf 'timeout %s\n' "$*" >>"$INVOCATION_LOG"
 
 // invariant: tooling/quality-gates:staged-test-selection (TestGateRunnerSelectsTestsFromStagedChanges)
 func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
+	// A staged-candidate hook exports its outer range while this test exercises
+	// nested fixture repositories. The harness must not leak that range inward.
+	t.Setenv("AWF_GATE_SELECT_RANGE", "outer-base outer-candidate")
 	goTests := []string{"test ./... -coverpkg=./... -coverprofile=coverage.out", "run ./cmd/covercheck --policy coverage.out coverage-baseline.json"}
 	piTests := []string{"TestPi(EffortMemoryToolContract|RealRuntimeSmoke)"}
 	both := append(slices.Clone(goTests), piTests...)
@@ -749,7 +752,13 @@ func assertGateSelectionOutcome(t *testing.T, root, logPath string, wantTests, w
 	}
 	cmd := exec.Command("bash", "./x", "gate", "timings")
 	cmd.Dir = root
-	cmd.Env = append(os.Environ(), "PATH="+filepath.Join(root, "fake-bin")+":"+os.Getenv("PATH"), "INVOCATION_LOG="+logPath, "AWF_PI_RUNTIME_SMOKE=1")
+	env := make([]string, 0, len(os.Environ())+3)
+	for _, entry := range os.Environ() {
+		if !strings.HasPrefix(entry, "AWF_GATE_SELECT_RANGE=") {
+			env = append(env, entry)
+		}
+	}
+	cmd.Env = append(env, "PATH="+filepath.Join(root, "fake-bin")+":"+os.Getenv("PATH"), "INVOCATION_LOG="+logPath, "AWF_PI_RUNTIME_SMOKE=1")
 	stderr := new(strings.Builder)
 	cmd.Stderr = stderr
 	err := cmd.Run()

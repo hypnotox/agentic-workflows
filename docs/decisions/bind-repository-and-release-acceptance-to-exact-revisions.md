@@ -60,3 +60,4 @@ Hosted settings remain an operator transaction outside an ordinary commit. Repos
 - 2026-08-26: Accepted; content-sha256: 7045a15a13bcc82d96d287fdce8b4f7a2ac5c20d7762fddad9899236e9ca365b
 - 2026-08-26: Implementing; content-sha256: 7045a15a13bcc82d96d287fdce8b4f7a2ac5c20d7762fddad9899236e9ca365b
 - 2026-08-26: Applied; operations: update `tooling/quality-gates:covercheck-mutation-regression`, update `tooling/quality-gates:staged-test-selection`, add `tooling/quality-gates:exact-revision-repository-acceptance`, update `tooling/changelog-and-release:release-gate-on-tag`
+- 2026-08-26: Reapplied; operations: add `tooling/quality-gates:exact-revision-repository-acceptance`

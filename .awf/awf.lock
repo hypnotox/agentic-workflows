@@ -1143,8 +1143,8 @@
     "docs/topics/tooling/quality-gates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:a0462076e0db26c46ba9c6669639a63991a864d65afb29b706a7f72e0d9330d5",
-      "outputHash": "sha256:4968164130e031f8feab5abf6e52ec3898b3ec02501bb8da3452119fac989e29"
+      "configHash": "sha256:d465180a0cab6a624b835d4e36dc9beb2ae455fd6b4413dd51aff0581ef1f99d",
+      "outputHash": "sha256:66fb54ce117ba852b9bf2f68dee2bdfc9d792470e851161a71d6cf58d6fc4204"
     },
     "docs/topics/tooling/test-infrastructure.md": {
       "templateId": "topics/topic.md.tmpl",

@@ -8,16 +8,21 @@ tmp=$(mktemp -d)
 deleted=$(mktemp)
 cleanup() { rm -f -- "$deleted"; git -C "$repo_root" worktree remove --force "$tmp" >/dev/null 2>&1 || rm -rf -- "$tmp"; }
 trap cleanup EXIT
-# Read the caller's index before clearing hook Git environment variables.
-git -C "$repo_root" diff --cached --name-only -z --diff-filter=D >"$deleted"
-# A worktree shares object storage but has its own index and HEAD, so neither
-# the caller's index nor its unstaged bytes participate in verification.
-git -C "$repo_root" worktree add --quiet --detach "$tmp" "$head"
-git -C "$repo_root" --work-tree="$tmp" checkout-index -a -f
-while IFS= read -r -d '' path; do rm -f -- "$tmp/$path"; done <"$deleted"
-# Hooks inherit the caller's GIT_INDEX_FILE. Clear it before operating on the
-# child, otherwise git add would silently rewrite the real commit index.
+# Capture the caller's selected index before clearing hook Git environment
+# variables. A hook may inherit GIT_INDEX_FILE from Git or an embedding tool.
+# The child must read this tree explicitly, never the caller's index path.
+index_tree=$(git -C "$repo_root" write-tree)
+# Treat a rename as its removed old path plus its added new path while copying
+# the tree. Otherwise checkout-index leaves the old HEAD path in the child.
+git -C "$repo_root" diff --cached --no-renames --name-only -z --diff-filter=D >"$deleted"
+# Clear inherited Git paths before creating or populating the child. A worktree
+# shares object storage but has its own index and HEAD, so neither the caller's
+# index nor its unstaged bytes participate in verification.
 unset $(git -C "$repo_root" rev-parse --local-env-vars)
+git -C "$repo_root" worktree add --quiet --detach "$tmp" "$head"
+git -C "$tmp" read-tree "$index_tree"
+git -C "$tmp" --work-tree="$tmp" checkout-index -a -f
+while IFS= read -r -d '' path; do rm -f -- "$tmp/$path"; done <"$deleted"
 git -C "$tmp" add -A
 git -C "$tmp" -c core.hooksPath=/dev/null -c user.name=awf-hook -c user.email=awf-hook@localhost commit -q -m staged-candidate
 candidate=$(git -C "$tmp" rev-parse HEAD)

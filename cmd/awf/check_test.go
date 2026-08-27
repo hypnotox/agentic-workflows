@@ -669,6 +669,218 @@ func TestRepositoryPreCommitHasOnlyPermanentPath(t *testing.T) {
 	}
 }
 
+func TestRepositoryPreCommitMaterializesAlternateIndexInLinkedWorktree(t *testing.T) {
+	root := syncedGitProject(t, strings.Replace(checkYAML, "gateCmd: make gate", "gateCmd: ./x gate, checkCmd: ./x check", 1))
+	repo := gitfixture.At(root)
+	// The synchronized fixture supplies the real generated payload. The staged
+	// x command below is the narrow behavioral oracle that payload invokes.
+	gitfixture.Commit(t, repo, "hook matrix base", map[string]string{
+		"modify":     "original\n",
+		"delete":     "original\n",
+		"rename-old": "original\n",
+		"executable": "#!/bin/sh\necho original\n",
+		"x":          "#!/bin/sh\nexit 0\n",
+	})
+	linked := filepath.Join(t.TempDir(), "linked")
+	gitRun := func(dir, index string, args ...string) string {
+		t.Helper()
+		fixture := gitfixture.At(dir)
+		var out string
+		var err error
+		if index == "" {
+			out, err = gitfixture.NativeRun(fixture, args...)
+		} else {
+			out, err = gitfixture.NativeRunWithIndex(fixture, index, args...)
+		}
+		if err != nil {
+			t.Fatalf("git %s: %v: %s", strings.Join(args, " "), err, out)
+		}
+		return out
+	}
+	gitRun(repo.Root(), "", "worktree", "add", "--quiet", "--detach", linked, "HEAD")
+	t.Cleanup(func() { gitRun(repo.Root(), "", "worktree", "remove", "--force", linked) })
+
+	hook, err := filepath.Abs(filepath.Join("..", "..", ".githooks", "pre-commit"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	tools := t.TempDir()
+	fakeGo := filepath.Join(tools, "go")
+	if err := os.WriteFile(fakeGo, []byte("#!/bin/sh\n# The payload, not Go compilation, is the fixture's behavior under test.\nexit 0\n"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	generatedPayload, err := os.ReadFile(filepath.Join(linked, ".awf/hooks/pre-commit.sh"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(generatedPayload), "./x check") || !strings.Contains(string(generatedPayload), "./x gate") {
+		t.Fatal("fixture did not retain the generated pre-commit payload")
+	}
+	originalX, err := os.ReadFile(filepath.Join(linked, "x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	originalXInfo, err := os.Stat(filepath.Join(linked, "x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	gitDir := gitRun(linked, "", "rev-parse", "--git-dir")
+	if !filepath.IsAbs(gitDir) {
+		gitDir = filepath.Join(linked, gitDir)
+	}
+
+	for _, tc := range []struct {
+		name       string
+		stage      func(index string)
+		compensate func()
+		xBehavior  string
+		wantFail   bool
+	}{
+		{
+			name: "add broken staged bytes reject unstaged repair",
+			stage: func(index string) {
+				testsupport.WriteFile(t, filepath.Join(linked, "add"), "broken\n")
+				gitRun(linked, index, "add", "add")
+			},
+			compensate: func() { testsupport.WriteFile(t, filepath.Join(linked, "add"), "fixed\n") },
+			xBehavior:  "touch \"$AWF_PAYLOAD_MARKER\"\ntest \"$(cat add)\" != broken\n",
+			wantFail:   true,
+		},
+		{
+			name: "modify",
+			stage: func(index string) {
+				testsupport.WriteFile(t, filepath.Join(linked, "modify"), "staged\n")
+				gitRun(linked, index, "add", "modify")
+			},
+			compensate: func() { testsupport.WriteFile(t, filepath.Join(linked, "modify"), "working\n") },
+			xBehavior:  "touch \"$AWF_PAYLOAD_MARKER\"\ntest \"$(cat modify)\" = staged\n",
+		},
+		{
+			name: "delete",
+			stage: func(index string) {
+				if err := os.Remove(filepath.Join(linked, "delete")); err != nil {
+					t.Fatal(err)
+				}
+				gitRun(linked, index, "add", "-A", "delete")
+			},
+			compensate: func() { testsupport.WriteFile(t, filepath.Join(linked, "delete"), "working repair\n") },
+			xBehavior:  "touch \"$AWF_PAYLOAD_MARKER\"\ntest ! -e delete\n",
+		},
+		{
+			name: "rename",
+			stage: func(index string) {
+				if err := os.Rename(filepath.Join(linked, "rename-old"), filepath.Join(linked, "rename-new")); err != nil {
+					t.Fatal(err)
+				}
+				gitRun(linked, index, "add", "-A", "rename-old", "rename-new")
+			},
+			compensate: func() {
+				if err := os.Remove(filepath.Join(linked, "rename-new")); err != nil {
+					t.Fatal(err)
+				}
+				testsupport.WriteFile(t, filepath.Join(linked, "rename-old"), "working repair\n")
+			},
+			xBehavior: "touch \"$AWF_PAYLOAD_MARKER\"\ntest ! -e rename-old && test \"$(cat rename-new)\" = original\n",
+		},
+		{
+			name: "executable mode",
+			stage: func(index string) {
+				path := filepath.Join(linked, "executable")
+				if err := os.Chmod(path, 0o755); err != nil {
+					t.Fatal(err)
+				}
+				gitRun(linked, index, "add", "executable")
+			},
+			compensate: func() {
+				if err := os.Chmod(filepath.Join(linked, "executable"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+			},
+			xBehavior: "touch \"$AWF_PAYLOAD_MARKER\"\ntest -x executable\n",
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			alternate := filepath.Join(t.TempDir(), "index")
+			gitRun(linked, alternate, "read-tree", "HEAD")
+			candidateX := "#!/bin/sh\nset -eu\n" + tc.xBehavior
+			testsupport.WriteFile(t, filepath.Join(linked, "x"), candidateX)
+			if err := os.Chmod(filepath.Join(linked, "x"), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			gitRun(linked, alternate, "add", "x")
+			tc.stage(alternate)
+			if err := os.WriteFile(filepath.Join(linked, "x"), originalX, originalXInfo.Mode()); err != nil {
+				t.Fatal(err)
+			}
+			tc.compensate()
+
+			marker := filepath.Join(t.TempDir(), "payload-ran")
+			tmp := t.TempDir()
+			paths := []string{"add", "modify", "delete", "rename-old", "rename-new", "executable", "x", ".awf/hooks/pre-commit.sh"}
+			worktreeBefore := map[string][]byte{}
+			missingBefore := map[string]bool{}
+			for _, path := range paths {
+				if b, readErr := os.ReadFile(filepath.Join(linked, path)); readErr == nil {
+					worktreeBefore[path] = b
+				} else if os.IsNotExist(readErr) {
+					missingBefore[path] = true
+				} else {
+					t.Fatal(readErr)
+				}
+			}
+			statusBefore := gitRun(linked, alternate, "status", "--porcelain")
+			alternateTree := gitRun(linked, alternate, "write-tree")
+			if got := gitRun(linked, alternate, "show", ":.awf/hooks/pre-commit.sh"); got != strings.TrimSpace(string(generatedPayload)) {
+				t.Fatalf("generated payload changed in alternate index: %q", got)
+			}
+			defaultTree := gitRun(linked, "", "write-tree")
+			head := gitRun(linked, "", "rev-parse", "HEAD")
+
+			cmd := exec.Command("bash", hook)
+			cmd.Dir = linked
+			cmd.Env = append(os.Environ(), "GIT_INDEX_FILE="+alternate, "GIT_DIR="+gitDir, "GIT_WORK_TREE="+linked, "AWF_PAYLOAD_MARKER="+marker, "TMPDIR="+tmp, "PATH="+tools+string(os.PathListSeparator)+os.Getenv("PATH"))
+			out, runErr := cmd.CombinedOutput()
+			if tc.wantFail && runErr == nil {
+				t.Fatalf("broken staged candidate succeeded: %s", out)
+			}
+			if !tc.wantFail && runErr != nil {
+				t.Fatalf("hook failed: %v: %s", runErr, out)
+			}
+			if _, err := os.Stat(marker); err != nil {
+				t.Fatalf("payload did not execute: %v; output=%s", err, out)
+			}
+			if entries, err := os.ReadDir(tmp); err != nil || len(entries) != 0 {
+				t.Fatalf("temporary candidate cleanup: entries=%v err=%v", entries, err)
+			}
+			if got := gitRun(linked, alternate, "write-tree"); got != alternateTree {
+				t.Fatalf("alternate index changed: got %q want %q", got, alternateTree)
+			}
+			if got := gitRun(linked, "", "write-tree"); got != defaultTree {
+				t.Fatalf("default index changed: got %q want %q", got, defaultTree)
+			}
+			if got := gitRun(linked, "", "rev-parse", "HEAD"); got != head {
+				t.Fatalf("linked HEAD changed: got %q want %q", got, head)
+			}
+			if got := gitRun(repo.Root(), "", "rev-parse", "HEAD"); got != head {
+				t.Fatalf("main HEAD changed: got %q want %q", got, head)
+			}
+			if got := gitRun(linked, alternate, "status", "--porcelain"); got != statusBefore {
+				t.Fatalf("source status changed: got %q want %q", got, statusBefore)
+			}
+			for path, want := range worktreeBefore {
+				if got, err := os.ReadFile(filepath.Join(linked, path)); err != nil || !bytes.Equal(got, want) {
+					t.Fatalf("source bytes %s = %q, %v; want %q", path, got, err, want)
+				}
+			}
+			for path := range missingBefore {
+				if _, err := os.Lstat(filepath.Join(linked, path)); !os.IsNotExist(err) {
+					t.Fatalf("source path %s changed from absent: %v", path, err)
+				}
+			}
+		})
+	}
+}
+
 func TestRepositoryPreCommitRemovesSliceBeforePayload(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

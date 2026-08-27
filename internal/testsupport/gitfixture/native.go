@@ -317,13 +317,20 @@ func runGit(root string, args ...string) (string, error) {
 // this package. The duration parameter lets the deadline proof run promptly
 // without a swappable global seam.
 func runGitWithTimeout(timeout time.Duration, root string, stdin io.Reader, args ...string) ([]byte, error) {
+	return runGitWithTimeoutEnv(timeout, root, stdin, nil, args...)
+}
+
+// runGitWithTimeoutEnv remains the fixture package's sole Git process boundary.
+// Callers may add only a fixture-owned control variable through a focused
+// exported helper after the inherited environment has been isolated.
+func runGitWithTimeoutEnv(timeout time.Duration, root string, stdin io.Reader, extraEnv []string, args ...string) ([]byte, error) {
 	if root != "" {
 		args = append([]string{"-C", root}, args...)
 	}
 	ctx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
 	command := exec.CommandContext(ctx, "git", args...)
-	command.Env = nativeEnvironment(os.Environ())
+	command.Env = append(nativeEnvironment(os.Environ()), extraEnv...)
 	command.Stdin = stdin
 	command.WaitDelay = gitPipeWaitDelay(timeout)
 	output, err := command.CombinedOutput()
@@ -369,4 +376,12 @@ func nativeEnvironment(inherited []string) []string {
 		"SSH_ASKPASS=true",
 		"GCM_INTERACTIVE=Never",
 	)
+}
+
+// NativeRunWithIndex executes Git against one explicit fixture-owned index.
+// The ordinary fixture isolation still strips every inherited Git control
+// variable before this narrow override is applied.
+func NativeRunWithIndex(f Fixture, index string, args ...string) (string, error) {
+	output, err := runGitWithTimeoutEnv(nativeGitDeadline, f.root, nil, []string{"GIT_INDEX_FILE=" + index}, args...)
+	return strings.TrimSpace(string(output)), err
 }

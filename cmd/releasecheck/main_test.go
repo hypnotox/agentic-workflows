@@ -9,6 +9,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -16,6 +17,7 @@ import (
 	"gopkg.in/yaml.v3"
 
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 func changelogFS(content string) fstest.MapFS {
@@ -165,7 +167,6 @@ func TestUnreleasedBodyAtEOF(t *testing.T) {
 // Release workflow must run the ancestry check, ./x gate, and ./x check before
 // the GoReleaser step, so an untested or off-main tag cannot publish.
 // invariant: tooling/changelog-and-release:release-gate-on-tag (TestReleaseWorkflowGatesOnTag)
-// invariant: tooling/quality-gates:exact-revision-repository-acceptance (TestReleaseWorkflowGatesOnTag)
 func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 	b, err := os.ReadFile("../../.github/workflows/release.yml")
 	if err != nil {
@@ -324,22 +325,351 @@ func TestVerifyCIRefusesIncompleteOrWrongEvidence(t *testing.T) {
 	}
 }
 
-func TestReleaseWorkflowSeparatesReadVerificationFromPublish(t *testing.T) {
-	b, err := os.ReadFile("../../.github/workflows/release.yml")
+// invariant: tooling/quality-gates:exact-revision-repository-acceptance (TestExactRevisionWorkflowContract)
+func TestVerifyCIRefusesTransportAndEvidenceFaults(t *testing.T) {
+	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	validRuns := fmt.Sprintf(`{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
+	validJobs := `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`
+
+	if err := verifyCI(context.Background(), http.DefaultClient, "://bad", "a/r", "t", sha); err == nil {
+		t.Fatal("invalid API URL accepted")
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := verifyCI(ctx, http.DefaultClient, "https://example.invalid", "a/r", "t", sha); err == nil {
+		t.Fatal("canceled API request accepted")
+	}
+
+	for _, tc := range []struct {
+		name       string
+		runsStatus int
+		runsLink   bool
+		runsBody   string
+		jobsStatus int
+		jobsBody   string
+		wantErr    bool
+	}{
+		{name: "runs status", runsStatus: http.StatusBadGateway, wantErr: true},
+		{name: "runs link pagination", runsLink: true, runsBody: validRuns, wantErr: true},
+		{name: "runs malformed JSON", runsBody: `{`, wantErr: true},
+		{name: "ambiguous successful runs", runsBody: fmt.Sprintf(`{"total_count":2,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"},{"id":8,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha, sha), wantErr: true},
+		{name: "jobs status", runsBody: validRuns, jobsStatus: http.StatusBadGateway, wantErr: true},
+		{name: "jobs count", runsBody: validRuns, jobsBody: `{"total_count":3,"jobs":[]}`, wantErr: true},
+		{name: "failed required job", runsBody: validRuns, jobsBody: `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"failure"},{"name":"release-config","status":"completed","conclusion":"success"}]}`, wantErr: true},
+		{name: "duplicate required job", runsBody: validRuns, jobsBody: `{"total_count":3,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`, wantErr: true},
+		{name: "missing required job", runsBody: validRuns, jobsBody: `{"total_count":1,"jobs":[{"name":"gate","status":"completed","conclusion":"success"}]}`, wantErr: true},
+		{name: "irrelevant job ignored", runsBody: validRuns, jobsBody: `{"total_count":3,"jobs":[{"name":"other","status":"completed","conclusion":"failure"},{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				isJobs := strings.Contains(r.URL.Path, "/runs/7/jobs")
+				status, body := tc.runsStatus, tc.runsBody
+				if isJobs {
+					status, body = tc.jobsStatus, tc.jobsBody
+				} else if tc.runsLink {
+					w.Header().Set("Link", "<next>; rel=next")
+				}
+				if status == 0 {
+					status = http.StatusOK
+				}
+				if body == "" {
+					if isJobs {
+						body = validJobs
+					} else {
+						body = validRuns
+					}
+				}
+				w.WriteHeader(status)
+				_, _ = io.WriteString(w, body)
+			}))
+			defer server.Close()
+			err := verifyCI(context.Background(), server.Client(), server.URL, "a/r", "t", sha)
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("verifyCI error = %v, want error %t", err, tc.wantErr)
+			}
+		})
+	}
+}
+
+func TestExactRevisionWorkflowContract(t *testing.T) {
+	load := func(path string) map[string]any {
+		t.Helper()
+		b, err := os.ReadFile(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var workflow map[string]any
+		if err := yaml.Unmarshal(b, &workflow); err != nil {
+			t.Fatal(err)
+		}
+		return workflow
+	}
+	ci := load("../../.github/workflows/ci.yml")
+	release := load("../../.github/workflows/release.yml")
+	if problems := exactRevisionWorkflowProblems(ci, release); len(problems) != 0 {
+		t.Fatalf("landed workflow violates exact-revision contract: %s", strings.Join(problems, "; "))
+	}
+	clone := func(in map[string]any) map[string]any {
+		t.Helper()
+		b, err := yaml.Marshal(in)
+		if err != nil {
+			t.Fatal(err)
+		}
+		var out map[string]any
+		if err := yaml.Unmarshal(b, &out); err != nil {
+			t.Fatal(err)
+		}
+		return out
+	}
+	for _, tc := range []struct {
+		name   string
+		mutate func(map[string]any, map[string]any)
+	}{
+		{"CI identity", func(ci, _ map[string]any) { ci["name"] = "other" }},
+		{"gate identity", func(ci, _ map[string]any) { delete(workflowJobs(ci), "gate") }},
+		{"release-config identity", func(ci, _ map[string]any) { delete(workflowJobs(ci), "release-config") }},
+		{"exact CI call", func(_, release map[string]any) {
+			workflowStep(workflowJobs(release)["verify"], "Verify bridge readiness and exact CI conclusions")["run"] = "go run ./cmd/releasecheck"
+		}},
+		{"verification read-only", func(_, release map[string]any) {
+			workflowMap(workflowJobs(release)["verify"])["permissions"] = map[string]any{"actions": "write", "contents": "read"}
+		}},
+		{"publication dependency", func(_, release map[string]any) { delete(workflowMap(workflowJobs(release)["publish"]), "needs") }},
+		{"publication write permission", func(_, release map[string]any) {
+			workflowMap(workflowJobs(release)["publish"])["permissions"] = map[string]any{"contents": "read"}
+		}},
+		{"GoReleaser bypass", func(_, release map[string]any) {
+			workflowSteps(workflowJobs(release)["verify"])[0].(map[string]any)["uses"] = "goreleaser/goreleaser-action@fixture"
+		}},
+		{"checkout exact SHA", func(_, release map[string]any) {
+			workflowSteps(workflowJobs(release)["publish"])[0].(map[string]any)["with"].(map[string]any)["ref"] = "main"
+		}},
+		{"publication tag identity", func(_, release map[string]any) {
+			workflowStep(workflowJobs(release)["publish"], "Repeat tag identity before publication")["run"] = "git rev-parse HEAD"
+		}},
+		{"previous release selector", func(_, release map[string]any) {
+			workflowStep(workflowJobs(release)["verify"], "Covercheck mutation regression from previous release")["run"] = "./x covercheck-mutants --select-range old new"
+		}},
+		{"first release fallback", func(_, release map[string]any) {
+			workflowStep(workflowJobs(release)["verify"], "Covercheck mutation regression from previous release")["run"] = "previous=$(false)\n./x covercheck-mutants --select-range $previous candidate"
+		}},
+		{"dispatch fallback", func(ci, _ map[string]any) {
+			workflowStep(workflowJobs(ci)["gate"], "Covercheck mutation regression")["run"] = "case $EVENT in workflow_dispatch) exit 0;; esac"
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			mutatedCI, mutatedRelease := clone(ci), clone(release)
+			tc.mutate(mutatedCI, mutatedRelease)
+			if problems := exactRevisionWorkflowProblems(mutatedCI, mutatedRelease); len(problems) == 0 {
+				t.Fatal("controlled workflow mutation was accepted")
+			}
+		})
+	}
+}
+
+func TestReleaseMutationSelectorUsesPreviousStableReleaseOrRunsAlways(t *testing.T) {
+	workflowBytes, err := os.ReadFile("../../.github/workflows/release.yml")
 	if err != nil {
 		t.Fatal(err)
 	}
-	var root yaml.Node
-	if err := yaml.Unmarshal(b, &root); err != nil {
+	var workflow map[string]any
+	if err := yaml.Unmarshal(workflowBytes, &workflow); err != nil {
 		t.Fatal(err)
 	}
-	text := string(b)
-	for _, required := range []string{"needs: verify", "actions: read", "GITHUB_TOKEN: ${{ github.token }}", "--verify-ci \"${{ github.sha }}\"", "Repeat tag identity before publication", "contents: write"} {
-		if !strings.Contains(text, required) {
-			t.Errorf("release workflow missing %q", required)
+	selector := stringValue(workflowStep(workflowJobs(workflow)["verify"], "Covercheck mutation regression from previous release")["run"])
+
+	for _, tc := range []struct {
+		name         string
+		withPrior    bool
+		wantPrefix   string
+		candidateTag string
+	}{
+		{name: "annotated previous release excludes unrelated and future tags", withPrior: true, wantPrefix: "covercheck-mutants --select-range v1.0.0 ", candidateTag: "v2.0.0"},
+		{name: "first release runs blocker unconditionally", wantPrefix: "covercheck-mutants", candidateTag: "v1.0.0"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := gitfixture.InitNativeAt(t, t.TempDir())
+			root := fixture.Root()
+			if err := os.WriteFile(filepath.Join(root, "tracked"), []byte("base\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			gitfixture.NativeAdd(t, fixture, "tracked")
+			gitfixture.NativeCommit(t, fixture, "base")
+			if tc.withPrior {
+				base := gitfixture.NativeRevParse(t, fixture, "HEAD")
+				gitfixture.NativeAnnotatedTag(t, fixture, "v1.0.0", base)
+				gitfixture.NativeLightweightTag(t, fixture, "v9.0.0", base)
+				gitfixture.NativeLightweightTag(t, fixture, "not-a-release", base)
+				if err := os.WriteFile(filepath.Join(root, "tracked"), []byte("candidate\n"), 0o644); err != nil {
+					t.Fatal(err)
+				}
+				gitfixture.NativeAdd(t, fixture, "tracked")
+				gitfixture.NativeCommit(t, fixture, "candidate")
+			}
+			candidate := gitfixture.NativeRevParse(t, fixture, "HEAD")
+			gitfixture.NativeLightweightTag(t, fixture, tc.candidateTag, candidate)
+			logPath := filepath.Join(t.TempDir(), "x.log")
+			fakeX := "#!/bin/sh\nprintf '%s' \"$*\" >\"$AWF_X_LOG\"\n"
+			if err := os.WriteFile(filepath.Join(root, "x"), []byte(fakeX), 0o755); err != nil {
+				t.Fatal(err)
+			}
+			script := strings.Replace(selector, "candidate='${{ github.sha }}'", "candidate='"+candidate+"'", 1)
+			cmd := exec.Command("bash", "-eu", "-c", script)
+			cmd.Dir = root
+			cmd.Env = append(os.Environ(), "GITHUB_REF_NAME="+tc.candidateTag, "AWF_X_LOG="+logPath)
+			if out, err := cmd.CombinedOutput(); err != nil {
+				t.Fatalf("selector failed: %v: %s", err, out)
+			}
+			got, err := os.ReadFile(logPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if !strings.HasPrefix(string(got), tc.wantPrefix) {
+				t.Fatalf("selector invocation = %q, want prefix %q", got, tc.wantPrefix)
+			}
+			if tc.withPrior && !strings.HasSuffix(string(got), candidate) {
+				t.Fatalf("selector candidate = %q, want suffix %s", got, candidate)
+			}
+		})
+	}
+}
+
+func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
+	var problems []string
+	if ci["name"] != "CI" {
+		problems = append(problems, "CI name")
+	}
+	ciJobs, releaseJobs := workflowJobs(ci), workflowJobs(release)
+	for _, name := range []string{"gate", "release-config"} {
+		if _, ok := ciJobs[name]; !ok {
+			problems = append(problems, "CI job "+name)
 		}
 	}
-	if strings.Index(text, "--verify-ci") > strings.Index(text, "goreleaser/goreleaser-action") {
-		t.Error("exact CI verification follows publication")
+	verify, publish := workflowMap(releaseJobs["verify"]), workflowMap(releaseJobs["publish"])
+	verifyRun := workflowStep(verify, "Verify bridge readiness and exact CI conclusions")["run"]
+	if !strings.Contains(stringValue(verifyRun), `go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"`) {
+		problems = append(problems, "exact CI verification")
+	}
+	if !workflowPermissions(verify, "actions", "read") || !workflowPermissions(verify, "contents", "read") {
+		problems = append(problems, "read-only verification")
+	}
+	if !workflowNeeds(publish, "verify") || !workflowPermissions(publish, "contents", "write") {
+		problems = append(problems, "needs-bound publication")
+	}
+	for name, raw := range releaseJobs {
+		job := workflowMap(raw)
+		for _, rawStep := range workflowSteps(job) {
+			step := workflowMap(rawStep)
+			if strings.HasPrefix(stringValue(step["uses"]), "goreleaser/goreleaser-action@") && (name != "publish" || !workflowNeeds(job, "verify") || !workflowPermissions(job, "contents", "write")) {
+				problems = append(problems, "GoReleaser publication bypass")
+			}
+		}
+	}
+	for _, job := range []map[string]any{verify, publish} {
+		checkout := workflowSteps(job)[0]
+		if workflowMap(checkout)["with"].(map[string]any)["ref"] != "${{ github.sha }}" {
+			problems = append(problems, "checkout exact SHA")
+		}
+	}
+	identity := stringValue(workflowStep(publish, "Repeat tag identity before publication")["run"])
+	if !strings.Contains(identity, "git rev-parse HEAD") || !strings.Contains(identity, "${GITHUB_REF_NAME}^{}") || !strings.Contains(identity, "${{ github.sha }}") {
+		problems = append(problems, "publication tag identity")
+	}
+	selector := stringValue(workflowStep(verify, "Covercheck mutation regression from previous release")["run"])
+	if !strings.Contains(selector, "git tag --merged") || !strings.Contains(selector, "^v[0-9]+\\.[0-9]+\\.[0-9]+$") || !strings.Contains(selector, "sort -Vu") || !strings.Contains(selector, `$0 == current`) || !strings.Contains(selector, "--select-range") {
+		problems = append(problems, "previous release selector")
+	}
+	if !strings.Contains(selector, "if [ -n \"$previous\" ]") || !strings.Contains(selector, "else") || !strings.Contains(selector, "./x covercheck-mutants") {
+		problems = append(problems, "first release fallback")
+	}
+	dispatch := stringValue(workflowStep(workflowMap(ciJobs["gate"]), "Covercheck mutation regression")["run"])
+	if !strings.Contains(dispatch, "workflow_dispatch) ./x covercheck-mutants ; exit 0") || !strings.Contains(dispatch, "*) ./x covercheck-mutants ; exit 0") {
+		problems = append(problems, "CI dispatch unconditional mutation blocker")
+	}
+	return problems
+}
+
+func workflowMap(value any) map[string]any {
+	if value == nil {
+		return map[string]any{}
+	}
+	return value.(map[string]any)
+}
+func workflowJobs(workflow map[string]any) map[string]any { return workflowMap(workflow["jobs"]) }
+func workflowSteps(job any) []any                         { steps, _ := workflowMap(job)["steps"].([]any); return steps }
+func workflowStep(job any, name string) map[string]any {
+	for _, raw := range workflowSteps(job) {
+		step := workflowMap(raw)
+		if step["name"] == name {
+			return step
+		}
+	}
+	return map[string]any{}
+}
+func stringValue(value any) string { text, _ := value.(string); return text }
+func workflowPermissions(job map[string]any, key, want string) bool {
+	return workflowMap(job["permissions"])[key] == want
+}
+func workflowNeeds(job map[string]any, want string) bool {
+	switch needs := job["needs"].(type) {
+	case string:
+		return needs == want
+	case []any:
+		for _, need := range needs {
+			if need == want {
+				return true
+			}
+		}
+	}
+	return false
+}
+
+func TestDispatchRoutesLocalAndExactCIModes(t *testing.T) {
+	var out, errb bytes.Buffer
+	if code := dispatch(nil, fstest.MapFS{}, fstest.MapFS{}, &out, &errb, http.DefaultClient, "https://api.github.com", func(string) string { return "" }); code != 1 || !strings.Contains(errb.String(), "project license") {
+		t.Fatalf("local dispatch = %d, %q", code, errb.String())
+	}
+	errb.Reset()
+	if code := dispatch([]string{"--verify-ci"}, fstest.MapFS{}, fstest.MapFS{}, &out, &errb, http.DefaultClient, "https://api.github.com", func(string) string { return "" }); code != 2 || !strings.Contains(errb.String(), "usage:") {
+		t.Fatalf("malformed dispatch = %d, %q", code, errb.String())
+	}
+	errb.Reset()
+	if code := dispatch([]string{"--verify-ci", "sha"}, fstest.MapFS{}, fstest.MapFS{}, &out, &errb, http.DefaultClient, "https://api.github.com", func(string) string { return "" }); code != 1 || !strings.Contains(errb.String(), "required") {
+		t.Fatalf("offline verify = %d, %q", code, errb.String())
+	}
+
+	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		switch r.URL.Path {
+		case "/repos/acme/repo/actions/workflows/ci.yml/runs":
+			fmt.Fprintf(w, `{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
+		case "/repos/acme/repo/actions/runs/7/jobs":
+			_, _ = io.WriteString(w, `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`)
+		default:
+			w.WriteHeader(http.StatusNotFound)
+		}
+	}))
+	defer server.Close()
+	getenv := func(key string) string {
+		return map[string]string{"GITHUB_REPOSITORY": "acme/repo", "GITHUB_TOKEN": "token"}[key]
+	}
+	errb.Reset()
+	if code := dispatch([]string{"--verify-ci", sha}, fstest.MapFS{}, fstest.MapFS{}, &out, &errb, server.Client(), server.URL, getenv); code != 0 {
+		t.Fatalf("exact-CI dispatch = %d, %q", code, errb.String())
+	}
+}
+
+func TestVerifyCIRefusesTrailingDocumentsAndGarbage(t *testing.T) {
+	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	for _, suffix := range []string{" trailing", ` {"again":true}`} {
+		t.Run(suffix, func(t *testing.T) {
+			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				_, _ = io.WriteString(w, `{"total_count":0,"workflow_runs":[]}`+suffix)
+			}))
+			defer s.Close()
+			if err := verifyCI(context.Background(), s.Client(), s.URL, "a/r", "t", sha); err == nil {
+				t.Fatal("trailing API data accepted")
+			}
+		})
 	}
 }

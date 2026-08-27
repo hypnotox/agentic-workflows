@@ -40,8 +40,10 @@ jobs:
           case "$EVENT" in
             pull_request) base="$PR_BASE" ;;
             push) base="$PUSH_BASE" ;;
-            workflow_dispatch) base="$(git rev-parse "$CANDIDATE^")" ;;
-            *) echo "unknown event has no trustworthy mutation base" >&2; exit 1 ;;
+            # Dispatch supplies no reviewable range. Do not invent candidate^:
+            # run the shared blocker unconditionally so older changes cannot skip.
+            workflow_dispatch) ./x covercheck-mutants ; exit 0 ;;
+            *) ./x covercheck-mutants ; exit 0 ;;
           esac
           case "$base" in 0000000000000000000000000000000000000000|'') echo "mutation base unavailable" >&2; exit 1;; esac
           git cat-file -e "$base^{commit}"

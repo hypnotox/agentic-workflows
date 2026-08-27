@@ -156,3 +156,38 @@ func TestRunRefusesMalformedAndDuplicateWorkflowYAML(t *testing.T) {
 		})
 	}
 }
+
+func TestYAMLNodeHelpersRefuseAbsentNodes(t *testing.T) {
+	if err := uniqueMappingKeys(nil); err != nil {
+		t.Fatalf("nil uniqueness check: %v", err)
+	}
+	if hasAliasOrMerge(nil) {
+		t.Fatal("nil node reported as alias or merge")
+	}
+	if value, line, ok := mappingValue(nil, "jobs"); value != nil || line != 0 || ok {
+		t.Fatalf("nil mapping lookup = %#v, %d, %t", value, line, ok)
+	}
+}
+
+func TestRunRefusesMalformedWorkflowShapesAndReusableUses(t *testing.T) {
+	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	for name, workflow := range map[string]string{
+		"root sequence":      "- jobs: {}\n",
+		"root scalar":        "plain\n",
+		"jobs sequence":      "jobs: []\n",
+		"job sequence":       "jobs:\n  gate: []\n",
+		"steps mapping":      "jobs:\n  gate:\n    steps: {}\n",
+		"step scalar":        "jobs:\n  gate:\n    steps: [x]\n",
+		"step uses sequence": "jobs:\n  gate:\n    steps:\n      - uses: [actions/checkout@" + sha + "]\n",
+		"with sequence":      "jobs:\n  gate:\n    steps:\n      - uses: goreleaser/goreleaser-action@" + sha + "\n        with: []\n",
+		"version sequence":   "jobs:\n  gate:\n    steps:\n      - uses: goreleaser/goreleaser-action@" + sha + "\n        with: {version: [v2.17.0]}\n",
+		"unpinned reusable":  "jobs:\n  reusable:\n    uses: acme/reusable@v1\n",
+		"merged uses":        "jobs:\n  gate:\n    steps:\n      - &step {uses: actions/checkout@" + sha + "}\n      - <<: *step\n",
+	} {
+		t.Run(name, func(t *testing.T) {
+			if code, _, errb := runOn(t, wfFS(map[string]string{"ci.yml": workflow})); code != 1 || !strings.Contains(errb, "pincheck:") {
+				t.Fatalf("malformed workflow accepted: %d %s", code, errb)
+			}
+		})
+	}
+}

@@ -25,15 +25,25 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func main() { // coverage-ignore: os.Exit wrapper; run is unit-tested
-	if len(os.Args) == 3 && os.Args[1] == "--verify-ci" {
-		if err := verifyCI(context.Background(), http.DefaultClient, "https://api.github.com", os.Getenv("GITHUB_REPOSITORY"), os.Getenv("GITHUB_TOKEN"), os.Args[2]); err != nil {
-			fmt.Fprintf(os.Stderr, "releasecheck: exact CI: %v\n", err)
-			os.Exit(1)
+func main() { // coverage-ignore: os.Exit wrapper; dispatch is unit-tested
+	os.Exit(dispatch(os.Args[1:], os.DirFS("."), changelogfs.FS, os.Stdout, os.Stderr, http.DefaultClient, "https://api.github.com", os.Getenv))
+}
+
+// dispatch keeps CLI argument and credential policy at the command boundary.
+func dispatch(args []string, root, changelogFS fs.FS, stdout, stderr io.Writer, client *http.Client, apiURL string, getenv func(string) string) int {
+	switch {
+	case len(args) == 0:
+		return run(root, changelogFS, stdout, stderr)
+	case len(args) == 2 && args[0] == "--verify-ci":
+		if err := verifyCI(context.Background(), client, apiURL, getenv("GITHUB_REPOSITORY"), getenv("GITHUB_TOKEN"), args[1]); err != nil {
+			fmt.Fprintf(stderr, "releasecheck: exact CI: %v\n", err)
+			return 1
 		}
-		return
+		return 0
+	default:
+		fmt.Fprintln(stderr, "usage: releasecheck [--verify-ci <sha>]")
+		return 2
 	}
-	os.Exit(run(os.DirFS("."), changelogfs.FS, os.Stdout, os.Stderr))
 }
 
 func run(root, changelogFS fs.FS, stdout, stderr io.Writer) int {
@@ -152,8 +162,15 @@ func verifyCI(ctx context.Context, client *http.Client, baseURL, repo, token, sh
 		if resp.Header.Get("Link") != "" {
 			return fmt.Errorf("GitHub API pagination is incomplete")
 		}
-		if err := json.NewDecoder(resp.Body).Decode(dst); err != nil {
+		decoder := json.NewDecoder(resp.Body)
+		if err := decoder.Decode(dst); err != nil {
 			return fmt.Errorf("decode GitHub API %s: %w", path, err)
+		}
+		if err := decoder.Decode(&struct{}{}); err != io.EOF {
+			if err == nil {
+				return fmt.Errorf("decode GitHub API %s: trailing JSON document", path)
+			}
+			return fmt.Errorf("decode GitHub API %s: trailing data: %w", path, err)
 		}
 		return nil
 	}
