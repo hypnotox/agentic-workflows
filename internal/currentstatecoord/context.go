@@ -220,7 +220,7 @@ func PrepareFocusedWorkingContext(state *projectstate.ProjectState, repo *awfgit
 	}
 
 	nested := nestedAdopters(entries)
-	selected := focusedContextPaths(entries, state, cfg, requests, nested)
+	selected := focusedContextPaths(entries, state, cfg, lock, requests, nested)
 	// Config and lock were captured above and are deliberately not reread.
 	delete(selected, ".awf/config.yaml")
 	delete(selected, ".awf/awf.lock")
@@ -241,7 +241,7 @@ func PrepareFocusedWorkingContext(state *projectstate.ProjectState, repo *awfgit
 func nestedAdopters(entries []awfgit.TreeEntry) []string {
 	var roots []string
 	for _, entry := range entries {
-		if entry.Path != ".awf/config.yaml" && strings.HasSuffix(entry.Path, "/.awf/config.yaml") {
+		if entry.Mode != awfgit.BlobSymlink && entry.Path != ".awf/config.yaml" && strings.HasSuffix(entry.Path, "/.awf/config.yaml") {
 			roots = append(roots, strings.TrimSuffix(entry.Path, "/.awf/config.yaml"))
 		}
 	}
@@ -258,7 +258,7 @@ func insideNested(path string, roots []string) bool {
 	return false
 }
 
-func focusedContextPaths(entries []awfgit.TreeEntry, state *projectstate.ProjectState, cfg *config.Config, requests, nested []string) map[string]bool {
+func focusedContextPaths(entries []awfgit.TreeEntry, state *projectstate.ProjectState, cfg *config.Config, lock *manifest.Lock, requests, nested []string) map[string]bool {
 	selected := map[string]bool{}
 	add := func(path string) {
 		if !insideNested(path, nested) {
@@ -272,7 +272,11 @@ func focusedContextPaths(entries []awfgit.TreeEntry, state *projectstate.Project
 		}
 		for _, request := range requests {
 			request = filepath.ToSlash(filepath.Clean(request))
-			if request == "." || path == request || strings.HasPrefix(path, request+"/") {
+			manifested := false
+			if lock != nil {
+				_, manifested = lock.Files[path]
+			}
+			if manifested && (request == "." || path == request || strings.HasPrefix(path, request+"/")) {
 				add(path)
 			}
 		}

@@ -36,6 +36,7 @@ func TestOutsideContextPathReadsBothPathSpaces(t *testing.T) {
 	}
 }
 
+// invariant: tooling/context-and-topic:context-query-boundary (TestContextRequestCensusGroupingAndClassification)
 // invariant: tooling/context-and-topic:context-path-attribution (TestContextRequestCensusGroupingAndClassification)
 // invariant: tooling/context-and-topic:context-path-classification (TestContextRequestCensusGroupingAndClassification)
 func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
@@ -201,6 +202,7 @@ func TestContextFacetsAndGroupKey(t *testing.T) {
 	}
 }
 
+// invariant: tooling/context-and-topic:context-query-boundary (TestContextDirectoryGroupingUsesOnlyVisibleProjection)
 // invariant: tooling/context-and-topic:context-full-authority-packet (TestContextDirectoryGroupingUsesOnlyVisibleProjection)
 func TestContextDirectoryGroupingUsesOnlyVisibleProjection(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{{Path: "dir/a.go", Mode: snapshot.Regular}, {Path: "dir/b.go", Mode: snapshot.Regular}})

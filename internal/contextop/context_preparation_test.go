@@ -247,6 +247,8 @@ func TestFocusedWorkingStateMatchesCompleteContextForExactRequest(t *testing.T) 
 	}
 }
 
+// invariant: tooling/context-and-topic:context-query-boundary (TestFocusedWorkingStateSelectsRequiredBytesWithoutNestedOrUnrelatedPayload)
+// invariant: tooling/context-and-topic:context-read-only (TestFocusedWorkingStateSelectsRequiredBytesWithoutNestedOrUnrelatedPayload)
 func TestFocusedWorkingStateSelectsRequiredBytesWithoutNestedOrUnrelatedPayload(t *testing.T) {
 	root := contextPreparationFixture(t)
 	for path, body := range map[string]string{
@@ -291,20 +293,30 @@ func TestFocusedWorkingStateSelectsRequiredBytesWithoutNestedOrUnrelatedPayload(
 	}
 }
 
+// invariant: tooling/context-and-topic:context-read-only (TestFocusedWorkingStateMatchesCompleteParityMatrix)
 func TestFocusedWorkingStateMatchesCompleteParityMatrix(t *testing.T) {
 	root := contextPreparationFixture(t)
 	configBody := strings.Replace(contextPreparationYAML, `globs: ["internal/**"]`, `globs: ["**/*.go"]`, 1) + "contextIgnore:\n  - ignored/**\n"
 	testsupport.WriteAwfConfig(t, root, configBody)
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "domains", "alpha.yaml"), "paths:\n  - internal/foo/**\n  - linked/**\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "topics", "metadata", "alpha", "one.yaml"), "title: One\nsummary: The one topic.\npaths:\n  - internal/foo/**\n  - linked/**\n")
 	for path, body := range map[string]string{
 		"docs/plans/2026-08-03-context.md": contextPreparationPlan,
 		"docs/generated.md":                "generated payload\n",
 		"ignored/x.go":                     "package ignored\n",
 		"nested/.awf/config.yaml":          "prefix: nested\nprofile: core\nintegrationBranch: main\n",
 		"nested/internal/marker.go":        "package nested\n// state: alpha/one:order\n",
+		"linked/internal/marker.go":        "package linked\n// state: alpha/one:order\n",
 	} {
 		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(path)), body)
 	}
 	if err := os.Symlink("internal/foo/x.go", filepath.Join(root, "source-link")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.MkdirAll(filepath.Join(root, "linked", ".awf"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("../../.awf/config.yaml", filepath.Join(root, "linked", ".awf", "config.yaml")); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
@@ -339,7 +351,7 @@ func TestFocusedWorkingStateMatchesCompleteParityMatrix(t *testing.T) {
 		{name: "directory", paths: []string{"internal/foo"}},
 		{name: "root", paths: []string{"."}},
 		{name: "mixed exact and directory", paths: []string{"internal/foo/x.go", "docs/decisions"}},
-		{name: "exceptional paths", paths: []string{"missing", "../outside", "ignored/x.go", "nested/internal/marker.go", "source-link"}},
+		{name: "exceptional paths", paths: []string{"missing", "../outside", "ignored/x.go", "nested/internal/marker.go", "linked/internal/marker.go", "source-link"}},
 		{name: "ADR plan reference and generated artifact", paths: []string{"docs/decisions/0001-first.md", "docs/generated.md"}, facets: []contextq.ContextFacet{contextq.FacetReferences, contextq.FacetArtifacts}},
 		{name: "all facets", paths: []string{"internal/foo/x.go", "docs/decisions/0002-later.md"}, facets: allFacets},
 	}
@@ -354,6 +366,40 @@ func TestFocusedWorkingStateMatchesCompleteParityMatrix(t *testing.T) {
 			want := contextq.RenderContextText(contextq.New(completeState).ContextForOptions(tc.paths, options), "live state for this project", tc.facets)
 			if got != want {
 				t.Fatalf("focused output differs from complete\nfocused:\n%s\ncomplete:\n%s", got, want)
+			}
+		})
+	}
+}
+
+func TestFocusedWorkingStateDoesNotReadRequestedClassificationPayloads(t *testing.T) {
+	root := contextPreparationFixture(t)
+	testsupport.WriteAwfConfig(t, root, contextPreparationYAML+"contextIgnore:\n  - ignored/**\n")
+	for path, body := range map[string]string{
+		"payload.bin": "root payload\n", "assets/payload.bin": "directory payload\n", "ignored/payload.bin": "ignored payload\n",
+	} {
+		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(path)), body)
+	}
+	state, repo := contextPreparationProject(t, root)
+	for _, tc := range []struct {
+		name, unread string
+		requests     []string
+	}{
+		{name: "exact", requests: []string{"payload.bin"}, unread: "payload.bin"},
+		{name: "directory", requests: []string{"assets"}, unread: "assets/payload.bin"},
+		{name: "root", requests: []string{"."}, unread: "payload.bin"},
+		{name: "ignored", requests: []string{"ignored/payload.bin"}, unread: "ignored/payload.bin"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			focused, err := workingState(testsupport.Context(t), state, repo, tc.requests)
+			if err != nil {
+				t.Fatal(err)
+			}
+			view := focused.Snapshot()
+			if _, present := view.Inventory.Lookup(tc.unread); !present {
+				t.Fatalf("inventory omitted %s", tc.unread)
+			}
+			if _, read := view.Tree.Lookup(tc.unread); read {
+				t.Fatalf("focused context read classification-only payload %s", tc.unread)
 			}
 		})
 	}
@@ -543,6 +589,7 @@ func TestContextPreparationRespectsProfileAuthority(t *testing.T) {
 
 var _ outputplan.TreeReader = (*countingContextReader)(nil)
 
+// invariant: tooling/context-and-topic:context-read-only (TestNonordinaryRoutesRetainCompletePublisherPreparation)
 func TestNonordinaryRoutesRetainCompletePublisherPreparation(t *testing.T) {
 	root := contextPreparationFixture(t)
 	testsupport.WriteAwfConfig(t, root, contextPreparationYAML+"render:\n  templateSourceRoot: templates\n")
