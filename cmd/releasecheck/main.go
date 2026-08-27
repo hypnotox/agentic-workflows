@@ -16,6 +16,7 @@ import (
 	"io"
 	"io/fs"
 	"net/http"
+	"net/url"
 	"os"
 	"strings"
 
@@ -41,8 +42,19 @@ func dispatch(args []string, root, changelogFS fs.FS, stdout, stderr io.Writer, 
 			return 1
 		}
 		return 0
+	case len(args) == 2 && args[0] == "--verify-release-notes":
+		expected, err := os.ReadFile(args[1])
+		if err != nil {
+			fmt.Fprintf(stderr, "releasecheck: read curated release notes: %v\n", err)
+			return 1
+		}
+		if err := verifyReleaseNotes(context.Background(), client, apiURL, getenv("GITHUB_REPOSITORY"), getenv("GITHUB_TOKEN"), getenv("GITHUB_REF_NAME"), expected); err != nil {
+			fmt.Fprintf(stderr, "releasecheck: published release notes: %v\n", err)
+			return 1
+		}
+		return 0
 	default:
-		fmt.Fprintln(stderr, "usage: releasecheck [--verify-ci <sha>]")
+		fmt.Fprintln(stderr, "usage: releasecheck [--verify-ci <sha> | --verify-release-notes <curated-notes-file>]")
 		return 2
 	}
 }
@@ -139,44 +151,66 @@ type workflowJob struct {
 	Conclusion string `json:"conclusion"`
 }
 
+func getGitHubJSON(ctx context.Context, client *http.Client, baseURL, token, path string, dst any) error {
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(baseURL, "/")+path, nil)
+	if err != nil {
+		return err
+	}
+	req.Header.Set("Authorization", "Bearer "+token)
+	req.Header.Set("Accept", "application/vnd.github+json")
+	resp, err := client.Do(req)
+	if err != nil {
+		return err
+	}
+	defer resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		return fmt.Errorf("GitHub API %s returned %s", path, resp.Status)
+	}
+	if resp.Header.Get("Link") != "" {
+		return fmt.Errorf("GitHub API pagination is incomplete")
+	}
+	decoder := json.NewDecoder(resp.Body)
+	if err := decoder.Decode(dst); err != nil {
+		return fmt.Errorf("decode GitHub API %s: %w", path, err)
+	}
+	if err := decoder.Decode(&struct{}{}); err != io.EOF {
+		if err == nil {
+			return fmt.Errorf("decode GitHub API %s: trailing JSON document", path)
+		}
+		return fmt.Errorf("decode GitHub API %s: trailing data: %w", path, err)
+	}
+	return nil
+}
+
+// verifyReleaseNotes checks the hosted body after GoReleaser publishes it.
+func verifyReleaseNotes(ctx context.Context, client *http.Client, baseURL, repo, token, tag string, expected []byte) error {
+	if baseURL == "" || repo == "" || token == "" || tag == "" {
+		return fmt.Errorf("GitHub API URL, GITHUB_REPOSITORY, GITHUB_TOKEN, and GITHUB_REF_NAME are required")
+	}
+	if strings.TrimSpace(string(expected)) == "" {
+		return fmt.Errorf("curated release notes are empty")
+	}
+	var release struct {
+		Body string `json:"body"`
+	}
+	path := "/repos/" + repo + "/releases/tags/" + url.PathEscape(tag)
+	if err := getGitHubJSON(ctx, client, baseURL, token, path, &release); err != nil {
+		return err
+	}
+	if release.Body != string(expected) {
+		return fmt.Errorf("published body does not match the curated release notes")
+	}
+	return nil
+}
+
 // verifyCI is the narrow GitHub Actions boundary for release acceptance. The
 // base URL is a transport boundary, which permits deterministic API fixtures.
 func verifyCI(ctx context.Context, client *http.Client, baseURL, repo, token, sha string) error {
 	if baseURL == "" || repo == "" || token == "" || sha == "" {
 		return fmt.Errorf("GitHub API URL, GITHUB_REPOSITORY, GITHUB_TOKEN, and requested SHA are required")
 	}
-	get := func(path string, dst any) error {
-		req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(baseURL, "/")+path, nil)
-		if err != nil {
-			return err
-		}
-		req.Header.Set("Authorization", "Bearer "+token)
-		req.Header.Set("Accept", "application/vnd.github+json")
-		resp, err := client.Do(req)
-		if err != nil {
-			return err
-		}
-		defer resp.Body.Close()
-		if resp.StatusCode != http.StatusOK {
-			return fmt.Errorf("GitHub API %s returned %s", path, resp.Status)
-		}
-		if resp.Header.Get("Link") != "" {
-			return fmt.Errorf("GitHub API pagination is incomplete")
-		}
-		decoder := json.NewDecoder(resp.Body)
-		if err := decoder.Decode(dst); err != nil {
-			return fmt.Errorf("decode GitHub API %s: %w", path, err)
-		}
-		if err := decoder.Decode(&struct{}{}); err != io.EOF {
-			if err == nil {
-				return fmt.Errorf("decode GitHub API %s: trailing JSON document", path)
-			}
-			return fmt.Errorf("decode GitHub API %s: trailing data: %w", path, err)
-		}
-		return nil
-	}
 	var runs workflowRuns
-	if err := get("/repos/"+repo+"/actions/workflows/ci.yml/runs?head_sha="+sha+"&status=completed&per_page=100", &runs); err != nil {
+	if err := getGitHubJSON(ctx, client, baseURL, token, "/repos/"+repo+"/actions/workflows/ci.yml/runs?head_sha="+sha+"&status=completed&per_page=100", &runs); err != nil {
 		return err
 	}
 	if runs.Total != len(runs.Runs) {
@@ -194,7 +228,7 @@ func verifyCI(ctx context.Context, client *http.Client, baseURL, repo, token, sh
 	var candidateErrors []error
 	for _, candidate := range candidates {
 		var jobs jobsResponse
-		if err := get(fmt.Sprintf("/repos/%s/actions/runs/%d/jobs?per_page=100", repo, candidate.ID), &jobs); err != nil {
+		if err := getGitHubJSON(ctx, client, baseURL, token, fmt.Sprintf("/repos/%s/actions/runs/%d/jobs?per_page=100", repo, candidate.ID), &jobs); err != nil {
 			candidateErrors = append(candidateErrors, fmt.Errorf("run %d: %w", candidate.ID, err))
 			continue
 		}

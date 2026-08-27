@@ -115,7 +115,4 @@ jobs:
       - name: Verify published release notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: |
-          actual="${RUNNER_TEMP}/published-release-notes.md"
-          gh api "repos/${GITHUB_REPOSITORY}/releases/tags/${GITHUB_REF_NAME}" --jq .body > "$actual"
-          { cat "${RUNNER_TEMP}/release-notes.md"; printf '\n'; } | cmp - "$actual"
+        run: go run ./cmd/releasecheck --verify-release-notes "${RUNNER_TEMP}/release-notes.md"

@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
@@ -236,8 +237,13 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 		t.Fatalf("read release workflow: %v", err)
 	}
 	wf := string(wfb)
-	extract := strings.Index(wf, "awf changelog --version")
-	build := strings.Index(wf, "goreleaser/goreleaser-action")
+	publishAt := strings.Index(wf, "\n  publish:")
+	if publishAt < 0 {
+		t.Fatal("release.yml does not define the publish job")
+	}
+	publish := wf[publishAt:]
+	extract := strings.Index(publish, "awf changelog --version")
+	build := strings.Index(publish, "goreleaser/goreleaser-action")
 	if extract < 0 {
 		t.Error("release.yml does not extract release notes via `awf changelog --version`")
 	}
@@ -253,18 +259,18 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 	// GoReleaser's dirty-tree check passes) and that the --release-notes arg names the same
 	// basename - checking the components rather than one pinned interpolation form.
 	const notesFile = "release-notes.md"
-	extractLine := wf[extract:]
+	extractLine := publish[extract:]
 	if nl := strings.IndexByte(extractLine, '\n'); nl >= 0 {
 		extractLine = extractLine[:nl]
 	}
 	if !strings.Contains(extractLine, ">") || !strings.Contains(extractLine, "RUNNER_TEMP") || !strings.Contains(extractLine, notesFile) {
 		t.Errorf("the extraction step must redirect (>) into a RUNNER_TEMP-scoped %s, got %q", notesFile, extractLine)
 	}
-	relIdx := strings.Index(wf, "--release-notes")
+	relIdx := strings.Index(publish, "--release-notes")
 	if relIdx < 0 {
 		t.Error("release.yml does not pass --release-notes to the GoReleaser step")
 	} else {
-		argLine := wf[relIdx:]
+		argLine := publish[relIdx:]
 		if nl := strings.IndexByte(argLine, '\n'); nl >= 0 {
 			argLine = argLine[:nl]
 		}
@@ -273,15 +279,15 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 		}
 	}
 
-	verify := strings.Index(wf, "Verify published release notes")
+	verify := strings.Index(publish, "Verify published release notes")
 	if verify < 0 {
 		t.Error("release.yml does not verify the published release body")
 	} else {
-		verifyBlock := wf[verify:]
+		verifyBlock := publish[verify:]
 		if verify < build {
 			t.Error("published release-note verification must run after GoReleaser")
 		}
-		for _, token := range []string{"gh api", "releases/tags", "cmp", notesFile} {
+		for _, token := range []string{"releasecheck --verify-release-notes", notesFile} {
 			if !strings.Contains(verifyBlock, token) {
 				t.Errorf("published release-note verification does not contain %q", token)
 			}
@@ -308,6 +314,53 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 	}
 	if config.Changelog.Use != "" || len(config.Changelog.Groups) != 0 || len(config.Changelog.Filters) != 0 {
 		t.Error(".goreleaser.yaml configures commit-derived changelog use, groups, or filters")
+	}
+}
+
+func TestVerifyReleaseNotesRequiresExactCuratedBody(t *testing.T) {
+	const expected = "## [0.41.0] - 2026-08-27\n\n### Bug fixes\n\n- Curated.\n"
+	for _, tc := range []struct {
+		name string
+		body string
+		want string
+	}{
+		{name: "exact", body: expected},
+		{name: "blank", body: "", want: "does not match"},
+		{name: "commit-derived suffix", body: expected + "\n- internal commit\n", want: "does not match"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.URL.Path != "/repos/acme/repo/releases/tags/v0.41.0" {
+					t.Errorf("path = %q", r.URL.Path)
+				}
+				if r.Header.Get("Authorization") != "Bearer token" {
+					t.Errorf("authorization = %q", r.Header.Get("Authorization"))
+				}
+				w.Header().Set("Content-Type", "application/json")
+				_ = json.NewEncoder(w).Encode(map[string]string{"body": tc.body})
+			}))
+			defer server.Close()
+
+			err := verifyReleaseNotes(context.Background(), server.Client(), server.URL, "acme/repo", "token", "v0.41.0", []byte(expected))
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
+				}
+				return
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want containing %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestVerifyReleaseNotesRejectsMissingInputsAndBlankExpectation(t *testing.T) {
+	if err := verifyReleaseNotes(context.Background(), http.DefaultClient, "", "", "", "", []byte("notes")); err == nil || !strings.Contains(err.Error(), "required") {
+		t.Fatalf("missing inputs error = %v", err)
+	}
+	if err := verifyReleaseNotes(context.Background(), http.DefaultClient, "https://api.github.com", "acme/repo", "token", "v1.0.0", []byte(" \n")); err == nil || !strings.Contains(err.Error(), "empty") {
+		t.Fatalf("blank expectation error = %v", err)
 	}
 }
 
@@ -756,17 +809,32 @@ func TestDispatchRoutesLocalAndExactCIModes(t *testing.T) {
 			fmt.Fprintf(w, `{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
 		case "/repos/acme/repo/actions/runs/7/jobs":
 			_, _ = io.WriteString(w, `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`)
+		case "/repos/acme/repo/releases/tags/v0.41.0":
+			_, _ = io.WriteString(w, `{"body":"curated notes\n"}`)
 		default:
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
 	defer server.Close()
 	getenv := func(key string) string {
-		return map[string]string{"GITHUB_REPOSITORY": "acme/repo", "GITHUB_TOKEN": "token"}[key]
+		return map[string]string{"GITHUB_REPOSITORY": "acme/repo", "GITHUB_TOKEN": "token", "GITHUB_REF_NAME": "v0.41.0"}[key]
 	}
 	errb.Reset()
 	if code := dispatch([]string{"--verify-ci", sha}, fstest.MapFS{}, fstest.MapFS{}, &out, &errb, server.Client(), server.URL, getenv); code != 0 {
 		t.Fatalf("exact-CI dispatch = %d, %q", code, errb.String())
+	}
+
+	notesPath := filepath.Join(t.TempDir(), "release-notes.md")
+	if err := os.WriteFile(notesPath, []byte("curated notes\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	errb.Reset()
+	if code := dispatch([]string{"--verify-release-notes", notesPath}, fstest.MapFS{}, fstest.MapFS{}, &out, &errb, server.Client(), server.URL, getenv); code != 0 {
+		t.Fatalf("release-notes dispatch = %d, %q", code, errb.String())
+	}
+	errb.Reset()
+	if code := dispatch([]string{"--verify-release-notes", notesPath + ".missing"}, fstest.MapFS{}, fstest.MapFS{}, &out, &errb, server.Client(), server.URL, getenv); code != 1 || !strings.Contains(errb.String(), "read curated release notes") {
+		t.Fatalf("missing-notes dispatch = %d, %q", code, errb.String())
 	}
 }
 
