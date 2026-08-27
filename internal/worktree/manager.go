@@ -12,6 +12,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
@@ -47,7 +48,8 @@ type ResidentHandle interface {
 	Close() error
 	MkdirAll(string, fs.FileMode) error
 	LinkInfo(string) (fs.FileInfo, error)
-	RetireExpected(string, fs.FileInfo) error
+	ExpectedIdentity(string) (*filesystem.ExpectedIdentity, error)
+	RetireExpected(string, *filesystem.ExpectedIdentity) error
 }
 
 // OpenResident provides the selected resident-root filesystem capability.
@@ -660,7 +662,7 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 				if openErr != nil {
 					return Result{}, m.removalMutationFailure(ctx, slug, path, effects, observed, "open unregistered managed path cleanup root failed", openErr, "inspect the path", "retry ordinary removal")
 				}
-				expected, infoErr := resident.LinkInfo(slug)
+				expected, infoErr := resident.ExpectedIdentity(slug)
 				if infoErr == nil {
 					infoErr = resident.RetireExpected(slug, expected)
 				}

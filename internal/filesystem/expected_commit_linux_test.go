@@ -25,7 +25,7 @@ func TestRetirementReservationRemovalFailureRestoresDestinationAndReportsResidue
 		t.Fatal(err)
 	}
 	defer h.Close()
-	expected, err := h.root.Lstat("destination")
+	expected, err := h.ExpectedIdentity("destination")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +69,7 @@ func TestExpectedMutationNeverTouchesRelocatedParentThroughEscapingSymlink(t *te
 			if err := os.WriteFile(filepath.Join(rootPath, "parent", "temporary"), []byte("replacement"), 0o640); err != nil {
 				t.Fatal(err)
 			}
-			expected, err := h.root.Lstat("parent/destination")
+			expected, err := h.ExpectedIdentity("parent/destination")
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -5,7 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -99,6 +98,7 @@ func AddLeased(ctx context.Context, root, name string, loader *project.Loader, l
 	if err != nil {
 		return Outcome{}, err
 	}
+	defer configIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	for _, domain := range cfg.Domains {
 		if domain == name {
 			return Outcome{}, fmt.Errorf("domain %q already exists", name)
@@ -142,6 +142,7 @@ func RemoveLeased(ctx context.Context, root, name string, loader *project.Loader
 	if err != nil {
 		return Outcome{}, err
 	}
+	defer configIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	found := false
 	for _, domain := range cfg.Domains {
 		found = found || domain == name
@@ -169,7 +170,7 @@ func RemoveLeased(ctx context.Context, root, name string, loader *project.Loader
 	return outcome, nil
 }
 
-func replaceConfig(files *filesystem.Handle, expected fs.FileInfo, updated []byte) error {
+func replaceConfig(files *filesystem.Handle, expected *filesystem.ExpectedIdentity, updated []byte) error {
 	return files.ReplaceExpected(".awf/config.yaml", expected, updated, 0o644)
 }
 

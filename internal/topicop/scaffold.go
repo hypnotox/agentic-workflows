@@ -144,10 +144,11 @@ func CreateLeased(ctx context.Context, root, domain, title string, loader *proje
 	if !matches {
 		return presentation.Document{}, filesystem.ErrIdentityChanged
 	}
-	_, cfg, _, err := loader.OpenForMutation(ctx, root, files)
+	_, cfg, configIdentity, err := loader.OpenForMutation(ctx, root, files)
 	if err != nil {
 		return presentation.Document{}, err
 	}
+	defer configIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	matches, err = files.RootMatches(root)
 	if err != nil {
 		return presentation.Document{}, err

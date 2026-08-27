@@ -13,6 +13,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
@@ -32,7 +33,7 @@ type committedReplacementFaultFilesystem struct {
 	cause         error
 }
 
-func (f committedReplacementFaultFilesystem) ReplaceExpected(path string, expected fs.FileInfo, contents []byte, mode fs.FileMode) error {
+func (f committedReplacementFaultFilesystem) ReplaceExpected(path string, expected *filesystem.ExpectedIdentity, contents []byte, mode fs.FileMode) error {
 	if err := f.syncFilesystem.ReplaceExpected(path, expected, contents, mode); err != nil {
 		return err
 	}
@@ -48,7 +49,7 @@ func (f replacementFaultFilesystem) Replace(path string, contents []byte, mode f
 	}
 	return f.syncFilesystem.Replace(path, contents, mode)
 }
-func (f replacementFaultFilesystem) ReplaceExpected(path string, expected fs.FileInfo, contents []byte, mode fs.FileMode) error {
+func (f replacementFaultFilesystem) ReplaceExpected(path string, expected *filesystem.ExpectedIdentity, contents []byte, mode fs.FileMode) error {
 	if path == f.path {
 		return f.err
 	}
@@ -78,7 +79,7 @@ type committedRemovalFaultFilesystem struct {
 	cause         error
 }
 
-func (f committedRemovalFaultFilesystem) RemoveExpected(path string, expected fs.FileInfo) error {
+func (f committedRemovalFaultFilesystem) RemoveExpected(path string, expected *filesystem.ExpectedIdentity) error {
 	if err := f.syncFilesystem.RemoveExpected(path, expected); err != nil {
 		return err
 	}
@@ -94,7 +95,7 @@ func (f removalFaultFilesystem) Remove(path string) error {
 	}
 	return f.syncFilesystem.Remove(path)
 }
-func (f removalFaultFilesystem) RemoveExpected(path string, expected fs.FileInfo) error {
+func (f removalFaultFilesystem) RemoveExpected(path string, expected *filesystem.ExpectedIdentity) error {
 	if path == f.path {
 		return f.err
 	}
@@ -133,6 +134,12 @@ func (f linkInfoFaultFilesystem) LinkInfo(path string) (fs.FileInfo, error) {
 	}
 	return f.syncFilesystem.LinkInfo(path)
 }
+func (f linkInfoFaultFilesystem) ExpectedIdentity(path string) (*filesystem.ExpectedIdentity, error) {
+	if f.path == "" || f.path == path {
+		return nil, f.err
+	}
+	return f.syncFilesystem.ExpectedIdentity(path)
+}
 
 type chmodFaultFilesystem struct {
 	syncFilesystem
@@ -163,7 +170,7 @@ func (f recordedFilesystem) Replace(path string, contents []byte, mode fs.FileMo
 	*f.replaces = append(*f.replaces, path)
 	return f.syncFilesystem.Replace(path, contents, mode)
 }
-func (f recordedFilesystem) ReplaceExpected(path string, expected fs.FileInfo, contents []byte, mode fs.FileMode) error {
+func (f recordedFilesystem) ReplaceExpected(path string, expected *filesystem.ExpectedIdentity, contents []byte, mode fs.FileMode) error {
 	*f.replaces = append(*f.replaces, path)
 	return f.syncFilesystem.ReplaceExpected(path, expected, contents, mode)
 }
@@ -234,7 +241,7 @@ func (f *swapAfterPruneFilesystem) Remove(path string) error {
 	f.calls = append(f.calls, path)
 	return f.syncFilesystem.Remove(path)
 }
-func (f *swapAfterPruneFilesystem) RemoveExpected(path string, expected fs.FileInfo) error {
+func (f *swapAfterPruneFilesystem) RemoveExpected(path string, expected *filesystem.ExpectedIdentity) error {
 	f.calls = append(f.calls, path)
 	err := f.syncFilesystem.RemoveExpected(path, expected)
 	if path == "cleanup/child/file" && err == nil {
@@ -258,7 +265,7 @@ type swapBeforeLockReplaceFilesystem struct {
 func (f *swapBeforeLockReplaceFilesystem) Replace(path string, contents []byte, mode fs.FileMode) error {
 	return f.ReplaceExpected(path, nil, contents, mode)
 }
-func (f *swapBeforeLockReplaceFilesystem) ReplaceExpected(path string, expected fs.FileInfo, contents []byte, mode fs.FileMode) error {
+func (f *swapBeforeLockReplaceFilesystem) ReplaceExpected(path string, expected *filesystem.ExpectedIdentity, contents []byte, mode fs.FileMode) error {
 	if path == ".awf/awf.lock" && !f.swapped {
 		if err := os.Rename(filepath.Join(f.root, ".awf"), filepath.Join(f.root, "saved-awf")); err != nil {
 			return err

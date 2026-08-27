@@ -14,7 +14,7 @@ import (
 
 // CreateDirectory atomically publishes one new directory and returns the
 // identity of the directory it created. It refuses an existing destination.
-func (h *Handle) CreateDirectory(destination string, mode fs.FileMode) (created fs.FileInfo, returnErr error) {
+func (h *Handle) CreateDirectory(destination string, mode fs.FileMode) (created *ExpectedIdentity, returnErr error) {
 	if err := validPath(destination); err != nil {
 		return nil, fmt.Errorf("filesystem: create directory %q: %w", destination, err)
 	}
@@ -44,17 +44,12 @@ func (h *Handle) CreateDirectory(destination string, mode fs.FileMode) (created 
 			}
 		}
 	}()
-	directory, err := h.root.Open(temporary)
-	if err != nil { // coverage-ignore: opening the just-created unpredictable temporary fails only after a concurrent namespace change or storage fault
-		return nil, fmt.Errorf("filesystem: open created directory for %q: %w", destination, err) // coverage-ignore: opening the just-created unpredictable temporary fails only after a concurrent namespace change or storage fault
-	}
-	created, statErr := directory.Stat()
-	closeErr := directory.Close()
-	if statErr != nil || closeErr != nil { // coverage-ignore: stat or close of the just-opened directory requires a storage fault
-		return nil, fmt.Errorf("filesystem: identify created directory for %q: %w", destination, errors.Join(statErr, closeErr)) // coverage-ignore: stat or close of the just-opened directory requires a storage fault
+	created, err := h.ExpectedIdentity(temporary)
+	if err != nil {
+		return nil, fmt.Errorf("filesystem: identify created directory for %q: %w", destination, err)
 	}
 	if err := publishDirectoryNoReplace(h.root, temporary, destination); err != nil {
-		return nil, fmt.Errorf("filesystem: publish directory without replacement to %q: %w", destination, err)
+		return nil, errors.Join(fmt.Errorf("filesystem: publish directory without replacement to %q: %w", destination, err), created.Release())
 	}
 	temporary = ""
 	return created, nil

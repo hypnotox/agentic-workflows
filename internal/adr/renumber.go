@@ -2,7 +2,6 @@ package adr
 
 import (
 	"fmt"
-	"io/fs"
 	"os"
 	"path/filepath"
 
@@ -43,15 +42,16 @@ func RenumberPendingConfined(files *filesystem.Handle, dir, slug string, number 
 	return renumberPending(files, dir, slug, number, files.RemoveExpected)
 }
 
-func renumberPending(files *filesystem.Handle, dir, slug string, number int, retire func(string, fs.FileInfo) error) error {
+func renumberPending(files *filesystem.Handle, dir, slug string, number int, retire func(string, *filesystem.ExpectedIdentity) error) error {
 	from := filepath.ToSlash(filepath.Join(dir, slug+".md"))
-	data, err := files.Read(from)
+	info, err := files.ExpectedIdentity(from)
 	if err != nil {
 		return fmt.Errorf("adr: read pending record %s: %w", slug, err)
 	}
-	info, err := files.LinkInfo(from)
+	defer info.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
+	data, err := files.Read(from)
 	if err != nil {
-		return fmt.Errorf("adr: stat pending record %s: %w", slug, err)
+		return fmt.Errorf("adr: read pending record %s: %w", slug, err)
 	}
 	if info.Mode()&os.ModeSymlink != 0 {
 		return fmt.Errorf("adr: pending record %s is a symlink", slug)

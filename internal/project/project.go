@@ -7,7 +7,6 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"io/fs"
 	"path/filepath"
 	"strings"
 
@@ -242,23 +241,26 @@ func (l *Loader) CoversProjectLease(ctx context.Context, root string, lease *fil
 // byte comparison closes the otherwise invisible interval between confined
 // observation and config-tree parsing; callers use identity for their expected
 // replacement.
-func (l *Loader) OpenForMutation(ctx context.Context, root string, files *filesystem.Handle) (*ProjectState, *config.Config, fs.FileInfo, error) {
+func (l *Loader) OpenForMutation(ctx context.Context, root string, files *filesystem.Handle) (*ProjectState, *config.Config, *filesystem.ExpectedIdentity, error) {
 	if files == nil {
 		return nil, nil, nil, errors.New("project Loader: missing confined filesystem handle")
 	}
-	identity, err := files.LinkInfo(".awf/config.yaml")
+	identity, err := files.ExpectedIdentity(".awf/config.yaml")
 	if err != nil {
 		return nil, nil, nil, err
 	}
 	bytesBefore, err := files.Read(".awf/config.yaml")
 	if err != nil {
+		_ = identity.Release()
 		return nil, nil, nil, err
 	}
 	state, cfg, err := l.OpenForOperation(ctx, root)
 	if err != nil {
+		_ = identity.Release()
 		return nil, nil, nil, err
 	}
 	if !bytes.Equal(bytesBefore, cfg.Source()) {
+		_ = identity.Release()
 		return nil, nil, nil, filesystem.ErrIdentityChanged
 	}
 	return state, cfg, identity, nil

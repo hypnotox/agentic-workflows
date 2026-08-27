@@ -148,6 +148,10 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 			return initspec.Outcome{}, openErr
 		}
 		scaffold, err = createScaffold(handle, contents)
+		defer func() {
+			_ = scaffold.configInfo.Release()
+			_ = scaffold.dirInfo.Release()
+		}()
 		closeErr := handle.Close()
 		if err != nil || closeErr != nil {
 			return rollbackScaffold(root, cfgPath, scaffold, errors.Join(err, closeErr))
@@ -220,16 +224,17 @@ func projectSemantics(prepared publisher.Preparation) project.OperationSemantics
 }
 
 type scaffoldFilesystem interface {
-	CreateDirectory(string, fs.FileMode) (fs.FileInfo, error)
+	CreateDirectory(string, fs.FileMode) (*filesystem.ExpectedIdentity, error)
 	Publish(string, []byte, fs.FileMode) error
 	LinkInfo(string) (fs.FileInfo, error)
+	ExpectedIdentity(string) (*filesystem.ExpectedIdentity, error)
 }
 
 type scaffoldCommit struct {
 	configCommitted bool
 	createdDir      bool
-	configInfo      fs.FileInfo
-	dirInfo         fs.FileInfo
+	configInfo      *filesystem.ExpectedIdentity
+	dirInfo         *filesystem.ExpectedIdentity
 	residue         []string
 }
 
@@ -238,7 +243,7 @@ func (s scaffoldCommit) committed() bool {
 }
 
 func createScaffold(handle scaffoldFilesystem, contents []byte) (scaffold scaffoldCommit, returnErr error) {
-	dirInfo, dirErr := handle.LinkInfo(config.DirName)
+	_, dirErr := handle.LinkInfo(config.DirName)
 	if dirErr != nil && !errors.Is(dirErr, fs.ErrNotExist) {
 		return scaffold, dirErr
 	}
@@ -248,14 +253,13 @@ func createScaffold(handle scaffoldFilesystem, contents []byte) (scaffold scaffo
 		)
 		if createErr == nil {
 			scaffold.createdDir = true
-			dirInfo = createdInfo
+			scaffold.dirInfo = createdInfo
 		} else if !errors.Is(createErr, fs.ErrExist) {
 			return scaffold, createErr
-		} else if dirInfo, dirErr = handle.LinkInfo(config.DirName); dirErr != nil {
+		} else if _, dirErr = handle.LinkInfo(config.DirName); dirErr != nil {
 			return scaffold, errors.Join(createErr, dirErr)
 		}
 	}
-	scaffold.dirInfo = dirInfo
 	configRel := filepath.ToSlash(filepath.Join(config.DirName, "config.yaml"))
 	if err := handle.Publish(configRel, contents, 0o644); err != nil {
 		_, residue, committed := filesystem.CommittedPublication(err)
@@ -266,7 +270,7 @@ func createScaffold(handle scaffoldFilesystem, contents []byte) (scaffold scaffo
 		return scaffold, err
 	}
 	scaffold.configCommitted = true
-	configInfo, err := handle.LinkInfo(configRel)
+	configInfo, err := handle.ExpectedIdentity(configRel)
 	if err != nil {
 		return scaffold, err
 	}

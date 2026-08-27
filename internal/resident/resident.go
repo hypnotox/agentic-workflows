@@ -293,7 +293,8 @@ type uninstallHandle interface {
 	ReadDir(string) ([]fs.DirEntry, error)
 	LinkInfo(string) (fs.FileInfo, error)
 	Backup(string) (string, error)
-	RemoveExpected(string, fs.FileInfo) error
+	ExpectedIdentity(string) (*filesystem.ExpectedIdentity, error)
+	RemoveExpected(string, *filesystem.ExpectedIdentity) error
 	Close() error
 }
 
@@ -353,13 +354,14 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 			}
 		}()
 	}
-	lockInfo, err := tracked.LinkInfo(uninstallLockPath)
+	lockInfo, err := tracked.ExpectedIdentity(uninstallLockPath)
 	if errors.Is(err, fs.ErrNotExist) {
 		return report, fmt.Errorf("no %s: nothing to uninstall", filepath.Join(config.DirName, "awf.lock"))
 	}
 	if err != nil {
 		return report, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
 	}
+	defer lockInfo.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	if lockInfo.Mode()&fs.ModeSymlink != 0 || !lockInfo.Mode().IsRegular() {
 		return report, fmt.Errorf("unreadable .awf/awf.lock (unsafe lock): restore it from version control, or delete it deliberately to re-adopt")
 	}
@@ -387,16 +389,18 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 		if IsResidentPath(path) {
 			handle = resident
 		}
-		info, infoErr := handle.LinkInfo(path)
+		info, infoErr := handle.ExpectedIdentity(path)
 		if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {
 			return report, partialUninstall(report, fmt.Errorf("inspect generated file %s: %w", path, infoErr))
 		}
 		if preserveTemplate != nil && preserveTemplate(lock.Files[path].TemplateID) && infoErr == nil {
 			if info.Mode()&fs.ModeSymlink != 0 || !info.Mode().IsRegular() {
+				_ = info.Release()
 				return report, partialUninstall(report, fmt.Errorf("unsafe local document %s", path))
 			}
 			bak, backupErr := handle.Backup(path)
 			if backupErr != nil {
+				_ = info.Release()
 				return report, partialUninstall(report, fmt.Errorf("back up local document %s: %w", path, backupErr))
 			}
 			report.Backups = append(report.Backups, Backup{Path: path, Bak: bak})
@@ -420,7 +424,7 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 		return strings.Compare(a, b)
 	})
 	for _, dir := range dirList {
-		info, err := dirs[dir].LinkInfo(dir)
+		info, err := dirs[dir].ExpectedIdentity(dir)
 		if errors.Is(err, fs.ErrNotExist) {
 			continue
 		}
@@ -428,6 +432,7 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 			return report, partialUninstall(report, fmt.Errorf("inspect empty directory %s: %w", dir, err))
 		}
 		if !info.IsDir() {
+			_ = info.Release()
 			continue
 		}
 		if err := dirs[dir].RemoveExpected(dir, info); err != nil {
