@@ -263,6 +263,7 @@ func templateSource(t *testing.T, tid string) string {
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-effort-session-association (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiRealRuntimeSmoke)
 var (
 	piRuntimeSmokeOnce   sync.Once
 	piRuntimeSmokeOutput []byte
@@ -314,7 +315,6 @@ func TestTargetOutputRenderError(t *testing.T) {
 }
 
 // invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestPiStructuredExplorationContractRender)
-// invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiStructuredExplorationContractRender)
 func TestPiStructuredExplorationContractRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	if got := strings.Count(body, `id: "awf-`); got != 6 {

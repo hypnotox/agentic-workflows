@@ -177,13 +177,27 @@ func TestPiManagedWorktreeVerificationGuidance(t *testing.T) {
 		"inline":    renderSkillGolden(t, "executing-plans", data),
 		"delegated": renderSkillGolden(t, "subagent-driven-development", data),
 	} {
-		for _, want := range []string{"verificationCheckout", "managed-worktree path", "actual mutation paths", "parent and child Pi CWD"} {
+		for _, want := range []string{
+			"Effort-backed pre-integration implementation dispatches supply",
+			"managed-worktree path as `verificationCheckout`",
+			"effort-free or root-owned work intentionally omits it",
+			"child CWD and commit-policy identity",
+			"main Pi session remains at the project root",
+			"parent mutations name managed-worktree paths explicitly",
+			"Child CWD alignment is not filesystem confinement",
+			"Governed primary-checkout lifecycle transitions remain at the primary checkout",
+		} {
 			if !strings.Contains(body, want) {
-				t.Errorf("Pi %s guidance missing %q", name, want)
+				t.Errorf("Pi %s guidance missing semantic clause %q", name, want)
 			}
 		}
-		if !strings.Contains(strings.ToLower(body), "omit `verificationcheckout` for root work") {
-			t.Errorf("Pi %s guidance missing the complete root-work omission clause", name)
+		for _, forbidden := range []string{
+			"parent and child Pi CWD", "shared session CWD",
+			"Parent and child Pi CWD do not become",
+		} {
+			if strings.Contains(body, forbidden) {
+				t.Errorf("Pi %s guidance retains malformed or contradictory wording %q", name, forbidden)
+			}
 		}
 	}
 	claudeData := maps.Clone(data)

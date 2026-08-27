@@ -549,3 +549,11 @@ tag itself before workflow inspection. This mechanical correction completes fail
 pin validation without changing the phase boundary.
 
 Phase 6 corrected the route: pi-tools v0.3.0 accepts a prepared CWD and does not supply the required runtime confinement refusal. Preparation now resolves and caches the one canonical accessible descendant checkout before dispatch, returns it as child CWD, and snapshots that same identity before and after both completed and failed outcomes. The recorder red test failed with prepared CWD `/repo` instead of `/repo/.awf/worktrees/w`; it passes after the change. Root omission remains root/root, and explicit outside paths remain possible rather than falsely refused as confinement.
+
+Phase 6 review settlement replaces callback-only evidence with the pinned pi-tools toolkit lifecycle.
+Overlapping root and managed-worktree invocations make real relative and deliberate outside writes,
+return completed and failed outcomes, and prove each prepared CWD remains paired with its own commit
+snapshots. The Pi workflow clauses now state the effort-backed pre-integration requirement, root
+omission, stable parent root, explicit parent paths, non-confinement boundary, and governed primary
+lifecycle transition without contradictory CWD wording. The runtime smoke is the named backing for
+the lifecycle claim, while focused rendered-output assertions falsify malformed guidance.
