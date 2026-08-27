@@ -11,6 +11,8 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+// ExpectedIdentity pins one leaf for an expected mutation. The caller must
+// Release an identity it abandons; expected-mutation methods consume it.
 func (h *Handle) ExpectedIdentity(name string) (*ExpectedIdentity, error) {
 	if err := validPath(name); err != nil {
 		return nil, fmt.Errorf("filesystem: expected identity %q: %w", name, err)

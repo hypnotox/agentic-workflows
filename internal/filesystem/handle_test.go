@@ -492,7 +492,17 @@ func TestExpectedIdentityReplacementAndRemovalRefuseStaleEntries(t *testing.T) {
 	if err := h.ReplaceExpected("artifact", expected, []byte("replacement"), 0o644); !errors.Is(err, ErrIdentityChanged) {
 		t.Fatalf("stale replacement = %v, want identity change", err)
 	}
-	if err := h.RemoveExpected("artifact", expected); !errors.Is(err, ErrIdentityChanged) {
+	removeExpected, err := h.ExpectedIdentity("artifact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(filepath.Join(root, "artifact")); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "artifact"), []byte("winner"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RemoveExpected("artifact", removeExpected); !errors.Is(err, ErrIdentityChanged) {
 		t.Fatalf("stale removal = %v, want identity change", err)
 	}
 	if got, err := os.ReadFile(filepath.Join(root, "artifact")); err != nil || string(got) != "winner" {
