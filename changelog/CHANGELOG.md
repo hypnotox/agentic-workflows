@@ -20,6 +20,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Project-tree scans now exclude sockets and other unsupported filesystem entries from readable inventories, so ignored local tool state cannot make render or check fail while opening a non-file.
+
 - Linux release tarballs now use portable root ownership and expected executable and regular-file modes, so restricted rootless extraction does not depend on the release builder's account.
 
 - Terminal plan closure now freezes Implemented plan history and validates a parsed complete reconciliation against a selected repository implementation range. Proposed plans remain amendable; closure does not require original plan choreography.

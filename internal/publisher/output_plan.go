@@ -104,6 +104,9 @@ func (r filesystemProjectReader) Entries(prefix string) ([]generatedcheck.TreeEn
 			}
 			return err
 		}
+		if !d.IsDir() && !d.Type().IsRegular() {
+			return nil
+		}
 		rel, e := filepath.Rel(r.root, p)
 		if e != nil { // coverage-ignore: WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform
 			return e
@@ -145,6 +148,9 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 			if filesystemProjectBoundary(p) {
 				return fs.SkipDir
 			}
+			return nil
+		}
+		if !d.Type().IsRegular() {
 			return nil
 		}
 		rel, e := filepath.Rel(r.root, p)
