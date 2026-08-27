@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.41.0] - 2026-08-27
+
 ### Features
 
 - Live GitHub main and release-tag rulesets now require the app-bound `CI / gate` and `CI / release-config` conclusions for the exact candidate revision while retaining signed-commit, deletion, and non-fast-forward main protections.
