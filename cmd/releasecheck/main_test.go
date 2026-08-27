@@ -695,7 +695,11 @@ func TestReleaseArchivesPortableSnapshot(t *testing.T) {
 	if err := os.RemoveAll(dist); err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() { _ = os.RemoveAll(dist) })
+	t.Cleanup(func() {
+		if err := os.RemoveAll(dist); err != nil {
+			t.Errorf("remove snapshot dist: %v", err)
+		}
+	})
 	cmd := exec.Command("go", "run", "github.com/goreleaser/goreleaser/v2@v2.17.0", "release", "--snapshot", "--clean")
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
@@ -717,6 +721,7 @@ func TestReleaseArchivesPortableSnapshot(t *testing.T) {
 	if len(names) != 6 {
 		t.Fatalf("snapshot archive count = %d, want 6: %q", len(names), names)
 	}
+	assertSnapshotChecksums(t, filepath.Join(dist, "checksums.txt"), names)
 	for _, suffix := range []string{
 		"_darwin_amd64.tar.gz", "_darwin_arm64.tar.gz", "_linux_amd64.tar.gz",
 		"_linux_arm64.tar.gz", "_windows_amd64.zip", "_windows_arm64.zip",
@@ -737,18 +742,20 @@ func TestReleaseArchivesPortableSnapshot(t *testing.T) {
 			continue
 		}
 		entries := assertTarArchivePaths(t, archive, []string{"LICENSE", "README.md", "awf"})
-		if strings.Contains(name, "_linux_") {
-			for _, entry := range entries {
+		for _, entry := range entries {
+			if strings.Contains(name, "_linux_") {
 				if entry.Uid != 0 || entry.Gid != 0 || entry.Uname != "root" || entry.Gname != "root" {
 					t.Errorf("%s entry %s ownership = %d:%d %q:%q, want 0:0 root:root", name, entry.Name, entry.Uid, entry.Gid, entry.Uname, entry.Gname)
 				}
-				wantMode := int64(0o644)
-				if entry.Name == "awf" {
-					wantMode = 0o755
-				}
-				if entry.Mode != wantMode {
-					t.Errorf("%s entry %s mode = %#o, want %#o", name, entry.Name, entry.Mode, wantMode)
-				}
+			} else if entry.Uname == "root" || entry.Gname == "root" {
+				t.Errorf("%s entry %s ownership = %d:%d %q:%q, want unchanged builder metadata rather than Linux normalization", name, entry.Name, entry.Uid, entry.Gid, entry.Uname, entry.Gname)
+			}
+			wantMode := int64(0o644)
+			if entry.Name == "awf" {
+				wantMode = 0o755
+			}
+			if entry.Mode != wantMode {
+				t.Errorf("%s entry %s mode = %#o, want %#o", name, entry.Name, entry.Mode, wantMode)
 			}
 		}
 	}
@@ -775,6 +782,26 @@ func TestReleaseArchivesPortableSnapshot(t *testing.T) {
 	slices.Sort(extractedNames)
 	if !slices.Equal(extractedNames, []string{"LICENSE", "README.md", "awf"}) {
 		t.Fatalf("restricted rootless extracted paths = %q, want exactly binary, LICENSE, and README", extractedNames)
+	}
+}
+
+func assertSnapshotChecksums(t *testing.T, path string, archives []string) {
+	t.Helper()
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read snapshot checksums: %v", err)
+	}
+	var names []string
+	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 || len(fields[0]) != 64 {
+			t.Fatalf("snapshot checksum line = %q, want SHA-256 and archive name", line)
+		}
+		names = append(names, fields[1])
+	}
+	slices.Sort(names)
+	if !slices.Equal(names, archives) {
+		t.Fatalf("snapshot checksum entries = %q, want exactly six archives %q", names, archives)
 	}
 }
 

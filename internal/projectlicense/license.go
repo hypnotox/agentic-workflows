@@ -93,7 +93,7 @@ func (files *archiveFiles) UnmarshalYAML(node *yaml.Node) error {
 				Source string `yaml:"src"`
 			}
 			if err := entry.Decode(&file); err != nil {
-				return err
+				return fmt.Errorf("decode structured archive file: %w", err)
 			}
 			sources = append(sources, file.Source)
 		default:

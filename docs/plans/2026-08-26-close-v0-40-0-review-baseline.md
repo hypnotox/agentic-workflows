@@ -608,3 +608,12 @@ underlying Git error identity and operation context. Independent fixtures preser
 add-then-delete path and a merge-resolution-only path, while a marked repository-backed `CheckStaged`
 test proves matching selected history reaches terminal policy and a guessed path is rejected. Rendered
 Pi, Claude, and plan-reference boundaries carry the same meaning.
+
+Phase 8 review found that the first archive metadata correction also normalized Darwin tar headers,
+left checksum preservation implicit, returned an unwrapped structured-file decode error, and ignored
+snapshot cleanup failure. The settlement splits Linux and non-Linux archive definitions over the
+same build so only Linux receives portable ownership while names, formats, contents, and the target
+matrix remain stable. The snapshot oracle now rejects non-Linux ownership normalization, requires
+`checksums.txt` to name exactly all six archives, and checks cleanup. Structured archive decoding
+wraps its cause. These corrections preserve the existing release boundary without adding platforms
+or provenance machinery.

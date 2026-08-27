@@ -24,7 +24,9 @@ builds:
       - arm64
 
 archives:
-  - id: awf
+  - id: awf-linux
+    ids:
+      - awf
     # Stable numeric and named ownership lets a rootless user namespace extract
     # Linux tarballs without trying to map the release builder's local account.
     builds_info:
@@ -35,9 +37,12 @@ archives:
       - tar.gz
     name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
     format_overrides:
+      - goos: darwin
+        formats:
+          - none
       - goos: windows
         formats:
-          - zip
+          - none
     files:
       - src: LICENSE
         info:
@@ -49,6 +54,22 @@ archives:
           owner: root
           group: root
           mode: 0644
+  - id: awf
+    ids:
+      - awf
+    formats:
+      - tar.gz
+    name_template: "{{ .ProjectName }}_{{ .Version }}_{{ .Os }}_{{ .Arch }}"
+    format_overrides:
+      - goos: linux
+        formats:
+          - none
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
 
 checksum:
   name_template: checksums.txt
