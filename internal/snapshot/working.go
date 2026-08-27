@@ -38,7 +38,7 @@ func WorkingTree(ctx context.Context, repo *git.Repo) (*Tree, error) {
 			}
 			mode, data = Symlink, []byte(target)
 		} else {
-			if !info.Mode().IsRegular() { // coverage-ignore: WorkingPaths returns file entries; symlinks were handled above
+			if !info.Mode().IsRegular() {
 				continue
 			}
 			var readErr error

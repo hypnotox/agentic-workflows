@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "42439d59812860d95d3c413ac5e64207038875532995118bb0fe551f0d93f80a",
+  "universeSHA256": "2aa0b36142ae2f6d25fb5296b0b9eae73ca31900a12c21edebcfd951d3268db4",
   "repository": [
     {
       "identity": {
@@ -8819,21 +8819,6 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at internal/snapshot/working.go:36.22,38.5 1 in function WorkingTree, beginning `{ // coverage-ignore: Lstat just identified this link; only a concurrent mutation can fail Readl...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/snapshot/working.go",
-        "start": {
-          "line": 41,
-          "column": 32
-        },
-        "end": {
-          "line": 42,
-          "column": 13
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/snapshot/working.go:41.32,42.13 1 in function WorkingTree, beginning `{ // coverage-ignore: WorkingPaths returns file entries; symlinks were handled above`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -21960,18 +21945,6 @@
       },
       "class": "uninducible-deterministic-fault",
       "evidence": "`func WorkingTree(ctx context.Context, repo *git.Repo) (*Tree, error)` (starts internal/snapshot/working.go:19) checks `if readErr != nil {` at internal/snapshot/working.go:36 after `target, readErr := os.Readlink(full)` at internal/snapshot/working.go:35. Here Lstat just identified this link; only a concurrent mutation can fail Readlink; exercising this exact branch requires an unportable environmental failure."
-    },
-    {
-      "directive": {
-        "file": "internal/snapshot/working.go",
-        "line": 41,
-        "targetLine": 41,
-        "reason": "WorkingPaths returns file entries; symlinks were handled above",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/snapshot/working.go:41, `if !info.Mode().IsRegular() {` follows the concrete operation `} else {` at internal/snapshot/working.go:40 in `func WorkingTree(ctx context.Context, repo *git.Repo) (*Tree, error)` (internal/snapshot/working.go:19). The reviewed failure condition is WorkingPaths returns file entries; symlinks were handled above; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {

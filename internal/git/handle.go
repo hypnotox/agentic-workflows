@@ -678,9 +678,12 @@ func (r *Repo) WorkingEntries(ctx context.Context) ([]TreeEntry, error) {
 			return nil, fmt.Errorf("read working entry %s: %w", p, err)
 		}
 		mode := blobModeOf(filemode.Regular)
-		if info.Mode()&os.ModeSymlink != 0 {
+		switch {
+		case info.Mode()&os.ModeSymlink != 0:
 			mode = blobModeOf(filemode.Symlink)
-		} else if info.Mode().Perm()&0o111 != 0 {
+		case !info.Mode().IsRegular():
+			continue
+		case info.Mode().Perm()&0o111 != 0:
 			mode = blobModeOf(filemode.Executable)
 		}
 		entries = append(entries, TreeEntry{Path: p, Mode: mode})

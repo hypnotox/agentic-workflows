@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- Ordinary explicit context queries now avoid full output rendering and unrelated file reads while preserving successful output. Staged, range-selected, and uncovered context retain their existing preparation paths.
+
 ## [0.40.0] - 2026-08-25
 
 ### Breaking changes
