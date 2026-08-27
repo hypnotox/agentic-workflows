@@ -740,6 +740,13 @@ func TestReleaseArchivesPortableSnapshot(t *testing.T) {
 		t.Fatal(err)
 	}
 	dist := filepath.Join(t.TempDir(), "dist")
+	relativeDist, err := filepath.Rel(root, dist)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if relativeDist != ".." && !strings.HasPrefix(relativeDist, ".."+string(os.PathSeparator)) {
+		t.Fatalf("snapshot dist %q is inside checkout %q", dist, root)
+	}
 	config, err := os.ReadFile(filepath.Join(root, ".goreleaser.yaml"))
 	if err != nil {
 		t.Fatal(err)
