@@ -101,6 +101,7 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 	}
 }
 
+// invariant: tooling/context-and-topic:context-query-boundary (TestContextPathSetProjectsExactAndSortedDescendantsOnDemand)
 func TestContextPathSetProjectsExactAndSortedDescendantsOnDemand(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: "aaa/before.go", Mode: snapshot.Regular},

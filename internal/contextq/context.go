@@ -144,18 +144,7 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 }
 
 func contextInventory(state contextinput.Snapshot) []snapshot.File {
-	if state.Inventory == nil {
-		return state.Tree.List()
-	}
-	out := make([]snapshot.File, 0, len(state.Inventory.List()))
-	for _, entry := range state.Inventory.List() {
-		file := snapshot.File{Path: entry.Path, Mode: entry.Mode}
-		if selected, ok := state.Tree.Lookup(entry.Path); ok {
-			file.Bytes = selected.Bytes
-		}
-		out = append(out, file)
-	}
-	return out
+	return overlayContextInventory(state.Tree, state.Inventory)
 }
 
 func safelyMatchableInventory(state contextinput.Snapshot) []string {

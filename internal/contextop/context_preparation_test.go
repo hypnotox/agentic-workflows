@@ -371,23 +371,37 @@ func TestFocusedWorkingStateMatchesCompleteParityMatrix(t *testing.T) {
 	}
 }
 
-func TestFocusedWorkingStateDoesNotReadRequestedClassificationPayloads(t *testing.T) {
+// invariant: tooling/context-and-topic:context-read-only (TestFocusedWorkingStateSelectsOnlyRequestedManifestPayloads)
+func TestFocusedWorkingStateSelectsOnlyRequestedManifestPayloads(t *testing.T) {
 	root := contextPreparationFixture(t)
 	testsupport.WriteAwfConfig(t, root, contextPreparationYAML+"contextIgnore:\n  - ignored/**\n")
 	for path, body := range map[string]string{
 		"payload.bin": "root payload\n", "assets/payload.bin": "directory payload\n", "ignored/payload.bin": "ignored payload\n",
+		"manifest/exact.txt": "exact output\n", "manifest/dir/a.txt": "directory output\n", "manifest/root.txt": "root output\n",
 	} {
 		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(path)), body)
 	}
+	lock, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, path := range []string{"manifest/exact.txt", "manifest/dir/a.txt", "manifest/root.txt"} {
+		lock.Files[path] = manifest.Entry{TemplateID: "fixture"}
+	}
+	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
 	state, repo := contextPreparationProject(t, root)
 	for _, tc := range []struct {
-		name, unread string
-		requests     []string
+		name, unread       string
+		requests, selected []string
 	}{
-		{name: "exact", requests: []string{"payload.bin"}, unread: "payload.bin"},
-		{name: "directory", requests: []string{"assets"}, unread: "assets/payload.bin"},
-		{name: "root", requests: []string{"."}, unread: "payload.bin"},
-		{name: "ignored", requests: []string{"ignored/payload.bin"}, unread: "ignored/payload.bin"},
+		{name: "exact unmanifested", requests: []string{"payload.bin"}, unread: "payload.bin"},
+		{name: "directory unmanifested", requests: []string{"assets"}, unread: "assets/payload.bin"},
+		{name: "ignored unmanifested", requests: []string{"ignored/payload.bin"}, unread: "ignored/payload.bin"},
+		{name: "exact manifested", requests: []string{"manifest/exact.txt"}, selected: []string{"manifest/exact.txt"}},
+		{name: "directory manifested", requests: []string{"manifest/dir"}, selected: []string{"manifest/dir/a.txt"}},
+		{name: "root manifested", requests: []string{"."}, unread: "payload.bin", selected: []string{"manifest/exact.txt", "manifest/dir/a.txt", "manifest/root.txt"}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			focused, err := workingState(testsupport.Context(t), state, repo, tc.requests)
@@ -395,11 +409,18 @@ func TestFocusedWorkingStateDoesNotReadRequestedClassificationPayloads(t *testin
 				t.Fatal(err)
 			}
 			view := focused.Snapshot()
-			if _, present := view.Inventory.Lookup(tc.unread); !present {
-				t.Fatalf("inventory omitted %s", tc.unread)
+			if tc.unread != "" {
+				if _, present := view.Inventory.Lookup(tc.unread); !present {
+					t.Fatalf("inventory omitted %s", tc.unread)
+				}
+				if _, read := view.Tree.Lookup(tc.unread); read {
+					t.Fatalf("focused context read classification-only payload %s", tc.unread)
+				}
 			}
-			if _, read := view.Tree.Lookup(tc.unread); read {
-				t.Fatalf("focused context read classification-only payload %s", tc.unread)
+			for _, path := range tc.selected {
+				if _, read := view.Tree.Lookup(path); !read {
+					t.Errorf("focused context omitted requested manifest payload %s", path)
+				}
 			}
 		})
 	}

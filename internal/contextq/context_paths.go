@@ -199,17 +199,7 @@ type contextPathSet struct {
 // newContextPathSet indexes the complete query inventory once. Exact requests
 // use entries while directory requests use the contiguous sorted prefix range.
 func newContextPathSet(tree *snapshot.Tree, inventory *snapshot.Inventory, nested []string, outputs map[string]bool, ignores []string, domainPaths map[string][]string) contextPathSet {
-	files := tree.List()
-	if inventory != nil {
-		files = make([]snapshot.File, 0, len(inventory.List()))
-		for _, entry := range inventory.List() {
-			file := snapshot.File{Path: entry.Path, Mode: entry.Mode}
-			if selected, ok := tree.Lookup(entry.Path); ok {
-				file.Bytes = selected.Bytes
-			}
-			files = append(files, file)
-		}
-	}
+	files := overlayContextInventory(tree, inventory)
 	set := contextPathSet{tree: tree, paths: make([]string, 0, len(files)), entries: make(map[string]snapshot.File, len(files)), nested: nested, outputs: outputs, ignores: ignores, domainPaths: domainPaths, impacts: map[string]contextPathImpact{}, explicit: map[string]bool{}}
 	for _, file := range files {
 		set.paths = append(set.paths, file.Path)
@@ -217,6 +207,21 @@ func newContextPathSet(tree *snapshot.Tree, inventory *snapshot.Inventory, neste
 	}
 	slices.Sort(set.paths)
 	return set
+}
+
+func overlayContextInventory(tree *snapshot.Tree, inventory *snapshot.Inventory) []snapshot.File {
+	if inventory == nil {
+		return tree.List()
+	}
+	files := make([]snapshot.File, 0, len(inventory.List()))
+	for _, entry := range inventory.List() {
+		file := snapshot.File{Path: entry.Path, Mode: entry.Mode}
+		if selected, ok := tree.Lookup(entry.Path); ok {
+			file.Bytes = selected.Bytes
+		}
+		files = append(files, file)
+	}
+	return files
 }
 
 func (set contextPathSet) lookup(p string) (snapshot.File, bool) {
