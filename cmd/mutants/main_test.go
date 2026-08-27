@@ -416,7 +416,7 @@ func canonicalMutationBaseline(t *testing.T, module string, mutants []coveragepo
 	var platforms []coveragepolicy.PlatformDirective
 	for _, item := range []struct {
 		file, platform string
-	}{{"internal/effort/publication_darwin.go", "darwin"}, {"internal/effort/publication_windows.go", "windows"}} {
+	}{{"internal/effort/publication_darwin.go", "darwin"}} {
 		for line := 1; line <= 2; line++ {
 			directive := coveragepolicy.Directive{File: item.file, Line: line, TargetLine: line, Reason: "rollback"}
 			production = append(production, coveragepolicy.DirectiveAdmission{Directive: directive, Class: coveragepolicy.IgnorePlatformOnly, Evidence: "platform source"})

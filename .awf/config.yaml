@@ -98,6 +98,7 @@ vars:
   checkCmd: ./x check
   commitGateCmd: ./awf check staged commit
   gateCmd: ./x gate
+  gateCmdFull: ./x gate full
   invariantTestPath: ./internal/...
   testCmd: go test ./...
 bootstrap:

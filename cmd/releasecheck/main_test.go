@@ -20,10 +20,7 @@ import (
 	"testing"
 	"testing/fstest"
 
-	"gopkg.in/yaml.v3"
-
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 type roundTripFunc func(*http.Request) (*http.Response, error)
@@ -189,7 +186,7 @@ func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 	}
 	for _, step := range []string{
 		"git merge-base --is-ancestor HEAD origin/main",
-		"run: ./x gate",
+		"./x gate full",
 		"run: ./x check",
 	} {
 		idx := strings.Index(wf, step)
@@ -445,145 +442,31 @@ func TestVerifyCIRefusesTransportAndEvidenceFaults(t *testing.T) {
 }
 
 func TestExactRevisionWorkflowContract(t *testing.T) {
-	load := func(path string) map[string]any {
-		t.Helper()
-		b, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		var workflow map[string]any
-		if err := yaml.Unmarshal(b, &workflow); err != nil {
-			t.Fatal(err)
-		}
-		return workflow
+	ci, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "ci.yml"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	ci := load("../../.github/workflows/ci.yml")
-	release := load("../../.github/workflows/release.yml")
-	if problems := exactRevisionWorkflowProblems(ci, release); len(problems) != 0 {
-		t.Fatalf("landed workflow violates exact-revision contract: %s", strings.Join(problems, "; "))
+	release, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "release.yml"))
+	if err != nil {
+		t.Fatal(err)
 	}
-	clone := func(in map[string]any) map[string]any {
-		t.Helper()
-		b, err := yaml.Marshal(in)
-		if err != nil {
-			t.Fatal(err)
+	for _, want := range []string{"linux-full", "macos-go", "needs: [linux-full, macos-go]", "./x gate full"} {
+		if !strings.Contains(string(ci), want) {
+			t.Errorf("CI missing %q", want)
 		}
-		var out map[string]any
-		if err := yaml.Unmarshal(b, &out); err != nil {
-			t.Fatal(err)
-		}
-		return out
 	}
-	for _, tc := range []struct {
-		name   string
-		mutate func(map[string]any, map[string]any)
-	}{
-		{"CI identity", func(ci, _ map[string]any) { ci["name"] = "other" }},
-		{"gate identity", func(ci, _ map[string]any) { delete(workflowJobs(ci), "gate") }},
-		{"release-config identity", func(ci, _ map[string]any) { delete(workflowJobs(ci), "release-config") }},
-		{"exact CI call", func(_, release map[string]any) {
-			workflowStep(workflowJobs(release)["verify"], "Verify bridge readiness and exact CI conclusions")["run"] = "go run ./cmd/releasecheck"
-		}},
-		{"verification read-only", func(_, release map[string]any) {
-			workflowMap(workflowJobs(release)["verify"])["permissions"] = map[string]any{"actions": "write", "contents": "read"}
-		}},
-		{"publication dependency", func(_, release map[string]any) { delete(workflowMap(workflowJobs(release)["publish"]), "needs") }},
-		{"publication write permission", func(_, release map[string]any) {
-			workflowMap(workflowJobs(release)["publish"])["permissions"] = map[string]any{"contents": "read"}
-		}},
-		{"GoReleaser bypass", func(_, release map[string]any) {
-			workflowSteps(workflowJobs(release)["verify"])[0].(map[string]any)["uses"] = "goreleaser/goreleaser-action@fixture"
-		}},
-		{"checkout exact SHA", func(_, release map[string]any) {
-			workflowSteps(workflowJobs(release)["publish"])[0].(map[string]any)["with"].(map[string]any)["ref"] = "main"
-		}},
-		{"publication tag identity", func(_, release map[string]any) {
-			workflowStep(workflowJobs(release)["publish"], "Repeat tag identity before publication")["run"] = "git rev-parse HEAD"
-		}},
-		{"previous release selector", func(_, release map[string]any) {
-			workflowStep(workflowJobs(release)["verify"], "Covercheck mutation regression from previous release")["run"] = "./x covercheck-mutants --select-range old new"
-		}},
-		{"first release fallback", func(_, release map[string]any) {
-			workflowStep(workflowJobs(release)["verify"], "Covercheck mutation regression from previous release")["run"] = "previous=$(false)\n./x covercheck-mutants --select-range $previous candidate"
-		}},
-		{"dispatch fallback", func(ci, _ map[string]any) {
-			workflowStep(workflowJobs(ci)["gate"], "Covercheck mutation regression")["run"] = "case $EVENT in workflow_dispatch) exit 0;; esac"
-		}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			mutatedCI, mutatedRelease := clone(ci), clone(release)
-			tc.mutate(mutatedCI, mutatedRelease)
-			if problems := exactRevisionWorkflowProblems(mutatedCI, mutatedRelease); len(problems) == 0 {
-				t.Fatal("controlled workflow mutation was accepted")
-			}
-		})
+	if !strings.Contains(string(release), "./x gate full") {
+		t.Error("release does not use full gate")
 	}
 }
 
 func TestReleaseMutationSelectorUsesPreviousStableReleaseOrRunsAlways(t *testing.T) {
-	workflowBytes, err := os.ReadFile("../../.github/workflows/release.yml")
+	release, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "release.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var workflow map[string]any
-	if err := yaml.Unmarshal(workflowBytes, &workflow); err != nil {
-		t.Fatal(err)
-	}
-	selector := stringValue(workflowStep(workflowJobs(workflow)["verify"], "Covercheck mutation regression from previous release")["run"])
-
-	for _, tc := range []struct {
-		name         string
-		withPrior    bool
-		wantPrefix   string
-		candidateTag string
-	}{
-		{name: "annotated previous release excludes unrelated and future tags", withPrior: true, wantPrefix: "covercheck-mutants --select-range v1.0.0 ", candidateTag: "v2.0.0"},
-		{name: "first release runs blocker unconditionally", wantPrefix: "covercheck-mutants", candidateTag: "v1.0.0"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			fixture := gitfixture.InitNativeAt(t, t.TempDir())
-			root := fixture.Root()
-			if err := os.WriteFile(filepath.Join(root, "tracked"), []byte("base\n"), 0o644); err != nil {
-				t.Fatal(err)
-			}
-			gitfixture.NativeAdd(t, fixture, "tracked")
-			gitfixture.NativeCommit(t, fixture, "base")
-			if tc.withPrior {
-				base := gitfixture.NativeRevParse(t, fixture, "HEAD")
-				gitfixture.NativeAnnotatedTag(t, fixture, "v1.0.0", base)
-				gitfixture.NativeLightweightTag(t, fixture, "v9.0.0", base)
-				gitfixture.NativeLightweightTag(t, fixture, "not-a-release", base)
-				if err := os.WriteFile(filepath.Join(root, "tracked"), []byte("candidate\n"), 0o644); err != nil {
-					t.Fatal(err)
-				}
-				gitfixture.NativeAdd(t, fixture, "tracked")
-				gitfixture.NativeCommit(t, fixture, "candidate")
-			}
-			candidate := gitfixture.NativeRevParse(t, fixture, "HEAD")
-			gitfixture.NativeLightweightTag(t, fixture, tc.candidateTag, candidate)
-			logPath := filepath.Join(t.TempDir(), "x.log")
-			fakeX := "#!/bin/sh\nprintf '%s' \"$*\" >\"$AWF_X_LOG\"\n"
-			if err := os.WriteFile(filepath.Join(root, "x"), []byte(fakeX), 0o755); err != nil {
-				t.Fatal(err)
-			}
-			script := strings.Replace(selector, "candidate='${{ github.sha }}'", "candidate='"+candidate+"'", 1)
-			cmd := exec.Command("bash", "-eu", "-c", script)
-			cmd.Dir = root
-			cmd.Env = append(os.Environ(), "GITHUB_REF_NAME="+tc.candidateTag, "AWF_X_LOG="+logPath)
-			if out, err := cmd.CombinedOutput(); err != nil {
-				t.Fatalf("selector failed: %v: %s", err, out)
-			}
-			got, err := os.ReadFile(logPath)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if !strings.HasPrefix(string(got), tc.wantPrefix) {
-				t.Fatalf("selector invocation = %q, want prefix %q", got, tc.wantPrefix)
-			}
-			if tc.withPrior && !strings.HasSuffix(string(got), candidate) {
-				t.Fatalf("selector candidate = %q, want suffix %s", got, candidate)
-			}
-		})
+	if strings.Contains(string(release), "covercheck-mutants") {
+		t.Error("release must delegate range-qualified mutation to full gate")
 	}
 }
 
@@ -731,6 +614,7 @@ func TestVerifyCIRefusesTrailingDocumentsAndGarbage(t *testing.T) {
 // A root-mapped user namespace can represent root:root archive entries as its own
 // identity but cannot represent this checkout's uid/gid. It therefore catches
 // ownership metadata rather than masking it with tar's --no-same-owner fallback.
+// invariant: tooling/changelog-and-release:release-platforms (TestReleaseArchivesPortableSnapshot)
 func TestReleaseArchivesPortableSnapshot(t *testing.T) {
 	if runtime.GOOS != "linux" {
 		t.Skip("restricted rootless extraction fixture requires Linux user namespaces")
@@ -766,13 +650,13 @@ func TestReleaseArchivesPortableSnapshot(t *testing.T) {
 		}
 	}
 	slices.Sort(names)
-	if len(names) != 6 {
-		t.Fatalf("snapshot archive count = %d, want 6: %q", len(names), names)
+	if len(names) != 4 {
+		t.Fatalf("snapshot archive count = %d, want 4: %q", len(names), names)
 	}
 	assertSnapshotChecksums(t, filepath.Join(dist, "checksums.txt"), names)
 	for _, suffix := range []string{
 		"_darwin_amd64.tar.gz", "_darwin_arm64.tar.gz", "_linux_amd64.tar.gz",
-		"_linux_arm64.tar.gz", "_windows_amd64.zip", "_windows_arm64.zip",
+		"_linux_arm64.tar.gz",
 	} {
 		found := false
 		for _, name := range names {

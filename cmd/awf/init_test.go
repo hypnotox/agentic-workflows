@@ -552,7 +552,6 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 		t.Errorf("init --force lost its scaffold identity or backup report:\n%s", out.String())
 	}
 	for _, want := range []string{
-		"skill bugfix references unset vars",
 		"skill tdd references unset vars",
 		"docs/architecture.md has unauthored stub content",
 		"step 5: commit .awf/ and the rendered files together",

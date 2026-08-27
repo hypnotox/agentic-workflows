@@ -57,45 +57,35 @@ run_advisory_lint() {
   fi
 }
 
-select_gate_tests() {
-  # One rename-disabled, NUL-delimited index diff is the selection snapshot.
-  # Any Git or parsing uncertainty deliberately retains every test lane.
-  local LC_ALL=C diff path size consumed=0 saw=false
-  diff="$(mktemp)"
-  cleanup_paths+=("$diff")
-  if [ -n "${AWF_GATE_SELECT_RANGE:-}" ]; then
-    read -r gate_base gate_head extra <<<"$AWF_GATE_SELECT_RANGE"
-    [ -z "${extra:-}" ] && git cat-file -e "$gate_base^{commit}" && git cat-file -e "$gate_head^{commit}" || return 1
-    git diff --name-only -z --no-renames "$gate_base" "$gate_head" -- >"$diff" || return 1
-  elif ! git diff --cached --name-only -z --no-renames >"$diff"; then
-    return 1
-  fi
-  gate_go_tests=false
-  gate_pi_tests=false
+covercheck_mutants_path_owned() {
+  case "$1" in cmd/covercheck|cmd/covercheck/*) return 0;; *) return 1;; esac
+}
+
+# Return selected (0), not selected (1), or uncertain (2).  The full gate
+# treats uncertainty as selected under ADR-0302's conservative trust contract.
+covercheck_mutants_selected() {
+  local mode="$1" path stream size consumed=0 saw=false
+  shift
+  stream="$(mktemp)"; cleanup_paths+=("$stream")
+  case "$mode" in
+    staged) git diff --cached --name-only -z --no-renames >"$stream" || return 2 ;;
+    ranges)
+      [ "$#" -gt 0 ] || return 2
+      while [ "$#" -gt 0 ]; do
+        [ "$#" -ge 2 ] && git cat-file -e "$1^{commit}" && git cat-file -e "$2^{commit}" || return 2
+        git diff --name-only -z --no-renames "$1" "$2" -- >>"$stream" || return 2
+        shift 2
+      done ;;
+    *) return 2 ;;
+  esac
   while IFS= read -r -d '' path; do
-    if [ -z "$path" ]; then
-      return 1
-    fi
-    saw=true
-    consumed=$((consumed + ${#path} + 1))
-    # Each recognized category explicitly selects its dependent suites. New or
-    # uncertain paths deliberately select both rather than inheriting a lane.
-    case "$path" in
-      # Only this census-proven independent editor metadata skips both suites.
-      .editorconfig) ;;
-      # Pi templates and generated guidance are consumed by Go tests as well.
-      templates/pi/*|templates/embed.go|.pi/agents/*|.pi/skills/*|x|internal/project/*|internal/render/*|internal/config/*|internal/catalog/*|.awf/*|go.mod|go.sum) gate_go_tests=true; gate_pi_tests=true ;;
-      # These Pi harness proving inputs have direct Go-test consumers.
-      .nvmrc|tools/pi-extension-test/run.sh|tools/pi-extension-test/lockrun/*|tools/pi-extension-test/tests/index.test.ts|tools/pi-extension-test/tests/handoff.test.ts) gate_go_tests=true; gate_pi_tests=true ;;
-      # Pi extension and standalone harness inputs have no Go-test consumer.
-      .pi/extensions/*|tools/pi-extension-test/*manifest*|tools/pi-extension-test/*lock*|tools/pi-extension-test/tsconfig*.json|tools/pi-extension-test/fixtures/*|tools/pi-extension-test/tests/*.ts|tools/pi-extension-test/package.json|tools/pi-extension-test/package-lock.json) gate_pi_tests=true ;;
-      # Ordinary Go and Claude-only inputs do not affect the Pi runtime suite.
-      *.go|.claude/*) gate_go_tests=true ;;
-      *) gate_go_tests=true; gate_pi_tests=true ;;
-    esac
-  done <"$diff"
-  size="$(wc -c <"$diff")" || return 1
-  "$saw" && [ "$consumed" -eq "$size" ] || return 1
+    [ -n "$path" ] || return 2
+    saw=true; consumed=$((consumed + ${#path} + 1))
+    covercheck_mutants_path_owned "$path" && return 0
+  done <"$stream"
+  size="$(wc -c <"$stream")" || return 2
+  [ "$consumed" -eq "$size" ] || return 2
+  return 1
 }
 
 run_pi_runtime_smoke() {
@@ -115,37 +105,6 @@ run_pi_runtime_smoke() {
       return 1
     fi
   done
-}
-
-covercheck_mutants_path_owned() {
-  case "$1" in cmd/covercheck|cmd/covercheck/*) return 0;; *) return 1;; esac
-}
-
-covercheck_mutants_selected() {
-  # The staged and explicit-range callers deliberately share this one
-  # rename-disabled NUL stream parser. Any unread byte or Git failure is
-  # uncertainty, and therefore selects the blocker.
-  local mode="$1" path stream size consumed=0 saw=false
-  shift
-  stream="$(mktemp)"
-  cleanup_paths+=("$stream")
-  if [ "$mode" = staged ]; then
-    git diff --cached --name-only -z --no-renames >"$stream" || return 2
-  else
-    [ "$#" -eq 2 ] || return 2
-    git cat-file -e "$1^{commit}" && git cat-file -e "$2^{commit}" || return 2
-    git diff --name-only -z --no-renames "$1" "$2" >"$stream" || return 2
-  fi
-  while IFS= read -r -d '' path; do
-    [ -n "$path" ] || return 2
-    saw=true
-    consumed=$((consumed + ${#path} + 1))
-    covercheck_mutants_path_owned "$path" && return 0
-  done <"$stream"
-  size="$(wc -c <"$stream")" || return 2
-  [ "$consumed" -eq "$size" ] || return 2
-  "$saw" && return 1
-  return 1
 }
 
 run_covercheck_mutants() {
@@ -172,7 +131,7 @@ run_covercheck_mutants() {
   if [ "$status" -eq 2 ]; then echo "covercheck-mutants: uncertain change selection; running blocker" >&2; fi
   mkdir -p -- "$evidence" || return 1
   # Enclose every expensive trust step in one aggregate deadline.
-  timeout 900s bash "$0" __covercheck-mutants-inner "$root" "$evidence" "$baseline"
+  timeout 1800s bash "$0" __covercheck-mutants-inner "$root" "$evidence" "$baseline"
 }
 
 run_mutation_segment() {
@@ -220,7 +179,7 @@ run_covercheck_mutants_inner() {
   tool="$(go tool -n gremlins)" || return 1
   go version -m "$tool" >"$evidence/tool-version.txt"
   grep -F $'mod\tgithub.com/go-gremlins/gremlins\tv0.6.0\t' "$evidence/tool-version.txt" >/dev/null || { echo "covercheck-mutants: gremlins tool must be v0.6.0" >&2; return 1; }
-  tmp="$(mktemp -d /tmp/covercheck-mutants.XXXXXX)" || return 1
+  tmp="$(mktemp -d /tmp/cXXXXXX)" || return 1
   covercheck_mutation_tmp="$tmp"
   covercheck_mutation_evidence="$evidence"
   trap cleanup_covercheck_mutation_exit EXIT TERM
@@ -248,7 +207,7 @@ run_covercheck_mutants_inner() {
   dry="$evidence/dry.json"; actual="$evidence/actual.json"; segments="$evidence/segments.tsv"
   rm -f -- "$dry" "$actual"
   : >"$segments"
-  run_mutation_segment "$segments" preflight go test -count=1 ./...
+  run_mutation_segment "$segments" preflight go test -p=1 -timeout=20m -count=1 ./...
   run_mutation_segment "$segments" discovery go tool gremlins --config "$config" unleash --integration=false --workers=1 --test-cpu=1 --timeout-coefficient=20 --threshold-efficacy=0 --threshold-mcover=0 --tags= --coverpkg= --diff= --dry-run "${operators[@]}" --output "$dry" ./cmd/covercheck
   run_mutation_segment "$segments" mutation go tool gremlins --config "$config" unleash --integration=false --workers=1 --test-cpu=1 --timeout-coefficient=20 --threshold-efficacy=0 --threshold-mcover=0 --tags= --coverpkg= --diff= "${operators[@]}" --output "$actual" ./cmd/covercheck
   run_mutation_segment "$segments" validation sh -c 'go run ./cmd/mutants validate "$1" "$2" "$3" cmd/covercheck >"$4"' sh "$dry" "$actual" "$baseline" "$evidence/validation.txt"
@@ -268,64 +227,46 @@ case "$cmd" in
     ;;
 
   gate)
-    if [ "$#" -eq 1 ] && [ "$1" = timings ]; then
-      gate_timings=true
-    elif [ "$#" -ne 0 ]; then
-      echo "usage: ./x gate [timings]" >&2
-      exit 2
-    fi
-    unset AWF_PI_RUNTIME_SMOKE
-    # Sequential gate: profiled tests + raw-identity coverage policy + the
-    # explicitly enabled uncached Pi runtime smoke + vet + lint. The policy
-    # evaluates one whole-module profile against its canonical baseline;
-    # -coverpkg=./... makes every package contribute. Ordinary Go runs skip the host Pi lane;
-    # this gate invokes both proving units below while their shared helper runs
-    # the host lane exactly once.
-    # The profile is durable (gitignored via *.out) so CI can upload it to
-    # Codecov without rerunning the suite, and an interrupted run leaks no
-    # tmpfs file (ADR-0196).
-    # The index determines only which test lanes run; all commands continue to
-    # test the working tree. No staged set or any read uncertainty fails closed.
-    if ! select_gate_tests; then
-      gate_go_tests=true
-      gate_pi_tests=true
-    fi
-    run_gate_step versioncheck go run ./cmd/versioncheck
-    prof="coverage.out"
-    if "$gate_go_tests"; then
-      run_gate_step go-test env -u AWF_PI_RUNTIME_SMOKE go test ./... -coverpkg=./... -coverprofile="$prof"
-      run_gate_step covercheck go run ./cmd/covercheck --policy "$prof" coverage-baseline.json
-    elif "$gate_pi_tests"; then
-      echo "gate: skipping Go tests and coverage for Pi-only staged changes" >&2
-    else
-      echo "gate: skipping Go tests and coverage for test-free staged changes" >&2
-    fi
-    if "$gate_pi_tests"; then
-      run_gate_step pi-runtime-smoke run_pi_runtime_smoke
-    elif "$gate_go_tests"; then
-      echo "gate: skipping Pi runtime smoke for Go-only staged changes" >&2
-    else
-      echo "gate: skipping Pi runtime smoke for test-free staged changes" >&2
-    fi
-    run_gate_step vet go vet ./...
-    # Cross-compile gate: the suite only ever runs on the host platform, so a
-    # package that stops building for a contributor's platform is otherwise
-    # invisible until they clone. The matrix is the released set
-    # (.goreleaser.yaml: linux, darwin, and windows for amd64 and arm64) minus
-    # the host, which the steps above already build. Deriving it from the host
-    # rather than hardcoding non-linux targets keeps a linux-only break visible
-    # to a contributor gating on macOS.
-    host="$(go env GOOS)/$(go env GOARCH)"
-    for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64 windows/amd64 windows/arm64; do
-      if [ "$target" != "$host" ]; then
-        run_gate_step "build-${target//\//-}" env GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
-      fi
+    full=false
+    ranges=()
+    while [ "$#" -gt 0 ]; do
+      case "$1" in
+        full) [ "$full" = false ] || { echo "usage: ./x gate [full] [timings] [--range <base> <head>]" >&2; exit 2; }; full=true ;;
+        timings) gate_timings=true ;;
+        --range) [ "$full" = true ] && [ "$#" -ge 3 ] || { echo "usage: ./x gate [full] [timings] [--range <base> <head>]" >&2; exit 2; }; ranges+=("$2" "$3"); shift 2 ;;
+        *) echo "usage: ./x gate [full] [timings] [--range <base> <head>]" >&2; exit 2 ;;
+      esac
+      shift
     done
+    run_gate_step versioncheck go run ./cmd/versioncheck
+    run_gate_step build go build ./...
     run_gate_step lint go tool golangci-lint run
-    run_gate_step advisory-lint run_advisory_lint
-    run_gate_step deadcode run_deadcode_gate
     run_gate_step pincheck go run ./cmd/pincheck
-    run_gate_step covercheck-mutation-regression run_covercheck_mutants --select-staged
+    if [ "$full" = true ]; then
+      # Full assurance always runs complete native behavioural lanes; it never
+      # derives execution from the staged path set.
+      prof="coverage.out"
+      run_gate_step go-test env -u AWF_PI_RUNTIME_SMOKE go test -p=1 -timeout=20m ./... -coverpkg=./... -coverprofile="$prof"
+      run_gate_step covercheck go run ./cmd/covercheck --policy "$prof" coverage-baseline.json
+      run_gate_step pi-runtime-smoke run_pi_runtime_smoke
+      run_gate_step vet go vet ./...
+      run_gate_step advisory-lint run_advisory_lint
+      run_gate_step deadcode run_deadcode_gate
+      host="$(go env GOOS)/$(go env GOARCH)"
+      for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+        [ "$target" = "$host" ] || run_gate_step "build-${target//\//-}" env GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
+      done
+      if [ "${#ranges[@]}" -eq 0 ]; then
+        if covercheck_mutants_selected staged; then mutation=0; else mutation=$?; fi
+      else
+        if covercheck_mutants_selected ranges "${ranges[@]}"; then mutation=0; else mutation=$?; fi
+      fi
+      case "$mutation" in
+        0) run_gate_step covercheck-mutation-regression run_covercheck_mutants ;;
+        1) echo "gate full: mutation skipped; exact change universe does not own cmd/covercheck" >&2 ;;
+        *) echo "gate full: mutation selection uncertain; running blocker conservatively" >&2; run_gate_step covercheck-mutation-regression run_covercheck_mutants ;;
+      esac
+    fi
     ;;
   lint)
     go tool golangci-lint run "$@"
@@ -413,7 +354,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [timings]|lint|fmt|test|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run>|build|install|mutants|covercheck-mutants [--select-staged|--select-range <base> <head>]|audit-local>" >&2
+    echo "usage: ./x <gate [full] [timings] [--range <base> <head>]|lint|fmt|test|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run>|build|install|mutants|covercheck-mutants [--select-staged|--select-range <base> <head>]|audit-local>" >&2
     exit 2
     ;;
 esac

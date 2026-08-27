@@ -49,7 +49,7 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 		"live GitHub `release tags` ruleset covers `refs/tags/v*` without bypass actors",
 		"requires successful `CI / gate` and `CI / release-config` checks",
 		"needs-bound credential-bearing GoReleaser job",
-		"`./x gate && ./x check` before",
+		"`./x gate full && ./x check` before",
 	} {
 		if !strings.Contains(releasing, want) {
 			t.Errorf("self-hosted release guidance missing remote-policy contract %q", want)
@@ -59,7 +59,7 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	testingGuide := read("docs/testing.md")
 	for _, want := range []string{
 		"Codecov is informational",
-		"exact coverage policy is enforced by `./x gate`",
+		"exact coverage policy is enforced by `./x gate full`",
 		"hosted `CI / gate` check required for protected `main` and release tags",
 	} {
 		if !strings.Contains(testingGuide, want) {

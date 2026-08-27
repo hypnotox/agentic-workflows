@@ -264,8 +264,8 @@ var Standard = &Catalog{
 		"config-reference":     {Mandatory: true, Generated: true, DocumentMap: true, Title: "Configuration Reference", Desc: "every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state", Path: "config-reference.md", TemplateKey: "configReference", TID: "docs/config-reference.md.tmpl", Sections: []string{"intro"}},
 	},
 	Vars: []VarDescriptor{
-		{Key: "gateCmd", Kind: "string", Description: "Command that runs the full pre-commit gate (tests, lint, coverage).", Default: "", Options: []string{"make gate", "go test ./..."}},
-		{Key: "gateCmdFull", Kind: "string", Description: "Command for the full/extended gate tier, if the project has one.", Default: "", Options: []string{"make gate-full"}},
+		{Key: "gateCmd", Kind: "string", Description: "Command that runs the fast pre-commit gate.", Default: "", Options: []string{"make gate", "go test ./..."}},
+		{Key: "gateCmdFull", Kind: "string", Description: "Command for terminal exhaustive verification, if the project has one.", Default: "", Options: []string{"make gate-full"}},
 		{Key: "checkCmd", Kind: "string", Description: "Command that checks rendered output for drift. Leave empty to run through the always-rendered `./awf` wrapper.", Default: "", Options: []string{"./awf check", "make check"}},
 		{Key: "commitGateCmd", Kind: "string", Description: "Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to run through the always-rendered `./awf` wrapper.", Default: "", Options: []string{"./awf check staged commit"}},
 		{Key: "testCmd", Kind: "string", Description: "Command that runs the test suite.", Default: "", Options: []string{"go test ./...", "npm test", "make test"}},

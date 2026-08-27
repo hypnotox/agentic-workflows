@@ -12,7 +12,7 @@ Use the repository `./awf` wrapper. If it still refuses, update the pinned awf b
 
 ### Red gate
 
-Run `./x test` for the Go failure and `./x gate` for the complete transaction. Fix the first failing stage or revert the change; do not weaken the check.
+Run `./x test` for a Go failure, the narrowest relevant command while iterating, and `./x gate full` only at the terminal verification boundary. Fix the first failing stage or revert the change; do not weaken the check.
 ### Context spill recovery
 
 When `awf context` output exceeds 8,192 bytes, it securely spills outside the repository and returns exactly a two-line `AWF_CONTEXT_SPILL_V1` notice. On that exact notice, read the file named on its second line and verify its byte length equals the `bytes=<decimal>` descriptor before using it. Best-effort delete that file after use, whether use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.

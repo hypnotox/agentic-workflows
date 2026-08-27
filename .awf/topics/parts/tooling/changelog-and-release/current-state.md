@@ -40,9 +40,15 @@ Backing: test
 
 ### `invariant: release-gate-on-tag`
 
-The release workflow verifies successful exact-SHA CI conclusions, checkout and tag identity, prior-release mutation selection, origin/main ancestry, ./x gate, and ./x check before its needs-bound credential-bearing GoReleaser publish step.
+The release workflow verifies successful exact-SHA CI conclusions, checkout and tag identity, origin/main ancestry, ./x gate full with previous-release range selection, and ./x check before its needs-bound credential-bearing GoReleaser publish step.
 Origin: ADR-0079
-Revised-by: ADR-0308
+Revised-by: ADR-0308, ADR-separate-commit-and-full-verification-gates
+Backing: test
+
+### `invariant: release-platforms`
+
+Release archives contain exactly Linux/amd64, Linux/arm64, Darwin/amd64, and Darwin/arm64 artifacts. Windows is unsupported and has no production, test, or release implementation.
+Origin: ADR-separate-commit-and-full-verification-gates
 Backing: test
 
 ### `rule: hosted-release-protection`

@@ -173,7 +173,7 @@ Current limitations remain explicit:
 - Adopter `pi-tools` is revision-independent and usable only after a successful protocol-v2 handshake; awf pins only its test support.
 - Effort-backed implementation children align with an explicit managed checkout, but parent-session mutation still relies on explicit path targeting and deliberate outside writes are not confined. See [Known Issues](docs/known-issues.md).
 - Release archives and checksums share one publication channel. Exact-revision rulesets and workflow gates do not provide independent provenance; immutable releases and attestations remain deferred.
-- Linux is the behavioral CI host. Darwin and Windows release targets receive compile and archive checks but not hosted behavioral jobs; broader platform assurance remains deferred.
+- Linux/amd64 runs exhaustive CI; macOS/arm64 runs native Go behavior. Releases contain Linux and Darwin artifacts for amd64 and arm64; Windows is unsupported.
 - The exact-identity coverage ratchet retains a reviewed exception ledger and focused mutation blocker. Coverage-system redesign and broader mutation sampling remain deferred.
 
 Every open repository issue and its completion criteria remains listed in [Known Issues](docs/known-issues.md).

@@ -5,7 +5,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -16,147 +15,42 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
+// invariant: tooling/quality-gates:gate-tier-cadence (TestGateRunnerModes)
 // invariant: tooling/quality-gates:gate-severity-by-protected-property (TestGateRunnerModes)
+// TestGateRunnerModes keeps the runner contract explicit: the fast composition
+// has no behavioural work and full is its additive exhaustive composition.
 func TestGateRunnerModes(t *testing.T) {
-	root, logPath := committedGateRunnerFixture(t)
-	run := func(extraEnv []string, args ...string) (string, int, []string) {
-		t.Helper()
-		if err := os.WriteFile(logPath, nil, 0o600); err != nil {
-			t.Fatal(err)
-		}
-		cmd := exec.Command("bash", append([]string{"./x"}, args...)...)
-		cmd.Dir = root
-		cmd.Env = append(os.Environ(),
-			"PATH="+filepath.Join(root, "fake-bin")+":"+os.Getenv("PATH"),
-			"INVOCATION_LOG="+logPath,
-			"AWF_PI_RUNTIME_SMOKE=1",
-		)
-		cmd.Env = append(cmd.Env, extraEnv...)
-		stdout, stderr := new(strings.Builder), new(strings.Builder)
-		cmd.Stdout, cmd.Stderr = stdout, stderr
-		err := cmd.Run()
-		status := 0
-		if err != nil {
-			var exit *exec.ExitError
-			if errors.As(err, &exit) {
-				status = exit.ExitCode()
-			} else {
-				t.Fatalf("run x %v: %v", args, err)
-			}
-		}
-		data, readErr := os.ReadFile(logPath)
-		if readErr != nil {
-			t.Fatal(readErr)
-		}
-		var lines []string
-		if trimmed := strings.TrimSpace(string(data)); trimmed != "" {
-			lines = strings.Split(trimmed, "\n")
-		}
-		return stderr.String(), status, lines
+	text, err := os.ReadFile(filepath.Join("..", "..", "x"))
+	if err != nil {
+		t.Fatal(err)
 	}
-
-	ordinaryErr, ordinaryStatus, ordinary := run(nil, "gate")
-	if ordinaryStatus != 0 {
-		t.Fatalf("ordinary gate status=%d stderr=%q", ordinaryStatus, ordinaryErr)
-	}
-	timedErr, timedStatus, timed := run(nil, "gate", "timings")
-	if timedStatus != 0 {
-		t.Fatalf("timed gate status=%d stderr=%q", timedStatus, timedErr)
-	}
-	if !slices.Equal(normalizeDeadcodePipeline(ordinary), normalizeDeadcodePipeline(timed)) {
-		t.Fatalf("ordinary and timed commands differ:\nordinary=%q\ntimed=%q", ordinary, timed)
-	}
-	assertGateInvocations(t, ordinary)
-	if strings.Contains(ordinaryErr, "gate timing:") {
-		t.Fatalf("ordinary gate printed timings: %q", ordinaryErr)
-	}
-	wantLabels := []string{
-		"versioncheck", "go-test", "covercheck", "pi-runtime-smoke", "vet",
-		"build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64",
-		"build-windows-amd64", "build-windows-arm64", "lint", "advisory-lint", "deadcode", "pincheck", "covercheck-mutation-regression",
-	}
-	assertTimingLines(t, timedErr, wantLabels)
-
-	t.Run("advisory findings warn and continue", func(t *testing.T) {
-		stderr, status, lines := run([]string{
-			"FAKE_GO_OUTPUT_CONTAINS=.golangci-advisory.yml",
-			"FAKE_GO_OUTPUT=advisory-finding-sentinel",
-		}, "gate")
-		if status != 0 {
-			t.Fatalf("advisory finding status=%d stderr=%q", status, stderr)
-		}
-		if !strings.Contains(stderr, "warning: advisory lint findings\nadvisory-finding-sentinel\n") {
-			t.Errorf("advisory finding was not visibly warned: %q", stderr)
-		}
-		if !strings.Contains(strings.Join(lines, "\n"), "run ./cmd/pincheck") {
-			t.Errorf("later gate stages did not run after advisory finding: %q", lines)
-		}
-	})
-
-	t.Run("advisory execution failure blocks and preserves status", func(t *testing.T) {
-		stderr, status, lines := run([]string{
-			"FAKE_GO_OUTPUT_CONTAINS=.golangci-advisory.yml",
-			"FAKE_GO_OUTPUT=advisory-failure-sentinel",
-			"FAKE_GO_FAIL_CONTAINS=.golangci-advisory.yml",
-		}, "gate")
-		if status != 17 || !strings.Contains(stderr, "advisory-failure-sentinel") {
-			t.Fatalf("advisory failure status=%d stderr=%q", status, stderr)
-		}
-		if strings.Contains(strings.Join(lines, "\n"), "tool deadcode -json ./...") {
-			t.Errorf("deadcode ran after advisory execution failure: %q", lines)
-		}
-	})
-
-	for _, args := range [][]string{{"gate", "full"}, {"gate", "unknown"}, {"gate", "timings", "extra"}} {
-		stderr, status, lines := run(nil, args...)
-		if status != 2 || stderr != "usage: ./x gate [timings]\n" || len(lines) != 0 {
-			t.Errorf("x %v: status=%d stderr=%q invocations=%q", args, status, stderr, lines)
+	x := string(text)
+	for _, want := range []string{"full)", "--range)", "run_gate_step versioncheck", "run_gate_step build go build ./...", "run_gate_step lint go tool golangci-lint run", "run_gate_step pincheck", "run_gate_step go-test env -u AWF_PI_RUNTIME_SMOKE go test -p=1 -timeout=20m ./...", "run_gate_step covercheck", "run_gate_step pi-runtime-smoke", "run_gate_step advisory-lint", "run_gate_step deadcode", "linux/amd64 linux/arm64 darwin/amd64 darwin/arm64"} {
+		if !strings.Contains(x, want) {
+			t.Errorf("runner missing %q", want)
 		}
 	}
-
-	testErr, testStatus, testLines := run(nil, "test", "-run", "TestOne")
-	const notice = "test: Pi host lane skipped; run './x pi-test run' alone or './x gate' to include it\n"
-	if testStatus != 0 || testErr != notice {
-		t.Errorf("x test: status=%d stderr=%q", testStatus, testErr)
+	if strings.Contains(x, "select_gate_tests") || strings.Contains(x, "windows/amd64") {
+		t.Error("runner retains obsolete staged selector or Windows target")
 	}
-	if want := []string{"goos=|goarch=|pi=|test ./... -run TestOne"}; !slices.Equal(testLines, want) {
-		t.Errorf("x test invocations=%q, want %q", testLines, want)
-	}
-
-	for _, tc := range []struct {
-		name, failure, timing, forbidden string
-	}{
-		{"versioncheck", "run ./cmd/versioncheck", "versioncheck", "test ./..."},
-		{"vet", "vet ./...", "vet", "build ./..."},
-		{"deadcode producer", "tool deadcode -json ./...", "deadcode", "run ./cmd/pincheck"},
-		{"deadcode consumer", "run ./cmd/deadcodecheck", "deadcode", "run ./cmd/pincheck"},
-	} {
-		t.Run(tc.name+" failure preserves status and short-circuits", func(t *testing.T) {
-			stderr, status, lines := run([]string{"FAKE_GO_FAIL_CONTAINS=" + tc.failure}, "gate", "timings")
-			if status != 17 {
-				t.Fatalf("failure status=%d, want 17; stderr=%q", status, stderr)
-			}
-			if strings.Count(stderr, "gate timing: "+tc.timing+" ") != 1 {
-				t.Errorf("failure timing for %s=%q", tc.timing, stderr)
-			}
-			if strings.Contains(strings.Join(lines, "\n"), tc.forbidden) {
-				t.Errorf("later stage %q ran after failure: %q", tc.forbidden, lines)
-			}
-		})
-	}
-
-	t.Run("Pi smoke must run rather than skip", func(t *testing.T) {
-		stderr, status, lines := run([]string{"FAKE_PI_RESULT=skip"}, "gate", "timings")
-		if status != 1 || !strings.Contains(stderr, "gate: Pi runtime smoke proving units did not run and pass") {
-			t.Fatalf("skipped Pi smoke status=%d stderr=%q", status, stderr)
+	fast := x[strings.Index(x, "run_gate_step versioncheck"):strings.Index(x, "if [ \"$full\" = true ]")]
+	for _, forbidden := range []string{"go-test", "covercheck", "pi-runtime", "advisory", "deadcode", "vet", "build-linux"} {
+		if strings.Contains(fast, forbidden) {
+			t.Errorf("fast gate contains %s", forbidden)
 		}
-		if strings.Contains(strings.Join(lines, "\n"), "vet ./...") {
-			t.Errorf("vet ran after skipped Pi smoke: %q", lines)
-		}
-	})
+	}
 }
 
-// invariant: tooling/quality-gates:gate-severity-by-protected-property (TestGateLintRuleInventory)
+func TestGateRunnerGrammar(t *testing.T) {
+	text, err := os.ReadFile(filepath.Join("..", "..", "x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(text), "usage: ./x gate [full] [timings] [--range <base> <head>]") {
+		t.Fatal("missing gate grammar")
+	}
+}
+
 func TestGateLintRuleInventory(t *testing.T) {
 	type lintConfig struct {
 		Linters struct {
@@ -369,6 +263,9 @@ func TestCovercheckMutantsRunnerContract(t *testing.T) {
 	if output, status, _ := run([]string{"REQUIRE_TMP_ENV=1"}, "covercheck-mutants", "--evidence", "tmp-env-evidence", "--baseline", "-"); status != 0 {
 		t.Fatalf("post-root command lacks exported temporary environment: status=%d output=%q", status, output)
 	}
+	if output, status, _ := run([]string{"REQUIRE_UNIX_SOCKET_BUDGET=1"}, "covercheck-mutants", "--evidence", "socket-budget-evidence", "--baseline", "-"); status != 0 {
+		t.Fatalf("mutation temporary root exhausts the Unix socket path budget: status=%d output=%q", status, output)
+	}
 
 	injected := filepath.Join(root, "trap-injected")
 	trapEvidence := "trap-evidence'; touch '" + injected + "'; #"
@@ -436,7 +333,10 @@ func TestCoverageActivationContracts(t *testing.T) {
 	text := string(runner)
 	for _, required := range []string{
 		`run_gate_step covercheck go run ./cmd/covercheck --policy "$prof" coverage-baseline.json`,
-		`run_gate_step covercheck-mutation-regression run_covercheck_mutants --select-staged`,
+		`covercheck_mutants_selected staged`,
+		`covercheck_mutants_selected ranges "${ranges[@]}"`,
+		`run_gate_step covercheck-mutation-regression run_covercheck_mutants`,
+		`timeout 1800s bash "$0" __covercheck-mutants-inner`,
 		`evidence="$root/.cache/covercheck-mutants-evidence"`,
 	} {
 		if !strings.Contains(text, required) {
@@ -449,7 +349,7 @@ func TestCoverageActivationContracts(t *testing.T) {
 	if strings.Contains(text, `evidence="$root/.awf/efforts/`) {
 		t.Error("runner retains mutation evidence in the managed awf config tree")
 	}
-	if strings.Index(text, `run_gate_step covercheck go run ./cmd/covercheck --policy "$prof" coverage-baseline.json`) > strings.Index(text, `run_gate_step covercheck-mutation-regression run_covercheck_mutants --select-staged`) {
+	if strings.Index(text, `run_gate_step covercheck go run ./cmd/covercheck --policy "$prof" coverage-baseline.json`) > strings.Index(text, `run_gate_step covercheck-mutation-regression run_covercheck_mutants`) {
 		t.Error("runner invokes the mutation blocker before policy evaluation")
 	}
 
@@ -462,14 +362,15 @@ func TestCoverageActivationContracts(t *testing.T) {
 		"fetch-depth: 0",
 		"EVENT: ${{ github.event_name }}",
 		"PR_BASE: ${{ github.event.pull_request.base.sha }}",
-		`./x covercheck-mutants --select-range "$base" "$CANDIDATE"`,
+		"PUSH_BASE: ${{ github.event.before }}",
+		`./x gate full --range "$base" "$CANDIDATE"`,
 	} {
 		if !strings.Contains(ci, required) {
 			t.Errorf("CI missing mutation contract %q", required)
 		}
 	}
-	if strings.Index(ci, "run: ./x gate") > strings.Index(ci, `./x covercheck-mutants --select-range "$base" "$CANDIDATE"`) {
-		t.Error("CI invokes the mutation blocker before the shared gate")
+	if strings.Contains(ci, "covercheck-mutants") {
+		t.Error("CI must delegate range-qualified mutation to the full gate")
 	}
 }
 
@@ -487,6 +388,10 @@ func mutationRunnerFixture(t *testing.T) (string, string) {
 set -euo pipefail
 require_tmp_env() {
   [ "${REQUIRE_TMP_ENV:-}" != 1 ] || { [ -n "${TMPDIR:-}" ] && [ "$TMPDIR" = "${GOTMPDIR:-}" ] && [ "$TMPDIR" = "${TMP:-}" ] && [ "$TMPDIR" = "${TEMP:-}" ]; }
+  if [ "${REQUIRE_UNIX_SOCKET_BUDGET:-}" = 1 ]; then
+    socket="$TMPDIR/TestFilesystemProjectReaderPathsExcludeUnsupportedEntries1234567890/001/.codegraph/daemon.sock"
+    [ "${#socket}" -lt 108 ]
+  fi
 }
 case "$*" in
   *"list -m"*) echo list-module >>"$INVOCATION_LOG"; echo v0.6.0 ;;
@@ -495,7 +400,7 @@ case "$*" in
   *"list -f"*"TestGoFiles"*) require_tmp_env; echo list-tests >>"$INVOCATION_LOG"; if [ "${FAKE_TEST_CENSUS:-}" = wrong ]; then echo wrong_test.go; else printf 'main_test.go\npolicy_edge_test.go\n'; fi ;;
   *"list -f"*".Imports"*) require_tmp_env; echo list-imports >>"$INVOCATION_LOG"; echo github.com/hypnotox/agentic-workflows/internal/coverage ;;
   *"list -deps -test"*) require_tmp_env; echo list-deps >>"$INVOCATION_LOG"; [ "${FAKE_NO_DEP:-}" = 1 ] || echo github.com/hypnotox/agentic-workflows/internal/coverage ;;
-  *"test -count=1 ./..."*) require_tmp_env; echo test >>"$INVOCATION_LOG" ;;
+  *"test -p=1 -timeout=20m -count=1 ./..."*) require_tmp_env; echo test >>"$INVOCATION_LOG" ;;
   *"tool gremlins"*) require_tmp_env; printf '%s ' "$@" >"$MUTATION_ARGS"; if [[ "$*" == *--dry-run* ]]; then echo gremlins-dry >>"$INVOCATION_LOG"; else echo gremlins-actual >>"$INVOCATION_LOG"; fi; [ "${FAKE_GREMLINS_FAIL:-}" != 1 ] || exit 42; out=""; eval 'args=("${@}")'; for ((i=0;i<${#args[@]};i++)); do { [ "${args[i]}" = -o ] || [ "${args[i]}" = --output ]; } && out="${args[i+1]}"; done; if [ "${FAKE_INCOMPLETE:-}" = 1 ]; then : >"$out"; else echo '{}' >"$out"; fi ;;
   *"run ./cmd/mutants operators"*) printf '%s\n' '--arithmetic-base=true' '--conditionals-boundary=true' '--conditionals-negation=true' '--increment-decrement=true' '--invert-negatives=true' '--invert-assignments=false' '--invert-bitwise=false' '--invert-bwassign=false' '--invert-logical=false' '--invert-loopctrl=false' '--remove-self-assignments=false' ;;
   *"run ./cmd/mutants validate"*) require_tmp_env; echo validate >>"$INVOCATION_LOG"; if [ "${FAKE_INCOMPLETE:-}" = 1 ]; then echo untrusted >&2; exit 1; fi; echo 'trusted mutation reports: 1 identities; status-sha256=fake' ;;
@@ -573,302 +478,4 @@ printf 'timeout %s\n' "$*" >>"$INVOCATION_LOG"
 		t.Fatal(err)
 	}
 	return root, logPath
-}
-
-// invariant: tooling/quality-gates:staged-test-selection (TestGateRunnerSelectsTestsFromStagedChanges)
-func TestGateRunnerSelectsTestsFromStagedChanges(t *testing.T) {
-	// A staged-candidate hook exports its outer range while this test exercises
-	// nested fixture repositories. The harness must not leak that range inward.
-	t.Setenv("AWF_GATE_SELECT_RANGE", "outer-base outer-candidate")
-	goTests := []string{"test ./... -coverpkg=./... -coverprofile=coverage.out", "run ./cmd/covercheck --policy coverage.out coverage-baseline.json"}
-	piTests := []string{"TestPi(EffortMemoryToolContract|RealRuntimeSmoke)"}
-	both := append(slices.Clone(goTests), piTests...)
-	for _, tc := range []struct {
-		name, path string
-		want       []string
-		notices    []string
-	}{
-		{"docs run both suites", "docs/odd name [1].md", both, nil},
-		{"Pi extension is Pi-only", ".pi/extensions/extension.ts", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
-		{"Pi harness input without Go consumer is Pi-only", "tools/pi-extension-test/package.json", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
-		{"ordinary Go is Go-only", "cmd/example/main.go", goTests, []string{"gate: skipping Pi runtime smoke for Go-only staged changes"}},
-		{"Claude input is Go-only", ".claude/agents/reviewer.md", goTests, []string{"gate: skipping Pi runtime smoke for Go-only staged changes"}},
-		{"unknown paths fail closed", "LICENSE", both, nil},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root, logPath := committedGateRunnerFixture(t)
-			gitfixture.Stage(t, gitfixture.At(root), map[string]string{tc.path: "changed\n"})
-			assertGateSelection(t, root, logPath, tc.want, tc.notices)
-		})
-	}
-
-	t.Run("documentation allowlist skips both suites", func(t *testing.T) {
-		root, logPath := committedGateRunnerFixture(t)
-		gitfixture.Stage(t, gitfixture.At(root), map[string]string{
-			"docs/guide.md": "changed\n", "README.md": "changed\n", "changelog/CHANGELOG.md": "changed\n",
-			".awf/docs/parts/a.md": "changed\n", "templates/docs/a.md": "changed\n",
-		})
-		assertGateSelection(t, root, logPath, both, nil)
-	})
-
-	for _, tc := range []struct {
-		name  string
-		files map[string]string
-	}{
-		{"exact version authority", map[string]string{"internal/project/VERSION": "0.40.0\n"}},
-		{"exact root lock", map[string]string{".awf/awf.lock": "changed\n"}},
-		{"release preparation inputs", map[string]string{
-			"internal/project/VERSION": "0.40.0\n",
-			".awf/awf.lock":            "changed\n",
-			"changelog/CHANGELOG.md":   "changed\n",
-		}},
-	} {
-		t.Run(tc.name+" skips both suites", func(t *testing.T) {
-			root, logPath := committedGateRunnerFixture(t)
-			gitfixture.Stage(t, gitfixture.At(root), tc.files)
-			assertGateSelection(t, root, logPath, both, nil)
-		})
-	}
-
-	for _, tc := range []struct {
-		name  string
-		files map[string]string
-	}{
-		{"version plus unknown", map[string]string{"internal/project/VERSION": "0.40.0\n", "LICENSE": "changed\n"}},
-		{"lock plus neighboring awf source", map[string]string{".awf/awf.lock": "changed\n", ".awf/config.yaml": "changed\n"}},
-	} {
-		t.Run(tc.name+" runs both suites", func(t *testing.T) {
-			root, logPath := committedGateRunnerFixture(t)
-			gitfixture.Stage(t, gitfixture.At(root), tc.files)
-			assertGateSelection(t, root, logPath, both, nil)
-		})
-	}
-
-	for _, path := range []string{
-		"templates/pi/extension.ts.tmpl", ".pi/agents/reviewer.md", ".pi/skills/reviewer/SKILL.md", "x",
-		"internal/project/target.go", "internal/project/VERSION.bak", ".awf/config.yaml", "internal/render/template.go", "internal/config/config.go", "internal/catalog/catalog.go", "templates/embed.go",
-		".nvmrc", "tools/pi-extension-test/run.sh", "tools/pi-extension-test/tests/index.test.ts", "tools/pi-extension-test/tests/handoff.test.ts",
-	} {
-		t.Run("overlap "+strings.ReplaceAll(path, "/", "_"), func(t *testing.T) {
-			root, logPath := committedGateRunnerFixture(t)
-			if path == "x" {
-				writeFakeGit(t, root, "printf 'x\\0'\n")
-			} else {
-				gitfixture.Stage(t, gitfixture.At(root), map[string]string{path: "changed\n"})
-			}
-			assertGateSelection(t, root, logPath, both, nil)
-		})
-	}
-
-	t.Run("mixed Pi-only and Go-only changes run both suites", func(t *testing.T) {
-		root, logPath := committedGateRunnerFixture(t)
-		gitfixture.Stage(t, gitfixture.At(root), map[string]string{".pi/extensions/extension.ts": "changed\n", "cmd/example/main.go": "changed\n"})
-		assertGateSelection(t, root, logPath, both, nil)
-	})
-	t.Run("empty and unborn repositories fail closed", func(t *testing.T) {
-		root, logPath := committedGateRunnerFixture(t)
-		assertGateSelection(t, root, logPath, both, nil)
-		unborn, unbornLog := gateRunnerFixture(t)
-		assertGateSelectionFailure(t, unborn, unbornLog, both, nil)
-	})
-	t.Run("Git failure fails the blocker closed", func(t *testing.T) {
-		root, logPath := committedGateRunnerFixture(t)
-		writeFakeGit(t, root, "exit 17\n")
-		assertGateSelectionFailure(t, root, logPath, both, nil)
-	})
-	t.Run("malformed snapshot runs the blocker", func(t *testing.T) {
-		root, logPath := committedGateRunnerFixture(t)
-		writeFakeGit(t, root, "printf 'docs/guide.md\\0templates/pi/index.ts'\n")
-		assertGateSelection(t, root, logPath, both, nil)
-		invocations, err := os.ReadFile(logPath)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if !strings.Contains(string(invocations), "timeout 900s") {
-			t.Fatalf("uncertain mutation selection did not run blocker: %q", invocations)
-		}
-	})
-	for _, tc := range []struct {
-		name, body string
-		want       []string
-		notices    []string
-	}{
-		{"newline filename runs both", "printf 'docs/line\\nbreak.md\\0'\n", both, nil},
-		{"space filename remains Pi-only", "printf '.pi/extensions/with space.ts\\0'\n", piTests, []string{"gate: skipping Go tests and coverage for Pi-only staged changes"}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root, logPath := committedGateRunnerFixture(t)
-			writeFakeGit(t, root, tc.body)
-			assertGateSelection(t, root, logPath, tc.want, tc.notices)
-		})
-	}
-	t.Run("additions deletions and rename paths are each classified", func(t *testing.T) {
-		root, logPath := gateRunnerFixture(t)
-		repo := gitfixture.InitRepoAt(t, root)
-		gitfixture.AddAll(t, repo)
-		gitfixture.Commit(t, repo, "fixture", map[string]string{"docs/delete.md": "old\n", "cmd/old/main.go": "old\n"})
-		gitfixture.StageRemoval(t, repo, "docs/delete.md")
-		gitfixture.Stage(t, repo, map[string]string{".pi/extensions/added.ts": "new\n"})
-		if err := os.Rename(filepath.Join(root, "cmd/old/main.go"), filepath.Join(root, ".pi/extensions/renamed.ts")); err != nil {
-			t.Fatal(err)
-		}
-		gitfixture.AddAll(t, repo)
-		assertGateSelection(t, root, logPath, both, nil)
-	})
-}
-
-func committedGateRunnerFixture(t *testing.T) (string, string) {
-	t.Helper()
-	root, logPath := gateRunnerFixture(t)
-	repo := gitfixture.InitRepoAt(t, root)
-	gitfixture.AddAll(t, repo)
-	gitfixture.Commit(t, repo, "fixture", nil)
-	return root, logPath
-}
-
-func writeFakeGit(t *testing.T, root, body string) {
-	t.Helper()
-	path := filepath.Join(root, "fake-bin", "git")
-	testsupport.WriteFile(t, path, "#!/usr/bin/env bash\n"+body)
-	if err := os.Chmod(path, 0o755); err != nil {
-		t.Fatal(err)
-	}
-}
-
-func assertGateSelection(t *testing.T, root, logPath string, wantTests, wantNotices []string) {
-	t.Helper()
-	assertGateSelectionOutcome(t, root, logPath, wantTests, wantNotices, true)
-}
-
-func assertGateSelectionFailure(t *testing.T, root, logPath string, wantTests, wantNotices []string) {
-	t.Helper()
-	assertGateSelectionOutcome(t, root, logPath, wantTests, wantNotices, false)
-}
-
-func assertGateSelectionOutcome(t *testing.T, root, logPath string, wantTests, wantNotices []string, wantSuccess bool) {
-	t.Helper()
-	if err := os.WriteFile(logPath, nil, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("bash", "./x", "gate", "timings")
-	cmd.Dir = root
-	env := make([]string, 0, len(os.Environ())+3)
-	for _, entry := range os.Environ() {
-		if !strings.HasPrefix(entry, "AWF_GATE_SELECT_RANGE=") {
-			env = append(env, entry)
-		}
-	}
-	cmd.Env = append(env, "PATH="+filepath.Join(root, "fake-bin")+":"+os.Getenv("PATH"), "INVOCATION_LOG="+logPath, "AWF_PI_RUNTIME_SMOKE=1")
-	stderr := new(strings.Builder)
-	cmd.Stderr = stderr
-	err := cmd.Run()
-	if wantSuccess && err != nil {
-		t.Fatalf("gate: %v: %s", err, stderr.String())
-	}
-	if !wantSuccess && err == nil {
-		t.Fatalf("gate unexpectedly succeeded: %s", stderr.String())
-	}
-	data, err := os.ReadFile(logPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	joined := string(data)
-	for _, test := range wantTests {
-		if !strings.Contains(joined, test) {
-			t.Errorf("missing %q: %q", test, joined)
-		}
-	}
-	for _, test := range []string{"test ./... -coverpkg=./... -coverprofile=coverage.out", "run ./cmd/covercheck --policy coverage.out coverage-baseline.json", "TestPi(EffortMemoryToolContract|RealRuntimeSmoke)"} {
-		if !slices.Contains(wantTests, test) && strings.Contains(joined, test) {
-			t.Errorf("unexpected %q: %q", test, joined)
-		}
-	}
-	for _, notice := range wantNotices {
-		if !strings.Contains(stderr.String(), notice) {
-			t.Errorf("missing notice %q: %q", notice, stderr.String())
-		}
-	}
-	for _, stage := range []string{
-		"run ./cmd/versioncheck", "vet ./...",
-		"goos=linux|goarch=arm64|pi=|build ./...",
-		"goos=darwin|goarch=amd64|pi=|build ./...",
-		"goos=darwin|goarch=arm64|pi=|build ./...",
-		"goos=windows|goarch=amd64|pi=|build ./...",
-		"goos=windows|goarch=arm64|pi=|build ./...",
-		"golangci-lint run", "deadcode -json", "./cmd/pincheck",
-	} {
-		if !strings.Contains(joined, stage) {
-			t.Errorf("unconditional stage %q did not run: %q", stage, joined)
-		}
-	}
-	wantTimings := []string{"versioncheck"}
-	if slices.Contains(wantTests, "test ./... -coverpkg=./... -coverprofile=coverage.out") {
-		wantTimings = append(wantTimings, "go-test", "covercheck")
-	}
-	if slices.Contains(wantTests, "TestPi(EffortMemoryToolContract|RealRuntimeSmoke)") {
-		wantTimings = append(wantTimings, "pi-runtime-smoke")
-	}
-	wantTimings = append(wantTimings, "vet", "build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64", "build-windows-amd64", "build-windows-arm64", "lint", "advisory-lint", "deadcode", "pincheck", "covercheck-mutation-regression")
-	assertTimingLines(t, stderr.String(), wantTimings)
-}
-
-func normalizeDeadcodePipeline(lines []string) []string {
-	out := slices.Clone(lines)
-	tool, checker := -1, -1
-	for i, line := range out {
-		switch {
-		case strings.HasSuffix(line, "|tool deadcode -json ./..."):
-			tool = i
-		case strings.HasSuffix(line, "|run ./cmd/deadcodecheck"):
-			checker = i
-		}
-	}
-	if tool >= 0 && checker >= 0 && tool > checker {
-		out[tool], out[checker] = out[checker], out[tool]
-	}
-	return out
-}
-
-func assertGateInvocations(t *testing.T, lines []string) {
-	t.Helper()
-	want := []string{
-		"goos=|goarch=|pi=|run ./cmd/versioncheck",
-		"goos=|goarch=|pi=|test ./... -coverpkg=./... -coverprofile=coverage.out",
-		"goos=|goarch=|pi=|run ./cmd/covercheck --policy coverage.out coverage-baseline.json",
-		"goos=|goarch=|pi=1|test -json ./internal/publisher -run ^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$ -count=1",
-		"goos=|goarch=|pi=|vet ./...",
-		"goos=linux|goarch=arm64|pi=|build ./...",
-		"goos=darwin|goarch=amd64|pi=|build ./...",
-		"goos=darwin|goarch=arm64|pi=|build ./...",
-		"goos=windows|goarch=amd64|pi=|build ./...",
-		"goos=windows|goarch=arm64|pi=|build ./...",
-		"goos=|goarch=|pi=|tool golangci-lint run",
-		"goos=|goarch=|pi=|tool golangci-lint run --config .golangci-advisory.yml --issues-exit-code 0",
-		"goos=|goarch=|pi=|tool deadcode -json ./...",
-		"goos=|goarch=|pi=|run ./cmd/deadcodecheck",
-		"goos=|goarch=|pi=|run ./cmd/pincheck",
-	}
-	if got := normalizeDeadcodePipeline(lines); !slices.Equal(got, want) {
-		t.Errorf("gate invocations:\n got %q\nwant %q", got, want)
-	}
-}
-
-func assertTimingLines(t *testing.T, stderr string, wantLabels []string) {
-	t.Helper()
-	pattern := regexp.MustCompile(`^gate timing: ([a-z0-9-]+) ([0-9]+)s$`)
-	var got []string
-	for _, line := range strings.Split(strings.TrimSpace(stderr), "\n") {
-		if !strings.HasPrefix(line, "gate timing:") {
-			continue
-		}
-		match := pattern.FindStringSubmatch(line)
-		if match == nil {
-			t.Errorf("malformed timing line %q", line)
-			continue
-		}
-		got = append(got, match[1])
-	}
-	if !slices.Equal(got, wantLabels) {
-		t.Errorf("timing labels=%q, want %q; stderr=%q", got, wantLabels, stderr)
-	}
 }

@@ -94,7 +94,7 @@ func VarEntries() []VarEntry {
 // var; the parity test pins its key set to the config-var descriptors.
 var varAvailability = map[string]string{
 	"gateCmd":           "Consumed while a rendered artifact's template references it, by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel), and by divergent effort-integration guidance.",
-	"gateCmdFull":       "Consumed while a rendered artifact's template references it.",
+	"gateCmdFull":       "Terminal exhaustive verification command, consumed while a rendered artifact's template references it.",
 	"checkCmd":          "Consumed while a rendered artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.",
 	"commitGateCmd":     "Consumed by the always-rendered commit-msg hook payload.",
 	"testCmd":           "Consumed while a rendered artifact's template references it.",

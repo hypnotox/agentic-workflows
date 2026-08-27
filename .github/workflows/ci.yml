@@ -10,7 +10,8 @@ permissions:
   contents: read
 
 jobs:
-  gate:
+  linux-full:
+    name: linux-full
     runs-on: ubuntu-latest
     env:
       CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
@@ -28,33 +29,23 @@ jobs:
           node-version-file: .nvmrc
           cache: npm
           cache-dependency-path: tools/pi-extension-test/package-lock.json
+      - name: Verify native Linux amd64
+        run: '[ "$(go env GOOS)" = linux ] && [ "$(go env GOARCH)" = amd64 ]'
       - name: Enable restricted rootless extraction
         run: |
           if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
           unshare --user --map-root-user true
-      - name: Gate (test + coverage policy + vet + lint)
-        run: ./x gate
-      - name: Covercheck mutation regression
+      - name: Gate (full Linux assurance)
         env:
           EVENT: ${{ github.event_name }}
           PR_BASE: ${{ github.event.pull_request.base.sha }}
           PUSH_BASE: ${{ github.event.before }}
           CANDIDATE: ${{ github.sha }}
         run: |
-          case "$EVENT" in
-            pull_request) base="$PR_BASE" ;;
-            push) base="$PUSH_BASE" ;;
-            # Dispatch supplies no reviewable range. Do not invent candidate^:
-            # run the shared blocker unconditionally so older changes cannot skip.
-            workflow_dispatch) ./x covercheck-mutants ; exit 0 ;;
-            *) ./x covercheck-mutants ; exit 0 ;;
-          esac
-          case "$base" in 0000000000000000000000000000000000000000|'') echo "mutation base unavailable" >&2; exit 1;; esac
-          git cat-file -e "$base^{commit}"
-          git cat-file -e "$CANDIDATE^{commit}"
-          ./x covercheck-mutants --select-range "$base" "$CANDIDATE"
+          case "$EVENT" in pull_request) base="$PR_BASE";; push) base="$PUSH_BASE";; *) base=invalid-base;; esac
+          ./x gate full --range "$base" "$CANDIDATE"
       - name: Drift check (rendered output matches config)
         run: ./x check
       # The scans run in the pre-commit hook payload locally; hooks are
@@ -89,6 +80,23 @@ jobs:
           disable_search: true
           flags: covered
           fail_ci_if_error: true
+
+  macos-go:
+    name: macos-go
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with: {go-version-file: go.mod}
+      - name: Verify native macOS arm64
+        run: '[ "$(go env GOOS)" = darwin ] && [ "$(go env GOARCH)" = arm64 ]'
+      - run: go test ./...
+
+  gate:
+    needs: [linux-full, macos-go]
+    runs-on: ubuntu-latest
+    steps:
+      - run: true
 
   release-config:
     runs-on: ubuntu-latest

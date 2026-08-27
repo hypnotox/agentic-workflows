@@ -36,7 +36,7 @@ func TestUnsetVarNotesPresentKeySemantics(t *testing.T) {
 				t.Fatal(err)
 			}
 			joined := strings.Join(notes, "\n")
-			if got := strings.Contains(joined, "skill tdd references unset vars: gateCmd"); got != tc.wantNote {
+			if got := strings.Contains(joined, "agents-doc references unset vars: gateCmd"); got != tc.wantNote {
 				t.Errorf("gateCmd note presence = %v, want %v; notes: %q", got, tc.wantNote, joined)
 			}
 			if tc.wantNote && !strings.Contains(joined, "delete the key to accept the generic prose") {

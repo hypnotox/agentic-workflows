@@ -56,26 +56,11 @@ jobs:
             sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
           fi
           unshare --user --map-root-user true
-      - name: Gate (test + 100% coverage + vet + lint)
-        run: ./x gate
-      - name: Covercheck mutation regression from previous release
+      - name: Gate (full release assurance)
         run: |
           candidate='${{ github.sha }}'
-          # Only released vX.Y.Z tags below the current release define its range.
-          # `git tag --merged` peels annotated tags; unrelated and future-version
-          # tags cannot become mutation evidence.
-          previous="$(git tag --merged "$candidate" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vu | awk -v current="$GITHUB_REF_NAME" '
-            $0 == current { found = 1; print prior; exit }
-            { prior = $0 }
-            END { if (!found) exit 2 }
-          ')"
-          if [ -n "$previous" ]; then
-            git cat-file -e "$previous^{commit}"
-            ./x covercheck-mutants --select-range "$previous" "$candidate"
-          else
-            # First release has no trustworthy range; fail conservatively.
-            ./x covercheck-mutants
-          fi
+          previous="$(git tag --merged "$candidate" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vu | awk -v current="$GITHUB_REF_NAME" '$0 == current { found = 1; print prior; exit } { prior = $0 } END { if (!found) exit 2 }')"
+          ./x gate full --range "${previous:-invalid-base}" "$candidate"
       - name: Drift check (rendered output matches config)
         run: ./x check
       - name: Prepare release notes from the curated changelog

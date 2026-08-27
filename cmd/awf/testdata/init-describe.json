@@ -14,7 +14,7 @@
     {
       "key": "gateCmd",
       "kind": "string",
-      "description": "Command that runs the full pre-commit gate (tests, lint, coverage).",
+      "description": "Command that runs the fast pre-commit gate.",
       "default": "",
       "options": [
         "make gate",
@@ -25,7 +25,7 @@
     {
       "key": "gateCmdFull",
       "kind": "string",
-      "description": "Command for the full/extended gate tier, if the project has one.",
+      "description": "Command for terminal exhaustive verification, if the project has one.",
       "default": "",
       "options": [
         "make gate-full"

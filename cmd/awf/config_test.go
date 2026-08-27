@@ -29,7 +29,7 @@ func TestRunConfigStaticFallback(t *testing.T) {
 		"status: config reference static (not inside an awf project)",
 		"config keys:",
 		"audit.allowedScopes | list of scope entries",
-		"gateCmd | Command that runs the full pre-commit gate",
+		"gateCmd | Command that runs the fast pre-commit gate",
 		"Catalog consumers:",
 		"testSurfaces",
 	} {

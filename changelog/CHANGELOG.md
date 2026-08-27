@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Split the fast commit gate from terminal full verification and end Windows release support.
+
 ## [0.41.0] - 2026-08-27
 
 ### Features

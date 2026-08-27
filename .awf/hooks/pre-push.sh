@@ -13,6 +13,7 @@ empty_oid="$(git hash-object -t blob --stdin </dev/null)"
 zero_oid="${empty_oid//?/0}"
 mapfile -t updates
 targets=()
+ranges=()
 declare -A seen_targets=()
 
 refusal() {
@@ -49,11 +50,23 @@ for update in "${updates[@]}"; do
     refusal 'malformed pre-push update'
   fi
   [[ "$local_oid" =~ ^[[:xdigit:]]+$ && "$remote_oid" =~ ^[[:xdigit:]]+$ && ${#local_oid} -eq ${#zero_oid} && ${#remote_oid} -eq ${#zero_oid} ]] || refusal 'malformed object ID'
-  [[ "$local_oid" == "$zero_oid" ]] && continue
+  if [[ "$local_oid" == "$zero_oid" ]]; then
+    # Deletions retain an exact empty universe: full verification still runs,
+    # while mutation correctly sees no introduced source.
+    [[ "$remote_oid" == "$zero_oid" ]] || ranges+=(--range "$remote_oid" "$remote_oid")
+    continue
+  fi
   add_object_target "$local_ref" "$local_oid"
+  if [[ "$remote_oid" == "$zero_oid" ]]; then
+    # A new branch has no trustworthy remote base.  Leave range evidence absent
+    # so the full runner selects mutation conservatively.
+    ranges+=(--range invalid-base "$local_oid")
+  else
+    ranges+=(--range "$remote_oid" "$local_oid")
+  fi
 done
 
 if ((${#targets[@]})); then
   ./awf check commit-policy "${targets[@]}"
 fi
-./x gate
+./x gate full "${ranges[@]}"

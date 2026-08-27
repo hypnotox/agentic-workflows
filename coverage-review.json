@@ -25344,36 +25344,6 @@
       ],
       "class": "platform-only",
       "evidence": "internal/effort/publication_darwin.go:41 is the Darwin-specific rollback call `if rollbackErr := unix.RenamexNp(tempPath, path, unix.RENAME_SWAP); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_darwin.go:29); unix.RenamexNp is selected only by the Darwin build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 73,
-        "targetLine": 73,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "platforms": [
-        "windows"
-      ],
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:73 is the Windows-specific rollback call `if rollbackErr := api.replace(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func publishAtomicWindows(tempPath, path string, expected *fileIdentity, api windowsPublicationAPI) error` (starts at internal/effort/publication_windows.go:52); api.replace is selected only by the Windows build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 94,
-        "targetLine": 94,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "platforms": [
-        "windows"
-      ],
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:94 is the Windows-specific rollback call `if rollbackErr := replaceFile(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_windows.go:87); replaceFile is selected only by the Windows build, so this host cannot execute that rollback branch."
     }
   ],
   "equivalentMutants": []

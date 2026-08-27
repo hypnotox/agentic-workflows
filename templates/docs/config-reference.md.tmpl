@@ -1,6 +1,8 @@
 <!-- awf:section intro -->
 # Configuration Reference
 
+<!-- awf:include gate-cadence -->
+
 Every key an adopter can set in `.awf/config.yaml`, artifact sidecars, and `vars:`: its
 meaning, default, availability, and this project's current state. This file is
 generated per-project by `./awf render`: edit `.awf/` and re-render; never edit this file.
@@ -23,7 +25,8 @@ or empty key, or a malformed near-miss, is a hard error that names the available
 | `commitScopeSentence` | a one-sentence statement of the allowed scopes |
 | `gatedCommands` | the backticked, comma-separated list of binary-version-gated top-level commands, followed by an `except` clause naming the group children that stay ungated |
 | `prefix` | the project's artifact prefix |
-| `gateCmd` | the configured pre-commit gate command |
+| `gateCmd` | the configured fast pre-commit gate command |
+| `gateCmdFull` | the configured terminal exhaustive verification command |
 | `checkCmd` | the configured drift-check command |
 | `sectionDefault` | the overridden section's own rendered default; re-inject it to *extend* rather than replace (re-injecting a `stub` default is a hard render error, not a silent skip) |
 

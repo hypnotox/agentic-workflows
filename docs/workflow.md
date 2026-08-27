@@ -7,6 +7,11 @@
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Principles
 
+<!-- awf:template-source templates/partials/gate-cadence.md -->
+<!-- Shared gate cadence. -->
+Use the narrowest relevant test, build, or lint command while iterating. The fast commit tier runs at the commit boundary; terminal exhaustive verification runs at implementation completion. Rely on a wired pre-commit or pre-push hook when present rather than manually duplicating its matching gate.
+
+<!-- awf:template-source templates/docs/workflow.md.tmpl -->
 You own the project's long-term health, not just the task in front of you: defects caused by the transaction or blocking its safe completion are repaired in the same commit; unrelated concrete defects are recorded and routed separately without expanding scope. Three rules bind every change: reality and its docs move together, the deterministic gate is green before every commit, and each commit carries exactly one concern.
 
 <!-- awf:template-source templates/partials/protected-contract.md -->
@@ -228,16 +233,14 @@ Documentation travels with the change that makes it true. When you change behavi
 <!-- awf:edit composing-the-gate: from .awf/parts/workflow/composing-the-gate.md -->
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Composing the gate
-`./x gate` must pass before every commit; [testing](testing.md) owns its checks and `./x gate timings`. `./x check` separately checks rendered output and repository policy; the pre-commit hook and CI run both.
-
-For saved output, preserve the command status: `./x gate > /tmp/gate.log 2>&1; gate_status=$?; exit "$gate_status"`.
+`./x gate` is the fast commit tier and `./x gate full` is terminal exhaustive verification. Run focused checks while iterating; when hooks are wired, do not manually duplicate their matching gate. `./x check` separately checks rendered output and repository policy.
 
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl#local-hooks -->
 <!-- awf:edit local-hooks: from .awf/parts/workflow/local-hooks.md -->
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Local git hooks
-This repository tracks five optional client-side preflight stubs under `.githooks/`: pre-commit checks `./x check` and `./x gate`; commit-msg checks the final message; pre-merge-commit checks staged state; reference-transaction and pre-push apply commit policy. `./x render` keeps their payloads current.
+This repository tracks five optional client-side preflight stubs under `.githooks/`: pre-commit checks `./x check` and the fast `./x gate`; commit-msg checks the final message; pre-merge-commit checks staged state; reference-transaction and pre-push applies commit policy and runs `./x gate full`. `./x render` keeps their payloads current.
 
 The stubs resolve the invoking worktree before delegation. A clone may activate them with `git config core.hooksPath .githooks`. Preview policy with `./awf check commit-policy <revision-or-range>...`. These checks do not gate remote updates by themselves.
 
@@ -250,5 +253,5 @@ The active GitHub repository ruleset `main` (ID `18766557`) is the final remote 
 <!-- awf:edit ci: from .awf/parts/workflow/ci.md -->
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Continuous integration
-Local hooks are optional per-clone preflight. `.github/workflows/ci.yml` runs `./x check`, `./x gate`, and the repository scans on pushes to `main` and on pull requests. Those runs provide post-push detection and a backstop for bypassed hooks; GitHub does not require their statuses before accepting an update to `main`. Inspect the pushed commit's CI result before treating it as verified.
+Local hooks are optional per-clone preflight. `.github/workflows/ci.yml` runs `./x check`, `./x gate full`, and the repository scans on pushes to `main` and on pull requests. Those runs provide post-push detection and a backstop for bypassed hooks; GitHub does not require their statuses before accepting an update to `main`. Inspect the pushed commit's CI result before treating it as verified.
 

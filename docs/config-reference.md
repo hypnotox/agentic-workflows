@@ -5,6 +5,11 @@
 <!-- awf:template-source templates/docs/config-reference.md.tmpl -->
 # Configuration Reference
 
+<!-- awf:template-source templates/partials/gate-cadence.md -->
+<!-- Shared gate cadence. -->
+Use the narrowest relevant test, build, or lint command while iterating. The fast commit tier runs at the commit boundary; terminal exhaustive verification runs at implementation completion. Rely on a wired pre-commit or pre-push hook when present rather than manually duplicating its matching gate.
+
+<!-- awf:template-source templates/docs/config-reference.md.tmpl -->
 Every key an adopter can set in `.awf/config.yaml`, artifact sidecars, and `vars:`: its
 meaning, default, availability, and this project's current state. This file is
 generated per-project by `./awf render`: edit `.awf/` and re-render; never edit this file.
@@ -27,7 +32,8 @@ or empty key, or a malformed near-miss, is a hard error that names the available
 | `commitScopeSentence` | a one-sentence statement of the allowed scopes |
 | `gatedCommands` | the backticked, comma-separated list of binary-version-gated top-level commands, followed by an `except` clause naming the group children that stay ungated |
 | `prefix` | the project's artifact prefix |
-| `gateCmd` | the configured pre-commit gate command |
+| `gateCmd` | the configured fast pre-commit gate command |
+| `gateCmdFull` | the configured terminal exhaustive verification command |
 | `checkCmd` | the configured drift-check command |
 | `sectionDefault` | the overridden section's own rendered default; re-inject it to *extend* rather than replace (re-injecting a `stub` default is a hard render error, not a silent skip) |
 
@@ -56,7 +62,7 @@ enforcement.
 | `prefix` | string | none: required, set at init | `awf` | The name prefix for rendered skills: a skill renders to `<prefix>-<name>` (directory and frontmatter name), and rendered prose references skills by that prefixed name. Must be non-empty, without path separators. | Always. |
 | `integrationBranch` | string | none: required; the schema migration writes integrationBranch: main | `main` | The branch effort work integrates into. `awf new adr` scaffolds a numbered decision record on this branch and a pending slug-identified one anywhere else, and the check refuses a pending record while the checkout is positively identified as being on it. Must be non-empty and free of whitespace, must not start with `-`; slashes are legal, so `release/1.0` is accepted. There is no in-code default, and audit range resolution never reads it. | Always. |
 | `render.templateSourceRoot` | normalized repository-relative directory | none (template source symbols disabled) | `templates` | The repository directory containing the implementation template tree. When set, generated Markdown carries compact `awf:template-source` comments identifying the root template, included partials, and structural sections. The directory and every referenced source file must exist in the selected repository state. | Markdown outputs rendered from templates; omitted leaves output unchanged. |
-| `vars` | key → value map | seeded with every catalog-referenced var as an empty string at init | 6 keys, 6 set | Freeform values templates interpolate. A key with a value renders it; a present-but-empty key is an open to-do (rendered artifacts referencing it degrade to generic prose and a non-failing note nudges you); a deleted key is the deliberate, git-auditable decline of that var; the generic prose renders silently. A non-empty key no rendered artifact references is unranked Information and exits zero. | Each key is consumed only while a rendered artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it, except that `gateCmd` is also consumed by divergent effort-integration guidance. |
+| `vars` | key → value map | seeded with every catalog-referenced var as an empty string at init | 7 keys, 7 set | Freeform values templates interpolate. A key with a value renders it; a present-but-empty key is an open to-do (rendered artifacts referencing it degrade to generic prose and a non-failing note nudges you); a deleted key is the deliberate, git-auditable decline of that var; the generic prose renders silently. A non-empty key no rendered artifact references is unranked Information and exits zero. | Each key is consumed only while a rendered artifact's template (or a `gateCmd`/`checkCmd` part placeholder) references it, except that `gateCmd` is also consumed by divergent effort-integration guidance. |
 | `localDocs` | list of {name, title, description} mappings | none | 2 configured | Additive repository-local documents. Each name is a lowercase kebab-case path below docs without .md; decisions, plans, domains, topics, and pitfalls are reserved. Title and description are nonblank one-line metadata. | Always; each entry renders one managed in-place document. |
 | `localDocs[].name` | lowercase kebab-case path | required | n/a | The docs-relative path without .md. | Within each localDocs entry. |
 | `localDocs[].title` | string | required | n/a | The awf-owned document heading. | Within each localDocs entry. |
@@ -95,10 +101,10 @@ Each var is consumed only while a rendered artifact references it. State reads: 
 (a value), **empty** (present with no value, an open to-do), **absent** (deliberately
 declined; the generic prose renders).
 
-- `gateCmd`: Command that runs the full pre-commit gate (tests, lint, coverage). Consumed while a rendered artifact's template references it, by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel), and by divergent effort-integration guidance.
-  State: set (`./x gate`). Consumed by: agent implementer, agents-doc, hooks pre-commit, hooks pre-push, skill adr-lifecycle, skill bugfix, skill debugging, skill executing-plans, skill retrospective, skill reviewing-impl, skill subagent-driven-development, skill tdd, skill writing-plans.
-- `gateCmdFull`: Command for the full/extended gate tier, if the project has one. Consumed while a rendered artifact's template references it.
-  State: absent, declined; the generic prose renders. Consumed by: hooks pre-push, skill bugfix, skill debugging.
+- `gateCmd`: Command that runs the fast pre-commit gate. Consumed while a rendered artifact's template references it, by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel), and by divergent effort-integration guidance.
+  State: set (`./x gate`). Consumed by: agent implementer, agents-doc, hooks pre-commit, hooks pre-push, skill adr-lifecycle, skill executing-plans, skill retrospective, skill reviewing-impl, skill subagent-driven-development, skill writing-plans.
+- `gateCmdFull`: Command for terminal exhaustive verification, if the project has one. Terminal exhaustive verification command, consumed while a rendered artifact's template references it.
+  State: set (`./x gate full`). Consumed by: hooks pre-push.
 - `checkCmd`: Command that checks rendered output for drift. Leave empty to run through the always-rendered `./awf` wrapper. Consumed while a rendered artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.
   State: set (`./x check`). Consumed by: agents-doc, hooks pre-commit, hooks pre-merge-commit, hooks pre-push.
 - `commitGateCmd`: Command that validates one commit message (the commit-msg hook payload appends the message-file argument). Leave empty to run through the always-rendered `./awf` wrapper. Consumed by the always-rendered commit-msg hook payload.

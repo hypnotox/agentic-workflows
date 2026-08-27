@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "b429bcf481481e00bada92165b194e4c6e303354a6f46cda72be4b863d222b41",
+  "universeSHA256": "39c623b44961532342f9ef321d28bfc5b876a08a651a5a1a59c08842cb0b6f50",
   "repository": [
     {
       "identity": {
@@ -22050,30 +22050,6 @@
     },
     {
       "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 73,
-        "targetLine": 73,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:94 is the Windows-specific rollback call `if rollbackErr := replaceFile(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_windows.go:87); replaceFile is selected only by the Windows build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 94,
-        "targetLine": 94,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:94 is the Windows-specific rollback call `if rollbackErr := replaceFile(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_windows.go:87); replaceFile is selected only by the Windows build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
         "file": "internal/effort/safeio.go",
         "line": 44,
         "targetLine": 44,
@@ -27273,36 +27249,6 @@
       ],
       "class": "platform-only",
       "evidence": "internal/effort/publication_darwin.go:41 is the Darwin-specific rollback call `if rollbackErr := unix.RenamexNp(tempPath, path, unix.RENAME_SWAP); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_darwin.go:29); unix.RenamexNp is selected only by the Darwin build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 73,
-        "targetLine": 73,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "platforms": [
-        "windows"
-      ],
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:73 is the Windows-specific rollback call `if rollbackErr := api.replace(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func publishAtomicWindows(tempPath, path string, expected *fileIdentity, api windowsPublicationAPI) error` (starts at internal/effort/publication_windows.go:52); api.replace is selected only by the Windows build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 94,
-        "targetLine": 94,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "platforms": [
-        "windows"
-      ],
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:94 is the Windows-specific rollback call `if rollbackErr := replaceFile(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_windows.go:87); replaceFile is selected only by the Windows build, so this host cannot execute that rollback branch."
     }
   ],
   "equivalentMutants": []

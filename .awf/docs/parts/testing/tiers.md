@@ -1,4 +1,5 @@
-awf has one tier: `./x gate` always runs its deterministic non-test checks before each commit, while independently selecting Go and Pi test lanes from staged paths. `./x gate timings` reports only executed stages; it is not a slower tier.
+awf has two verification tiers. `./x gate` is the fast commit tier; it runs version validation, one native build, blocking lint including govet, and pin validation. `./x gate full` adds complete native Go and Pi behavior, coverage policy, standalone vet, advisory lint, dead-code analysis, four Linux/Darwin cross-builds, and exact-universe-selected mutation. Focused owner checks are the iteration loop. A wired pre-commit hook owns the fast gate and a wired pre-push hook owns the full gate, so instructions do not manually duplicate either hook.
+
 
 | Lane | Proves |
 |---|---|

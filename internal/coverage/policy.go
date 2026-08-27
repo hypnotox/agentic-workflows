@@ -661,8 +661,12 @@ func compareDirectiveInventory(kind string, current, admitted []Directive) []Fin
 
 // CanonicalBaseline validates and renders a byte-stable baseline.
 func CanonicalBaseline(baseline Baseline) ([]byte, error) {
+	return canonicalBaseline(baseline, true)
+}
+
+func canonicalBaseline(baseline Baseline, validateRepositoryPolicy bool) ([]byte, error) {
 	baseline = normalizeBaseline(baseline)
-	if err := validateBaseline(baseline); err != nil {
+	if err := validateBaselineWithRepositoryPolicy(baseline, validateRepositoryPolicy); err != nil {
 		return nil, err
 	}
 	raw, _ := json.MarshalIndent(baseline, "", "  ") // Baseline contains only JSON-native fields.
@@ -671,6 +675,17 @@ func CanonicalBaseline(baseline Baseline) ([]byte, error) {
 
 // LoadBaseline loads strict, canonical baseline evidence.
 func LoadBaseline(path string) (Baseline, error) {
+	return loadBaseline(path, true)
+}
+
+// LoadBaselineForRegeneration loads a structurally valid canonical predecessor
+// while allowing its repository-specific ledger membership to be outdated. The
+// regenerated result must still satisfy the current exact repository policy.
+func LoadBaselineForRegeneration(path string) (Baseline, error) {
+	return loadBaseline(path, false)
+}
+
+func loadBaseline(path string, validateRepositoryPolicy bool) (Baseline, error) {
 	raw, err := os.ReadFile(path)
 	if err != nil {
 		return Baseline{}, fmt.Errorf("coverage: read baseline: %w", err)
@@ -679,7 +694,7 @@ func LoadBaseline(path string) (Baseline, error) {
 	if err := decodeStrict(raw, &baseline); err != nil {
 		return Baseline{}, fmt.Errorf("coverage: parse baseline: %w", err)
 	}
-	canonical, err := CanonicalBaseline(baseline)
+	canonical, err := canonicalBaseline(baseline, validateRepositoryPolicy)
 	if err != nil {
 		return Baseline{}, err
 	}
@@ -783,6 +798,10 @@ func compareEquivalentMutant(a, b EquivalentMutant) int {
 }
 
 func validateBaseline(baseline Baseline) error {
+	return validateBaselineWithRepositoryPolicy(baseline, true)
+}
+
+func validateBaselineWithRepositoryPolicy(baseline Baseline, validateRepositoryPolicy bool) error {
 	if baseline.Version != baselineVersion {
 		return fmt.Errorf("coverage: unsupported baseline version %d", baseline.Version)
 	}
@@ -859,7 +878,7 @@ func validateBaseline(baseline Baseline) error {
 			return fmt.Errorf("coverage: invalid platform directive %s:%d", platform.Directive.File, platform.Directive.Line)
 		}
 	}
-	if baseline.ModulePath == awfModulePath {
+	if validateRepositoryPolicy && baseline.ModulePath == awfModulePath {
 		if err := validateAWFPlatformLedger(baseline); err != nil {
 			return err
 		}
@@ -877,11 +896,10 @@ func validateBaseline(baseline Baseline) error {
 
 func validateAWFPlatformLedger(baseline Baseline) error {
 	expectedPlatforms := map[string]string{
-		"internal/effort/publication_darwin.go":  "darwin",
-		"internal/effort/publication_windows.go": "windows",
+		"internal/effort/publication_darwin.go": "darwin",
 	}
-	if len(baseline.PlatformDirectives) != 4 {
-		return fmt.Errorf("coverage: awf platform ledger has %d entries, want 4", len(baseline.PlatformDirectives))
+	if len(baseline.PlatformDirectives) != 2 {
+		return fmt.Errorf("coverage: awf platform ledger has %d entries, want 2", len(baseline.PlatformDirectives))
 	}
 	production := make(map[Directive]DirectiveAdmission)
 	unmeasuredPlatform := make(map[Directive]bool)
@@ -891,7 +909,6 @@ func validateAWFPlatformLedger(baseline Baseline) error {
 			unmeasuredPlatform[admission.Directive] = true
 		}
 	}
-	counts := make(map[string]int)
 	seen := make(map[string]bool)
 	for _, platform := range baseline.PlatformDirectives {
 		expected, ok := expectedPlatforms[platform.Directive.File]
@@ -902,15 +919,9 @@ func validateAWFPlatformLedger(baseline Baseline) error {
 		}
 		seen[key] = true
 		delete(unmeasuredPlatform, platform.Directive)
-		counts[platform.Directive.File]++
 	}
 	if len(unmeasuredPlatform) != 0 {
 		return errors.New("coverage: awf platform ledger omits an unmeasured platform-only production directive")
-	}
-	for file := range expectedPlatforms {
-		if counts[file] != 2 {
-			return fmt.Errorf("coverage: awf platform ledger has %d entries for %s, want 2", counts[file], file)
-		}
 	}
 	return nil
 }

@@ -7,6 +7,8 @@ description: >
   {{ .prefix }}-specific debugging surfaces.
 ---
 
+<!-- awf:include gate-cadence -->
+
 # {{ .prefix }}-debugging
 
 Self-contained systematic debugging for {{ .prefix }}. The discipline below encodes the project-specific surfaces that a generic debugging skill would not. The meta-pattern is fixed: form a falsifiable hypothesis, validate it against the real system, loop until the root cause (not the symptom) is confirmed, then establish durable evidence before touching any fix.
@@ -41,7 +43,7 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 
 <!-- awf:end -->
 
-6. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then verify with {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when the regression test lives in a slower surface that the default gate does not exercise.{{ end }}
+6. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then run the narrowest relevant durable verification and follow the shared gate cadence below.
 
 7. **Hand off.** When the root cause is confirmed and the durable oracle is established, {{ if .skills.bugfix }}invoke `{{ .prefix }}-bugfix` for the fix + commit + review discipline{{ else }}apply the fix under the durable-oracle rule and the project's review discipline{{ end }}. If investigation reveals a design gap rather than a defect, {{ if .skills.brainstorming }}invoke `{{ .prefix }}-brainstorming`{{ else }}start a design discussion before changing behaviour{{ end }} instead.
 

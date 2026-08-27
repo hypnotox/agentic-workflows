@@ -106,7 +106,7 @@ vars:
 	want := map[string][]string{
 		"pre-commit":            {"./x check\n./x gate\n"},
 		"commit-msg":            {"./x commit-gate \"$1\"\n"},
-		"pre-push":              {"./x gate full\n"},
+		"pre-push":              {"./x gate full \"${ranges[@]}\""},
 		"pre-merge-commit":      {"./x check staged\n"},
 		"reference-transaction": {"  ./awf check commit-policy \"${targets[@]}\""},
 	}

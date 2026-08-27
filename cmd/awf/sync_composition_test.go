@@ -309,9 +309,7 @@ func TestRunSyncPrintsChangedFiles(t *testing.T) {
 	}
 	for _, want := range []string{
 		"changed .claude/agents/implementer.md (config)",
-		"changed .claude/skills/example-tdd/SKILL.md (config)",
 		"changed .pi/agents/implementer.md (config)",
-		"changed .pi/skills/example-tdd/SKILL.md (config)",
 		"changed AGENTS.md (config)",
 		"changed docs/workflow.md (config)",
 	} {
