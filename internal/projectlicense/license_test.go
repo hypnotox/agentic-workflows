@@ -41,10 +41,11 @@ func TestProjectLicenseAGPL(t *testing.T) {
 	}
 
 	tests := []struct {
-		name string
-		path string
-		data func([]byte) []byte
-		want string
+		name     string
+		path     string
+		data     func([]byte) []byte
+		want     string
+		wantAlso string
 	}{
 		{
 			name: "license length",
@@ -128,7 +129,8 @@ func TestProjectLicenseAGPL(t *testing.T) {
 			data: func([]byte) []byte {
 				return []byte("archives:\n  - files:\n      - src: [LICENSE]\n")
 			},
-			want: "cannot unmarshal !!seq into string",
+			want:     "decode structured archive file:",
+			wantAlso: "cannot unmarshal !!seq into string",
 		},
 		{
 			name: "archive set exists",
@@ -162,6 +164,9 @@ func TestProjectLicenseAGPL(t *testing.T) {
 			err := Verify(root)
 			if err == nil || !strings.Contains(err.Error(), test.want) {
 				t.Fatalf("Verify error lacks %q:\n%v", test.want, err)
+			}
+			if test.wantAlso != "" && !strings.Contains(err.Error(), test.wantAlso) {
+				t.Fatalf("Verify error lacks %q:\n%v", test.wantAlso, err)
 			}
 		})
 	}

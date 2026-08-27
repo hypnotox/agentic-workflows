@@ -616,4 +616,5 @@ same build so only Linux receives portable ownership while names, formats, conte
 matrix remain stable. The snapshot oracle now rejects non-Linux ownership normalization, requires
 `checksums.txt` to name exactly all six archives, and checks cleanup. Structured archive decoding
 wraps its cause. These corrections preserve the existing release boundary without adding platforms
-or provenance machinery.
+or provenance machinery. Renewed review found that the structured-entry test did not pin the new
+error context; a focused mutation proved the strengthened assertion fails when wrapping is removed.
