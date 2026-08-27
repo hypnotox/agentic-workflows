@@ -65,7 +65,7 @@ For materially larger work, route the disposition through `awf-brainstorming`:
 <!-- awf:template-source templates/partials/escalation-menu.md -->
 perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated.
 <!-- awf:template-source templates/skills/bugfix/SKILL.md.tmpl -->
-No safety bypasses. No incidental refactors riding along; one concern per commit. No speculative shims.
+No safety bypasses. Repair defects caused by this transaction or blocking safe completion; record and route unrelated concrete defects separately without expanding scope. No incidental refactors riding along; one concern per commit. No speculative shims.
 
 <!-- awf:template-source templates/skills/bugfix/SKILL.md.tmpl#pitfalls-check -->
 <!-- awf:edit pitfalls-check: from .awf/skills/parts/bugfix/pitfalls-check.md -->

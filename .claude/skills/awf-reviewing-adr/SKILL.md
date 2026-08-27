@@ -42,12 +42,12 @@ This skill may run without an effort. If continuity independently fired, validat
 <!-- awf:template-source templates/skills/reviewing-adr/SKILL.md.tmpl#procedure -->
 <!-- awf:edit procedure: default; create .awf/skills/parts/reviewing-adr/procedure.md to override -->
 <!-- awf:template-source templates/skills/reviewing-adr/SKILL.md.tmpl -->
-1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified decision record under `docs/decisions/`: `NNNN-*.md` when numbered, or `<slug>.md` while pending, ignoring `README.md`, `INDEX.md`, and `template.md`.
+1. **Identify the ADR path.** Require an explicit ADR path in the review brief. Refuse an absent, ambiguous, or unavailable path; never select a record by modification time, filename implication, or session context.
 
 <!-- awf:template-source templates/skills/reviewing-adr/SKILL.md.tmpl#artifact-path-detection -->
 <!-- awf:edit artifact-path-detection: default; create .awf/skills/parts/reviewing-adr/artifact-path-detection.md to override -->
 <!-- awf:template-source templates/skills/reviewing-adr/SKILL.md.tmpl -->
-2. **Path detection detail.** When no explicit path is given: list the decision records under `docs/decisions/` - both `NNNN-*.md` and any pending `<slug>.md`, never the three reserved basenames - sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
+2. **Path validation detail.** Confirm that the explicit path names one non-reserved ADR record under `docs/decisions/`. If it does not, stop and request that explicit selection.
 
 <!-- awf:template-source templates/skills/reviewing-adr/SKILL.md.tmpl#dispatch-subagent -->
 <!-- awf:edit dispatch-subagent: default; create .awf/skills/parts/reviewing-adr/dispatch-subagent.md to override -->

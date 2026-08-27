@@ -12914,6 +12914,426 @@
         "statements": 2
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at tools/pi-extension-test/lockrun/lockrun_unix.go:60.3,61.11 2 in function run, beginning `fmt.Fprintf(os.Stderr, \"pi-extension-test: wait for worker: %v\\n\", err) // coverage-ignore: Wait...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 191,
+          "column": 31
+        },
+        "end": {
+          "line": 193,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Terminal transition selected-before evidence failure is fail-closed and covered by focused transition fixtures."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 195,
+          "column": 16
+        },
+        "end": {
+          "line": 197,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 199,
+          "column": 16
+        },
+        "end": {
+          "line": 201,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 202,
+          "column": 82
+        },
+        "end": {
+          "line": 204,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 207,
+          "column": 16
+        },
+        "end": {
+          "line": 209,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 212,
+          "column": 16
+        },
+        "end": {
+          "line": 214,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 272,
+          "column": 16
+        },
+        "end": {
+          "line": 274,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 278,
+          "column": 16
+        },
+        "end": {
+          "line": 280,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 322,
+          "column": 2
+        },
+        "end": {
+          "line": 322,
+          "column": 60
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 348,
+          "column": 16
+        },
+        "end": {
+          "line": 350,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 356,
+          "column": 16
+        },
+        "end": {
+          "line": 358,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 408,
+          "column": 31
+        },
+        "end": {
+          "line": 410,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plan/plan.go",
+        "start": {
+          "line": 264,
+          "column": 16
+        },
+        "end": {
+          "line": 266,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plan/plan.go",
+        "start": {
+          "line": 294,
+          "column": 3
+        },
+        "end": {
+          "line": 294,
+          "column": 59
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 23,
+          "column": 14
+        },
+        "end": {
+          "line": 24,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 40,
+          "column": 47
+        },
+        "end": {
+          "line": 42,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 46,
+          "column": 2
+        },
+        "end": {
+          "line": 46,
+          "column": 15
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 50,
+          "column": 23
+        },
+        "end": {
+          "line": 52,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 58,
+          "column": 35
+        },
+        "end": {
+          "line": 60,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 63,
+          "column": 48
+        },
+        "end": {
+          "line": 65,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 70,
+          "column": 71
+        },
+        "end": {
+          "line": 72,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 74,
+          "column": 38
+        },
+        "end": {
+          "line": 75,
+          "column": 46
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 75,
+          "column": 46
+        },
+        "end": {
+          "line": 77,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 91,
+          "column": 24
+        },
+        "end": {
+          "line": 92,
+          "column": 57
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 92,
+          "column": 57
+        },
+        "end": {
+          "line": 94,
+          "column": 7
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 95,
+          "column": 28
+        },
+        "end": {
+          "line": 98,
+          "column": 34
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 98,
+          "column": 34
+        },
+        "end": {
+          "line": 100,
+          "column": 7
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 105,
+          "column": 2
+        },
+        "end": {
+          "line": 105,
+          "column": 14
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
     }
   ],
   "directives": [
@@ -14468,20 +14888,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 188,
-        "targetLine": 188,
-        "reason": "plansFromTree converts every validated plan parse failure into plan drift",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "`func CheckStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentStateReport, error)` begins at internal/currentstatecoord/currentstate.go:140; its branch `if err != nil {` at internal/currentstatecoord/currentstate.go:190 follows `plans, planDrift, err := plansFromTree(afterTree, config.DocsDir)` at internal/currentstatecoord/currentstate.go:189. That flow establishes plansFromTree converts every validated plan parse failure into plan drift, making the defensive return unreachable without an invariant breach."
-    },
-    {
-      "directive": {
-        "file": "internal/currentstatecoord/currentstate.go",
-        "line": 193,
-        "targetLine": 193,
+        "line": 207,
+        "targetLine": 207,
         "reason": "staged plans and corpora are already validated semantic values",
         "mapped": true,
         "executed": false
@@ -14492,8 +14900,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 198,
-        "targetLine": 198,
+        "line": 212,
+        "targetLine": 212,
         "reason": "staged semantic owners supplied validated nonempty evidence",
         "mapped": true,
         "executed": false
@@ -14504,8 +14912,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 258,
-        "targetLine": 258,
+        "line": 272,
+        "targetLine": 272,
         "reason": "partitions copy only validated owner results and fixed nonempty parser evidence",
         "mapped": true,
         "executed": false
@@ -14516,8 +14924,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 264,
-        "targetLine": 264,
+        "line": 278,
+        "targetLine": 278,
         "reason": "aggregation copies only validated immutable partitions",
         "mapped": true,
         "executed": false
@@ -14528,8 +14936,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 308,
-        "targetLine": 308,
+        "line": 322,
+        "targetLine": 322,
         "reason": "ParseSources converts every parser failure into DiagnosticsError",
         "mapped": true,
         "executed": false
@@ -14540,8 +14948,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 334,
-        "targetLine": 334,
+        "line": 348,
+        "targetLine": 348,
         "reason": "IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here",
         "mapped": true,
         "executed": false
@@ -14552,8 +14960,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 342,
-        "targetLine": 342,
+        "line": 356,
+        "targetLine": 356,
         "reason": "HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault",
         "mapped": true,
         "executed": false
@@ -20260,6 +20668,18 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "The immediate predecessor for `fmt.Fprintf(os.Stderr, \"pi-extension-test: wait for worker: %v\\n\", err)` at tools/pi-extension-test/lockrun/lockrun_unix.go:60 is `}` (tools/pi-extension-test/lockrun/lockrun_unix.go:59). Within `func run(args []string) int` at tools/pi-extension-test/lockrun/lockrun_unix.go:17, source review establishes Wait returns only ExitError after a successfully started command; this is therefore a closed-state fail-closed branch."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 195,
+        "targetLine": 195,
+        "reason": "plansFromTree converts every validated plan parse failure into plan drift",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The staged plan parser converts validated parse failures into diagnostics, so this defensive non-diagnostic failure branch is unreachable."
     }
   ],
   "platformDirectives": [

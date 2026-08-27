@@ -139,7 +139,7 @@ declined; the generic prose renders).
 - `agent plan-reviewer` · `data.digestLabel` (catalog default): The label heading the reviewer's returned digest.
 - `agent plan-reviewer` · `data.digestSummary` (catalog default): The digest's summary skeleton: the bullet template the reviewer fills per review.
 - `agent code-reviewer` · `data.correctnessTraps` (catalog default + project entries): The correctness traps the reviewer checks first (list of {description}); the default names error paths and boundary conditions.
-- `agent code-reviewer` · `data.focusItems` (catalog default + project entries): The reviewer's project-focus lens items (list of {name, description}); the selected catalog default contains `plan-adherence`, `test-coverage`, `verification-instrument-can-fail`, `check-authority-taxonomy`.
+- `agent code-reviewer` · `data.focusItems` (catalog default + project entries): The reviewer's project-focus lens items (list of {name, description}); the selected catalog default contains `contract-adherence`, `test-coverage`, `verification-instrument-can-fail`, `check-authority-taxonomy`.
 - `agent code-reviewer` · `data.docCurrencyItems` (catalog default + project entries): The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit updates of every doc stating the old behaviour.
 - `agent code-reviewer` · `data.reviewSubject` (catalog default): The one-word subject label the review spine addresses (default: the diff).
 - `agent code-reviewer` · `data.readStep` (catalog default): The reviewer's opening read instruction: what to read in full before applying lenses.

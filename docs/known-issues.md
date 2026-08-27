@@ -8,12 +8,6 @@
 
 Each issue below is reproducible from repository state and remains open until its completion criteria hold. The criteria state outcomes, not a required implementation mechanism.
 
-## Implemented plans can bypass freeze discipline
-
-**Reproduction.** Stage a body edit to a plan that is already `Implemented` and run `awf check staged`; the plan's terminal status alone does not cause a refusal. Before the flip, incomplete touched-path and deviation inventories can likewise pass when their prose markers are present.
-
-**Completion criteria.** A terminal plan body cannot change silently, and the transition to `Implemented` demonstrates that actual deviations and touched paths were reconciled. The durable oracle must cover both boundaries without prescribing a particular checker.
-
 ## Hand-curated prose counts drift from their source sets
 
 **Reproduction.** Change membership in a source set while leaving a narrated exact count unchanged. Current checks accept the mismatch; this has occurred in the agent-guide invariant list and glossary exemption count.

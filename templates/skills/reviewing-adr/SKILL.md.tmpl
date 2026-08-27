@@ -23,11 +23,11 @@ Terminal step of `{{ .prefix }}-proposing-adr`, and the ordinary review entry po
 This skill may run without an effort. If continuity independently fired, validate the fixed effort identity and exact `.awf/efforts/<slug>/memory.md`, preserve one user-managed writer, and give the report-only reviewer that context read-only; otherwise omit effort and memory fields. If changed facts newly make continuity useful, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before further mutation. Repository sources, the ADR corpus, and current-state documentation remain authoritative, and standalone memory is forbidden.
 
 <!-- awf:section procedure -->
-1. **Identify the ADR path.** If the user named it explicitly, use that path. Otherwise, use the most recently-modified decision record under `{{ .layout.adrDir }}/`: `NNNN-*.md` when numbered, or `<slug>.md` while pending, ignoring `README.md`, `INDEX.md`, and `template.md`.
+1. **Identify the ADR path.** Require an explicit ADR path in the review brief. Refuse an absent, ambiguous, or unavailable path; never select a record by modification time, filename implication, or session context.
 <!-- awf:end -->
 
 <!-- awf:section artifact-path-detection -->
-2. **Path detection detail.** When no explicit path is given: list the decision records under `{{ .layout.adrDir }}/` - both `NNNN-*.md` and any pending `<slug>.md`, never the three reserved basenames - sorted by modification time (newest last). Take the last entry. If no files match, stop and ask the user for the path.
+2. **Path validation detail.** Confirm that the explicit path names one non-reserved ADR record under `{{ .layout.adrDir }}/`. If it does not, stop and request that explicit selection.
 <!-- awf:end -->
 
 <!-- awf:section dispatch-subagent -->

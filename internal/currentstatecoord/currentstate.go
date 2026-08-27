@@ -184,9 +184,23 @@ func CheckStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentSt
 		Provisional: currentstate.OlderIntroductions(before.Universe(), after.Universe(), adr.CurrentFormat()),
 	}
 	report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
+	beforePlans, beforePlanDrift, err := plansFromTree(beforeTree, config.DocsDir)
+	if err != nil {
+		return CurrentStateReport{}, fmt.Errorf("load selected before-plan comparison evidence: %w", err)
+	}
+	if len(beforePlanDrift) != 0 {
+		return CurrentStateReport{}, fmt.Errorf("load selected before-plan comparison evidence: malformed plan")
+	}
 	plans, planDrift, err := plansFromTree(afterTree, config.DocsDir)
 	if err != nil { // coverage-ignore: plansFromTree converts every validated plan parse failure into plan drift
 		return CurrentStateReport{}, err
+	}
+	changed, err := repo.ChangedPaths(ctx, true, "")
+	if err != nil {
+		return CurrentStateReport{}, fmt.Errorf("load selected touched-path evidence: %w", err)
+	}
+	if err := plancheck.TerminalTransition(beforePlans, plans, changed); err != nil {
+		planDrift = append(planDrift, manifest.Drift{Kind: "plan-terminal-transition", Path: "docs/plans", Detail: err.Error()})
 	}
 	report.PlanDrift = planDrift
 	planResult, err := plancheck.Artifact(plans, after.Corpus)

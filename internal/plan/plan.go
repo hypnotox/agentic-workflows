@@ -23,7 +23,10 @@ import (
 // ValidStatuses are the two plan lifecycle states (ADR-0097): mutable while
 // Proposed, frozen at Implemented.
 var ValidStatuses = map[string]bool{"Proposed": true, "Implemented": true}
-var proposedPlanStatus = []string{"Proposed"}[0]
+var (
+	proposedPlanStatus    = []string{"Proposed"}[0]
+	implementedPlanStatus = []string{"Implemented"}[0]
+)
 
 // FilenameRe matches a plan filename (YYYY-MM-DD-slug.md); it excludes
 // template.md and README.md just as adr.FilenameRe's numeric form does.
@@ -88,6 +91,9 @@ func (l ADRLink) Identity() string {
 
 // IsProposed reports whether this plan remains amendable and receives coverage notes.
 func (p Plan) IsProposed() bool { return p.Status == proposedPlanStatus }
+
+// IsImplemented reports whether the plan body is terminal history.
+func (p Plan) IsImplemented() bool { return p.Status == implementedPlanStatus }
 
 // Plan is a parsed plan record. HasFrontmatter is false for the grandfathered
 // pre-convention corpus (ADR-0098), which the checks skip.

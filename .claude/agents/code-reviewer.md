@@ -84,7 +84,7 @@ Apply all lenses to every implementation diff:
 
 1. **correctness**: logic errors, edge cases, nil/null dereferences, type-coercion bugs, off-by-one errors, unchecked error paths, concurrency hazards (data races, unsynchronised shared state); error handling must preserve information (wrapping or context propagation, per the language's idiom).
 
-1. **plan-adherence**: all plan tasks appear in the diff; no scope creep beyond ADR/plan authorisation; no half-finished work (new type not registered, TODO in landed code, commented-out blocks); commit boundaries remain coherent and preserve the protected contract rather than literal recorded phase grouping.
+1. **contract-adherence**: evaluate the protected contract, Definition of done, current authority, and reconciled material instructions; flag unexplained outcome or authorization drift, incoherent landed transactions, or incomplete work (new type not registered, TODO in landed code, commented-out blocks). Do not require original task, path, content, phase, or commit choreography.
 
 1. **testing-discipline**: every non-fix behaviour-changing change has a regression test; every fix retains the strongest practical durable oracle described above; ordinary deterministic defects carry observed red-then-green automated regression evidence; any fix alternative carries a concrete impracticality reason and evidence showing verification strength was preserved or improved; no bypassed gate (coverage regression, skipped test without `SKIP: reason`); a backing test for an `invariant:` claim must actually assert the invariant it backs, since the marker scan confirms only that the comment exists (a marker over a trivial or non-asserting test is a false backing).
 
@@ -119,7 +119,7 @@ When the brief requests phase review, append a structured coverage summary after
 - template FuncMap functions must handle empty-string vars gracefully
 
 
-**plan-adherence**: the diff matches the plan's stated file paths and content; unexplained drift is a finding
+**contract-adherence**: the diff satisfies the protected contract, Definition of done, current authority, and reconciled material instructions; unexplained outcome or authorization drift, incoherent landed transactions, and incomplete work are findings, not departures from original choreography
 
 
 **test-coverage**: behaviour changes carry tests in the same commit; no assertion is weakened to pass
@@ -233,4 +233,4 @@ Impl review complete (N lenses, M findings).
   1. <user-decision finding, if any>
 ```
 
-Target ~80 words for the Impl summary (range 50-100 words). Keep this bounded digest before any optional exhaustive inventory. Summarize a large inventory by count and category first; when a report truncates, the parent reruns the inventory rather than treating omitted fields as empty.
+Target ~80 words for the Impl summary (range 50-100 words). Keep this bounded digest before the complete structured finding array. The array is `[{focus, severity, location, issue, suggested_fix, classification}]` and contains every mechanical, reasoned, and user-decision finding exactly once. Supporting narrative may remain optional; when a report truncates, the parent reruns the array rather than treating omitted findings as empty.

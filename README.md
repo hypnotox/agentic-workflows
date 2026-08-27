@@ -118,6 +118,8 @@ See [the workflow guide](docs/workflow.md) for the full decision criteria.
 
 ## Commands
 
+Punctuation findings are advisory Warnings with zero exit.
+
 <!-- awf:clispec-commands:start -->
 | Command | Purpose |
 |---|---|

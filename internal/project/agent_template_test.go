@@ -181,10 +181,10 @@ func TestCodeReviewerAgent(t *testing.T) {
 		}
 	}
 
-	// Assert impl-lens phrases (correctness and plan-adherence are code-reviewer-specific)
+	// Assert impl-lens phrases (correctness and contract-adherence are code-reviewer-specific)
 	implPhrases := []string{
 		"correctness",
-		"plan-adherence",
+		"contract-adherence",
 		"maintainable-design",
 		"docs/maintainable-code-design.md",
 		"cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, protected-contract conformance, and coherent transactions rather than literal planned phase grouping",

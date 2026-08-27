@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "2b8938bc664ddaba35e9b81d45f55edc82d47981fd650c3e5181b8af4ddb06b5",
+  "universeSHA256": "4ff2b942824c3fffca226a1079a79436132963235606b8d39260535783447969",
   "repository": [
     {
       "identity": {
@@ -3187,121 +3187,181 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
+          "line": 191,
+          "column": 31
+        },
+        "end": {
           "line": 193,
-          "column": 16
+          "column": 3
         },
-        "end": {
+        "statements": 1
+      },
+      "reason": "Terminal transition selected-before evidence failure is fail-closed and covered by focused transition fixtures."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
           "line": 195,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
-    },
-    {
-      "identity": {
-        "file": "internal/currentstatecoord/currentstate.go",
-        "start": {
-          "line": 198,
           "column": 16
         },
         "end": {
-          "line": 200,
+          "line": 197,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
     },
     {
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 258,
+          "line": 199,
           "column": 16
         },
         "end": {
-          "line": 260,
+          "line": 201,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
     },
     {
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 264,
+          "line": 202,
+          "column": 82
+        },
+        "end": {
+          "line": 204,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 207,
           "column": 16
         },
         "end": {
-          "line": 266,
+          "line": 209,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
     },
     {
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 308,
+          "line": 212,
+          "column": 16
+        },
+        "end": {
+          "line": 214,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 272,
+          "column": 16
+        },
+        "end": {
+          "line": 274,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 278,
+          "column": 16
+        },
+        "end": {
+          "line": 280,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 322,
           "column": 2
         },
         "end": {
-          "line": 308,
+          "line": 322,
           "column": 60
         },
         "statements": 1
       },
-      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
     },
     {
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 334,
+          "line": 348,
           "column": 16
         },
         "end": {
-          "line": 336,
+          "line": 350,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
     },
     {
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 342,
+          "line": 356,
           "column": 16
         },
         "end": {
-          "line": 344,
+          "line": 358,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
     },
     {
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 394,
+          "line": 408,
           "column": 31
         },
         "end": {
-          "line": 396,
+          "line": 410,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Existing current-state authority defensive error path remains reachable only through filesystem fault injection after the same authority was successfully loaded; retained as reviewed raw coverage debt without weakening authority checks."
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
     },
     {
       "identity": {
@@ -8182,31 +8242,31 @@
       "identity": {
         "file": "internal/plan/plan.go",
         "start": {
-          "line": 258,
+          "line": 264,
           "column": 16
         },
         "end": {
-          "line": 260,
+          "line": 266,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "The covering lease check immediately precedes RootMatches for the same selected root. A RootMatches error therefore requires a concurrent namespace or storage fault; missing leases, nil handles, mismatched handles, and confined publication are directly tested."
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
     },
     {
       "identity": {
         "file": "internal/plan/plan.go",
         "start": {
-          "line": 288,
+          "line": 294,
           "column": 3
         },
         "end": {
-          "line": 288,
+          "line": 294,
           "column": 59
         },
         "statements": 1
       },
-      "reason": "Phase 4 post-review coverage reconciliation reviewed internal/plan/plan.go:288.3,275.59 1 in NewFileLeased, beginning `return \"\", fmt.Errorf(\"plan: publish %s: %w\", path, err)`. The adjacent reachable behavior is directly tested; this exact defensive arm remains explicit debt because triggering it deterministically would require a test-only production fault seam."
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
     },
     {
       "identity": {
@@ -8297,6 +8357,216 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at internal/plan/structure.go:299.50,301.3 1 in function sectionBodyNonempty, beginning `{ // coverage-ignore: parser-owned boundaries are constructed within the same line slice`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 23,
+          "column": 14
+        },
+        "end": {
+          "line": 24,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 40,
+          "column": 47
+        },
+        "end": {
+          "line": 42,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 46,
+          "column": 2
+        },
+        "end": {
+          "line": 46,
+          "column": 15
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 50,
+          "column": 23
+        },
+        "end": {
+          "line": 52,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 58,
+          "column": 35
+        },
+        "end": {
+          "line": 60,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 63,
+          "column": 48
+        },
+        "end": {
+          "line": 65,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 70,
+          "column": 71
+        },
+        "end": {
+          "line": 72,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 74,
+          "column": 38
+        },
+        "end": {
+          "line": 75,
+          "column": 46
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 75,
+          "column": 46
+        },
+        "end": {
+          "line": 77,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 91,
+          "column": 24
+        },
+        "end": {
+          "line": 92,
+          "column": 57
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 92,
+          "column": 57
+        },
+        "end": {
+          "line": 94,
+          "column": 7
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 95,
+          "column": 28
+        },
+        "end": {
+          "line": 98,
+          "column": 34
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 98,
+          "column": 34
+        },
+        "end": {
+          "line": 100,
+          "column": 7
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/plancheck/terminal.go",
+        "start": {
+          "line": 105,
+          "column": 2
+        },
+        "end": {
+          "line": 105,
+          "column": 14
+        },
+        "statements": 1
+      },
+      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
     },
     {
       "identity": {
@@ -18873,23 +19143,23 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
+            "line": 191,
+            "column": 31
+          },
+          "end": {
             "line": 193,
-            "column": 16
+            "column": 3
           },
-          "end": {
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
             "line": 195,
-            "column": 3
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/currentstatecoord/currentstate.go",
-          "start": {
-            "line": 198,
             "column": 16
           },
           "end": {
-            "line": 200,
+            "line": 197,
             "column": 3
           },
           "statements": 1
@@ -18897,11 +19167,11 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
-            "line": 258,
+            "line": 199,
             "column": 16
           },
           "end": {
-            "line": 260,
+            "line": 201,
             "column": 3
           },
           "statements": 1
@@ -18909,11 +19179,23 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
-            "line": 264,
+            "line": 202,
+            "column": 82
+          },
+          "end": {
+            "line": 204,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 207,
             "column": 16
           },
           "end": {
-            "line": 266,
+            "line": 209,
             "column": 3
           },
           "statements": 1
@@ -18921,11 +19203,47 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
-            "line": 308,
+            "line": 212,
+            "column": 16
+          },
+          "end": {
+            "line": 214,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 272,
+            "column": 16
+          },
+          "end": {
+            "line": 274,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 278,
+            "column": 16
+          },
+          "end": {
+            "line": 280,
+            "column": 3
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 322,
             "column": 2
           },
           "end": {
-            "line": 308,
+            "line": 322,
             "column": 60
           },
           "statements": 1
@@ -18933,11 +19251,11 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
-            "line": 334,
+            "line": 348,
             "column": 16
           },
           "end": {
-            "line": 336,
+            "line": 350,
             "column": 3
           },
           "statements": 1
@@ -18945,11 +19263,11 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
-            "line": 342,
+            "line": 356,
             "column": 16
           },
           "end": {
-            "line": 344,
+            "line": 358,
             "column": 3
           },
           "statements": 1
@@ -18957,11 +19275,11 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
-            "line": 394,
+            "line": 408,
             "column": 31
           },
           "end": {
-            "line": 396,
+            "line": 410,
             "column": 3
           },
           "statements": 1
@@ -20893,20 +21211,20 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 188,
-        "targetLine": 188,
+        "line": 195,
+        "targetLine": 195,
         "reason": "plansFromTree converts every validated plan parse failure into plan drift",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func CheckStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentStateReport, error)` begins at internal/currentstatecoord/currentstate.go:140; its branch `if err != nil {` at internal/currentstatecoord/currentstate.go:190 follows `plans, planDrift, err := plansFromTree(afterTree, config.DocsDir)` at internal/currentstatecoord/currentstate.go:189. That flow establishes plansFromTree converts every validated plan parse failure into plan drift, making the defensive return unreachable without an invariant breach."
+      "evidence": "The staged plan parser converts validated parse failures into diagnostics, so this defensive non-diagnostic failure branch is unreachable."
     },
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 193,
-        "targetLine": 193,
+        "line": 207,
+        "targetLine": 207,
         "reason": "staged plans and corpora are already validated semantic values",
         "mapped": true,
         "executed": false
@@ -20917,8 +21235,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 198,
-        "targetLine": 198,
+        "line": 212,
+        "targetLine": 212,
         "reason": "staged semantic owners supplied validated nonempty evidence",
         "mapped": true,
         "executed": false
@@ -20929,8 +21247,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 258,
-        "targetLine": 258,
+        "line": 272,
+        "targetLine": 272,
         "reason": "partitions copy only validated owner results and fixed nonempty parser evidence",
         "mapped": true,
         "executed": false
@@ -20941,8 +21259,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 264,
-        "targetLine": 264,
+        "line": 278,
+        "targetLine": 278,
         "reason": "aggregation copies only validated immutable partitions",
         "mapped": true,
         "executed": false
@@ -20953,8 +21271,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 308,
-        "targetLine": 308,
+        "line": 322,
+        "targetLine": 322,
         "reason": "ParseSources converts every parser failure into DiagnosticsError",
         "mapped": true,
         "executed": false
@@ -20965,8 +21283,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 334,
-        "targetLine": 334,
+        "line": 348,
+        "targetLine": 348,
         "reason": "IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here",
         "mapped": true,
         "executed": false
@@ -20977,8 +21295,8 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 342,
-        "targetLine": 342,
+        "line": 356,
+        "targetLine": 356,
         "reason": "HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault",
         "mapped": true,
         "executed": false

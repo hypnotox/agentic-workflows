@@ -7,7 +7,7 @@
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Principles
 
-You own the project's long-term health, not just the task in front of you: bugs you notice in passing are yours, coverage gaps are yours, and documentation drift is yours to fix in the same commit that caused it. Three rules bind every change: reality and its docs move together, the deterministic gate is green before every commit, and each commit carries exactly one concern.
+You own the project's long-term health, not just the task in front of you: defects caused by the transaction or blocking its safe completion are repaired in the same commit; unrelated concrete defects are recorded and routed separately without expanding scope. Three rules bind every change: reality and its docs move together, the deterministic gate is green before every commit, and each commit carries exactly one concern.
 
 <!-- awf:template-source templates/partials/protected-contract.md -->
 **The protected contract.**
