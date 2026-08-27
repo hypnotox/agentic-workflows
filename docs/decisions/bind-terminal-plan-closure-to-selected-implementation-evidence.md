@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: bind-terminal-plan-closure-to-selected-implementation-evidence
-status: Proposed
+status: Accepted
 date: 2026-08-27
 ---
 # ADR-bind-terminal-plan-closure-to-selected-implementation-evidence: Bind Terminal Plan Closure to Selected Implementation Evidence
@@ -54,3 +54,4 @@ invariant.
 ## Status history
 
 - 2026-08-27: Proposed
+- 2026-08-27: Accepted; content-sha256: d525169771294fe88081b4bb71ed77764258886be13f085e33112008133ff24a
