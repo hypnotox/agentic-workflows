@@ -557,3 +557,11 @@ snapshots. The Pi workflow clauses now state the effort-backed pre-integration r
 omission, stable parent root, explicit parent paths, non-confinement boundary, and governed primary
 lifecycle transition without contradictory CWD wording. The runtime smoke is the named backing for
 the lifecycle claim, while focused rendered-output assertions falsify malformed guidance.
+
+The single Phase 6 verify pass found platform-neutral containment, proof-selection, and testing-guide
+residuals. Checkout containment now uses the native separator and rejects absolute relative results,
+with Windows parent-escape and cross-drive cases. The gate-enabled smoke requires the exact pinned
+toolkit lifecycle proving unit rather than accepting any green Pi suite. Testing guidance now names
+the narrow test-only scheduler and prepared-CWD composition while preserving revision-independent
+adopter handshake compatibility and pi-tools ownership of general runtime mechanics. These
+corrections preserve the selected-checkout and independent-runtime decisions.

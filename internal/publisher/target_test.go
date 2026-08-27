@@ -281,6 +281,10 @@ func assertPiRuntimeSmoke(t *testing.T) {
 	if piRuntimeSmokeErr != nil {
 		t.Fatalf("generated Pi runtime smoke failed: %v\n%s", piRuntimeSmokeErr, piRuntimeSmokeOutput)
 	}
+	const lifecycleProof = "✔ TestPiStructuredExplorationContractLifecycleSemantics uses pinned pi-tools lifecycle"
+	if !strings.Contains(string(piRuntimeSmokeOutput), lifecycleProof) {
+		t.Fatalf("generated Pi runtime smoke omitted required lifecycle proof %q\n%s", lifecycleProof, piRuntimeSmokeOutput)
+	}
 }
 
 func TestPiRealRuntimeSmoke(t *testing.T) {

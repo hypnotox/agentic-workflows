@@ -1,13 +1,13 @@
 import assert from "node:assert/strict";
 import { mkdtemp, mkdir, readFile as readRealFile, rm, writeFile as writeRealFile } from "node:fs/promises";
 import { tmpdir } from "node:os";
-import { join, resolve } from "node:path";
+import { join, resolve, win32 } from "node:path";
 import test from "node:test";
 import { Value } from "typebox/value";
 import { createExtensionRecorder } from "pi-tools/testing";
 import { createSubagentToolkit } from "../../../node_modules/pi-tools/extensions/subagents/index.ts";
 import type { RunRequest } from "../../../node_modules/pi-tools/extensions/subagents/runner.ts";
-import extension, { registerSubagentTools, type ExtensionDependencies } from "../../../.pi/extensions/awf-subagents/index.ts";
+import extension, { registerSubagentTools, verificationCheckoutWithin, type ExtensionDependencies } from "../../../.pi/extensions/awf-subagents/index.ts";
 import { PREFERENCE_FIELDS, RECOMMENDED_PRESET } from "../../../.pi/extensions/awf-subagents/model-routing.ts";
 
 const ROOT="/repo", GLOBAL="/agent/awf-subagents.json", LOCAL="/repo/.pi/awf-subagents.local.json";
@@ -130,6 +130,8 @@ test("implementation preparation binds child cwd and snapshots to one selected c
  const root=await harness({files:{[GLOBAL]:JSON.stringify(complete())},exec:checkoutGit("a","b")});root.register();await root.start();const rp=root.profiles()[5],rc=context({task:"root",allowCommits:true});await rp.selectModel(rc);await assert.rejects(rp.beforeRun(rc),/without completing implementation prepare/);assert.equal((await rp.prepare(rc)).cwd,ROOT);const rs=await rp.beforeRun(rc);assert.equal(rs.verificationCheckout,ROOT);
  const outside=await harness({files:{[GLOBAL]:JSON.stringify(complete())},exec:checkoutGit("a","b")});outside.register();await outside.start();const op=outside.profiles()[5],oc=context({task:"outside",allowCommits:true,verificationCheckout:"/outside"});await op.selectModel(oc);await assert.rejects(op.prepare(oc),/parent session checkout or an accessible descendant/);
 });
+
+test("verification checkout containment uses the native separator and rejects absolute relative results",()=>{assert.equal(verificationCheckoutWithin("C:\\repo","C:\\repo\\.awf\\worktrees\\w",win32),true);assert.equal(verificationCheckoutWithin("C:\\repo","C:\\outside",win32),false);assert.equal(verificationCheckoutWithin("C:\\repo","D:\\outside",win32),false);});
 
 test("verification checkout accepts roots and linked checkouts and strips terminal endings",async()=>{
  for(const [value,git,realpath,files] of [[undefined,checkoutGit(),undefined,undefined],[ROOT,checkoutGit(),undefined,undefined],["@.awf/worktrees/w",checkoutGit(),async(p:string)=>p===WORKTREE?WORKTREE:p,undefined],[`${WORKTREE} `,(a:string[],cwd:string)=>{const r=checkoutGit()(a,cwd);if(a.includes("--show-toplevel"))return{code:0,stdout:cwd};return r;},undefined,{[BACKLINK]:`${WORKTREE} /.git\r\n`}]] as any){const h=await harness({exec:git,realpath,files});h.register();await h.start();const p=h.profiles()[5],c=context({task:"x",allowCommits:true,verificationCheckout:value});await p.selectModel(c);await p.prepare(c);const s=await p.beforeRun(c);assert.ok(s.verificationCheckout);}

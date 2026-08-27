@@ -1,7 +1,7 @@
 // @ts-nocheck
 import { randomUUID } from "node:crypto";
 import { lstat, mkdir, readFile, realpath, rename, unlink, writeFile } from "node:fs/promises";
-import { dirname, join, relative, resolve } from "node:path";
+import { dirname, isAbsolute, join, relative, resolve, sep } from "node:path";
 import { fileURLToPath } from "node:url";
 import {
   CONFIG_DIR_NAME,
@@ -114,6 +114,11 @@ async function canonicalPath(deps: ExtensionDependencies, path: string, failureM
   catch (error) { throw new Error(`${failureMessage}: ${errorText(error)}`, { cause: error }); }
 }
 
+export function verificationCheckoutWithin(root: string, checkout: string, paths = { relative, resolve, isAbsolute, sep }): boolean {
+  const descent = paths.relative(root, checkout);
+  return !((descent === "" && checkout !== root) || descent === ".." || descent.startsWith(`..${paths.sep}`) || paths.isAbsolute(descent) || paths.resolve(root, descent) !== checkout);
+}
+
 async function resolveVerificationCheckout(
   pi: ExtensionAPI, deps: ExtensionDependencies, root: string, requested: string | undefined,
 ): Promise<string> {
@@ -123,8 +128,7 @@ async function resolveVerificationCheckout(
   const candidate = resolve(root, normalized);
   const checkout = await canonicalPath(deps, candidate, `verificationCheckout does not exist: ${candidate}`);
   const canonicalRoot = await canonicalPath(deps, root, "Cannot resolve the project root checkout.");
-  const descent = relative(canonicalRoot, checkout);
-  if ((descent === "" && checkout !== canonicalRoot) || descent === ".." || descent.startsWith(`..${"/"}`) || resolve(canonicalRoot, descent) !== checkout) throw new Error(`verificationCheckout must be the parent session checkout or an accessible descendant: ${checkout}`);
+  if (!verificationCheckoutWithin(canonicalRoot, checkout)) throw new Error(`verificationCheckout must be the parent session checkout or an accessible descendant: ${checkout}`);
   const selectedGitEntry = join(checkout, ".git");
   let entry: { isFile(): boolean; isSymbolicLink(): boolean } | undefined;
   try { entry = await deps.lstat(selectedGitEntry); }
