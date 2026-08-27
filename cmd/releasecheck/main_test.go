@@ -20,6 +20,8 @@ import (
 	"testing"
 	"testing/fstest"
 
+	"gopkg.in/yaml.v3"
+
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
@@ -442,32 +444,73 @@ func TestVerifyCIRefusesTransportAndEvidenceFaults(t *testing.T) {
 }
 
 func TestExactRevisionWorkflowContract(t *testing.T) {
-	ci, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "ci.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	release, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "release.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{"linux-full", "macos-go", "needs: [linux-full, macos-go]", "./x gate full"} {
-		if !strings.Contains(string(ci), want) {
-			t.Errorf("CI missing %q", want)
+	read := func(name string) map[string]any {
+		t.Helper()
+		body, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", name))
+		if err != nil {
+			t.Fatal(err)
 		}
+		return parseWorkflow(t, body)
 	}
-	if !strings.Contains(string(release), "./x gate full") {
-		t.Error("release does not use full gate")
+	ci, release := read("ci.yml"), read("release.yml")
+	if problems := exactRevisionWorkflowProblems(ci, release); len(problems) != 0 {
+		t.Fatalf("workflow contract problems: %q", problems)
+	}
+	for _, mutation := range []struct {
+		name  string
+		apply func(map[string]any, map[string]any)
+	}{
+		{"missing stable gate job", func(ci, _ map[string]any) { delete(workflowJobs(ci), "gate") }},
+		{"missing stable release-config job", func(ci, _ map[string]any) { delete(workflowJobs(ci), "release-config") }},
+		{"missing macOS dependency", func(ci, _ map[string]any) { workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"linux-full"} }},
+		{"wrong Linux architecture", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["linux-full"]), "Verify native Linux amd64")["run"] = "false"
+		}},
+		{"wrong macOS architecture", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["macos-go"]), "Verify native macOS arm64")["run"] = "false"
+		}},
+		{"missing exact SHA verification", func(_, release map[string]any) {
+			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify bridge readiness and exact CI conclusions")["run"] = "false"
+		}},
+		{"release uses fast gate", func(_, release map[string]any) {
+			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Gate (full release assurance)")["run"] = "./x gate"
+		}},
+		{"release full gate lacks range", func(_, release map[string]any) {
+			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Gate (full release assurance)")["run"] = "./x gate full"
+		}},
+		{"release checkout is not exact", func(_, release map[string]any) {
+			workflowMap(workflowMap(workflowSteps(workflowMap(workflowJobs(release)["verify"]))[0])["with"])["ref"] = "HEAD"
+		}},
+		{"duplicate macOS full lane", func(ci, _ map[string]any) {
+			workflowMap(workflowSteps(workflowMap(workflowJobs(ci)["macos-go"]))[len(workflowSteps(workflowMap(workflowJobs(ci)["macos-go"])))-1])["run"] = "./x gate full"
+		}},
+	} {
+		t.Run(mutation.name, func(t *testing.T) {
+			cloneCI, cloneRelease := cloneWorkflow(t, ci), cloneWorkflow(t, release)
+			mutation.apply(cloneCI, cloneRelease)
+			if problems := exactRevisionWorkflowProblems(cloneCI, cloneRelease); len(problems) == 0 {
+				t.Fatal("structural mutation was accepted")
+			}
+		})
 	}
 }
 
-func TestReleaseMutationSelectorUsesPreviousStableReleaseOrRunsAlways(t *testing.T) {
-	release, err := os.ReadFile(filepath.Join("..", "..", ".github", "workflows", "release.yml"))
+func parseWorkflow(t *testing.T, body []byte) map[string]any {
+	t.Helper()
+	var workflow map[string]any
+	if err := yaml.Unmarshal(body, &workflow); err != nil {
+		t.Fatal(err)
+	}
+	return workflow
+}
+
+func cloneWorkflow(t *testing.T, workflow map[string]any) map[string]any {
+	t.Helper()
+	body, err := yaml.Marshal(workflow)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if strings.Contains(string(release), "covercheck-mutants") {
-		t.Error("release must delegate range-qualified mutation to full gate")
-	}
+	return parseWorkflow(t, body)
 }
 
 func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
@@ -476,14 +519,41 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 		problems = append(problems, "CI name")
 	}
 	ciJobs, releaseJobs := workflowJobs(ci), workflowJobs(release)
-	for _, name := range []string{"gate", "release-config"} {
+	for _, name := range []string{"linux-full", "macos-go", "gate", "release-config"} {
 		if _, ok := ciJobs[name]; !ok {
 			problems = append(problems, "CI job "+name)
 		}
 	}
+	linux, macOS, gate := workflowMap(ciJobs["linux-full"]), workflowMap(ciJobs["macos-go"]), workflowMap(ciJobs["gate"])
+	if !workflowNeeds(gate, "linux-full") || !workflowNeeds(gate, "macos-go") {
+		problems = append(problems, "gate native dependencies")
+	}
+	if !strings.Contains(stringValue(workflowStep(linux, "Verify native Linux amd64")["run"]), `go env GOOS)" = linux`) || !strings.Contains(stringValue(workflowStep(linux, "Verify native Linux amd64")["run"]), `go env GOARCH)" = amd64`) {
+		problems = append(problems, "Linux amd64 assertion")
+	}
+	if !strings.Contains(stringValue(workflowStep(linux, "Gate (full Linux assurance)")["run"]), "./x gate full --range") {
+		problems = append(problems, "Linux full gate")
+	}
+	if !strings.Contains(stringValue(workflowStep(macOS, "Verify native macOS arm64")["run"]), `go env GOOS)" = darwin`) || !strings.Contains(stringValue(workflowStep(macOS, "Verify native macOS arm64")["run"]), `go env GOARCH)" = arm64`) {
+		problems = append(problems, "macOS arm64 assertion")
+	}
+	macOSNativeGo := false
+	for _, step := range workflowSteps(macOS) {
+		macOSNativeGo = macOSNativeGo || strings.Contains(stringValue(workflowMap(step)["run"]), "go test ./...")
+	}
+	if !macOSNativeGo {
+		problems = append(problems, "macOS native Go lane")
+	}
+	for _, step := range workflowSteps(macOS) {
+		run := stringValue(workflowMap(step)["run"])
+		if strings.Contains(run, "./x gate") || strings.Contains(run, "coverage") || strings.Contains(run, "pi-test") {
+			problems = append(problems, "duplicated macOS platform-independent lane")
+			break
+		}
+	}
 	verify, publish := workflowMap(releaseJobs["verify"]), workflowMap(releaseJobs["publish"])
-	verifyRun := workflowStep(verify, "Verify bridge readiness and exact CI conclusions")["run"]
-	if !strings.Contains(stringValue(verifyRun), `go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"`) {
+	verifyRun := stringValue(workflowStep(verify, "Verify bridge readiness and exact CI conclusions")["run"])
+	if !strings.Contains(verifyRun, `go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"`) {
 		problems = append(problems, "exact CI verification")
 	}
 	if !workflowPermissions(verify, "actions", "read") || !workflowPermissions(verify, "contents", "read") {
@@ -491,6 +561,23 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 	}
 	if !workflowNeeds(publish, "verify") || !workflowPermissions(publish, "contents", "write") {
 		problems = append(problems, "needs-bound publication")
+	}
+	for _, job := range []map[string]any{verify, publish} {
+		checkout := workflowMap(workflowSteps(job)[0])
+		if workflowMap(checkout["with"])["ref"] != "${{ github.sha }}" {
+			problems = append(problems, "checkout exact SHA")
+		}
+	}
+	identity := stringValue(workflowStep(publish, "Repeat tag identity before publication")["run"])
+	if !strings.Contains(identity, "git rev-parse HEAD") || !strings.Contains(identity, "${GITHUB_REF_NAME}^{}") || !strings.Contains(identity, "${{ github.sha }}") {
+		problems = append(problems, "publication tag identity")
+	}
+	releaseGate := stringValue(workflowStep(verify, "Gate (full release assurance)")["run"])
+	if !strings.Contains(releaseGate, "./x gate full --range") || !strings.Contains(releaseGate, "git tag --merged") || !strings.Contains(releaseGate, "sort -Vu") || !strings.Contains(releaseGate, "${previous:-invalid-base}") {
+		problems = append(problems, "release full-gate range")
+	}
+	if strings.Contains(releaseGate, "covercheck-mutants") {
+		problems = append(problems, "obsolete standalone mutation blocker")
 	}
 	for name, raw := range releaseJobs {
 		job := workflowMap(raw)
@@ -500,27 +587,6 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 				problems = append(problems, "GoReleaser publication bypass")
 			}
 		}
-	}
-	for _, job := range []map[string]any{verify, publish} {
-		checkout := workflowSteps(job)[0]
-		if workflowMap(checkout)["with"].(map[string]any)["ref"] != "${{ github.sha }}" {
-			problems = append(problems, "checkout exact SHA")
-		}
-	}
-	identity := stringValue(workflowStep(publish, "Repeat tag identity before publication")["run"])
-	if !strings.Contains(identity, "git rev-parse HEAD") || !strings.Contains(identity, "${GITHUB_REF_NAME}^{}") || !strings.Contains(identity, "${{ github.sha }}") {
-		problems = append(problems, "publication tag identity")
-	}
-	selector := stringValue(workflowStep(verify, "Covercheck mutation regression from previous release")["run"])
-	if !strings.Contains(selector, "git tag --merged") || !strings.Contains(selector, "^v[0-9]+\\.[0-9]+\\.[0-9]+$") || !strings.Contains(selector, "sort -Vu") || !strings.Contains(selector, `$0 == current`) || !strings.Contains(selector, "--select-range") {
-		problems = append(problems, "previous release selector")
-	}
-	if !strings.Contains(selector, "if [ -n \"$previous\" ]") || !strings.Contains(selector, "else") || !strings.Contains(selector, "./x covercheck-mutants") {
-		problems = append(problems, "first release fallback")
-	}
-	dispatch := stringValue(workflowStep(workflowMap(ciJobs["gate"]), "Covercheck mutation regression")["run"])
-	if !strings.Contains(dispatch, "workflow_dispatch) ./x covercheck-mutants ; exit 0") || !strings.Contains(dispatch, "*) ./x covercheck-mutants ; exit 0") {
-		problems = append(problems, "CI dispatch unconditional mutation blocker")
 	}
 	return problems
 }

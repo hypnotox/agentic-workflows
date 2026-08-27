@@ -252,9 +252,8 @@ case "$cmd" in
       run_gate_step vet go vet ./...
       run_gate_step advisory-lint run_advisory_lint
       run_gate_step deadcode run_deadcode_gate
-      host="$(go env GOOS)/$(go env GOARCH)"
       for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
-        [ "$target" = "$host" ] || run_gate_step "build-${target//\//-}" env GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
+        run_gate_step "build-${target//\//-}" env GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
       done
       if [ "${#ranges[@]}" -eq 0 ]; then
         if covercheck_mutants_selected staged; then mutation=0; else mutation=$?; fi

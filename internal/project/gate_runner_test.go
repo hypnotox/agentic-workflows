@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"slices"
 	"strconv"
 	"strings"
@@ -17,37 +18,137 @@ import (
 
 // invariant: tooling/quality-gates:gate-tier-cadence (TestGateRunnerModes)
 // invariant: tooling/quality-gates:gate-severity-by-protected-property (TestGateRunnerModes)
-// TestGateRunnerModes keeps the runner contract explicit: the fast composition
-// has no behavioural work and full is its additive exhaustive composition.
+// TestGateRunnerModes executes the runner against a command-recording fixture so
+// the fast composition and additive full composition cannot drift by text shape alone.
 func TestGateRunnerModes(t *testing.T) {
-	text, err := os.ReadFile(filepath.Join("..", "..", "x"))
-	if err != nil {
+	root, logPath := gateRunnerFixture(t)
+	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\nif [[ \"$*\" == *cat-file* ]]; then exit 0; fi\nif [[ \"$*\" == *diff* ]]; then exit 0; fi\nexit 0\n")
+	if err := os.Chmod(filepath.Join(root, "fake-bin", "git"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	x := string(text)
-	for _, want := range []string{"full)", "--range)", "run_gate_step versioncheck", "run_gate_step build go build ./...", "run_gate_step lint go tool golangci-lint run", "run_gate_step pincheck", "run_gate_step go-test env -u AWF_PI_RUNTIME_SMOKE go test -p=1 -timeout=20m ./...", "run_gate_step covercheck", "run_gate_step pi-runtime-smoke", "run_gate_step advisory-lint", "run_gate_step deadcode", "linux/amd64 linux/arm64 darwin/amd64 darwin/arm64"} {
-		if !strings.Contains(x, want) {
-			t.Errorf("runner missing %q", want)
+	run := func(args ...string) (string, int, []string) {
+		t.Helper()
+		if err := os.WriteFile(logPath, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		cmd := exec.Command("bash", append([]string{"./x"}, args...)...)
+		cmd.Dir = root
+		cmd.Env = append(os.Environ(), "PATH="+filepath.Join(root, "fake-bin")+":"+os.Getenv("PATH"), "INVOCATION_LOG="+logPath)
+		out, err := cmd.CombinedOutput()
+		status := 0
+		if err != nil {
+			var exit *exec.ExitError
+			if !errors.As(err, &exit) {
+				t.Fatal(err)
+			}
+			status = exit.ExitCode()
+		}
+		data, err := os.ReadFile(logPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		lines := []string{}
+		if text := strings.TrimSpace(string(data)); text != "" {
+			lines = strings.Split(text, "\n")
+		}
+		return string(out), status, lines
+	}
+	fastWant := []string{
+		"goos=|goarch=|pi=|run ./cmd/versioncheck",
+		"goos=|goarch=|pi=|build ./...",
+		"goos=|goarch=|pi=|tool golangci-lint run",
+		"goos=|goarch=|pi=|run ./cmd/pincheck",
+	}
+	fullExtra := []string{
+		"goos=|goarch=|pi=|test -p=1 -timeout=20m ./... -coverpkg=./... -coverprofile=coverage.out",
+		"goos=|goarch=|pi=|run ./cmd/covercheck --policy coverage.out coverage-baseline.json",
+		"goos=|goarch=|pi=1|test -json ./internal/publisher -run ^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$ -count=1",
+		"goos=|goarch=|pi=|vet ./...",
+		"goos=|goarch=|pi=|tool golangci-lint run --config .golangci-advisory.yml --issues-exit-code 0",
+		"goos=|goarch=|pi=|tool deadcode -json ./...",
+		"goos=|goarch=|pi=|run ./cmd/deadcodecheck",
+		"goos=linux|goarch=amd64|pi=|build ./...",
+		"goos=linux|goarch=arm64|pi=|build ./...",
+		"goos=darwin|goarch=amd64|pi=|build ./...",
+		"goos=darwin|goarch=arm64|pi=|build ./...",
+	}
+	for _, tc := range []struct {
+		name       string
+		args, want []string
+	}{
+		{"fast", []string{"gate"}, fastWant},
+		{"full", []string{"gate", "full", "--range", "base", "head"}, append(slices.Clone(fastWant), fullExtra...)},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			out, status, got := run(tc.args...)
+			if status != 0 {
+				t.Fatalf("status=%d output=%q", status, out)
+			}
+			if !slices.Equal(normalizeDeadcodePipeline(got), tc.want) {
+				t.Fatalf("invocations=%q, want %q", got, tc.want)
+			}
+		})
+	}
+	_, _, fast := run("gate")
+	_, _, full := run("gate", "full", "--range", "base", "head")
+	for _, stage := range fullExtra {
+		if slices.Contains(fast, stage) {
+			t.Errorf("fast gate ran full stage %q", stage)
 		}
 	}
-	if strings.Contains(x, "select_gate_tests") || strings.Contains(x, "windows/amd64") {
-		t.Error("runner retains obsolete staged selector or Windows target")
-	}
-	fast := x[strings.Index(x, "run_gate_step versioncheck"):strings.Index(x, "if [ \"$full\" = true ]")]
-	for _, forbidden := range []string{"go-test", "covercheck", "pi-runtime", "advisory", "deadcode", "vet", "build-linux"} {
-		if strings.Contains(fast, forbidden) {
-			t.Errorf("fast gate contains %s", forbidden)
+	for _, stage := range fastWant {
+		if !slices.Contains(full, stage) {
+			t.Errorf("full gate omitted fast stage %q", stage)
 		}
 	}
+
+	out, status, _ := run("gate", "full", "timings", "--range", "base", "head")
+	if status != 0 {
+		t.Fatalf("timed full status=%d output=%q", status, out)
+	}
+	assertTimingLines(t, out, []string{"versioncheck", "build", "lint", "pincheck", "go-test", "covercheck", "pi-runtime-smoke", "vet", "advisory-lint", "deadcode", "build-linux-amd64", "build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64"})
+	for _, args := range [][]string{{"gate", "--range", "base", "head"}, {"gate", "full", "full"}, {"gate", "full", "--range", "base"}, {"gate", "unknown"}} {
+		out, status, lines := run(args...)
+		if status != 2 || !strings.Contains(out, "usage: ./x gate [full] [timings] [--range <base> <head>]") || len(lines) != 0 {
+			t.Errorf("x %v: status=%d output=%q invocations=%q", args, status, out, lines)
+		}
+	}
+	t.Run("failure short-circuits and records timing", func(t *testing.T) {
+		// The fixture's command fake carries failure selection through its environment.
+		t.Setenv("FAKE_GO_FAIL_CONTAINS", "vet ./...")
+		out, status, lines := run("gate", "full", "timings", "--range", "base", "head")
+		if status != 17 || !strings.Contains(out, "gate timing: vet ") || strings.Contains(strings.Join(lines, "\n"), "goos=linux|goarch=amd64|pi=|build ./...") {
+			t.Fatalf("status=%d output=%q invocations=%q", status, out, lines)
+		}
+	})
 }
 
-func TestGateRunnerGrammar(t *testing.T) {
-	text, err := os.ReadFile(filepath.Join("..", "..", "x"))
-	if err != nil {
-		t.Fatal(err)
+func normalizeDeadcodePipeline(lines []string) []string {
+	out := slices.Clone(lines)
+	tool, checker := -1, -1
+	for i, line := range out {
+		switch {
+		case strings.HasSuffix(line, "|tool deadcode -json ./..."):
+			tool = i
+		case strings.HasSuffix(line, "|run ./cmd/deadcodecheck"):
+			checker = i
+		}
 	}
-	if !strings.Contains(string(text), "usage: ./x gate [full] [timings] [--range <base> <head>]") {
-		t.Fatal("missing gate grammar")
+	if tool >= 0 && checker >= 0 && tool > checker {
+		out[tool], out[checker] = out[checker], out[tool]
+	}
+	return out
+}
+
+func assertTimingLines(t *testing.T, output string, want []string) {
+	t.Helper()
+	pattern := regexp.MustCompile(`(?m)^gate timing: ([a-z0-9-]+) ([0-9]+)s$`)
+	var got []string
+	for _, match := range pattern.FindAllStringSubmatch(output, -1) {
+		got = append(got, match[1])
+	}
+	if !slices.Equal(got, want) {
+		t.Errorf("timing labels=%q, want %q; output=%q", got, want, output)
 	}
 }
 

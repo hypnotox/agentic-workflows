@@ -47,7 +47,7 @@ func newTestTempManager(root string, now func() time.Time, files testTempFS, val
 
 func productionTestTempManager() (*testTempManager, error) {
 	root, err := testTempRoot()
-	if err != nil { // coverage-ignore: Unix production root selection cannot fail; Windows only retains compile compatibility
+	if err != nil { // coverage-ignore: Linux and Darwin production root selection is deterministic and cannot fail
 		return nil, err
 	}
 	return newTestTempManager(root, time.Now, osTestTempFS(), validateTestTempPath)
@@ -252,7 +252,7 @@ func preserveDefaultGOPATH(env testEnvironment) error {
 
 func RunIsolated(m *testing.M) int {
 	manager, err := productionTestTempManager()
-	if err != nil { // coverage-ignore: Unix production root selection cannot fail; Windows compiles but does not run tests
+	if err != nil { // coverage-ignore: Linux and Darwin production root selection is deterministic and cannot fail
 		panic(err)
 	}
 	return runIsolated(m.Run, osTestEnvironment(), manager, os.Stderr)

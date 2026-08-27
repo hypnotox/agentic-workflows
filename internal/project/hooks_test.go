@@ -183,7 +183,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	log := filepath.Join(root, "hook.log")
 	for name, body := range map[string]string{
 		"awf":  "#!/usr/bin/env bash\nprintf 'policy:%s\\n' \"$*\" >>\"$HOOK_LOG\"\n[[ ! -e \"$HOOK_FAIL\" ]]\n",
-		"gate": "#!/usr/bin/env bash\nprintf 'gate\\n' >>\"$HOOK_LOG\"\n",
+		"gate": "#!/usr/bin/env bash\nprintf 'gate:%s\\n' \"$*\" >>\"$HOOK_LOG\"\n",
 	} {
 		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0o755); err != nil {
 			t.Fatal(err)
@@ -279,18 +279,18 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	if output, err := run(pushPath, "refs/tags/outer-pushed "+outerTag+" refs/tags/outer-pushed "+base+"\nrefs/tags/pushed "+tag+" refs/tags/duplicate "+base+"\n"); err != nil {
 		t.Fatalf("tag push: %v: %s", err, output)
 	}
-	if got := readLog(); !strings.Contains(got, "policy:check commit-policy "+head+"\ngate\n") || strings.Count(got, head) != 1 {
-		t.Fatalf("tag push did not peel and order policy before gate: %q", got)
+	if got := readLog(); got != "policy:check commit-policy "+head+"\ngate:--range "+base+" "+outerTag+" --range "+base+" "+tag+"\n" {
+		t.Fatalf("tag push argv/order = %q", got)
 	}
 	clearLog()
-	if output, err := run(pushPath, "(delete) "+zeroOID+" refs/heads/deleted "+head+"\n"); err != nil || readLog() != "gate\n" {
+	if output, err := run(pushPath, "(delete) "+zeroOID+" refs/heads/deleted "+head+"\n"); err != nil || readLog() != "gate:--range "+head+" "+head+"\n" {
 		t.Fatalf("push deletion: err=%v output=%q log=%q", err, output, readLog())
 	}
 	clearLog()
 	blob := strings.TrimSpace(runHookGit(t, root, "hash-object", "-w", "--stdin"))
 	runHookGit(t, root, "tag", "-a", "annotated-blob", "-m", "blob", blob)
 	annotatedBlob := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/tags/annotated-blob"))
-	if output, err := run(pushPath, "refs/tags/annotated-blob "+annotatedBlob+" refs/tags/annotated-blob "+base+"\n"); err != nil || !strings.Contains(output, "resolves to non-commit blob") || readLog() != "gate\n" {
+	if output, err := run(pushPath, "refs/tags/annotated-blob "+annotatedBlob+" refs/tags/annotated-blob "+base+"\n"); err != nil || !strings.Contains(output, "resolves to non-commit blob") || readLog() != "gate:--range "+base+" "+annotatedBlob+"\n" {
 		t.Fatalf("non-commit tag: err=%v output=%q log=%q", err, output, readLog())
 	}
 	clearLog()
@@ -302,6 +302,35 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	if output, err := run(pushPath, "refs/tags/broken "+brokenTag+" refs/tags/broken "+base+"\n"); err == nil || !strings.Contains(output, "cannot be peeled") || readLog() != "" {
 		t.Fatalf("broken push tag: err=%v output=%q log=%q", err, output, readLog())
 	}
+	clearLog()
+	if output, err := run(pushPath, "refs/heads/master "+head+" refs/heads/master "+base+"\n"); err != nil {
+		t.Fatalf("ordinary push: %v: %s", err, output)
+	}
+	if got := readLog(); got != "policy:check commit-policy "+head+"\ngate:--range "+base+" "+head+"\n" {
+		t.Fatalf("ordinary push argv/order = %q", got)
+	}
+	clearLog()
+	if output, err := run(pushPath, "refs/heads/master "+head+" refs/heads/master "+base+"\nrefs/heads/other "+head+" refs/heads/other "+base+"\n"); err != nil {
+		t.Fatalf("multi-ref push: %v: %s", err, output)
+	}
+	if got := readLog(); got != "policy:check commit-policy "+head+"\ngate:--range "+base+" "+head+" --range "+base+" "+head+"\n" {
+		t.Fatalf("multi-ref push argv/order = %q", got)
+	}
+	clearLog()
+	if output, err := run(pushPath, "refs/heads/new "+head+" refs/heads/new "+zeroOID+"\n"); err != nil {
+		t.Fatalf("new branch push: %v: %s", err, output)
+	}
+	if got := readLog(); got != "policy:check commit-policy "+head+"\ngate:--range invalid-base "+head+"\n" {
+		t.Fatalf("new branch conservative argv/order = %q", got)
+	}
+	clearLog()
+	if output, err := run(pushPath, "(delete) "+zeroOID+" refs/heads/deleted "+head+"\n"); err != nil {
+		t.Fatalf("deletion-only push: %v: %s", err, output)
+	}
+	if got := readLog(); got != "gate:--range "+head+" "+head+"\n" {
+		t.Fatalf("deletion-only exact-empty argv = %q", got)
+	}
+
 	clearLog()
 	if err := os.WriteFile(filepath.Join(root, "fail-policy"), nil, 0o644); err != nil {
 		t.Fatal(err)

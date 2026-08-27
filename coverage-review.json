@@ -5899,7 +5899,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/effort/safeio.go:53.55,55.3 1 in function openRegularNoFollow, beginning `{ // coverage-ignore: Unix has no additional handle validation; Windows exercises this branch in...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/effort/safeio.go:53.55,55.3 1 in function openRegularNoFollow, beginning `{ // coverage-ignore: Linux and Darwin use no additional handle validation, so the defensive error path remains unreachable on every supported runtime`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -14428,7 +14428,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:50.16,52.3 1 in function productionTestTempManager, beginning `{ // coverage-ignore: Unix production root selection cannot fail; Windows only retains compile c...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:50.16,52.3 1 in function productionTestTempManager, beginning `{ // coverage-ignore: Linux and Darwin production root selection is deterministic and cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -14443,7 +14443,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:255.16,256.13 1 in function RunIsolated, beginning `{ // coverage-ignore: Unix production root selection cannot fail; Windows compiles but does not ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:255.16,256.13 1 in function RunIsolated, beginning `{ // coverage-ignore: Linux and Darwin production root selection is deterministic and cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -19234,12 +19234,12 @@
         "file": "internal/effort/safeio.go",
         "line": 53,
         "targetLine": 53,
-        "reason": "Unix has no additional handle validation; Windows exercises this branch in platform tests",
+        "reason": "Linux and Darwin use no additional handle validation, so the defensive error path remains unreachable on every supported runtime",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/effort/safeio.go:53, `if err := validateOpenedFile(path, file); err != nil {` is guarded by the preceding `}` at internal/effort/safeio.go:52; in `func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, fileIdentity, error)` (internal/effort/safeio.go:34), the predecessor invariant is Unix has no additional handle validation; Windows exercises this branch in platform tests. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/effort/safeio.go:53, `if err := validateOpenedFile(path, file); err != nil {` is guarded by the preceding `}` at internal/effort/safeio.go:52; in `func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, fileIdentity, error)` (internal/effort/safeio.go:34), the predecessor invariant is Linux and Darwin use no additional handle validation, so the defensive error path remains unreachable on every supported runtime. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -24634,24 +24634,24 @@
         "file": "internal/testsupport/testtemp.go",
         "line": 50,
         "targetLine": 50,
-        "reason": "Unix production root selection cannot fail; Windows only retains compile compatibility",
+        "reason": "Linux and Darwin production root selection is deterministic and cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func productionTestTempManager() (*testTempManager, error)` begins at internal/testsupport/testtemp.go:48; its branch `if err != nil {` at internal/testsupport/testtemp.go:50 follows `root, err := testTempRoot()` at internal/testsupport/testtemp.go:49. That flow establishes Unix production root selection cannot fail; Windows only retains compile compatibility, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func productionTestTempManager() (*testTempManager, error)` begins at internal/testsupport/testtemp.go:48; its branch `if err != nil {` at internal/testsupport/testtemp.go:50 follows `root, err := testTempRoot()` at internal/testsupport/testtemp.go:49. That flow establishes Linux and Darwin production root selection is deterministic and cannot fail, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/testsupport/testtemp.go",
         "line": 255,
         "targetLine": 255,
-        "reason": "Unix production root selection cannot fail; Windows compiles but does not run tests",
+        "reason": "Linux and Darwin production root selection is deterministic and cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/testsupport/testtemp.go:255 is `manager, err := productionTestTempManager()` (internal/testsupport/testtemp.go:254). Within `func RunIsolated(m *testing.M) int` at internal/testsupport/testtemp.go:253, source review establishes Unix production root selection cannot fail; Windows compiles but does not run tests; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/testsupport/testtemp.go:255 is `manager, err := productionTestTempManager()` (internal/testsupport/testtemp.go:254). Within `func RunIsolated(m *testing.M) int` at internal/testsupport/testtemp.go:253, source review establishes Linux and Darwin production root selection is deterministic and cannot fail; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {

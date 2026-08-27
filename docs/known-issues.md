@@ -46,11 +46,11 @@ Each issue below is reproducible from repository state and remains open until it
 
 **Completion criteria.** Published assets have immutable retention and independently verifiable provenance or attestations whose trust root is not the mutable release payload channel.
 
-## Released non-Linux targets lack behavioral CI
+## Some released architectures lack native behavioral CI
 
-**Reproduction.** Inspect hosted CI and release targets. Behavioral gates run on Linux, while Darwin and Windows artifacts receive compile and archive checks without hosted platform-behavior execution.
+**Reproduction.** Inspect hosted CI and release targets. Linux/amd64 runs full assurance and macOS/arm64 runs native Go behavior, but Linux/arm64 and Darwin/amd64 receive release-target compilation without native hosted behavioral execution.
 
-**Completion criteria.** Every released platform either runs the safety-critical behavioral lanes in its native hosted environment with declared prerequisites, or is removed from the supported release matrix and documentation.
+**Completion criteria.** Linux/arm64 and Darwin/amd64 either run the safety-critical behavioral lanes in their native hosted environments with declared prerequisites, or are removed from the supported release matrix and documentation.
 
 ## Coverage policy retains a large exact-identity exception ledger
 
