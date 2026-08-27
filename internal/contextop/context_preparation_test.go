@@ -3,6 +3,7 @@ package contextop
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -163,7 +164,7 @@ func requireMalformedPitfallError(t *testing.T, err error) {
 func TestWorkingStateUsesFilesystemWithoutRepository(t *testing.T) {
 	root := contextPreparationFixture(t)
 	state, _ := contextPreparationProject(t, root)
-	input, err := workingState(testsupport.Context(t), state, nil)
+	input, err := workingState(testsupport.Context(t), state, nil, nil)
 	if err != nil {
 		t.Fatalf("working context filesystem fallback: %v", err)
 	}
@@ -172,7 +173,7 @@ func TestWorkingStateUsesFilesystemWithoutRepository(t *testing.T) {
 	}
 	canceled, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := workingState(canceled, state, nil); !errors.Is(err, context.Canceled) {
+	if _, err := workingState(canceled, state, nil, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("working context filesystem cancellation error = %v", err)
 	}
 	if _, err := workingCompleteState(canceled, state, nil); !errors.Is(err, context.Canceled) {
@@ -194,7 +195,7 @@ func TestWorkingStateSkipsUnrelatedRenderValidation(t *testing.T) {
 	if _, err := complete(prep); err == nil || !strings.Contains(err.Error(), "template") {
 		t.Fatalf("complete Publisher preparation error = %v, want unrelated template render validation", err)
 	}
-	input, err := workingState(testsupport.Context(t), state, repo)
+	input, err := workingState(testsupport.Context(t), state, repo, nil)
 	if err != nil {
 		t.Fatalf("focused ordinary context rejected unrelated render validation: %v", err)
 	}
@@ -243,6 +244,118 @@ func TestFocusedWorkingStateMatchesCompleteContextForExactRequest(t *testing.T) 
 	t.Logf("ordinary exact capture: focused files=%d bytes=%d; complete files=%d bytes=%d", focusedFiles, focusedBytes, completeFiles, completeBytes)
 	if focusedFiles >= completeFiles || focusedBytes >= completeBytes {
 		t.Fatalf("focused capture did not reduce selected payload: files=%d/%d bytes=%d/%d", focusedFiles, completeFiles, focusedBytes, completeBytes)
+	}
+}
+
+func TestFocusedWorkingStateSelectsRequiredBytesWithoutNestedOrUnrelatedPayload(t *testing.T) {
+	root := contextPreparationFixture(t)
+	for path, body := range map[string]string{
+		".awf/unrelated-payload.md": "unread awf payload\n",
+		"docs/unrelated-payload.md": "unread docs payload\n",
+		"nested/.awf/config.yaml":   "prefix: nested\nprofile: core\nintegrationBranch: main\n",
+		"nested/internal/marker.go": "package nested\n// state: alpha/one:order\n",
+	} {
+		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(path)), body)
+	}
+	state, repo := contextPreparationProject(t, root)
+	focused, err := workingState(testsupport.Context(t), state, repo, []string{"internal/foo/x.go", "nested/internal/marker.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	view := focused.Snapshot()
+	for _, path := range []string{".awf/unrelated-payload.md", "docs/unrelated-payload.md", "nested/internal/marker.go"} {
+		if _, read := view.Tree.Lookup(path); read {
+			t.Errorf("focused context read unrelated or nested-adopter payload %s", path)
+		}
+	}
+	for _, path := range []string{"internal/foo/x.go", "docs/decisions/0001-first.md", ".awf/topics/metadata/alpha/one.yaml"} {
+		if _, read := view.Tree.Lookup(path); !read {
+			t.Errorf("focused context omitted required bytes %s", path)
+		}
+	}
+	for _, path := range []string{".awf/unrelated-payload.md", "docs/unrelated-payload.md", "nested/internal/marker.go"} {
+		if _, present := view.Inventory.Lookup(path); !present {
+			t.Errorf("focused context omitted complete inventory entry %s", path)
+		}
+	}
+	complete, err := workingCompleteState(testsupport.Context(t), state, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := contextq.ContextOptions{Selection: contextq.SelectionExplicit}
+	paths := []string{"internal/foo/x.go", "nested/internal/marker.go"}
+	got := contextq.RenderContextText(contextq.New(focused).ContextForOptions(paths, options), "live state for this project", nil)
+	want := contextq.RenderContextText(contextq.New(complete).ContextForOptions(paths, options), "live state for this project", nil)
+	if got != want {
+		t.Fatalf("focused nested-adopter output differs from complete\nfocused:\n%s\ncomplete:\n%s", got, want)
+	}
+}
+
+func TestFocusedWorkingStateMatchesCompleteParityMatrix(t *testing.T) {
+	root := contextPreparationFixture(t)
+	configBody := strings.Replace(contextPreparationYAML, `globs: ["internal/**"]`, `globs: ["**/*.go"]`, 1) + "contextIgnore:\n  - ignored/**\n"
+	testsupport.WriteAwfConfig(t, root, configBody)
+	for path, body := range map[string]string{
+		"docs/plans/2026-08-03-context.md": contextPreparationPlan,
+		"docs/generated.md":                "generated payload\n",
+		"ignored/x.go":                     "package ignored\n",
+		"nested/.awf/config.yaml":          "prefix: nested\nprofile: core\nintegrationBranch: main\n",
+		"nested/internal/marker.go":        "package nested\n// state: alpha/one:order\n",
+	} {
+		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(path)), body)
+	}
+	if err := os.Symlink("internal/foo/x.go", filepath.Join(root, "source-link")); err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(filepath.Join(root, ".awf", "awf.lock"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock.Files["docs/generated.md"] = manifest.Entry{TemplateID: "fixture"}
+	if err := lock.Save(filepath.Join(root, ".awf", "awf.lock")); err != nil {
+		t.Fatal(err)
+	}
+	state, repo := contextPreparationProject(t, root)
+	completeState, err := workingCompleteState(testsupport.Context(t), state, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	allFacets := []contextq.ContextFacet{
+		contextq.FacetRelationships,
+		contextq.FacetInvariants,
+		contextq.FacetAllRules,
+		contextq.FacetEvidence,
+		contextq.FacetSelectors,
+		contextq.FacetReferences,
+		contextq.FacetPending,
+		contextq.FacetArtifacts,
+	}
+	cases := []struct {
+		name   string
+		paths  []string
+		facets []contextq.ContextFacet
+	}{
+		{name: "exact marker", paths: []string{"internal/foo/x.go"}},
+		{name: "directory", paths: []string{"internal/foo"}},
+		{name: "root", paths: []string{"."}},
+		{name: "mixed exact and directory", paths: []string{"internal/foo/x.go", "docs/decisions"}},
+		{name: "exceptional paths", paths: []string{"missing", "../outside", "ignored/x.go", "nested/internal/marker.go", "source-link"}},
+		{name: "ADR plan reference and generated artifact", paths: []string{"docs/decisions/0001-first.md", "docs/generated.md"}, facets: []contextq.ContextFacet{contextq.FacetReferences, contextq.FacetArtifacts}},
+		{name: "all facets", paths: []string{"internal/foo/x.go", "docs/decisions/0002-later.md"}, facets: allFacets},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			focusedState, err := workingState(testsupport.Context(t), state, repo, tc.paths)
+			if err != nil {
+				t.Fatal(err)
+			}
+			options := contextq.ContextOptions{Selection: contextq.SelectionExplicit, Facets: tc.facets}
+			got := contextq.RenderContextText(contextq.New(focusedState).ContextForOptions(tc.paths, options), "live state for this project", tc.facets)
+			want := contextq.RenderContextText(contextq.New(completeState).ContextForOptions(tc.paths, options), "live state for this project", tc.facets)
+			if got != want {
+				t.Fatalf("focused output differs from complete\nfocused:\n%s\ncomplete:\n%s", got, want)
+			}
+		})
 	}
 }
 
@@ -302,7 +415,7 @@ func TestContextCompositionSelectsOneFreshTreeForPublisherAndCompletion(t *testi
 	}
 	writeTitle("Working")
 	state, repo := contextPreparationProject(t, root)
-	working, err := workingState(testsupport.Context(t), state, repo)
+	working, err := workingState(testsupport.Context(t), state, repo, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -313,7 +426,7 @@ func TestContextCompositionSelectsOneFreshTreeForPublisherAndCompletion(t *testi
 	}
 	assertTitle("One", staged)
 	writeTitle("Working Again")
-	working, err = workingState(testsupport.Context(t), state, repo)
+	working, err = workingState(testsupport.Context(t), state, repo, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -408,7 +521,7 @@ func TestContextPreparationRespectsProfileAuthority(t *testing.T) {
 			testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-08-03-context.md"), contextPreparationPlan)
 			gitfixture.AddAll(t, gitfixture.At(root))
 			state, repo := contextPreparationProject(t, root)
-			working, err := workingState(testsupport.Context(t), state, repo)
+			working, err := workingState(testsupport.Context(t), state, repo, nil)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -475,7 +588,7 @@ func TestFocusedContextRetainsRequiredAnswerValidation(t *testing.T) {
 			root := contextPreparationFixture(t)
 			tc.mutate(t, root)
 			state, repo := contextPreparationProject(t, root)
-			if _, err := workingState(testsupport.Context(t), state, repo); err == nil {
+			if _, err := workingState(testsupport.Context(t), state, repo, nil); err == nil {
 				t.Fatal("focused context accepted malformed input needed for its answer")
 			}
 		})

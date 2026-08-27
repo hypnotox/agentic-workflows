@@ -127,10 +127,11 @@ func newContextPreparation(state *projectstate.ProjectState, cfg *config.Config,
 			singletons[entry.TemplateKey] = out
 		}
 	}
-	prep := &ContextPreparation{State: operationState, Config: cfg, Reader: snapshotReader{tree}, layout: contextinput.Layout{DocsDir: config.DocsDir, ADRDir: config.DocsDir + "/decisions", IndexMd: config.DocsDir + "/decisions/INDEX.md", PlansDir: config.DocsDir + "/plans", DomainsDir: config.DocsDir + "/domains", Docs: docs, Singletons: singletons}, tree: tree, lock: lock, eligible: eligiblePaths(tree, lock, cfg.ContextIgnore)}
+	var liveInventory *snapshot.Inventory
 	if len(inventory) > 0 {
-		prep.inventory = inventory[0]
+		liveInventory = inventory[0]
 	}
+	prep := &ContextPreparation{State: operationState, Config: cfg, Reader: snapshotReader{tree: tree, inventory: liveInventory}, layout: contextinput.Layout{DocsDir: config.DocsDir, ADRDir: config.DocsDir + "/decisions", IndexMd: config.DocsDir + "/decisions/INDEX.md", PlansDir: config.DocsDir + "/plans", DomainsDir: config.DocsDir + "/domains", Docs: docs, Singletons: singletons}, tree: tree, inventory: liveInventory, lock: lock, eligible: eligiblePaths(tree, lock, cfg.ContextIgnore)}
 	return prep, nil
 }
 
@@ -141,7 +142,10 @@ func CompleteContext(prep *ContextPreparation, corpus adr.Corpus, topics topic.C
 	return contextinput.NewWithInventory(prep.layout, loaded, contextinput.NewPlanContext(plans, corpus), prep.tree, prep.inventory, prep.lock, declarations, prep.eligible, prep.Config.ContextIgnore)
 }
 
-type snapshotReader struct{ tree *snapshot.Tree }
+type snapshotReader struct {
+	tree      *snapshot.Tree
+	inventory *snapshot.Inventory
+}
 
 func (r snapshotReader) ReadFile(path string) ([]byte, bool, error) {
 	f, ok := r.tree.Lookup(filepath.ToSlash(path))
@@ -150,6 +154,19 @@ func (r snapshotReader) ReadFile(path string) ([]byte, bool, error) {
 	}
 	return slices.Clone(f.Bytes), true, nil
 }
+
+// PathExists lets declaration preparation use complete inventory presence
+// without presenting unread files as empty semantic sources.
+func (r snapshotReader) PathExists(path string) bool {
+	path = filepath.ToSlash(path)
+	if r.inventory != nil {
+		entry, ok := r.inventory.Lookup(path)
+		return ok && entry.Mode != snapshot.Symlink
+	}
+	f, ok := r.tree.Lookup(path)
+	return ok && f.Scannable()
+}
+
 func (r snapshotReader) Paths(prefix string) ([]string, error) {
 	out := []string{}
 	prefix = filepath.ToSlash(prefix)
@@ -171,7 +188,9 @@ func selectedPaths(selected map[string]bool) []string {
 }
 
 // PrepareFocusedWorkingContext captures complete live metadata while reading
-// only authority, marker, requested, and requested-directory descendant bytes.
+// only the bytes needed by the ordinary answer. Config and lock form the
+// operation's initial frozen facts; the second read is a delta, never a new
+// configuration universe.
 func PrepareFocusedWorkingContext(state *projectstate.ProjectState, repo *awfgit.Repo, ctx context.Context, requests []string) (*ContextPreparation, error) {
 	if state == nil {
 		return nil, errors.New("context preparation: missing project state")
@@ -183,28 +202,11 @@ func PrepareFocusedWorkingContext(state *projectstate.ProjectState, repo *awfgit
 	if err != nil {
 		return nil, err
 	}
-	selected := map[string]bool{}
-	for _, e := range entries {
-		p := e.Path
-		// Authority lives in .awf and docs. Requested source payload and marker
-		// sources are added below after config is available.
-		if strings.HasPrefix(p, ".awf/") || strings.HasPrefix(p, "docs/") || p == "AGENTS.md" || e.Mode == awfgit.BlobSymlink {
-			selected[p] = true
-		}
-		for _, request := range requests {
-			q := filepath.ToSlash(filepath.Clean(request))
-			if q == "." || p == q || strings.HasPrefix(p, q+"/") {
-				selected[p] = true
-			}
-		}
-	}
-	paths := selectedPaths(selected)
-	live, err := snapshot.WorkingContextFromEntries(ctx, repo, entries, paths)
+	initial, err := snapshot.WorkingContextFromEntries(ctx, repo, entries, []string{".awf/config.yaml", ".awf/awf.lock"})
 	if err != nil {
 		return nil, err
 	}
-	// LiveContext's Selection has already passed the same Tree validation.
-	tree, _ := snapshot.NewTree(live.Selection().List())
+	tree, _ := snapshot.NewTree(initial.Selection().List())
 	lock, _, err := optionalLockFromTree(tree)
 	if err != nil {
 		return nil, err
@@ -216,29 +218,90 @@ func PrepareFocusedWorkingContext(state *projectstate.ProjectState, repo *awfgit
 		}
 		return nil, fmt.Errorf("working snapshot has no %s/config.yaml", config.DirName)
 	}
-	if cfg.CurrentState != nil {
-		for _, e := range entries {
+
+	nested := nestedAdopters(entries)
+	selected := focusedContextPaths(entries, state, cfg, requests, nested)
+	// Config and lock were captured above and are deliberately not reread.
+	delete(selected, ".awf/config.yaml")
+	delete(selected, ".awf/awf.lock")
+	delta, err := snapshot.WorkingContextFromEntries(ctx, repo, entries, selectedPaths(selected))
+	if err != nil {
+		return nil, err
+	}
+	files := append(initial.Selection().List(), delta.Selection().List()...)
+	// Initial config/lock and delta paths are disjoint validated selections from
+	// one inventory, so their union necessarily remains a valid Tree.
+	tree, _ = snapshot.NewTree(files)
+	// Preserve the parsed config and lock bytes from the initial capture while
+	// binding sidecar reads to the completed selected tree.
+	cfg = cfg.WithTree(configSnapshotReader{tree: tree})
+	return newContextPreparation(state, cfg, tree, lock, initial.Inventory())
+}
+
+func nestedAdopters(entries []awfgit.TreeEntry) []string {
+	var roots []string
+	for _, entry := range entries {
+		if entry.Path != ".awf/config.yaml" && strings.HasSuffix(entry.Path, "/.awf/config.yaml") {
+			roots = append(roots, strings.TrimSuffix(entry.Path, "/.awf/config.yaml"))
+		}
+	}
+	slices.Sort(roots)
+	return roots
+}
+
+func insideNested(path string, roots []string) bool {
+	for _, root := range roots {
+		if path == root || strings.HasPrefix(path, root+"/") {
+			return true
+		}
+	}
+	return false
+}
+
+func focusedContextPaths(entries []awfgit.TreeEntry, state *projectstate.ProjectState, cfg *config.Config, requests, nested []string) map[string]bool {
+	selected := map[string]bool{}
+	add := func(path string) {
+		if !insideNested(path, nested) {
+			selected[path] = true
+		}
+	}
+	for _, entry := range entries {
+		path := entry.Path
+		if entry.Mode == awfgit.BlobSymlink || strings.HasPrefix(path, "docs/decisions/") || strings.HasPrefix(path, "docs/plans/") || strings.HasPrefix(path, ".awf/topics/metadata/") || strings.HasPrefix(path, ".awf/topics/parts/") || strings.HasPrefix(path, ".awf/docs/pitfalls/") {
+			add(path)
+		}
+		for _, request := range requests {
+			request = filepath.ToSlash(filepath.Clean(request))
+			if request == "." || path == request || strings.HasPrefix(path, request+"/") {
+				add(path)
+			}
+		}
+		if cfg.CurrentState != nil {
 			for _, source := range cfg.CurrentState.Sources {
-				if pathglob.MatchAny(source.Globs, e.Path) {
-					selected[e.Path] = true
+				if pathglob.MatchAny(source.Globs, path) {
+					add(path)
 				}
 			}
 		}
-		paths = selectedPaths(selected)
-		live, err = snapshot.WorkingContextFromEntries(ctx, repo, entries, paths)
-		if err != nil {
-			return nil, err
-		}
-		// LiveContext's Selection has already passed the same Tree validation.
-		tree, _ = snapshot.NewTree(live.Selection().List())
-		lock, _, err = optionalLockFromTree(tree)
-		if err != nil {
-			return nil, err
-		}
-		cfg, _, err = configFromTree(state.Root(), tree, lock)
-		if err != nil {
-			return nil, err
+	}
+	// Publisher parses sidecars, while convention parts and local-doc outputs
+	// need only inventory-backed presence during declaration preparation.
+	cat := catalog.NewProfileView(state.CompleteCatalog(), cfg.Profile).Catalog()
+	for name := range cat.Skills {
+		add(".awf/skills/" + name + ".yaml")
+	}
+	for name := range cat.Agents {
+		add(".awf/agents/" + name + ".yaml")
+	}
+	for name, doc := range cat.Docs {
+		if doc.Mandatory {
+			add(".awf/" + name + ".yaml")
+		} else {
+			add(".awf/docs/" + name + ".yaml")
 		}
 	}
-	return newContextPreparation(state, cfg, tree, lock, live.Inventory())
+	for _, domain := range cfg.Domains {
+		add(".awf/domains/" + domain + ".yaml")
+	}
+	return selected
 }

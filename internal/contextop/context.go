@@ -141,17 +141,13 @@ func uncovered(ctx context.Context, root string, input Input, load LoadProject, 
 	return []byte(contextq.RenderUncoveredText(contextq.New(state).Uncovered(input.Paths), header)), nil
 }
 
-func workingState(ctx context.Context, state *project.ProjectState, repo *awfgit.Repo, requested ...[]string) (contextinput.Input, error) {
-	paths := []string{}
-	if len(requested) > 0 {
-		paths = requested[0]
-	}
+func workingState(ctx context.Context, state *project.ProjectState, repo *awfgit.Repo, requested []string) (contextinput.Input, error) {
 	var prep *currentstatecoord.ContextPreparation
 	var err error
 	if repo == nil {
 		prep, err = currentstatecoord.PrepareWorkingContext(state.OutputState(), repo, ctx)
 	} else {
-		prep, err = currentstatecoord.PrepareFocusedWorkingContext(state.OutputState(), repo, ctx, paths)
+		prep, err = currentstatecoord.PrepareFocusedWorkingContext(state.OutputState(), repo, ctx, requested)
 	}
 	if err != nil {
 		return contextinput.Input{}, err
