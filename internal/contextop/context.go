@@ -101,7 +101,7 @@ func Run(ctx context.Context, root string, input Input, load LoadProject, workin
 		if input.Range != "" {
 			state, err = workingCompleteState(ctx, projectState, repo)
 		} else {
-			state, err = workingState(ctx, projectState, repo)
+			state, err = workingState(ctx, projectState, repo, paths)
 		}
 	}
 	if err != nil {
@@ -141,8 +141,18 @@ func uncovered(ctx context.Context, root string, input Input, load LoadProject, 
 	return []byte(contextq.RenderUncoveredText(contextq.New(state).Uncovered(input.Paths), header)), nil
 }
 
-func workingState(ctx context.Context, state *project.ProjectState, repo *awfgit.Repo) (contextinput.Input, error) {
-	prep, err := currentstatecoord.PrepareWorkingContext(state.OutputState(), repo, ctx)
+func workingState(ctx context.Context, state *project.ProjectState, repo *awfgit.Repo, requested ...[]string) (contextinput.Input, error) {
+	paths := []string{}
+	if len(requested) > 0 {
+		paths = requested[0]
+	}
+	var prep *currentstatecoord.ContextPreparation
+	var err error
+	if repo == nil {
+		prep, err = currentstatecoord.PrepareWorkingContext(state.OutputState(), repo, ctx)
+	} else {
+		prep, err = currentstatecoord.PrepareFocusedWorkingContext(state.OutputState(), repo, ctx, paths)
+	}
 	if err != nil {
 		return contextinput.Input{}, err
 	}

@@ -44,7 +44,7 @@ func TestContextRequestCensusGroupingAndClassification(t *testing.T) {
 		t.Fatal(err)
 	}
 	covered := contextPathImpact{Classification: pathCovered, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: contextRelationships{State: []string{"d/t:kept"}, Touches: []string{}, Proofs: []string{}}, Provenance: []contextProvenance{}, Warnings: []contextWarning{}}
-	set := newContextPathSet(tree, []string{"nested"}, map[string]bool{"generated": true}, []string{"ignored/**"}, map[string][]string{"d": {"owned/**"}})
+	set := newContextPathSet(tree, nil, []string{"nested"}, map[string]bool{"generated": true}, []string{"ignored/**"}, map[string][]string{"d": {"owned/**"}})
 	for _, f := range tree.List() {
 		class, nested, target := classifyContextPath(f.Path, set)
 		impact := covered
@@ -112,7 +112,7 @@ func TestContextPathSetProjectsExactAndSortedDescendantsOnDemand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	set := newContextPathSet(tree, nil, nil, nil, nil)
+	set := newContextPathSet(tree, nil, nil, nil, nil, nil)
 	projected := []string{}
 	set.project = func(p string, explicit bool) contextPathImpact {
 		projected = append(projected, fmt.Sprintf("%s:%t", p, explicit))
@@ -124,7 +124,7 @@ func TestContextPathSetProjectsExactAndSortedDescendantsOnDemand(t *testing.T) {
 	}
 
 	projected = nil
-	set = newContextPathSet(tree, nil, nil, nil, nil)
+	set = newContextPathSet(tree, nil, nil, nil, nil, nil)
 	set.project = func(p string, explicit bool) contextPathImpact {
 		projected = append(projected, fmt.Sprintf("%s:%t", p, explicit))
 		return contextPathImpact{Classification: pathCovered, Provenance: []contextProvenance{}, Domains: []domainRef{}, Topics: []contextPathTopic{}, Relationships: emptyContextRelationships(), Warnings: []contextWarning{}}
@@ -217,7 +217,7 @@ func TestContextDirectoryGroupingUsesOnlyVisibleProjection(t *testing.T) {
 			Warnings:       []contextWarning{},
 		}
 	}
-	set := newContextPathSet(tree, nil, nil, nil, nil)
+	set := newContextPathSet(tree, nil, nil, nil, nil, nil)
 	set.impacts = map[string]contextPathImpact{
 		"dir/a.go": makeImpact("d/t:a", "source-a"),
 		"dir/b.go": makeImpact("d/t:b", "source-b"),

@@ -170,6 +170,154 @@ func TestPrepareWorkingContextSelectedUniverseErrors(t *testing.T) {
 	}
 }
 
+func TestPrepareFocusedWorkingContextValidationAndSelectedUniverseErrors(t *testing.T) {
+	ctx := context.Background()
+	if _, err := PrepareFocusedWorkingContext(nil, nil, ctx, nil); err == nil || !strings.Contains(err.Error(), "missing project state") {
+		t.Fatalf("nil state error = %v", err)
+	}
+	root := t.TempDir()
+	if _, err := PrepareFocusedWorkingContext(contextState(root), nil, ctx, nil); !errors.Is(err, awfgit.ErrNotARepository) {
+		t.Fatalf("nil repo error = %v", err)
+	}
+	for _, tc := range []struct {
+		name, config, lock, want string
+	}{
+		{name: "missing config", want: "working snapshot has no .awf/config.yaml"},
+		{name: "malformed lock", config: "prefix: x\nprofile: core\nintegrationBranch: main\n", lock: "not: [valid", want: "parse snapshot lock"},
+		{name: "malformed config", config: "not: [valid", want: "yaml:"},
+		{name: "marker second selection", config: "prefix: x\nprofile: core\nintegrationBranch: main\ncurrentState:\n  sources:\n    - globs: ['**']\n      marker: '//'\n", lock: "not: [valid", want: "parse snapshot lock"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := gitfixture.InitRepo(t)
+			if tc.config != "" {
+				writeContextFile(t, fixture.Root(), ".awf/config.yaml", tc.config)
+			}
+			if tc.lock != "" {
+				writeContextFile(t, fixture.Root(), ".awf/awf.lock", tc.lock)
+			} else if tc.config != "" {
+				writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)
+			}
+			repo, err := awfgit.Open(fixture.Root())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, ctx, []string{"requested.txt"}); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("PrepareFocusedWorkingContext() error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+	fixture := gitfixture.InitRepo(t)
+	writeContextFile(t, fixture.Root(), ".awf/config.yaml", "prefix: x\nprofile: core\nintegrationBranch: main\n")
+	writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)
+	repo, err := awfgit.Open(fixture.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, canceled, nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled inventory error = %v", err)
+	}
+}
+
+type cancelAfterChecks struct {
+	context.Context
+	remaining int
+}
+
+func (c *cancelAfterChecks) Err() error {
+	c.remaining--
+	if c.remaining <= 0 {
+		return context.Canceled
+	}
+	return nil
+}
+
+type countedChecks struct {
+	context.Context
+	calls int
+}
+
+func (c *countedChecks) Err() error {
+	c.calls++
+	return c.Context.Err()
+}
+
+type actionAtCheck struct {
+	context.Context
+	remaining int
+	action    func() error
+	actionErr error
+}
+
+func (c *actionAtCheck) Err() error {
+	c.remaining--
+	if c.remaining == 0 {
+		c.actionErr = c.action()
+	}
+	return c.Context.Err()
+}
+
+func TestPrepareFocusedWorkingContextCancelsDuringSelectedRead(t *testing.T) {
+	fixture := gitfixture.InitRepo(t)
+	writeContextFile(t, fixture.Root(), ".awf/config.yaml", "prefix: x\nprofile: core\nintegrationBranch: main\n")
+	writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)
+	repo, err := awfgit.Open(fixture.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	probe := &countedChecks{Context: context.Background()}
+	if _, err := repo.WorkingEntries(probe); err != nil {
+		t.Fatal(err)
+	}
+	ctx := &cancelAfterChecks{Context: context.Background(), remaining: probe.calls + 1}
+	if _, err := PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, ctx, nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("focused selected-read cancellation error = %v", err)
+	}
+}
+
+func TestPrepareFocusedWorkingContextReportsSecondSelectionMutation(t *testing.T) {
+	const configBody = "prefix: x\nprofile: full\nintegrationBranch: main\ncurrentState:\n  sources:\n    - globs: ['*.go']\n      marker: '// invariant:'\n"
+	const lockBody = `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`
+	for _, tc := range []struct {
+		name   string
+		offset int
+		mutate func(string) error
+		want   string
+	}{
+		{name: "selected file vanishes", offset: 3, mutate: func(root string) error { return os.Remove(filepath.Join(root, ".awf", "awf.lock")) }, want: "snapshot working read .awf/awf.lock"},
+		{name: "lock changes", offset: 3, mutate: func(root string) error {
+			return os.WriteFile(filepath.Join(root, ".awf", "awf.lock"), []byte("not: [valid"), 0o644)
+		}, want: "parse snapshot lock"},
+		{name: "config changes", offset: 4, mutate: func(root string) error {
+			return os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("not: [valid"), 0o644)
+		}, want: "yaml:"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := gitfixture.InitRepo(t)
+			writeContextFile(t, fixture.Root(), ".awf/config.yaml", configBody)
+			writeContextFile(t, fixture.Root(), ".awf/awf.lock", lockBody)
+			writeContextFile(t, fixture.Root(), "marker.go", "// invariant: example\n")
+			repo, err := awfgit.Open(fixture.Root())
+			if err != nil {
+				t.Fatal(err)
+			}
+			probe := &countedChecks{Context: context.Background()}
+			if _, err := repo.WorkingEntries(probe); err != nil {
+				t.Fatal(err)
+			}
+			ctx := &actionAtCheck{Context: context.Background(), remaining: probe.calls + tc.offset, action: func() error { return tc.mutate(fixture.Root()) }}
+			_, err = PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, ctx, nil)
+			if ctx.actionErr != nil {
+				t.Fatalf("mutation: %v", ctx.actionErr)
+			}
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("PrepareFocusedWorkingContext() error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
 func TestPrepareStagedContextSelectedUniverseErrors(t *testing.T) {
 	ctx := context.Background()
 	if _, err := PrepareStagedContext(ctx, t.TempDir()); !errors.Is(err, awfgit.ErrNotARepository) {

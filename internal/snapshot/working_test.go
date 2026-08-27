@@ -1,8 +1,11 @@
 package snapshot_test
 
 import (
+	"context"
+	"errors"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -87,6 +90,89 @@ func TestWorkingTree(t *testing.T) {
 	})
 	if _, err := snapshot.WorkingTree(testContext(t), snapshotRepo(t, dir)); err == nil {
 		t.Fatal("expected unreadable working file to fail the snapshot")
+	}
+}
+
+func TestWorkingContextSeparatesInventoryFromSelectedBytes(t *testing.T) {
+	t.Parallel()
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.StageFile(t, repo, "needed.txt", "needed\n", 0o644)
+	gitfixture.StageFile(t, repo, "unread.txt", "unread\n", 0o644)
+	gitfixture.StageFile(t, repo, "run.sh", "run\n", 0o755)
+	gitfixture.Commit(t, repo, "base", nil)
+	handle := snapshotRepo(t, dir)
+	entries, err := handle.WorkingEntries(testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	live, err := snapshot.WorkingContextFromEntries(testContext(t), handle, entries, []string{"needed.txt"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := live.Inventory().Lookup("unread.txt"); !ok {
+		t.Fatal("inventory omitted present unread file")
+	}
+	if got, ok := live.Selection().Lookup("unread.txt"); ok || got.Path != "" {
+		t.Fatalf("unread selected file = %#v, %v", got, ok)
+	}
+	file, ok := live.Selection().Lookup("needed.txt")
+	if !ok || string(file.Bytes) != "needed\n" {
+		t.Fatalf("selected file = %#v, %v", file, ok)
+	}
+	entry, ok := live.Inventory().Lookup("run.sh")
+	if !ok || entry.Mode != snapshot.Executable {
+		t.Fatalf("executable entry = %#v, %v", entry, ok)
+	}
+}
+
+func TestWorkingContextFromEntriesHonorsInventoryAndReadFailures(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.StageFile(t, repo, "regular.txt", "regular\n", 0o644)
+	gitfixture.StageFile(t, repo, "run.sh", "run\n", 0o755)
+	gitfixture.Commit(t, repo, "base", nil)
+	if err := os.Symlink("regular.txt", filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	entries := []awfgit.TreeEntry{
+		{Path: "regular.txt", Mode: awfgit.BlobRegular},
+		{Path: "run.sh", Mode: awfgit.BlobExecutable},
+		{Path: "link", Mode: awfgit.BlobSymlink},
+	}
+	handle := snapshotRepo(t, dir)
+	live, err := snapshot.WorkingContextFromEntries(testContext(t), handle, entries, []string{"regular.txt", "regular.txt", "missing", "link"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got, ok := live.Selection().Lookup("link"); !ok || got.Mode != snapshot.Symlink || string(got.Bytes) != "regular.txt" {
+		t.Fatalf("selected symlink = %#v, %v", got, ok)
+	}
+	if _, ok := live.Selection().Lookup("missing"); ok {
+		t.Fatal("missing requested path gained content")
+	}
+	if _, err := snapshot.WorkingContextFromEntries(testContext(t), nil, entries, nil); !errors.Is(err, awfgit.ErrNotARepository) {
+		t.Fatalf("nil repository = %v", err)
+	}
+	if _, err := snapshot.WorkingContextFromEntries(testContext(t), handle, []awfgit.TreeEntry{{Path: "bad", Mode: awfgit.BlobMode(99)}}, nil); !errors.Is(err, snapshot.ErrUnsupportedMode) {
+		t.Fatalf("invalid inventory = %v", err)
+	}
+	canceled, cancel := context.WithCancel(testContext(t))
+	cancel()
+	if _, err := snapshot.WorkingContextFromEntries(canceled, handle, entries, []string{"regular.txt"}); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled selected read = %v", err)
+	}
+	if err := os.Remove(filepath.Join(dir, "regular.txt")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := snapshot.WorkingContextFromEntries(testContext(t), handle, entries, []string{"regular.txt"}); err == nil || !errors.Is(err, os.ErrNotExist) || !strings.Contains(err.Error(), "snapshot working read regular.txt") {
+		t.Fatalf("missing regular read = %v", err)
+	}
+	if err := os.Remove(filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := snapshot.WorkingContextFromEntries(testContext(t), handle, entries, []string{"link"}); err == nil || !errors.Is(err, os.ErrNotExist) || !strings.Contains(err.Error(), "snapshot working readlink link") {
+		t.Fatalf("missing symlink read = %v", err)
 	}
 }
 

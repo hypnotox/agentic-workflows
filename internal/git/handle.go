@@ -659,3 +659,31 @@ func sortedPaths(set map[string]bool) []string {
 	sort.Strings(out)
 	return out
 }
+
+// WorkingEntries returns the complete live path and mode inventory. It applies
+// the same tracking, deletion, ignore, nested-repository, and cancellation
+// policy as WorkingPaths, but deliberately reads no file content.
+func (r *Repo) WorkingEntries(ctx context.Context) ([]TreeEntry, error) {
+	paths, err := r.WorkingPaths(ctx)
+	if err != nil {
+		return nil, err
+	}
+	entries := make([]TreeEntry, 0, len(paths))
+	for _, p := range paths {
+		if err := checkContext(ctx); err != nil {
+			return nil, err
+		}
+		info, err := os.Lstat(filepath.Join(r.root, filepath.FromSlash(p)))
+		if err != nil {
+			return nil, fmt.Errorf("read working entry %s: %w", p, err)
+		}
+		mode := blobModeOf(filemode.Regular)
+		if info.Mode()&os.ModeSymlink != 0 {
+			mode = blobModeOf(filemode.Symlink)
+		} else if info.Mode().Perm()&0o111 != 0 {
+			mode = blobModeOf(filemode.Executable)
+		}
+		entries = append(entries, TreeEntry{Path: p, Mode: mode})
+	}
+	return entries, nil
+}

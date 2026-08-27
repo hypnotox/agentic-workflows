@@ -77,6 +77,7 @@ type Input struct {
 	loaded        currentstate.Loaded
 	planState     PlanContext
 	tree          *snapshot.Tree
+	inventory     *snapshot.Inventory
 	lock          *manifest.Lock
 	declarations  []outputplan.Declaration
 	eligible      []string
@@ -90,20 +91,22 @@ type Snapshot struct {
 	Loaded        currentstate.Loaded
 	PlanState     PlanContext
 	Tree          *snapshot.Tree
+	Inventory     *snapshot.Inventory
 	Lock          *manifest.Lock
 	Declarations  []outputplan.Declaration
 	Eligible      []string
 	ContextIgnore []string
 }
 
-// New defensively retains one selected semantic universe.
-func New(layout Layout, loaded currentstate.Loaded, plans PlanContext, tree *snapshot.Tree, lock *manifest.Lock, declarations []outputplan.Declaration, eligible, ignores []string) Input {
-	return Input{layout: cloneLayout(layout), loaded: cloneLoaded(loaded), planState: clonePlanContext(plans), tree: tree, lock: cloneLock(lock), declarations: slices.Clone(declarations), eligible: slices.Clone(eligible), contextIgnore: slices.Clone(ignores)}
+// NewWithInventory preserves the complete live inventory separately from the
+// selected byte tree. A nil inventory retains complete-tree compatibility.
+func NewWithInventory(layout Layout, loaded currentstate.Loaded, plans PlanContext, tree *snapshot.Tree, inventory *snapshot.Inventory, lock *manifest.Lock, declarations []outputplan.Declaration, eligible, ignores []string) Input {
+	return Input{layout: cloneLayout(layout), loaded: cloneLoaded(loaded), planState: clonePlanContext(plans), tree: tree, inventory: inventory, lock: cloneLock(lock), declarations: slices.Clone(declarations), eligible: slices.Clone(eligible), contextIgnore: slices.Clone(ignores)}
 }
 
 // Snapshot returns an independent semantic projection.
 func (v Input) Snapshot() Snapshot {
-	return Snapshot{Layout: cloneLayout(v.layout), Loaded: cloneLoaded(v.loaded), PlanState: clonePlanContext(v.planState), Tree: v.tree, Lock: cloneLock(v.lock), Declarations: slices.Clone(v.declarations), Eligible: slices.Clone(v.eligible), ContextIgnore: slices.Clone(v.contextIgnore)}
+	return Snapshot{Layout: cloneLayout(v.layout), Loaded: cloneLoaded(v.loaded), PlanState: clonePlanContext(v.planState), Tree: v.tree, Inventory: v.inventory, Lock: cloneLock(v.lock), Declarations: slices.Clone(v.declarations), Eligible: slices.Clone(v.eligible), ContextIgnore: slices.Clone(v.contextIgnore)}
 }
 
 func clonePlanContext(v PlanContext) PlanContext {

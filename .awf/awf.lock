@@ -443,8 +443,8 @@
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
       "templateHash": "sha256:4e74a0e1d0196719f520b48fb0431b3d07ca705b52db6c3a8d08b4dd0faa8665",
-      "configHash": "sha256:555740a091030128637b72bb0f9bcb71ffeadf0d24bc78094aa543311a664219",
-      "outputHash": "sha256:437b914795ad1996cb88e4cef890fd05551d852ba39bb8a355c2f6a46113ab87"
+      "configHash": "sha256:5791499ec897624dd665349bb41377b51b4471c8af17d10603636a171109d999",
+      "outputHash": "sha256:845cb44506e00be2d420c72b28d96cf125d3a4f7cca091a1fb7fd51e5edb4122"
     },
     "docs/config-reference.md": {
       "templateId": "docs/config-reference.md.tmpl",
@@ -1089,8 +1089,8 @@
     "docs/topics/tooling/context-and-topic.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:7d0810907140cb4abf24c7f503541b1fab3f24c8bb7e26f3a574c2e0361c13aa",
-      "outputHash": "sha256:d4967b253c5f883fe8e43f327714f03e2c1d19f7fdee4ea0f89398f7d9d6e655"
+      "configHash": "sha256:5596856d169c1fdb160e46a7a0075e7d75c839f452cd5e345627a3f3e4e29e8d",
+      "outputHash": "sha256:e9597303b91b9cae85692db727a8615098fad6715cf5dd6a4204b52f432f820a"
     },
     "docs/topics/tooling/effort-management.md": {
       "templateId": "topics/topic.md.tmpl",

@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/contextinput"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
+	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -53,7 +54,7 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 		outputs[d.Path()] = true
 	}
 	nested := []string{}
-	for _, f := range state.Tree.List() {
+	for _, f := range contextInventory(state) {
 		if !resident.IsResidentPath(f.Path) && f.Scannable() && strings.HasSuffix(f.Path, "/"+config.DirName+"/config.yaml") {
 			nested = append(nested, strings.TrimSuffix(f.Path, "/"+config.DirName+"/config.yaml"))
 		}
@@ -61,7 +62,7 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 	slices.Sort(nested)
 	// The index is query-local: it retains complete path metadata while leaving
 	// semantic impact projection to the requests that actually need it.
-	set := newContextPathSet(state.Tree, nested, outputs, state.ContextIgnore, state.Loaded.Topics.DomainPaths)
+	set := newContextPathSet(state.Tree, state.Inventory, nested, outputs, state.ContextIgnore, state.Loaded.Topics.DomainPaths)
 	selectedADRs := state.Loaded.Corpus
 	lay := state.Layout
 	markerSitesByPath := map[string][]topic.MarkerSite{}
@@ -132,7 +133,7 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 		}
 	}
 	result := ContextResult{Selection: options.Selection, Range: options.Range, Requests: requests, Topics: []topicImpact{}}
-	currentPaths := safelyMatchablePaths(state.Tree)
+	currentPaths := safelyMatchableInventory(state)
 	projectedSources := contextRelationshipSources(directSources)
 	globallyVisible := contextVisibleClaimIDs(applicable, projectedSources, options.Facets)
 	referencedSeen := map[string]bool{}
@@ -140,6 +141,31 @@ func (q *Query) ContextForOptions(queries []string, options ContextOptions) Cont
 		result.Topics = append(result.Topics, projectTopicImpact(applicable[id], state.Loaded.Topics, projectedSources, globallyVisible, referencedSeen, currentPaths, pendingChanges(state.Loaded.Corpus, map[string]bool{id: true}), options.Facets))
 	}
 	return result
+}
+
+func contextInventory(state contextinput.Snapshot) []snapshot.File {
+	if state.Inventory == nil {
+		return state.Tree.List()
+	}
+	out := make([]snapshot.File, 0, len(state.Inventory.List()))
+	for _, entry := range state.Inventory.List() {
+		file := snapshot.File{Path: entry.Path, Mode: entry.Mode}
+		if selected, ok := state.Tree.Lookup(entry.Path); ok {
+			file.Bytes = selected.Bytes
+		}
+		out = append(out, file)
+	}
+	return out
+}
+
+func safelyMatchableInventory(state contextinput.Snapshot) []string {
+	out := []string{}
+	for _, f := range contextInventory(state) {
+		if f.Scannable() {
+			out = append(out, f.Path)
+		}
+	}
+	return out
 }
 
 func contextVisibleClaimIDs(applicable map[string]topic.Topic, directSources map[string][]contextRelationshipSource, facets []ContextFacet) map[string]bool {
@@ -261,7 +287,7 @@ type uncoveredTopic struct {
 // restrict the report to paths at or beneath them on slash-separated segment
 // boundaries; empty scanRoots scans everything. It writes nothing.
 func (q *Query) Uncovered(scanRoots []string) UncoveredResult {
-	return assembleUncovered(q.state.Loaded.Topics, q.state.Eligible, safelyMatchablePaths(q.state.Tree), scanRoots)
+	return assembleUncovered(q.state.Loaded.Topics, q.state.Eligible, safelyMatchableInventory(q.state), scanRoots)
 }
 
 func assembleUncovered(corpus topic.Corpus, eligible, all, scanRoots []string) UncoveredResult {

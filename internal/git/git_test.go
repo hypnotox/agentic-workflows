@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"runtime"
 	"slices"
+	"strconv"
 	"strings"
 	"testing"
 	"time"
@@ -31,14 +32,15 @@ func TestRepoMethodsReturnPreCancelledContext(t *testing.T) {
 	ctx, cancel := context.WithCancel(testsupport.Context(t))
 	cancel()
 	for name, call := range map[string]func() error{
-		"changed":        func() error { _, err := gitRepo(t, dir).ChangedPaths(ctx, true, ""); return err },
-		"head":           func() error { _, err := gitRepo(t, dir).HeadExists(ctx); return err },
-		"branches":       func() error { _, err := gitRepo(t, dir).Branches(ctx); return err },
-		"working":        func() error { _, err := gitRepo(t, dir).WorkingPaths(ctx); return err },
-		"index":          func() error { _, err := gitRepo(t, dir).IndexBlobs(ctx); return err },
-		"index paths":    func() error { _, err := gitRepo(t, dir).IndexPaths(ctx); return err },
-		"commit":         func() error { _, err := gitRepo(t, dir).CommitBlobs(ctx, "HEAD"); return err },
-		"commit entries": func() error { _, err := gitRepo(t, dir).CommitEntries(ctx, "HEAD"); return err },
+		"changed":         func() error { _, err := gitRepo(t, dir).ChangedPaths(ctx, true, ""); return err },
+		"head":            func() error { _, err := gitRepo(t, dir).HeadExists(ctx); return err },
+		"branches":        func() error { _, err := gitRepo(t, dir).Branches(ctx); return err },
+		"working":         func() error { _, err := gitRepo(t, dir).WorkingPaths(ctx); return err },
+		"working entries": func() error { _, err := gitRepo(t, dir).WorkingEntries(ctx); return err },
+		"index":           func() error { _, err := gitRepo(t, dir).IndexBlobs(ctx); return err },
+		"index paths":     func() error { _, err := gitRepo(t, dir).IndexPaths(ctx); return err },
+		"commit":          func() error { _, err := gitRepo(t, dir).CommitBlobs(ctx, "HEAD"); return err },
+		"commit entries":  func() error { _, err := gitRepo(t, dir).CommitEntries(ctx, "HEAD"); return err },
 		"commit selected blobs": func() error {
 			_, err := gitRepo(t, dir).CommitBlobsAt(ctx, "HEAD", []string{"tracked.txt"})
 			return err
@@ -65,6 +67,16 @@ func (c *cancelOnErrCall) Err() error {
 		return context.Canceled
 	}
 	return nil
+}
+
+type countErrCalls struct {
+	context.Context
+	calls int
+}
+
+func (c *countErrCalls) Err() error {
+	c.calls++
+	return c.Context.Err()
 }
 
 func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
@@ -103,6 +115,14 @@ func TestRepoMethodsObserveCancellationDuringIteration(t *testing.T) {
 	})
 	assertCanceled("working status", 4, func(ctx context.Context) error {
 		_, err := repo.WorkingPaths(ctx)
+		return err
+	})
+	assertCanceled("working entries", 2, func(ctx context.Context) error {
+		_, err := repo.WorkingEntries(ctx)
+		return err
+	})
+	assertCanceled("working entries iteration", 3, func(ctx context.Context) error {
+		_, err := repo.WorkingEntries(ctx)
 		return err
 	})
 	assertCanceled("index", 2, func(ctx context.Context) error {
@@ -174,6 +194,37 @@ func TestWorkingPaths(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	entries, err := handle.WorkingEntries(testsupport.Context(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := len(entries); got != len(paths) {
+		t.Fatalf("working entries = %d, want %d paths", got, len(paths))
+	}
+	modes := map[string]awfgit.BlobMode{}
+	for _, entry := range entries {
+		modes[entry.Path] = entry.Mode
+	}
+	if modes["new.txt"] != awfgit.BlobRegular {
+		t.Fatalf("new.txt mode = %v, want regular", modes["new.txt"])
+	}
+	if err := os.Chmod(filepath.Join(dir, "new.txt"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("new.txt", filepath.Join(dir, "link")); err != nil {
+		t.Fatal(err)
+	}
+	entries, err = handle.WorkingEntries(testsupport.Context(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	modes = map[string]awfgit.BlobMode{}
+	for _, entry := range entries {
+		modes[entry.Path] = entry.Mode
+	}
+	if modes["new.txt"] != awfgit.BlobExecutable || modes["link"] != awfgit.BlobSymlink {
+		t.Fatalf("working entry modes = %#v, want executable new.txt and symlink link", modes)
+	}
 	joined := strings.Join(paths, ",")
 	if strings.Contains(joined, "gone.txt") || strings.Contains(joined, "ignored.txt") || !strings.Contains(joined, "new.txt") || !strings.Contains(joined, "src/a.txt") {
 		t.Fatalf("working paths: %v", paths)
@@ -186,6 +237,49 @@ func TestWorkingPaths(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(handle.Root(), "src", "a.txt")); err != nil {
 		t.Fatalf("joining a reported path onto Root did not reach the file: %v", err)
+	}
+}
+
+type removeOnErrCall struct {
+	context.Context
+	remaining int
+	remove    func()
+}
+
+func (c *removeOnErrCall) Err() error {
+	c.remaining--
+	if c.remaining == 0 {
+		c.remove()
+	}
+	return c.Context.Err()
+}
+
+func TestWorkingEntriesObservesCancellationAfterEnumeration(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, "base", map[string]string{"tracked.txt": "tracked"})
+	handle := gitRepo(t, repo.Root())
+	probe := &countErrCalls{Context: testsupport.Context(t)}
+	if _, err := handle.WorkingPaths(probe); err != nil {
+		t.Fatal(err)
+	}
+	ctx := &cancelOnErrCall{Context: testsupport.Context(t), remaining: probe.calls + 1}
+	if _, err := handle.WorkingEntries(ctx); !errors.Is(err, context.Canceled) {
+		t.Fatalf("post-enumeration cancellation = %v, want context.Canceled", err)
+	}
+}
+
+func TestWorkingEntriesReportsVanishedPath(t *testing.T) {
+	for call := 1; call < 12; call++ {
+		t.Run("context check "+strconv.Itoa(call), func(t *testing.T) {
+			repo := gitfixture.InitRepo(t)
+			gitfixture.Commit(t, repo, "base", map[string]string{"vanish.txt": "present"})
+			path := filepath.Join(repo.Root(), "vanish.txt")
+			ctx := &removeOnErrCall{Context: testsupport.Context(t), remaining: call, remove: func() { _ = os.Remove(path) }}
+			_, err := gitRepo(t, repo.Root()).WorkingEntries(ctx)
+			if err == nil || !strings.Contains(err.Error(), "read working entry vanish.txt") || !errors.Is(err, os.ErrNotExist) {
+				t.Skipf("removal did not land between inventory enumeration and Lstat: %v", err)
+			}
+		})
 	}
 }
 

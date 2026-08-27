@@ -2707,31 +2707,31 @@
       "identity": {
         "file": "internal/currentstatecoord/context.go",
         "start": {
-          "line": 90,
+          "line": 91,
           "column": 16
         },
         "end": {
-          "line": 92,
+          "line": 93,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/currentstatecoord/context.go:90.16,92.3 1 in function PrepareStagedContext, beginning `{ // coverage-ignore: configFromTree already parsed a finite YAML semantic representation that N...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Moved from internal/currentstatecoord/context.go:90.16,92.3 because focused ordinary-context selection adds the pathglob import above PrepareStagedContext; the existing revalidated-impossible-state rationale remains unchanged."
     },
     {
       "identity": {
         "file": "internal/currentstatecoord/context.go",
         "start": {
-          "line": 94,
+          "line": 95,
           "column": 16
         },
         "end": {
-          "line": 96,
+          "line": 97,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/currentstatecoord/context.go:94.16,96.3 1 in function PrepareStagedContext, beginning `{ // coverage-ignore: KnownTargets is the same closed built-in registry ResolveTargets projects`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Moved from internal/currentstatecoord/context.go:94.16,96.3 because focused ordinary-context selection adds the pathglob import above PrepareStagedContext; the existing revalidated-impossible-state rationale remains unchanged."
     },
     {
       "identity": {
@@ -12395,26 +12395,26 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/context.go",
-        "line": 90,
-        "targetLine": 90,
+        "line": 91,
+        "targetLine": 91,
         "reason": "configFromTree already parsed a finite YAML semantic representation that NewFacts can clone",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func PrepareStagedContext(ctx context.Context, root string) (*ContextPreparation, error)` begins at internal/currentstatecoord/context.go:67; its branch `if err != nil {` at internal/currentstatecoord/context.go:90 follows `facts, err := config.NewFacts(cfg)` at internal/currentstatecoord/context.go:89. That flow establishes configFromTree already parsed a finite YAML semantic representation that NewFacts can clone, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func PrepareStagedContext(ctx context.Context, root string) (*ContextPreparation, error)` begins at internal/currentstatecoord/context.go:68; its branch `if err != nil {` at internal/currentstatecoord/context.go:91 follows `facts, err := config.NewFacts(cfg)` at internal/currentstatecoord/context.go:90. That flow establishes configFromTree already parsed a finite YAML semantic representation that NewFacts can clone, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/currentstatecoord/context.go",
-        "line": 94,
-        "targetLine": 94,
+        "line": 95,
+        "targetLine": 95,
         "reason": "KnownTargets is the same closed built-in registry ResolveTargets projects",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/currentstatecoord/context.go:94 is `targets, err := projectstate.ResolveTargets(projectstate.KnownTargets())` (internal/currentstatecoord/context.go:93). Within `func PrepareStagedContext(ctx context.Context, root string) (*ContextPreparation, error)` at internal/currentstatecoord/context.go:67, source review establishes KnownTargets is the same closed built-in registry ResolveTargets projects; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/currentstatecoord/context.go:95 is `targets, err := projectstate.ResolveTargets(projectstate.KnownTargets())` (internal/currentstatecoord/context.go:94). Within `func PrepareStagedContext(ctx context.Context, root string) (*ContextPreparation, error)` at internal/currentstatecoord/context.go:68, source review establishes KnownTargets is the same closed built-in registry ResolveTargets projects; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {

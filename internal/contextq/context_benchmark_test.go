@@ -27,7 +27,7 @@ func benchmarkContextQuery(b *testing.B, size int) *Query {
 	if err != nil {
 		b.Fatal(err)
 	}
-	return New(contextinput.New(contextinput.Layout{}, currentstate.Loaded{}, contextinput.PlanContext{}, tree, nil, nil, nil, nil))
+	return New(contextinput.NewWithInventory(contextinput.Layout{}, currentstate.Loaded{}, contextinput.PlanContext{}, tree, nil, nil, nil, nil, nil))
 }
 
 // BenchmarkContextProjectionExact measures real query/result assembly for one

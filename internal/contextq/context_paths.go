@@ -198,8 +198,18 @@ type contextPathSet struct {
 
 // newContextPathSet indexes the complete query inventory once. Exact requests
 // use entries while directory requests use the contiguous sorted prefix range.
-func newContextPathSet(tree *snapshot.Tree, nested []string, outputs map[string]bool, ignores []string, domainPaths map[string][]string) contextPathSet {
+func newContextPathSet(tree *snapshot.Tree, inventory *snapshot.Inventory, nested []string, outputs map[string]bool, ignores []string, domainPaths map[string][]string) contextPathSet {
 	files := tree.List()
+	if inventory != nil {
+		files = make([]snapshot.File, 0, len(inventory.List()))
+		for _, entry := range inventory.List() {
+			file := snapshot.File{Path: entry.Path, Mode: entry.Mode}
+			if selected, ok := tree.Lookup(entry.Path); ok {
+				file.Bytes = selected.Bytes
+			}
+			files = append(files, file)
+		}
+	}
 	set := contextPathSet{tree: tree, paths: make([]string, 0, len(files)), entries: make(map[string]snapshot.File, len(files)), nested: nested, outputs: outputs, ignores: ignores, domainPaths: domainPaths, impacts: map[string]contextPathImpact{}, explicit: map[string]bool{}}
 	for _, file := range files {
 		set.paths = append(set.paths, file.Path)
@@ -274,21 +284,6 @@ func ParseContextFacets(values []string, full bool) ([]ContextFacet, error) {
 type ContextFacetError struct{ Value string }
 
 func (e *ContextFacetError) Error() string { return "unknown context facet " + strconv.Quote(e.Value) }
-
-// safelyMatchablePaths returns every scannable snapshot path: the universe a
-// selector may be matched against. This deliberate private copy uses the
-// core's identical three-line snapshot-tree filter. Exporting that filter
-// solely for reuse would widen the seam this package exists to narrow
-// (ADR-0195).
-func safelyMatchablePaths(tree *snapshot.Tree) []string {
-	out := []string{}
-	for _, f := range tree.List() {
-		if f.Scannable() {
-			out = append(out, f.Path)
-		}
-	}
-	return out
-}
 
 func buildContextRequests(queries []string, set contextPathSet, options ContextOptions) []contextRequestReport {
 	// Explicit artifact projection dominates directory projection for a path

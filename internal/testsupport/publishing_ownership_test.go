@@ -305,7 +305,7 @@ func TestContextCompositionOwnershipRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]map[string]int{
-		"workingState":         {"PrepareWorkingContext": 1},
+		"workingState":         {"PrepareFocusedWorkingContext": 1, "PrepareWorkingContext": 1},
 		"workingCompleteState": {"PrepareWorkingContext": 1},
 		"stagedState":          {"PrepareStagedContext": 1},
 		"focused":              {"CompleteContext": 1, "PrepareContext": 1},

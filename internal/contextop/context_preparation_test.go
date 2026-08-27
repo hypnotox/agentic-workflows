@@ -203,6 +203,73 @@ func TestWorkingStateSkipsUnrelatedRenderValidation(t *testing.T) {
 	}
 }
 
+func TestFocusedWorkingStateMatchesCompleteContextForExactRequest(t *testing.T) {
+	root := contextPreparationFixture(t)
+	state, repo := contextPreparationProject(t, root)
+	focusedState, err := workingState(testsupport.Context(t), state, repo, []string{"internal/foo/x.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	completeState, err := workingCompleteState(testsupport.Context(t), state, repo)
+	if err != nil {
+		t.Fatal(err)
+	}
+	options := contextq.ContextOptions{Selection: contextq.SelectionExplicit}
+	focusedText := contextq.RenderContextText(contextq.New(focusedState).ContextForOptions([]string{"internal/foo/x.go"}, options), "live state for this project", nil)
+	completeText := contextq.RenderContextText(contextq.New(completeState).ContextForOptions([]string{"internal/foo/x.go"}, options), "live state for this project", nil)
+	if focusedText != completeText {
+		t.Fatalf("focused output differs from complete\nfocused:\n%s\ncomplete:\n%s", focusedText, completeText)
+	}
+	focused := focusedState.Snapshot()
+	if focused.Inventory == nil {
+		t.Fatal("focused state omitted live inventory")
+	}
+	if _, present := focused.Inventory.Lookup("README.md"); !present {
+		t.Fatal("focused inventory omitted unread present payload")
+	}
+	if _, read := focused.Tree.Lookup("README.md"); read {
+		t.Fatal("focused exact context read unrelated regular payload")
+	}
+	countBytes := func(input contextinput.Input) (int, int) {
+		files, bytes := 0, 0
+		for _, file := range input.Snapshot().Tree.List() {
+			files++
+			bytes += len(file.Bytes)
+		}
+		return files, bytes
+	}
+	focusedFiles, focusedBytes := countBytes(focusedState)
+	completeFiles, completeBytes := countBytes(completeState)
+	t.Logf("ordinary exact capture: focused files=%d bytes=%d; complete files=%d bytes=%d", focusedFiles, focusedBytes, completeFiles, completeBytes)
+	if focusedFiles >= completeFiles || focusedBytes >= completeBytes {
+		t.Fatalf("focused capture did not reduce selected payload: files=%d/%d bytes=%d/%d", focusedFiles, completeFiles, focusedBytes, completeBytes)
+	}
+}
+
+func TestWorkingContextPreparationPerformanceEvidence(t *testing.T) {
+	root := contextPreparationFixture(t)
+	state, repo := contextPreparationProject(t, root)
+	measure := func(run func() error) testing.BenchmarkResult {
+		return testing.Benchmark(func(b *testing.B) {
+			b.ReportAllocs()
+			for range b.N {
+				if err := run(); err != nil {
+					b.Fatal(err)
+				}
+			}
+		})
+	}
+	focused := measure(func() error {
+		_, err := workingState(testsupport.Context(t), state, repo, []string{"internal/foo/x.go"})
+		return err
+	})
+	complete := measure(func() error {
+		_, err := workingCompleteState(testsupport.Context(t), state, repo)
+		return err
+	})
+	t.Logf("ordinary exact preparation: focused=%d ns/op %d B/op %d allocs/op; complete=%d ns/op %d B/op %d allocs/op", focused.NsPerOp(), focused.AllocedBytesPerOp(), focused.AllocsPerOp(), complete.NsPerOp(), complete.AllocedBytesPerOp(), complete.AllocsPerOp())
+}
+
 func TestWorkingStatePropagatesPublisherPreparationFailure(t *testing.T) {
 	root := contextPreparationFixture(t)
 	state, repo := contextPreparationProject(t, root)
