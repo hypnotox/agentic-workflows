@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -24,6 +25,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
+
+type roundTripFunc func(*http.Request) (*http.Response, error)
+
+func (f roundTripFunc) RoundTrip(req *http.Request) (*http.Response, error) { return f(req) }
 
 func changelogFS(content string) fstest.MapFS {
 	return fstest.MapFS{"CHANGELOG.md": &fstest.MapFile{Data: []byte(content)}}
@@ -331,6 +336,28 @@ func TestVerifyCIAcceptsAnyCompleteExactSuccessfulRun(t *testing.T) {
 
 	if err := verifyCI(context.Background(), server.Client(), server.URL, "acme/repo", "token", sha); err != nil {
 		t.Fatalf("equivalent exact-SHA rerun evidence rejected: %v", err)
+	}
+}
+
+func TestVerifyCIPreservesCandidateErrorIdentity(t *testing.T) {
+	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	transportErr := errors.New("jobs transport failed")
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if strings.Contains(req.URL.Path, "/actions/runs/7/jobs") {
+			return nil, transportErr
+		}
+		body := fmt.Sprintf(`{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
+		return &http.Response{
+			StatusCode: http.StatusOK,
+			Status:     "200 OK",
+			Header:     make(http.Header),
+			Body:       io.NopCloser(strings.NewReader(body)),
+		}, nil
+	})}
+
+	err := verifyCI(context.Background(), client, "https://api.example.test", "acme/repo", "token", sha)
+	if !errors.Is(err, transportErr) {
+		t.Fatalf("candidate error identity lost: %v", err)
 	}
 }
 

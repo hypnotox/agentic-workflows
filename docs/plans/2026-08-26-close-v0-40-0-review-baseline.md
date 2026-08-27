@@ -679,4 +679,6 @@ observed red against `d2104ef0e`. Pincheck now requires EOF after one document. 
 same-revision successful runs as equivalent candidates and accepts only a candidate whose `gate` and
 `release-config` jobs are complete and successful; incomplete candidates remain refusals. This
 reasoned selection correction follows the exact-revision authority without weakening required-job
-proof.
+proof. The single verify pass found that per-candidate API failures lost their error identity during
+aggregation. Settlement retains each cause through wrapping and joins failed-candidate evidence; a
+red-first transport sentinel proves `errors.Is` survives the complete refusal.

@@ -1549,16 +1549,16 @@
       "identity": {
         "file": "cmd/releasecheck/main.go",
         "start": {
-          "line": 28,
+          "line": 29,
           "column": 13
         },
         "end": {
-          "line": 30,
+          "line": 31,
           "column": 2
         },
         "statements": 1
       },
-      "reason": "Phase 5 post-review: releasecheck main is the terminating os.Exit composition wrapper; local dispatch, exact-CI success and refusal, transport faults, and evidence validation are directly exercised through dispatch and verifyCI."
+      "reason": "Complete-range verify-pass settlement: releasecheck main is the terminating os.Exit composition wrapper; local dispatch, exact-CI success and refusal, multi-run selection, transport error identity, and evidence validation are directly exercised through dispatch and verifyCI."
     },
     {
       "identity": {
@@ -13847,14 +13847,14 @@
     {
       "directive": {
         "file": "cmd/releasecheck/main.go",
-        "line": 28,
-        "targetLine": 28,
+        "line": 29,
+        "targetLine": 29,
         "reason": "os.Exit wrapper; dispatch is unit-tested",
         "mapped": true,
         "executed": false
       },
       "class": "tested-process-exit",
-      "evidence": "cmd/releasecheck/main.go:28 is the terminating process-composition statement; dispatch local mode, exact-CI success and refusal, transport faults, and evidence validation are directly exercised by cmd/releasecheck/main_test.go."
+      "evidence": "cmd/releasecheck/main.go:29 is the terminating process-composition statement; dispatch local mode, exact-CI success and refusal, multi-run selection, transport error identity, and evidence validation are directly exercised by cmd/releasecheck/main_test.go."
     },
     {
       "directive": {

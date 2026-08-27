@@ -11,6 +11,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -190,20 +191,20 @@ func verifyCI(ctx context.Context, client *http.Client, baseURL, repo, token, sh
 	if len(candidates) == 0 {
 		return fmt.Errorf("no completed successful CI run for exact SHA %s", sha)
 	}
-	var candidateErrors []string
+	var candidateErrors []error
 	for _, candidate := range candidates {
 		var jobs jobsResponse
 		if err := get(fmt.Sprintf("/repos/%s/actions/runs/%d/jobs?per_page=100", repo, candidate.ID), &jobs); err != nil {
-			candidateErrors = append(candidateErrors, fmt.Sprintf("run %d: %v", candidate.ID, err))
+			candidateErrors = append(candidateErrors, fmt.Errorf("run %d: %w", candidate.ID, err))
 			continue
 		}
 		if err := verifyRequiredJobs(jobs); err != nil {
-			candidateErrors = append(candidateErrors, fmt.Sprintf("run %d: %v", candidate.ID, err))
+			candidateErrors = append(candidateErrors, fmt.Errorf("run %d: %w", candidate.ID, err))
 			continue
 		}
 		return nil
 	}
-	return fmt.Errorf("no completed successful CI run for exact SHA %s has complete required evidence: %s", sha, strings.Join(candidateErrors, "; "))
+	return fmt.Errorf("no completed successful CI run for exact SHA %s has complete required evidence: %w", sha, errors.Join(candidateErrors...))
 }
 
 func verifyRequiredJobs(jobs jobsResponse) error {

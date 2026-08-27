@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "6ce7b0587b920eba3ed8c439782cbe6122d4752f46e02435cc1656a13e32aac1",
+  "universeSHA256": "8baad45940604a07991472b47fb6f7f2d8ffbaaf648d0c18eb9ba2d680420cf2",
   "repository": [
     {
       "identity": {
@@ -1552,16 +1552,16 @@
       "identity": {
         "file": "cmd/releasecheck/main.go",
         "start": {
-          "line": 28,
+          "line": 29,
           "column": 13
         },
         "end": {
-          "line": 30,
+          "line": 31,
           "column": 2
         },
         "statements": 1
       },
-      "reason": "Phase 5 post-review: releasecheck main is the terminating os.Exit composition wrapper; local dispatch, exact-CI success and refusal, transport faults, and evidence validation are directly exercised through dispatch and verifyCI."
+      "reason": "Complete-range verify-pass settlement: releasecheck main is the terminating os.Exit composition wrapper; local dispatch, exact-CI success and refusal, multi-run selection, transport error identity, and evidence validation are directly exercised through dispatch and verifyCI."
     },
     {
       "identity": {
@@ -19993,14 +19993,14 @@
     {
       "directive": {
         "file": "cmd/releasecheck/main.go",
-        "line": 28,
-        "targetLine": 28,
+        "line": 29,
+        "targetLine": 29,
         "reason": "os.Exit wrapper; dispatch is unit-tested",
         "mapped": true,
         "executed": false
       },
       "class": "tested-process-exit",
-      "evidence": "cmd/releasecheck/main.go:28 is the terminating process-composition statement; dispatch local mode, exact-CI success and refusal, transport faults, and evidence validation are directly exercised by cmd/releasecheck/main_test.go."
+      "evidence": "cmd/releasecheck/main.go:29 is the terminating process-composition statement; dispatch local mode, exact-CI success and refusal, multi-run selection, transport error identity, and evidence validation are directly exercised by cmd/releasecheck/main_test.go."
     },
     {
       "directive": {
