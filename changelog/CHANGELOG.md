@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Terminal plan closure now freezes Implemented plan history and validates a parsed complete reconciliation against a selected repository implementation range. Proposed plans remain amendable; closure does not require original plan choreography.
+
 - Pre-commit verification now runs behavioral gates against the materialized staged candidate, and release publication requires exact-SHA CI evidence before its credential-bearing job.
 
 - Mutable project authority now fails closed: config and sidecars require one complete YAML document, live locks require closed nonempty permanent inventory, and upgrade recovery binds a complete journal to its terminal lock replacement before mutation.

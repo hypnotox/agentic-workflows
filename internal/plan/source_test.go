@@ -89,13 +89,14 @@ func TestParseSourcesAggregatesIndependentSnapshotDiagnostics(t *testing.T) {
 		{Filename: "2026-08-02-valid.md", Path: "snapshot/valid.md", Bytes: valid},
 		{Filename: "2026-08-03-escape.md", Path: "\x00escape"},
 		{Filename: "2026-08-04-bad.md", Path: "snapshot/bad.md", Bytes: []byte("---\nformat: [\n---\n")},
+		{Filename: "2026-08-05-terminal.md", Path: "snapshot/terminal.md", Bytes: append(append([]byte(nil), valid...), []byte("\n## Notes\n\n### Terminal reconciliation\nbad\n")...)},
 		{Filename: "not-a-plan.md", Path: "snapshot/ignored.md", Bytes: []byte("bad")},
 	})
 	var diagnostics *DiagnosticsError
 	if !errors.As(err, &diagnostics) || len(plans) != 1 || plans[0].Filename != "2026-08-02-valid.md" {
 		t.Fatalf("ParseSources = %#v, %v", plans, err)
 	}
-	if len(diagnostics.Diagnostics) != 2 || diagnostics.Diagnostics[0].Category != "path" || diagnostics.Diagnostics[0].Path != "2026-08-03-escape.md" || diagnostics.Diagnostics[1].Category != "frontmatter" || diagnostics.Diagnostics[1].Path != "2026-08-04-bad.md" {
+	if len(diagnostics.Diagnostics) != 3 || diagnostics.Diagnostics[0].Category != "path" || diagnostics.Diagnostics[0].Path != "2026-08-03-escape.md" || diagnostics.Diagnostics[1].Category != "frontmatter" || diagnostics.Diagnostics[1].Path != "2026-08-04-bad.md" || diagnostics.Diagnostics[2].Category != "terminal-reconciliation" || diagnostics.Diagnostics[2].Path != "2026-08-05-terminal.md" {
 		t.Fatalf("diagnostics = %#v", diagnostics.Diagnostics)
 	}
 }

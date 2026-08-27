@@ -13039,91 +13039,76 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 322,
+          "line": 368,
           "column": 2
         },
         "end": {
-          "line": 322,
+          "line": 368,
           "column": 60
         },
         "statements": 1
       },
-      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+      "reason": "ParseSources converts every plan parser refusal into DiagnosticsError, including malformed terminal reconciliation. This final non-diagnostic guard remains a closed-state fail-closed branch."
     },
     {
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 348,
+          "line": 394,
           "column": 16
         },
         "end": {
-          "line": 350,
+          "line": 396,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+      "reason": "CheckStaged has already opened and read the containing repository before HeadExists. This error requires concurrent repository removal or an external object-store fault between reads; ordinary unborn and committed HEAD behavior is directly tested."
     },
     {
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 356,
+          "line": 402,
           "column": 16
         },
         "end": {
-          "line": 358,
+          "line": 404,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
-    },
-    {
-      "identity": {
-        "file": "internal/currentstatecoord/currentstate.go",
-        "start": {
-          "line": 408,
-          "column": 31
-        },
-        "end": {
-          "line": 410,
-          "column": 3
-        },
-        "statements": 1
-      },
-      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+      "reason": "HeadExists resolves the same HEAD immediately before CommitTree. This error requires concurrent repository or object-store failure between reads; ordinary committed-tree and malformed-authority behavior is directly tested."
     },
     {
       "identity": {
         "file": "internal/plan/plan.go",
         "start": {
-          "line": 264,
-          "column": 16
-        },
-        "end": {
           "line": 266,
+          "column": 16
+        },
+        "end": {
+          "line": 268,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+      "reason": "The covering lease check immediately precedes RootMatches for the same selected root. A RootMatches error therefore requires a concurrent namespace or storage fault; missing leases, nil handles, mismatched handles, and confined publication are directly tested."
     },
     {
       "identity": {
         "file": "internal/plan/plan.go",
         "start": {
-          "line": 294,
+          "line": 296,
           "column": 3
         },
         "end": {
-          "line": 294,
+          "line": 296,
           "column": 59
         },
         "statements": 1
       },
-      "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+      "reason": "Handle.Publish failures other than the directly tested exclusive-winner refusal require an external filesystem fault at publication. The successful confined scaffold and existing-destination refusal remain directly tested without adding a test-only production fault seam."
     },
     {
       "identity": {
@@ -13334,6 +13319,36 @@
         "statements": 1
       },
       "reason": "Fail-closed terminal plan-transition branch; focused selected-tree transition fixtures cover the authorized and refusal boundaries."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 332,
+          "column": 17
+        },
+        "end": {
+          "line": 334,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "After both exact revisions resolve and ancestry succeeds, RangeTouchedPaths can fail only from cancellation or a concurrent Git object-store fault between those repository reads. Missing, divergent, empty, and stale histories plus restored-path accumulation are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/git/walk.go",
+        "start": {
+          "line": 520,
+          "column": 17
+        },
+        "end": {
+          "line": 522,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "The selected range walk has already resolved a valid merge commit before FirstParentChangedPaths reads it again. This branch requires cancellation or a concurrent Git object-store fault between those reads; merge path accumulation and invalid range refusal are directly tested."
     }
   ],
   "directives": [
@@ -14936,38 +14951,38 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 322,
-        "targetLine": 322,
+        "line": 368,
+        "targetLine": 368,
         "reason": "ParseSources converts every parser failure into DiagnosticsError",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func plansFromTree(tree *snapshot.Tree, docsDir string) ([]plan.Plan, []manifest.Drift, error)` begins at internal/currentstatecoord/currentstate.go:285; its branch `return nil, nil, fmt.Errorf(\"parse staged plans: %w\", err)` at internal/currentstatecoord/currentstate.go:310 follows `}` at internal/currentstatecoord/currentstate.go:309. That flow establishes ParseSources converts every parser failure into DiagnosticsError, making the defensive return unreachable without an invariant breach."
+      "evidence": "In plansFromTree, ParseSources at internal/currentstatecoord/currentstate.go:356 returns either plans or DiagnosticsError; the final return at line 368 is therefore unreachable without violating the parser owner contract."
     },
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 348,
-        "targetLine": 348,
+        "line": 394,
+        "targetLine": 394,
         "reason": "IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/currentstatecoord/currentstate.go:336, `if err != nil {` follows the concrete operation `has, err := repo.HeadExists(ctx)` at internal/currentstatecoord/currentstate.go:335 in `func headTreeAndLock(repo *awfgit.Repo, ctx context.Context) (*snapshot.Tree, *manifest.Lock, error)` (internal/currentstatecoord/currentstate.go:331). The reviewed failure condition is IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "In headTreeAndLock, HeadExists at internal/currentstatecoord/currentstate.go:393 follows successful repository reads by CheckStaged. Its line-394 error requires concurrent repository removal or another external object-store fault."
     },
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 356,
-        "targetLine": 356,
+        "line": 402,
+        "targetLine": 402,
         "reason": "HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `tree, err := snapshot.CommitTree(ctx, repo, \"HEAD\")` at internal/currentstatecoord/currentstate.go:343 feeds `if err != nil {` at internal/currentstatecoord/currentstate.go:344 in `func headTreeAndLock(repo *awfgit.Repo, ctx context.Context) (*snapshot.Tree, *manifest.Lock, error)` (internal/currentstatecoord/currentstate.go:331). Its concrete fault condition is HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault, so no safe portable production input induces this error path."
+      "evidence": "In headTreeAndLock, CommitTree at internal/currentstatecoord/currentstate.go:401 reads the same HEAD resolved by HeadExists immediately above. Its line-402 error requires a concurrent repository or object-store fault."
     },
     {
       "directive": {

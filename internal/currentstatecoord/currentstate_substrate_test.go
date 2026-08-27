@@ -4,6 +4,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
@@ -32,6 +33,13 @@ func TestCurrentStateLiveAuthorityRefusals(t *testing.T) {
 	}
 	if _, _, err := loadTreeCurrentState(t.TempDir(), partial, nil); err == nil {
 		t.Fatal("config-only authority was accepted")
+	}
+	empty, err := snapshot.NewTree(nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := loadTreeCurrentState(t.TempDir(), empty, &manifest.Lock{}); err == nil {
+		t.Fatal("lock-only authority was accepted")
 	}
 }
 

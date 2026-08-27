@@ -572,7 +572,29 @@ only the status-flip diff plus prose substrings rather than selected implementat
 reconciliation. The focused ADR `bind-terminal-plan-closure-to-selected-implementation-evidence`
 records the already approved terminal-freeze boundary and adds its one plan-artifact claim. ADR review
 removed an unsupported permanent path-identity guarantee, retaining only byte stability, selected
-implementation evidence, fail-closed reconciliation, and Proposed-plan mutability. Task 7.3 now
-applies that reviewed decision. The implementation settlement must receive renewed exact-range
-Phase 7 assurance from settled Phase 6 boundary `5f9c68ba3` through the corrected settlement tip,
-resolved from Git, and that assurance must settle before Phase 8 begins.
+implementation evidence, fail-closed reconciliation, and Proposed-plan mutability. The ADR moved
+through Implementing with its sole Applied event. The settlement records a plan-owned terminal
+reconciliation with an explicit implementation range, exact parsed touched-path list, and parsed
+material-deviation list. The staged-transition owner resolves the selected range from Git rather than
+the status-flip index, rejects missing, malformed, or empty evidence, and freezes every byte of an
+Implemented record including status. Red-first terminal tests rejected substring-only reconciliation
+and status regression; a repository-backed range fixture rejected missing selectors and empty ranges.
+The green semantic oracle accepts an actual unplanned path when fully reconciled, proving closure does
+not require original task, path, phase, or commit choreography. Task 7.3 applies that reviewed
+decision without terminalizing the plan or ADR. The implementation settlement must receive renewed
+exact-range Phase 7 assurance from settled Phase 6 boundary `5f9c68ba3` through the corrected
+settlement tip, resolved from Git, and that assurance must settle before Phase 8 begins.
+
+Phase 7 settlement grounding found four mechanical gaps in that first settlement. Terminal evidence now
+unions old and new paths across every commit in the selected ancestor history, so modified-then-restored
+and delete-recreate-identical paths remain visible rather than vanishing from an endpoint tree diff.
+The reconciliation selector is exactly two lowercase full 40-hex object IDs; staged validation resolves
+both, requires base ancestry, and binds its head to current checkout HEAD, refusing symbolic,
+abbreviated, missing, reversed, divergent, empty, and stale selections. Parsed touched paths use
+canonical reversible quoted strings and compare as a duplicate-free set, so authored Git order is not
+policy; fences make example headings inert. Material deviations remain a required nonempty prose list
+or exact `none`, but their substantive truth is review judgment rather than mechanically derived.
+Focused parser, set-order, repository-history, stale-tip, ancestry, fenced-example, and adversarial-path
+tests cover the correction and fail under direct mutations that restore endpoint-only selection,
+movable selectors, ordered comparison, or fence-blind parsing. This retains the ADR's deliberate absence of permanent
+plan-path, deletion, or rename guarantees and leaves multiple-plan aggregation advisory.

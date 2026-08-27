@@ -67,6 +67,11 @@ func ParseSources(sources []Source) ([]Plan, error) {
 				}
 				return nil, err // coverage-ignore: plan-v1 and plan-v2 parsers construct every returned error as *Diagnostic
 			}
+			pl.TerminalReconciliation, err = ParseTerminalReconciliation(pl.Notes)
+			if err != nil {
+				diagnostics = append(diagnostics, &Diagnostic{Category: "terminal-reconciliation", Path: base, Detail: err.Error()})
+				continue
+			}
 		}
 		plans = append(plans, pl)
 	}

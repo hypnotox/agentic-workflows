@@ -74,6 +74,7 @@ var entrypointSuites = map[string]suite{
 
 	// Commit-range walking.
 	"WalkRangeCommits":        {"internal/git", "TestWalkRangeCommitsContract"},
+	"RangeTouchedPaths":       {"internal/git", "TestRangeTouchedPathsAccumulatesRestoredPaths"},
 	"FirstParentChangedPaths": {"internal/git", "TestFirstParentChangedPathsContracts"},
 	"RangeChangedPaths":       {"internal/git", "TestRangeNativeReadOperations"},
 	"RangeDiffText":           {"internal/git", "TestRangeNativeReadOperations"},

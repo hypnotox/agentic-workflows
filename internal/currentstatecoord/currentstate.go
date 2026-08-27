@@ -195,11 +195,11 @@ func CheckStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentSt
 	if err != nil { // coverage-ignore: plansFromTree converts every validated plan parse failure into plan drift
 		return CurrentStateReport{}, err
 	}
-	changed, err := repo.ChangedPaths(ctx, true, "")
+	selected, err := selectedTerminalEvidence(beforePlans, plans, repo, ctx)
 	if err != nil {
-		return CurrentStateReport{}, fmt.Errorf("load selected touched-path evidence: %w", err)
+		return CurrentStateReport{}, fmt.Errorf("load selected implementation evidence: %w", err)
 	}
-	if err := plancheck.TerminalTransition(beforePlans, plans, changed); err != nil {
+	if err := plancheck.TerminalTransition(beforePlans, plans, selected); err != nil {
 		planDrift = append(planDrift, manifest.Drift{Kind: "plan-terminal-transition", Path: "docs/plans", Detail: err.Error()})
 	}
 	report.PlanDrift = planDrift
@@ -294,6 +294,52 @@ func appendStagedPlanResult(report *CurrentStateReport, result checkresult.Resul
 // plansFromTree parses only regular plan files from one immutable universe.
 // The caller supplies that universe's configured docs directory; it never falls
 // back to working-tree paths or bytes.
+// selectedTerminalEvidence resolves each terminal plan's own immutable
+// implementation selector through the repository owner. It deliberately does
+// not use the status-flip index diff, which normally omits prior implementation.
+func selectedTerminalEvidence(before, after []plan.Plan, repo *awfgit.Repo, ctx context.Context) (map[string][]string, error) {
+	prior := make(map[string]plan.Plan, len(before))
+	for _, p := range before {
+		prior[p.Filename] = p
+	}
+	selected := map[string][]string{}
+	for _, next := range after {
+		old, found := prior[next.Filename]
+		if !found || !old.IsProposed() || !next.IsImplemented() {
+			continue
+		}
+		if next.TerminalReconciliation == nil {
+			continue // plancheck reports the missing parsed record as terminal drift.
+		}
+		base, head := next.TerminalReconciliation.ImplementationEndpoints()
+		resolvedBase, err := repo.ResolveCommit(ctx, base)
+		if err != nil || resolvedBase != base {
+			return nil, fmt.Errorf("%s: selected implementation range has an unavailable base", next.Path)
+		}
+		resolvedHead, err := repo.ResolveCommit(ctx, head)
+		if err != nil || resolvedHead != head {
+			return nil, fmt.Errorf("%s: selected implementation range has an unavailable head", next.Path)
+		}
+		checkoutHead, err := repo.ResolveCommit(ctx, "HEAD")
+		if err != nil || checkoutHead != head {
+			return nil, fmt.Errorf("%s: selected implementation range head is not the current checkout HEAD", next.Path)
+		}
+		ancestor, err := repo.Ancestor(ctx, base, head)
+		if err != nil || !ancestor {
+			return nil, fmt.Errorf("%s: selected implementation range base is not an ancestor of head", next.Path)
+		}
+		paths, err := repo.RangeTouchedPaths(ctx, base, head)
+		if err != nil {
+			return nil, fmt.Errorf("%s: %w", next.Path, err)
+		}
+		if len(paths) == 0 {
+			return nil, fmt.Errorf("%s: selected implementation range has no touched paths", next.Path)
+		}
+		selected[next.Filename] = paths
+	}
+	return selected, nil
+}
+
 func plansFromTree(tree *snapshot.Tree, docsDir string) ([]plan.Plan, []manifest.Drift, error) {
 	prefix := filepath.ToSlash(filepath.Join(docsDir, "plans")) + "/"
 	var sources []plan.Source

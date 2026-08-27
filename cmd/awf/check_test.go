@@ -108,17 +108,13 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 		t.Fatalf("Implemented plan must be silent in plan assignment advisories: %q", implemented.String())
 	}
 
-	// The index now carries the Proposed source while working bytes restore the
-	// Implemented source. The plan-note sink retains the staged advisory once;
-	// a working edit can neither remove nor duplicate it.
+	// An index status regression cannot make terminal history mutable again,
+	// even when the working tree restores the Implemented source.
 	gitfixture.Stage(t, gitfixture.At(implementedRoot), map[string]string{planPath: validPlan})
 	testsupport.WriteFile(t, filepath.Join(implementedRoot, planPath), strings.Replace(validPlan, "status: Proposed", "status: Implemented", 1))
 	var stagedProposed bytes.Buffer
-	if err := runCheck(ctx, implementedRoot, &stagedProposed); err != nil {
-		t.Fatalf("staged Proposed plan advisory must stay green: %v\n%s", err, stagedProposed.String())
-	}
-	if got := strings.Count(stagedProposed.String(), proposedNote); got != 1 {
-		t.Fatalf("staged Proposed advisory note count = %d, want 1: %q", got, stagedProposed.String())
+	if err := runCheck(ctx, implementedRoot, &stagedProposed); err == nil || !strings.Contains(stagedProposed.String(), "frozen history") {
+		t.Fatalf("staged Implemented regression must fail closed: %v\n%s", err, stagedProposed.String())
 	}
 
 	// Hand-edit the rendered skill.

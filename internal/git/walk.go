@@ -495,3 +495,38 @@ func splitMessage(msg string) (subject, body string) {
 	}
 	return strings.TrimRight(msg, " "), ""
 }
+
+// RangeTouchedPaths returns the sorted union of every old and new path touched
+// by every commit reachable from head but not base. It retains paths whose
+// endpoint content was restored, unlike an endpoint tree diff.
+func (r *Repo) RangeTouchedPaths(ctx context.Context, base, head string) ([]string, error) {
+	paths := map[string]bool{}
+	_, err := r.WalkRangeCommits(ctx, base, head, func(commit Commit) error {
+		for _, change := range commit.Changes {
+			if change.OldPath != "" {
+				paths[change.OldPath] = true
+			}
+			if change.Path != "" {
+				paths[change.Path] = true
+			}
+		}
+		// Walk commits deliberately omit merge changes from Commit. Read that
+		// commit through the existing first-parent change owner so merge
+		// resolution paths also remain accumulated.
+		if !commit.IsMerge {
+			return nil
+		}
+		changed, err := r.FirstParentChangedPaths(ctx, commit.Revision)
+		if err != nil {
+			return err
+		}
+		for _, path := range changed {
+			paths[path] = true
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return sortedPaths(paths), nil
+}

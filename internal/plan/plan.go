@@ -116,6 +116,8 @@ type Plan struct {
 	DefinitionOfDone    string
 	DoD                 []DoDItem
 	Notes               string
+	// TerminalReconciliation is the optional parsed terminal-history record.
+	TerminalReconciliation *TerminalReconciliation
 	// CommitSubjects are the planned commit subjects a plan marks with ```commit
 	// fences (ADR-0111): the first non-empty line of each fenced block whose info
 	// string's first token is `commit` and which carries no `awf-ignore` opt-out.
