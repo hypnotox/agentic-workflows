@@ -487,8 +487,20 @@ func TestExactRevisionWorkflowContract(t *testing.T) {
 		{"verification read-only", func(_, release map[string]any) {
 			workflowMap(workflowJobs(release)["verify"])["permissions"] = map[string]any{"actions": "write", "contents": "read"}
 		}},
-		{"release Node runtime", func(_, release map[string]any) {
+		{"release Node runtime environment", func(_, release map[string]any) {
 			delete(workflowMap(workflowMap(workflowJobs(release)["verify"])["env"]), "AWF_PI_TEST_SKIP_NVM")
+		}},
+		{"release Node action pin", func(_, release map[string]any) {
+			workflowUsesStep(workflowJobs(release)["verify"], "actions/setup-node@")["uses"] = "actions/setup-node@fixture"
+		}},
+		{"release Node version", func(_, release map[string]any) {
+			workflowMap(workflowUsesStep(workflowJobs(release)["verify"], "actions/setup-node@")["with"])["node-version-file"] = "other"
+		}},
+		{"release Node cache", func(_, release map[string]any) {
+			workflowMap(workflowUsesStep(workflowJobs(release)["verify"], "actions/setup-node@")["with"])["cache"] = "other"
+		}},
+		{"release Node cache dependency", func(_, release map[string]any) {
+			workflowMap(workflowUsesStep(workflowJobs(release)["verify"], "actions/setup-node@")["with"])["cache-dependency-path"] = "other"
 		}},
 		{"publication dependency", func(_, release map[string]any) { delete(workflowMap(workflowJobs(release)["publish"]), "needs") }},
 		{"publication write permission", func(_, release map[string]any) {
@@ -669,6 +681,15 @@ func workflowStep(job any, name string) map[string]any {
 	for _, raw := range workflowSteps(job) {
 		step := workflowMap(raw)
 		if step["name"] == name {
+			return step
+		}
+	}
+	return map[string]any{}
+}
+func workflowUsesStep(job any, prefix string) map[string]any {
+	for _, raw := range workflowSteps(job) {
+		step := workflowMap(raw)
+		if strings.HasPrefix(stringValue(step["uses"]), prefix) {
 			return step
 		}
 	}
