@@ -154,13 +154,13 @@ type workflowJob struct {
 func getGitHubJSON(ctx context.Context, client *http.Client, baseURL, token, path string, dst any) error {
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, strings.TrimRight(baseURL, "/")+path, nil)
 	if err != nil {
-		return err
+		return fmt.Errorf("build GitHub API request for %s: %w", path, err)
 	}
 	req.Header.Set("Authorization", "Bearer "+token)
 	req.Header.Set("Accept", "application/vnd.github+json")
 	resp, err := client.Do(req)
 	if err != nil {
-		return err
+		return fmt.Errorf("request GitHub API %s: %w", path, err)
 	}
 	defer resp.Body.Close()
 	if resp.StatusCode != http.StatusOK {

@@ -226,6 +226,91 @@ func TestReleaseWorkflowRunsReleasecheck(t *testing.T) {
 	}
 }
 
+func workflowLineFrom(s string, at int) string {
+	line := s[at:]
+	if nl := strings.IndexByte(line, '\n'); nl >= 0 {
+		line = line[:nl]
+	}
+	return line
+}
+
+func normalizedNotesPath(raw string) string {
+	path := strings.Trim(strings.TrimSpace(raw), `"'`)
+	path = strings.ReplaceAll(path, "${{ runner.temp }}", "${RUNNER_TEMP}")
+	return path
+}
+
+func releaseNotesWorkflowError(wf string) error {
+	publishAt := strings.Index(wf, "\n  publish:")
+	if publishAt < 0 {
+		return errors.New("release.yml does not define the publish job")
+	}
+	publish := wf[publishAt:]
+	var errs []error
+
+	extract := strings.Index(publish, "awf changelog --version")
+	build := strings.Index(publish, "goreleaser/goreleaser-action")
+	if extract < 0 {
+		errs = append(errs, errors.New("release.yml does not extract release notes via `awf changelog --version`"))
+	}
+	if build < 0 {
+		errs = append(errs, errors.New("release.yml does not run the GoReleaser action"))
+	}
+	if extract >= 0 && build >= 0 && extract > build {
+		errs = append(errs, errors.New("the release-note extraction must run before GoReleaser"))
+	}
+
+	var extractPath string
+	if extract >= 0 {
+		extractLine := workflowLineFrom(publish, extract)
+		if !strings.Contains(extractLine, `awf changelog --version "${GITHUB_REF_NAME#v}"`) {
+			errs = append(errs, fmt.Errorf("release-note extraction must derive the version from GITHUB_REF_NAME, got %q", extractLine))
+		}
+		if redirect := strings.Index(extractLine, ">"); redirect < 0 {
+			errs = append(errs, fmt.Errorf("release-note extraction does not redirect to a file: %q", extractLine))
+		} else {
+			extractPath = normalizedNotesPath(extractLine[redirect+1:])
+		}
+	}
+
+	var goreleaserPath string
+	if relIdx := strings.Index(publish, "--release-notes"); relIdx < 0 {
+		errs = append(errs, errors.New("release.yml does not pass --release-notes to GoReleaser"))
+	} else {
+		argLine := workflowLineFrom(publish, relIdx)
+		goreleaserPath = normalizedNotesPath(strings.TrimPrefix(argLine, "--release-notes"))
+	}
+
+	verify := strings.Index(publish, "Verify published release notes")
+	var verifyPath string
+	if verify < 0 {
+		errs = append(errs, errors.New("release.yml does not verify the published release body"))
+	} else {
+		if build >= 0 && verify < build {
+			errs = append(errs, errors.New("published release-note verification must run after GoReleaser"))
+		}
+		verifyBlock := publish[verify:]
+		if verifyCmd := strings.Index(verifyBlock, "releasecheck --verify-release-notes"); verifyCmd < 0 {
+			errs = append(errs, errors.New("published release-note verification does not invoke releasecheck --verify-release-notes"))
+		} else {
+			verifyLine := workflowLineFrom(verifyBlock, verifyCmd)
+			verifyPath = normalizedNotesPath(strings.TrimPrefix(verifyLine, "releasecheck --verify-release-notes"))
+		}
+	}
+
+	const wantPath = "${RUNNER_TEMP}/release-notes.md"
+	if extractPath != wantPath {
+		errs = append(errs, fmt.Errorf("release-note extraction path = %q, want %q", extractPath, wantPath))
+	}
+	if goreleaserPath != extractPath {
+		errs = append(errs, fmt.Errorf("GoReleaser notes path = %q, extraction path = %q", goreleaserPath, extractPath))
+	}
+	if verifyPath != extractPath {
+		errs = append(errs, fmt.Errorf("verification notes path = %q, extraction path = %q", verifyPath, extractPath))
+	}
+	return errors.Join(errs...)
+}
+
 // TestReleaseNotesFromCuratedChangelog backs inv: release-notes-from-changelog
 // (ADR-0096, ADR-load-curated-release-notes-through-goreleaser). The Release workflow
 // must feed the tagged curated section through GoReleaser's enabled changelog pipe, then
@@ -237,61 +322,28 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 		t.Fatalf("read release workflow: %v", err)
 	}
 	wf := string(wfb)
-	publishAt := strings.Index(wf, "\n  publish:")
-	if publishAt < 0 {
-		t.Fatal("release.yml does not define the publish job")
+	if err := releaseNotesWorkflowError(wf); err != nil {
+		t.Error(err)
 	}
-	publish := wf[publishAt:]
-	extract := strings.Index(publish, "awf changelog --version")
-	build := strings.Index(publish, "goreleaser/goreleaser-action")
-	if extract < 0 {
-		t.Error("release.yml does not extract release notes via `awf changelog --version`")
-	}
-	if build < 0 {
-		t.Fatal("release.yml does not run the GoReleaser action")
-	}
-	if extract > build {
-		t.Error("the `awf changelog --version` extraction must run before the GoReleaser step")
-	}
-	// The extraction redirect and the --release-notes arg must name the same file, or
-	// the release body silently diverges from what was written. Assert the extraction line
-	// redirects to a RUNNER_TEMP-scoped release-notes.md (outside the worktree, so
-	// GoReleaser's dirty-tree check passes) and that the --release-notes arg names the same
-	// basename - checking the components rather than one pinned interpolation form.
-	const notesFile = "release-notes.md"
-	extractLine := publish[extract:]
-	if nl := strings.IndexByte(extractLine, '\n'); nl >= 0 {
-		extractLine = extractLine[:nl]
-	}
-	if !strings.Contains(extractLine, ">") || !strings.Contains(extractLine, "RUNNER_TEMP") || !strings.Contains(extractLine, notesFile) {
-		t.Errorf("the extraction step must redirect (>) into a RUNNER_TEMP-scoped %s, got %q", notesFile, extractLine)
-	}
-	relIdx := strings.Index(publish, "--release-notes")
-	if relIdx < 0 {
-		t.Error("release.yml does not pass --release-notes to the GoReleaser step")
-	} else {
-		argLine := publish[relIdx:]
-		if nl := strings.IndexByte(argLine, '\n'); nl >= 0 {
-			argLine = argLine[:nl]
-		}
-		if !strings.Contains(argLine, notesFile) {
-			t.Errorf("--release-notes must point at %s (the file the extraction step writes), got %q", notesFile, argLine)
-		}
-	}
-
-	verify := strings.Index(publish, "Verify published release notes")
-	if verify < 0 {
-		t.Error("release.yml does not verify the published release body")
-	} else {
-		verifyBlock := publish[verify:]
-		if verify < build {
-			t.Error("published release-note verification must run after GoReleaser")
-		}
-		for _, token := range []string{"releasecheck --verify-release-notes", notesFile} {
-			if !strings.Contains(verifyBlock, token) {
-				t.Errorf("published release-note verification does not contain %q", token)
+	for _, mutation := range []struct {
+		name string
+		old  string
+		new  string
+	}{
+		{name: "fixed version", old: `${GITHUB_REF_NAME#v}`, new: `0.41.0`},
+		{name: "different GoReleaser path", old: `${{ runner.temp }}/release-notes.md`, new: `${{ runner.temp }}/other.md`},
+		{name: "different verification path", old: `--verify-release-notes "${RUNNER_TEMP}/release-notes.md"`, new: `--verify-release-notes "${RUNNER_TEMP}/other.md"`},
+	} {
+		t.Run("rejects "+mutation.name, func(t *testing.T) {
+			publishAt := strings.Index(wf, "\n  publish:")
+			mutated := wf[:publishAt] + strings.Replace(wf[publishAt:], mutation.old, mutation.new, 1)
+			if mutated == wf {
+				t.Fatalf("publish-job mutation target %q not found", mutation.old)
 			}
-		}
+			if err := releaseNotesWorkflowError(mutated); err == nil {
+				t.Fatal("workflow mutation passed the release-note invariant")
+			}
+		})
 	}
 
 	glb, err := os.ReadFile("../../.goreleaser.yaml")
@@ -433,6 +485,17 @@ func TestVerifyCIPreservesCandidateErrorIdentity(t *testing.T) {
 	err := verifyCI(context.Background(), client, "https://api.example.test", "acme/repo", "token", sha)
 	if !errors.Is(err, transportErr) {
 		t.Fatalf("candidate error identity lost: %v", err)
+	}
+	if !strings.Contains(err.Error(), "request GitHub API /repos/acme/repo/actions/runs/7/jobs") {
+		t.Fatalf("candidate transport error lacks request context: %v", err)
+	}
+}
+
+func TestGetGitHubJSONWrapsRequestConstructionError(t *testing.T) {
+	const path = "/repos/acme/repo/releases/tags/v1.0.0"
+	err := getGitHubJSON(context.Background(), http.DefaultClient, "://invalid", "token", path, &struct{}{})
+	if err == nil || !strings.Contains(err.Error(), "build GitHub API request for "+path) {
+		t.Fatalf("request-construction error lacks endpoint context: %v", err)
 	}
 }
 
