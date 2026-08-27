@@ -9,6 +9,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 )
 
@@ -34,7 +35,11 @@ func (r filesystemProjectReader) Entries(prefix string) ([]generatedcheck.TreeEn
 			}
 			return err
 		}
-		if !d.IsDir() && !d.Type().IsRegular() {
+		supported, e := filesystem.SupportedTreeEntry(d)
+		if e != nil {
+			return e
+		}
+		if !supported {
 			return nil
 		}
 		rel, e := filepath.Rel(r.root, p)
@@ -61,10 +66,14 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 			}
 			return err
 		}
+		supported, e := filesystem.SupportedTreeEntry(d)
+		if e != nil {
+			return e
+		}
+		if !supported {
+			return nil
+		}
 		if !d.IsDir() {
-			if !d.Type().IsRegular() {
-				return nil
-			}
 			rel, e := filepath.Rel(r.root, p)
 			if e != nil { // coverage-ignore: WalkDir supplies a path under r.root, so Rel cannot fail on a supported platform
 				return e

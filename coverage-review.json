@@ -11512,31 +11512,61 @@
       "identity": {
         "file": "internal/project/tree_reader.go",
         "start": {
-          "line": 41,
+          "line": 39,
           "column": 15
         },
         "end": {
-          "line": 43,
+          "line": 41,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/project/tree_reader.go:44.15,43.4 1 in function literal, beginning `{ // coverage-ignore: WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supp...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Socket closure reconciliation: filesystem.SupportedTreeEntry directly proves ambiguous metadata errors, while reaching this Entries propagation branch requires a permission-dependent or concurrent DirEntry.Info failure during filepath.WalkDir; a reader injection seam would be metric-only production design."
     },
     {
       "identity": {
         "file": "internal/project/tree_reader.go",
         "start": {
-          "line": 69,
+          "line": 46,
+          "column": 15
+        },
+        "end": {
+          "line": 48,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/project/tree_reader.go:46.15,48.4 1 in function literal, beginning `{ // coverage-ignore: WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supp...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/project/tree_reader.go",
+        "start": {
+          "line": 70,
+          "column": 15
+        },
+        "end": {
+          "line": 72,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Socket closure reconciliation: filesystem.SupportedTreeEntry directly proves ambiguous metadata errors, while reaching this Paths propagation branch requires a permission-dependent or concurrent DirEntry.Info failure during filepath.WalkDir; a reader injection seam would be metric-only production design."
+    },
+    {
+      "identity": {
+        "file": "internal/project/tree_reader.go",
+        "start": {
+          "line": 78,
           "column": 16
         },
         "end": {
-          "line": 71,
+          "line": 80,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/project/tree_reader.go:75.16,71.5 1 in function literal, beginning `{ // coverage-ignore: WalkDir supplies a path under r.root, so Rel cannot fail on a supported pl...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/project/tree_reader.go:78.16,80.5 1 in function literal, beginning `{ // coverage-ignore: WalkDir supplies a path under r.root, so Rel cannot fail on a supported pl...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -11857,346 +11887,376 @@
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
+          "line": 109,
+          "column": 15
+        },
+        "end": {
           "line": 111,
-          "column": 15
-        },
-        "end": {
-          "line": 113,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:114.15,113.4 1 in function literal, beginning `{ // coverage-ignore: WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supp...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Socket closure reconciliation: filesystem.SupportedTreeEntry directly proves ambiguous metadata errors, while reaching this Publisher Entries propagation branch requires a permission-dependent or concurrent DirEntry.Info failure during filepath.WalkDir; a reader injection seam would be metric-only production design."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 157,
+          "line": 116,
           "column": 15
         },
         "end": {
-          "line": 159,
+          "line": 118,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:163.15,159.4 1 in function literal, beginning `{ // coverage-ignore: p is always rooted at r.root, so Rel cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:116.15,118.4 1 in function literal, beginning `{ // coverage-ignore: WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supp...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 253,
+          "line": 143,
+          "column": 15
+        },
+        "end": {
+          "line": 145,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Socket closure reconciliation: filesystem.SupportedTreeEntry directly proves ambiguous metadata errors, while reaching this Publisher Paths propagation branch requires a permission-dependent or concurrent DirEntry.Info failure during filepath.WalkDir; a reader injection seam would be metric-only production design."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 166,
+          "column": 15
+        },
+        "end": {
+          "line": 168,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:166.15,168.4 1 in function literal, beginning `{ // coverage-ignore: p is always rooted at r.root, so Rel cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 262,
           "column": 17
         },
         "end": {
-          "line": 255,
+          "line": 264,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:259.17,255.4 1 in function literal, beginning `{ // coverage-ignore: embedded templates are validated by the production render path and focused...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:262.17,264.4 1 in function literal, beginning `{ // coverage-ignore: embedded templates are validated by the production render path and focused...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 292,
+          "line": 301,
           "column": 18
         },
         "end": {
-          "line": 294,
+          "line": 303,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:298.18,294.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: catalog skill template IDs and embedded sources are validated static autho...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:301.18,303.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: catalog skill template IDs and embedded sources are validated static autho...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 307,
+          "line": 316,
           "column": 19
         },
         "end": {
-          "line": 309,
+          "line": 318,
           "column": 6
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:313.19,309.6 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: catalog agent template IDs and embedded sources are validated static autho...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:316.19,318.6 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: catalog agent template IDs and embedded sources are validated static autho...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 325,
+          "line": 334,
           "column": 19
         },
         "end": {
-          "line": 327,
+          "line": 336,
           "column": 6
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:331.19,327.6 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: validated target-output descriptors own embedded Markdown template identit...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:334.19,336.6 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: validated target-output descriptors own embedded Markdown template identit...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 398,
-          "column": 17
-        },
-        "end": {
-          "line": 400,
-          "column": 4
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:404.17,400.4 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: localDocTID is a closed embedded Markdown identity, validated by the templ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 405,
-          "column": 17
-        },
-        "end": {
           "line": 407,
+          "column": 17
+        },
+        "end": {
+          "line": 409,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:411.17,407.4 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the pitfall entry descriptor owns one validated embedded Markdown template...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:407.17,409.4 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: localDocTID is a closed embedded Markdown identity, validated by the templ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 430,
+          "line": 414,
+          "column": 17
+        },
+        "end": {
+          "line": 416,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:414.17,416.4 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the pitfall entry descriptor owns one validated embedded Markdown template...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 439,
           "column": 18
         },
         "end": {
-          "line": 432,
+          "line": 441,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:436.18,432.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the domain descriptor owns one validated embedded template identity`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:439.18,441.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the domain descriptor owns one validated embedded template identity`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 445,
+          "line": 454,
           "column": 18
         },
         "end": {
-          "line": 447,
+          "line": 456,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:451.18,447.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: topicTID is a validated compile-time embedded identity`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:454.18,456.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: topicTID is a validated compile-time embedded identity`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 453,
+          "line": 462,
           "column": 18
         },
         "end": {
-          "line": 455,
-          "column": 5
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:459.18,455.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the same domain metadata enumeration succeeded earlier in this declaration...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
           "line": 464,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:462.18,464.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the same domain metadata enumeration succeeded earlier in this declaration...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 473,
           "column": 19
         },
         "end": {
-          "line": 466,
+          "line": 475,
           "column": 6
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:470.19,466.6 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: topicIndexTID is a validated compile-time embedded identity`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:473.19,475.6 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: topicIndexTID is a validated compile-time embedded identity`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 640,
+          "line": 649,
           "column": 18
         },
         "end": {
-          "line": 642,
+          "line": 651,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:646.18,642.5 1 in function targetOutputDeclarations, beginning `{ // coverage-ignore: embedded target-output templates are include-well-formed; render package t...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:649.18,651.5 1 in function targetOutputDeclarations, beginning `{ // coverage-ignore: embedded target-output templates are include-well-formed; render package t...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 644,
+          "line": 653,
           "column": 18
         },
         "end": {
-          "line": 646,
+          "line": 655,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:650.18,646.5 1 in function targetOutputDeclarations, beginning `{ // coverage-ignore: embedded target-output templates have well-formed authoring comments; rend...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:653.18,655.5 1 in function targetOutputDeclarations, beginning `{ // coverage-ignore: embedded target-output templates have well-formed authoring comments; rend...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 648,
+          "line": 657,
           "column": 18
         },
         "end": {
-          "line": 650,
+          "line": 659,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:654.18,650.5 1 in function targetOutputDeclarations, beginning `{ // coverage-ignore: no target output has parts and its descriptor projection is marshalable`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:657.18,659.5 1 in function targetOutputDeclarations, beginning `{ // coverage-ignore: no target output has parts and its descriptor projection is marshalable`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 704,
+          "line": 713,
           "column": 49
         },
         "end": {
-          "line": 706,
+          "line": 715,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:710.49,706.3 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: renderAllBase already resolved every live identity; TestValidateLiveTempla...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:713.49,715.3 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: renderAllBase already resolved every live identity; TestValidateLiveTempla...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 741,
+          "line": 750,
           "column": 55
         },
         "end": {
-          "line": 743,
+          "line": 752,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:747.55,743.4 1 in function outputPlanWithPitfalls: the duplicate-output error branch after adding a base rendered file to the output plan; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:750.55,752.4 1 in function outputPlanWithPitfalls: the duplicate-output error branch after adding a base rendered file to the output plan; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 755,
+          "line": 764,
           "column": 16
         },
         "end": {
-          "line": 757,
+          "line": 766,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:761.16,757.3 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: the same embedded leaf template and validated corpus are closed inputs her...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:764.16,766.3 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: the same embedded leaf template and validated corpus are closed inputs her...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 760,
+          "line": 769,
           "column": 78
         },
         "end": {
-          "line": 762,
+          "line": 771,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:766.78,762.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: validated unique slugs derive unique leaf paths`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:769.78,771.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: validated unique slugs derive unique leaf paths`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 778,
+          "line": 787,
           "column": 55
         },
         "end": {
-          "line": 780,
+          "line": 789,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:784.55,780.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: generated INDEX.md has a reserved unique path.`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:787.55,789.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: generated INDEX.md has a reserved unique path.`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 782,
+          "line": 791,
           "column": 17
         },
         "end": {
-          "line": 784,
+          "line": 793,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:788.17,784.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: renderTarget cannot fail here: .data.domain/.data.topics are always set an...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:791.17,793.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: renderTarget cannot fail here: .data.domain/.data.topics are always set an...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 786,
+          "line": 795,
           "column": 53
         },
         "end": {
-          "line": 788,
+          "line": 797,
           "column": 5
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:792.53,788.5 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: validated domain names produce distinct paths.`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:795.53,797.5 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: validated domain names produce distinct paths.`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 800,
+          "line": 809,
           "column": 75
         },
         "end": {
-          "line": 802,
+          "line": 811,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:806.75,802.4 1 in function outputPlanWithPitfalls: the duplicate-output error branch after adding the reserved generated config-reference file; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:809.75,811.4 1 in function outputPlanWithPitfalls: the duplicate-output error branch after adding the reserved generated config-reference file; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -22964,26 +23024,26 @@
     {
       "directive": {
         "file": "internal/project/tree_reader.go",
-        "line": 41,
-        "targetLine": 41,
+        "line": 46,
+        "targetLine": 46,
         "reason": "WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/project/tree_reader.go:41, `if e != nil {` is guarded by the preceding `rel, e := filepath.Rel(r.root, p)` at internal/project/tree_reader.go:37; in `func (r filesystemProjectReader) Entries(prefix string) ([]generatedcheck.TreeEntry, error)` (internal/project/tree_reader.go:27), the predecessor invariant is WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/project/tree_reader.go:46, `if e != nil {` is guarded by the preceding `rel, e := filepath.Rel(r.root, p)` at internal/project/tree_reader.go:45; in `func (r filesystemProjectReader) Entries(prefix string) ([]generatedcheck.TreeEntry, error)` (internal/project/tree_reader.go:28), the predecessor invariant is WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/project/tree_reader.go",
-        "line": 69,
-        "targetLine": 69,
+        "line": 78,
+        "targetLine": 78,
         "reason": "WalkDir supplies a path under r.root, so Rel cannot fail on a supported platform",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func (r filesystemProjectReader) Paths(prefix string) ([]string, error)` begins at internal/project/tree_reader.go:54; its branch `if e != nil {` at internal/project/tree_reader.go:69 follows `rel, e := filepath.Rel(r.root, p)` at internal/project/tree_reader.go:65. That flow establishes WalkDir supplies a path under r.root, so Rel cannot fail on a supported platform, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func (r filesystemProjectReader) Paths(prefix string) ([]string, error)` begins at internal/project/tree_reader.go:59; its branch `if e != nil {` at internal/project/tree_reader.go:78 follows `rel, e := filepath.Rel(r.root, p)` at internal/project/tree_reader.go:77. That flow establishes WalkDir supplies a path under r.root, so Rel cannot fail on a supported platform, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
@@ -23240,278 +23300,278 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 111,
-        "targetLine": 111,
+        "line": 116,
+        "targetLine": 116,
         "reason": "WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/output_plan.go:111, `if e != nil {` is guarded by the preceding `rel, e := filepath.Rel(r.root, p)` at internal/publisher/output_plan.go:107; in `func (r filesystemProjectReader) Entries(prefix string) ([]generatedcheck.TreeEntry, error)` (internal/publisher/output_plan.go:97), the predecessor invariant is WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/output_plan.go:116, `if e != nil {` is guarded by the preceding `rel, e := filepath.Rel(r.root, p)` at internal/publisher/output_plan.go:115; in `func (r filesystemProjectReader) Entries(prefix string) ([]generatedcheck.TreeEntry, error)` (internal/publisher/output_plan.go:98), the predecessor invariant is WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 157,
-        "targetLine": 157,
+        "line": 166,
+        "targetLine": 166,
         "reason": "p is always rooted at r.root, so Rel cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func (r filesystemProjectReader) Paths(prefix string) ([]string, error)` begins at internal/publisher/output_plan.go:124; its branch `if e != nil {` at internal/publisher/output_plan.go:157 follows `rel, e := filepath.Rel(r.root, p)` at internal/publisher/output_plan.go:153. That flow establishes p is always rooted at r.root, so Rel cannot fail, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func (r filesystemProjectReader) Paths(prefix string) ([]string, error)` begins at internal/publisher/output_plan.go:129; its branch `if e != nil {` at internal/publisher/output_plan.go:166 follows `rel, e := filepath.Rel(r.root, p)` at internal/publisher/output_plan.go:165. That flow establishes p is always rooted at r.root, so Rel cannot fail, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 253,
-        "targetLine": 253,
+        "line": 262,
+        "targetLine": 262,
         "reason": "embedded templates are validated by the production render path and focused include tests",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:196; its branch `if err != nil {` at internal/publisher/output_plan.go:253 follows `expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)` at internal/publisher/output_plan.go:252. That flow establishes embedded templates are validated by the production render path and focused include tests, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:205; its branch `if err != nil {` at internal/publisher/output_plan.go:262 follows `expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)` at internal/publisher/output_plan.go:261. That flow establishes embedded templates are validated by the production render path and focused include tests, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 292,
-        "targetLine": 292,
+        "line": 301,
+        "targetLine": 301,
         "reason": "catalog skill template IDs and embedded sources are validated static authority",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:196; its branch `if err != nil {` at internal/publisher/output_plan.go:292 follows `input, err := markdownInputs(tid, append([]OutputInput{{Path: \".awf/skills/\" + name + \".yaml\", Role: ArtifactAuthoredData}}, partInputs(\"skills\", name, sections, sc.Sections)...)...)` at internal/publisher/output_plan.go:291. That flow establishes catalog skill template IDs and embedded sources are validated static authority, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:205; its branch `if err != nil {` at internal/publisher/output_plan.go:301 follows `input, err := markdownInputs(tid, append([]OutputInput{{Path: \".awf/skills/\" + name + \".yaml\", Role: ArtifactAuthoredData}}, partInputs(\"skills\", name, sections, sc.Sections)...)...)` at internal/publisher/output_plan.go:300. That flow establishes catalog skill template IDs and embedded sources are validated static authority, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 307,
-        "targetLine": 307,
+        "line": 316,
+        "targetLine": 316,
         "reason": "catalog agent template IDs and embedded sources are validated static authority",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:196; its branch `if err != nil {` at internal/publisher/output_plan.go:307 follows `input, err = markdownInputs(tid, append([]OutputInput{{Path: \".awf/agents/\" + name + \".yaml\", Role: ArtifactAuthoredData}}, partInputs(\"agents\", name, sections, sc.Sections)...)...)` at internal/publisher/output_plan.go:306. That flow establishes catalog agent template IDs and embedded sources are validated static authority, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:205; its branch `if err != nil {` at internal/publisher/output_plan.go:316 follows `input, err = markdownInputs(tid, append([]OutputInput{{Path: \".awf/agents/\" + name + \".yaml\", Role: ArtifactAuthoredData}}, partInputs(\"agents\", name, sections, sc.Sections)...)...)` at internal/publisher/output_plan.go:315. That flow establishes catalog agent template IDs and embedded sources are validated static authority, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 325,
-        "targetLine": 325,
+        "line": 334,
+        "targetLine": 334,
         "reason": "validated target-output descriptors own embedded Markdown template identities; markdownInputs error propagation is covered through enabled bridge declarations",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:196; its branch `if err != nil {` at internal/publisher/output_plan.go:325 follows `declaredInputs, err = markdownInputs(o.TemplateID)` at internal/publisher/output_plan.go:324. That flow establishes validated target-output descriptors own embedded Markdown template identities; markdownInputs error propagation is covered through enabled bridge declarations, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:205; its branch `if err != nil {` at internal/publisher/output_plan.go:334 follows `declaredInputs, err = markdownInputs(o.TemplateID)` at internal/publisher/output_plan.go:333. That flow establishes validated target-output descriptors own embedded Markdown template identities; markdownInputs error propagation is covered through enabled bridge declarations, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 398,
-        "targetLine": 398,
+        "line": 407,
+        "targetLine": 407,
         "reason": "localDocTID is a closed embedded Markdown identity, validated by the template census",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/output_plan.go:398 is `declaredInputs, err := markdownInputs(localDocTID, OutputInput{Path: outPath, Role: ArtifactManagedOutput})` (internal/publisher/output_plan.go:397). Within `func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` at internal/publisher/output_plan.go:196, source review establishes localDocTID is a closed embedded Markdown identity, validated by the template census; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/output_plan.go:407 is `declaredInputs, err := markdownInputs(localDocTID, OutputInput{Path: outPath, Role: ArtifactManagedOutput})` (internal/publisher/output_plan.go:406). Within `func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` at internal/publisher/output_plan.go:205, source review establishes localDocTID is a closed embedded Markdown identity, validated by the template census; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 405,
-        "targetLine": 405,
+        "line": 414,
+        "targetLine": 414,
         "reason": "the pitfall entry descriptor owns one validated embedded Markdown template identity",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/output_plan.go:405, `if err != nil {` is guarded by the preceding `declaredInputs, err := markdownInputs(pitfallEntryTID, OutputInput{Path: entry.SourcePath, Role: ArtifactAuthoredData})` at internal/publisher/output_plan.go:404; in `func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` (internal/publisher/output_plan.go:196), the predecessor invariant is the pitfall entry descriptor owns one validated embedded Markdown template identity. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/output_plan.go:414, `if err != nil {` is guarded by the preceding `declaredInputs, err := markdownInputs(pitfallEntryTID, OutputInput{Path: entry.SourcePath, Role: ArtifactAuthoredData})` at internal/publisher/output_plan.go:413; in `func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` (internal/publisher/output_plan.go:205), the predecessor invariant is the pitfall entry descriptor owns one validated embedded Markdown template identity. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 430,
-        "targetLine": 430,
+        "line": 439,
+        "targetLine": 439,
         "reason": "the domain descriptor owns one validated embedded template identity",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:196; its branch `if err != nil {` at internal/publisher/output_plan.go:430 follows `declaredInputs, err := markdownInputs(domainTID, authored...)` at internal/publisher/output_plan.go:429. That flow establishes the domain descriptor owns one validated embedded template identity, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:205; its branch `if err != nil {` at internal/publisher/output_plan.go:439 follows `declaredInputs, err := markdownInputs(domainTID, authored...)` at internal/publisher/output_plan.go:438. That flow establishes the domain descriptor owns one validated embedded template identity, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 445,
-        "targetLine": 445,
+        "line": 454,
+        "targetLine": 454,
         "reason": "topicTID is a validated compile-time embedded identity",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:196; its branch `if err != nil {` at internal/publisher/output_plan.go:445 follows `declaredInputs, err := markdownInputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: \".awf/topics/parts/\" + id + \"/current-state.md\", Role: ArtifactClaimPart})` at internal/publisher/output_plan.go:444. That flow establishes topicTID is a validated compile-time embedded identity, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` begins at internal/publisher/output_plan.go:205; its branch `if err != nil {` at internal/publisher/output_plan.go:454 follows `declaredInputs, err := markdownInputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: \".awf/topics/parts/\" + id + \"/current-state.md\", Role: ArtifactClaimPart})` at internal/publisher/output_plan.go:453. That flow establishes topicTID is a validated compile-time embedded identity, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 453,
-        "targetLine": 453,
+        "line": 462,
+        "targetLine": 462,
         "reason": "the same domain metadata enumeration succeeded earlier in this declaration pass",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/publisher/output_plan.go:453, `if err != nil {` follows the concrete operation `indexMetadata, err := read.Paths(\".awf/topics/metadata/\" + d + \"/\")` at internal/publisher/output_plan.go:452 in `func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` (internal/publisher/output_plan.go:196). The reviewed failure condition is the same domain metadata enumeration succeeded earlier in this declaration pass; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/publisher/output_plan.go:462, `if err != nil {` follows the concrete operation `indexMetadata, err := read.Paths(\".awf/topics/metadata/\" + d + \"/\")` at internal/publisher/output_plan.go:461 in `func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` (internal/publisher/output_plan.go:205). The reviewed failure condition is the same domain metadata enumeration succeeded earlier in this declaration pass; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 464,
-        "targetLine": 464,
+        "line": 473,
+        "targetLine": 473,
         "reason": "topicIndexTID is a validated compile-time embedded identity",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/output_plan.go:464 is `declaredInputs, err := markdownInputs(topicIndexTID, topicInputs...)` (internal/publisher/output_plan.go:463). Within `func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` at internal/publisher/output_plan.go:196, source review establishes topicIndexTID is a validated compile-time embedded identity; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/output_plan.go:473 is `declaredInputs, err := markdownInputs(topicIndexTID, topicInputs...)` (internal/publisher/output_plan.go:472). Within `func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error)` at internal/publisher/output_plan.go:205, source review establishes topicIndexTID is a validated compile-time embedded identity; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 640,
-        "targetLine": 640,
+        "line": 649,
+        "targetLine": 649,
         "reason": "embedded target-output templates are include-well-formed; render package tests own malformed includes",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]targetOutputDeclaration, error)` begins at internal/publisher/output_plan.go:625; its branch `if err != nil {` at internal/publisher/output_plan.go:640 follows `expanded, err := render.ExpandIncludes(string(src), templates.FS)` at internal/publisher/output_plan.go:639. That flow establishes embedded target-output templates are include-well-formed; render package tests own malformed includes, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]targetOutputDeclaration, error)` begins at internal/publisher/output_plan.go:634; its branch `if err != nil {` at internal/publisher/output_plan.go:649 follows `expanded, err := render.ExpandIncludes(string(src), templates.FS)` at internal/publisher/output_plan.go:648. That flow establishes embedded target-output templates are include-well-formed; render package tests own malformed includes, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 644,
-        "targetLine": 644,
+        "line": 653,
+        "targetLine": 653,
         "reason": "embedded target-output templates have well-formed authoring comments; render package tests malformed input",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/output_plan.go:644 is `stripped, err := render.StripAuthoringComments(expanded)` (internal/publisher/output_plan.go:643). Within `func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]targetOutputDeclaration, error)` at internal/publisher/output_plan.go:625, source review establishes embedded target-output templates have well-formed authoring comments; render package tests malformed input; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/output_plan.go:653 is `stripped, err := render.StripAuthoringComments(expanded)` (internal/publisher/output_plan.go:652). Within `func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]targetOutputDeclaration, error)` at internal/publisher/output_plan.go:634, source review establishes embedded target-output templates have well-formed authoring comments; render package tests malformed input; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 648,
-        "targetLine": 648,
+        "line": 657,
+        "targetLine": 657,
         "reason": "no target output has parts and its descriptor projection is marshalable",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/output_plan.go:648, `if err != nil {` is guarded by the preceding `configHash, err := artifactConfigHash(p, stripped, config.Sidecar{}, nil, eff, t)` at internal/publisher/output_plan.go:647; in `func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]targetOutputDeclaration, error)` (internal/publisher/output_plan.go:625), the predecessor invariant is no target output has parts and its descriptor projection is marshalable. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/output_plan.go:657, `if err != nil {` is guarded by the preceding `configHash, err := artifactConfigHash(p, stripped, config.Sidecar{}, nil, eff, t)` at internal/publisher/output_plan.go:656; in `func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]targetOutputDeclaration, error)` (internal/publisher/output_plan.go:634), the predecessor invariant is no target output has parts and its descriptor projection is marshalable. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 704,
-        "targetLine": 704,
+        "line": 713,
+        "targetLine": 713,
         "reason": "renderAllBase already resolved every live identity; TestValidateLiveTemplatesRejectsMissingTargetTemplate proves the defensive check",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err := validateLiveTemplates(p); err != nil {` at internal/publisher/output_plan.go:704 is `}` (internal/publisher/output_plan.go:703). Within `func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` at internal/publisher/output_plan.go:688, source review establishes renderAllBase already resolved every live identity; TestValidateLiveTemplatesRejectsMissingTargetTemplate proves the defensive check; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err := validateLiveTemplates(p); err != nil {` at internal/publisher/output_plan.go:713 is `}` (internal/publisher/output_plan.go:712). Within `func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` at internal/publisher/output_plan.go:697, source review establishes renderAllBase already resolved every live identity; TestValidateLiveTemplatesRejectsMissingTargetTemplate proves the defensive check; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 740,
-        "targetLine": 741,
+        "line": 749,
+        "targetLine": 750,
         "reason": "base output paths are unique by renderAllBase's precondition.",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The guarded operation is `add(f, f.TemplateID, deps...)` at internal/publisher/output_plan.go:741 while iterating `base`; `renderAllBase` guarantees those base output paths are unique, so its duplicate-output error requires violation of that closed producer precondition."
+      "evidence": "The guarded operation is `add(f, f.TemplateID, deps...)` at internal/publisher/output_plan.go:750 while iterating `base`; `renderAllBase` guarantees those base output paths are unique, so its duplicate-output error requires violation of that closed producer precondition."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 755,
-        "targetLine": 755,
+        "line": 764,
+        "targetLine": 764,
         "reason": "the same embedded leaf template and validated corpus are closed inputs here",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/output_plan.go:755 is `pitfallLeaves, err := generatePitfallLeaves(p, pitfalls, eff)` (internal/publisher/output_plan.go:754). Within `func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` at internal/publisher/output_plan.go:688, source review establishes the same embedded leaf template and validated corpus are closed inputs here; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/output_plan.go:764 is `pitfallLeaves, err := generatePitfallLeaves(p, pitfalls, eff)` (internal/publisher/output_plan.go:763). Within `func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` at internal/publisher/output_plan.go:697, source review establishes the same embedded leaf template and validated corpus are closed inputs here; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 760,
-        "targetLine": 760,
+        "line": 769,
+        "targetLine": 769,
         "reason": "validated unique slugs derive unique leaf paths",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` begins at internal/publisher/output_plan.go:688; its branch `if err := add(f, f.Declarer, pitfall.SourceDir+\"/\"+slug+\".md\"); err != nil {` at internal/publisher/output_plan.go:760 follows `slug := strings.TrimSuffix(strings.TrimPrefix(f.Path, config.DocsDir+\"/pitfalls/\"), \".md\")` at internal/publisher/output_plan.go:759. That flow establishes validated unique slugs derive unique leaf paths, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` begins at internal/publisher/output_plan.go:697; its branch `if err := add(f, f.Declarer, pitfall.SourceDir+\"/\"+slug+\".md\"); err != nil {` at internal/publisher/output_plan.go:769 follows `slug := strings.TrimSuffix(strings.TrimPrefix(f.Path, config.DocsDir+\"/pitfalls/\"), \".md\")` at internal/publisher/output_plan.go:768. That flow establishes validated unique slugs derive unique leaf paths, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 778,
-        "targetLine": 778,
+        "line": 787,
+        "targetLine": 787,
         "reason": "generated INDEX.md has a reserved unique path.",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` (starts internal/publisher/output_plan.go:688) checks `if err := add(index, \"generated-index\"); err != nil {` at internal/publisher/output_plan.go:778 after `index := generateIndexMD(p, corpus)` at internal/publisher/output_plan.go:777. Here generated INDEX.md has a reserved unique path; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` (starts internal/publisher/output_plan.go:697) checks `if err := add(index, \"generated-index\"); err != nil {` at internal/publisher/output_plan.go:787 after `index := generateIndexMD(p, corpus)` at internal/publisher/output_plan.go:786. Here generated INDEX.md has a reserved unique path; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 782,
-        "targetLine": 782,
+        "line": 791,
+        "targetLine": 791,
         "reason": "renderTarget cannot fail here: .data.domain/.data.topics are always set and the domain template is compile-time embedded",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/output_plan.go:782 is `domains, err = generateDomainDocs(p, topics, eff)` (internal/publisher/output_plan.go:781). Within `func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` at internal/publisher/output_plan.go:688, source review establishes renderTarget cannot fail here: .data.domain/.data.topics are always set and the domain template is compile-time embedded; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/output_plan.go:791 is `domains, err = generateDomainDocs(p, topics, eff)` (internal/publisher/output_plan.go:790). Within `func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` at internal/publisher/output_plan.go:697, source review establishes renderTarget cannot fail here: .data.domain/.data.topics are always set and the domain template is compile-time embedded; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 786,
-        "targetLine": 786,
+        "line": 795,
+        "targetLine": 795,
         "reason": "validated domain names produce distinct paths.",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/output_plan.go:786, `if err := add(f, \"generated-domain\"); err != nil {` is guarded by the preceding `for _, f := range domains {` at internal/publisher/output_plan.go:785; in `func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` (internal/publisher/output_plan.go:688), the predecessor invariant is validated domain names produce distinct paths. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/output_plan.go:795, `if err := add(f, \"generated-domain\"); err != nil {` is guarded by the preceding `for _, f := range domains {` at internal/publisher/output_plan.go:794; in `func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error)` (internal/publisher/output_plan.go:697), the predecessor invariant is validated domain names produce distinct paths. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 799,
-        "targetLine": 800,
+        "line": 808,
+        "targetLine": 809,
         "reason": "config reference has a reserved unique path.",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The guarded operation is `add(*cref, \"generated-config-reference\", deps...)` at internal/publisher/output_plan.go:800; the config reference owns a reserved unique output path, so its duplicate-output error requires violation of that closed namespace precondition."
+      "evidence": "The guarded operation is `add(*cref, \"generated-config-reference\", deps...)` at internal/publisher/output_plan.go:809; the config reference owns a reserved unique output path, so its duplicate-output error requires violation of that closed namespace precondition."
     },
     {
       "directive": {

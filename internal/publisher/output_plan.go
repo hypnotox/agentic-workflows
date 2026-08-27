@@ -14,6 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
@@ -104,7 +105,11 @@ func (r filesystemProjectReader) Entries(prefix string) ([]generatedcheck.TreeEn
 			}
 			return err
 		}
-		if !d.IsDir() && !d.Type().IsRegular() {
+		supported, e := filesystem.SupportedTreeEntry(d)
+		if e != nil {
+			return e
+		}
+		if !supported {
 			return nil
 		}
 		rel, e := filepath.Rel(r.root, p)
@@ -134,6 +139,13 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 			}
 			return err
 		}
+		supported, e := filesystem.SupportedTreeEntry(d)
+		if e != nil {
+			return e
+		}
+		if !supported {
+			return nil
+		}
 		if d.IsDir() {
 			if p == r.root {
 				return nil
@@ -148,9 +160,6 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 			if filesystemProjectBoundary(p) {
 				return fs.SkipDir
 			}
-			return nil
-		}
-		if !d.Type().IsRegular() {
 			return nil
 		}
 		rel, e := filepath.Rel(r.root, p)

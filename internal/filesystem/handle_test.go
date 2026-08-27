@@ -858,6 +858,7 @@ func TestRootConfinedFilesystemSingleHome(t *testing.T) {
 		{"returned constructor", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nfunc Open(x string) (*filesystem.Handle, error) { return filesystem.Open(x) }", ""},
 		{"compile-only reference", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Open", "filesystem import without constructor/capability flow"},
 		{"arbitrary selector", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Handle", "filesystem import without constructor/capability flow"},
+		{"supported entry policy", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nfunc supported(entry fs.DirEntry) { filesystem.SupportedTreeEntry(entry) }", ""},
 		{"second flock owner", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/gofrs/flock\"\nvar _ = flock.New", "outside filesystem imports advisory-lock implementation"},
 	} {
 		got := rootSourceFinding(tc.path, tc.src)
@@ -1047,7 +1048,7 @@ func filesystemConsumerFinding(rel, src string) string {
 				if id, ok := s.X.(*ast.Ident); ok && bound[id.Name] {
 					capability = true
 				}
-				if id, ok := s.X.(*ast.Ident); ok && imports[id.Name] && (s.Sel.Name == "Backup" || s.Sel.Name == "CanonicalRoot" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireTrackedLease" || s.Sel.Name == "AcquireResidentLease" || s.Sel.Name == "AcquireProjectLease") {
+				if id, ok := s.X.(*ast.Ident); ok && imports[id.Name] && (s.Sel.Name == "Backup" || s.Sel.Name == "CanonicalRoot" || s.Sel.Name == "SupportedTreeEntry" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireTrackedLease" || s.Sel.Name == "AcquireResidentLease" || s.Sel.Name == "AcquireProjectLease") {
 					capability = true
 				}
 			}
