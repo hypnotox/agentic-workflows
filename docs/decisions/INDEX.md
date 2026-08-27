@@ -4,6 +4,7 @@
 
 - [ADR-bind-implementation-subagent-execution-to-the-selected-checkout: Bind Implementation Subagent Execution to the Selected Checkout](bind-implementation-subagent-execution-to-the-selected-checkout.md) (Implementing)
 - [ADR-bind-repository-and-release-acceptance-to-exact-revisions: Bind Repository and Release Acceptance to Exact Revisions](bind-repository-and-release-acceptance-to-exact-revisions.md) (Implementing)
+- [ADR-bind-terminal-plan-closure-to-selected-implementation-evidence: Bind Terminal Plan Closure to Selected Implementation Evidence](bind-terminal-plan-closure-to-selected-implementation-evidence.md) (Proposed)
 - [ADR-require-complete-and-unambiguous-mutable-authority: Require Complete and Unambiguous Mutable Authority](require-complete-and-unambiguous-mutable-authority.md) (Implementing)
 - [ADR-serialize-project-mutations-by-physical-root: Serialize Project Mutations by Physical Root](serialize-project-mutations-by-physical-root.md) (Implementing)
 
