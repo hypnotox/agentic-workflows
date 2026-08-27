@@ -426,30 +426,6 @@ func TestFocusedWorkingStateSelectsOnlyRequestedManifestPayloads(t *testing.T) {
 	}
 }
 
-func TestWorkingContextPreparationPerformanceEvidence(t *testing.T) {
-	root := contextPreparationFixture(t)
-	state, repo := contextPreparationProject(t, root)
-	measure := func(run func() error) testing.BenchmarkResult {
-		return testing.Benchmark(func(b *testing.B) {
-			b.ReportAllocs()
-			for range b.N {
-				if err := run(); err != nil {
-					b.Fatal(err)
-				}
-			}
-		})
-	}
-	focused := measure(func() error {
-		_, err := workingState(testsupport.Context(t), state, repo, []string{"internal/foo/x.go"})
-		return err
-	})
-	complete := measure(func() error {
-		_, err := workingCompleteState(testsupport.Context(t), state, repo)
-		return err
-	})
-	t.Logf("ordinary exact preparation: focused=%d ns/op %d B/op %d allocs/op; complete=%d ns/op %d B/op %d allocs/op", focused.NsPerOp(), focused.AllocedBytesPerOp(), focused.AllocsPerOp(), complete.NsPerOp(), complete.AllocedBytesPerOp(), complete.AllocsPerOp())
-}
-
 func TestWorkingStatePropagatesPublisherPreparationFailure(t *testing.T) {
 	root := contextPreparationFixture(t)
 	state, repo := contextPreparationProject(t, root)
