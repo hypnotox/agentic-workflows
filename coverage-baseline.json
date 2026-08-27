@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "2005b974e00733d217c9f5402294b5d5f40c828dd8a5585a271fa32ba7f2a018",
+  "universeSHA256": "33e8bc672e9752a2033a98a7aaf88743f8b948395c2e535bf773f63a2d96769f",
   "repository": [
     {
       "identity": {
@@ -3292,11 +3292,71 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 332,
+          "line": 319,
+          "column": 27
+        },
+        "end": {
+          "line": 321,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Terminal reconciliation accepts only exact lowercase full object IDs, and successful ResolveCommit returns that exact identity. A different successful base resolution is an impossible parser-to-repository state; malformed and unavailable selectors are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 326,
+          "column": 27
+        },
+        "end": {
+          "line": 328,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Terminal reconciliation accepts only exact lowercase full object IDs, and successful ResolveCommit returns that exact identity. A different successful head resolution is an impossible parser-to-repository state; malformed, stale, and unavailable selectors are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 330,
           "column": 17
         },
         "end": {
-          "line": 334,
+          "line": 332,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "The exact selected base and head have already resolved. Failure to resolve current HEAD here requires cancellation or a concurrent repository or object-store fault; stale-HEAD refusal and repository error wrapping are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 337,
+          "column": 17
+        },
+        "end": {
+          "line": 339,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "The exact selected commits have already resolved. Ancestry inspection failure here requires cancellation or a corrupt or concurrently changing Git object store; divergent and reversed histories plus repository error wrapping are directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "start": {
+          "line": 344,
+          "column": 17
+        },
+        "end": {
+          "line": 346,
           "column": 4
         },
         "statements": 1
@@ -3307,11 +3367,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 368,
+          "line": 380,
           "column": 2
         },
         "end": {
-          "line": 368,
+          "line": 380,
           "column": 60
         },
         "statements": 1
@@ -3322,11 +3382,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 394,
+          "line": 406,
           "column": 16
         },
         "end": {
-          "line": 396,
+          "line": 408,
           "column": 3
         },
         "statements": 1
@@ -3337,11 +3397,11 @@
       "identity": {
         "file": "internal/currentstatecoord/currentstate.go",
         "start": {
-          "line": 402,
+          "line": 414,
           "column": 16
         },
         "end": {
-          "line": 404,
+          "line": 416,
           "column": 3
         },
         "statements": 1
@@ -19029,11 +19089,11 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
-            "line": 332,
-            "column": 17
+            "line": 319,
+            "column": 27
           },
           "end": {
-            "line": 334,
+            "line": 321,
             "column": 4
           },
           "statements": 1
@@ -19041,11 +19101,59 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
-            "line": 368,
+            "line": 326,
+            "column": 27
+          },
+          "end": {
+            "line": 328,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 330,
+            "column": 17
+          },
+          "end": {
+            "line": 332,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 337,
+            "column": 17
+          },
+          "end": {
+            "line": 339,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 344,
+            "column": 17
+          },
+          "end": {
+            "line": 346,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/currentstatecoord/currentstate.go",
+          "start": {
+            "line": 380,
             "column": 2
           },
           "end": {
-            "line": 368,
+            "line": 380,
             "column": 60
           },
           "statements": 1
@@ -19053,11 +19161,11 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
-            "line": 394,
+            "line": 406,
             "column": 16
           },
           "end": {
-            "line": 396,
+            "line": 408,
             "column": 3
           },
           "statements": 1
@@ -19065,11 +19173,11 @@
         {
           "file": "internal/currentstatecoord/currentstate.go",
           "start": {
-            "line": 402,
+            "line": 414,
             "column": 16
           },
           "end": {
-            "line": 404,
+            "line": 416,
             "column": 3
           },
           "statements": 1
@@ -21061,38 +21169,98 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 368,
-        "targetLine": 368,
+        "line": 319,
+        "targetLine": 319,
+        "reason": "the terminal parser admits only exact lowercase full object IDs, which ResolveCommit returns unchanged",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "selectedTerminalEvidence receives parser-validated exact lowercase full object IDs. ResolveCommit returns the exact resolved object ID, so a successful unequal base result at internal/currentstatecoord/currentstate.go:319 requires violation of that closed parser-to-repository contract."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 326,
+        "targetLine": 326,
+        "reason": "the terminal parser admits only exact lowercase full object IDs, which ResolveCommit returns unchanged",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "selectedTerminalEvidence receives parser-validated exact lowercase full object IDs. ResolveCommit returns the exact resolved object ID, so a successful unequal head result at internal/currentstatecoord/currentstate.go:326 requires violation of that closed parser-to-repository contract."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 330,
+        "targetLine": 330,
+        "reason": "both selected objects just resolved; only cancellation or a concurrent repository fault can now make HEAD resolution fail",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "At internal/currentstatecoord/currentstate.go:330, both selected exact objects resolved immediately before current HEAD is resolved. This error requires cancellation or a concurrent repository or object-store fault; deterministic stale-HEAD refusal is directly tested."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 337,
+        "targetLine": 337,
+        "reason": "both exact commits just resolved; only cancellation or a corrupt graph can make ancestry inspection fail",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "At internal/currentstatecoord/currentstate.go:337, both exact commits resolved immediately before ancestry inspection. This error requires cancellation or a corrupt or concurrently changing Git graph; deterministic non-ancestry refusal is directly tested."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 344,
+        "targetLine": 344,
+        "reason": "exact reachable ancestry was just verified; only cancellation or a mid-walk object-store fault can fail accumulation",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "At internal/currentstatecoord/currentstate.go:344, both exact commits resolved and ancestry succeeded immediately before RangeTouchedPaths. This error requires cancellation or a concurrent object-store fault; multi-commit, merge-resolution, missing, divergent, empty, stale, and restored-path histories are directly tested."
+    },
+    {
+      "directive": {
+        "file": "internal/currentstatecoord/currentstate.go",
+        "line": 380,
+        "targetLine": 380,
         "reason": "ParseSources converts every parser failure into DiagnosticsError",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "In plansFromTree, ParseSources at internal/currentstatecoord/currentstate.go:356 returns either plans or DiagnosticsError; the final return at line 368 is therefore unreachable without violating the parser owner contract."
+      "evidence": "In plansFromTree, ParseSources at internal/currentstatecoord/currentstate.go:368 returns either plans or DiagnosticsError; the final return at line 380 is therefore unreachable without violating the parser owner contract."
     },
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 394,
-        "targetLine": 394,
+        "line": 406,
+        "targetLine": 406,
         "reason": "IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "In headTreeAndLock, HeadExists at internal/currentstatecoord/currentstate.go:393 follows successful repository reads by CheckStaged. Its line-394 error requires concurrent repository removal or another external object-store fault."
+      "evidence": "In headTreeAndLock, HeadExists at internal/currentstatecoord/currentstate.go:405 follows successful repository reads by CheckStaged. Its line-406 error requires concurrent repository removal or another external object-store fault."
     },
     {
       "directive": {
         "file": "internal/currentstatecoord/currentstate.go",
-        "line": 402,
-        "targetLine": 402,
+        "line": 414,
+        "targetLine": 414,
         "reason": "HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "In headTreeAndLock, CommitTree at internal/currentstatecoord/currentstate.go:401 reads the same HEAD resolved by HeadExists immediately above. Its line-402 error requires a concurrent repository or object-store fault."
+      "evidence": "In headTreeAndLock, CommitTree at internal/currentstatecoord/currentstate.go:413 reads the same HEAD resolved by HeadExists immediately above. Its line-414 error requires a concurrent repository or object-store fault."
     },
     {
       "directive": {

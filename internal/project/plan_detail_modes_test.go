@@ -498,6 +498,38 @@ func readPlanPolicyFile(t *testing.T, root, name string) string {
 	return string(body)
 }
 
+func TestTerminalPlanClosureGuidanceAuthorsSelectedHistory(t *testing.T) {
+	data := map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{},
+		"skills": map[string]bool{"effort-workflow": true, "adr-lifecycle": true, "reviewing-impl": true},
+	}
+	root := testsupport.RepoRoot(t)
+	surfaces := map[string]string{
+		"default effort workflow":   renderSkillGolden(t, "effort-workflow", data),
+		"default inline workflow":   renderSkillGolden(t, "executing-plans", data),
+		"default subagent workflow": renderSkillGolden(t, "subagent-driven-development", data),
+		"default writing workflow":  renderSkillGolden(t, "writing-plans", data),
+		"default plans README":      renderGolden(t, "plans-readme/README.md.tmpl", data),
+		"Pi effort workflow":        readPlanPolicyFile(t, root, ".pi/skills/awf-effort-workflow/SKILL.md"),
+		"Pi inline workflow":        readPlanPolicyFile(t, root, ".pi/skills/awf-executing-plans/SKILL.md"),
+		"Pi subagent workflow":      readPlanPolicyFile(t, root, ".pi/skills/awf-subagent-driven-development/SKILL.md"),
+		"Pi writing workflow":       readPlanPolicyFile(t, root, ".pi/skills/awf-writing-plans/SKILL.md"),
+		"Claude effort workflow":    readPlanPolicyFile(t, root, ".claude/skills/awf-effort-workflow/SKILL.md"),
+		"Claude inline workflow":    readPlanPolicyFile(t, root, ".claude/skills/awf-executing-plans/SKILL.md"),
+		"Claude subagent workflow":  readPlanPolicyFile(t, root, ".claude/skills/awf-subagent-driven-development/SKILL.md"),
+		"Claude writing workflow":   readPlanPolicyFile(t, root, ".claude/skills/awf-writing-plans/SKILL.md"),
+		"rendered plans README":     readPlanPolicyFile(t, root, "docs/plans/README.md"),
+	}
+	for name, body := range surfaces {
+		normalized := strings.Join(strings.Fields(body), " ")
+		for _, want := range []string{"Terminal reconciliation", "full-SHA", "current `HEAD`", "old and new touched path", "every selected commit", "merge resolutions", "material route deviation", "endpoint diff", "prose markers"} {
+			if !strings.Contains(normalized, want) {
+				t.Errorf("%s missing terminal authoring contract %q", name, want)
+			}
+		}
+	}
+}
+
 // invariant: rendering/workflow-skill-templates:authority-guided-implementation-autonomy (TestPlanDeviationReconciliationGuidanceStayAligned)
 func TestPlanDeviationReconciliationGuidanceStayAligned(t *testing.T) {
 	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{}}

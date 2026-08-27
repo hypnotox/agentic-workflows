@@ -598,3 +598,13 @@ Focused parser, set-order, repository-history, stale-tip, ancestry, fenced-examp
 tests cover the correction and fail under direct mutations that restore endpoint-only selection,
 movable selectors, ordered comparison, or fence-blind parsing. This retains the ADR's deliberate absence of permanent
 plan-path, deletion, or rename guarantees and leaves multiple-plan aggregation advisory.
+
+Renewed Phase 7 review found four mechanical settlement gaps. Terminal closure guidance now tells
+both effort-backed and effort-free owners to author the parsed reconciliation from a full-SHA range
+ending at current HEAD, every old and new path accumulated across selected commits and merge
+resolutions, and the complete material-deviation record rather than endpoint diffs or prose markers.
+The plan-format reference states the same authoring grammar. Repository selector failures retain their
+underlying Git error identity and operation context. Independent fixtures preserve an intermediate
+add-then-delete path and a merge-resolution-only path, while a marked repository-backed `CheckStaged`
+test proves matching selected history reaches terminal policy and a guessed path is rejected. Rendered
+Pi, Claude, and plan-reference boundaries carry the same meaning.

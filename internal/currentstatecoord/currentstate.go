@@ -313,23 +313,35 @@ func selectedTerminalEvidence(before, after []plan.Plan, repo *awfgit.Repo, ctx 
 		}
 		base, head := next.TerminalReconciliation.ImplementationEndpoints()
 		resolvedBase, err := repo.ResolveCommit(ctx, base)
-		if err != nil || resolvedBase != base {
+		if err != nil {
+			return nil, fmt.Errorf("%s: resolve selected implementation range base: %w", next.Path, err)
+		}
+		if resolvedBase != base { // coverage-ignore: the terminal parser admits only exact lowercase full object IDs, which ResolveCommit returns unchanged
 			return nil, fmt.Errorf("%s: selected implementation range has an unavailable base", next.Path)
 		}
 		resolvedHead, err := repo.ResolveCommit(ctx, head)
-		if err != nil || resolvedHead != head {
+		if err != nil {
+			return nil, fmt.Errorf("%s: resolve selected implementation range head: %w", next.Path, err)
+		}
+		if resolvedHead != head { // coverage-ignore: the terminal parser admits only exact lowercase full object IDs, which ResolveCommit returns unchanged
 			return nil, fmt.Errorf("%s: selected implementation range has an unavailable head", next.Path)
 		}
 		checkoutHead, err := repo.ResolveCommit(ctx, "HEAD")
-		if err != nil || checkoutHead != head {
+		if err != nil { // coverage-ignore: both selected objects just resolved; only cancellation or a concurrent repository fault can now make HEAD resolution fail
+			return nil, fmt.Errorf("%s: resolve current checkout HEAD: %w", next.Path, err)
+		}
+		if checkoutHead != head {
 			return nil, fmt.Errorf("%s: selected implementation range head is not the current checkout HEAD", next.Path)
 		}
 		ancestor, err := repo.Ancestor(ctx, base, head)
-		if err != nil || !ancestor {
+		if err != nil { // coverage-ignore: both exact commits just resolved; only cancellation or a corrupt graph can make ancestry inspection fail
+			return nil, fmt.Errorf("%s: verify selected implementation range ancestry: %w", next.Path, err)
+		}
+		if !ancestor {
 			return nil, fmt.Errorf("%s: selected implementation range base is not an ancestor of head", next.Path)
 		}
 		paths, err := repo.RangeTouchedPaths(ctx, base, head)
-		if err != nil {
+		if err != nil { // coverage-ignore: exact reachable ancestry was just verified; only cancellation or a mid-walk object-store fault can fail accumulation
 			return nil, fmt.Errorf("%s: %w", next.Path, err)
 		}
 		if len(paths) == 0 {
