@@ -26,7 +26,7 @@ Backing: test
 ### `invariant: root-scoped-project-mutation-leases`
 
 `internal/filesystem` owns one persistent advisory lease mechanism, including ADR allocation's interoperable `awf/adr-locks` namespace and key. It canonicalizes existing roots including symlink aliases, retains restrictive user-cache lock files, orders complete scope-and-root identities even when roots match, waits with context cancellation, and releases explicitly or on process exit. Tracked and resident callers select distinct lease scopes, so linked checkouts remain independently mutable while a shared resident root serializes cross-checkout mutation.
-Origin: ADR-serialize-project-mutations-by-physical-root
+Origin: ADR-0307
 Backing: test
 
 ### `invariant: single-fault-source`

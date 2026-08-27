@@ -25,7 +25,7 @@ Backing: test
 
 Working-tree and snapshot config and every sidecar contain exactly one complete known-field YAML document. Strict decoding rejects a second document, trailing non-comment content, and data or sections at the root of config.yaml because those keys belong only in sidecars.
 Origin: ADR-0251
-Revised-by: ADR-require-complete-and-unambiguous-mutable-authority
+Revised-by: ADR-0310
 Backing: test
 
 ### `invariant: audit-no-base-branch-config`

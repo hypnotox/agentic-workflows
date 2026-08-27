@@ -16,7 +16,7 @@ func TestNewDefensivelyCopiesMutableSemanticProjections(t *testing.T) {
 	plans := []plan.Plan{{Phases: []plan.Phase{{Tasks: []plan.Task{{Fields: plan.TaskFields{Paths: []plan.PathEntry{{Value: "a"}}, Applying: []plan.DecisionRef{{ADR: "0001"}}, Context: []plan.DecisionRef{{ADR: "0002"}}}}}, Advances: []string{"advance"}, Completes: []string{"complete"}}}}}
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{"generated.md": {}}}
 	declarations := []outputplan.Declaration{outputplan.NewDeclaration("docs/guide.md", "guide", nil, nil, nil)}
-	input := New(layout, currentstate.Loaded{}, NewPlanContext(plans, adr.Corpus{}), nil, lock, declarations, []string{"eligible"}, []string{"ignore"})
+	input := NewWithInventory(layout, currentstate.Loaded{}, NewPlanContext(plans, adr.Corpus{}), nil, nil, lock, declarations, []string{"eligible"}, []string{"ignore"})
 
 	layout.Docs["guide"] = "mutated"
 	layout.Singletons["guide"] = "mutated"
@@ -32,7 +32,7 @@ func TestNewDefensivelyCopiesMutableSemanticProjections(t *testing.T) {
 		t.Fatalf("input retained mutable caller state: %#v", view)
 	}
 	eligible, ignores := []string{"eligible"}, []string{"ignore"}
-	input = New(Layout{}, currentstate.Loaded{}, PlanContext{}, nil, nil, nil, eligible, ignores)
+	input = NewWithInventory(Layout{}, currentstate.Loaded{}, PlanContext{}, nil, nil, nil, nil, eligible, ignores)
 	eligible[0], ignores[0] = "mutated", "mutated"
 	view = input.Snapshot()
 	if view.Eligible[0] != "eligible" || view.ContextIgnore[0] != "ignore" {
@@ -72,7 +72,7 @@ func TestNewCopiesLoadedSemanticRecordsAndSources(t *testing.T) {
 		ADRs:    []adr.ADR{{Domains: []string{"alpha"}, Sections: map[string]string{"Context": "original"}, Operations: []adr.Operation{operation}, History: []adr.HistoryEvent{{Operations: []adr.Operation{operation}}}}},
 		Sources: map[string][]byte{"source": []byte("original")},
 	}
-	input := New(Layout{}, loaded, PlanContext{}, nil, nil, nil, nil, nil)
+	input := NewWithInventory(Layout{}, loaded, PlanContext{}, nil, nil, nil, nil, nil, nil)
 	loaded.ADRs[0].Domains[0] = "mutated"
 	loaded.ADRs[0].Sections["Context"] = "mutated"
 	loaded.ADRs[0].Operations[0].ID = "mutated"

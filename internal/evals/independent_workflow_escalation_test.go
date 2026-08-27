@@ -162,6 +162,121 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 			// target's rendered skills and agents.
 		})
 	}
+
+	// This is the comprehensive cross-profile, cross-runtime proof for the
+	// continuity claims marked above. The focused boundary oracle below retains
+	// its narrower diagnostic role without carrying those proof markers.
+	for _, profile := range []string{"core", "full"} {
+		t.Run("continuity-"+profile, func(t *testing.T) {
+			root := syncPlanFlexibilityProfile(t, profile)
+			for _, target := range []string{"pi", "claude"} {
+				t.Run(target, func(t *testing.T) {
+					brainstorming := read(t, planSkillPath(root, target, "brainstorming"))
+					effort := read(t, planSkillPath(root, target, "effort-workflow"))
+					workflow := read(t, filepath.Join(root, "docs", "workflow.md"))
+
+					assertContainsAll(t, target+" "+profile+" comprehensive brainstorming continuity", brainstorming,
+						"does not create an effort or require one merely to begin brainstorming",
+						"Evaluate it when brainstorming begins and whenever a continuity-relevant fact changes",
+						"When independent entry continuity evaluation fires, immediately invoke", "may begin effort-free",
+						"first settled material decision", "before proceeding further",
+						"single-decision brainstorm may remain effort-free only when no independent continuity need fires")
+					assertOrderedPhrases(t, brainstorming,
+						"Evaluate it when brainstorming begins", "When independent entry continuity evaluation fires, immediately invoke",
+						"first settled material decision", "create or resume ownership before proceeding further")
+					for clause, mutation := range map[string]string{
+						"entry timing":                strings.Replace(brainstorming, "When independent entry continuity evaluation fires, immediately invoke", "After entry continuity evaluation fires, invoke later", 1),
+						"single-decision eligibility": strings.Replace(brainstorming, "only when no independent continuity need fires", "even when an independent continuity need fires", 1),
+						"first-decision backstop":     strings.Replace(brainstorming, "create or resume ownership before proceeding further", "proceed further before creating or resuming ownership", 1),
+					} {
+						if strings.Contains(mutation, map[string]string{
+							"entry timing":                "When independent entry continuity evaluation fires, immediately invoke",
+							"single-decision eligibility": "only when no independent continuity need fires",
+							"first-decision backstop":     "create or resume ownership before proceeding further",
+						}[clause]) {
+							t.Errorf("%s %s continuity mutation did not remove %s", target, profile, clause)
+						}
+					}
+
+					assertContainsAll(t, target+" "+profile+" comprehensive late memory", effort,
+						"initialize the owned memory from retained evidence before any handoff", "current outcome in `## Brief`",
+						"required user-provenance and `Record:` evidence", "relevant observations in `## Observations`",
+						"current phase and next action", "reconfirmed, not reconstructed", "Do not hand off until this initialization is complete")
+					assertOrderedPhrases(t, effort, "initialize the owned memory from retained evidence before any handoff", "Do not hand off until this initialization is complete")
+					for clause, mutation := range map[string]string{
+						"Brief":                strings.Replace(effort, "current outcome in `## Brief`", "current outcome omitted", 1),
+						"decision evidence":    strings.Replace(effort, "required user-provenance and `Record:` evidence", "decision evidence omitted", 1),
+						"observation recovery": strings.Replace(effort, "relevant observations in `## Observations`", "observations omitted", 1),
+						"phase recovery":       strings.Replace(effort, "current phase and next action", "phase omitted", 1),
+						"reconfirmation":       strings.Replace(effort, "reconfirmed, not reconstructed", "reconstructed", 1),
+					} {
+						if strings.Contains(mutation, map[string]string{"Brief": "current outcome in `## Brief`", "decision evidence": "required user-provenance and `Record:` evidence", "observation recovery": "relevant observations in `## Observations`", "phase recovery": "current phase and next action", "reconfirmation": "reconfirmed, not reconstructed"}[clause]) {
+							t.Errorf("%s %s late-memory mutation did not remove %s", target, profile, clause)
+						}
+					}
+
+					assertContainsAll(t, target+" "+profile+" comprehensive fixed identity", effort,
+						"Effort title and slug are fixed", "Refinements inside the owned outcome remain in that effort",
+						"material outcome drift requires a different outcome", "fixed-identity successor", "Transfer necessary still-valid context",
+						"verify the successor is resumable", "close the obsolete effort through the existing topology-safety and finish/archive lifecycle")
+					assertOrderedPhrases(t, effort, "fixed-identity successor", "Transfer necessary still-valid context", "verify the successor is resumable", "close the obsolete effort")
+					wrongArchiveOrder := strings.Replace(effort, "Transfer necessary still-valid context, verify the successor is resumable, then close the obsolete effort", "close the obsolete effort, then transfer necessary still-valid context and verify the successor is resumable", 1)
+					if hasOrderedPhrases(wrongArchiveOrder, "Transfer necessary still-valid context", "verify the successor is resumable", "close the obsolete effort") {
+						t.Errorf("%s %s fixed-identity mutation accepted archive before successor resumability", target, profile)
+					}
+					assertContainsAll(t, target+" "+profile+" workflow continuity", workflow,
+						"Handoff is prohibited while required late-creation memory initialization remains incomplete", "Missing exact required user evidence must be reconfirmed, not reconstructed")
+				})
+			}
+		})
+	}
+}
+
+func TestBrainstormContinuityBoundary(t *testing.T) {
+	for _, profile := range []string{"core", "full"} {
+		t.Run(profile, func(t *testing.T) {
+			root := syncPlanFlexibilityProfile(t, profile)
+			for _, target := range []string{"pi", "claude"} {
+				t.Run(target, func(t *testing.T) {
+					brainstorming := read(t, planSkillPath(root, target, "brainstorming"))
+					effort := read(t, planSkillPath(root, target, "effort-workflow"))
+					workflow := read(t, filepath.Join(root, "docs", "workflow.md"))
+
+					assertContainsAll(t, target+" "+profile+" brainstorming continuity", brainstorming,
+						"Evaluate it when brainstorming begins and whenever a continuity-relevant fact changes",
+						"may begin effort-free", "first settled material decision", "before proceeding further", "single-decision brainstorm may remain effort-free only when no independent continuity need fires")
+					assertOrderedPhrases(t, brainstorming,
+						"**Evaluate continuity independently.**", "**Orient in the topic.**",
+						"**Clarify one question at a time.**", "**Present proportionate approaches.**")
+					assertOrderedPhrases(t, brainstorming, "first settled material decision", "create or resume ownership before proceeding further")
+					lateOwnership := strings.Replace(brainstorming, "create or resume ownership before proceeding further", "proceed further before creating or resuming ownership", 1)
+					if hasOrderedPhrases(lateOwnership, "first settled material decision", "create or resume ownership before proceeding further") {
+						t.Errorf("%s %s accepted continuation before ownership", target, profile)
+					}
+
+					assertContainsAll(t, target+" "+profile+" effort continuity", effort,
+						"whenever continuity-relevant facts change", "continuing after its first settled material decision requires creation or resumption before proceeding further",
+						"initialize the owned memory from retained evidence before any handoff", "current outcome in `## Brief`", "required user-provenance and `Record:` evidence", "relevant observations in `## Observations`", "current phase and next action", "reconfirmed, not reconstructed", "Do not hand off until this initialization is complete")
+					assertOrderedPhrases(t, effort, "initialize the owned memory from retained evidence before any handoff", "Do not hand off until this initialization is complete")
+					missingEvidenceRecovery := strings.Replace(effort, "Missing exact required user evidence must be reconfirmed, not reconstructed.", "Missing exact required user evidence may be reconstructed.", 1)
+					if strings.Contains(missingEvidenceRecovery, "reconfirmed, not reconstructed") {
+						t.Errorf("%s %s accepted reconstructed user evidence", target, profile)
+					}
+
+					assertContainsAll(t, target+" "+profile+" fixed identity", effort,
+						"Effort title and slug are fixed", "add no retitle operation, schema change, or history-deleting lifecycle", "Refinements inside the owned outcome remain in that effort", "material outcome drift requires a different outcome", "fixed-identity successor", "Transfer necessary still-valid context", "verify the successor is resumable", "close the obsolete effort through the existing topology-safety and finish/archive lifecycle")
+					assertOrderedPhrases(t, effort, "fixed-identity successor", "Transfer necessary still-valid context", "verify the successor is resumable", "close the obsolete effort")
+					wrongArchiveOrder := strings.Replace(effort, "Transfer necessary still-valid context, verify the successor is resumable, then close the obsolete effort", "close the obsolete effort, then transfer necessary still-valid context and verify the successor is resumable", 1)
+					if hasOrderedPhrases(wrongArchiveOrder, "Transfer necessary still-valid context", "verify the successor is resumable", "close the obsolete effort") {
+						t.Errorf("%s %s accepted archive before successor resumability", target, profile)
+					}
+
+					assertContainsAll(t, target+" "+profile+" workflow continuity", workflow,
+						"Handoff is prohibited while required late-creation memory initialization remains incomplete", "Missing exact required user evidence must be reconfirmed, not reconstructed")
+				})
+			}
+		})
+	}
 }
 
 // invariant: rendering/workflow-skill-templates:mandatory-approval-boundaries (TestMandatoryApprovalBoundaries)
@@ -177,6 +292,20 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		}
 		brainstorming := read(t, path("brainstorming"))
 		assertContainsAll(t, target+" brainstorming approval", brainstorming, "material choice or clarification is unresolved", "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
+		// The conditional single-decision exception is part of the approval
+		// boundary, so prove it on both governance footprints and runtimes.
+		for _, profile := range []string{"core", "full"} {
+			profileRoot := syncPlanFlexibilityProfile(t, profile)
+			profileBrainstorming := read(t, planSkillPath(profileRoot, target, "brainstorming"))
+			const eligibility = "A single-decision brainstorm may remain effort-free only when no independent continuity need fires."
+			if !strings.Contains(profileBrainstorming, eligibility) {
+				t.Errorf("%s %s brainstorming lacks conditional single-decision eligibility", target, profile)
+			}
+			ineligible := strings.Replace(profileBrainstorming, eligibility, "A single-decision brainstorm may remain effort-free whenever it wishes.", 1)
+			if strings.Contains(ineligible, eligibility) {
+				t.Errorf("%s %s approval-boundary mutation accepted unconditional single-decision eligibility", target, profile)
+			}
+		}
 		assertOrderedPhrases(t, brainstorming, "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
 		adrReview := read(t, path("reviewing-adr"))
 		assertContainsAll(t, target+" autonomous ADR hand-off", adrReview,

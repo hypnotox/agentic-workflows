@@ -116,7 +116,7 @@ Backing: test
 
 Ordinary render and first adoption discover immutable tracked and resident anchors, acquire the complete canonical lease set before mutable configuration loading and output planning, and hold it through complete or typed partial outcome construction. Publisher retains stable output, backup, prune, and final-lock-last policy; no Preparation mutator can publish a stale plan. Selected root-confined handles observe expected identities and perform exclusive creation, replacement, removal, parent creation, mode correction, backup publication, and empty-ancestor cleanup without changing outside bytes or modes. Every failure after a committed directory, mode, backup, output, prune, cleanup, or lock effect returns and presents that stable effect with a retry or recovery action; a pre-effect failure preserves the tree, and no crash-atomicity is claimed.
 Origin: ADR-0269
-Revised-by: ADR-serialize-project-mutations-by-physical-root
+Revised-by: ADR-0307
 Backing: test
 
 ### `invariant: sync-backs-up-foreign`

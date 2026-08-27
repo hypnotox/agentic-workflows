@@ -51,13 +51,13 @@ Backing: test
 
 The release workflow verifies successful exact-SHA CI conclusions, checkout and tag identity, prior-release mutation selection, origin/main ancestry, ./x gate, and ./x check before its needs-bound credential-bearing GoReleaser publish step.
 Origin: ADR-0079
-Revised-by: ADR-bind-repository-and-release-acceptance-to-exact-revisions
+Revised-by: ADR-0308
 Backing: test
 
 ### `rule: hosted-release-protection`
 
 The live GitHub `release tags` ruleset applies to `refs/tags/v*` with no bypass actor and requires GitHub Actions checks `CI / gate` and `CI / release-config` on the exact tagged revision before the ref can be created or updated.
-Origin: ADR-bind-repository-and-release-acceptance-to-exact-revisions
+Origin: ADR-0308
 
 ### `invariant: release-notes-from-changelog`
 

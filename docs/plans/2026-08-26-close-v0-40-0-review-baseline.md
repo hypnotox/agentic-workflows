@@ -682,3 +682,10 @@ reasoned selection correction follows the exact-revision authority without weake
 proof. The single verify pass found that per-candidate API failures lost their error identity during
 aggregation. Settlement retains each cause through wrapping and joins failed-candidate evidence; a
 red-first transport sentinel proves `errors.Is` survives the complete refusal.
+
+Finalization merged current `main` before numbering. The combined strict-inventory and focused-context
+paths exposed empty live-lock fixtures in the newer context tests; replacing them with nonempty
+permanent inventories restored the intended validation, cancellation, and frozen-input oracles. The
+merged coverage ledger retains both branches' reviewed evidence and reconciles the shifted context
+and Publisher identities. ADR numbering assigned 0307 through 0311 in plan order, and the complete
+combined gate passed before the integration merge commit.

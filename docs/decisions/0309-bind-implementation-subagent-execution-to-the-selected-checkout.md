@@ -4,7 +4,7 @@ slug: bind-implementation-subagent-execution-to-the-selected-checkout
 status: Implementing
 date: 2026-08-26
 ---
-# ADR-bind-implementation-subagent-execution-to-the-selected-checkout: Bind Implementation Subagent Execution to the Selected Checkout
+# ADR-0309: Bind Implementation Subagent Execution to the Selected Checkout
 
 
 ## Context

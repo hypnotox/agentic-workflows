@@ -170,6 +170,203 @@ func TestPrepareWorkingContextSelectedUniverseErrors(t *testing.T) {
 	}
 }
 
+func TestPrepareFocusedWorkingContextValidationAndSelectedUniverseErrors(t *testing.T) {
+	ctx := context.Background()
+	if _, err := PrepareFocusedWorkingContext(nil, nil, ctx, nil); err == nil || !strings.Contains(err.Error(), "missing project state") {
+		t.Fatalf("nil state error = %v", err)
+	}
+	root := t.TempDir()
+	if _, err := PrepareFocusedWorkingContext(contextState(root), nil, ctx, nil); !errors.Is(err, awfgit.ErrNotARepository) {
+		t.Fatalf("nil repo error = %v", err)
+	}
+	for _, tc := range []struct {
+		name, config, lock, want string
+	}{
+		{name: "missing config", want: "working snapshot has no .awf/config.yaml"},
+		{name: "malformed lock", config: "prefix: x\nprofile: core\nintegrationBranch: main\n", lock: "not: [valid", want: "parse snapshot lock"},
+		{name: "malformed config", config: "not: [valid", want: "yaml:"},
+		{name: "marker second selection", config: "prefix: x\nprofile: core\nintegrationBranch: main\ncurrentState:\n  sources:\n    - globs: ['**']\n      marker: '//'\n", lock: "not: [valid", want: "parse snapshot lock"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := gitfixture.InitRepo(t)
+			if tc.config != "" {
+				writeContextFile(t, fixture.Root(), ".awf/config.yaml", tc.config)
+			}
+			if tc.lock != "" {
+				writeContextFile(t, fixture.Root(), ".awf/awf.lock", tc.lock)
+			} else if tc.config != "" {
+				writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
+			}
+			repo, err := awfgit.Open(fixture.Root())
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, ctx, []string{"requested.txt"}); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("PrepareFocusedWorkingContext() error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+	fixture := gitfixture.InitRepo(t)
+	writeContextFile(t, fixture.Root(), ".awf/config.yaml", "prefix: x\nprofile: core\nintegrationBranch: main\n")
+	writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
+	repo, err := awfgit.Open(fixture.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	canceled, cancel := context.WithCancel(ctx)
+	cancel()
+	if _, err := PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, canceled, nil); !errors.Is(err, context.Canceled) {
+		t.Fatalf("canceled inventory error = %v", err)
+	}
+}
+
+type cancelAfterChecks struct {
+	context.Context
+	remaining int
+}
+
+func (c *cancelAfterChecks) Err() error {
+	c.remaining--
+	if c.remaining <= 0 {
+		return context.Canceled
+	}
+	return nil
+}
+
+type countedChecks struct {
+	context.Context
+	calls int
+}
+
+func (c *countedChecks) Err() error {
+	c.calls++
+	return c.Context.Err()
+}
+
+type actionAtCheck struct {
+	context.Context
+	remaining int
+	action    func() error
+	actionErr error
+}
+
+func (c *actionAtCheck) Err() error {
+	c.remaining--
+	if c.remaining == 0 {
+		c.actionErr = c.action()
+	}
+	return c.Context.Err()
+}
+
+func TestPrepareFocusedWorkingContextCancelsDuringSelectedRead(t *testing.T) {
+	for _, tc := range []struct {
+		name, marker string
+		offset       int
+	}{
+		{name: "initial config and lock", offset: 1},
+		{name: "delta", marker: "marker.go", offset: 3},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := gitfixture.InitRepo(t)
+			writeContextFile(t, fixture.Root(), ".awf/config.yaml", "prefix: x\nprofile: core\nintegrationBranch: main\n")
+			writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
+			if tc.marker != "" {
+				writeContextFile(t, fixture.Root(), tc.marker, "payload\n")
+			}
+			repo, err := awfgit.Open(fixture.Root())
+			if err != nil {
+				t.Fatal(err)
+			}
+			probe := &countedChecks{Context: context.Background()}
+			if _, err := repo.WorkingEntries(probe); err != nil {
+				t.Fatal(err)
+			}
+			ctx := &cancelAfterChecks{Context: context.Background(), remaining: probe.calls + tc.offset}
+			if _, err := PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, ctx, []string{tc.marker}); !errors.Is(err, context.Canceled) {
+				t.Fatalf("focused selected-read cancellation error = %v", err)
+			}
+		})
+	}
+}
+
+func TestSnapshotReaderSeparatesSelectedBytesFromInventoryPresence(t *testing.T) {
+	tree := ownerTree(t, snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("config")})
+	inventory, err := snapshot.NewInventory([]snapshot.Entry{
+		{Path: ".awf/config.yaml", Mode: snapshot.Regular},
+		{Path: ".awf/unread.yaml", Mode: snapshot.Regular},
+		{Path: "link", Mode: snapshot.Symlink},
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	reader := snapshotReader{tree: tree, inventory: inventory}
+	if data, found, err := reader.ReadFile(".awf/config.yaml"); err != nil || !found || string(data) != "config" {
+		t.Fatalf("selected read = %q, %t, %v", data, found, err)
+	}
+	if data, found, err := reader.ReadFile(".awf/unread.yaml"); err != nil || found || data != nil {
+		t.Fatalf("unread semantic source = %q, %t, %v, want absent bytes", data, found, err)
+	}
+	if !reader.PathExists(".awf/unread.yaml") {
+		t.Fatal("inventory-backed regular path reported absent")
+	}
+	if reader.PathExists("link") {
+		t.Fatal("symlink reported as declaration input")
+	}
+}
+
+func TestPrepareFocusedWorkingContextFreezesInitialConfigAndLock(t *testing.T) {
+	const configBody = "prefix: x\nprofile: full\nintegrationBranch: main\ncurrentState:\n  sources:\n    - globs: ['*.go']\n      marker: '// invariant:'\n"
+	const lockBody = `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`
+	for _, tc := range []struct {
+		name   string
+		offset int
+		mutate func(string) error
+	}{
+		{name: "selected file vanishes", offset: 3, mutate: func(root string) error { return os.Remove(filepath.Join(root, ".awf", "awf.lock")) }},
+		{name: "lock changes", offset: 3, mutate: func(root string) error {
+			return os.WriteFile(filepath.Join(root, ".awf", "awf.lock"), []byte(`{"awfVersion":"9.9.9","schemaVersion":46,"files":{"prior":{}}}`), 0o644)
+		}},
+		{name: "config changes", offset: 4, mutate: func(root string) error {
+			return os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: changed\nprofile: core\nintegrationBranch: other\n"), 0o644)
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := gitfixture.InitRepo(t)
+			writeContextFile(t, fixture.Root(), ".awf/config.yaml", configBody)
+			writeContextFile(t, fixture.Root(), ".awf/awf.lock", lockBody)
+			writeContextFile(t, fixture.Root(), "marker.go", "// invariant: example\n")
+			repo, err := awfgit.Open(fixture.Root())
+			if err != nil {
+				t.Fatal(err)
+			}
+			probe := &countedChecks{Context: context.Background()}
+			if _, err := repo.WorkingEntries(probe); err != nil {
+				t.Fatal(err)
+			}
+			ctx := &actionAtCheck{Context: context.Background(), remaining: probe.calls + tc.offset, action: func() error { return tc.mutate(fixture.Root()) }}
+			prep, err := PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, ctx, nil)
+			if ctx.actionErr != nil {
+				t.Fatalf("mutation: %v", ctx.actionErr)
+			}
+			if err != nil {
+				t.Fatalf("PrepareFocusedWorkingContext() error = %v, want frozen initial config and lock", err)
+			}
+			if prep.Config.Prefix != "x" || prep.Config.Profile != catalog.ProfileFull || prep.Config.IntegrationBranch != "main" {
+				t.Fatalf("prepared config = %#v, want initial parsed facts", prep.Config)
+			}
+			if got := prep.Lock(); got == nil || got.AWFVersion != "0.39.2" || got.SchemaVersion != 46 {
+				t.Fatalf("prepared lock = %#v, want initial lock", got)
+			}
+			if file, ok := prep.Tree().Lookup(".awf/config.yaml"); !ok || string(file.Bytes) != configBody {
+				t.Fatalf("prepared config bytes = %q, %t, want initial bytes", file.Bytes, ok)
+			}
+			if file, ok := prep.Tree().Lookup(".awf/awf.lock"); !ok || string(file.Bytes) != lockBody {
+				t.Fatalf("prepared lock bytes = %q, %t, want initial bytes", file.Bytes, ok)
+			}
+		})
+	}
+}
+
 func TestPrepareStagedContextSelectedUniverseErrors(t *testing.T) {
 	ctx := context.Background()
 	if _, err := PrepareStagedContext(ctx, t.TempDir()); !errors.Is(err, awfgit.ErrNotARepository) {
@@ -300,7 +497,7 @@ func TestCoordinatorLockTransitionAndCoreConfig(t *testing.T) {
 	}
 	withConfig := ownerTree(t,
 		snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nprofile: core\nintegrationBranch: main\n")},
-		snapshot.File{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`)},
+		snapshot.File{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)},
 	)
 	if err := validateLockTransition(withConfig, withConfig, nil, &manifest.Lock{}); err == nil {
 		t.Fatal("pre-adoption config accepted")

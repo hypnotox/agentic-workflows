@@ -56,7 +56,7 @@ Backing: test
 
 The generated Full adapter atomically registers exactly six closed-schema profiles and Core registers exactly four, each with optional exact model routing. Every reviewer included by the selected governance footprint has a dedicated profile and tool with no kind argument: Full includes ADR, plan, and code review, while Core includes code review only. One shared review-profile factory owns their common preparation and policy, the shared `review` model-preference role governs every reviewer, and each review profile independently declares ten active calls. Implementation alone accepts optional `verificationCheckout`; preparation validates and caches one canonical accessible descendant checkout as both the child CWD and commit-policy identity, while omission retains root/root. This does not confine deliberately targeted paths or move the parent session. Exploration retains required task, breadth, and detail and declares ten active calls; grounding also declares ten, while implementation declares one and parent-batch exclusivity.
 Origin: ADR-0148
-Revised-by: ADR-0260, ADR-0279, ADR-0280, ADR-0292, ADR-bind-implementation-subagent-execution-to-the-selected-checkout
+Revised-by: ADR-0260, ADR-0279, ADR-0280, ADR-0292, ADR-0309
 Backing: test
 
 ### `invariant: pi-subagent-model-preferences`
@@ -84,7 +84,7 @@ Backing: test
 
 The generated adapter builds the implementation profile prompt from the rendered implementer agent at its `.pi/agents/` path through the shared loader, strips frontmatter, and prepends the call's commit-authority line. Preparation resolves and caches the validated checkout before dispatch, returns it as child CWD, and before and after Git snapshots use that same identity. A commit-capable unchanged HEAD names the checkout, required stopped inventory, and explicit `verificationCheckout` retry repair; a no-commit changed HEAD retains its violation without auto-reverting. The generic implementer role contract carries no Pi-only checkout-routing duty.
 Origin: ADR-0177
-Revised-by: ADR-0179, ADR-0260, ADR-0279, ADR-bind-implementation-subagent-execution-to-the-selected-checkout
+Revised-by: ADR-0179, ADR-0260, ADR-0279, ADR-0309
 Backing: test
 
 ### `invariant: pi-role-contract-loader`

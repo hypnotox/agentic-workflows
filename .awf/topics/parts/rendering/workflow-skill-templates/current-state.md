@@ -37,9 +37,9 @@ Backing: test
 
 ### `invariant: independent-workflow-escalation`
 
-Workflow intake independently evaluates brainstorming, continuity, grounding, and implementation review in both governance footprints; Full additionally evaluates ADR and plan governance. Brainstorming solely owns proportionate outline approval, and its boundary is an unresolved material decision rather than the act of mutating production code, so a routine change whose protected contract is already settled proceeds without an approval stop whatever kind of file it touches.
+Workflow intake independently evaluates brainstorming, continuity, grounding, and implementation review in both governance footprints; Full additionally evaluates ADR and plan governance. Continuity is evaluated when brainstorming begins and whenever relevant facts change. Brainstorming solely owns proportionate outline approval, and its boundary is an unresolved material decision rather than the act of mutating production code, so a routine change whose protected contract is already settled proceeds without an approval stop whatever kind of file it touches.
 Origin: ADR-0243
-Revised-by: ADR-0265, ADR-0278, ADR-0286, ADR-0292
+Revised-by: ADR-0265, ADR-0278, ADR-0286, ADR-0292, ADR-0305
 Backing: test
 
 ### `invariant: bounded-exploration-reporting`
@@ -71,9 +71,9 @@ Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
 
-In both governance footprints, effort-workflow autonomously creates when continuity fires and brainstorming stops for explicit pre-artifact outline approval when an unresolved material decision fires it. Full ADR review continues to linked-plan handling; Core has no ADR or plan governance artifacts.
+In both governance footprints, effort-workflow autonomously creates or resumes when continuity fires. Brainstorming may begin effort-free, but continuing after its first settled material decision requires ownership before proceeding further; a single-decision brainstorm may remain effort-free only when no independent continuity need fires. Brainstorming stops for explicit pre-artifact outline approval when an unresolved material decision fires it. Full ADR review continues to linked-plan handling; Core has no ADR or plan governance artifacts.
 Origin: ADR-0152
-Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-0266, ADR-0278, ADR-0286, ADR-0292
+Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-0266, ADR-0278, ADR-0286, ADR-0292, ADR-0305
 Backing: test
 
 ### `invariant: authority-guided-implementation-autonomy`
@@ -92,24 +92,24 @@ Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
-Checkpoint guidance never creates an effort and remains capability-neutral: it owns persistence, eligibility, reorientation, truthful fresh-boundary logging, cancellation and failure disposition, retained-context judgment, and target-native continuation, not a target tool or session evidence source. Effort-backed checkpoints validate one immutable slug and primary-root-relative `.awf/efforts/<slug>/memory.md`, accept canonical YAML identity, continue in the managed worktree when present, and run exactly one structured memory update as the sole writer while separately appending decisions and observations. Effort-free work omits persistence. Fresh-boundary logging follows only an actual fresh-session boundary; task headings and projections never create checkpoint authority. Every checkpoint points to the workflow document for repository precedence, the one-writer contract, and the full protocol.
+Checkpoint guidance never creates an effort and remains capability-neutral: it owns persistence, eligibility, reorientation, truthful fresh-boundary logging, cancellation and failure disposition, retained-context judgment, and target-native continuation, not a target tool or session evidence source. It prohibits handoff after late creation until owned memory is initialized from retained evidence with current outcome, settled decisions and required provenance/Record evidence, relevant observations, phase, and next action; missing exact user evidence is reconfirmed rather than reconstructed. Effort-backed checkpoints validate one immutable slug and primary-root-relative `.awf/efforts/<slug>/memory.md`, accept canonical YAML identity, continue in the managed worktree when present, and run exactly one structured memory update as the sole writer while separately appending decisions and observations. Effort-free work omits persistence. Fresh-boundary logging follows only an actual fresh-session boundary; task headings and projections never create checkpoint authority. Every checkpoint points to the workflow document for repository precedence, the one-writer contract, and the full protocol.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-0209, ADR-0213, ADR-0218, ADR-0219, ADR-0222, ADR-0243, ADR-0293, ADR-0303
+Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-0209, ADR-0213, ADR-0218, ADR-0219, ADR-0222, ADR-0243, ADR-0293, ADR-0303, ADR-0305
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`
 
-Catalog-derived tests render applicable effort workflows for every selected target and prove continuity is independent of brainstorming, artifacts, implementation, and review. `effort-workflow` is the sole lifecycle owner in both governance footprints; Full adds deferred governance closure.
+Catalog-derived tests render applicable effort workflows for every selected target and prove continuity is independently evaluated at brainstorming entry and when relevant facts change, while effort-free single-decision brainstorming remains available. `effort-workflow` is the sole lifecycle owner in both governance footprints; Full adds deferred governance closure.
 Origin: ADR-0175
-Revised-by: ADR-0187, ADR-0197, ADR-0218, ADR-0222, ADR-0225, ADR-0226, ADR-0243, ADR-0266, ADR-0278, ADR-0292
+Revised-by: ADR-0187, ADR-0197, ADR-0218, ADR-0222, ADR-0225, ADR-0226, ADR-0243, ADR-0266, ADR-0278, ADR-0292, ADR-0305
 Backing: test
 
 ### `invariant: effort-workflow`
 
-Core `effort-workflow` is the selectable cross-target lifecycle owner when durable continuity materially helps or an effort resumes or finishes. It owns the operational lifecycle without ADR or plan authority; Full adds deferred artifact closure.
+Core `effort-workflow` is the selectable cross-target lifecycle owner when durable continuity materially helps or an effort resumes or finishes. It creates or resumes before further brainstorming after the first settled material decision, initializes late-created memory before handoff, and preserves fixed title and slug: refinements stay owned while material drift creates a resumable fixed-identity successor, transfers still-valid context, then closes the obsolete effort through existing topology safety and finish/archive lifecycle. It owns the operational lifecycle without ADR or plan authority; Full adds deferred artifact closure.
 Origin: ADR-0218
-Revised-by: ADR-0225, ADR-0243, ADR-0266, ADR-0278
+Revised-by: ADR-0225, ADR-0243, ADR-0266, ADR-0278, ADR-0305
 Backing: test
 
 ### `invariant: memory-log-consumer-coverage`
@@ -133,7 +133,7 @@ Backing: test
 A recorded plan phase is the current route grouping for one independently green coherent implementation transaction with an explicit inline or subagent-driven owner; a commit-capable plan owner may regroup that route before execution while landed closing commits and review evidence retain their exact scope. In Pi branches, a phase owner or commit-disabled helper whose task intentionally operates in a supplied managed worktree passes that path as `verificationCheckout`, omits it for root work, and keeps actual mutation paths explicit; the validated checkout is both child Pi CWD and verification identity; parent mutations remain explicitly path-targeted because alignment is not confinement, and no Pi-only wording leaks into other targets. Delegated phase review returns structured coverage evidence: exact phase-closing commit, complete phase scope and reviewed range, verification results, verbatim deviation report, and unreviewed settlement. The parent owns transient evidence and validates branch-tip freshness; evidence loss after context loss, session replacement, or effort-free continuation, or unverifiable freshness, falls back to ordinary terminal review, while divergence, changed authority, reasoned post-review fixes, or material mutation invalidates affected coverage and requires renewed review. Fresh single-phase assurance reviews only unreviewed settlement/integration; multi-phase assurance focuses cross-phase, settlements, and integration. Complete-range `./awf audit` always remains, including settlement commits. Shipped adopter templates never name awf's repository-local audit; self-hosted convention parts add it only to this repository's rendered skills.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0166
-Revised-by: ADR-0213, ADR-0217, ADR-0243, ADR-0255, ADR-0260, ADR-0271, ADR-0282, ADR-0287, ADR-bind-implementation-subagent-execution-to-the-selected-checkout
+Revised-by: ADR-0213, ADR-0217, ADR-0243, ADR-0255, ADR-0260, ADR-0271, ADR-0282, ADR-0287, ADR-0309
 Backing: test
 
 ### `invariant: plan-task-detail-modes`

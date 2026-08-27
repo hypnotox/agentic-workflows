@@ -120,15 +120,14 @@ func TestOrientingSkillContract(t *testing.T) {
 				}
 			}
 			// The single home requires all three dependent skills to reference it.
-			// Brainstorming's reference is pinned to its first step, which is what
-			// the claim says.
+			// Brainstorming evaluates continuity at entry, then invokes orientation.
 			for _, consumer := range []string{"brainstorming", "proposing-adr", "writing-plans"} {
 				if ref := files[adapter.SkillPath("example", consumer)]; !strings.Contains(ref, "`example-orienting`") {
 					t.Errorf("%s %s does not reference the orienting skill", target, consumer)
 				}
 			}
-			if b := files[adapter.SkillPath("example", "brainstorming")]; !strings.Contains(b, "1. **Orient in the topic.** Invoke `example-orienting`") {
-				t.Errorf("%s brainstorming does not invoke orienting as its first step", target)
+			if b := files[adapter.SkillPath("example", "brainstorming")]; !strings.Contains(b, "2. **Orient in the topic.** Invoke `example-orienting`") {
+				t.Errorf("%s brainstorming does not invoke orienting after continuity evaluation", target)
 			}
 		})
 	}

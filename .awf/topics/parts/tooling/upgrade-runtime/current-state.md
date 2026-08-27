@@ -13,7 +13,7 @@ Backing: test
 
 A failed upgrade either restores the pre-transaction bytes and modes or preserves a journal from which recovery completes before any project command may run. Recovery accepts only one complete known-field journal whose validated operation order ends in a present lock replacement matching its recorded digest, and rejects any invalid journal before mutation. Every valid journal permits only awf upgrade --recover, and postcommit recovery never rolls authority back.
 Origin: ADR-0136
-Revised-by: ADR-require-complete-and-unambiguous-mutable-authority
+Revised-by: ADR-0310
 Backing: unbacked
 Verify: Failures injected during preparation, rename, prune, lock replacement, rollback, and cleanup recover to matching tree digests; truncated, trailing, reordered, non-lock-final, missing-digest, mismatched-digest, and forged-commit journals leave the complete project tree unchanged; every other project command refuses in every journal phase including lock-committed; and postcommit recovery removes only transaction residue.
 ### `invariant: upgraded-runtime-has-one-authority-engine`

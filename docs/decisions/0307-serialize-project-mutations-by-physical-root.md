@@ -4,7 +4,7 @@ slug: serialize-project-mutations-by-physical-root
 status: Implementing
 date: 2026-08-26
 ---
-# ADR-serialize-project-mutations-by-physical-root: Serialize Project Mutations by Physical Root
+# ADR-0307: Serialize Project Mutations by Physical Root
 
 
 ## Context

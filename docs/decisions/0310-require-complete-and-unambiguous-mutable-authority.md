@@ -4,7 +4,7 @@ slug: require-complete-and-unambiguous-mutable-authority
 status: Implementing
 date: 2026-08-26
 ---
-# ADR-require-complete-and-unambiguous-mutable-authority: Require Complete and Unambiguous Mutable Authority
+# ADR-0310: Require Complete and Unambiguous Mutable Authority
 
 
 ## Context

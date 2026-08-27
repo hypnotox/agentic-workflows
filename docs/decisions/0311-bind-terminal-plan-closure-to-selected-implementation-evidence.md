@@ -4,7 +4,7 @@ slug: bind-terminal-plan-closure-to-selected-implementation-evidence
 status: Implementing
 date: 2026-08-27
 ---
-# ADR-bind-terminal-plan-closure-to-selected-implementation-evidence: Bind Terminal Plan Closure to Selected Implementation Evidence
+# ADR-0311: Bind Terminal Plan Closure to Selected Implementation Evidence
 
 
 ## Context

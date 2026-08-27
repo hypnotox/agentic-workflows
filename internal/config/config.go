@@ -1145,3 +1145,12 @@ func ValidatePathGlobs(globs []string) error {
 	}
 	return nil
 }
+
+// WithTree preserves parsed configuration facts and their source bytes while
+// rebinding subsequent sidecar and part reads to one required operation tree.
+func (c *Config) WithTree(read TreeReader) *Config {
+	copy := cloneConfig(*c)
+	copy.read = read
+	copy.filesystem = false
+	return &copy
+}

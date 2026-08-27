@@ -65,16 +65,16 @@ Backing: test
 
 ### `invariant: context-query-boundary`
 
-Context queries consume a defensive snapshot of the neutral immutable `internal/contextinput` value assembled by `internal/currentstatecoord` from one selected operation universe and lower semantic values, including Publisher-produced corpora where Publisher participates. `internal/contextq` owns classification, projection, and semantic mapping into presentation nodes without importing project or application coordination; `internal/presentation` alone validates nodes and renders syntax. Bounded project compatibility adapters delegate to the coordinator without constructing an alternate context-state seam.
+Context queries consume a defensive snapshot of the neutral immutable `internal/contextinput` value assembled by `internal/currentstatecoord` from one selected operation universe and lower semantic values, including Publisher-produced corpora where Publisher participates. Ordinary explicit context carries a distinct complete live path-and-mode inventory plus separately selected immutable bytes; unread content remains present in the inventory rather than becoming absent. `internal/contextq` owns demand-driven classification, exact projection, and directory prefix expansion without importing project or application coordination; `internal/presentation` alone validates nodes and renders syntax. Bounded project compatibility adapters delegate to the coordinator without constructing an alternate context-state seam.
 Origin: ADR-0195
-Revised-by: ADR-0234, ADR-0301
+Revised-by: ADR-0234, ADR-0301, ADR-0306
 Backing: test
 
 ### `invariant: context-read-only`
 
-Direct awf context assembly reads one selected working-tree or immutable index universe and never mutates repository config, lock, outputs, or caches; staged config, lock, topic, marker, path, and artifact inputs never mix with dirty working bytes, while successful oversize delivery may create only the caller-owned external temporary file.
+Direct awf context assembly reads one selected working-tree or immutable index universe and never mutates repository config, lock, outputs, or caches. Only ordinary explicit context uses the live inventory plus selected-byte route; it preserves successful output compatibility and isolates selected bytes from unrelated payload. Staged, range-selected, and uncovered context retain complete preparation routes, and staged config, lock, topic, marker, path, and artifact inputs never mix with dirty working bytes. Successful oversize delivery may create only the caller-owned external temporary file.
 Origin: ADR-0148
-Revised-by: ADR-0165
+Revised-by: ADR-0165, ADR-0306
 Backing: test
 
 ### `invariant: context-static-fallback`

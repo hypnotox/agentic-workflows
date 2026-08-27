@@ -92,7 +92,7 @@ var entrypointSuites = map[string]suite{
 	"MergeInProgress":     {"internal/git", "TestMergeInProgressPrimaryCheckout"},
 	"MergeHeads":          {"internal/git", "TestMergeInProgressPrimaryCheckout"},
 	"ParseRange":          {"internal/git", "TestParseRangeTable"},
-	"ProjectResidentRoot": {"cmd/awf", "TestResolveProjectResidentRoot"},
+	"ProjectResidentRoot": {"cmd/awf", "TestResolveProjectResidentRoot"}, "WorkingEntries": {"internal/git", "TestWorkingPaths"},
 }
 
 // moduleRoot resolves the module root from this package's directory.

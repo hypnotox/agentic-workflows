@@ -14,6 +14,10 @@ query a single version or a range.
 
 - Pi implementation children now use an explicitly supplied, validated managed checkout as both their base CWD and commit-policy snapshot identity. Root omission remains root/root; parent path targeting remains explicit and is not filesystem confinement.
 
+- Brainstorming now evaluates continuity at entry and when relevant facts change. Continuing beyond its first settled material decision creates or resumes effort ownership before further work; a single-decision brainstorm may remain effort-free only when no independent continuity need fires. Late-created effort memory is initialized from retained evidence before Pi handoff. Material outcome drift creates a fixed-title, fixed-slug successor that receives still-valid context and proves resumability before the obsolete effort archives.
+
+- Ordinary explicit context queries now avoid full output rendering and unrelated file reads while preserving successful output. Staged, range-selected, and uncovered context retain their existing preparation paths.
+
 ### Bug fixes
 
 - Linux release tarballs now use portable root ownership and expected executable and regular-file modes, so restricted rootless extraction does not depend on the release builder's account.

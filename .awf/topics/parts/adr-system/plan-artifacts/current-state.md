@@ -98,7 +98,7 @@ Backing: test
 ### `invariant: terminal-plan-history-frozen`
 
 `awf check staged` rejects a changed or regressed Implemented plan, and permits a Proposed-to-Implemented transition only when a plan-owned parsed terminal reconciliation matches the set of paths accumulated across every selected-history commit. The selector is exactly two lowercase 40-hex commit IDs, its base is an ancestor of its head, and its head is the current checkout HEAD; symbolic, abbreviated, missing, stale, reversed, divergent, or empty histories refuse closure. Touched paths use canonical reversible quoted strings, reject duplicates, and compare as a set rather than authored order; fenced examples are inert. `TestTerminalTransitionFreezesBodiesAndRequiresSelectedReconciliation` proves frozen status, parsed completeness, Proposed mutability, non-choreographic closure, and set ordering; `TestSelectedTerminalEvidenceUsesRepositoryHistory` proves restored-touch accumulation and endpoint binding. Material-deviation entries are mechanically required to be a nonempty prose list or exact `none`, but their substantive truth remains review judgment. The check preserves Proposed-plan amendments and does not compare actual paths or deviations with original task, path, phase, or commit choreography.
-Origin: ADR-bind-terminal-plan-closure-to-selected-implementation-evidence
+Origin: ADR-0311
 Backing: test
 
 ### `rule: managed-plan-format-support`

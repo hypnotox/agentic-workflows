@@ -4,7 +4,7 @@ slug: bind-repository-and-release-acceptance-to-exact-revisions
 status: Implementing
 date: 2026-08-26
 ---
-# ADR-bind-repository-and-release-acceptance-to-exact-revisions: Bind Repository and Release Acceptance to Exact Revisions
+# ADR-0308: Bind Repository and Release Acceptance to Exact Revisions
 
 
 ## Context

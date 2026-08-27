@@ -213,11 +213,11 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	configInput := []OutputInput{{Path: ".awf/config.yaml", Role: ArtifactConfig}}
 	var readErr error
 	exists := func(path string) bool {
-		_, ok, err := read.ReadFile(path)
-		if err != nil && readErr == nil {
-			readErr = err
+		if presence, ok := read.(declarationPathPresence); ok {
+			return presence.PathExists(path)
 		}
-		return ok
+
+		return declarationPathExists(read, path, &readErr)
 	}
 	inputs := func(tid string, authored ...OutputInput) []OutputInput {
 		out := slices.Clone(configInput)
@@ -859,4 +859,14 @@ func validateLiveTemplates(p renderInputs) error {
 		}
 	}
 	return nil
+}
+
+type declarationPathPresence interface{ PathExists(string) bool }
+
+func declarationPathExists(read ProjectTreeReader, path string, readErr *error) bool {
+	_, ok, err := read.ReadFile(path)
+	if err != nil && *readErr == nil {
+		*readErr = err
+	}
+	return ok
 }

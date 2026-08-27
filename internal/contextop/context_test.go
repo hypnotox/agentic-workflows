@@ -40,7 +40,7 @@ func TestWorkingStatePropagatesPreparationFailure(t *testing.T) {
 	}
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, err := workingState(ctx, state, repo); !errors.Is(err, context.Canceled) {
+	if _, err := workingState(ctx, state, repo, nil); !errors.Is(err, context.Canceled) {
 		t.Fatalf("working state error = %v, want cancellation", err)
 	}
 }

@@ -107,13 +107,17 @@ Reconcile a Proposed plan only when another phase or reviewer could rely on stal
 
 - Discovery creates no effort.
 
-- Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery.
+- Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery until continuity becomes materially useful.
+
+- Evaluate continuity when brainstorming begins and whenever continuity-relevant facts change. Brainstorming may begin effort-free, but if it continues after its first settled material decision, `effort-workflow` creates or resumes ownership before proceeding further. A single-decision brainstorm may remain effort-free.
 
 - When continuity materially helps, `effort-workflow` alone chooses a faithful outcome, title, and canonical short slug, runs `./awf effort new --slug <slug> "<title>"`, reports the allocated immutable identity, and continues in the managed worktree without an approval stop.
 
 - Work without that continuity need uses neither an effort nor memory.
 
-- An existing effort resumes under its fixed identity and existing validation rules only while work remains inside its outcome; a newly discovered outcome cannot silently reuse, rename, replace, or create beside that active effort.
+- An existing effort resumes under its fixed identity and existing validation rules only while work remains inside its outcome. Its title and slug are never retitled, its schema and history are not changed for drift, refinements remain inside its outcome, and material outcome drift deliberately creates a fixed-identity successor that transfers necessary still-valid context, verifies resumability, then closes the obsolete effort through existing topology safety and finish/archive lifecycle.
+
+- If relevant discussion predates creation, initialize owned memory from retained evidence before any handoff: record the current outcome in Brief, every already-settled decision with required user-provenance and `Record:` evidence, relevant observations, and current phase and next action. Missing exact required user evidence must be reconfirmed, not reconstructed.
 
 - A failed creation follows ordinary diagnosis and authority-preserving retry.
 
@@ -150,7 +154,7 @@ Reconcile a Proposed plan only when another phase or reviewer could rely on stal
 
 - Settled ADR review continues autonomously to linked-plan handling or the independently selected implementation path.
 
-- At a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work. Continue autonomously or through a target-native successor when one is available.
+- At a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work. Continue autonomously or through a target-native successor when one is available. Handoff is prohibited while required late-creation memory initialization remains incomplete.
 
 - Reorient from repository authority before substantive successor work. Append a log only for an actual fresh boundary; continuation, cancellation, or failure that leaves the current session active appends none. Target-specific skill guidance owns any executable replacement protocol.
 

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "8baad45940604a07991472b47fb6f7f2d8ffbaaf648d0c18eb9ba2d680420cf2",
+  "universeSHA256": "42516f5c6a130bec0a39d1a4549309acd2564b578b8098880a0c66d6153cdb50",
   "repository": [
     {
       "identity": {
@@ -3142,31 +3142,31 @@
       "identity": {
         "file": "internal/currentstatecoord/context.go",
         "start": {
-          "line": 90,
+          "line": 91,
           "column": 16
         },
         "end": {
-          "line": 92,
+          "line": 93,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/currentstatecoord/context.go:90.16,92.3 1 in function PrepareStagedContext, beginning `{ // coverage-ignore: configFromTree already parsed a finite YAML semantic representation that N...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Integration reconciliation: configFromTree already parsed a finite YAML semantic representation that NewFacts can clone; focused and staged context tests cover the surrounding preparation contract."
     },
     {
       "identity": {
         "file": "internal/currentstatecoord/context.go",
         "start": {
-          "line": 94,
+          "line": 95,
           "column": 16
         },
         "end": {
-          "line": 96,
+          "line": 97,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/currentstatecoord/context.go:94.16,96.3 1 in function PrepareStagedContext, beginning `{ // coverage-ignore: KnownTargets is the same closed built-in registry ResolveTargets projects`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Integration reconciliation: KnownTargets is the closed built-in registry consumed by ResolveTargets; focused and staged context tests cover the surrounding preparation contract."
     },
     {
       "identity": {
@@ -9442,61 +9442,61 @@
       "identity": {
         "file": "internal/publisher/inputs.go",
         "start": {
-          "line": 133,
+          "line": 183,
           "column": 16
         },
         "end": {
-          "line": 135,
+          "line": 185,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/inputs.go:133.16,135.3 1 in function Prepare, beginning `{ // coverage-ignore: output-plan construction already validated the same glossary input`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Integration reconciliation: output-plan construction already validated the same glossary input before the prepared vocabulary projection; Publisher preparation tests cover the surrounding success and refusal behavior."
     },
     {
       "identity": {
         "file": "internal/publisher/inputs.go",
         "start": {
-          "line": 180,
+          "line": 230,
           "column": 16
         },
         "end": {
-          "line": 182,
+          "line": 232,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/inputs.go:180.16,182.3 1 in function vocabularySemantics, beginning `{ // coverage-ignore: project loading already validated the selected sidecar`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Integration reconciliation: project loading already validated the selected glossary sidecar before vocabulary projection; Publisher input tests cover selected-sidecar validation and preparation."
     },
     {
       "identity": {
         "file": "internal/publisher/inputs.go",
         "start": {
-          "line": 184,
+          "line": 234,
           "column": 16
         },
         "end": {
-          "line": 186,
+          "line": 236,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/inputs.go:184.16,186.3 1 in function vocabularySemantics, beginning `{ // coverage-ignore: output-plan glossary transform already validated authored records`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Integration reconciliation: output-plan glossary transformation already validated authored records before vocabulary projection; glossary and Publisher input tests cover the represented inputs."
     },
     {
       "identity": {
         "file": "internal/publisher/inputs.go",
         "start": {
-          "line": 188,
+          "line": 238,
           "column": 16
         },
         "end": {
-          "line": 190,
+          "line": 240,
           "column": 3
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/inputs.go:188.16,190.3 1 in function vocabularySemantics, beginning `{ // coverage-ignore: output-plan glossary transform already validated the merged records`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Integration reconciliation: output-plan glossary transformation already validated merged records before vocabulary projection; glossary and Publisher input tests cover the represented inputs."
     },
     {
       "identity": {
@@ -11207,21 +11207,6 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at internal/snapshot/working.go:36.22,38.5 1 in function WorkingTree, beginning `{ // coverage-ignore: Lstat just identified this link; only a concurrent mutation can fail Readl...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/snapshot/working.go",
-        "start": {
-          "line": 41,
-          "column": 32
-        },
-        "end": {
-          "line": 42,
-          "column": 13
-        },
-        "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/snapshot/working.go:41.32,42.13 1 in function WorkingTree, beginning `{ // coverage-ignore: WorkingPaths returns file entries; symlinks were handled above`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -15528,11 +15513,11 @@
         {
           "file": "internal/publisher/inputs.go",
           "start": {
-            "line": 133,
+            "line": 183,
             "column": 16
           },
           "end": {
-            "line": 135,
+            "line": 185,
             "column": 3
           },
           "statements": 1
@@ -15540,11 +15525,11 @@
         {
           "file": "internal/publisher/inputs.go",
           "start": {
-            "line": 180,
+            "line": 230,
             "column": 16
           },
           "end": {
-            "line": 182,
+            "line": 232,
             "column": 3
           },
           "statements": 1
@@ -15552,11 +15537,11 @@
         {
           "file": "internal/publisher/inputs.go",
           "start": {
-            "line": 184,
+            "line": 234,
             "column": 16
           },
           "end": {
-            "line": 186,
+            "line": 236,
             "column": 3
           },
           "statements": 1
@@ -15564,11 +15549,11 @@
         {
           "file": "internal/publisher/inputs.go",
           "start": {
-            "line": 188,
+            "line": 238,
             "column": 16
           },
           "end": {
-            "line": 190,
+            "line": 240,
             "column": 3
           },
           "statements": 1
@@ -18969,11 +18954,11 @@
         {
           "file": "internal/currentstatecoord/context.go",
           "start": {
-            "line": 90,
+            "line": 91,
             "column": 16
           },
           "end": {
-            "line": 92,
+            "line": 93,
             "column": 3
           },
           "statements": 1
@@ -18981,11 +18966,11 @@
         {
           "file": "internal/currentstatecoord/context.go",
           "start": {
-            "line": 94,
+            "line": 95,
             "column": 16
           },
           "end": {
-            "line": 96,
+            "line": 97,
             "column": 3
           },
           "statements": 1
@@ -21085,26 +21070,26 @@
     {
       "directive": {
         "file": "internal/currentstatecoord/context.go",
-        "line": 90,
-        "targetLine": 90,
+        "line": 91,
+        "targetLine": 91,
         "reason": "configFromTree already parsed a finite YAML semantic representation that NewFacts can clone",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func PrepareStagedContext(ctx context.Context, root string) (*ContextPreparation, error)` begins at internal/currentstatecoord/context.go:67; its branch `if err != nil {` at internal/currentstatecoord/context.go:90 follows `facts, err := config.NewFacts(cfg)` at internal/currentstatecoord/context.go:89. That flow establishes configFromTree already parsed a finite YAML semantic representation that NewFacts can clone, making the defensive return unreachable without an invariant breach."
+      "evidence": "PrepareStagedContext receives a parsed config from configFromTree, so NewFacts clones an already finite semantic representation."
     },
     {
       "directive": {
         "file": "internal/currentstatecoord/context.go",
-        "line": 94,
-        "targetLine": 94,
+        "line": 95,
+        "targetLine": 95,
         "reason": "KnownTargets is the same closed built-in registry ResolveTargets projects",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/currentstatecoord/context.go:94 is `targets, err := projectstate.ResolveTargets(projectstate.KnownTargets())` (internal/currentstatecoord/context.go:93). Within `func PrepareStagedContext(ctx context.Context, root string) (*ContextPreparation, error)` at internal/currentstatecoord/context.go:67, source review establishes KnownTargets is the same closed built-in registry ResolveTargets projects; this is therefore a closed-state fail-closed branch."
+      "evidence": "PrepareStagedContext passes the closed KnownTargets registry directly to ResolveTargets."
     },
     {
       "directive": {
@@ -25261,50 +25246,50 @@
     {
       "directive": {
         "file": "internal/publisher/inputs.go",
-        "line": 133,
-        "targetLine": 133,
+        "line": 183,
+        "targetLine": 183,
         "reason": "output-plan construction already validated the same glossary input",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/inputs.go:133 is `vocabulary, err := vocabularySemantics(p.inputs, pitfalls)` (internal/publisher/inputs.go:132). Within `func (p *Publisher) Prepare() (Preparation, error)` at internal/publisher/inputs.go:122, source review establishes output-plan construction already validated the same glossary input; this is therefore a closed-state fail-closed branch."
+      "evidence": "Publisher Prepare constructs the output plan from the same glossary input before vocabularySemantics projects it."
     },
     {
       "directive": {
         "file": "internal/publisher/inputs.go",
-        "line": 180,
-        "targetLine": 180,
+        "line": 230,
+        "targetLine": 230,
         "reason": "project loading already validated the selected sidecar",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func vocabularySemantics(p renderInputs, pitfalls pitfall.Corpus) (vocabularycheck.Input, error)` begins at internal/publisher/inputs.go:178; its branch `if err != nil {` at internal/publisher/inputs.go:180 follows `sc, err := p.cfg.Sidecar(\"docs\", \"glossary\")` at internal/publisher/inputs.go:179. That flow establishes project loading already validated the selected sidecar, making the defensive return unreachable without an invariant breach."
+      "evidence": "Project loading validates the selected glossary sidecar before Publisher vocabulary projection."
     },
     {
       "directive": {
         "file": "internal/publisher/inputs.go",
-        "line": 184,
-        "targetLine": 184,
+        "line": 234,
+        "targetLine": 234,
         "reason": "output-plan glossary transform already validated authored records",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/inputs.go:184 is `authored, err := glossary.Records(sc.Data[\"terms\"])` (internal/publisher/inputs.go:183). Within `func vocabularySemantics(p renderInputs, pitfalls pitfall.Corpus) (vocabularycheck.Input, error)` at internal/publisher/inputs.go:178, source review establishes output-plan glossary transform already validated authored records; this is therefore a closed-state fail-closed branch."
+      "evidence": "Output-plan glossary transformation validates the authored records before Publisher vocabulary projection."
     },
     {
       "directive": {
         "file": "internal/publisher/inputs.go",
-        "line": 188,
-        "targetLine": 188,
+        "line": 238,
+        "targetLine": 238,
         "reason": "output-plan glossary transform already validated the merged records",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/inputs.go:188, `if err != nil {` is guarded by the preceding `merged, err := glossary.Merge(withDefaultData(sc, projectCatalog(p).Docs[\"glossary\"].Data, glossary.SpecializedListDataKeys(\"docs\", \"glossary\")...))` at internal/publisher/inputs.go:187; in `func vocabularySemantics(p renderInputs, pitfalls pitfall.Corpus) (vocabularycheck.Input, error)` (internal/publisher/inputs.go:178), the predecessor invariant is output-plan glossary transform already validated the merged records. Only violation of that closed state reaches this guard."
+      "evidence": "Output-plan glossary transformation validates the merged records before Publisher vocabulary projection."
     },
     {
       "directive": {
@@ -26085,18 +26070,6 @@
       },
       "class": "uninducible-deterministic-fault",
       "evidence": "`func WorkingTree(ctx context.Context, repo *git.Repo) (*Tree, error)` (starts internal/snapshot/working.go:19) checks `if readErr != nil {` at internal/snapshot/working.go:36 after `target, readErr := os.Readlink(full)` at internal/snapshot/working.go:35. Here Lstat just identified this link; only a concurrent mutation can fail Readlink; exercising this exact branch requires an unportable environmental failure."
-    },
-    {
-      "directive": {
-        "file": "internal/snapshot/working.go",
-        "line": 41,
-        "targetLine": 41,
-        "reason": "WorkingPaths returns file entries; symlinks were handled above",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/snapshot/working.go:41, `if !info.Mode().IsRegular() {` follows the concrete operation `} else {` at internal/snapshot/working.go:40 in `func WorkingTree(ctx context.Context, repo *git.Repo) (*Tree, error)` (internal/snapshot/working.go:19). The reviewed failure condition is WorkingPaths returns file entries; symlinks were handled above; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {

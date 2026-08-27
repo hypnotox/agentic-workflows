@@ -32,7 +32,7 @@ Backing: test
 
 An exact `cmd/covercheck` owned-path change selected from the preserved local parent-to-candidate snapshot or a validated explicit CI range runs the pinned, hermetic whole-target mutation blocker; missing, malformed, or unavailable selection evidence runs rather than skips it. The blocker requires the whole-repository preflight, package-test and dependency censuses, dry-to-actual exact identity equality, complete timeout-free trusted reports, and only killed or independently reviewed equivalent survivors. Mutation remains advisory outside that owned path.
 Origin: ADR-0302
-Revised-by: ADR-bind-repository-and-release-acceptance-to-exact-revisions
+Revised-by: ADR-0308
 Backing: test
 
 ### `invariant: coverage-ignore-reason`
@@ -71,7 +71,7 @@ Backing: test
 
 The command runner materializes the staged candidate before behavioral verification and selects from the preserved parent-to-candidate NUL-delimited, rename-disabled name diff. Only census-proven independent inputs skip their owning lanes; README, documentation, changelog, VERSION, lock, and authored inputs run their dependent lanes; Pi-only paths run only Pi; Go-only paths run only Go; overlap paths run both; and absent, unreadable, malformed, empty, or unrecognized snapshots run both. Neighboring project and `.awf` paths retain their overlap classification. Versioncheck, vet, builds, lint, dead code, and pin checks always run; each skipped suite prints an explicit notice, and timings name only executed stages.
 Origin: ADR-0275
-Revised-by: ADR-0276, ADR-0284, ADR-bind-repository-and-release-acceptance-to-exact-revisions
+Revised-by: ADR-0276, ADR-0284, ADR-0308
 Backing: test
 
 ### `invariant: pi-extension-container-gate`
@@ -117,10 +117,10 @@ Backing: test
 ### `invariant: exact-revision-repository-acceptance`
 
 Repository wiring keeps stable `CI / gate` and `CI / release-config` jobs and verifies their successful conclusions for the exact release SHA before the credential-bearing publish job.
-Origin: ADR-bind-repository-and-release-acceptance-to-exact-revisions
+Origin: ADR-0308
 Backing: test
 
 ### `rule: hosted-main-acceptance-settings`
 
 The live GitHub `main` ruleset requires the GitHub Actions checks `CI / gate` and `CI / release-config` for the exact candidate revision, permits no bypass actor, and retains deletion, non-fast-forward, and signed-commit protections.
-Origin: ADR-bind-repository-and-release-acceptance-to-exact-revisions
+Origin: ADR-0308

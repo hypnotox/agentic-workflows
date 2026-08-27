@@ -38,19 +38,27 @@ func (p renderInputs) catalog() *catalog.Catalog { return p.selected }
 func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
 func fullProfile(p renderInputs) bool                { return p.cfg == nil || p.cfg.Profile != catalog.ProfileCore }
 
-func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
+func deriveContextSemantics(p renderInputs) (adr.Corpus, topic.Corpus, error) {
 	corpus := adr.Corpus{}
 	topics := topic.Corpus{}
-	var err error
-	if fullProfile(p) {
-		corpus, err = adr.LoadCorpusFromTree(p.read, path.Join(config.DocsDir, "decisions"))
-		if err != nil {
-			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
-		}
-		topics, err = topic.LoadCorpusFromReader(p.read, p.cfg, corpus)
-		if err != nil {
-			return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
-		}
+	if !fullProfile(p) {
+		return corpus, topics, nil
+	}
+	corpus, err := adr.LoadCorpusFromTree(p.read, path.Join(config.DocsDir, "decisions"))
+	if err != nil {
+		return adr.Corpus{}, topic.Corpus{}, err
+	}
+	topics, err = topic.LoadCorpusFromReader(p.read, p.cfg, corpus)
+	if err != nil {
+		return adr.Corpus{}, topic.Corpus{}, err
+	}
+	return corpus, topics, nil
+}
+
+func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
+	corpus, topics, err := deriveContextSemantics(p)
+	if err != nil {
+		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
 	pitfalls, err := loadPitfallCorpus(p)
 	if err != nil {
@@ -92,6 +100,30 @@ func derivePlans(p renderInputs) ([]plan.Plan, error) {
 // Publisher is the sole output-plan construction and rendering coordinator.
 type Publisher struct{ inputs renderInputs }
 
+// ContextPreparation is Publisher's focused semantic and declaration projection
+// for ordinary context. It intentionally has no rendered output nodes or check
+// projections.
+type ContextPreparation struct {
+	adrs         adr.Corpus
+	topics       topic.Corpus
+	plans        []plan.Plan
+	declarations []outputplan.Declaration
+}
+
+// ADRs returns a defensive ADR corpus.
+func (p ContextPreparation) ADRs() adr.Corpus { return p.adrs.Clone() }
+
+// Topics returns a defensive topic corpus.
+func (p ContextPreparation) Topics() topic.Corpus { return p.topics.Clone() }
+
+// Plans returns a defensive parsed-plan projection.
+func (p ContextPreparation) Plans() []plan.Plan { return clonePlans(p.plans) }
+
+// Declarations returns defensive output declarations without an output plan.
+func (p ContextPreparation) Declarations() []outputplan.Declaration {
+	return slices.Clone(p.declarations)
+}
+
 // Preparation is one Publisher-owned derivation and its direct semantic
 // projections for residual consumers.
 type Preparation struct {
@@ -116,6 +148,24 @@ func New(state *projectstate.ProjectState, cfg *config.Config, read ProjectTreeR
 	// fresh projection of the state's immutable loaded facts.
 	privateConfig := cfg.OperationTree().Bind(state.Facts())
 	return &Publisher{inputs: newRenderInputs(state, privateConfig, read, version)}
+}
+
+// PrepareContext derives only the semantic and declaration facts ordinary context
+// needs. It deliberately does not construct rendered nodes or check projections.
+func (p *Publisher) PrepareContext() (ContextPreparation, error) {
+	adrs, topics, err := deriveContextSemantics(p.inputs)
+	if err != nil {
+		return ContextPreparation{}, err
+	}
+	plans, err := derivePlans(p.inputs)
+	if err != nil {
+		return ContextPreparation{}, err
+	}
+	declarations, err := buildOutputDeclarations(p.inputs.cfg, projectCatalog(p.inputs), p.inputs.targets(), projectTreeReader(p.inputs), adrs)
+	if err != nil {
+		return ContextPreparation{}, err
+	}
+	return ContextPreparation{adrs: adrs, topics: topics, plans: clonePlans(plans), declarations: freezeDeclarations(declarations)}, nil
 }
 
 // Prepare derives one operation universe and constructs exactly one immutable plan.
@@ -275,6 +325,14 @@ func freezeOutput(file RenderedFile) outputplan.Output {
 	})
 }
 
+func freezeDeclarations(declarations []OutputDeclaration) []outputplan.Declaration {
+	out := make([]outputplan.Declaration, len(declarations))
+	for i, declaration := range declarations {
+		out[i] = outputplan.NewDeclaration(declaration.Path, declaration.TemplateID, declaration.Declarers, freezeInputs(declaration.Inputs), declaration.Dependencies)
+	}
+	return out
+}
+
 func freezePlan(plan *OutputPlan) outputplan.Plan {
 	nodes := make([]outputplan.Node, 0, len(plan.Nodes))
 	for _, node := range plan.Nodes {
@@ -291,10 +349,7 @@ func freezePlan(plan *OutputPlan) outputplan.Plan {
 			ObservedTemplateID: node.ObservedTemplateID, Output: output,
 		}))
 	}
-	declarations := make([]outputplan.Declaration, len(plan.Declarations))
-	for i, declaration := range plan.Declarations {
-		declarations[i] = outputplan.NewDeclaration(declaration.Path, declaration.TemplateID, declaration.Declarers, freezeInputs(declaration.Inputs), declaration.Dependencies)
-	}
+	declarations := freezeDeclarations(plan.Declarations)
 	return outputplan.New(nodes, declarations)
 }
 

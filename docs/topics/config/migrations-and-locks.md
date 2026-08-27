@@ -23,7 +23,7 @@ Backing: test
 
 A present live .awf/awf.lock must be one complete closed JSON object with unique fields and a nonempty, well-formed permanent file inventory. Every live lock reader treats a violation as a hard error; in particular Publisher refuses before writing any file, so a corrupt lock cannot create a backup, skip a prune, or be overwritten. Lock absence remains the distinct first-adoption case.
 Origin: ADR-0076
-Revised-by: ADR-require-complete-and-unambiguous-mutable-authority
+Revised-by: ADR-0310
 Backing: test
 
 

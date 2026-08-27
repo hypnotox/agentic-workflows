@@ -137,7 +137,7 @@ func TestQuerySnapshotsImmutableInput(t *testing.T) {
 	}
 	operation := adr.Operation{Verb: adr.OpAdd, ID: "alpha/one:rule", Slug: "rule"}
 	loaded := currentstate.Loaded{ADRs: []adr.ADR{{Domains: []string{"alpha"}, Sections: map[string]string{"Context": "original"}, Operations: []adr.Operation{operation}, History: []adr.HistoryEvent{{Operations: []adr.Operation{operation}}}}}}
-	state := contextinput.New(contextinput.Layout{}, loaded, contextinput.PlanContext{}, tree, nil, nil, []string{"owned.go"}, nil)
+	state := contextinput.NewWithInventory(contextinput.Layout{}, loaded, contextinput.PlanContext{}, tree, nil, nil, nil, []string{"owned.go"}, nil)
 	query := New(state)
 	projection := state.Snapshot()
 	projection.Eligible[0] = "mutated.go"

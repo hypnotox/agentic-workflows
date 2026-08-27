@@ -311,9 +311,11 @@ func TestContextCompositionOwnershipRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]map[string]int{
-		"workingState": {"PrepareWorkingContext": 1},
-		"stagedState":  {"PrepareStagedContext": 1},
-		"complete":     {"CompleteContext": 1, "Prepare": 1},
+		"workingState":         {"PrepareFocusedWorkingContext": 1, "PrepareWorkingContext": 1},
+		"workingCompleteState": {"PrepareWorkingContext": 1},
+		"stagedState":          {"PrepareStagedContext": 1},
+		"focused":              {"CompleteContext": 1, "PrepareContext": 1},
+		"complete":             {"CompleteContext": 1, "Prepare": 1},
 	}
 	for _, decl := range file.Decls {
 		fn, ok := decl.(*ast.FuncDecl)
@@ -329,11 +331,11 @@ func TestContextCompositionOwnershipRoutes(t *testing.T) {
 			if selector, ok := call.Fun.(*ast.SelectorExpr); ok {
 				if receiver, ok := selector.X.(*ast.Ident); ok && receiver.Name == "currentstatecoord" {
 					got[selector.Sel.Name]++
-					if selector.Sel.Name == "CompleteContext" && !completeContextArgumentsValid(call) {
+					if selector.Sel.Name == "CompleteContext" && !completeContextArgumentsValid(call, fn.Name.Name == "focused") {
 						t.Errorf("%s does not complete context from its selected universe and one Publisher preparation", fn.Name.Name)
 					}
 				}
-				if selector.Sel.Name == "Prepare" {
+				if selector.Sel.Name == "Prepare" || selector.Sel.Name == "PrepareContext" {
 					got[selector.Sel.Name]++
 				}
 			}
@@ -357,9 +359,10 @@ func TestContextCompositionOwnershipRoutes(t *testing.T) {
 		t.Fatal(err)
 	}
 	parserCalls := map[string]map[string]int{
-		"Prepare":                          {"deriveOperationStateWithPitfalls": 1, "derivePlans": 1},
-		"deriveOperationStateWithPitfalls": {"LoadCorpusFromTree": 1, "LoadCorpusFromReader": 1},
-		"derivePlans":                      {"ParseSources": 1},
+		"Prepare":                {"deriveOperationStateWithPitfalls": 1, "derivePlans": 1},
+		"PrepareContext":         {"deriveContextSemantics": 1, "derivePlans": 1, "buildOutputDeclarations": 1},
+		"deriveContextSemantics": {"LoadCorpusFromTree": 1, "LoadCorpusFromReader": 1},
+		"derivePlans":            {"ParseSources": 1},
 	}
 	for _, declaration := range publisherFile.Decls {
 		fn, ok := declaration.(*ast.FuncDecl)
@@ -399,19 +402,25 @@ func TestContextCompositionOwnershipRoutes(t *testing.T) {
 		t.Fatalf("out-of-scope import = %q, %v; want ignored", path, err)
 	}
 
-	valid := `currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations())`
-	if !completeContextExpressionValid(t, valid) {
+	completeValid := `currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations())`
+	focusedValid := `currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Declarations())`
+	if !completeContextExpressionValid(t, completeValid, false) || !completeContextExpressionValid(t, focusedValid, true) {
 		t.Fatal("valid context completion fixture failed")
 	}
-	for _, mutation := range []string{
-		`currentstatecoord.CompleteContext(other, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations())`,
-		`currentstatecoord.CompleteContext(prep, other.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations())`,
-		`currentstatecoord.CompleteContext(prep, prepared.ADRs(), other.Topics(), prepared.Plans(), prepared.Plan().Declarations())`,
-		`currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), other.Plans(), prepared.Plan().Declarations())`,
-		`currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), other.Plan().Declarations())`,
+	for _, mutation := range []struct {
+		expression string
+		focused    bool
+	}{
+		{`currentstatecoord.CompleteContext(other, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations())`, false},
+		{`currentstatecoord.CompleteContext(prep, other.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations())`, false},
+		{`currentstatecoord.CompleteContext(prep, prepared.ADRs(), other.Topics(), prepared.Plans(), prepared.Plan().Declarations())`, false},
+		{`currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), other.Plans(), prepared.Plan().Declarations())`, false},
+		{`currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), other.Plan().Declarations())`, false},
+		{focusedValid, false},
+		{completeValid, true},
 	} {
-		if completeContextExpressionValid(t, mutation) {
-			t.Errorf("mutated context completion passed: %s", mutation)
+		if completeContextExpressionValid(t, mutation.expression, mutation.focused) {
+			t.Errorf("mutated context completion passed: %s", mutation.expression)
 		}
 	}
 }
@@ -423,17 +432,17 @@ func forbiddenContextQueryImport(rel, source string) (string, error) {
 	return forbiddenImport(source, "internal/project", "internal/currentstatecoord")
 }
 
-func completeContextExpressionValid(t *testing.T, expression string) bool {
+func completeContextExpressionValid(t *testing.T, expression string, focused bool) bool {
 	t.Helper()
 	expr, err := parser.ParseExpr(expression)
 	if err != nil {
 		t.Fatal(err)
 	}
 	call, ok := expr.(*ast.CallExpr)
-	return ok && completeContextArgumentsValid(call)
+	return ok && completeContextArgumentsValid(call, focused)
 }
 
-func completeContextArgumentsValid(call *ast.CallExpr) bool {
+func completeContextArgumentsValid(call *ast.CallExpr, focused bool) bool {
 	if len(call.Args) != 5 || !isIdent(call.Args[0], "prep") {
 		return false
 	}
@@ -449,6 +458,9 @@ func completeContextArgumentsValid(call *ast.CallExpr) bool {
 	selector, ok := declarations.Fun.(*ast.SelectorExpr)
 	if !ok || selector.Sel.Name != "Declarations" {
 		return false
+	}
+	if focused {
+		return isIdent(selector.X, "prepared")
 	}
 	plan, ok := selector.X.(*ast.CallExpr)
 	return ok && len(plan.Args) == 0 && isPreparedCall(plan, "Plan")
