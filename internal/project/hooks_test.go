@@ -362,11 +362,30 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		t.Fatalf("new branch conservative argv/order = %q", got)
 	}
 	clearLog()
+	if output, err := run(pushPath, "refs/tags/new "+outerTag+" refs/tags/new "+zeroOID+"\n"); err != nil {
+		t.Fatalf("new annotated tag push: %v: %s", err, output)
+	}
+	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:--range invalid-base "+outerTag+"\n" {
+		t.Fatalf("new annotated tag argv/order = %q", got)
+	}
+	clearLog()
 	runHookGit(t, root, "push", "origin", ":refs/heads/main")
 	if output, err := run(pushPath, "refs/heads/new "+head+" refs/heads/new "+zeroOID+"\n"); err == nil || !strings.Contains(output, "destination integration branch") || readLog() != "" {
 		t.Fatalf("missing integration tip: err=%v output=%q log=%q", err, output, readLog())
 	}
 	runHookGit(t, root, "push", "origin", base+":refs/heads/main")
+	remoteTree := strings.TrimSpace(runHookGit(t, remote, "rev-parse", base+"^{tree}"))
+	runHookGit(t, remote, "config", "user.name", "Remote Hook Test")
+	runHookGit(t, remote, "config", "user.email", "remote-hook@example.test")
+	remoteOnly := strings.TrimSpace(runHookGit(t, remote, "commit-tree", remoteTree, "-p", base, "-m", "remote-only"))
+	runHookGit(t, remote, "update-ref", "refs/heads/main", remoteOnly)
+	if _, err := gitfixture.NativeRun(gitfixture.At(root), "cat-file", "-e", remoteOnly+"^{commit}"); err == nil {
+		t.Fatalf("remote-only integration tip %s unexpectedly exists locally", remoteOnly)
+	}
+	if output, err := run(pushPath, "refs/heads/new "+head+" refs/heads/new "+zeroOID+"\n"); err == nil || !strings.Contains(output, "names unresolvable commit "+remoteOnly) || readLog() != "" {
+		t.Fatalf("locally unavailable integration tip: err=%v output=%q log=%q", err, output, readLog())
+	}
+	runHookGit(t, remote, "update-ref", "refs/heads/main", base)
 	if output, err := run(pushPath, "refs/heads/new "+head+" refs/heads/new "+zeroOID+"\n", "origin", filepath.Join(t.TempDir(), "missing-remote")); err == nil || !strings.Contains(output, "destination integration branch") || readLog() != "" {
 		t.Fatalf("unavailable integration remote: err=%v output=%q log=%q", err, output, readLog())
 	}

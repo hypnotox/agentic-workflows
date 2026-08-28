@@ -118,7 +118,7 @@ var keys = []Entry{
 	},
 	{
 		Path: "integrationBranch", Type: "string", Default: "none: required; the schema migration writes integrationBranch: main",
-		Description:  "The branch effort work integrates into. `awf new adr` scaffolds a numbered decision record on this branch and a pending slug-identified one anywhere else, and the check refuses a pending record while the checkout is positively identified as being on it. Must be non-empty and free of whitespace, must not start with `-`; slashes are legal, so `release/1.0` is accepted. There is no in-code default, and audit range resolution never reads it.",
+		Description:  "The branch effort work integrates into. `awf new adr` scaffolds a numbered decision record on this branch and a pending slug-identified one anywhere else, and the check refuses a pending record while the checkout is positively identified as being on it. A generated pre-push hook uses the freshly resolved destination tip of this branch as the policy base for new commit-bearing refs, and changing it invalidates that consumer without reflagging unrelated outputs. Must be non-empty and free of whitespace, must not start with `-`; slashes are legal, so `release/1.0` is accepted. There is no in-code default, and audit range resolution never reads it.",
 		Availability: "Always.",
 	},
 	{
