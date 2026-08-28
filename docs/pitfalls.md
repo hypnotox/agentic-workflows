@@ -41,6 +41,7 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md) | tooling\, adr\-system | commit\-gate\, worktree\-isolation | ADR-0202 |
 | [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md) | tooling | coverage\-gate |  |
 | [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md) | rendering | convention\-parts\, template\-overlay |  |
+| [Pin the Go toolchain when preview compilers break lint](pitfalls/pin-the-go-toolchain-when-preview-compilers-break-lint.md) | tooling | static\-linting |  |
 | [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md) | invariants\, adr\-system\, tooling | invariant\-backing\, worktree\-isolation\, git\-hooks | ADR-0205, ADR-0206 |
 | [Raw\-byte ADR surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md) | config | schema\-migration\, adr\-parsing | ADR-0120 |
 | [Raw\-byte offsets go stale the moment an earlier pass edits the file](pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md) | config | schema\-migration\, adr\-parsing | ADR-0128 |
@@ -113,6 +114,7 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md)
 - [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md)
 - [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md)
+- [Pin the Go toolchain when preview compilers break lint](pitfalls/pin-the-go-toolchain-when-preview-compilers-break-lint.md)
 - [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md)
 - [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md)
 - [Reuse the repository boundary for new filesystem walks](pitfalls/reuse-the-repository-boundary-for-new-filesystem-walks.md)

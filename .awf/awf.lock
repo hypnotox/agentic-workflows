@@ -560,8 +560,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
-      "configHash": "sha256:f641cf11964b2caff628b5a0f953a0e569688d576a19dbce3b2ae680c5881326",
-      "outputHash": "sha256:0b11b65b739954dc0ab036b93c19f1158a3a678d9017f28e4c9067a11d516ef1"
+      "configHash": "sha256:448dcb9348fbc899096500d08bb4093ba647b67d19bdac826b38d75c5cfb254c",
+      "outputHash": "sha256:ff9959574c8042ebd8025ac3f6b3ba70ee61e9bf56710aec575a7c67756685a5"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -724,6 +724,12 @@
       "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
       "configHash": "sha256:583e753b87143111a7d490c1f4fdbf9d8a49090439d58cbf3857ba736e4c0f7d",
       "outputHash": "sha256:22a1176df7d1c68f716800b3014ab378a768a51c73d66711b7f53363a56b40f2"
+    },
+    "docs/pitfalls/pin-the-go-toolchain-when-preview-compilers-break-lint.md": {
+      "templateId": "pitfalls/entry.md.tmpl",
+      "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
+      "configHash": "sha256:9e7b74ae8f502ca0019f6a631c182636a4b083cb04d388e28423cde9df3e04d8",
+      "outputHash": "sha256:564989ec9a339e58d6bd563d9d26c490c1537ce69f3f3c5c465d7aea66205ae0"
     },
     "docs/pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md": {
       "templateId": "pitfalls/entry.md.tmpl",
