@@ -386,7 +386,7 @@ func Evaluate(r Record, aggregates []Aggregate) []Evaluation {
 					samples = append(samples, seen.Seconds)
 				}
 			}
-			if len(samples) == 0 {
+			if len(samples) != a.Samples {
 				e.ComponentRegressions = append(e.ComponentRegressions, componentName(limit)+" (missing)")
 			} else if medianValues(samples) > limit.Seconds {
 				e.ComponentRegressions = append(e.ComponentRegressions, componentName(limit))

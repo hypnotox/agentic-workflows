@@ -260,9 +260,10 @@ func TestAggregationAndQualificationEdges(t *testing.T) {
 
 func TestMissingComponentBlocksQualification(t *testing.T) {
 	record := validRecord(t)
-	record.Observations = []Observation{{
-		Workload: "ordinary-full", Environment: record.Environments[0], Cache: "warm", Sample: 1, Seconds: 100,
-	}}
+	record.Observations = []Observation{
+		{Workload: "ordinary-full", Environment: record.Environments[0], Cache: "warm", Sample: 1, Seconds: 100},
+		{Workload: "ordinary-full", Environment: record.Environments[0], Cache: "warm", Sample: 2, Seconds: 101, Components: []Component{{Stage: "go-test", Package: "internal/project", Test: "package-total", Seconds: 100}}},
+	}
 	for i := range record.Budgets {
 		if record.Budgets[i].Workload == "ordinary-full" {
 			record.Budgets[i].ComponentMaximums = []Component{{Stage: "go-test", Package: "internal/project", Test: "package-total", Seconds: 200}}

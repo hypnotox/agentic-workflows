@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"strings"
@@ -51,8 +52,19 @@ func TestReportEmitsHumanAndMachineFromSameRecord(t *testing.T) {
 	if code := run([]string{"testperformance", "report", "--machine", path}, &machine, &errb); code != 0 {
 		t.Fatalf("machine=%d: %s", code, errb.String())
 	}
-	if !strings.Contains(human.String(), "qualification record v1") || !strings.Contains(human.String(), "aggregate fast-gate on local-linux-amd64: cache=warm samples=3 seconds=1.229") || !strings.Contains(machine.String(), `"record_version": 1`) || !strings.Contains(machine.String(), `"seconds": 1.229`) {
-		t.Fatalf("human=%q machine=%q", human.String(), machine.String())
+	if !strings.Contains(human.String(), "qualification record v1") || !strings.Contains(human.String(), "aggregate fast-gate on local-linux-amd64: cache=warm samples=3 seconds=1.229") {
+		t.Fatalf("human=%q", human.String())
+	}
+	var report testperformance.Report
+	if err := json.Unmarshal(machine.Bytes(), &report); err != nil {
+		t.Fatalf("machine report: %v", err)
+	}
+	if len(report.Aggregates) != 1 {
+		t.Fatalf("machine aggregates = %#v", report.Aggregates)
+	}
+	aggregate := report.Aggregates[0]
+	if aggregate.Workload != "fast-gate" || aggregate.Environment != "local-linux-amd64" || aggregate.Cache != "warm" || aggregate.Samples != 3 || aggregate.Seconds != 1.229 {
+		t.Fatalf("machine aggregate = %#v", aggregate)
 	}
 }
 
