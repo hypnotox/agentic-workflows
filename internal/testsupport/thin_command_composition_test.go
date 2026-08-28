@@ -23,6 +23,7 @@ import (
 // It deliberately works on typed syntax, rather than text or package-wide call
 // census: comments, dead code, aliases, closures, and method values are not
 // evidence.
+// invariant: tooling/cli:cli-runner-instance-ownership (TestThinCommandCompositionCensus)
 func TestThinCommandCompositionCensus(t *testing.T) {
 	pkg := loadAWFCommandPackage(t)
 	routes := commandRoutes()
@@ -72,6 +73,42 @@ func TestThinCommandCompositionCensus(t *testing.T) {
 		if _, ok := clispec.Lookup(top); !ok {
 			t.Errorf("runtime handler %q has no clispec command", top)
 		}
+	}
+}
+
+// invariant: tooling/cli:cli-runner-instance-ownership (TestRunnerCompositionHasNoMutableProcessSeams)
+func TestRunnerCompositionHasNoMutableProcessSeams(t *testing.T) {
+	pkg := loadAWFCommandPackage(t)
+	forbidden := map[string]bool{"getwd": true, "stdin": true, "isInteractive": true, "handlers": true}
+	for _, file := range pkg.Syntax {
+		for _, decl := range file.Decls {
+			general, ok := decl.(*ast.GenDecl)
+			if !ok || general.Tok != token.VAR {
+				continue
+			}
+			for _, spec := range general.Specs {
+				value := spec.(*ast.ValueSpec)
+				for _, name := range value.Names {
+					if forbidden[name.Name] {
+						t.Errorf("mutable package-global process seam %q remains", name.Name)
+					}
+				}
+			}
+		}
+	}
+	foundConstructor := false
+	ast.Inspect(functionBody(t, pkg, "run"), func(node ast.Node) bool {
+		call, ok := node.(*ast.CallExpr)
+		if !ok {
+			return true
+		}
+		if name, ok := call.Fun.(*ast.Ident); ok && name.Name == "newRunner" {
+			foundConstructor = true
+		}
+		return true
+	})
+	if !foundConstructor {
+		t.Fatal("production run does not construct a fresh runner")
 	}
 }
 

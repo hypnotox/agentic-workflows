@@ -9,6 +9,9 @@ import (
 // invariant: tooling/test-infrastructure:immutable-fixture-seeds (TestTreeSeedPreservesModesLinksAndCloneIsolation)
 func TestTreeSeedPreservesModesLinksAndCloneIsolation(t *testing.T) {
 	source := t.TempDir()
+	if err := os.Chmod(source, 0o710); err != nil {
+		t.Fatal(err)
+	}
 	if err := os.Mkdir(filepath.Join(source, "nested"), 0o750); err != nil {
 		t.Fatal(err)
 	}
@@ -35,6 +38,13 @@ func TestTreeSeedPreservesModesLinksAndCloneIsolation(t *testing.T) {
 	}
 	if seed.Digest() != digest {
 		t.Fatal("immutable seed digest changed after cloning")
+	}
+	rootInfo, err := os.Stat(first)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := rootInfo.Mode().Perm(); got != 0o710 {
+		t.Fatalf("root mode = %o, want 710", got)
 	}
 	info, err := os.Stat(filepath.Join(first, "nested", "tool"))
 	if err != nil {

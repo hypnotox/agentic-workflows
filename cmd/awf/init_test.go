@@ -19,12 +19,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
-// forceNonInteractive pins the isInteractive seam to false for the test, so the
-// silent resolution path runs deterministically regardless of the real stdin.
-func forceNonInteractive(t *testing.T) {
-	t.Helper()
-}
-
 // readConfig returns the scaffolded .awf/config.yaml under root.
 func readInitConfig(t *testing.T, root string) string {
 	t.Helper()

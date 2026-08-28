@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"crypto/sha256"
+	"errors"
 	"fmt"
 	"io"
 	"io/fs"
@@ -17,16 +18,25 @@ import (
 // fixtures capture a fully prepared seed once and clone it for each mutating
 // consumer, so no test shares a live root.
 type TreeSeed struct {
-	archive []byte
-	digest  [sha256.Size]byte
+	archive      []byte
+	rootMode     fs.FileMode
+	rootModified time.Time
+	digest       [sha256.Size]byte
 }
 
 // CaptureTree records root as an immutable, process-local seed. Regular files,
 // directory modes, executable bits, and symbolic links are preserved.
 func CaptureTree(root string) (TreeSeed, error) {
+	rootInfo, err := os.Lstat(root)
+	if err != nil {
+		return TreeSeed{}, fmt.Errorf("capture tree seed root: %w", err)
+	}
+	if !rootInfo.IsDir() {
+		return TreeSeed{}, fmt.Errorf("capture tree seed root: %s is not a directory", root)
+	}
 	var archive bytes.Buffer
 	writer := tar.NewWriter(&archive)
-	err := filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
+	err = filepath.WalkDir(root, func(path string, entry fs.DirEntry, walkErr error) error {
 		if walkErr != nil {
 			return walkErr
 		}
@@ -78,7 +88,8 @@ func CaptureTree(root string) (TreeSeed, error) {
 		return TreeSeed{}, fmt.Errorf("capture tree seed: %w", err)
 	}
 	body := bytes.Clone(archive.Bytes())
-	return TreeSeed{archive: body, digest: sha256.Sum256(body)}, nil
+	digestInput := append([]byte(fmt.Sprintf("%o\n", rootInfo.Mode().Perm())), body...)
+	return TreeSeed{archive: body, rootMode: rootInfo.Mode(), rootModified: rootInfo.ModTime(), digest: sha256.Sum256(digestInput)}, nil
 }
 
 // Digest identifies the immutable archived representation.
@@ -91,7 +102,7 @@ func (s TreeSeed) Clone(destination string) error {
 	}
 	if _, err := os.Lstat(destination); err == nil {
 		return fmt.Errorf("clone tree seed: destination already exists: %s", destination)
-	} else if !os.IsNotExist(err) {
+	} else if !errors.Is(err, fs.ErrNotExist) {
 		return fmt.Errorf("clone tree seed: inspect destination: %w", err)
 	}
 	if err := os.MkdirAll(destination, 0o755); err != nil {
@@ -160,6 +171,12 @@ func (s TreeSeed) Clone(destination string) error {
 		if err := os.Chtimes(directory.path, directory.modified, directory.modified); err != nil {
 			return fmt.Errorf("clone tree seed: set directory times: %w", err)
 		}
+	}
+	if err := os.Chmod(destination, s.rootMode.Perm()); err != nil {
+		return fmt.Errorf("clone tree seed: chmod root: %w", err)
+	}
+	if err := os.Chtimes(destination, s.rootModified, s.rootModified); err != nil {
+		return fmt.Errorf("clone tree seed: set root times: %w", err)
 	}
 	return nil
 }

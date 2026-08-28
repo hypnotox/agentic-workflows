@@ -173,6 +173,7 @@ func agentPath(root, name string) string {
 // suite exhaustive as the catalog grows.
 //
 // invariant: tooling/evaluations:evals-full-catalog-coverage (TestFullCatalogCoverage)
+// invariant: tooling/test-infrastructure:immutable-fixture-seeds (TestFullCatalogCoverage)
 func TestFullCatalogCoverage(t *testing.T) {
 	cat := loadCatalog(t)
 	for _, targetName := range []string{"claude", "pi"} {

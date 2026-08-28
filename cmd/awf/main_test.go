@@ -1,6 +1,7 @@
 package main
 
 import (
+	"bytes"
 	"io"
 	"os"
 	"path/filepath"
@@ -48,20 +49,36 @@ func containsLine(s, line string) bool {
 // handler without a command. Group children (new/adr...) are not separate keys.
 // invariant: tooling/cli:cli-runner-instance-ownership (TestRunnerInstancesOwnProcessDependencies)
 func TestRunnerInstancesOwnProcessDependencies(t *testing.T) {
-	first := newRunner(func() (string, error) { return "first", nil }, strings.NewReader("first"), func() bool { return false })
-	second := newRunner(func() (string, error) { return "second", nil }, strings.NewReader("second"), func() bool { return true })
+	firstRoot, secondRoot := t.TempDir(), t.TempDir()
+	first := newRunner(func() (string, error) { return firstRoot, nil }, strings.NewReader("must not be read\n"), func() bool { return false })
+	second := newRunner(func() (string, error) { return secondRoot, nil }, strings.NewReader("core\nmake gate\n"), func() bool { return true })
 	delete(first.handlers, "version")
 	if _, ok := second.handlers["version"]; !ok {
 		t.Fatal("runner handler maps share mutable state")
 	}
-	if root, _ := first.getwd(); root != "first" {
+	if root, _ := first.getwd(); root != firstRoot {
 		t.Fatalf("first working directory = %q", root)
 	}
-	if root, _ := second.getwd(); root != "second" {
+	if root, _ := second.getwd(); root != secondRoot {
 		t.Fatalf("second working directory = %q", root)
+	}
+	var firstOut, firstErr bytes.Buffer
+	if code := first.run([]string{"awf", "init"}, &firstOut, &firstErr); code != 0 {
+		t.Fatalf("non-interactive runner exit = %d, stderr=%q", code, firstErr.String())
+	}
+	if strings.Contains(firstOut.String(), "prompt:") {
+		t.Fatalf("non-interactive runner prompted: %q", firstOut.String())
+	}
+	var secondOut, secondErr bytes.Buffer
+	if code := second.run([]string{"awf", "init"}, &secondOut, &secondErr); code != 0 {
+		t.Fatalf("interactive runner exit = %d, stderr=%q", code, secondErr.String())
+	}
+	if !strings.Contains(secondOut.String(), "prompt:") {
+		t.Fatalf("interactive runner did not prompt: %q", secondOut.String())
 	}
 }
 
+// invariant: tooling/cli:cli-runner-instance-ownership (TestHandlerRegistryParity)
 func TestHandlerRegistryParity(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx

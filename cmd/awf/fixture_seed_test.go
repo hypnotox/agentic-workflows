@@ -8,6 +8,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
+// invariant: tooling/test-infrastructure:immutable-fixture-seeds (TestScaffoldProjectSeedClonesAreCleanAndIsolated)
 func TestScaffoldProjectSeedClonesAreCleanAndIsolated(t *testing.T) {
 	first := scaffoldProject(t)
 	digest := scaffoldSeed.Digest()

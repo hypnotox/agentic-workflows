@@ -6,6 +6,7 @@ import (
 	"testing"
 )
 
+// invariant: tooling/test-infrastructure:immutable-fixture-seeds (TestInitializedSampleSeedClonesAreIsolated)
 func TestInitializedSampleSeedClonesAreIsolated(t *testing.T) {
 	first, _ := initializedSampleProject(t)
 	digest := initializedSampleSeed.Digest()
