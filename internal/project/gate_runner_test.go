@@ -141,6 +141,13 @@ func TestGateRunnerModes(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
+		if err := os.WriteFile(manifest, []byte(strings.Replace(string(raw), "schema=1", "schema=\nschema=1", 1)), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		out, status, _ = run("coverage-aggregate", artifacts)
+		if status == 0 || !strings.Contains(out, "malformed manifest") {
+			t.Fatalf("empty-first duplicate status=%d output=%q", status, out)
+		}
 		if err := os.WriteFile(manifest, []byte(strings.Replace(string(raw), candidate, strings.Repeat("b", 40), 1)), 0o600); err != nil {
 			t.Fatal(err)
 		}

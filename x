@@ -216,7 +216,7 @@ run_coverage_aggregate() {
   [ "${#profiles[@]}" -eq 12 ] || { echo "coverage-aggregate: expected exactly 12 profiles" >&2; return 1; }
   for manifest in "${manifests[@]}"; do
     unset fields; declare -A fields=()
-    while IFS='=' read -r key value; do [ -n "$key" ] && [ -z "${fields[$key]:-}" ] || { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }; fields[$key]="$value"; done <"$manifest"
+    while IFS='=' read -r key value; do [ -n "$key" ] && [ -z "${fields[$key]+present}" ] || { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }; fields[$key]="$value"; done <"$manifest"
     [ "${#fields[@]}" -eq 8 ] || { echo "coverage-aggregate: unexpected manifest evidence" >&2; return 1; }
     for key in schema sha workload os arch toolchain profile digest; do [ -n "${fields[$key]:-}" ] || { echo "coverage-aggregate: missing $key evidence" >&2; return 1; }; done
     workload="${fields[workload]}"; case "$workload" in 0-[0-3]|1-[0-3]|2-[0-2]|3-0) ;; *) echo "coverage-aggregate: foreign workload" >&2; return 1;; esac
