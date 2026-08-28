@@ -206,29 +206,58 @@ write_coverage_manifest() {
 }
 
 run_coverage_aggregate() {
-  local root="$1" candidate expected workload manifest profile value sha toolchain os arch digest filename
-  local -a manifests=() profiles=() validated=() artifact_files=()
+  local root="$1" candidate workload manifest profile value key matched duplicate field_count
+  local schema sha os arch toolchain digest profile_name
+  local schema_set sha_set workload_set os_set arch_set toolchain_set profile_set digest_set
+  local -a manifests=() profiles=() validated=() artifact_files=() seen_workloads=()
   candidate="$(git rev-parse HEAD)" || return
-  declare -A seen=()
-  mapfile -t artifact_files < <(find "$root" -type f -print | LC_ALL=C sort)
+  while IFS= read -r value; do artifact_files+=("$value"); done < <(find "$root" -type f -print | LC_ALL=C sort)
   [ "${#artifact_files[@]}" -eq 24 ] || { echo "coverage-aggregate: unexpected artifact files" >&2; return 1; }
   [ -z "$(find "$root" -type l -print -quit)" ] || { echo "coverage-aggregate: symbolic-link evidence is forbidden" >&2; return 1; }
-  mapfile -t manifests < <(find "$root" -type f -name 'manifest-*' -print | LC_ALL=C sort)
+  while IFS= read -r value; do manifests+=("$value"); done < <(find "$root" -type f -name 'manifest-*' -print | LC_ALL=C sort)
   [ "${#manifests[@]}" -eq 12 ] || { echo "coverage-aggregate: expected exactly 12 manifests" >&2; return 1; }
-  mapfile -t profiles < <(find "$root" -type f -name 'profile-*.out' -print | LC_ALL=C sort)
+  while IFS= read -r value; do profiles+=("$value"); done < <(find "$root" -type f -name 'profile-*.out' -print | LC_ALL=C sort)
   [ "${#profiles[@]}" -eq 12 ] || { echo "coverage-aggregate: expected exactly 12 profiles" >&2; return 1; }
   for manifest in "${manifests[@]}"; do
-    unset fields; declare -A fields=()
-    while IFS='=' read -r key value; do [ -n "$key" ] && [ -z "${fields[$key]+present}" ] || { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }; fields[$key]="$value"; done <"$manifest"
-    [ "${#fields[@]}" -eq 8 ] || { echo "coverage-aggregate: unexpected manifest evidence" >&2; return 1; }
-    for key in schema sha workload os arch toolchain profile digest; do [ -n "${fields[$key]:-}" ] || { echo "coverage-aggregate: missing $key evidence" >&2; return 1; }; done
-    workload="${fields[workload]}"; case "$workload" in 0-[0-3]|1-[0-3]|2-[0-2]|3-0) ;; *) echo "coverage-aggregate: foreign workload" >&2; return 1;; esac
-    [ "${fields[schema]}" = 1 ] && [ "${fields[sha]}" = "$candidate" ] && [ "${fields[os]}" = linux ] && [ "${fields[arch]}" = amd64 ] && [ "${fields[toolchain]}" = "$(go version)" ] || { echo "coverage-aggregate: foreign SHA, platform, or toolchain evidence" >&2; return 1; }
-    [ -z "${seen[$workload]:-}" ] || { echo "coverage-aggregate: duplicate workload $workload" >&2; return 1; }; seen[$workload]=1
-    profile="$(dirname "$manifest")/${fields[profile]}"; [ "$(basename "$manifest")" = "manifest-$workload" ] && [ "${fields[profile]}" = "profile-$workload.out" ] && [ -f "$profile" ] && [ "$(sha256sum "$profile" | awk '{print $1}')" = "${fields[digest]}" ] || { echo "coverage-aggregate: invalid profile evidence for $workload" >&2; return 1; }
+    schema= sha= workload= os= arch= toolchain= profile_name= digest= field_count=0
+    schema_set=false; sha_set=false; workload_set=false; os_set=false; arch_set=false; toolchain_set=false; profile_set=false; digest_set=false
+    while IFS='=' read -r key value; do
+      [ -n "$key" ] || { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }
+      case "$key" in
+        schema) "$schema_set" && { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }; schema="$value"; schema_set=true ;;
+        sha) "$sha_set" && { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }; sha="$value"; sha_set=true ;;
+        workload) "$workload_set" && { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }; workload="$value"; workload_set=true ;;
+        os) "$os_set" && { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }; os="$value"; os_set=true ;;
+        arch) "$arch_set" && { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }; arch="$value"; arch_set=true ;;
+        toolchain) "$toolchain_set" && { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }; toolchain="$value"; toolchain_set=true ;;
+        profile) "$profile_set" && { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }; profile_name="$value"; profile_set=true ;;
+        digest) "$digest_set" && { echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1; }; digest="$value"; digest_set=true ;;
+        *) echo "coverage-aggregate: malformed manifest $manifest" >&2; return 1 ;;
+      esac
+      field_count=$((field_count + 1))
+    done <"$manifest"
+    [ "$field_count" -eq 8 ] || { echo "coverage-aggregate: unexpected manifest evidence" >&2; return 1; }
+    for key in schema sha workload os arch toolchain profile digest; do
+      case "$key" in
+        schema) value="$schema" ;; sha) value="$sha" ;; workload) value="$workload" ;; os) value="$os" ;;
+        arch) value="$arch" ;; toolchain) value="$toolchain" ;; profile) value="$profile_name" ;; digest) value="$digest" ;;
+      esac
+      [ -n "$value" ] || { echo "coverage-aggregate: missing $key evidence" >&2; return 1; }
+    done
+    case "$workload" in 0-[0-3]|1-[0-3]|2-[0-2]|3-0) ;; *) echo "coverage-aggregate: foreign workload" >&2; return 1;; esac
+    [ "$schema" = 1 ] && [ "$sha" = "$candidate" ] && [ "$os" = linux ] && [ "$arch" = amd64 ] && [ "$toolchain" = "$(go version)" ] || { echo "coverage-aggregate: foreign SHA, platform, or toolchain evidence" >&2; return 1; }
+    duplicate=false
+    for value in "${seen_workloads[@]+"${seen_workloads[@]}"}"; do [ "$value" != "$workload" ] || duplicate=true; done
+    "$duplicate" && { echo "coverage-aggregate: duplicate workload $workload" >&2; return 1; }
+    seen_workloads+=("$workload")
+    profile="$(dirname "$manifest")/$profile_name"; [ "$(basename "$manifest")" = "manifest-$workload" ] && [ "$profile_name" = "profile-$workload.out" ] && [ -f "$profile" ] && [ "$(sha256sum "$profile" | awk '{print $1}')" = "$digest" ] || { echo "coverage-aggregate: invalid profile evidence for $workload" >&2; return 1; }
     validated+=("$profile")
   done
-  for workload in 0-0 0-1 0-2 0-3 1-0 1-1 1-2 1-3 2-0 2-1 2-2 3-0; do [ "${seen[$workload]:-}" = 1 ] || { echo "coverage-aggregate: missing workload $workload" >&2; return 1; }; done
+  for workload in 0-0 0-1 0-2 0-3 1-0 1-1 1-2 1-3 2-0 2-1 2-2 3-0; do
+    matched=false
+    for value in "${seen_workloads[@]}"; do [ "$value" != "$workload" ] || matched=true; done
+    "$matched" || { echo "coverage-aggregate: missing workload $workload" >&2; return 1; }
+  done
   [ "${#validated[@]}" -eq "${#profiles[@]}" ] || { echo "coverage-aggregate: extra profile evidence" >&2; return 1; }
   for profile in "${profiles[@]}"; do
     matched=false
@@ -437,8 +466,8 @@ run_covercheck_mutants_inner() {
   sha256sum "$config" >"$evidence/config.sha256"
   git rev-parse HEAD >"$evidence/base-head.txt"
   git write-tree >"$evidence/staged-tree.txt"
-  mapfile -t census < <(find "$root/cmd/covercheck" -maxdepth 1 -type f -name '*_test.go' -printf '%f\n' | LC_ALL=C sort)
-  mapfile -t expected < <(go list -f '{{join .TestGoFiles "\n"}}{{"\n"}}{{join .XTestGoFiles "\n"}}' ./cmd/covercheck | sed '/^$/d' | LC_ALL=C sort)
+  while IFS= read -r value; do census+=("$value"); done < <(find "$root/cmd/covercheck" -maxdepth 1 -type f -name '*_test.go' -exec basename {} \; | LC_ALL=C sort)
+  while IFS= read -r value; do expected+=("$value"); done < <(go list -f '{{join .TestGoFiles "\n"}}{{"\n"}}{{join .XTestGoFiles "\n"}}' ./cmd/covercheck | sed '/^$/d' | LC_ALL=C sort)
   [ "${census[*]}" = "${expected[*]}" ] || { echo "covercheck-mutants: test census differs from no-tag go list" >&2; return 1; }
   printf '%s\n' "${census[@]}" >"$evidence/test-files.txt"
   imports="$(go list -f '{{join .Imports "\n"}}' ./cmd/covercheck)"

@@ -106,7 +106,7 @@ vars:
 	want := map[string][]string{
 		"pre-commit":            {"./x check\n./x gate\n"},
 		"commit-msg":            {"./x commit-gate \"$1\"\n"},
-		"pre-push":              {"./x gate full \"${ranges[@]}\""},
+		"pre-push":              {`./x gate full "${ranges[@]+"${ranges[@]}"}"`},
 		"pre-merge-commit":      {"./x check staged\n"},
 		"reference-transaction": {"  ./awf check commit-policy \"${targets[@]}\""},
 	}
@@ -155,7 +155,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	transaction := got["reference-transaction"].Content
 	for _, want := range []string{
 		`[[ "${1:-}" == "prepared" ]] || exit 0`,
-		"mapfile -t updates",
+		`while IFS= read -r update; do updates+=("$update"); done`,
 		`refs/heads/*`,
 		`"$old_oid..$new_oid"`,
 		`check commit-policy "${targets[@]}"`,
@@ -169,7 +169,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	}
 	push := got["pre-push"].Content
 	for _, want := range []string{
-		"mapfile -t updates",
+		`while IFS= read -r update; do updates+=("$update"); done`,
 		`git cat-file -t "$object"`,
 		`git rev-parse --verify "$object^{}"`,
 		`git ls-remote`,
@@ -184,6 +184,13 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	}
 	if policy, gate := strings.Index(push, `check commit-policy "${policy_targets[@]}"`), strings.Index(push, "./x gate full"); policy < 0 || gate < policy {
 		t.Errorf("pre-push must run policy before gate:\n%s", push)
+	}
+	for name, payload := range map[string]string{"reference-transaction": transaction, "pre-push": push} {
+		for _, forbidden := range []string{"mapfile", "declare -A"} {
+			if strings.Contains(payload, forbidden) {
+				t.Errorf("%s requires Bash 4 builtin %q:\n%s", name, forbidden, payload)
+			}
+		}
 	}
 
 	root := t.TempDir()
@@ -232,6 +239,10 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	}
 	transactionPath := writeHook("reference-transaction", transaction)
 	pushPath := writeHook("pre-push", hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmdFull: gate\n")["pre-push"].Content)
+	bashEnv := filepath.Join(root, "bash3-env")
+	if err := os.WriteFile(bashEnv, []byte("enable -n mapfile\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	run := func(path, input string, args ...string) (string, error) {
 		t.Helper()
 		if path == pushPath && len(args) == 0 {
@@ -239,7 +250,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		}
 		cmd := exec.Command("bash", append([]string{path}, args...)...)
 		cmd.Dir, cmd.Stdin = root, strings.NewReader(input)
-		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "HOOK_LOG="+log, "HOOK_FAIL="+filepath.Join(root, "fail-policy"))
+		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "HOOK_LOG="+log, "HOOK_FAIL="+filepath.Join(root, "fail-policy"), "BASH_ENV="+bashEnv)
 		out, err := cmd.CombinedOutput()
 		return string(out), err
 	}

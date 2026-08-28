@@ -190,6 +190,19 @@ exec /usr/bin/mktemp "$@"
 		}
 	})
 	t.Run("hosted coverage evidence is exact and complete", func(t *testing.T) {
+		bashEnv := filepath.Join(root, "coverage-bash3-env")
+		testsupport.WriteFile(t, bashEnv, "enable -n mapfile\n")
+		t.Setenv("BASH_ENV", bashEnv)
+		runner, err := os.ReadFile(filepath.Join(root, "x"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, forbidden := range []string{"mapfile", "declare -A"} {
+			if strings.Contains(string(runner), forbidden) {
+				t.Errorf("hosted coverage aggregation requires Bash 4 construct %q", forbidden)
+			}
+		}
+
 		const candidate = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 		artifacts := filepath.Join(root, "coverage-artifacts")
 		workloads := []string{"0-0", "0-1", "0-2", "0-3", "1-0", "1-1", "1-2", "1-3", "2-0", "2-1", "2-2", "3-0"}
@@ -589,6 +602,18 @@ func TestRunnerFmtRestoresMissingImport(t *testing.T) {
 // invariant: tooling/quality-gates:covercheck-mutation-regression (TestCovercheckMutantsRunnerContract)
 func TestCovercheckMutantsRunnerContract(t *testing.T) {
 	root, logPath := mutationRunnerFixture(t)
+	bashEnv := filepath.Join(root, "bash3-env")
+	testsupport.WriteFile(t, bashEnv, "enable -n mapfile\n")
+	t.Setenv("BASH_ENV", bashEnv)
+	runner, err := os.ReadFile(filepath.Join(root, "x"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, forbidden := range []string{"mapfile", "-printf"} {
+		if strings.Contains(string(runner), forbidden) {
+			t.Errorf("covercheck mutation runner requires non-portable construct %q", forbidden)
+		}
+	}
 	run := func(env []string, args ...string) (string, int, []string) {
 		t.Helper()
 		if err := os.WriteFile(logPath, nil, 0o600); err != nil {

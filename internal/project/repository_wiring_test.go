@@ -55,7 +55,7 @@ func TestPiExtensionHostRunnerWorkerSeams(t *testing.T) {
 	if err := os.Mkdir(fake, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(fake, "node"), []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo v24.19.0; elif [ \"$1\" = - ]; then body=$(cat); case \"$body\" in *spawnSync*) echo \"${FAKE_FINGERPRINT:-fingerprint}\";; *) find .pi/extensions -name '*.ts' -exec sed -i '/^\\/\\/ @ts-nocheck$/d' {} +;; esac; else exit 0; fi\n"), 0o755); err != nil {
+	if err := os.WriteFile(filepath.Join(fake, "node"), []byte("#!/bin/sh\nif [ \"$1\" = --version ]; then echo v24.19.0; elif [ \"$1\" = - ]; then body=$(cat); case \"$body\" in *spawnSync*) echo \"${FAKE_FINGERPRINT:-fingerprint}\";; *) find .pi/extensions -name '*.ts' -exec sh -c 'for file do sed \"/^\\/\\/ @ts-nocheck$/d\" \"$file\" >\"$file.tmp\" && mv \"$file.tmp\" \"$file\"; done' sh {} +;; esac; else exit 0; fi\n"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	npm := "#!/bin/sh\ncase \"$1\" in --version) echo 1;; ci) [ \"${FAKE_NPM_FAIL:-0}\" = 1 ] && exit 7; echo ci >>\"$AWF_FAKE_NPM_COUNT\"; mkdir -p node_modules/.bin; for bin in c8 tsx; do printf '#!/bin/sh\\nexit 0\\n' >node_modules/.bin/$bin; chmod +x node_modules/.bin/$bin; done; printf '%s' \"$FAKE_TSC\" >node_modules/.bin/tsc; chmod +x node_modules/.bin/tsc;; *) exit 2;; esac\n"

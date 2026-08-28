@@ -21,10 +21,10 @@ while [[ -n "$integration_branch_hex" ]]; do
 done
 integration_ref="refs/heads/$integration_branch"
 integration_tip=
-mapfile -t updates
+updates=()
+while IFS= read -r update; do updates+=("$update"); done
 policy_targets=()
 ranges=()
-declare -A seen_policy_targets=()
 
 refusal() {
   printf 'commit policy refused: %s\n' "$1" >&2
@@ -33,8 +33,8 @@ refusal() {
 }
 
 add_policy_target() {
-  [[ ${seen_policy_targets[$1]+x} ]] && return
-  seen_policy_targets[$1]=1
+  local target
+  for target in "${policy_targets[@]+"${policy_targets[@]}"}"; do [[ "$target" != "$1" ]] || return 0; done
   policy_targets+=("$1")
 }
 
@@ -69,7 +69,7 @@ resolve_integration_tip() {
   integration_tip="$oid"
 }
 
-for update in "${updates[@]}"; do
+for update in "${updates[@]+"${updates[@]}"}"; do
   IFS=' ' read -r local_ref local_oid remote_ref remote_oid extra <<< "$update"
   if [[ -z "${local_ref:-}" || -z "${local_oid:-}" || -z "${remote_ref:-}" || -z "${remote_oid:-}" || -n "${extra:-}" ]]; then
     refusal 'malformed pre-push update'
@@ -99,7 +99,7 @@ for update in "${updates[@]}"; do
   fi
 done
 
-if ((${#policy_targets[@]})); then
+if [[ ${policy_targets[0]+present} ]]; then
   ./awf check commit-policy "${policy_targets[@]}"
 fi
-{{ with .vars.gateCmdFull }}{{ . }} "${ranges[@]}"{{ else }}{{ with .vars.gateCmd }}{{ . }}{{ else }}{{ with .vars.checkCmd }}{{ . }}{{ else }}./awf check{{ end }}{{ end }}{{ end }}
+{{ with .vars.gateCmdFull }}{{ . }} "${ranges[@]+"${ranges[@]}"}"{{ else }}{{ with .vars.gateCmd }}{{ . }}{{ else }}{{ with .vars.checkCmd }}{{ . }}{{ else }}./awf check{{ end }}{{ end }}{{ end }}

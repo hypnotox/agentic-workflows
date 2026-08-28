@@ -8,10 +8,12 @@ import (
 	"path/filepath"
 	"slices"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func TestFilesystemProjectReaderExcludesUnsupportedEntries(t *testing.T) {
-	root := t.TempDir()
+	root := testsupport.ShortTempDir(t)
 	if err := os.WriteFile(filepath.Join(root, "regular.md"), []byte("regular\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -13,13 +13,13 @@ root="$(git rev-parse --show-toplevel)"
 cd "$root"
 empty_oid="$(git hash-object -t blob --stdin </dev/null)"
 zero_oid="${empty_oid//?/0}"
-mapfile -t updates
+updates=()
+while IFS= read -r update; do updates+=("$update"); done
 targets=()
-declare -A seen_targets=()
 
 add_target() {
-  [[ ${seen_targets[$1]+x} ]] && return
-  seen_targets[$1]=1
+  local target
+  for target in "${targets[@]+"${targets[@]}"}"; do [[ "$target" != "$1" ]] || return 0; done
   targets+=("$1")
 }
 
@@ -45,7 +45,7 @@ refusal() {
   exit 1
 }
 
-for update in "${updates[@]}"; do
+for update in "${updates[@]+"${updates[@]}"}"; do
   IFS=' ' read -r old_oid new_oid ref extra <<< "$update"
   [[ -n "${old_oid:-}" && -n "${new_oid:-}" && -n "${ref:-}" && -z "${extra:-}" ]] || refusal "malformed reference-transaction update"
   valid_oid_or_symref "$old_oid" && valid_oid_or_symref "$new_oid" || refusal "malformed object ID"
@@ -65,6 +65,6 @@ for update in "${updates[@]}"; do
   add_target "$old_oid..$new_oid"
 done
 
-if ((${#targets[@]})); then
+if [[ ${targets[0]+present} ]]; then
   ./awf check commit-policy "${targets[@]}"
 fi

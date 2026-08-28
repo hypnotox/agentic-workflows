@@ -9,7 +9,7 @@ import (
 
 func TestRangeTouchedPathsAccumulatesRestoredPaths(t *testing.T) {
 	fixture := gitfixture.InitRepo(t)
-	odd := " odd `\xff "
+	odd := " odd ` "
 	base := gitfixture.Commit(t, fixture, "base", map[string]string{"restored.txt": "base\n", odd: "base\n"})
 	gitfixture.Commit(t, fixture, "modify", map[string]string{"restored.txt": "changed\n", odd: "changed\n", "transient.txt": "present\n"})
 	head := gitfixture.Commit(t, fixture, "restore", map[string]string{"restored.txt": "base\n", odd: "base\n"}, "transient.txt")

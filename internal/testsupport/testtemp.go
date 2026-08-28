@@ -18,6 +18,22 @@ const (
 	staleTestHomeAge = 24 * time.Hour
 )
 
+// ShortTempDir returns a cleanup-owned temporary directory without embedding
+// the test name, keeping Unix socket fixtures below Darwin's path limit.
+func ShortTempDir(t testing.TB) string {
+	t.Helper()
+	root, err := os.MkdirTemp("", "t")
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() {
+		if err := os.RemoveAll(root); err != nil {
+			t.Errorf("remove short temporary directory: %v", err)
+		}
+	})
+	return root
+}
+
 type testTempFS struct {
 	mkdir     func(string, fs.FileMode) error
 	mkdirTemp func(string, string) (string, error)

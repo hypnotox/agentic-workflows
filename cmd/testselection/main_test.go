@@ -27,7 +27,10 @@ import (
 	"testing"
 )
 func TestFilesystemProjectReaderPathsExcludeUnsupportedEntries(t *testing.T) {
-	path := filepath.Join(t.TempDir(), ".codegraph", "daemon.sock")
+	root, err := os.MkdirTemp("", "t")
+	if err != nil { t.Fatal(err) }
+	t.Cleanup(func() { _ = os.RemoveAll(root) })
+	path := filepath.Join(root, ".codegraph", "daemon.sock")
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { t.Fatal(err) }
 	listener, err := net.Listen("unix", path)
 	if err != nil { t.Fatal(err) }
