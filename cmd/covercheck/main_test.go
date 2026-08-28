@@ -3,6 +3,7 @@ package main
 import (
 	"bytes"
 	"encoding/json"
+	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -181,6 +182,25 @@ func TestRunMergeProfiles(t *testing.T) {
 		t.Fatalf("merged output = %q, want %q", got, want)
 	}
 }
+
+func TestRunMergeProfilesRejectsWriteFailure(t *testing.T) {
+	root := t.TempDir()
+	first := filepath.Join(root, "first.out")
+	second := filepath.Join(root, "second.out")
+	testsupport.WriteFile(t, first, "mode: set\nexample.com/m/f.go:2.1,2.5 1 0\n")
+	testsupport.WriteFile(t, second, "mode: set\nexample.com/m/f.go:2.1,2.5 1 1\n")
+	var errb bytes.Buffer
+	if code := run([]string{"covercheck", "--merge", first, second}, mergeErrorWriter{}, &errb); code != 1 {
+		t.Fatalf("merge write failure exit = %d, want 1", code)
+	}
+	if got, want := errb.String(), "covercheck: write merged profile: write failed\n"; got != want {
+		t.Fatalf("merge write diagnostic = %q, want %q", got, want)
+	}
+}
+
+type mergeErrorWriter struct{}
+
+func (mergeErrorWriter) Write([]byte) (int, error) { return 0, errors.New("write failed") }
 
 func TestRunMergeProfilesRejectsUsageAndInvalidInput(t *testing.T) {
 	var out, errb bytes.Buffer

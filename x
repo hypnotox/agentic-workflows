@@ -170,10 +170,16 @@ run_go_shards() {
 }
 
 run_platform_builds() {
-  local target
+  local target target_status status=0
   for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
-    env GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
+    if env GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...; then
+      target_status=0
+    else
+      target_status=$?
+    fi
+    [ "$status" -ne 0 ] || status="$target_status"
   done
+  return "$status"
 }
 
 run_parallel_gate_steps() {

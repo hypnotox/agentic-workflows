@@ -366,6 +366,7 @@ func TestFilterProfileNoModuleLine(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:coverage-raw-identity-ratchet (TestMergeProfilesIsDeterministicAndORMergesExactBlocks)
 func TestMergeProfilesIsDeterministicAndORMergesExactBlocks(t *testing.T) {
 	root := t.TempDir()
 	first := writeNamedProfile(t, root, "first.out", "mode: set\n"+
@@ -407,6 +408,8 @@ func TestMergeProfilesRejectsInvalidShardInputs(t *testing.T) {
 		{name: "conflicting statement counts", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/a.go:2.1,2.5 2 0\n", wantSuffix: `:2: coverage: conflicting statement count for "example.com/m/a.go:2.1,2.5": 1 and 2`},
 		{name: "conflicting duplicate statement counts", first: "mode: set\n" + blockA + "example.com/m/a.go:2.1,2.5 2 0\n", second: "mode: set\n" + blockA, wantSuffix: `:3: coverage: conflicting statement count for "example.com/m/a.go:2.1,2.5": 1 and 2`},
 		{name: "noncanonical path", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/../m/a.go:2.1,2.5 1 0\n", wantSuffix: `:2: coverage: noncanonical profile path "example.com/m/../m/a.go"`},
+		{name: "ambiguous path whitespace", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/a file.go:2.1,2.5 1 0\n", wantSuffix: `:2: coverage: noncanonical profile path "example.com/m/a file.go"`},
+		{name: "noncanonical span", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/a.go:02.1,2.5 1 0\n", wantSuffix: `:2: coverage: noncanonical profile span "02.1,2.5"; want "2.1,2.5"`},
 		{name: "reversed span", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/a.go:3.1,2.5 1 0\n", wantSuffix: `:2: coverage: reversed profile span "3.1,2.5"`},
 		{name: "negative statements", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/a.go:2.1,2.5 -1 0\n", wantSuffix: `:2: coverage: negative statement count for "example.com/m/a.go:2.1,2.5"`},
 		{name: "invalid set count", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/a.go:2.1,2.5 1 2\n", wantSuffix: `:2: coverage: set-mode execution count for "example.com/m/a.go:2.1,2.5" must be 0 or 1`},

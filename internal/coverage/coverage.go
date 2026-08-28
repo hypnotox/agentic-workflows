@@ -15,6 +15,7 @@ import (
 	"slices"
 	"strconv"
 	"strings"
+	"unicode"
 )
 
 // marker is the ignore directive in its comment form. It is assembled by
@@ -157,8 +158,13 @@ func setCount(left, right int) int {
 
 func validateMergeBlock(current block, setMode bool) error {
 	if current.file == "" || path.IsAbs(current.file) || path.Clean(current.file) != current.file ||
-		strings.ContainsAny(current.file, `\:`) || !strings.Contains(current.file, "/") {
+		strings.ContainsAny(current.file, `\:`) || !strings.Contains(current.file, "/") ||
+		strings.IndexFunc(current.file, func(r rune) bool { return unicode.IsSpace(r) || unicode.IsControl(r) }) >= 0 {
 		return fmt.Errorf("coverage: noncanonical profile path %q", current.file)
+	}
+	canonicalSpan := fmt.Sprintf("%d.%d,%d.%d", current.startLine, current.startColumn, current.endLine, current.endColumn)
+	if current.span != canonicalSpan {
+		return fmt.Errorf("coverage: noncanonical profile span %q; want %q", current.span, canonicalSpan)
 	}
 	if current.endLine < current.startLine ||
 		(current.endLine == current.startLine && current.endColumn < current.startColumn) {

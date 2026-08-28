@@ -21127,11 +21127,11 @@
       "identity": {
         "file": "cmd/covercheck/main.go",
         "start": {
-          "line": 129,
+          "line": 132,
           "column": 16
         },
         "end": {
-          "line": 132,
+          "line": 135,
           "column": 3
         },
         "statements": 2
@@ -21140,11 +21140,11 @@
       "movedFrom": {
         "file": "cmd/covercheck/main.go",
         "start": {
-          "line": 117,
+          "line": 129,
           "column": 16
         },
         "end": {
-          "line": 120,
+          "line": 132,
           "column": 3
         },
         "statements": 2
@@ -21154,11 +21154,11 @@
       "identity": {
         "file": "cmd/covercheck/main.go",
         "start": {
-          "line": 137,
+          "line": 140,
           "column": 63
         },
         "end": {
-          "line": 140,
+          "line": 143,
           "column": 3
         },
         "statements": 2
@@ -21167,11 +21167,11 @@
       "movedFrom": {
         "file": "cmd/covercheck/main.go",
         "start": {
-          "line": 125,
+          "line": 137,
           "column": 63
         },
         "end": {
-          "line": 128,
+          "line": 140,
           "column": 3
         },
         "statements": 2
@@ -30764,8 +30764,8 @@
     {
       "directive": {
         "file": "cmd/covercheck/main.go",
-        "line": 129,
-        "targetLine": 129,
+        "line": 132,
+        "targetLine": 132,
         "reason": "Regenerate returned the same already-validated typed baseline",
         "mapped": true,
         "executed": false
@@ -30776,8 +30776,8 @@
     {
       "directive": {
         "file": "cmd/covercheck/main.go",
-        "line": 137,
-        "targetLine": 137,
+        "line": 140,
+        "targetLine": 140,
         "reason": "complete canonical bytes were just atomically replaced and verified in memory",
         "mapped": true,
         "executed": false

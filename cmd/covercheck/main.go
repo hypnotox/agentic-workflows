@@ -41,7 +41,10 @@ func run(args []string, stdout, stderr io.Writer) int {
 				fmt.Fprintln(stderr, "covercheck:", err)
 				return 1
 			}
-			fmt.Fprint(stdout, merged)
+			if _, err := fmt.Fprint(stdout, merged); err != nil {
+				fmt.Fprintln(stderr, "covercheck: write merged profile:", err)
+				return 1
+			}
 			return 0
 		case "--policy":
 			if len(args) != 4 {

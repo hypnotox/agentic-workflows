@@ -18,10 +18,12 @@ import (
 
 // invariant: tooling/quality-gates:gate-tier-cadence (TestGateRunnerModes)
 // invariant: tooling/quality-gates:gate-severity-by-protected-property (TestGateRunnerModes)
+// invariant: tooling/quality-gates:coverage-raw-identity-ratchet (TestGateRunnerModes)
 // TestGateRunnerModes executes the runner against a command-recording fixture so
 // the fast composition and additive full composition cannot drift by text shape alone.
 func TestGateRunnerModes(t *testing.T) {
 	root, logPath := gateRunnerFixture(t)
+	shardEnvPath := filepath.Join(root, "shard-environments.log")
 	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\nif [[ \"$*\" == *'rev-parse --show-toplevel'* ]]; then pwd; exit 0; fi\nif [[ \"$*\" == *cat-file* ]]; then exit 0; fi\nif [[ \"$*\" == *diff* ]]; then [ -z \"${FAKE_GIT_CHANGED_PATH:-}\" ] || printf '%s\\0' \"$FAKE_GIT_CHANGED_PATH\"; exit 0; fi\nexit 0\n")
 	if err := os.Chmod(filepath.Join(root, "fake-bin", "git"), 0o755); err != nil {
 		t.Fatal(err)
@@ -31,9 +33,12 @@ func TestGateRunnerModes(t *testing.T) {
 		if err := os.WriteFile(logPath, nil, 0o600); err != nil {
 			t.Fatal(err)
 		}
+		if err := os.WriteFile(shardEnvPath, nil, 0o600); err != nil {
+			t.Fatal(err)
+		}
 		cmd := exec.Command("bash", append([]string{"./x"}, args...)...)
 		cmd.Dir = root
-		cmd.Env = append(os.Environ(), "PATH="+filepath.Join(root, "fake-bin")+":"+os.Getenv("PATH"), "INVOCATION_LOG="+logPath)
+		cmd.Env = append(os.Environ(), "PATH="+filepath.Join(root, "fake-bin")+":"+os.Getenv("PATH"), "INVOCATION_LOG="+logPath, "SHARD_ENV_LOG="+shardEnvPath)
 		out, err := cmd.CombinedOutput()
 		status := 0
 		if err != nil {
@@ -87,6 +92,9 @@ func TestGateRunnerModes(t *testing.T) {
 			out, status, got := run(tc.args...)
 			if status != 0 {
 				t.Fatalf("status=%d output=%q", status, out)
+			}
+			if tc.name == "full" {
+				assertShardContracts(t, got, shardEnvPath)
 			}
 			got = normalizeGateInvocations(got)
 			if !slices.Equal(sortedStrings(got), sortedStrings(tc.want)) {
@@ -154,6 +162,20 @@ func TestGateRunnerModes(t *testing.T) {
 			}
 		}
 	})
+	t.Run("nonfinal platform failure remains blocking and all targets terminate", func(t *testing.T) {
+		t.Setenv("FAKE_GO_FAIL_GOOS", "linux")
+		t.Setenv("FAKE_GO_FAIL_GOARCH", "amd64")
+		out, status, lines := run("gate", "full", "timings", "--range", "base", "head")
+		if status != 17 || !strings.Contains(out, "gate: stage platform-builds failed with status 17") {
+			t.Fatalf("status=%d output=%q invocations=%q", status, out, lines)
+		}
+		joined := strings.Join(lines, "\n")
+		for _, target := range []string{"goos=linux|goarch=amd64", "goos=linux|goarch=arm64", "goos=darwin|goarch=amd64", "goos=darwin|goarch=arm64"} {
+			if !strings.Contains(joined, target+"|pi=|build ./...") {
+				t.Errorf("platform target %s did not terminate: %q", target, lines)
+			}
+		}
+	})
 	t.Run("parallel failures all report after every stage terminates", func(t *testing.T) {
 		t.Setenv("FAKE_GO_FAIL_CONTAINS", "vet ./...")
 		t.Setenv("FAKE_PI_RESULT", "fail")
@@ -165,6 +187,70 @@ func TestGateRunnerModes(t *testing.T) {
 			t.Fatalf("status=%d output=%q invocations=%q", status, out, lines)
 		}
 	})
+}
+
+func assertShardContracts(t *testing.T, invocations []string, environmentPath string) {
+	t.Helper()
+	provingUnit := regexp.MustCompile(` -run \^\(([^)]*)\)\$ `)
+	for group, slices := range map[int]int{0: 4, 1: 4, 2: 3} {
+		counts := map[string]int{}
+		seenSlices := 0
+		for _, invocation := range invocations {
+			if !strings.Contains(invocation, "/shard"+strconv.Itoa(group)+"-") {
+				continue
+			}
+			seenSlices++
+			match := provingUnit.FindStringSubmatch(invocation)
+			if len(match) != 2 {
+				t.Fatalf("shard group %d omitted canonical proving-unit regex: %q", group, invocation)
+			}
+			for _, name := range strings.Split(match[1], "|") {
+				counts[name]++
+			}
+		}
+		if seenSlices != slices {
+			t.Fatalf("shard group %d slices = %d, want %d", group, seenSlices, slices)
+		}
+		for _, name := range []string{"TestAlpha", "TestBeta", "TestGamma", "TestDelta"} {
+			if counts[name] != 1 {
+				t.Errorf("shard group %d proving unit %s count = %d, want 1", group, name, counts[name])
+			}
+		}
+		if len(counts) != 4 {
+			t.Errorf("shard group %d proving units = %#v", group, counts)
+		}
+	}
+
+	data, err := os.ReadFile(environmentPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lines := strings.Split(strings.TrimSpace(string(data)), "\n")
+	if len(lines) != 12 {
+		t.Fatalf("shard environment records = %d, want 12: %q", len(lines), data)
+	}
+	roots := map[string]bool{}
+	for _, line := range lines {
+		parts := strings.SplitN(line, "|", 5)
+		if len(parts) != 5 {
+			t.Fatalf("malformed shard environment record %q", line)
+		}
+		home, tmp, gotmp, gmp, invocation := parts[0], parts[1], parts[2], parts[3], parts[4]
+		if home == "" || home != tmp || home != gotmp {
+			t.Errorf("shard mutable roots not isolated together: HOME=%q TMPDIR=%q GOTMPDIR=%q", home, tmp, gotmp)
+		}
+		if roots[home] {
+			t.Errorf("shard mutable root reused: %q", home)
+		}
+		roots[home] = true
+		wantGMP := "1"
+		if strings.Contains(invocation, "/shard3-0.out") {
+			wantGMP = "2"
+		}
+		if gmp != wantGMP {
+			t.Errorf("shard processor bound for %q = %s, want %s", invocation, gmp, wantGMP)
+		}
+	}
 }
 
 func normalizeGateInvocations(lines []string) []string {
@@ -645,10 +731,16 @@ if [[ "$*" == test\ -list* ]]; then
   exit 0
 fi
 printf 'goos=%s|goarch=%s|pi=%s|%s\n' "${GOOS:-}" "${GOARCH:-}" "${AWF_PI_RUNTIME_SMOKE:-}" "$*" >>"$INVOCATION_LOG"
+if [[ "$*" == test\ -p=1* && "$*" == *"/shard"*".out"* ]]; then
+  printf '%s|%s|%s|%s|%s\n' "$HOME" "$TMPDIR" "$GOTMPDIR" "$GOMAXPROCS" "$*" >>"$SHARD_ENV_LOG"
+fi
 if [ -n "${FAKE_GO_OUTPUT_CONTAINS:-}" ] && [[ "$*" == *"$FAKE_GO_OUTPUT_CONTAINS"* ]]; then
   printf '%s\n' "${FAKE_GO_OUTPUT:-}"
 fi
 if [ -n "${FAKE_GO_FAIL_CONTAINS:-}" ] && [[ "$*" == *"$FAKE_GO_FAIL_CONTAINS"* ]]; then
+  exit 17
+fi
+if [ -n "${FAKE_GO_FAIL_GOOS:-}" ] && [ "${GOOS:-}" = "$FAKE_GO_FAIL_GOOS" ] && [ "${GOARCH:-}" = "${FAKE_GO_FAIL_GOARCH:-}" ]; then
   exit 17
 fi
 if [[ "$*" == "test -json ./internal/publisher -run ^TestPiRealRuntimeSmoke$ -count=1" ]]; then

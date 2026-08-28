@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "1b6dbe4f047db7dc85ced2f7de2ad9350470097edc3671e3f4b1c0d7dca466ee",
+  "universeSHA256": "2c35faa08d449d0598f11d511e3633808979e2a87826b5896e3cfe81dc38c631",
   "repository": [
     {
       "identity": {
@@ -1753,11 +1753,11 @@
       "identity": {
         "file": "cmd/covercheck/main.go",
         "start": {
-          "line": 129,
+          "line": 132,
           "column": 16
         },
         "end": {
-          "line": 132,
+          "line": 135,
           "column": 3
         },
         "statements": 2
@@ -1766,11 +1766,11 @@
       "movedFrom": {
         "file": "cmd/covercheck/main.go",
         "start": {
-          "line": 117,
+          "line": 129,
           "column": 16
         },
         "end": {
-          "line": 120,
+          "line": 132,
           "column": 3
         },
         "statements": 2
@@ -1780,11 +1780,11 @@
       "identity": {
         "file": "cmd/covercheck/main.go",
         "start": {
-          "line": 137,
+          "line": 140,
           "column": 63
         },
         "end": {
-          "line": 140,
+          "line": 143,
           "column": 3
         },
         "statements": 2
@@ -1793,11 +1793,11 @@
       "movedFrom": {
         "file": "cmd/covercheck/main.go",
         "start": {
-          "line": 125,
+          "line": 137,
           "column": 63
         },
         "end": {
-          "line": 128,
+          "line": 140,
           "column": 3
         },
         "statements": 2
@@ -16535,11 +16535,11 @@
         {
           "file": "cmd/covercheck/main.go",
           "start": {
-            "line": 129,
+            "line": 132,
             "column": 16
           },
           "end": {
-            "line": 132,
+            "line": 135,
             "column": 3
           },
           "statements": 2
@@ -16547,11 +16547,11 @@
         {
           "file": "cmd/covercheck/main.go",
           "start": {
-            "line": 137,
+            "line": 140,
             "column": 63
           },
           "end": {
-            "line": 140,
+            "line": 143,
             "column": 3
           },
           "statements": 2
@@ -22315,8 +22315,8 @@
     {
       "directive": {
         "file": "cmd/covercheck/main.go",
-        "line": 129,
-        "targetLine": 129,
+        "line": 132,
+        "targetLine": 132,
         "reason": "Regenerate returned the same already-validated typed baseline",
         "mapped": true,
         "executed": false
@@ -22327,8 +22327,8 @@
     {
       "directive": {
         "file": "cmd/covercheck/main.go",
-        "line": 137,
-        "targetLine": 137,
+        "line": 140,
+        "targetLine": 140,
         "reason": "complete canonical bytes were just atomically replaced and verified in memory",
         "mapped": true,
         "executed": false
