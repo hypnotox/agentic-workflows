@@ -16,7 +16,9 @@ The pre-push protocol supplies both old and new object IDs for an existing desti
 
 1. `decision: pushed-ref-delta-enforcement` The generated pre-push payload checks only the union of commits introduced by the pushed ref updates. For an existing ref, its advertised remote tip is the base. For a new commit-bearing branch or tag, the freshly resolved destination integration-branch tip is the base.
 
-2. `decision: pushed-ref-delta-evidence` Deletions contribute no commits. Multiple updates are unioned and deduplicated, and commit-bearing tag targets are recursively peeled before selection. Missing, malformed, unresolvable, or contradictory required remote or object evidence refuses the push rather than widening, skipping, or consulting stale remote-tracking refs.
+2. `decision: pushed-ref-delta-evidence` Deletions contribute no commits. Multiple updates are unioned and deduplicated, and commit-bearing tag targets are recursively peeled before selection. Missing, malformed, or unresolvable required remote or object evidence refuses the push rather than widening, skipping, or consulting stale remote-tracking refs.
+
+3. `decision: pushed-ref-delta-template-safety` The changed pre-push template preserves publication-safe `missingkey=zero` behavior and renders coherently without unresolved or no-value tokens when its variables are unset.
 
 ## State changes
 
