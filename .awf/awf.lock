@@ -837,8 +837,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:7195d966da7bffae968f42c8c7a9125eb16c001bce4a5d13ef1279f45ad41213",
-      "configHash": "sha256:919e6af1e91084d82e1b066ef781c756e1ff8e4d656e8342b62b398693db01b7",
-      "outputHash": "sha256:9307019795dc8d88f6395a36a94fd540724aef62732474a789b16e8fa9c3186d"
+      "configHash": "sha256:ccd45434a01dcdaa153774ee4fb2737d67cc700916876afff0f47ce0a56591d2",
+      "outputHash": "sha256:348ade6a4a983ea9c037a408e416866c2cbd4ef9d22d8e22c58fdb2152cb3ad4"
     },
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",

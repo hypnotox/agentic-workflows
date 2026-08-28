@@ -143,6 +143,25 @@ func TestBuildReportFeedsBothRenderingsFromObservations(t *testing.T) {
 	}
 }
 
+func TestValidationRequiresEveryWorkload(t *testing.T) {
+	base := validRecord(t)
+	for missing := range requiredWorkloads {
+		t.Run(missing, func(t *testing.T) {
+			record := cloneRecord(t, base)
+			filtered := record.Workloads[:0]
+			for _, workload := range record.Workloads {
+				if workload.ID != missing {
+					filtered = append(filtered, workload)
+				}
+			}
+			record.Workloads = filtered
+			if err := Validate(record); err == nil || !strings.Contains(err.Error(), "required set") {
+				t.Fatalf("Validate() error = %v", err)
+			}
+		})
+	}
+}
+
 func TestValidationRejectsInvalidContracts(t *testing.T) {
 	base := validRecord(t)
 	cases := []struct {
@@ -151,8 +170,10 @@ func TestValidationRejectsInvalidContracts(t *testing.T) {
 		want   string
 	}{
 		{"required collections", func(r *Record) { r.Workloads = nil }, "required"},
-		{"incomplete workload", func(r *Record) { r.Workloads[0].Description = "" }, "workload requires"},
-		{"duplicate workload", func(r *Record) { r.Workloads = append(r.Workloads, r.Workloads[0]) }, "duplicate workload"},
+		{"incomplete workload", func(r *Record) { r.Workloads[0].Description = "" }, "not a complete"},
+		{"duplicate workload", func(r *Record) { r.Workloads[len(r.Workloads)-1] = r.Workloads[0] }, "duplicate workload"},
+		{"invalid workload kind", func(r *Record) { r.Workloads[0].Kind = "nonsense" }, "classification must"},
+		{"invalid workload mutation", func(r *Record) { r.Workloads[0].Mutation = "banana" }, "classification must"},
 		{"incomplete environment", func(r *Record) { r.Environments[0].CPU = "" }, "full identity"},
 		{"invalid environment kind", func(r *Record) { r.Environments[0].Kind = "other" }, "full identity"},
 		{"duplicate environment", func(r *Record) { r.Environments = append(r.Environments, r.Environments[0]) }, "duplicate environment"},

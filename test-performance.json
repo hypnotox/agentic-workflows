@@ -152,7 +152,56 @@
       "qualification": "minimum",
       "maximum_seconds": 156,
       "stronger_target_seconds": 55,
-      "component_maximums": []
+      "component_maximums": [
+        {
+          "stage": "go-test",
+          "package": "repository",
+          "test": "serial-profiled-lane",
+          "seconds": 605
+        },
+        {
+          "stage": "go-test",
+          "package": "cmd/awf",
+          "test": "package-total",
+          "seconds": 241.931
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/project",
+          "test": "package-total",
+          "seconds": 143.529
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/publisher",
+          "test": "package-total",
+          "seconds": 92.477
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/evals",
+          "test": "package-total",
+          "seconds": 23.146
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/contextop",
+          "test": "package-total",
+          "seconds": 15.137
+        },
+        {
+          "stage": "coverage-policy",
+          "package": "cmd/covercheck",
+          "test": "policy",
+          "seconds": 1
+        },
+        {
+          "stage": "pi-smoke",
+          "package": "repository",
+          "test": "runtime-smoke",
+          "seconds": 6
+        }
+      ]
     },
     {
       "workload": "selected-mutation",

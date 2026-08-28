@@ -167,6 +167,19 @@ func Canonical(record Record) ([]byte, error) {
 	return append(data, '\n'), nil
 }
 
+type workloadContract struct {
+	kind     string
+	mutation string
+}
+
+var requiredWorkloads = map[string]workloadContract{
+	"fast-gate":            {kind: "component", mutation: "excluded"},
+	"common-feedback":      {kind: "common-local", mutation: "excluded"},
+	"ordinary-full":        {kind: "terminal-local", mutation: "empty-universe"},
+	"selected-mutation":    {kind: "exceptional-local", mutation: "range-selected"},
+	"hosted-critical-path": {kind: "hosted", mutation: "separately-timed"},
+}
+
 // Validate checks the complete qualification contract without comparing unlike environments.
 func Validate(r Record) error {
 	if r.Version != Version {
@@ -175,15 +188,27 @@ func Validate(r Record) error {
 	if len(r.Workloads) == 0 || len(r.Environments) == 0 || len(r.Baselines) == 0 || len(r.Budgets) == 0 {
 		return errors.New("workloads, environments, baselines, and budgets are required")
 	}
+	if len(r.Workloads) != len(requiredWorkloads) {
+		return fmt.Errorf("workloads must contain exactly the schema-v%d required set", Version)
+	}
 	workloads := map[string]bool{}
 	for _, w := range r.Workloads {
-		if w.ID == "" || w.Kind == "" || w.Mutation == "" || w.Description == "" {
-			return errors.New("workload requires id, kind, mutation, and description")
+		contract, required := requiredWorkloads[w.ID]
+		if !required || w.Description == "" {
+			return fmt.Errorf("workload %q is not a complete schema-v%d workload", w.ID, Version)
+		}
+		if w.Kind != contract.kind || w.Mutation != contract.mutation {
+			return fmt.Errorf("workload %q classification must be kind %q and mutation %q", w.ID, contract.kind, contract.mutation)
 		}
 		if workloads[w.ID] {
 			return fmt.Errorf("duplicate workload %q", w.ID)
 		}
 		workloads[w.ID] = true
+	}
+	for id := range requiredWorkloads {
+		if !workloads[id] {
+			return fmt.Errorf("required workload %q is missing", id)
+		}
 	}
 	environments := map[string]Environment{}
 	for _, e := range r.Environments {
@@ -421,14 +446,24 @@ func WriteHuman(w io.Writer, report Report) {
 	for _, environment := range report.Environments {
 		fmt.Fprintf(w, "environment %s: kind=%s cpu=%s os=%s architecture=%s filesystem=%s memory=%s runner=%s toolchain=%s\n", environment.ID, environment.Kind, environment.CPU, environment.OS, environment.Architecture, environment.Filesystem, environment.Memory, environment.RunnerImage, environment.Toolchain)
 	}
+	fmt.Fprintf(w, "sample method: aggregation=%s warm=%d cold=%d wall=%s\n", report.SampleMethod.Aggregation, report.SampleMethod.WarmSamples, report.SampleMethod.ColdSamples, report.SampleMethod.WallTime)
+	for _, preparation := range report.SampleMethod.CachePreparation {
+		fmt.Fprintf(w, "  cache preparation: %s\n", preparation)
+	}
 	for _, baseline := range report.Baselines {
 		fmt.Fprintf(w, "baseline %s on %s: %.3fs\n", baseline.Workload, baseline.Environment, baseline.Seconds)
 	}
 	for _, budget := range report.Budgets {
 		fmt.Fprintf(w, "budget %s on %s: qualification=%s maximum=%.3fs stronger=%.3fs\n", budget.Workload, budget.Environment, budget.Qualification, budget.MaximumSeconds, budget.StrongerTargetSeconds)
 	}
+	for _, observation := range report.Observations {
+		fmt.Fprintf(w, "observation %s on %s: cache=%s sample=%d seconds=%.3f\n", observation.Workload, observation.Environment.ID, observation.Cache, observation.Sample, observation.Seconds)
+	}
+	for _, aggregate := range report.Aggregates {
+		fmt.Fprintf(w, "aggregate %s on %s: cache=%s samples=%d seconds=%.3f\n", aggregate.Workload, aggregate.Environment, aggregate.Cache, aggregate.Samples, aggregate.Seconds)
+	}
 	for _, e := range report.Evaluations {
-		fmt.Fprintf(w, "%s on %s: %.3fs (budget %.3fs, evidence: %s)\n", e.Workload, e.Environment, e.ObservedSeconds, e.MaximumSeconds, e.WallTime)
+		fmt.Fprintf(w, "%s on %s: %.3fs (budget %.3fs, meets=%t, evidence: %s)\n", e.Workload, e.Environment, e.ObservedSeconds, e.MaximumSeconds, e.MeetsMaximum, e.WallTime)
 		for _, c := range e.ComponentRegressions {
 			fmt.Fprintf(w, "  component regression: %s\n", c)
 		}

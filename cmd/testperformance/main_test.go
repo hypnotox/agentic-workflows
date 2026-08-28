@@ -51,7 +51,7 @@ func TestReportEmitsHumanAndMachineFromSameRecord(t *testing.T) {
 	if code := run([]string{"testperformance", "report", "--machine", path}, &machine, &errb); code != 0 {
 		t.Fatalf("machine=%d: %s", code, errb.String())
 	}
-	if !strings.Contains(human.String(), "qualification record v1") || !strings.Contains(machine.String(), `"record_version": 1`) {
+	if !strings.Contains(human.String(), "qualification record v1") || !strings.Contains(human.String(), "aggregate fast-gate on local-linux-amd64: cache=warm samples=3 seconds=1.229") || !strings.Contains(machine.String(), `"record_version": 1`) || !strings.Contains(machine.String(), `"seconds": 1.229`) {
 		t.Fatalf("human=%q machine=%q", human.String(), machine.String())
 	}
 }
