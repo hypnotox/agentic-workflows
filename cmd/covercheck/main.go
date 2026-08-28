@@ -98,7 +98,7 @@ func generatePolicy(profilePath, baselinePath, reviewPath string, stdout, stderr
 	}
 	var previous *coverage.Baseline
 	if _, statErr := os.Stat(baselinePath); statErr == nil {
-		loaded, loadErr := coverage.LoadBaseline(baselinePath)
+		loaded, loadErr := coverage.LoadBaselineForRegeneration(baselinePath)
 		if loadErr != nil {
 			fmt.Fprintln(stderr, "covercheck:", loadErr)
 			return 1

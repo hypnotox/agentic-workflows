@@ -58,7 +58,7 @@ func TestTddTemplate(t *testing.T) {
 		"strongest practical durable oracle",
 		"confirm it fails for the right reason: `go test ./...`",
 		"record the concrete reason automated red-first is impractical",
-		"Run the gate: `./x gate`",
+		"The fast commit tier runs at the commit boundary",
 		"a test never observed failing proves nothing.",
 		"Fix the code, not the oracle.",
 	}

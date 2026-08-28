@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-0313: Separate commit and full verification gates](0313-separate-commit-and-full-verification-gates.md) (Implementing)
 
 ## History
 

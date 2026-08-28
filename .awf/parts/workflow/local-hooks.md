@@ -1,4 +1,4 @@
-This repository tracks five optional client-side preflight stubs under `.githooks/`: pre-commit checks `./x check` and `./x gate`; commit-msg checks the final message; pre-merge-commit checks staged state; reference-transaction and pre-push apply commit policy. `./x render` keeps their payloads current.
+This repository tracks five optional client-side preflight stubs under `.githooks/`: pre-commit checks `./x check` and the fast `./x gate`; commit-msg checks the final message; pre-merge-commit checks staged state; reference-transaction and pre-push applies commit policy and runs `./x gate full`. `./x render` keeps their payloads current.
 
 The stubs resolve the invoking worktree before delegation. A clone may activate them with `git config core.hooksPath .githooks`. Preview policy with `./awf check commit-policy <revision-or-range>...`. These checks do not gate remote updates by themselves.
 

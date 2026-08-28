@@ -47,7 +47,7 @@ var unsetFallbackCases = []fallbackCase{
 		want: []string{
 			"Pick the smallest surface that can prove the behaviour",
 			"confirm it fails for the right reason.",
-			"Run the gate.",
+			"Run the selected behavior-proving oracle and the narrowest relevant owner check.",
 		},
 		ban: []string{"``"},
 	},
@@ -56,7 +56,7 @@ var unsetFallbackCases = []fallbackCase{
 		want: []string{
 			"confirm it with a falsifiable check before touching code",
 			"Exercise the selected evidence against the unfixed behaviour",
-			"The project's gate is the default",
+			"Verify the changed owner.",
 			"the project's docs",
 			"Evaluate implementation review independently",
 			"the project's review step",
@@ -69,7 +69,7 @@ var unsetFallbackCases = []fallbackCase{
 		want: []string{
 			"apply it directly under the durable-oracle rule in that case",
 			"Apply the durable-oracle rule above directly.",
-			"the project's gate",
+			"narrowest relevant durable verification",
 			"apply the fix under the durable-oracle rule",
 			"a design discussion before changing behaviour",
 		},

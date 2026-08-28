@@ -50,7 +50,7 @@ func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, 
 	if err := validatePathOwner(path, opened, file); err != nil { // coverage-ignore: requires a foreign-owned fixture created by a privileged test process
 		return closeOnError(err)
 	}
-	if err := validateOpenedFile(path, file); err != nil { // coverage-ignore: Unix has no additional handle validation; Windows exercises this branch in platform tests
+	if err := validateOpenedFile(path, file); err != nil { // coverage-ignore: Linux and Darwin use no additional handle validation, so the defensive error path remains unreachable on every supported runtime
 		return closeOnError(err)
 	}
 	resident, err := os.Lstat(path)

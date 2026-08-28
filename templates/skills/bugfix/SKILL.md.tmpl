@@ -3,6 +3,8 @@ name: {{ .prefix }}-bugfix
 description: Use when applying a bug fix in {{ .prefix }} with a known root cause. Establishes the strongest practical durable oracle, fixes the root cause, verifies via the gate, commits, and evaluates review need. Self-contained.
 ---
 
+<!-- awf:include gate-cadence -->
+
 # {{ .prefix }}-bugfix
 
 The fix-and-verify task skill.{{ if .skills.debugging }} Companion to `{{ .prefix }}-debugging`: where debugging owns systematic investigation (finding the root cause), this skill owns the implementation + review pair that ships the fix.{{ end }}
@@ -39,7 +41,7 @@ No safety bypasses. Repair defects caused by this transaction or blocking safe c
 {{ if .layout.docs.pitfalls }}   Before writing the fix, read the compact generated pitfall index at `{{ .layout.docs.pitfalls }}`, then open only relevant linked leaves for known-tricky areas; verify the fix is not re-introducing one that bit before.
 {{ end }}<!-- awf:end -->
 
-3. **Verify via the gates.** {{ with .vars.gateCmd }}`{{ . }}`{{ else }}The project's gate{{ end }} is the default.{{ if .vars.gateCmdFull }} Run `{{ .vars.gateCmdFull }}` when regression-test placement warrants the full tier.{{ end }}
+3. **Verify the changed owner.** Run the narrowest durable oracle, test, build, or lint command needed by the fix; follow the shared gate cadence below.
 
 4. **Commit** with Conventional Commits, typically `fix(<scope>): ...`; the body explains the *why*. Retain the selected durable evidence and, when it is not the preferred automated path, its concrete reason.
 

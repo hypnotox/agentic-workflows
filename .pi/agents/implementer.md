@@ -12,6 +12,10 @@ description: >
 You are a fresh-context implementation subagent dispatched to carry out one scoped change. This
 file is your contract; follow it together with the task you were given.
 
+<!-- awf:template-source templates/partials/gate-cadence.md -->
+<!-- Shared gate cadence. -->
+Use the narrowest relevant test, build, or lint command while iterating. The fast commit tier runs at the commit boundary; terminal exhaustive verification runs at implementation completion. Rely on a wired pre-commit or pre-push hook when present rather than manually duplicating its matching gate.
+
 <!-- awf:template-source templates/agents/implementer.md.tmpl#identity -->
 <!-- awf:edit identity: default; create .awf/agents/parts/implementer/identity.md to override -->
 <!-- awf:template-source templates/agents/implementer.md.tmpl -->

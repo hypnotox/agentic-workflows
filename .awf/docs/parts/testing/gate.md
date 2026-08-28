@@ -1,4 +1,4 @@
-`./x gate` must be green before every commit. It independently selects profiled Go tests with coverage and Pi runtime smoke against a materialized staged candidate. The original parent-to-candidate NUL-safe, rename-disabled range selects lanes: only `.editorconfig` skips both; dependency-proven Pi-only paths run Pi only; Go-only paths run Go only; and overlapping or uncertain, empty, unreadable, malformed, or unrecognized snapshots run both (ADR-0276). Each skipped suite prints a notice. Commands still test the working tree. The gate always runs `go vet`, released-platform cross-compilation, blocking defect lint, advisory style and heuristic lint, whole-program dead-code checking (ADR-0063), and `cmd/pincheck` (ADR-0079). Advisory lint findings print an explicit warning and succeed; either linter's execution or configuration failure blocks. When profiled Go tests run, the gate writes one whole-module `coverage.out` and blocks on exact raw uncovered identities, six whole-derived critical selectors, admitted ignore evidence, and positively executed ignored bodies rather than on an aggregate percentage. Exact staged `cmd/covercheck` changes also run the targeted mutation blocker; uncertain selection runs rather than skips it. The Pi lane separately retains strict type checks and 100% statement, branch, function, and line coverage with descriptor parity.
+`./x gate` is the fast commit tier: version validation, one native build, blocking lint including govet, and workflow pin validation. Use focused tests, builds, or lint while iterating. `./x gate full` is terminal exhaustive verification: it adds complete native Go and Pi behavior, whole-module coverage policy, standalone vet, advisory lint, dead-code analysis, four Linux/Darwin release cross-builds, and range-qualified `cmd/covercheck` mutation. A local full run selects mutation from the exact staged candidate; pre-push, CI, and release callers provide one or more exact ranges. Missing or malformed evidence runs mutation conservatively. The Pi lane retains strict type checks and 100% statement, branch, function, and line coverage with descriptor parity.
 
 | Gate class | Protected property and exit behavior |
 |---|---|
@@ -20,8 +20,10 @@ Direct checks retain the same classification as their aggregate. Operational ina
 
 | Command | Use |
 |---|---|
-| `./x gate` | Complete deterministic transaction. |
-| `./x gate timings` | Same selected transaction with elapsed time only for executed stages. |
+| `./x gate` | Fast commit verification. |
+| `./x gate timings` | Fast commit verification with elapsed stage timings. |
+| `./x gate full` | Terminal exhaustive verification. |
+| `./x gate full timings` | Terminal verification with elapsed stage timings. |
 | `./x test` | Go suite without the host Pi smoke. |
 | `./x pi-test run` | Pi lane alone. |
 
@@ -29,19 +31,19 @@ The gate enables `TestPiRealRuntimeSmoke` once with test caching disabled; `./x 
 
 ### Coverage
 
-`./x gate` is the sole hard coverage gate. It compares exact statement-block identities from one merged whole-module profile with the canonical `coverage-baseline.json`; covered misses improve the baseline automatically, while additions and moved spans require explicit reviewed reasons. Raw and filtered statement percentages are reports only. Codecov reports line coverage, so its figures cannot equal `go tool cover`'s statement figures (ADR-0065).
+`./x gate full` is the sole hard coverage gate. It compares exact statement-block identities from one merged whole-module profile with the canonical `coverage-baseline.json`; covered misses improve the baseline automatically, while additions and moved spans require explicit reviewed reasons. Raw and filtered statement percentages are reports only. Codecov reports line coverage, so its figures cannot equal `go tool cover`'s statement figures (ADR-0065).
 
 | Codecov flag | Meaning |
 |---|---|
 | `raw` | Whole-tree line coverage. |
 | `covered` | Line coverage after `covercheck --emit-filtered` removes `// coverage-ignore` blocks. |
 
-Codecov is informational; exact coverage policy is enforced by `./x gate`, including the hosted `CI / gate` check required for protected `main` and release tags.
+Codecov is informational; exact coverage policy is enforced by `./x gate full`, including the hosted `CI / gate` check required for protected `main` and release tags.
 
 ### Mutation testing
 
 Coverage proves execution, not useful assertions. Change a condition, comparison, or constant and confirm a test fails; otherwise add the missing assertion.
 
-`./x mutants` (ADR-0066) runs deterministic `gremlins` mutation testing against the production diff from `main`; pass a package, such as `./x mutants ./internal/refs`, for a focused run. It remains advisory. The sole blocking exception is an exact `cmd/covercheck` owned-path change: local staged and explicit CI range selection call `./x covercheck-mutants`, uncertainty runs the blocker, and the pinned whole-target recipe accepts only killed or independently reviewed exact equivalent mutants from complete timeout-free reports. A timed-out mutant is untrusted. Triage every survivor as a missing assertion or an equivalent mutant.
+`./x mutants` (ADR-0066) runs deterministic `gremlins` mutation testing against the production diff from `main`; pass a package, such as `./x mutants ./internal/refs`, for a focused run. It remains advisory. The sole blocking exception is an exact `cmd/covercheck` owned-path change: the full gate selects from its local staged candidate or explicit remote ranges, uncertainty runs the blocker, and the pinned whole-target recipe accepts only killed or independently reviewed exact equivalent mutants from complete timeout-free reports. A timed-out mutant is untrusted. Triage every survivor as a missing assertion or an equivalent mutant.
 
 The strict host lane covers awf's rendered profile contract, routing and Git policy, handshake outcomes, generated-output boundary, retained effort behavior, and the narrow selected-checkout lifecycle composition. General context usage, handoff, subprocess supervision, and progress rendering remain assured by `pi-tools`, not duplicated in awf tests.

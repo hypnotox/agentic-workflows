@@ -58,6 +58,6 @@ When an ADR cites a specific Decision item as a partial amendment, the cited ADR
 
 Managed TestMain homes are bounded under a recoverable root, but arbitrary Go `t.TempDir` paths survive abrupt death. The manager deliberately excludes them; any broader cleanup policy requires a separate safety decision.
 
-## Remove Windows from release and cross-compile policy
+## Windows removal completed
 
-A future release-policy change should remove Windows from `.goreleaser.yaml` and cross-compile gating. Test-temp management keeps Windows compile compatibility but supports behavior only on Linux and macOS; do not approximate Windows ACL safety.
+Windows production, test, cross-build, and release support was removed. Linux and Darwin remain the supported platforms.

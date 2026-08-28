@@ -3,6 +3,8 @@ name: {{ .prefix }}-executing-direct
 description: Implement an understood narrow change directly, verify it, and route to review only when assurance has value.
 ---
 
+<!-- awf:include gate-cadence -->
+
 # {{ .prefix }}-executing-direct
 
 The direct implementation chain node for work whose clear outcome, solution shape, boundary, and verification{{if ne .profile "core"}} warrant neither an ADR nor a plan{{else}} are already approved and direct{{end}}.

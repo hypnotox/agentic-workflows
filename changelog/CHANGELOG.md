@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Split the fast commit gate from terminal full verification and end Windows release support.
+
 ### Bug fixes
 
 - GitHub Releases now publish the tagged version's curated changelog section exactly while excluding commit-derived notes; affected blank release bodies from v0.18.0 through v0.40.0 are restored.

@@ -1,6 +1,7 @@
 package coverage
 
 import (
+	"encoding/json"
 	"errors"
 	"os"
 	"path/filepath"
@@ -330,7 +331,6 @@ func TestAWFPlatformLedgerIsExactAndRelatedToProductionInventory(t *testing.T) {
 		lines    []int
 	}{
 		{file: "internal/effort/publication_darwin.go", platform: "darwin", lines: []int{73, 94}},
-		{file: "internal/effort/publication_windows.go", platform: "windows", lines: []int{73, 94}},
 	} {
 		for _, line := range spec.lines {
 			directive := Directive{File: spec.file, Line: line, TargetLine: line, Reason: "rollback", Mapped: false}
@@ -342,7 +342,7 @@ func TestAWFPlatformLedgerIsExactAndRelatedToProductionInventory(t *testing.T) {
 		t.Fatalf("valid awf ledger: %v", err)
 	}
 	mutations := map[string]func(*Baseline){
-		"missing":        func(b *Baseline) { b.PlatformDirectives = b.PlatformDirectives[:3] },
+		"missing":        func(b *Baseline) { b.PlatformDirectives = b.PlatformDirectives[:1] },
 		"extra":          func(b *Baseline) { b.PlatformDirectives = append(b.PlatformDirectives, b.PlatformDirectives[0]) },
 		"duplicate":      func(b *Baseline) { b.PlatformDirectives[1] = b.PlatformDirectives[0] },
 		"wrong platform": func(b *Baseline) { b.PlatformDirectives[0].Platforms = []string{"linux"} },
@@ -369,11 +369,11 @@ func TestAWFPlatformLedgerIsExactAndRelatedToProductionInventory(t *testing.T) {
 		"imbalanced paths": func(b *Baseline) {
 			old := b.PlatformDirectives[0].Directive
 			replacement := old
-			replacement.File = "internal/effort/publication_windows.go"
+			replacement.File = "internal/other/publication_darwin.go"
 			replacement.Line = 75
 			replacement.TargetLine = 75
 			b.PlatformDirectives[0].Directive = replacement
-			b.PlatformDirectives[0].Platforms = []string{"windows"}
+			b.PlatformDirectives[0].Platforms = []string{"darwin"}
 			for index := range b.ProductionDirectives {
 				if b.ProductionDirectives[index].Directive == old {
 					b.ProductionDirectives[index].Directive = replacement
@@ -394,6 +394,52 @@ func TestAWFPlatformLedgerIsExactAndRelatedToProductionInventory(t *testing.T) {
 				t.Fatal("expected exact awf ledger error")
 			}
 		})
+	}
+}
+
+func TestLoadBaselineForRegenerationAdmitsOnlyOutdatedAWFPlatformLedger(t *testing.T) {
+	analysis := analyzePolicy(t, map[string]string{"p/f.go": "package p\nfunc F() {}\n"}, "example.com/m/p/f.go:2.1,2.5 1 0\n")
+	base := mustBaseline(t, analysis)
+	base.ModulePath = awfModulePath
+	for _, spec := range []struct {
+		file     string
+		platform string
+		lines    []int
+	}{
+		{file: "internal/effort/publication_darwin.go", platform: "darwin", lines: []int{73, 94}},
+		{file: "internal/effort/publication_windows.go", platform: "windows", lines: []int{73, 94}},
+	} {
+		for _, line := range spec.lines {
+			directive := Directive{File: spec.file, Line: line, TargetLine: line, Reason: "rollback"}
+			base.ProductionDirectives = append(base.ProductionDirectives, DirectiveAdmission{Directive: directive, Class: IgnorePlatformOnly, Evidence: "platform test"})
+			base.PlatformDirectives = append(base.PlatformDirectives, PlatformDirective{Directive: directive, Platforms: []string{spec.platform}, Class: IgnorePlatformOnly, Evidence: "platform test"})
+		}
+	}
+	base = normalizeBaseline(base)
+	raw, err := json.MarshalIndent(base, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	path := filepath.Join(t.TempDir(), "baseline.json")
+	if err := os.WriteFile(path, append(raw, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadBaseline(path); err == nil {
+		t.Fatal("ordinary policy load accepted outdated repository platform ledger")
+	}
+	if _, err := LoadBaselineForRegeneration(path); err != nil {
+		t.Fatalf("regeneration load rejected structurally valid predecessor: %v", err)
+	}
+	base.PlatformDirectives[0].Class = IgnoreImpossibleState
+	raw, err = json.MarshalIndent(base, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, append(raw, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := LoadBaselineForRegeneration(path); err == nil {
+		t.Fatal("regeneration load accepted invalid platform evidence")
 	}
 }
 

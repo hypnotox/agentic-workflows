@@ -4,6 +4,10 @@
 
 This document is the authoritative reference for AI agents working in the `awf` repository. Read it before acting.
 
+<!-- awf:template-source templates/partials/gate-cadence.md -->
+<!-- Shared gate cadence. -->
+Use the narrowest relevant test, build, or lint command while iterating. The fast commit tier runs at the commit boundary; terminal exhaustive verification runs at implementation completion. Rely on a wired pre-commit or pre-push hook when present rather than manually duplicating its matching gate.
+
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl#awf-setup -->
 <!-- awf:edit awf-setup: from .awf/parts/agents-doc/awf-setup.md -->
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl -->
@@ -42,7 +46,7 @@ Hard rules every change must respect:
 - **Backed invariants.** Declare and prove current-state invariants; see the current-state contract. (ADR-0134)
 - **Punctuation restraint.** Prefer ordinary punctuation; punctuation findings are advisory Warnings with zero exit. En dashes remain prohibited and paragraphs use at most two em dashes. Ellipses and curly quotes are permitted; see the prose gate contract. (ADR-replace-plain-punctuation-ban-with-punctuation-restraint)
 - **No memory citation.** Never cite concrete effort memory paths in durable records. (ADR-0158, ADR-0175)
-- **Coverage identity ratchet.** Keep `./x gate` green against the canonical raw-miss baseline, critical selectors, ignore evidence, and targeted `cmd/covercheck` mutation blocker. (ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression)
+- **Coverage identity ratchet.** Keep `./x gate full` green at terminal verification against the canonical raw-miss baseline, critical selectors, ignore evidence, and targeted `cmd/covercheck` mutation blocker. (ADR-hybrid-raw-coverage-ratchet-and-targeted-mutation-regression)
 - **Dead-code gate.** Keep production code reachable from a `main`. (ADR-0063)
 - **Binary-version gate.** Use a current binary for gated commands; see the command reference. (ADR-0039)
 
@@ -67,7 +71,7 @@ Create an effort only when durable continuity materially helps; otherwise work r
 
 ```
 go test ./...: run the test suite
-./x gate: run the gate before committing
+./x gate: run the fast commit gate before committing
 ./x check: check rendered-file drift
 ./awf upgrade: migrate the config tree after upgrading awf
 ./awf audit: report workflow conformance for a commit range

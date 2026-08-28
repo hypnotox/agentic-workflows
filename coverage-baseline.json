@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "396af85fea0c952001eb6541a9f2cd4d5b51778d2229ba6173f46dbfb341c579",
+  "universeSHA256": "5e1b961c14e4bb5bb1d2ebae93a5063bdfd42376619b893c6c055bf6d89b00be",
   "repository": [
     {
       "identity": {
@@ -4960,7 +4960,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/effort/safeio.go:53.55,55.3 1 in function openRegularNoFollow, beginning `{ // coverage-ignore: Unix has no additional handle validation; Windows exercises this branch in...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/effort/safeio.go:53.55,55.3 1 in function openRegularNoFollow, beginning `{ // coverage-ignore: Linux and Darwin use no additional handle validation, so the defensive error path remains unreachable on every supported runtime`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -13210,7 +13210,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:50.16,52.3 1 in function productionTestTempManager, beginning `{ // coverage-ignore: Unix production root selection cannot fail; Windows only retains compile c...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:50.16,52.3 1 in function productionTestTempManager, beginning `{ // coverage-ignore: Linux and Darwin production root selection is deterministic and cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -13225,7 +13225,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:255.16,256.13 1 in function RunIsolated, beginning `{ // coverage-ignore: Unix production root selection cannot fail; Windows compiles but does not ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:255.16,256.13 1 in function RunIsolated, beginning `{ // coverage-ignore: Linux and Darwin production root selection is deterministic and cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -23616,30 +23616,6 @@
     },
     {
       "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 73,
-        "targetLine": 73,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:94 is the Windows-specific rollback call `if rollbackErr := replaceFile(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_windows.go:87); replaceFile is selected only by the Windows build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 94,
-        "targetLine": 94,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:94 is the Windows-specific rollback call `if rollbackErr := replaceFile(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_windows.go:87); replaceFile is selected only by the Windows build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
         "file": "internal/effort/safeio.go",
         "line": 44,
         "targetLine": 44,
@@ -23667,12 +23643,12 @@
         "file": "internal/effort/safeio.go",
         "line": 53,
         "targetLine": 53,
-        "reason": "Unix has no additional handle validation; Windows exercises this branch in platform tests",
+        "reason": "Linux and Darwin use no additional handle validation, so the defensive error path remains unreachable on every supported runtime",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/effort/safeio.go:53, `if err := validateOpenedFile(path, file); err != nil {` is guarded by the preceding `}` at internal/effort/safeio.go:52; in `func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, fileIdentity, error)` (internal/effort/safeio.go:34), the predecessor invariant is Unix has no additional handle validation; Windows exercises this branch in platform tests. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/effort/safeio.go:53, `if err := validateOpenedFile(path, file); err != nil {` is guarded by the preceding `}` at internal/effort/safeio.go:52; in `func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, fileIdentity, error)` (internal/effort/safeio.go:34), the predecessor invariant is Linux and Darwin use no additional handle validation, so the defensive error path remains unreachable on every supported runtime. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -23912,7 +23888,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/effort/service.go:373, `if err := syncDirectory(s.paths.efforts); err != nil {` follows the concrete operation `}` at internal/effort/service.go:372 in `func (s *Service) RollbackCreation(ctx context.Context, identity Record) (RollbackResult, error)` (internal/effort/service.go:339). The reviewed failure condition is injected rollback.root-fsync covers this kernel boundary; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/effort/service.go:364, `if err := syncDirectory(s.paths.efforts); err != nil {` follows the concrete operation `}` at internal/effort/service.go:363 in `func (s *Service) RollbackCreation(ctx context.Context, identity Record) (RollbackResult, error)` (internal/effort/service.go:341). The reviewed failure condition is injected rollback.root-fsync covers this kernel boundary; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
@@ -23924,7 +23900,7 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (s *Service) RollbackCreation(ctx context.Context, identity Record) (RollbackResult, error)` (starts internal/effort/service.go:339) checks `if err := syncDirectory(s.paths.efforts); err != nil {` at internal/effort/service.go:399 after `}` at internal/effort/service.go:398. Here injected rollback.delete-fsync covers this kernel boundary; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func (s *Service) RollbackCreation(ctx context.Context, identity Record) (RollbackResult, error)` (starts internal/effort/service.go:341) checks `if err := syncDirectory(s.paths.efforts); err != nil {` at internal/effort/service.go:407 after the injected rollback.delete-fsync seam at internal/effort/service.go:404. Exercising the exact kernel sync failure requires an unportable environmental fault."
     },
     {
       "directive": {
@@ -24428,7 +24404,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "publishDirectoryNoReplace has just successfully opened parentRoot and defers its Close after opening the anchor. Without an invariant breach or platform fault, opening dot on that live Root cannot fail."
+      "evidence": "publishDirectoryNoReplace has just successfully opened parentRoot at internal/filesystem/directory.go:63 and defers its Close before opening the anchor at line 68. Without an invariant breach or platform fault, opening dot on that live Root cannot fail."
     },
     {
       "directive": {
@@ -25772,7 +25748,7 @@
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "Renewed Phase 3 review of directive internal/initop/init.go:398 records `rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail`. The current profile state is mapped=true, executed=false. Focused Init tests cover rollback, changed-winner preservation, and complete directory, config, and residue effect presentation around this guard."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/initop/init.go:219 is `prepared, err := composePublisher(state, cfg).Prepare()` (internal/initop/init.go:218). Within `func probeCollisions(ctx context.Context, root string, loadProject LoadProject) ([]string, error)` at internal/initop/init.go:185, source review establishes rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
@@ -28107,24 +28083,24 @@
         "file": "internal/testsupport/testtemp.go",
         "line": 50,
         "targetLine": 50,
-        "reason": "Unix production root selection cannot fail; Windows only retains compile compatibility",
+        "reason": "Linux and Darwin production root selection is deterministic and cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func productionTestTempManager() (*testTempManager, error)` begins at internal/testsupport/testtemp.go:48; its branch `if err != nil {` at internal/testsupport/testtemp.go:50 follows `root, err := testTempRoot()` at internal/testsupport/testtemp.go:49. That flow establishes Unix production root selection cannot fail; Windows only retains compile compatibility, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func productionTestTempManager() (*testTempManager, error)` begins at internal/testsupport/testtemp.go:48; its branch `if err != nil {` at internal/testsupport/testtemp.go:50 follows `root, err := testTempRoot()` at internal/testsupport/testtemp.go:49. That flow establishes Linux and Darwin production root selection is deterministic and cannot fail, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/testsupport/testtemp.go",
         "line": 255,
         "targetLine": 255,
-        "reason": "Unix production root selection cannot fail; Windows compiles but does not run tests",
+        "reason": "Linux and Darwin production root selection is deterministic and cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/testsupport/testtemp.go:255 is `manager, err := productionTestTempManager()` (internal/testsupport/testtemp.go:254). Within `func RunIsolated(m *testing.M) int` at internal/testsupport/testtemp.go:253, source review establishes Unix production root selection cannot fail; Windows compiles but does not run tests; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/testsupport/testtemp.go:255 is `manager, err := productionTestTempManager()` (internal/testsupport/testtemp.go:254). Within `func RunIsolated(m *testing.M) int` at internal/testsupport/testtemp.go:253, source review establishes Linux and Darwin production root selection is deterministic and cannot fail; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
@@ -28791,36 +28767,6 @@
       ],
       "class": "platform-only",
       "evidence": "internal/effort/publication_darwin.go:41 is the Darwin-specific rollback call `if rollbackErr := unix.RenamexNp(tempPath, path, unix.RENAME_SWAP); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_darwin.go:29); unix.RenamexNp is selected only by the Darwin build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 73,
-        "targetLine": 73,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "platforms": [
-        "windows"
-      ],
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:73 is the Windows-specific rollback call `if rollbackErr := api.replace(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func publishAtomicWindows(tempPath, path string, expected *fileIdentity, api windowsPublicationAPI) error` (starts at internal/effort/publication_windows.go:52); api.replace is selected only by the Windows build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 94,
-        "targetLine": 94,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "platforms": [
-        "windows"
-      ],
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:94 is the Windows-specific rollback call `if rollbackErr := replaceFile(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_windows.go:87); replaceFile is selected only by the Windows build, so this host cannot execute that rollback branch."
     }
   ],
   "equivalentMutants": []

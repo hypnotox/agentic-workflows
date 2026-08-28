@@ -35,7 +35,8 @@ Run `./x` at the repository root with no argument for usage. Use rendered `./awf
 
 | Command | Purpose |
 |---|---|
-| `./x gate [timings]` | Pre-commit gate: staged documentation-only transactions skip both test lanes; Pi-only changes run Pi smoke only; Go-only changes run Go tests and the raw-identity coverage policy; overlapping or uncertain changes run both. Exact `cmd/covercheck` staged changes also run its targeted mutation blocker. Vet, builds, lint, dead code, and pin checks always run. `timings` reports only executed stages. Prose and memory scans are hook/CI checks, not gate steps. |
+| `./x gate [timings]` | Fast commit gate: version validation, one native build, blocking lint (including govet), and pin validation. |
+| `./x gate full [timings] [--range <base> <head>]...` | Terminal exhaustive verification: the commit tier plus complete native Go/coverage and Pi suites, vet, advisory lint, dead code, four Linux/Darwin release cross-builds, and exact-universe-selected mutation. Local calls use the staged candidate; ranges union remote evidence. |
 | `./x test [args]` | `go test ./...`, passing arguments through, without the host Pi lane. It names `./x pi-test run` and `./x gate` for the skipped lane and complete transaction. |
 | `./x pi-test run` | Run Pi tests on the pinned host Node runtime. The lane lock serializes each checkout; every run uses a narrow throwaway workspace. |
 | `./x clean-test-tmp [--all]` | Remove managed Linux/macOS test homes older than 24 hours, or all homes after warning. Partial cleanup exits nonzero. |

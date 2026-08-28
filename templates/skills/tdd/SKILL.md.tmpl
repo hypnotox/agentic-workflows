@@ -3,6 +3,8 @@ name: {{ .prefix }}-tdd
 description: Use to establish the strongest practical durable oracle before a bug fix in {{ .prefix }}, or to write a failing test before feature implementation when the missing behaviour is testable in isolation.
 ---
 
+<!-- awf:include gate-cadence -->
+
 # {{ .prefix }}-tdd
 
 The durable verification discipline as a project-owned support skill.
@@ -33,7 +35,7 @@ Route materially larger work through {{ if .skills.brainstorming }}`{{ .prefix }
 <!-- awf:include escalation-menu -->
 Choose the smallest behavior-proving, model-supporting seam; reject tests that force representation leakage or needless indirection.
 4. Implement the minimal root-cause change that satisfies the selected oracle.
-5. Run the gate{{ with .vars.gateCmd }}: `{{ . }}`{{ end }}.
+5. Run the selected behavior-proving oracle and the narrowest relevant owner check.
 
 <!-- awf:section notes -->
 ## Notes

@@ -5914,7 +5914,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/effort/safeio.go:53.55,55.3 1 in function openRegularNoFollow, beginning `{ // coverage-ignore: Unix has no additional handle validation; Windows exercises this branch in...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/effort/safeio.go:53.55,55.3 1 in function openRegularNoFollow, beginning `{ // coverage-ignore: Linux and Darwin use no additional handle validation, so the defensive error path remains unreachable on every supported runtime`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -14443,7 +14443,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:50.16,52.3 1 in function productionTestTempManager, beginning `{ // coverage-ignore: Unix production root selection cannot fail; Windows only retains compile c...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:50.16,52.3 1 in function productionTestTempManager, beginning `{ // coverage-ignore: Linux and Darwin production root selection is deterministic and cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -14458,7 +14458,7 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:255.16,256.13 1 in function RunIsolated, beginning `{ // coverage-ignore: Unix production root selection cannot fail; Windows compiles but does not ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/testtemp.go:255.16,256.13 1 in function RunIsolated, beginning `{ // coverage-ignore: Linux and Darwin production root selection is deterministic and cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
     },
     {
       "identity": {
@@ -23533,12 +23533,12 @@
         "file": "internal/effort/safeio.go",
         "line": 53,
         "targetLine": 53,
-        "reason": "Unix has no additional handle validation; Windows exercises this branch in platform tests",
+        "reason": "Linux and Darwin use no additional handle validation, so the defensive error path remains unreachable on every supported runtime",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/effort/safeio.go:53, `if err := validateOpenedFile(path, file); err != nil {` is guarded by the preceding `}` at internal/effort/safeio.go:52; in `func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, fileIdentity, error)` (internal/effort/safeio.go:34), the predecessor invariant is Unix has no additional handle validation; Windows exercises this branch in platform tests. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/effort/safeio.go:53, `if err := validateOpenedFile(path, file); err != nil {` is guarded by the preceding `}` at internal/effort/safeio.go:52; in `func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, fileIdentity, error)` (internal/effort/safeio.go:34), the predecessor invariant is Linux and Darwin use no additional handle validation, so the defensive error path remains unreachable on every supported runtime. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
@@ -23915,14 +23915,14 @@
     {
       "directive": {
         "file": "internal/effort/service.go",
-        "line": 415,
-        "targetLine": 415,
+        "line": 407,
+        "targetLine": 407,
         "reason": "injected rollback.delete-fsync covers this kernel boundary",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func (s *Service) RollbackCreation(ctx context.Context, identity Record) (RollbackResult, error)` (starts internal/effort/service.go:339) checks `if err := syncDirectory(s.paths.efforts); err != nil {` at internal/effort/service.go:399 after `}` at internal/effort/service.go:398. Here injected rollback.delete-fsync covers this kernel boundary; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func (s *Service) RollbackCreation(ctx context.Context, identity Record) (RollbackResult, error)` (starts internal/effort/service.go:341) checks `if err := syncDirectory(s.paths.efforts); err != nil {` at internal/effort/service.go:407 after the injected rollback.delete-fsync seam at internal/effort/service.go:404. Exercising the exact kernel sync failure requires an unportable environmental fault."
     },
     {
       "directive": {
@@ -24491,20 +24491,20 @@
     {
       "directive": {
         "file": "internal/filesystem/directory.go",
-        "line": 64,
-        "targetLine": 64,
+        "line": 69,
+        "targetLine": 69,
         "reason": "the newly opened parent remains live until its deferred close",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "publishDirectoryNoReplace has just successfully opened parentRoot and defers its Close after opening the anchor. Without an invariant breach or platform fault, opening dot on that live Root cannot fail."
+      "evidence": "publishDirectoryNoReplace has just successfully opened parentRoot at internal/filesystem/directory.go:63 and defers its Close before opening the anchor at line 68. Without an invariant breach or platform fault, opening dot on that live Root cannot fail."
     },
     {
       "directive": {
         "file": "internal/filesystem/directory.go",
-        "line": 65,
-        "targetLine": 65,
+        "line": 70,
+        "targetLine": 70,
         "reason": "the newly opened parent remains live until its deferred close",
         "mapped": false,
         "executed": false
@@ -24515,8 +24515,8 @@
     {
       "directive": {
         "file": "internal/filesystem/expected_commit.go",
-        "line": 19,
-        "targetLine": 19,
+        "line": 20,
+        "targetLine": 20,
         "reason": "the newly opened parent remains live until its deferred close",
         "mapped": true,
         "executed": false
@@ -24527,8 +24527,8 @@
     {
       "directive": {
         "file": "internal/filesystem/expected_commit.go",
-        "line": 20,
-        "targetLine": 20,
+        "line": 21,
+        "targetLine": 21,
         "reason": "the newly opened parent remains live until its deferred close",
         "mapped": false,
         "executed": false
@@ -24791,8 +24791,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 223,
-        "targetLine": 223,
+        "line": 215,
+        "targetLine": 215,
         "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
         "mapped": true,
         "executed": false
@@ -24803,8 +24803,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 229,
-        "targetLine": 229,
+        "line": 221,
+        "targetLine": 221,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": true,
         "executed": false
@@ -24815,8 +24815,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 230,
-        "targetLine": 230,
+        "line": 222,
+        "targetLine": 222,
         "reason": "a collision requires predicting the cryptographically random temporary name before this operation",
         "mapped": false,
         "executed": false
@@ -24827,8 +24827,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 237,
-        "targetLine": 237,
+        "line": 229,
+        "targetLine": 229,
         "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
         "mapped": true,
         "executed": false
@@ -24839,8 +24839,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 238,
-        "targetLine": 238,
+        "line": 230,
+        "targetLine": 230,
         "reason": "exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle",
         "mapped": false,
         "executed": false
@@ -24851,8 +24851,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 241,
-        "targetLine": 241,
+        "line": 233,
+        "targetLine": 233,
         "reason": "this remains non-nil only after a local temporary write storage fault",
         "mapped": true,
         "executed": false
@@ -24863,8 +24863,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 242,
-        "targetLine": 242,
+        "line": 234,
+        "targetLine": 234,
         "reason": "a second close failure after a replacement write failure requires a second storage fault",
         "mapped": false,
         "executed": false
@@ -24875,8 +24875,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 245,
-        "targetLine": 245,
+        "line": 237,
+        "targetLine": 237,
         "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
         "mapped": true,
         "executed": false
@@ -24887,8 +24887,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 246,
-        "targetLine": 246,
+        "line": 238,
+        "targetLine": 238,
         "reason": "the concrete root can fault here only through a concurrent namespace change or storage fault",
         "mapped": false,
         "executed": false
@@ -24899,8 +24899,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 250,
-        "targetLine": 250,
+        "line": 242,
+        "targetLine": 242,
         "reason": "writing a locally-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -24911,8 +24911,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 251,
-        "targetLine": 251,
+        "line": 243,
+        "targetLine": 243,
         "reason": "writing a locally-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -24923,8 +24923,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 252,
-        "targetLine": 252,
+        "line": 244,
+        "targetLine": 244,
         "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
         "mapped": true,
         "executed": false
@@ -24935,8 +24935,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 253,
-        "targetLine": 253,
+        "line": 245,
+        "targetLine": 245,
         "reason": "os.File.Write returns a non-nil error when it writes fewer bytes than requested",
         "mapped": false,
         "executed": false
@@ -24947,8 +24947,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 255,
-        "targetLine": 255,
+        "line": 247,
+        "targetLine": 247,
         "reason": "chmod of a newly-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -24959,8 +24959,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 256,
-        "targetLine": 256,
+        "line": 248,
+        "targetLine": 248,
         "reason": "chmod of a newly-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -24971,8 +24971,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 258,
-        "targetLine": 258,
+        "line": 250,
+        "targetLine": 250,
         "reason": "syncing a locally-created regular temporary requires a storage fault",
         "mapped": true,
         "executed": false
@@ -24983,8 +24983,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 259,
-        "targetLine": 259,
+        "line": 251,
+        "targetLine": 251,
         "reason": "syncing a locally-created regular temporary requires a storage fault",
         "mapped": false,
         "executed": false
@@ -24995,8 +24995,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 261,
-        "targetLine": 261,
+        "line": 253,
+        "targetLine": 253,
         "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
         "mapped": true,
         "executed": false
@@ -25007,8 +25007,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 262,
-        "targetLine": 262,
+        "line": 254,
+        "targetLine": 254,
         "reason": "closing a locally-created regular temporary after a successful sync requires a storage fault",
         "mapped": false,
         "executed": false
@@ -25067,8 +25067,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 330,
-        "targetLine": 330,
+        "line": 319,
+        "targetLine": 319,
         "reason": "random collision exhaustion is not practical",
         "mapped": true,
         "executed": false
@@ -25079,8 +25079,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 349,
-        "targetLine": 349,
+        "line": 338,
+        "targetLine": 338,
         "reason": "a successful expected exchange always consumes the temporary",
         "mapped": true,
         "executed": false
@@ -25091,8 +25091,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 350,
-        "targetLine": 350,
+        "line": 339,
+        "targetLine": 339,
         "reason": "platform helpers cannot report success without consumption",
         "mapped": false,
         "executed": false
@@ -25103,8 +25103,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 393,
-        "targetLine": 393,
+        "line": 379,
+        "targetLine": 379,
         "reason": "the operating-system random source is required by the Go runtime and cannot be faulted through this seam",
         "mapped": true,
         "executed": false
@@ -25115,8 +25115,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 403,
-        "targetLine": 403,
+        "line": 389,
+        "targetLine": 389,
         "reason": "closing a newly-created empty regular file requires a storage fault",
         "mapped": true,
         "executed": false
@@ -25127,8 +25127,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 404,
-        "targetLine": 404,
+        "line": 390,
+        "targetLine": 390,
         "reason": "cleanup after a close storage fault requires the same unportable fault source",
         "mapped": false,
         "executed": false
@@ -25139,8 +25139,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 405,
-        "targetLine": 405,
+        "line": 391,
+        "targetLine": 391,
         "reason": "closing a newly-created empty regular file requires a storage fault",
         "mapped": false,
         "executed": false
@@ -25151,8 +25151,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 409,
-        "targetLine": 409,
+        "line": 395,
+        "targetLine": 395,
         "reason": "collision requires predicting a cryptographically random temporary",
         "mapped": true,
         "executed": false
@@ -25163,8 +25163,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 410,
-        "targetLine": 410,
+        "line": 396,
+        "targetLine": 396,
         "reason": "collision requires predicting a cryptographically random temporary",
         "mapped": false,
         "executed": false
@@ -25175,8 +25175,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 418,
-        "targetLine": 418,
+        "line": 404,
+        "targetLine": 404,
         "reason": "exhausting random temporary names is not practically triggerable",
         "mapped": true,
         "executed": false
@@ -25187,8 +25187,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 419,
-        "targetLine": 419,
+        "line": 405,
+        "targetLine": 405,
         "reason": "exhausting random temporary names is not practically triggerable",
         "mapped": false,
         "executed": false
@@ -25199,8 +25199,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 493,
-        "targetLine": 493,
+        "line": 479,
+        "targetLine": 479,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": true,
         "executed": false
@@ -25211,8 +25211,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 494,
-        "targetLine": 494,
+        "line": 480,
+        "targetLine": 480,
         "reason": "stat on a successfully read confined regular file requires a storage fault",
         "mapped": false,
         "executed": false
@@ -25223,8 +25223,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 496,
-        "targetLine": 496,
+        "line": 482,
+        "targetLine": 482,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": true,
         "executed": false
@@ -25235,8 +25235,8 @@
     {
       "directive": {
         "file": "internal/filesystem/handle.go",
-        "line": 497,
-        "targetLine": 497,
+        "line": 483,
+        "targetLine": 483,
         "reason": "close after a successful confined read requires a storage fault",
         "mapped": false,
         "executed": false
@@ -26135,8 +26135,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 182,
-        "targetLine": 182,
+        "line": 178,
+        "targetLine": 178,
         "reason": "preparation validated every planned path; failure now requires an unportable root-confined filesystem fault",
         "mapped": true,
         "executed": false
@@ -26147,8 +26147,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 185,
-        "targetLine": 185,
+        "line": 181,
+        "targetLine": 181,
         "reason": "the non-force probe plans the same full catalog; force makes this condition false",
         "mapped": true,
         "executed": false
@@ -26159,8 +26159,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 186,
-        "targetLine": 186,
+        "line": 182,
+        "targetLine": 182,
         "reason": "the identical pre-prompt probe makes this path unreachable",
         "mapped": false,
         "executed": false
@@ -26171,8 +26171,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 205,
-        "targetLine": 205,
+        "line": 201,
+        "targetLine": 201,
         "reason": "typed Publisher results and fixed presentation grammar make this mapping failure unreachable",
         "mapped": true,
         "executed": false
@@ -26255,8 +26255,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 325,
-        "targetLine": 325,
+        "line": 321,
+        "targetLine": 321,
         "reason": "fixed paths and prose contain no line break",
         "mapped": true,
         "executed": false
@@ -26267,8 +26267,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 341,
-        "targetLine": 341,
+        "line": 337,
+        "targetLine": 337,
         "reason": "fixed path and prose contain no line break",
         "mapped": true,
         "executed": false
@@ -26279,8 +26279,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 348,
-        "targetLine": 348,
+        "line": 344,
+        "targetLine": 344,
         "reason": "fixed path and prose contain no line break",
         "mapped": true,
         "executed": false
@@ -26291,8 +26291,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 365,
-        "targetLine": 365,
+        "line": 361,
+        "targetLine": 361,
         "reason": "fixed paths and prose contain no line break",
         "mapped": true,
         "executed": false
@@ -26303,8 +26303,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 393,
-        "targetLine": 393,
+        "line": 389,
+        "targetLine": 389,
         "reason": "MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably",
         "mapped": true,
         "executed": false
@@ -26315,8 +26315,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 398,
-        "targetLine": 398,
+        "line": 394,
+        "targetLine": 394,
         "reason": "ScaffoldConfig over the embedded catalog cannot fail at runtime",
         "mapped": true,
         "executed": false
@@ -26327,8 +26327,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 402,
-        "targetLine": 402,
+        "line": 398,
+        "targetLine": 398,
         "reason": "a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses",
         "mapped": true,
         "executed": false
@@ -26339,8 +26339,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 405,
-        "targetLine": 405,
+        "line": 401,
+        "targetLine": 401,
         "reason": "post-MkdirAll write into a fresh temp dir cannot fail in practice",
         "mapped": true,
         "executed": false
@@ -26351,8 +26351,8 @@
     {
       "directive": {
         "file": "internal/initop/init.go",
-        "line": 410,
-        "targetLine": 410,
+        "line": 406,
+        "targetLine": 406,
         "reason": "a freshly-scaffolded default config always opens",
         "mapped": true,
         "executed": false
@@ -28163,8 +28163,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 327,
-        "targetLine": 327,
+        "line": 325,
+        "targetLine": 325,
         "reason": "rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time",
         "mapped": true,
         "executed": false
@@ -28211,8 +28211,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 569,
-        "targetLine": 569,
+        "line": 562,
+        "targetLine": 562,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": true,
         "executed": false
@@ -28223,8 +28223,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 570,
-        "targetLine": 570,
+        "line": 563,
+        "targetLine": 563,
         "reason": "sync constructs only authority-valid lock fields, so marshal failure requires a future representation change",
         "mapped": false,
         "executed": false
@@ -28235,8 +28235,8 @@
     {
       "directive": {
         "file": "internal/publisher/sync.go",
-        "line": 654,
-        "targetLine": 654,
+        "line": 647,
+        "targetLine": 647,
         "reason": "fixed nonempty completion action always validates as prose",
         "mapped": true,
         "executed": false
@@ -28933,24 +28933,24 @@
         "file": "internal/testsupport/testtemp.go",
         "line": 50,
         "targetLine": 50,
-        "reason": "Unix production root selection cannot fail; Windows only retains compile compatibility",
+        "reason": "Linux and Darwin production root selection is deterministic and cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func productionTestTempManager() (*testTempManager, error)` begins at internal/testsupport/testtemp.go:48; its branch `if err != nil {` at internal/testsupport/testtemp.go:50 follows `root, err := testTempRoot()` at internal/testsupport/testtemp.go:49. That flow establishes Unix production root selection cannot fail; Windows only retains compile compatibility, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func productionTestTempManager() (*testTempManager, error)` begins at internal/testsupport/testtemp.go:48; its branch `if err != nil {` at internal/testsupport/testtemp.go:50 follows `root, err := testTempRoot()` at internal/testsupport/testtemp.go:49. That flow establishes Linux and Darwin production root selection is deterministic and cannot fail, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/testsupport/testtemp.go",
         "line": 255,
         "targetLine": 255,
-        "reason": "Unix production root selection cannot fail; Windows compiles but does not run tests",
+        "reason": "Linux and Darwin production root selection is deterministic and cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/testsupport/testtemp.go:255 is `manager, err := productionTestTempManager()` (internal/testsupport/testtemp.go:254). Within `func RunIsolated(m *testing.M) int` at internal/testsupport/testtemp.go:253, source review establishes Unix production root selection cannot fail; Windows compiles but does not run tests; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/testsupport/testtemp.go:255 is `manager, err := productionTestTempManager()` (internal/testsupport/testtemp.go:254). Within `func RunIsolated(m *testing.M) int` at internal/testsupport/testtemp.go:253, source review establishes Linux and Darwin production root selection is deterministic and cannot fail; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
@@ -29435,8 +29435,8 @@
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 162,
-        "targetLine": 162,
+        "line": 160,
+        "targetLine": 160,
         "reason": "local lstat reports an inode or os.ErrNotExist absent a kernel fault",
         "mapped": true,
         "executed": false
@@ -29483,8 +29483,8 @@
     {
       "directive": {
         "file": "internal/worktree/manager.go",
-        "line": 606,
-        "targetLine": 606,
+        "line": 604,
+        "targetLine": 604,
         "reason": "local lstat reports an inode or os.ErrNotExist absent a kernel fault",
         "mapped": true,
         "executed": false
@@ -29643,36 +29643,6 @@
       ],
       "class": "platform-only",
       "evidence": "internal/effort/publication_darwin.go:41 is the Darwin-specific rollback call `if rollbackErr := unix.RenamexNp(tempPath, path, unix.RENAME_SWAP); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_darwin.go:29); unix.RenamexNp is selected only by the Darwin build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 73,
-        "targetLine": 73,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "platforms": [
-        "windows"
-      ],
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:73 is the Windows-specific rollback call `if rollbackErr := api.replace(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func publishAtomicWindows(tempPath, path string, expected *fileIdentity, api windowsPublicationAPI) error` (starts at internal/effort/publication_windows.go:52); api.replace is selected only by the Windows build, so this host cannot execute that rollback branch."
-    },
-    {
-      "directive": {
-        "file": "internal/effort/publication_windows.go",
-        "line": 94,
-        "targetLine": 94,
-        "reason": "requires a second namespace race or kernel fault during immediate rollback",
-        "mapped": false,
-        "executed": false
-      },
-      "platforms": [
-        "windows"
-      ],
-      "class": "platform-only",
-      "evidence": "internal/effort/publication_windows.go:94 is the Windows-specific rollback call `if rollbackErr := replaceFile(path, displacedPath, tempPath, 0); rollbackErr != nil {` in `func removeAtomic(tempPath, path string, expected *fileIdentity) error` (starts at internal/effort/publication_windows.go:87); replaceFile is selected only by the Windows build, so this host cannot execute that rollback branch."
     }
   ],
   "equivalentMutants": []

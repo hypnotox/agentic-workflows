@@ -2,10 +2,13 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"os"
 	"os/exec"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 
@@ -495,6 +498,55 @@ func TestCoverageBaselineRemovalOnlyIsClean(t *testing.T) {
 	}
 	if findings := coverageBaselineRule(context.Background(), g, "b", "h", nil); len(findings) != 0 {
 		t.Fatalf("removal-only findings = %#v", findings)
+	}
+}
+
+func TestBaselineAtAcceptsCanonicalHistoricalRepositoryPolicy(t *testing.T) {
+	raw, err := os.ReadFile(filepath.Join("..", "..", coverageBaselinePath))
+	if err != nil {
+		t.Fatal(err)
+	}
+	var baseline coverage.Baseline
+	if err := json.Unmarshal(raw, &baseline); err != nil {
+		t.Fatal(err)
+	}
+	for _, line := range []int{73, 94} {
+		directive := coverage.Directive{
+			File:       "internal/effort/publication_windows.go",
+			Line:       line,
+			TargetLine: line,
+			Reason:     "historical Windows-only rollback branch",
+		}
+		evidence := "historical Windows-only platform evidence"
+		baseline.ProductionDirectives = append(baseline.ProductionDirectives, coverage.DirectiveAdmission{
+			Directive: directive,
+			Class:     coverage.IgnorePlatformOnly,
+			Evidence:  evidence,
+		})
+		baseline.PlatformDirectives = append(baseline.PlatformDirectives, coverage.PlatformDirective{
+			Directive: directive,
+			Platforms: []string{"windows"},
+			Class:     coverage.IgnorePlatformOnly,
+			Evidence:  evidence,
+		})
+	}
+	sort.Slice(baseline.ProductionDirectives, func(i, j int) bool {
+		left, right := baseline.ProductionDirectives[i].Directive, baseline.ProductionDirectives[j].Directive
+		return left.File < right.File || left.File == right.File && left.Line < right.Line
+	})
+	stale, err := json.MarshalIndent(baseline, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	stale = append(stale, '\n')
+	got, found, err := baselineAt(context.Background(), fakeGit{
+		"show old:coverage-baseline.json": {out: string(stale)},
+	}, "old")
+	if err != nil {
+		t.Fatalf("historical baseline: %v", err)
+	}
+	if !found || len(got.PlatformDirectives) != 4 {
+		t.Fatalf("historical baseline found=%t platform directives=%d", found, len(got.PlatformDirectives))
 	}
 }
 
