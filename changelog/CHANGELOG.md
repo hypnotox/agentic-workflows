@@ -18,6 +18,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Rendered commit-policy hooks now run on macOS's system Bash while preserving fail-closed pushed-ref validation.
+
 - Pre-push commit policy now validates only commits introduced by the pushed ref updates, so conforming descendants do not re-reject already-accepted remote history.
 
 - Project-tree scans tolerate entries deleted after enumeration, preventing transient operation-local files from failing render and check.

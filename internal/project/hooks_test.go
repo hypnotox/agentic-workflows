@@ -155,7 +155,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	transaction := got["reference-transaction"].Content
 	for _, want := range []string{
 		`[[ "${1:-}" == "prepared" ]] || exit 0`,
-		`while IFS= read -r update; do updates+=("$update"); done`,
+		`while IFS= read -r update || [[ -n "$update" ]]; do updates+=("$update"); done`,
 		`refs/heads/*`,
 		`"$old_oid..$new_oid"`,
 		`check commit-policy "${targets[@]}"`,
@@ -169,7 +169,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	}
 	push := got["pre-push"].Content
 	for _, want := range []string{
-		`while IFS= read -r update; do updates+=("$update"); done`,
+		`while IFS= read -r update || [[ -n "$update" ]]; do updates+=("$update"); done`,
 		`git cat-file -t "$object"`,
 		`git rev-parse --verify "$object^{}"`,
 		`git ls-remote`,
@@ -278,6 +278,9 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	before := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/heads/master"))
 	if output, err := run(transactionPath, "bad record\n", "prepared"); err == nil || !strings.Contains(output, "refs changed: false") {
 		t.Fatalf("malformed prepared transaction: err=%v output=%q", err, output)
+	}
+	if output, err := run(transactionPath, "bad record", "prepared"); err == nil || !strings.Contains(output, "refs changed: false") {
+		t.Fatalf("unterminated malformed prepared transaction: err=%v output=%q", err, output)
 	}
 	if after := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/heads/master")); after != before {
 		t.Fatalf("rejected transaction moved ref: before=%s after=%s", before, after)
@@ -421,6 +424,9 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	clearLog()
 	if _, err := run(pushPath, "malformed\n"); err == nil || readLog() != "" {
 		t.Fatalf("malformed push ran policy or gate: err=%v log=%q", err, readLog())
+	}
+	if _, err := run(pushPath, "malformed"); err == nil || readLog() != "" {
+		t.Fatalf("unterminated malformed push ran policy or gate: err=%v log=%q", err, readLog())
 	}
 
 	t.Run("native-git-enforcement", func(t *testing.T) {

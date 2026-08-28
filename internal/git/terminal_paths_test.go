@@ -1,11 +1,27 @@
 package git
 
 import (
+	"runtime"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
+
+func TestRangeTouchedPathsPreservesInvalidUTF8(t *testing.T) {
+	if runtime.GOOS != "linux" {
+		t.Skip("requires a byte-preserving filesystem")
+	}
+	fixture := gitfixture.InitRepo(t)
+	odd := " invalid-\xff "
+	base := gitfixture.Commit(t, fixture, "base", map[string]string{odd: "base\n"})
+	head := gitfixture.Commit(t, fixture, "modify", map[string]string{odd: "changed\n"})
+	repo := walkRepo(t, fixture.Root())
+	paths, err := repo.RangeTouchedPaths(testContext(t), base, head)
+	if err != nil || len(paths) != 1 || paths[0] != odd {
+		t.Fatalf("invalid UTF-8 path = %#v, %v", paths, err)
+	}
+}
 
 func TestRangeTouchedPathsAccumulatesRestoredPaths(t *testing.T) {
 	fixture := gitfixture.InitRepo(t)

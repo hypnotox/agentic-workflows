@@ -23,7 +23,7 @@ done
 integration_ref="refs/heads/$integration_branch"
 integration_tip=
 updates=()
-while IFS= read -r update; do updates+=("$update"); done
+while IFS= read -r update || [[ -n "$update" ]]; do updates+=("$update"); done
 policy_targets=()
 ranges=()
 

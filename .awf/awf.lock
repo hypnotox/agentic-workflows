@@ -34,15 +34,15 @@
     },
     ".awf/hooks/pre-push.sh": {
       "templateId": "hooks/pre-push.sh.tmpl",
-      "templateHash": "sha256:ee49d2c76a425810fb1a0d22df5038000a284a6a42eaf1fd022dd7e0f0a33590",
+      "templateHash": "sha256:e9ab51fb4f12759b2bff8c751ccbdd251af96cdb55fa76b60e56f968e79f94ee",
       "configHash": "sha256:739e9204e77c173e0dde4daa67e54876ac35333b29933aaef04a1e450afe6ac9",
-      "outputHash": "sha256:ed3390ac85d8398c271abea0256fb90f585b8856e7630f4cbe8e05bfed2e2e35"
+      "outputHash": "sha256:260114e154272213a966f20d27af09e0541e7886b09ddabf0c99e7fe1c4b5b0a"
     },
     ".awf/hooks/reference-transaction.sh": {
       "templateId": "hooks/reference-transaction.sh.tmpl",
-      "templateHash": "sha256:3afb207436e0d8642c742ac539c61cd4fe3fa554c82dd2965cb7ec17c51868d0",
+      "templateHash": "sha256:75c07905a9a2ee8edf042feab461937a49079576d6ef8471bfcea3bf65e88aad",
       "configHash": "sha256:38d0dcd6f31a7795b5082b3dda800436311adda6a02b92a6cbe682a59d211f5b",
-      "outputHash": "sha256:a10256eb7861e934e2b515e80476dded74bde9395bb787caf4957b0141e1efc7"
+      "outputHash": "sha256:d7a3a1bd1b018832194bb3562e05ec1238221588c6d727f6814132075f53e5d2"
     },
     ".awf/worktrees/.gitignore": {
       "templateId": "worktrees/gitignore.tmpl",

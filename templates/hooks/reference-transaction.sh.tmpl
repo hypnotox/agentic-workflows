@@ -13,7 +13,7 @@ cd "$root"
 empty_oid="$(git hash-object -t blob --stdin </dev/null)"
 zero_oid="${empty_oid//?/0}"
 updates=()
-while IFS= read -r update; do updates+=("$update"); done
+while IFS= read -r update || [[ -n "$update" ]]; do updates+=("$update"); done
 targets=()
 
 add_target() {
