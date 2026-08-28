@@ -120,6 +120,18 @@ func TestGateRunnerModes(t *testing.T) {
 			t.Fatalf("invalid workload status=%d output=%q", status, out)
 		}
 	})
+	t.Run("hosted workload supports macOS system Bash", func(t *testing.T) {
+		bashEnv := filepath.Join(root, "bash3-env")
+		testsupport.WriteFile(t, bashEnv, "enable -n mapfile\n")
+		t.Setenv("BASH_ENV", bashEnv)
+		out, status, got := run("native-shard", "--workload", "3-0")
+		if status != 0 {
+			t.Fatalf("status=%d output=%q", status, out)
+		}
+		if len(got) != 1 || !strings.Contains(got[0], "|test -p=1") {
+			t.Fatalf("native workload invocation=%q", got)
+		}
+	})
 	t.Run("hosted coverage evidence is exact and complete", func(t *testing.T) {
 		const candidate = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 		artifacts := filepath.Join(root, "coverage-artifacts")

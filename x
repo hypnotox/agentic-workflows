@@ -62,7 +62,9 @@ run_go_shards() {
   local shared_gocache shared_modcache status=0
   local -a caches=() shard0=() shard1=() shard2=() shard3=() packages=() coverargs=()
   local -a job_groups=() job_slices=() job_regexes=() job_names=() job_tmps=() pids=() logs=() durations=() statuses=()
-  mapfile -t caches < <(go env GOCACHE GOMODCACHE)
+  while IFS= read -r cache; do
+    caches+=("$cache")
+  done < <(go env GOCACHE GOMODCACHE)
   [ "${#caches[@]}" -eq 2 ] || { echo "gate: Go cache locations unavailable" >&2; return 1; }
   shared_gocache="${caches[0]}"; shared_modcache="${caches[1]}"
   while IFS= read -r import_path; do
