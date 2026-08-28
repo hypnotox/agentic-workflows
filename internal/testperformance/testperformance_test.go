@@ -96,6 +96,21 @@ func TestAggregatePreservesComponentsAndEvaluatesDeterministically(t *testing.T)
 	}
 }
 
+func TestColdDiagnosticEvidenceCannotQualifyOrProduceDeltas(t *testing.T) {
+	record := validRecord(t)
+	record.Observations = []Observation{{
+		Workload: "ordinary-full", Environment: record.Environments[0], Cache: "cold", Sample: 1,
+		EvidenceClass: "diagnostic", Result: "changed-package-slice", Seconds: 10,
+		Components: []Component{{Stage: "go-test", Package: "internal/project", Test: "package-total", Seconds: 10}},
+	}}
+	if aggregates := Aggregates(record); len(aggregates) != 0 {
+		t.Fatalf("cold diagnostic aggregates = %#v", aggregates)
+	}
+	if deltas := Deltas(record); len(deltas) != 0 {
+		t.Fatalf("cold diagnostic deltas = %#v", deltas)
+	}
+}
+
 func TestValidationRefusesObservationWithMismatchedEnvironment(t *testing.T) {
 	record := validRecord(t)
 	candidate := record.Environments[0]
@@ -197,6 +212,7 @@ func TestValidationRejectsInvalidContracts(t *testing.T) {
 		{"unknown observation environment", func(r *Record) { r.Observations[0].Environment.ID = "missing" }, "unknown environment"},
 		{"unknown observation workload", func(r *Record) { r.Observations[0].Workload = "missing" }, "unknown workload"},
 		{"invalid observation cache", func(r *Record) { r.Observations[0].Cache = "other" }, "cache"},
+		{"cold qualification", func(r *Record) { r.Observations[0].Cache = "cold" }, "warm-cache baseline"},
 		{"invalid evidence class", func(r *Record) { r.Observations[0].EvidenceClass = "other" }, "evidence class"},
 		{"qualification failure", func(r *Record) { r.Observations[0].Result = "failed" }, "must be passed"},
 		{"diagnostic without result", func(r *Record) {
@@ -248,8 +264,8 @@ func TestAggregationAndQualificationEdges(t *testing.T) {
 	}
 	record := validRecord(t)
 	record.Observations = []Observation{
-		{Workload: "fast-gate", Environment: record.Environments[0], Cache: "cold", Sample: 1, EvidenceClass: "qualification", Result: "passed", Seconds: 2},
-		{Workload: "fast-gate", Environment: record.Environments[0], Cache: "cold", Sample: 2, EvidenceClass: "qualification", Result: "passed", Seconds: 4},
+		{Workload: "fast-gate", Environment: record.Environments[0], Cache: "warm", Sample: 1, EvidenceClass: "qualification", Result: "passed", Seconds: 2},
+		{Workload: "fast-gate", Environment: record.Environments[0], Cache: "warm", Sample: 2, EvidenceClass: "qualification", Result: "passed", Seconds: 4},
 		{Workload: "selected-mutation", Environment: record.Environments[0], Cache: "warm", Sample: 1, EvidenceClass: "exceptional", Result: "passed", Seconds: 9},
 	}
 	aggregates := Aggregates(record)

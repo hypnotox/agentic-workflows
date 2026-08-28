@@ -308,6 +308,9 @@ func Validate(r Record) error {
 		}
 		switch o.EvidenceClass {
 		case "qualification":
+			if o.Cache != "warm" {
+				return errors.New("qualification observation must use the declared warm-cache baseline")
+			}
 			if o.Result != "passed" {
 				return errors.New("qualification observation result must be passed")
 			}
@@ -412,7 +415,7 @@ func Evaluate(r Record, aggregates []Aggregate) []Evaluation {
 		if a.Cache == "cold" {
 			requiredSamples = r.SampleMethod.ColdSamples
 		}
-		if !ok || b.Qualification == "unqualified" || a.Samples != requiredSamples {
+		if !ok || b.Qualification == "unqualified" || a.Cache != "warm" || a.Samples != requiredSamples {
 			continue
 		}
 		e := Evaluation{Workload: a.Workload, Environment: a.Environment, WallTime: r.SampleMethod.WallTime, MaximumSeconds: b.MaximumSeconds, ObservedSeconds: a.Seconds, MeetsMaximum: a.Seconds <= b.MaximumSeconds}
@@ -468,6 +471,9 @@ func Deltas(r Record) []Delta {
 	}
 	var out []Delta
 	for _, observation := range r.Observations {
+		if observation.Cache != "warm" {
+			continue
+		}
 		baseline, ok := baselines[observation.Workload+"\x00"+observation.Environment.ID]
 		if !ok {
 			continue

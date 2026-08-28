@@ -69,7 +69,15 @@ func directExportedTestCalls(sources map[string][]byte) ([]string, error) {
 				if !ok {
 					return true
 				}
-				callee, ok := call.Fun.(*ast.Ident)
+				calleeExpression := call.Fun
+				for {
+					parenthesized, ok := calleeExpression.(*ast.ParenExpr)
+					if !ok {
+						break
+					}
+					calleeExpression = parenthesized.X
+				}
+				callee, ok := calleeExpression.(*ast.Ident)
 				if !ok {
 					return true
 				}
@@ -87,13 +95,13 @@ func directExportedTestCalls(sources map[string][]byte) ([]string, error) {
 
 func TestExportedTestsDoNotInvokeExportedTests(t *testing.T) {
 	fixture := map[string][]byte{
-		"pkg/example_test.go": []byte("package pkg\nimport \"testing\"\nfunc TestOwner(t *testing.T) {}\nfunc TestDuplicate(t *testing.T) { TestOwner(t) }\n"),
+		"pkg/example_test.go": []byte("package pkg\nimport \"testing\"\nfunc TestOwner(t *testing.T) {}\nfunc TestDuplicate(t *testing.T) { TestOwner(t); (TestOwner)(t) }\n"),
 	}
 	fixtureFindings, err := directExportedTestCalls(fixture)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(fixtureFindings) != 1 || !strings.Contains(fixtureFindings[0], "TestDuplicate calls TestOwner") {
+	if len(fixtureFindings) != 2 || !strings.Contains(fixtureFindings[0], "TestDuplicate calls TestOwner") || !strings.Contains(fixtureFindings[1], "TestDuplicate calls TestOwner") {
 		t.Fatalf("fixture findings = %v, want direct exported-test call", fixtureFindings)
 	}
 

@@ -95,15 +95,18 @@ func ordinaryContextCases() []ordinaryContextCase {
 }
 
 func TestOrdinaryContextComparativeEvidence(t *testing.T) {
-	state, _, repo := contextPerformanceFixture(t, 32)
-	paths := []string{"internal/foo/x.go"}
-	focusedText, focusedCapture := renderOrdinaryContext(t, state, repo, paths, true)
-	completeText, completeCapture := renderOrdinaryContext(t, state, repo, paths, false)
-	if focusedText != completeText {
-		t.Fatal("focused ordinary output differs from complete-preparation baseline")
-	}
-	if focusedCapture.files >= completeCapture.files || focusedCapture.bytes >= completeCapture.bytes {
-		t.Fatalf("focused capture did not skip unrelated regular payload: focused=%+v complete=%+v", focusedCapture, completeCapture)
+	for _, tc := range ordinaryContextCases() {
+		t.Run(tc.name, func(t *testing.T) {
+			state, _, repo := contextPerformanceFixture(t, tc.size)
+			focusedText, focusedCapture := renderOrdinaryContext(t, state, repo, tc.paths, true)
+			completeText, completeCapture := renderOrdinaryContext(t, state, repo, tc.paths, false)
+			if focusedText != completeText {
+				t.Fatal("focused ordinary output differs from complete-preparation baseline")
+			}
+			if focusedCapture.files >= completeCapture.files || focusedCapture.bytes >= completeCapture.bytes {
+				t.Fatalf("focused capture did not skip unrelated regular payload: focused=%+v complete=%+v", focusedCapture, completeCapture)
+			}
+		})
 	}
 }
 
