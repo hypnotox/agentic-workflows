@@ -39,7 +39,7 @@ func TestOverDetailedADRDecisionReviewScenario(t *testing.T) {
 	cat := loadCatalog(t)
 	for _, target := range []string{"pi", "claude"} {
 		t.Run(target, func(t *testing.T) {
-			root := syncFullCatalogForTarget(t, cat, target)
+			root := cloneFullCatalogForTarget(t, cat, target)
 			body := read(t, filepath.Join(root, "."+target, "agents", "adr-reviewer.md"))
 			if got := adrDecisionScopeDisposition(body, input); got != want {
 				t.Fatalf("over-detailed ADR Decision: got %#v, want %#v", got, want)

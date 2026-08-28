@@ -2,10 +2,12 @@ package evals
 
 import (
 	"context"
+	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -20,6 +22,25 @@ import (
 // Rendered skill dirs are ".claude/skills/<evalPrefix>-<name>/SKILL.md"; agents
 // are unprefixed at ".claude/agents/<name>.md".
 const evalPrefix = "example"
+
+var (
+	evalSeedRootOnce sync.Once
+	evalSeedRoot     string
+	evalSeedRootErr  error
+	evalSeedMu       sync.Mutex
+	evalSeeds        = make(map[string]string)
+)
+
+func TestMain(m *testing.M) {
+	code := m.Run()
+	if evalSeedRoot != "" {
+		if err := os.RemoveAll(evalSeedRoot); err != nil && code == 0 {
+			fmt.Fprintf(os.Stderr, "remove eval fixture seeds: %v\n", err)
+			code = 1
+		}
+	}
+	os.Exit(code)
+}
 
 func evalPreparation(p *project.ProjectState, cfg *config.Config) (publisher.Preparation, error) {
 	return publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Prepare()
@@ -81,9 +102,9 @@ func fullCatalogConfigForTarget(_ *catalog.Catalog, _ string) string {
 	return "prefix: " + evalPrefix + "\nintegrationBranch: main\nvars:\n  gateCmd: the project's gate\n"
 }
 
-// syncFullCatalog scaffolds the full-catalog fixture for focused Claude evals.
-func syncFullCatalog(t *testing.T, cat *catalog.Catalog) string {
-	return syncFullCatalogForTarget(t, cat, "claude")
+// cloneFullCatalog gives a test an isolated copy of the full-catalog Claude seed.
+func cloneFullCatalog(t *testing.T, cat *catalog.Catalog) string {
+	return cloneFullCatalogForTarget(t, cat, "claude")
 }
 
 func targetNamed(t *testing.T, targets []project.Target, name string) project.Target {
@@ -108,13 +129,24 @@ func catalogDocPath(root, name string, entry catalog.DocEntry) string {
 	return filepath.Join(root, "docs", filepath.FromSlash(path))
 }
 
-// syncFullCatalogForTarget scaffolds a temp project with the full-catalog
-// config and initializes it. It reuses the exported testsupport primitives
-// rather than internal/project's package-private scaffold helper (ADR-0053
-// Decision item 5).
-func syncFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string) string {
+// fullCatalogSeedForTarget constructs one immutable full-catalog seed for each
+// target identity. The product renders both fixed targets, but target-specific
+// evals inspect only the requested tree.
+func fullCatalogSeedForTarget(t *testing.T, cat *catalog.Catalog, target string) string {
 	t.Helper()
-	root := t.TempDir()
+	evalSeedRootOnce.Do(func() {
+		evalSeedRoot, evalSeedRootErr = os.MkdirTemp("", "awf-eval-seeds-")
+	})
+	if evalSeedRootErr != nil {
+		t.Fatalf("create eval fixture seed root: %v", evalSeedRootErr)
+	}
+
+	evalSeedMu.Lock()
+	defer evalSeedMu.Unlock()
+	if root := evalSeeds[target]; root != "" {
+		return root
+	}
+	root := filepath.Join(evalSeedRoot, target)
 	testsupport.WriteAwfConfig(t, root, fullCatalogConfigForTarget(cat, target))
 	p, err := project.Open(testsupport.Context(t), root)
 	if err != nil {
@@ -126,6 +158,19 @@ func syncFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string)
 	}
 	if _, err := publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatalf("initialize: %v", err)
+	}
+	evalSeeds[target] = root
+	return root
+}
+
+// cloneFullCatalogForTarget gives each consumer an isolated fixture. Tests that
+// mutate generated output therefore change only their explicit clone.
+func cloneFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string) string {
+	t.Helper()
+	seed := fullCatalogSeedForTarget(t, cat, target)
+	root := filepath.Join(t.TempDir(), "project")
+	if err := os.CopyFS(root, os.DirFS(seed)); err != nil {
+		t.Fatalf("clone %s full-catalog seed: %v", target, err)
 	}
 	return root
 }
@@ -150,7 +195,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 	cat := loadCatalog(t)
 	for _, targetName := range []string{"claude", "pi"} {
 		t.Run(targetName, func(t *testing.T) {
-			root := syncFullCatalogForTarget(t, cat, targetName)
+			root := cloneFullCatalogForTarget(t, cat, targetName)
 			p, err := project.Open(testsupport.Context(t), root)
 			if err != nil {
 				t.Fatalf("open initialized project: %v", err)
@@ -158,21 +203,19 @@ func TestFullCatalogCoverage(t *testing.T) {
 			if len(p.Targets()) != 2 {
 				t.Fatalf("targets = %d, want both built-in targets", len(p.Targets()))
 			}
-			for _, target := range p.Targets() {
-				for _, s := range sortedKeys(cat.Skills) {
-					path := filepath.Join(root, filepath.FromSlash(target.SkillPath(evalPrefix, s)))
-					if _, err := os.Stat(path); err != nil {
-						t.Errorf("%s catalog skill %q not rendered: %v", target.Name, s, err)
-					}
-				}
-				for _, a := range sortedKeys(cat.Agents) {
-					path := filepath.Join(root, filepath.FromSlash(target.AgentPath(a)))
-					if _, err := os.Stat(path); err != nil {
-						t.Errorf("%s catalog agent %q not rendered: %v", target.Name, a, err)
-					}
+			target := targetNamed(t, p.Targets(), targetName)
+			for _, s := range sortedKeys(cat.Skills) {
+				path := filepath.Join(root, filepath.FromSlash(target.SkillPath(evalPrefix, s)))
+				if _, err := os.Stat(path); err != nil {
+					t.Errorf("%s catalog skill %q not rendered: %v", target.Name, s, err)
 				}
 			}
-			target := targetNamed(t, p.Targets(), targetName)
+			for _, a := range sortedKeys(cat.Agents) {
+				path := filepath.Join(root, filepath.FromSlash(target.AgentPath(a)))
+				if _, err := os.Stat(path); err != nil {
+					t.Errorf("%s catalog agent %q not rendered: %v", target.Name, a, err)
+				}
+			}
 			for name, entry := range cat.Docs {
 				path := catalogDocPath(root, name, entry)
 				if _, err := os.Stat(path); err != nil {

@@ -59,7 +59,7 @@ func assertDispatch(t *testing.T, root, skill, agent, spineToken string) {
 // reviewer agent (on an invocation line) and that agent carries the spine partial.
 func TestExplorationConsumerToPiToolSeam(t *testing.T) {
 	cat := loadCatalog(t)
-	root := syncFullCatalogForTarget(t, cat, "pi")
+	root := cloneFullCatalogForTarget(t, cat, "pi")
 	// Orienting owns exploration dispatch; debugging and the coupling audit are
 	// the other direct exploration consumers.
 	for _, consumer := range []string{"orienting", "debugging", "refactor-coupling-audit"} {
@@ -83,7 +83,7 @@ func TestExplorationConsumerToPiToolSeam(t *testing.T) {
 
 func TestPiReviewerDispatchNamesToolAndRenderedReviewer(t *testing.T) {
 	cat := loadCatalog(t)
-	root := syncFullCatalogForTarget(t, cat, "pi")
+	root := cloneFullCatalogForTarget(t, cat, "pi")
 	extension := read(t, filepath.Join(root, ".pi", "extensions", "awf-subagents", "index.ts"))
 	for _, tc := range []struct{ skill, agent, tool string }{
 		{"reviewing-impl", "code-reviewer", "subagent_review_code"},
@@ -105,7 +105,7 @@ func TestPiReviewerDispatchNamesToolAndRenderedReviewer(t *testing.T) {
 
 func TestReviewerDispatchCarriesSpine(t *testing.T) {
 	cat := loadCatalog(t)
-	root := syncFullCatalog(t, cat)
+	root := cloneFullCatalog(t, cat)
 	for _, tc := range []struct{ skill, agent string }{
 		{"reviewing-impl", "code-reviewer"},
 		{"reviewing-adr", "adr-reviewer"},
@@ -128,7 +128,7 @@ func TestSemanticRenderingReviewReachesEnabledTargets(t *testing.T) {
 	cat := loadCatalog(t)
 	for _, target := range []string{"claude", "pi"} {
 		t.Run(target, func(t *testing.T) {
-			root := syncFullCatalogForTarget(t, cat, target)
+			root := cloneFullCatalogForTarget(t, cat, target)
 			base := filepath.Join(root, "."+target)
 			for _, tc := range []struct {
 				path        string
@@ -189,7 +189,7 @@ func TestChainFlagsMatchPinnedNodes(t *testing.T) {
 // per-edge positional check cannot see.
 func TestStagedAuthorityExecutionOrder(t *testing.T) {
 	cat := loadCatalog(t)
-	root := syncFullCatalog(t, cat)
+	root := cloneFullCatalog(t, cat)
 	paths := map[string]string{
 		"adr-lifecycle":               skillPath(root, "adr-lifecycle"),
 		"executing-plans":             skillPath(root, "executing-plans"),

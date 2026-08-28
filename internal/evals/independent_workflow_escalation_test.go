@@ -24,7 +24,7 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 
 	for _, target := range []string{"pi", "claude"} {
 		t.Run(target, func(t *testing.T) {
-			root := syncFullCatalogForTarget(t, cat, target)
+			root := cloneFullCatalogForTarget(t, cat, target)
 			bodies := map[string]string{}
 			for _, name := range allNames {
 				path := skillPath(root, name)
@@ -283,7 +283,7 @@ func TestBrainstormContinuityBoundary(t *testing.T) {
 func TestMandatoryApprovalBoundaries(t *testing.T) {
 	cat := loadCatalog(t)
 	for _, target := range []string{"pi", "claude"} {
-		root := syncFullCatalogForTarget(t, cat, target)
+		root := cloneFullCatalogForTarget(t, cat, target)
 		path := func(name string) string {
 			if target == "pi" {
 				return filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md")
@@ -391,8 +391,8 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestGroundingSupportOwnership)
 func TestGroundingSupportOwnership(t *testing.T) {
 	cat := loadCatalog(t)
-	pi := syncFullCatalogForTarget(t, cat, "pi")
-	claude := syncFullCatalogForTarget(t, cat, "claude")
+	pi := cloneFullCatalogForTarget(t, cat, "pi")
+	claude := cloneFullCatalogForTarget(t, cat, "claude")
 	piAdapter := read(t, filepath.Join(pi, ".pi", "extensions", "awf-subagents", "index.ts"))
 	piGrounding := read(t, filepath.Join(pi, ".pi", "skills", evalPrefix+"-grounding", "SKILL.md"))
 	piExploring := read(t, filepath.Join(pi, ".pi", "skills", evalPrefix+"-exploring", "SKILL.md"))
@@ -528,7 +528,7 @@ func TestProductionCodeOutlineApproval(t *testing.T) {
 	cat := loadCatalog(t)
 	for _, target := range []string{"pi", "claude"} {
 		t.Run(target, func(t *testing.T) {
-			root := syncFullCatalogForTarget(t, cat, target)
+			root := cloneFullCatalogForTarget(t, cat, target)
 			path := func(name string) string {
 				if target == "pi" {
 					return filepath.Join(root, ".pi", "skills", evalPrefix+"-"+name, "SKILL.md")

@@ -13,7 +13,7 @@ import (
 )
 
 // Version is the supported qualification-record schema version.
-const Version = 1
+const Version = 2
 
 // Record is the versioned, canonical qualification evidence for test performance.
 type Record struct {
@@ -84,12 +84,14 @@ type Component struct {
 
 // Observation records one measured sample and its component evidence.
 type Observation struct {
-	Workload    string      `json:"workload"`
-	Environment Environment `json:"environment"`
-	Cache       string      `json:"cache"`
-	Sample      int         `json:"sample"`
-	Seconds     float64     `json:"seconds"`
-	Components  []Component `json:"components"`
+	Workload      string      `json:"workload"`
+	Environment   Environment `json:"environment"`
+	Cache         string      `json:"cache"`
+	Sample        int         `json:"sample"`
+	EvidenceClass string      `json:"evidence_class"`
+	Result        string      `json:"result"`
+	Seconds       float64     `json:"seconds"`
+	Components    []Component `json:"components"`
 }
 
 // Aggregate summarizes same-workload, same-environment observations.
@@ -113,6 +115,21 @@ type Evaluation struct {
 	ComponentRegressions []string `json:"component_regressions,omitempty"`
 }
 
+// Delta reports like-for-like achieved evidence without turning it into a budget claim.
+type Delta struct {
+	Workload        string  `json:"workload"`
+	Environment     string  `json:"environment"`
+	Cache           string  `json:"cache"`
+	Sample          int     `json:"sample"`
+	EvidenceClass   string  `json:"evidence_class"`
+	Result          string  `json:"result"`
+	Component       string  `json:"component,omitempty"`
+	BaselineSeconds float64 `json:"baseline_seconds"`
+	ObservedSeconds float64 `json:"observed_seconds"`
+	DeltaSeconds    float64 `json:"delta_seconds"`
+	DeltaPercent    float64 `json:"delta_percent"`
+}
+
 // Report is the shared input for human and machine renderings.
 type Report struct {
 	RecordVersion int           `json:"record_version"`
@@ -123,6 +140,7 @@ type Report struct {
 	Budgets       []Budget      `json:"budgets"`
 	Observations  []Observation `json:"observations"`
 	Aggregates    []Aggregate   `json:"aggregates"`
+	Deltas        []Delta       `json:"deltas"`
 	Evaluations   []Evaluation  `json:"evaluations"`
 }
 
@@ -288,10 +306,22 @@ func Validate(r Record) error {
 		if o.Cache != "warm" && o.Cache != "cold" {
 			return fmt.Errorf("observation cache %q is invalid", o.Cache)
 		}
+		switch o.EvidenceClass {
+		case "qualification":
+			if o.Result != "passed" {
+				return errors.New("qualification observation result must be passed")
+			}
+		case "diagnostic", "widened", "exceptional":
+			if o.Result == "" {
+				return fmt.Errorf("%s observation requires a result", o.EvidenceClass)
+			}
+		default:
+			return fmt.Errorf("observation evidence class %q is invalid", o.EvidenceClass)
+		}
 		if o.Sample < 1 || o.Seconds < 0 {
 			return errors.New("observation requires positive sample and non-negative seconds")
 		}
-		sampleKey := fmt.Sprintf("%s\x00%s\x00%s\x00%d", o.Workload, o.Environment.ID, o.Cache, o.Sample)
+		sampleKey := fmt.Sprintf("%s\x00%s\x00%s\x00%d\x00%s\x00%s", o.Workload, o.Environment.ID, o.Cache, o.Sample, o.EvidenceClass, o.Result)
 		if observationSamples[sampleKey] {
 			return fmt.Errorf("duplicate observation sample %q", sampleKey)
 		}
@@ -330,6 +360,9 @@ func components(cs []Component) error {
 func Aggregates(r Record) []Aggregate {
 	groups := map[string][]Observation{}
 	for _, o := range r.Observations {
+		if o.EvidenceClass != "qualification" || o.Result != "passed" {
+			continue
+		}
 		key := o.Workload + "\x00" + o.Environment.ID + "\x00" + o.Cache
 		groups[key] = append(groups[key], o)
 	}
@@ -375,7 +408,11 @@ func Evaluate(r Record, aggregates []Aggregate) []Evaluation {
 	out := []Evaluation{}
 	for _, a := range aggregates {
 		b, ok := budgets[a.Workload+"\x00"+a.Environment]
-		if !ok || b.Qualification == "unqualified" {
+		requiredSamples := r.SampleMethod.WarmSamples
+		if a.Cache == "cold" {
+			requiredSamples = r.SampleMethod.ColdSamples
+		}
+		if !ok || b.Qualification == "unqualified" || a.Samples != requiredSamples {
 			continue
 		}
 		e := Evaluation{Workload: a.Workload, Environment: a.Environment, WallTime: r.SampleMethod.WallTime, MaximumSeconds: b.MaximumSeconds, ObservedSeconds: a.Seconds, MeetsMaximum: a.Seconds <= b.MaximumSeconds}
@@ -421,6 +458,52 @@ func HasComponentRegressions(report Report) bool {
 	return false
 }
 
+// Deltas compares only exact workload, environment, and component identities.
+// Diagnostic and widened evidence remains visibly classified and never enters
+// qualification aggregates.
+func Deltas(r Record) []Delta {
+	baselines := make(map[string]Baseline)
+	for _, baseline := range r.Baselines {
+		baselines[baseline.Workload+"\x00"+baseline.Environment] = baseline
+	}
+	var out []Delta
+	for _, observation := range r.Observations {
+		baseline, ok := baselines[observation.Workload+"\x00"+observation.Environment.ID]
+		if !ok {
+			continue
+		}
+		if observation.EvidenceClass == "qualification" {
+			out = append(out, newDelta(observation, "", baseline.Seconds, observation.Seconds))
+		}
+		baselineComponents := make(map[string]Component)
+		for _, component := range baseline.Components {
+			baselineComponents[componentName(component)] = component
+		}
+		for _, component := range observation.Components {
+			name := componentName(component)
+			if base, ok := baselineComponents[name]; ok {
+				out = append(out, newDelta(observation, name, base.Seconds, component.Seconds))
+			}
+		}
+	}
+	return out
+}
+
+func newDelta(observation Observation, component string, baseline, observed float64) Delta {
+	delta := observed - baseline
+	percent := 0.0
+	if baseline != 0 {
+		percent = delta / baseline * 100
+	}
+	return Delta{
+		Workload: observation.Workload, Environment: observation.Environment.ID,
+		Cache: observation.Cache, Sample: observation.Sample,
+		EvidenceClass: observation.EvidenceClass, Result: observation.Result,
+		Component: component, BaselineSeconds: baseline, ObservedSeconds: observed,
+		DeltaSeconds: delta, DeltaPercent: percent,
+	}
+}
+
 // BuildReport creates human and machine output from one observation set.
 func BuildReport(r Record) Report {
 	a := Aggregates(r)
@@ -433,6 +516,7 @@ func BuildReport(r Record) Report {
 		Budgets:       r.Budgets,
 		Observations:  r.Observations,
 		Aggregates:    a,
+		Deltas:        Deltas(r),
 		Evaluations:   Evaluate(r, a),
 	}
 }
@@ -457,10 +541,17 @@ func WriteHuman(w io.Writer, report Report) {
 		fmt.Fprintf(w, "budget %s on %s: qualification=%s maximum=%.3fs stronger=%.3fs\n", budget.Workload, budget.Environment, budget.Qualification, budget.MaximumSeconds, budget.StrongerTargetSeconds)
 	}
 	for _, observation := range report.Observations {
-		fmt.Fprintf(w, "observation %s on %s: cache=%s sample=%d seconds=%.3f\n", observation.Workload, observation.Environment.ID, observation.Cache, observation.Sample, observation.Seconds)
+		fmt.Fprintf(w, "observation %s on %s: cache=%s sample=%d class=%s result=%s seconds=%.3f\n", observation.Workload, observation.Environment.ID, observation.Cache, observation.Sample, observation.EvidenceClass, observation.Result, observation.Seconds)
 	}
 	for _, aggregate := range report.Aggregates {
 		fmt.Fprintf(w, "aggregate %s on %s: cache=%s samples=%d seconds=%.3f\n", aggregate.Workload, aggregate.Environment, aggregate.Cache, aggregate.Samples, aggregate.Seconds)
+	}
+	for _, delta := range report.Deltas {
+		identity := "wall"
+		if delta.Component != "" {
+			identity = delta.Component
+		}
+		fmt.Fprintf(w, "delta %s on %s: cache=%s sample=%d class=%s result=%s component=%s baseline=%.3fs observed=%.3fs change=%+.3fs (%+.1f%%)\n", delta.Workload, delta.Environment, delta.Cache, delta.Sample, delta.EvidenceClass, delta.Result, identity, delta.BaselineSeconds, delta.ObservedSeconds, delta.DeltaSeconds, delta.DeltaPercent)
 	}
 	for _, e := range report.Evaluations {
 		fmt.Fprintf(w, "%s on %s: %.3fs (budget %.3fs, meets=%t, evidence: %s)\n", e.Workload, e.Environment, e.ObservedSeconds, e.MaximumSeconds, e.MeetsMaximum, e.WallTime)

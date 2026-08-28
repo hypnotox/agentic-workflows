@@ -1,5 +1,5 @@
 {
-  "version": 1,
+  "version": 2,
   "workloads": [
     {
       "id": "fast-gate",
@@ -236,6 +236,8 @@
       },
       "cache": "warm",
       "sample": 1,
+      "evidence_class": "qualification",
+      "result": "passed",
       "seconds": 1.21,
       "components": [
         {
@@ -279,6 +281,8 @@
       },
       "cache": "warm",
       "sample": 2,
+      "evidence_class": "qualification",
+      "result": "passed",
       "seconds": 1.229,
       "components": [
         {
@@ -322,6 +326,8 @@
       },
       "cache": "warm",
       "sample": 3,
+      "evidence_class": "qualification",
+      "result": "passed",
       "seconds": 1.231,
       "components": [
         {
@@ -347,6 +353,168 @@
           "package": "repository",
           "test": "stage",
           "seconds": 1
+        }
+      ]
+    },
+    {
+      "workload": "ordinary-full",
+      "environment": {
+        "id": "local-linux-amd64",
+        "kind": "local",
+        "cpu": "AMD Ryzen 5 7600X 6-Core Processor; 12 logical CPUs",
+        "os": "CachyOS; Linux 7.2.0-1-cachyos",
+        "architecture": "amd64",
+        "filesystem": "btrfs",
+        "memory": "31974732 KiB",
+        "runner_image": "local checkout",
+        "toolchain": "go1.26.4"
+      },
+      "cache": "cold",
+      "sample": 1,
+      "evidence_class": "diagnostic",
+      "result": "changed-package-slice",
+      "seconds": 160.54,
+      "components": [
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/contextop",
+          "test": "package-total",
+          "seconds": 0.94
+        },
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/contextop",
+          "test": "TestContextCompositionSelectsOneFreshTreeForPublisherAndCompletion",
+          "seconds": 0.14
+        },
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/contextop",
+          "test": "TestContextCompletionReusesPublisherParsedSemantics",
+          "seconds": 0.13
+        },
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/evals",
+          "test": "package-total",
+          "seconds": 13.637
+        },
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/evals",
+          "test": "TestFullCatalogCoverage",
+          "seconds": 3.24
+        },
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/evals",
+          "test": "TestMandatoryApprovalBoundaries",
+          "seconds": 2.04
+        },
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/project",
+          "test": "package-total",
+          "seconds": 143.039
+        },
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/project",
+          "test": "TestRunnerFmtRestoresMissingImport",
+          "seconds": 9.7
+        },
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/project",
+          "test": "TestNumberPendingADRsRefusals",
+          "seconds": 6.1
+        },
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/testsupport",
+          "test": "package-total",
+          "seconds": 1.884
+        },
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/testsupport",
+          "test": "TestThinCompositionInitVariantProofAcceptsSharedPrecondition",
+          "seconds": 0.25
+        },
+        {
+          "stage": "go-test-unprofiled",
+          "package": "internal/testsupport",
+          "test": "TestThinCompositionConfigRouteProofRejectsDuplicateOperation",
+          "seconds": 0.25
+        }
+      ]
+    },
+    {
+      "workload": "ordinary-full",
+      "environment": {
+        "id": "local-linux-amd64",
+        "kind": "local",
+        "cpu": "AMD Ryzen 5 7600X 6-Core Processor; 12 logical CPUs",
+        "os": "CachyOS; Linux 7.2.0-1-cachyos",
+        "architecture": "amd64",
+        "filesystem": "btrfs",
+        "memory": "31974732 KiB",
+        "runner_image": "local checkout",
+        "toolchain": "go1.26.4"
+      },
+      "cache": "warm",
+      "sample": 1,
+      "evidence_class": "diagnostic",
+      "result": "coverage-policy-refused-expanded-identity",
+      "seconds": 615.441,
+      "components": [
+        {
+          "stage": "go-test",
+          "package": "repository",
+          "test": "serial-profiled-lane",
+          "seconds": 611
+        },
+        {
+          "stage": "go-test",
+          "package": "cmd/awf",
+          "test": "package-total",
+          "seconds": 241.573
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/project",
+          "test": "package-total",
+          "seconds": 143.907
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/publisher",
+          "test": "package-total",
+          "seconds": 94.679
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/evals",
+          "test": "package-total",
+          "seconds": 13.803
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/contextop",
+          "test": "package-total",
+          "seconds": 0.982
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/testsupport",
+          "test": "package-total",
+          "seconds": 1.988
+        },
+        {
+          "stage": "coverage-policy",
+          "package": "cmd/covercheck",
+          "test": "identity-expansion-refused",
+          "seconds": 0
         }
       ]
     }

@@ -87,7 +87,7 @@ Run the exact gate.
 Keep the exact note.
 `
 
-func contextPreparationAcceptedV1(t *testing.T, num, title, date, stateChanges string) string {
+func contextPreparationAcceptedV1(t testing.TB, num, title, date, stateChanges string) string {
 	t.Helper()
 	doc := func(status, history string) string {
 		return "---\nformat: current-state-v1\nstatus: " + status + "\ndate: " + date + "\n---\n" +
@@ -106,7 +106,7 @@ func contextPreparationAcceptedV1(t *testing.T, num, title, date, stateChanges s
 	return doc("Accepted", "- "+date+": Proposed\n- "+date+": Accepted; content-sha256: "+adr.ContentDigest(scaffold.Sections))
 }
 
-func contextPreparationFixture(t *testing.T) string {
+func contextPreparationFixture(t testing.TB) string {
 	t.Helper()
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
@@ -136,7 +136,7 @@ func contextPreparationFixture(t *testing.T) string {
 	return root
 }
 
-func contextPreparationProject(t *testing.T, root string) (*project.ProjectState, *awfgit.Repo) {
+func contextPreparationProject(t testing.TB, root string) (*project.ProjectState, *awfgit.Repo) {
 	t.Helper()
 	state, err := project.Open(testsupport.Context(t), root)
 	if err != nil {

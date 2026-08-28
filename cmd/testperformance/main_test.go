@@ -52,7 +52,7 @@ func TestReportEmitsHumanAndMachineFromSameRecord(t *testing.T) {
 	if code := run([]string{"testperformance", "report", "--machine", path}, &machine, &errb); code != 0 {
 		t.Fatalf("machine=%d: %s", code, errb.String())
 	}
-	if !strings.Contains(human.String(), "qualification record v1") || !strings.Contains(human.String(), "aggregate fast-gate on local-linux-amd64: cache=warm samples=3 seconds=1.229") {
+	if !strings.Contains(human.String(), "qualification record v2") || !strings.Contains(human.String(), "aggregate fast-gate on local-linux-amd64: cache=warm samples=3 seconds=1.229") || !strings.Contains(human.String(), "class=diagnostic result=coverage-policy-refused-expanded-identity") || !strings.Contains(human.String(), "change=-14.155s (-93.5%)") {
 		t.Fatalf("human=%q", human.String())
 	}
 	var report testperformance.Report
@@ -84,7 +84,8 @@ func TestReportBlocksDeterministicComponentRegression(t *testing.T) {
 	for sample := 1; sample <= 3; sample++ {
 		record.Observations = append(record.Observations, testperformance.Observation{
 			Workload: "ordinary-full", Environment: record.Environments[0], Cache: "warm",
-			Sample: sample, Seconds: 100, Components: []testperformance.Component{component},
+			Sample: sample, EvidenceClass: "qualification", Result: "passed",
+			Seconds: 100, Components: []testperformance.Component{component},
 		})
 	}
 	data, err := testperformance.Canonical(record)

@@ -77,9 +77,9 @@ func TestAggregatePreservesComponentsAndEvaluatesDeterministically(t *testing.T)
 	record := validRecord(t)
 	environment := record.Environments[0]
 	record.Observations = []Observation{
-		{Workload: "ordinary-full", Environment: environment, Cache: "warm", Sample: 1, Seconds: 100, Components: []Component{{Stage: "go-test", Package: "internal/project", Test: "TestRunner", Seconds: 40}}},
-		{Workload: "ordinary-full", Environment: environment, Cache: "warm", Sample: 2, Seconds: 120, Components: []Component{{Stage: "go-test", Package: "internal/project", Test: "TestRunner", Seconds: 50}}},
-		{Workload: "ordinary-full", Environment: environment, Cache: "warm", Sample: 3, Seconds: 110, Components: []Component{{Stage: "go-test", Package: "internal/project", Test: "TestRunner", Seconds: 45}}},
+		{Workload: "ordinary-full", Environment: environment, Cache: "warm", Sample: 1, EvidenceClass: "qualification", Result: "passed", Seconds: 100, Components: []Component{{Stage: "go-test", Package: "internal/project", Test: "TestRunner", Seconds: 40}}},
+		{Workload: "ordinary-full", Environment: environment, Cache: "warm", Sample: 2, EvidenceClass: "qualification", Result: "passed", Seconds: 120, Components: []Component{{Stage: "go-test", Package: "internal/project", Test: "TestRunner", Seconds: 50}}},
+		{Workload: "ordinary-full", Environment: environment, Cache: "warm", Sample: 3, EvidenceClass: "qualification", Result: "passed", Seconds: 110, Components: []Component{{Stage: "go-test", Package: "internal/project", Test: "TestRunner", Seconds: 45}}},
 	}
 	for i := range record.Budgets {
 		if record.Budgets[i].Workload == "ordinary-full" && record.Budgets[i].Environment == environment.ID {
@@ -100,7 +100,7 @@ func TestValidationRefusesObservationWithMismatchedEnvironment(t *testing.T) {
 	record := validRecord(t)
 	candidate := record.Environments[0]
 	candidate.CPU = "different CPU"
-	record.Observations = []Observation{{Workload: "fast-gate", Environment: candidate, Cache: "warm", Sample: 1}}
+	record.Observations = []Observation{{Workload: "fast-gate", Environment: candidate, Cache: "warm", Sample: 1, EvidenceClass: "qualification", Result: "passed"}}
 	if err := Validate(record); err == nil || !strings.Contains(err.Error(), "not like-for-like") {
 		t.Fatalf("validation error = %v", err)
 	}
@@ -130,7 +130,7 @@ func TestMatchEnvironmentRefusesUnlikeEvidence(t *testing.T) {
 
 func TestBuildReportFeedsBothRenderingsFromObservations(t *testing.T) {
 	record := validRecord(t)
-	record.Observations = []Observation{{Workload: "ordinary-full", Environment: record.Environments[0], Cache: "warm", Sample: 1, Seconds: 2, Components: []Component{{Stage: "gate", Package: "repository", Test: "fast", Seconds: 2}}}}
+	record.Observations = []Observation{{Workload: "ordinary-full", Environment: record.Environments[0], Cache: "warm", Sample: 1, EvidenceClass: "diagnostic", Result: "coverage-policy-refused", Seconds: 2, Components: []Component{{Stage: "gate", Package: "repository", Test: "fast", Seconds: 2}}}}
 	report := BuildReport(record)
 	machine, err := json.Marshal(report)
 	if err != nil {
@@ -138,7 +138,7 @@ func TestBuildReportFeedsBothRenderingsFromObservations(t *testing.T) {
 	}
 	var human bytes.Buffer
 	WriteHuman(&human, report)
-	if !strings.Contains(string(machine), `"observed_seconds":2`) || !strings.Contains(string(machine), `"runner_image":"local checkout"`) || !strings.Contains(human.String(), "2.000s") || !strings.Contains(human.String(), "workload common-feedback") || !strings.Contains(human.String(), "environment local-linux-amd64") {
+	if !strings.Contains(string(machine), `"evidence_class":"diagnostic"`) || !strings.Contains(string(machine), `"runner_image":"local checkout"`) || !strings.Contains(human.String(), "seconds=2.000") || !strings.Contains(human.String(), "workload common-feedback") || !strings.Contains(human.String(), "environment local-linux-amd64") {
 		t.Fatalf("machine=%s human=%s", machine, human.String())
 	}
 }
@@ -197,6 +197,12 @@ func TestValidationRejectsInvalidContracts(t *testing.T) {
 		{"unknown observation environment", func(r *Record) { r.Observations[0].Environment.ID = "missing" }, "unknown environment"},
 		{"unknown observation workload", func(r *Record) { r.Observations[0].Workload = "missing" }, "unknown workload"},
 		{"invalid observation cache", func(r *Record) { r.Observations[0].Cache = "other" }, "cache"},
+		{"invalid evidence class", func(r *Record) { r.Observations[0].EvidenceClass = "other" }, "evidence class"},
+		{"qualification failure", func(r *Record) { r.Observations[0].Result = "failed" }, "must be passed"},
+		{"diagnostic without result", func(r *Record) {
+			r.Observations[0].EvidenceClass = "diagnostic"
+			r.Observations[0].Result = ""
+		}, "requires a result"},
 		{"invalid observation sample", func(r *Record) { r.Observations[0].Sample = 0 }, "positive sample"},
 		{"duplicate observation sample", func(r *Record) { r.Observations = append(r.Observations, r.Observations[0]) }, "duplicate observation sample"},
 		{"invalid observation component", func(r *Record) { r.Observations[0].Components[0].Test = "" }, "component requires"},
@@ -242,12 +248,12 @@ func TestAggregationAndQualificationEdges(t *testing.T) {
 	}
 	record := validRecord(t)
 	record.Observations = []Observation{
-		{Workload: "fast-gate", Environment: record.Environments[0], Cache: "cold", Sample: 1, Seconds: 2},
-		{Workload: "fast-gate", Environment: record.Environments[0], Cache: "cold", Sample: 2, Seconds: 4},
-		{Workload: "selected-mutation", Environment: record.Environments[0], Cache: "warm", Sample: 1, Seconds: 9},
+		{Workload: "fast-gate", Environment: record.Environments[0], Cache: "cold", Sample: 1, EvidenceClass: "qualification", Result: "passed", Seconds: 2},
+		{Workload: "fast-gate", Environment: record.Environments[0], Cache: "cold", Sample: 2, EvidenceClass: "qualification", Result: "passed", Seconds: 4},
+		{Workload: "selected-mutation", Environment: record.Environments[0], Cache: "warm", Sample: 1, EvidenceClass: "exceptional", Result: "passed", Seconds: 9},
 	}
 	aggregates := Aggregates(record)
-	if len(aggregates) != 2 || aggregates[0].Seconds != 3 {
+	if len(aggregates) != 1 || aggregates[0].Seconds != 3 {
 		t.Fatalf("aggregates = %#v", aggregates)
 	}
 	if evaluations := Evaluate(record, aggregates); len(evaluations) != 0 {
@@ -260,9 +266,10 @@ func TestAggregationAndQualificationEdges(t *testing.T) {
 
 func TestMissingComponentBlocksQualification(t *testing.T) {
 	record := validRecord(t)
+	record.SampleMethod.WarmSamples = 2
 	record.Observations = []Observation{
-		{Workload: "ordinary-full", Environment: record.Environments[0], Cache: "warm", Sample: 1, Seconds: 100},
-		{Workload: "ordinary-full", Environment: record.Environments[0], Cache: "warm", Sample: 2, Seconds: 101, Components: []Component{{Stage: "go-test", Package: "internal/project", Test: "package-total", Seconds: 100}}},
+		{Workload: "ordinary-full", Environment: record.Environments[0], Cache: "warm", Sample: 1, EvidenceClass: "qualification", Result: "passed", Seconds: 100},
+		{Workload: "ordinary-full", Environment: record.Environments[0], Cache: "warm", Sample: 2, EvidenceClass: "qualification", Result: "passed", Seconds: 101, Components: []Component{{Stage: "go-test", Package: "internal/project", Test: "package-total", Seconds: 100}}},
 	}
 	for i := range record.Budgets {
 		if record.Budgets[i].Workload == "ordinary-full" {

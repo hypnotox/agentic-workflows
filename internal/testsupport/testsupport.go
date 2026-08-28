@@ -31,7 +31,7 @@ const gitTestDeadline = 2 * time.Minute
 // deadline, so every test whose subject reaches Git takes its context from here
 // rather than from t.Context() or a bare background context; one helper means
 // the refusal cannot be satisfied differently in different suites.
-func Context(t *testing.T) context.Context {
+func Context(t testing.TB) context.Context {
 	t.Helper()
 	ctx, cancel := context.WithTimeout(t.Context(), gitTestDeadline)
 	t.Cleanup(cancel)
@@ -41,7 +41,7 @@ func Context(t *testing.T) context.Context {
 // WriteFile creates path's parent directories and writes content to it,
 // failing the test on either error. The primitive every other file-writing
 // helper in this package is built from.
-func WriteFile(t *testing.T, path, content string) {
+func WriteFile(t testing.TB, path, content string) {
 	t.Helper()
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { // coverage-ignore: MkdirAll under a fresh t.TempDir() fails only on a permission fault a test cannot trigger
 		t.Fatal(err)
@@ -54,7 +54,7 @@ func WriteFile(t *testing.T, path, content string) {
 // WriteAwfConfig writes <root>/.awf/config.yaml with the given content - the
 // project-fixture seed step every scaffold-style helper across awf's test
 // suites starts from.
-func WriteAwfConfig(t *testing.T, root, yamlContent string) {
+func WriteAwfConfig(t testing.TB, root, yamlContent string) {
 	t.Helper()
 	// Current-schema fixtures exercise the historical Full behavior unless a test
 	// explicitly selects Core. Historical migration fixtures omit
