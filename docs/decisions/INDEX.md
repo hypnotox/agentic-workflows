@@ -3,6 +3,7 @@
 ## In flight
 
 - [ADR-0314: Performance-budgeted parallel verification](0314-performance-budgeted-parallel-verification.md) (Implementing)
+- [ADR-0315: Validate only pushed ref commit deltas](0315-validate-only-pushed-ref-commit-deltas.md) (Proposed)
 
 ## History
 
