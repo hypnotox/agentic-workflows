@@ -2,8 +2,10 @@ title: Quality gates
 summary: Coverage, prose, working-memory citations, and the command-runner gate machinery.
 paths:
   - test-performance.json
+  - test-selection.json
   - internal/coverage/**
   - internal/testperformance/**
+  - internal/testselection/**
   - internal/prosegate/**
   - internal/memorycite/**
   - tools/**

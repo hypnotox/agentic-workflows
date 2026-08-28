@@ -1,0 +1,47 @@
+{
+  "version": 1,
+  "meta_suites": [
+    {
+      "id": "awf-composition",
+      "package": "./cmd/awf",
+      "tests": [
+        "TestArchitectureDocNamesEveryCmd",
+        "TestGlobalHelpListsAllCommands",
+        "TestHandlerRegistryParity",
+        "TestHelpListsGroupChildren",
+        "TestNoOsExitOutsideMain",
+        "TestRunnerInstancesOwnProcessDependencies",
+        "TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures"
+      ]
+    }
+  ],
+  "reverse_dependent_suites": {
+    "./cmd/awf": [
+      "awf-composition"
+    ]
+  },
+  "shared_path_patterns": [
+    ".awf/**",
+    ".github/**",
+    "templates/**",
+    "tools/**",
+    "internal/project/**",
+    "*.json",
+    "*.yaml",
+    "*.yml",
+    "**/*.json",
+    "**/*.yaml",
+    "**/*.yml",
+    "**/*_generated.*",
+    "**/*.generated.*",
+    "go.mod",
+    "go.sum",
+    "x",
+    "Makefile",
+    "Dockerfile"
+  ],
+  "generated_go_patterns": [
+    "*_generated.go",
+    "*.gen.go"
+  ]
+}

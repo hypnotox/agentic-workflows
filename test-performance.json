@@ -222,6 +222,105 @@
   ],
   "observations": [
     {
+      "workload": "common-feedback",
+      "environment": {
+        "id": "local-linux-amd64",
+        "kind": "local",
+        "cpu": "AMD Ryzen 5 7600X 6-Core Processor; 12 logical CPUs",
+        "os": "CachyOS; Linux 7.2.0-1-cachyos",
+        "architecture": "amd64",
+        "filesystem": "btrfs",
+        "memory": "31974732 KiB",
+        "runner_image": "local checkout",
+        "toolchain": "go1.26.4"
+      },
+      "cache": "warm",
+      "sample": 1,
+      "evidence_class": "qualification",
+      "result": "passed",
+      "seconds": 3.927,
+      "components": [
+        {
+          "stage": "fast-gate",
+          "package": "repository",
+          "test": "stage",
+          "seconds": 1.313
+        },
+        {
+          "stage": "affected-feedback",
+          "package": "internal/testselection",
+          "test": "changed-owner-reverse-dependent-and-meta-suite",
+          "seconds": 2.614
+        }
+      ]
+    },
+    {
+      "workload": "common-feedback",
+      "environment": {
+        "id": "local-linux-amd64",
+        "kind": "local",
+        "cpu": "AMD Ryzen 5 7600X 6-Core Processor; 12 logical CPUs",
+        "os": "CachyOS; Linux 7.2.0-1-cachyos",
+        "architecture": "amd64",
+        "filesystem": "btrfs",
+        "memory": "31974732 KiB",
+        "runner_image": "local checkout",
+        "toolchain": "go1.26.4"
+      },
+      "cache": "warm",
+      "sample": 2,
+      "evidence_class": "qualification",
+      "result": "passed",
+      "seconds": 3.855,
+      "components": [
+        {
+          "stage": "fast-gate",
+          "package": "repository",
+          "test": "stage",
+          "seconds": 1.262
+        },
+        {
+          "stage": "affected-feedback",
+          "package": "internal/testselection",
+          "test": "changed-owner-reverse-dependent-and-meta-suite",
+          "seconds": 2.593
+        }
+      ]
+    },
+    {
+      "workload": "common-feedback",
+      "environment": {
+        "id": "local-linux-amd64",
+        "kind": "local",
+        "cpu": "AMD Ryzen 5 7600X 6-Core Processor; 12 logical CPUs",
+        "os": "CachyOS; Linux 7.2.0-1-cachyos",
+        "architecture": "amd64",
+        "filesystem": "btrfs",
+        "memory": "31974732 KiB",
+        "runner_image": "local checkout",
+        "toolchain": "go1.26.4"
+      },
+      "cache": "warm",
+      "sample": 3,
+      "evidence_class": "qualification",
+      "result": "passed",
+      "seconds": 3.82,
+      "components": [
+        {
+          "stage": "fast-gate",
+          "package": "repository",
+          "test": "stage",
+          "seconds": 1.233
+        },
+        {
+          "stage": "affected-feedback",
+          "package": "internal/testselection",
+          "test": "changed-owner-reverse-dependent-and-meta-suite",
+          "seconds": 2.586
+        }
+      ]
+    },
+    {
       "workload": "fast-gate",
       "environment": {
         "id": "local-linux-amd64",

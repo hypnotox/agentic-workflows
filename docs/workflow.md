@@ -9,7 +9,7 @@
 
 <!-- awf:template-source templates/partials/gate-cadence.md -->
 <!-- Shared gate cadence. -->
-Use the narrowest relevant test, build, or lint command while iterating. The fast commit tier runs at the commit boundary; terminal exhaustive verification runs at implementation completion. Rely on a wired pre-commit or pre-push hook when present rather than manually duplicating its matching gate.
+Use the narrowest relevant test, build, or lint command while editing, then run available affected-package feedback. The fast commit tier runs at the commit boundary; terminal exhaustive verification runs at implementation completion. Rely on a wired pre-commit or pre-push hook when present rather than manually duplicating its matching gate.
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 You own the project's long-term health, not just the task in front of you: defects caused by the transaction or blocking its safe completion are repaired in the same commit; unrelated concrete defects are recorded and routed separately without expanding scope. Three rules bind every change: reality and its docs move together, the deterministic gate is green before every commit, and each commit carries exactly one concern.

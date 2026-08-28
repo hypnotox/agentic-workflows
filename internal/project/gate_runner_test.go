@@ -126,6 +126,17 @@ func TestGateRunnerModes(t *testing.T) {
 	}
 	assertTimingLines(t, out, []string{"versioncheck", "build", "lint", "pincheck", "go-test", "coverage-merge", "covercheck", "pi-runtime-smoke", "vet", "advisory-lint", "deadcode", "platform-builds"})
 
+	t.Run("affected feedback remains separate from the fast gate", func(t *testing.T) {
+		out, status, got := run("test-affected", "--staged")
+		if status != 0 {
+			t.Fatalf("status=%d output=%q", status, out)
+		}
+		want := []string{"goos=|goarch=|pi=|run ./cmd/testselection --execute --staged"}
+		if !slices.Equal(got, want) {
+			t.Fatalf("invocations=%q, want %q", got, want)
+		}
+	})
+
 	t.Run("owned range runs mutation last and preserves failure", func(t *testing.T) {
 		t.Setenv("FAKE_GIT_CHANGED_PATH", "cmd/covercheck/main.go")
 		out, status, lines := run("gate", "full", "timings", "--range", "base", "head")

@@ -49,7 +49,8 @@ var entrypointSuites = map[string]suite{
 	"HeadExists":    {"internal/git", "TestHeadExists"},
 
 	// Working-tree truth.
-	"ChangeCounts": {"internal/git", "TestChangeCountsSeparatesEveryDirtyTreeState"},
+	"ChangeCounts":         {"internal/git", "TestChangeCountsSeparatesEveryDirtyTreeState"},
+	"WorktreeChangedPaths": {"internal/git", "TestWorktreeChangedPaths"},
 
 	// Revision, branch, and control-file reads.
 	"ResolveCommit":   {"internal/git", "TestRevisionAndBranchReadsReportRepositoryState"},

@@ -21,7 +21,7 @@ For a nondeterministic race, stress or invariant evidence may be the strongest p
 <!-- awf:edit gate: from .awf/docs/parts/testing/gate.md -->
 <!-- awf:template-source templates/docs/testing.md.tmpl -->
 ## Gate
-`./x gate` is the fast commit tier: version validation, one native build, blocking lint including govet, and workflow pin validation. Use focused tests, builds, or lint while iterating. `./x gate full` is terminal exhaustive verification: it runs every top-level Go proving unit once in isolated deterministic slices, canonically merges whole-module set profiles, applies coverage policy, and adds complete Pi behavior, standalone vet, advisory lint, dead-code analysis, four Linux/Darwin release cross-builds, and range-qualified `cmd/covercheck` mutation. The Pi runtime smoke runs without analysis contention; independent analysis and platform stages replay buffered output in stable order after every started stage terminates. A local full run selects mutation from the exact staged candidate; pre-push, CI, and release callers provide one or more exact ranges. Missing or malformed evidence runs mutation conservatively. The Pi lane retains strict type checks and 100% statement, branch, function, and line coverage with descriptor parity.
+`./x gate` is the static-analysis-only fast commit tier: version validation, one native build, blocking lint including govet, and workflow pin validation. Use focused tests, builds, or lint while editing, then run the separate `./x test-affected` command for fail-closed behavioral feedback. It reports selected changed owners, affected callers, and declared meta-suites with reasons before bounded execution without coverage; shared or uncertain inputs widen or refuse visibly. `./x gate full` is terminal exhaustive verification: it runs every top-level Go proving unit once in isolated deterministic slices, canonically merges whole-module set profiles, applies coverage policy, and adds complete Pi behavior, standalone vet, advisory lint, dead-code analysis, four Linux/Darwin release cross-builds, and range-qualified `cmd/covercheck` mutation. The Pi runtime smoke runs without analysis contention; independent analysis and platform stages replay buffered output in stable order after every started stage terminates. A local full run selects mutation from the exact staged candidate; pre-push, CI, and release callers provide one or more exact ranges. Missing or malformed evidence runs mutation conservatively. The Pi lane retains strict type checks and 100% statement, branch, function, and line coverage with descriptor parity.
 
 | Gate class | Protected property and exit behavior |
 |---|---|
@@ -48,6 +48,7 @@ Direct checks retain the same classification as their aggregate. Operational ina
 | `./x gate full` | Terminal exhaustive verification. |
 | `./x gate full timings` | Terminal verification with elapsed stage timings. |
 | `./x test` | Go suite without the host Pi smoke. |
+| `./x test-affected` | Report and run working-tree affected-package feedback. Use `--staged` or `--range <base>..<head>` for reproducible evidence. |
 | `./x pi-test run` | Pi lane alone. |
 | `./x test-performance validate` | Validate the canonical qualification record without rewriting it. |
 | `./x test-performance report` | Render qualification evidence for people; add `--machine` for JSON. |
