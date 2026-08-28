@@ -169,3 +169,4 @@ must return for a new decision rather than silently relaxing assurance.
 - 2026-08-28: Applied; operations: update `tooling/quality-gates:coverage-raw-identity-ratchet`
 - 2026-08-28: Applied; operations: add `tooling/quality-gates:affected-package-feedback`, update `tooling/quality-gates:gate-tier-cadence`
 - 2026-08-28: Reapplied; operations: add `tooling/quality-gates:affected-package-feedback`
+- 2026-08-28: Reapplied; operations: add `tooling/quality-gates:affected-package-feedback`

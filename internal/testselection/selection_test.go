@@ -48,6 +48,9 @@ func TestSelectPathsConservativelyClosesAffectedPackages(t *testing.T) {
 	if len(result.Suites) != 0 {
 		t.Fatalf("suite duplicated full package: %#v", result.Suites)
 	}
+	if wantTests := []string{"TestArchitecture", "TestRegistry"}; !reflect.DeepEqual(result.Packages[0].RequiredTests, wantTests) {
+		t.Fatalf("meta package required tests = %#v, want %#v", result.Packages[0].RequiredTests, wantTests)
+	}
 	if wantReasons := []string{"contains-suite:composition:declared-meta-suite", "reverse-dependent:./internal/leaf"}; !reflect.DeepEqual(result.Packages[0].Reasons, wantReasons) {
 		t.Fatalf("meta package reasons = %#v, want %#v", result.Packages[0].Reasons, wantReasons)
 	}
@@ -75,6 +78,9 @@ func TestDirectSuitePackageRunsFullyWithoutDuplicateSuite(t *testing.T) {
 	}
 	if !reflect.DeepEqual(result.Packages[0].Reasons, []string{"changed-package:cmd/meta/main.go", "contains-suite:composition:declared-meta-suite"}) {
 		t.Fatalf("reasons = %#v", result.Packages[0].Reasons)
+	}
+	if !reflect.DeepEqual(result.Packages[0].RequiredTests, []string{"TestArchitecture", "TestRegistry"}) {
+		t.Fatalf("required tests = %#v", result.Packages[0].RequiredTests)
 	}
 }
 

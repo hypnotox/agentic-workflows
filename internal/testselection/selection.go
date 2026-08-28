@@ -39,8 +39,9 @@ type SuitePolicy struct {
 
 // Package is one selected Go package and its stable, accumulated reasons.
 type Package struct {
-	Path    string   `json:"path"`
-	Reasons []string `json:"reasons"`
+	Path          string   `json:"path"`
+	Reasons       []string `json:"reasons"`
+	RequiredTests []string `json:"required_tests,omitempty"`
 }
 
 // Suite is one selected declared suite and its stable, accumulated reasons.
@@ -440,9 +441,13 @@ func addReason(selected map[string]map[string]bool, path, reason string) {
 
 func result(policy Policy, outcome string, selected, selectedSuites map[string]map[string]bool, reasons []string) Result {
 	suiteByID := map[string]SuitePolicy{}
+	requiredTests := map[string]map[string]bool{}
 	for _, suite := range policy.MetaSuites {
 		suiteByID[suite.ID] = suite
 		if _, full := selected[suite.Package]; full {
+			for _, test := range suite.Tests {
+				addReason(requiredTests, suite.Package, test)
+			}
 			if suiteReasons := selectedSuites[suite.ID]; len(suiteReasons) > 0 {
 				for reason := range suiteReasons {
 					addReason(selected, suite.Package, "contains-suite:"+suite.ID+":"+reason)
@@ -455,7 +460,7 @@ func result(policy Policy, outcome string, selected, selectedSuites map[string]m
 	paths := sortedKeys(selected)
 	packages := make([]Package, 0, len(paths))
 	for _, path := range paths {
-		packages = append(packages, Package{Path: path, Reasons: sortedKeys(selected[path])})
+		packages = append(packages, Package{Path: path, Reasons: sortedKeys(selected[path]), RequiredTests: sortedKeys(requiredTests[path])})
 	}
 	suiteIDs := sortedKeys(selectedSuites)
 	suites := make([]Suite, 0, len(suiteIDs))

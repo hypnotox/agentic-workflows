@@ -101,6 +101,20 @@ func TestRunExecutesSelectedPackagesAndDeclaredSuites(t *testing.T) {
 	}
 }
 
+func TestRunRefusesUnavailableDeclaredSuiteWhenOwnerRunsFully(t *testing.T) {
+	root := selectionRepository(t)
+	if err := os.WriteFile(filepath.Join(root, "cmd", "meta", "main.go"), []byte("package main\n// changed\nfunc main() {}\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(root, "cmd", "meta", "main_test.go"), []byte("package main\nimport (\"os\"; \"testing\")\nfunc TestMain(m *testing.M) { os.Exit(m.Run()) }\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"testselection", "--root", root, "--execute"}, &stdout, &stderr); code != 1 || !bytes.Contains(stderr.Bytes(), []byte("unavailable proving units: TestComposition")) {
+		t.Fatalf("code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
+	}
+}
+
 func TestExecuteSelectionRefusesUnavailableDeclaredSuite(t *testing.T) {
 	root := selectionRepository(t)
 	result := testselection.Result{

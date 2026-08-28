@@ -120,7 +120,12 @@ type testRun struct {
 func executeSelection(ctx context.Context, root string, result testselection.Result, stdout io.Writer) error {
 	targets := make([]testTarget, 0, len(result.Packages)+len(result.Suites))
 	for _, pkg := range result.Packages {
-		targets = append(targets, testTarget{label: pkg.Path, args: []string{pkg.Path}})
+		target := testTarget{label: pkg.Path, args: []string{pkg.Path}}
+		if len(pkg.RequiredTests) > 0 {
+			target.args = []string{"-json", pkg.Path}
+			target.expectedTests = append([]string(nil), pkg.RequiredTests...)
+		}
+		targets = append(targets, target)
 	}
 	for _, suite := range result.Suites {
 		targets = append(targets, testTarget{
