@@ -22302,6 +22302,37 @@
       },
       "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:381.50,383.4 1 begins `if _, ok := graph.packages[suite.Package]; !ok {`."
     }
+  ,
+    {
+      "identity": {
+        "file": "internal/testsupport/shorttemp.go",
+        "start": {
+          "line": 13,
+          "column": 16
+        },
+        "end": {
+          "line": 15,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Hosted macOS portability admission for ShortTempDir's system temporary root allocation failure, which cannot be induced safely or portably; real consumers exercise successful allocation and cleanup ownership."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/shorttemp.go",
+        "start": {
+          "line": 17,
+          "column": 44
+        },
+        "end": {
+          "line": 19,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Hosted macOS portability admission for ShortTempDir's cleanup failure, which requires external interference after the test owns the directory; real consumers exercise cleanup registration and successful removal."
+    }
   ],
   "directives": [
     {
@@ -31579,6 +31610,31 @@
         "targetLine": 191
       },
       "evidence": "internal/git/entrypoints_test.go:191 prints a parser-produced AST block to bytes.Buffer; neither side exposes a deterministic failure state."
+    }
+  ,
+    {
+      "directive": {
+        "file": "internal/testsupport/shorttemp.go",
+        "line": 13,
+        "targetLine": 13,
+        "reason": "the system temporary root cannot be made unavailable safely or portably",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "ShortTempDir calls os.MkdirTemp against the system temporary root before this branch. Safely making that ambient root unavailable is not portable, while real socket-fixture consumers exercise successful allocation."
+    },
+    {
+      "directive": {
+        "file": "internal/testsupport/shorttemp.go",
+        "line": 17,
+        "targetLine": 17,
+        "reason": "a cleanup fault requires external interference after the test owns the directory",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "The registered cleanup calls os.RemoveAll on the directory ShortTempDir just created. Reaching this error requires external permission or filesystem interference after ownership, while real consumers exercise registration and successful cleanup."
     }
   ],
   "platformDirectives": [

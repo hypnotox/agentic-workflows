@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "73d43d956e39d83a488d7085a500d144d1a81e5794a5cb3ade782aa1139d7f7f",
+  "universeSHA256": "55df308862b65d3a57445e53050dac9204373f308019db9be5ed83c090077d68",
   "repository": [
     {
       "identity": {
@@ -14066,6 +14066,36 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/native.go:291.16,293.3 1 in function mustNative, beginning `{ // coverage-ignore: an invocation the caller asserts succeeds fails only on a broken fixture, ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/shorttemp.go",
+        "start": {
+          "line": 13,
+          "column": 16
+        },
+        "end": {
+          "line": 15,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Hosted macOS portability admission for ShortTempDir's system temporary root allocation failure, which cannot be induced safely or portably; real consumers exercise successful allocation and cleanup ownership."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/shorttemp.go",
+        "start": {
+          "line": 17,
+          "column": 44
+        },
+        "end": {
+          "line": 19,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Hosted macOS portability admission for ShortTempDir's cleanup failure, which requires external interference after the test owns the directory; real consumers exercise cleanup registration and successful removal."
     },
     {
       "identity": {
@@ -29445,6 +29475,30 @@
       },
       "class": "uninducible-deterministic-fault",
       "evidence": "The source predecessor `output, err := runNative(f, args...)` at internal/testsupport/gitfixture/native.go:290 feeds `if err != nil {` at internal/testsupport/gitfixture/native.go:291 in `func mustNative(t *testing.T, f Fixture, args ...string) string` (internal/testsupport/gitfixture/native.go:288). Its concrete fault condition is an invocation the caller asserts succeeds fails only on a broken fixture, which reds the suite by other means, so no safe portable production input induces this error path."
+    },
+    {
+      "directive": {
+        "file": "internal/testsupport/shorttemp.go",
+        "line": 13,
+        "targetLine": 13,
+        "reason": "the system temporary root cannot be made unavailable safely or portably",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "ShortTempDir calls os.MkdirTemp against the system temporary root before this branch. Safely making that ambient root unavailable is not portable, while real socket-fixture consumers exercise successful allocation."
+    },
+    {
+      "directive": {
+        "file": "internal/testsupport/shorttemp.go",
+        "line": 17,
+        "targetLine": 17,
+        "reason": "a cleanup fault requires external interference after the test owns the directory",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "The registered cleanup calls os.RemoveAll on the directory ShortTempDir just created. Reaching this error requires external permission or filesystem interference after ownership, while real consumers exercise registration and successful cleanup."
     },
     {
       "directive": {
