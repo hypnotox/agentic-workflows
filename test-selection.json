@@ -15,11 +15,6 @@
       ]
     }
   ],
-  "reverse_dependent_suites": {
-    "./cmd/awf": [
-      "awf-composition"
-    ]
-  },
   "shared_path_patterns": [
     ".awf/**",
     ".github/**",

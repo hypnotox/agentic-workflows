@@ -2,6 +2,7 @@
 package main
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -12,8 +13,10 @@ import (
 	"path/filepath"
 	"regexp"
 	"sort"
+	"strconv"
 	"strings"
 	"sync"
+	"sync/atomic"
 	"time"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -104,8 +107,9 @@ func run(args []string, stdout, stderr io.Writer) int {
 const feedbackWorkers = 2
 
 type testTarget struct {
-	label string
-	args  []string
+	label         string
+	args          []string
+	expectedTests []string
 }
 
 type testRun struct {
@@ -119,11 +123,11 @@ func executeSelection(ctx context.Context, root string, result testselection.Res
 		targets = append(targets, testTarget{label: pkg.Path, args: []string{pkg.Path}})
 	}
 	for _, suite := range result.Suites {
-		pattern := exactPattern(suite.Tests)
-		if err := validateSuite(ctx, root, suite, pattern); err != nil {
-			return err
-		}
-		targets = append(targets, testTarget{label: "suite:" + suite.ID, args: []string{"-run", pattern, suite.Package}})
+		targets = append(targets, testTarget{
+			label:         "suite:" + suite.ID,
+			args:          []string{"-json", "-run", exactPattern(suite.Tests), suite.Package},
+			expectedTests: append([]string(nil), suite.Tests...),
+		})
 	}
 	if len(targets) == 0 {
 		return nil
@@ -174,30 +178,6 @@ func executeSelection(ctx context.Context, root string, result testselection.Res
 	return firstErr
 }
 
-func validateSuite(ctx context.Context, root string, suite testselection.Suite, pattern string) error {
-	cmd := exec.CommandContext(ctx, "go", "test", "-list", pattern, suite.Package)
-	cmd.Dir = root
-	output, err := cmd.Output()
-	if err != nil {
-		return fmt.Errorf("enumerate meta suite %s: %w", suite.ID, err)
-	}
-	found := map[string]bool{}
-	for _, line := range strings.Split(string(output), "\n") {
-		found[strings.TrimSpace(line)] = true
-	}
-	missing := []string{}
-	for _, test := range suite.Tests {
-		if !found[test] {
-			missing = append(missing, test)
-		}
-	}
-	if len(missing) > 0 {
-		sort.Strings(missing)
-		return fmt.Errorf("meta suite %s has unavailable proving units: %s", suite.ID, strings.Join(missing, ", "))
-	}
-	return nil
-}
-
 func exactPattern(names []string) string {
 	quoted := make([]string, len(names))
 	for index, name := range names {
@@ -206,9 +186,13 @@ func exactPattern(names []string) string {
 	return "^(" + strings.Join(quoted, "|") + ")$"
 }
 
+var feedbackTemporarySequence atomic.Uint64
+
 func runTarget(ctx context.Context, root string, target testTarget, caches []string) testRun {
-	temporary, err := os.MkdirTemp("", "awf-feedback-")
-	if err != nil {
+	// Unix-domain socket fixtures must fit the platform path limit beneath
+	// testing.T.TempDir, so keep the isolated worker root deliberately short.
+	temporary := filepath.Join("/tmp", fmt.Sprintf("%05s%02s", strconv.FormatInt(int64(os.Getpid()), 36), strconv.FormatUint(feedbackTemporarySequence.Add(1), 36)))
+	if err := os.Mkdir(temporary, 0o700); err != nil {
 		return testRun{err: fmt.Errorf("create isolated roots: %w", err)}
 	}
 	defer os.RemoveAll(temporary)
@@ -218,7 +202,33 @@ func runTarget(ctx context.Context, root string, target testTarget, caches []str
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(), "HOME="+temporary, "TMPDIR="+temporary, "GOTMPDIR="+temporary, "GOMAXPROCS=1", "GOCACHE="+caches[0], "GOMODCACHE="+caches[1])
 	output, err := cmd.CombinedOutput()
-	return testRun{output: output, err: err}
+	if err != nil || len(target.expectedTests) == 0 {
+		return testRun{output: output, err: err}
+	}
+	observed := map[string]bool{}
+	for _, line := range bytes.Split(bytes.TrimSpace(output), []byte("\n")) {
+		var event struct {
+			Action string `json:"Action"`
+			Test   string `json:"Test"`
+		}
+		if err := json.Unmarshal(line, &event); err != nil {
+			return testRun{output: output, err: fmt.Errorf("parse suite execution evidence: %w", err)}
+		}
+		if event.Action == "run" && event.Test != "" {
+			observed[event.Test] = true
+		}
+	}
+	missing := []string{}
+	for _, test := range target.expectedTests {
+		if !observed[test] {
+			missing = append(missing, test)
+		}
+	}
+	if len(missing) > 0 {
+		sort.Strings(missing)
+		return testRun{output: output, err: fmt.Errorf("unavailable proving units: %s", strings.Join(missing, ", "))}
+	}
+	return testRun{output: output}
 }
 
 func writeRefused(out io.Writer, version int, err error) error {

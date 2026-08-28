@@ -79,7 +79,7 @@ Backing: test
 
 ### `invariant: affected-package-feedback`
 
-`./x test-affected` reads complete staged, working-tree, or explicit-range change evidence and reports deterministic selected targets and reasons before executing them without coverage. It runs changed package owners, production reverse dependents, test-only importing packages, and declared exact-name meta-suites through bounded isolated workers. A declared representative caller-boundary suite substitutes for a measured heavyweight reverse dependent without replacing direct owner tests; shared generators, templates, configuration, tooling, generated or build-tagged Go, deleted ownership, malformed evidence, unavailable packages, and unknown paths widen to the full Go universe or refuse explicitly. The fast gate and terminal full gate remain unchanged.
+`./x test-affected` reads complete staged, working-tree, or explicit-range change evidence and reports deterministic selected targets and reasons before executing them without coverage. It runs changed package owners, every production reverse dependent, test-only importing packages, and declared exact-name meta-suites through bounded isolated workers; a suite runs separately only when its complete owner package is not already selected. Shared generators, templates, configuration, tooling, generated or build-tagged Go, deleted ownership, malformed evidence, unavailable packages, and unknown paths widen to the full Go universe or refuse explicitly. The fast gate and terminal full gate remain unchanged.
 Origin: ADR-0314
 Backing: test
 

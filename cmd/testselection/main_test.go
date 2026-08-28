@@ -17,11 +17,26 @@ func selectionRepository(t *testing.T) string {
 	root := repo.Root()
 	for path, content := range map[string]string{
 		"go.mod":                "module example.test/selection\ngo 1.26\n",
-		"test-selection.json":   `{"version":1,"meta_suites":[{"id":"composition","package":"./cmd/meta","tests":["TestComposition"]}],"reverse_dependent_suites":{"./cmd/meta":["composition"]},"shared_path_patterns":["templates/**","*.json","x"],"generated_go_patterns":["*_generated.go"]}`,
+		"test-selection.json":   `{"version":1,"meta_suites":[{"id":"composition","package":"./cmd/meta","tests":["TestComposition"]}],"shared_path_patterns":["templates/**","*.json","x"],"generated_go_patterns":["*_generated.go"]}`,
 		"internal/leaf/leaf.go": "package leaf\n",
+		"internal/leaf/leaf_test.go": `package leaf
+import (
+	"net"
+	"os"
+	"path/filepath"
+	"testing"
+)
+func TestFilesystemProjectReaderPathsExcludeUnsupportedEntries(t *testing.T) {
+	path := filepath.Join(t.TempDir(), ".codegraph", "daemon.sock")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { t.Fatal(err) }
+	listener, err := net.Listen("unix", path)
+	if err != nil { t.Fatal(err) }
+	_ = listener.Close()
+}
+`,
 		"internal/user/user.go": "package user\nimport _ \"example.test/selection/internal/leaf\"\n",
-		"cmd/meta/main.go":      "package main\nimport _ \"example.test/selection/internal/user\"\nfunc main() {}\n",
-		"cmd/meta/main_test.go": "package main\nimport \"testing\"\nfunc TestComposition(t *testing.T) {}\n",
+		"cmd/meta/main.go":      "package main\nfunc main() {}\n",
+		"cmd/meta/main_test.go": "package main\nimport (\"os\"; \"testing\")\nfunc TestMain(m *testing.M) { f, _ := os.OpenFile(\"lifecycle.log\", os.O_CREATE|os.O_APPEND|os.O_WRONLY, 0o600); _, _ = f.WriteString(\"run\\n\"); _ = f.Close(); os.Exit(m.Run()) }\nfunc TestComposition(t *testing.T) {}\n",
 	} {
 		full := filepath.Join(root, path)
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
@@ -61,6 +76,7 @@ func TestRunEmitsDefaultWorkingTreeSelection(t *testing.T) {
 	}
 }
 
+// invariant: tooling/quality-gates:affected-package-feedback (TestRunExecutesSelectedPackagesAndDeclaredSuites)
 func TestRunExecutesSelectedPackagesAndDeclaredSuites(t *testing.T) {
 	root := selectionRepository(t)
 	path := filepath.Join(root, "internal/leaf/leaf.go")
@@ -76,8 +92,12 @@ func TestRunExecutesSelectedPackagesAndDeclaredSuites(t *testing.T) {
 	if result.Outcome != "selected" || len(result.Packages) != 2 || len(result.Suites) != 1 {
 		t.Fatalf("result=%#v", result)
 	}
-	if len(lines) != 2 || bytes.Count(lines[1], []byte("example.test/selection/")) != 3 || !bytes.Contains(lines[1], []byte("ok  \texample.test/selection/cmd/meta")) {
+	if len(lines) != 2 || !bytes.Contains(lines[1], []byte("example.test/selection/internal/leaf")) || !bytes.Contains(lines[1], []byte("example.test/selection/internal/user")) || !bytes.Contains(lines[1], []byte(`"Test":"TestComposition"`)) {
 		t.Fatalf("behavioral output=%q", lines[1])
+	}
+	lifecycle, err := os.ReadFile(filepath.Join(root, "cmd", "meta", "lifecycle.log"))
+	if err != nil || string(lifecycle) != "run\n" {
+		t.Fatalf("suite lifecycle = %q, %v", lifecycle, err)
 	}
 }
 

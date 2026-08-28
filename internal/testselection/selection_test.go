@@ -16,9 +16,8 @@ func testPolicy() Policy {
 			Package: "./cmd/meta",
 			Tests:   []string{"TestRegistry", "TestArchitecture"},
 		}},
-		ReverseDependentSuites: map[string][]string{"./cmd/meta": {"composition"}},
-		SharedPathPatterns:     []string{"templates/**", "*.json", "x", "tools/**"},
-		GeneratedGoPatterns:    []string{"*_generated.go"},
+		SharedPathPatterns:  []string{"templates/**", "*.json", "x", "tools/**"},
+		GeneratedGoPatterns: []string{"*_generated.go"},
 	}
 }
 
@@ -42,15 +41,15 @@ func TestSelectPathsConservativelyClosesAffectedPackages(t *testing.T) {
 	for i, pkg := range result.Packages {
 		got[i] = pkg.Path
 	}
-	want := []string{"./internal/leaf", "./internal/testuser", "./internal/user"}
+	want := []string{"./cmd/meta", "./internal/leaf", "./internal/testuser", "./internal/user"}
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("packages = %#v, want %#v", got, want)
 	}
-	if len(result.Suites) != 1 || result.Suites[0].ID != "composition" {
-		t.Fatalf("suites = %#v", result.Suites)
+	if len(result.Suites) != 0 {
+		t.Fatalf("suite duplicated full package: %#v", result.Suites)
 	}
-	if wantReasons := []string{"declared-meta-suite", "representative-reverse-dependent:./internal/leaf"}; !reflect.DeepEqual(result.Suites[0].Reasons, wantReasons) {
-		t.Fatalf("suite reasons = %#v, want %#v", result.Suites[0].Reasons, wantReasons)
+	if wantReasons := []string{"contains-suite:composition:declared-meta-suite", "reverse-dependent:./internal/leaf"}; !reflect.DeepEqual(result.Packages[0].Reasons, wantReasons) {
+		t.Fatalf("meta package reasons = %#v, want %#v", result.Packages[0].Reasons, wantReasons)
 	}
 	for _, pkg := range result.Packages {
 		if pkg.Path == "./internal/consumer" {
@@ -76,6 +75,21 @@ func TestDirectSuitePackageRunsFullyWithoutDuplicateSuite(t *testing.T) {
 	}
 	if !reflect.DeepEqual(result.Packages[0].Reasons, []string{"changed-package:cmd/meta/main.go", "contains-suite:composition:declared-meta-suite"}) {
 		t.Fatalf("reasons = %#v", result.Packages[0].Reasons)
+	}
+}
+
+func TestSelectPathsOwnsNonGoPackageInputsAndWidensUnknownPaths(t *testing.T) {
+	result := selectPaths(testPolicy(), testGraph(), []string{"internal/leaf/testdata/input.txt"})
+	got := []string{}
+	for _, pkg := range result.Packages {
+		got = append(got, pkg.Path)
+	}
+	if want := []string{"./cmd/meta", "./internal/leaf", "./internal/testuser", "./internal/user"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("package input selection = %#v, want %#v", got, want)
+	}
+	result = selectPaths(testPolicy(), testGraph(), []string{"docs/unknown.txt"})
+	if result.Outcome != "widened" || !reflect.DeepEqual(result.Reasons, []string{"unclassified-change:docs/unknown.txt"}) {
+		t.Fatalf("unknown path result = %#v", result)
 	}
 }
 
@@ -154,8 +168,41 @@ func TestDiscoverAndSelectSeparatesProductionAndTestDependencyEdges(t *testing.T
 	for _, pkg := range result.Packages {
 		got = append(got, pkg.Path)
 	}
-	if want := []string{"./internal/leaf", "./internal/testuser", "./internal/user"}; !reflect.DeepEqual(got, want) {
+	if want := []string{"./cmd/meta", "./internal/leaf", "./internal/testuser", "./internal/user"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("packages = %#v, want %#v; result=%#v", got, want, result)
+	}
+}
+
+func TestDiscoverUnionsSupportedPlatformDependencies(t *testing.T) {
+	root := t.TempDir()
+	for path, contents := range map[string]string{
+		"go.mod":                         "module example.test/platforms\ngo 1.26\n",
+		"internal/leaf/leaf.go":          "package leaf\n",
+		"internal/darwin/user_darwin.go": "//go:build darwin\n\npackage darwin\nimport _ \"example.test/platforms/internal/leaf\"\n",
+		"internal/darwin/user_linux.go":  "//go:build !darwin\n\npackage darwin\n",
+		"cmd/meta/main.go":               "package main\nfunc main() {}\n",
+	} {
+		full := filepath.Join(root, path)
+		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(full, []byte(contents), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	result, err := Select(t.Context(), root, testPolicy(), []string{"internal/leaf/leaf.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	got := []string{}
+	for _, pkg := range result.Packages {
+		got = append(got, pkg.Path)
+	}
+	if want := []string{"./internal/darwin", "./internal/leaf"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("platform union packages = %#v, want %#v; result=%#v", got, want, result)
+	}
+	if len(result.Suites) != 1 || result.Suites[0].ID != "composition" {
+		t.Fatalf("platform union suites = %#v", result.Suites)
 	}
 }
 
@@ -187,12 +234,14 @@ func TestRepositoryPolicySelectsRepresentativeCommonChange(t *testing.T) {
 func TestLoadRejectsUnsupportedOrIncompletePolicy(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "policy.json")
 	bodies := []string{
-		`{"version":2,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}]}`,
-		`{"version":1,"meta_suites":[]}`,
-		`{"version":1,"meta_suites":[{"id":"meta","package":"./...","tests":["TestMeta"]}]}`,
-		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["not-a-test"]}]}`,
-		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"reverse_dependent_suites":{"./cmd/meta":["missing"]}}`,
-		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"shared_path_patterns":["["]}`,
+		`{"version":2,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1,"meta_suites":[],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1,"meta_suites":[{"id":"meta","package":"./...","tests":["TestMeta"]}],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["not-a-test"]}],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"],"unknown":true}`,
+		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"shared_path_patterns":[],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"shared_path_patterns":[""],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"shared_path_patterns":["["] ,"generated_go_patterns":["*.gen.go"]}`,
 	}
 	for _, body := range bodies {
 		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {

@@ -52,21 +52,28 @@ func TestReportEmitsHumanAndMachineFromSameRecord(t *testing.T) {
 	if code := run([]string{"testperformance", "report", "--machine", path}, &machine, &errb); code != 0 {
 		t.Fatalf("machine=%d: %s", code, errb.String())
 	}
-	if !strings.Contains(human.String(), "qualification record v2") || !strings.Contains(human.String(), "aggregate fast-gate on local-linux-amd64: cache=warm samples=3 seconds=1.229") || !strings.Contains(human.String(), "aggregate ordinary-full on local-linux-amd64: cache=warm samples=3 seconds=122.575") || !strings.Contains(human.String(), "class=diagnostic result=coverage-policy-refused-expanded-identity") || !strings.Contains(human.String(), "ordinary-full on local-linux-amd64: 122.575s (budget 156.000s, meets=true") {
+	if !strings.Contains(human.String(), "qualification record v2") || !strings.Contains(human.String(), "aggregate common-feedback on local-linux-amd64: cache=warm samples=3 seconds=3.855") || !strings.Contains(human.String(), "aggregate fast-gate on local-linux-amd64: cache=warm samples=3 seconds=1.229") || !strings.Contains(human.String(), "aggregate ordinary-full on local-linux-amd64: cache=warm samples=3 seconds=122.575") || !strings.Contains(human.String(), "class=diagnostic result=coverage-policy-refused-expanded-identity") || !strings.Contains(human.String(), "ordinary-full on local-linux-amd64: 122.575s (budget 156.000s, meets=true") {
 		t.Fatalf("human=%q", human.String())
 	}
 	var report testperformance.Report
 	if err := json.Unmarshal(machine.Bytes(), &report); err != nil {
 		t.Fatalf("machine report: %v", err)
 	}
-	if len(report.Aggregates) != 2 {
+	if len(report.Aggregates) != 3 {
 		t.Fatalf("machine aggregates = %#v", report.Aggregates)
 	}
-	fast, full := report.Aggregates[0], report.Aggregates[1]
-	if fast.Workload != "fast-gate" || fast.Environment != "local-linux-amd64" || fast.Cache != "warm" || fast.Samples != 3 || fast.Seconds != 1.229 {
+	aggregates := map[string]testperformance.Aggregate{}
+	for _, aggregate := range report.Aggregates {
+		aggregates[aggregate.Workload] = aggregate
+	}
+	common, fast, full := aggregates["common-feedback"], aggregates["fast-gate"], aggregates["ordinary-full"]
+	if common.Environment != "local-linux-amd64" || common.Cache != "warm" || common.Samples != 3 || common.Seconds != 3.855 {
+		t.Fatalf("common aggregate = %#v", common)
+	}
+	if fast.Environment != "local-linux-amd64" || fast.Cache != "warm" || fast.Samples != 3 || fast.Seconds != 1.229 {
 		t.Fatalf("fast aggregate = %#v", fast)
 	}
-	if full.Workload != "ordinary-full" || full.Environment != "local-linux-amd64" || full.Cache != "warm" || full.Samples != 3 || full.Seconds != 122.575 {
+	if full.Environment != "local-linux-amd64" || full.Cache != "warm" || full.Samples != 3 || full.Seconds != 122.575 {
 		t.Fatalf("full aggregate = %#v", full)
 	}
 }

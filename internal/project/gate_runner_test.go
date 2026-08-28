@@ -17,6 +17,7 @@ import (
 )
 
 // invariant: tooling/quality-gates:gate-tier-cadence (TestGateRunnerModes)
+// invariant: tooling/quality-gates:affected-package-feedback (TestGateRunnerModes)
 // invariant: tooling/quality-gates:gate-severity-by-protected-property (TestGateRunnerModes)
 // invariant: tooling/quality-gates:coverage-raw-identity-ratchet (TestGateRunnerModes)
 // TestGateRunnerModes executes the runner against a command-recording fixture so

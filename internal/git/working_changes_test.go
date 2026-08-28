@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
+// invariant: tooling/quality-gates:affected-package-feedback (TestWorktreeChangedPaths)
 // TestWorktreeChangedPaths pins the complete HEAD-to-working-tree evidence
 // used by consumers that must not silently omit local edits.
 func TestWorktreeChangedPaths(t *testing.T) {

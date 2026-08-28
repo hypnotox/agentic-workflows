@@ -12,6 +12,10 @@ query a single version or a range.
 
 - Split the fast commit gate from terminal full verification and end Windows release support.
 
+### Features
+
+- Add separate fail-closed affected-package behavioral feedback with complete reverse-dependent selection, declared meta-suites, visible conservative widening, and unchanged commit and terminal gates.
+
 ### Bug fixes
 
 - GitHub Releases now publish the tagged version's curated changelog section exactly while excluding commit-derived notes; affected blank release bodies from v0.18.0 through v0.40.0 are restored.
