@@ -20,7 +20,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: {ref: '${{ github.sha }}'}
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: {go-version-file: go.mod}
       - name: Verify exact native Linux candidate
         run: '[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ] && [ "$(go env GOOS)" = linux ] && [ "$(go env GOARCH)" = amd64 ]'
@@ -36,7 +36,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: {ref: '${{ github.sha }}'}
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: {go-version-file: go.mod}
       - name: Verify exact candidate
         run: '[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ]'
@@ -65,7 +65,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: {ref: '${{ github.sha }}'}
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: {go-version-file: go.mod}
       - name: Verify exact native macOS candidate
         run: '[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ] && [ "$(go env GOOS)" = darwin ] && [ "$(go env GOARCH)" = arm64 ]'
@@ -78,7 +78,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: {ref: '${{ github.sha }}'}
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: {go-version-file: go.mod}
       - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
         with: {node-version-file: .nvmrc, cache: npm, cache-dependency-path: tools/pi-extension-test/package-lock.json}
@@ -91,7 +91,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: {ref: '${{ github.sha }}', fetch-depth: 0}
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: {go-version-file: go.mod}
       - name: Verify exact candidate and native build
         run: '[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ] && [ "$(go env GOOS)" = linux ] && [ "$(go env GOARCH)" = amd64 ] && go run ./cmd/versioncheck && go build ./...'
@@ -110,7 +110,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: {ref: '${{ github.sha }}', fetch-depth: 0}
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: {go-version-file: go.mod}
       - name: Verify exact candidate and range-qualified mutation
         env: {EVENT: '${{ github.event_name }}', PR_BASE: '${{ github.event.pull_request.base.sha }}', PUSH_BASE: '${{ github.event.before }}'}
@@ -142,7 +142,7 @@ jobs:
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: {ref: '${{ github.sha }}', fetch-depth: 0}
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/setup-go@b7ad1dad31e06c5925ef5d2fc7ad053ef454303e # v7.0.0
         with: {go-version-file: go.mod}
       - name: Verify exact candidate
         run: '[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ]'
