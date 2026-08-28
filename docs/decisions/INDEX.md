@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-0314: Performance-budgeted parallel verification](0314-performance-budgeted-parallel-verification.md) (Proposed)
 
 ## History
 
