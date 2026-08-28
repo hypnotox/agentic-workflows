@@ -133,6 +133,7 @@ run_go_shards() {
       [ "$group" -ne 3 ] || gmp=2
       [ -z "$requested_workload" ] || [ "${job_groups[job]}-${job_slices[job]}" = "$requested_workload" ] || continue
       job_tmps[job]="$(mktemp -d "/tmp/j${job}XXX")"
+      job_tmps[job]="$(cd "${job_tmps[job]}" && pwd -P)"
       cleanup_paths+=("${job_tmps[job]}")
       logs[job]="$profile_dir/${job_names[job]}.log"
       durations[job]="$profile_dir/${job_names[job]}.duration"

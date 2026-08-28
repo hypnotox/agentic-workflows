@@ -142,6 +142,44 @@ func TestGateRunnerModes(t *testing.T) {
 			}
 		}
 	})
+	t.Run("hosted workload canonicalizes a symlinked temporary root", func(t *testing.T) {
+		realRoot := filepath.Join(root, "real-tmp")
+		linkRoot := filepath.Join(root, "linked-tmp")
+		if err := os.Mkdir(realRoot, 0o700); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Symlink(realRoot, linkRoot); err != nil {
+			t.Fatal(err)
+		}
+		fakeMktemp := filepath.Join(root, "fake-bin", "mktemp")
+		testsupport.WriteFile(t, fakeMktemp, `#!/usr/bin/env bash
+if [ "$#" -eq 2 ] && [ "$1" = -d ] && [[ "$2" == /tmp/j* ]]; then
+  mkdir -p "$FAKE_REAL_TMP/job"
+  printf '%s\n' "$FAKE_LINK_TMP/job"
+  exit 0
+fi
+exec /usr/bin/mktemp "$@"
+`)
+		if err := os.Chmod(fakeMktemp, 0o755); err != nil {
+			t.Fatal(err)
+		}
+		t.Cleanup(func() { _ = os.Remove(fakeMktemp) })
+		t.Setenv("FAKE_REAL_TMP", realRoot)
+		t.Setenv("FAKE_LINK_TMP", linkRoot)
+
+		out, status, _ := run("native-shard", "--workload", "3-0")
+		if status != 0 {
+			t.Fatalf("status=%d output=%q", status, out)
+		}
+		data, err := os.ReadFile(shardEnvPath)
+		if err != nil {
+			t.Fatal(err)
+		}
+		home := strings.SplitN(strings.TrimSpace(string(data)), "|", 2)[0]
+		if want := filepath.Join(realRoot, "job"); home != want {
+			t.Fatalf("hosted workload HOME=%q, want canonical root %q", home, want)
+		}
+	})
 	t.Run("hosted coverage evidence is exact and complete", func(t *testing.T) {
 		const candidate = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
 		artifacts := filepath.Join(root, "coverage-artifacts")
