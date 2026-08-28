@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: performance-budgeted-parallel-verification
-status: Proposed
+status: Implementing
 date: 2026-08-28
 ---
 # ADR-0314: Performance-budgeted parallel verification
@@ -163,3 +163,5 @@ must return for a new decision rather than silently relaxing assurance.
 ## Status history
 
 - 2026-08-28: Proposed
+- 2026-08-28: Implementing; content-sha256: 0f3755ac6673043c4f5407821e5591f04503a4f3d26446bfb8f20017771d2249
+- 2026-08-28: Applied; operations: add `tooling/quality-gates:verification-performance-contract`

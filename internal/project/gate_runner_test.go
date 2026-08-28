@@ -170,6 +170,25 @@ func assertTimingLines(t *testing.T, output string, want []string) {
 	}
 }
 
+func TestTestPerformanceRunnerComposition(t *testing.T) {
+	runner, err := os.ReadFile("../../x")
+	if err != nil {
+		t.Fatal(err)
+	}
+	text := string(runner)
+	if !strings.Contains(text, "test-performance)\n    go run ./cmd/testperformance \"$@\"") {
+		t.Fatal("x does not compose the qualification command")
+	}
+	gateStart := strings.Index(text, "gate)")
+	lintStart := strings.Index(text, "lint)")
+	if gateStart < 0 || lintStart <= gateStart {
+		t.Fatal("x gate and lint case boundaries are missing or reordered")
+	}
+	if strings.Contains(text[gateStart:lintStart], "testperformance") {
+		t.Fatal("fast gate must not run qualification reporting")
+	}
+}
+
 func TestGateLintRuleInventory(t *testing.T) {
 	type lintConfig struct {
 		Linters struct {

@@ -26,6 +26,12 @@ Direct checks retain the same classification as their aggregate. Operational ina
 | `./x gate full timings` | Terminal verification with elapsed stage timings. |
 | `./x test` | Go suite without the host Pi smoke. |
 | `./x pi-test run` | Pi lane alone. |
+| `./x test-performance validate` | Validate the canonical qualification record without rewriting it. |
+| `./x test-performance report` | Render qualification evidence for people; add `--machine` for JSON. |
+
+### Performance qualification
+
+`test-performance.json` distinguishes the fast gate, common affected-package feedback, ordinary local full verification, exceptional selected mutation, and the hosted critical path. It binds each observation to the complete declared environment and refuses a mismatched identity. Prepare warm samples by running the workload once and retaining the declared Go caches; run `GOTOOLCHAIN=go1.26.4 go clean -testcache` before each cold sample. Capture stage timings with `GOTOOLCHAIN=go1.26.4 ./x gate timings` or `GOTOOLCHAIN=go1.26.4 ./x gate full timings`, record the complete environment and component observations, then run `./x test-performance validate` and `./x test-performance report --machine`. A wall-clock sample is evidence, not a per-run correctness assertion; unchanged budgets remain visible qualification inputs, while a deterministic component regression blocks qualification.
 
 The gate enables `TestPiRealRuntimeSmoke` once with test caching disabled; `./x test` and verbose direct Go tests explain its omission. The deterministic Pi lane uses a protocol-v2 contract double to prove generated adapter negotiation, native awf skill discovery and routing delivery, and retained effort integration. Its test-only pi-tools v0.3.0 source pin supplies generic recorder seams and one narrow `createSubagentToolkit` lifecycle composition that proves prepared-CWD transport, completed and failed callback traversal, and checkout-isolated invocation state. It neither installs nor pins an adopter pi-tools runtime. Plain-punctuation (`awf check repo prose`) and effort-memory (`awf check repo memory`) scans are hook and CI checks, not gate steps. Commit-provenance tests use native Git, SSH-signed commits, disposable refs and remotes, both `core.hooksPath` forms, and linked worktrees. A red gate blocks the commit: fix the cause or revert.
 

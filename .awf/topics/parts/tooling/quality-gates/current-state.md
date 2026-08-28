@@ -77,6 +77,11 @@ Origin: ADR-0313
 Backing: test
 
 
+### `rule: verification-performance-contract`
+
+`test-performance.json` is the canonical versioned qualification record for fast, common-local, ordinary-full, exceptional mutation, and hosted critical-path workloads. It declares complete reference environments, cache and sample preparation, landed baselines, unchanged minimums and stronger targets, component evidence, and achieved observations. `./x test-performance validate` refuses malformed records and unlike environment evidence without rewriting the record; `./x test-performance report` renders human or machine evidence from the same observations. Wall-clock samples are qualification evidence rather than flaky correctness assertions, while schema, identity, workload, and component-regression failures block qualification.
+Origin: ADR-0314
+
 ### `invariant: pi-extension-container-gate`
 
 The full gate wires a complete pinned-host-Node Pi-extension lane. NVM selects exact v24.19.0 locally without downloading, while an explicit CI control accepts the same exact setup-node runtime after exact-version validation. An atomically attributable checkout-local manager and worker-group lock serializes dependency preparation and the complete lane, recovering only when both recorded owners are gone; `npm ci --ignore-scripts` publishes a reusable tree only after success under a labeled, length-framed fingerprint of the pin, manifests, exact Node/npm versions, OS, and architecture. Every run uses a narrow temporary copy with only Pi extensions, agents, skills, harness inputs, and minimal metadata, links that tree, and leaves operator-local Pi state untouched. The commit gate does not run this behavioral lane, and the full gate never derives its execution from staged-path classification.

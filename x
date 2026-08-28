@@ -283,6 +283,9 @@ case "$cmd" in
     echo "test: Pi host lane skipped; run './x pi-test run' for focused verification or './x gate full' for terminal verification" >&2
     env -u AWF_PI_RUNTIME_SMOKE go test ./... "$@"
     ;;
+  test-performance)
+    go run ./cmd/testperformance "$@"
+    ;;
   clean-test-tmp)
     go run ./internal/testsupport/cmd/testtmpclean "$@"
     ;;
@@ -353,7 +356,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [full] [timings] [--range <base> <head>]|lint|fmt|test|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run>|build|install|mutants|covercheck-mutants [--select-staged|--select-range <base> <head>]|audit-local>" >&2
+    echo "usage: ./x <gate [full] [timings] [--range <base> <head>]|lint|fmt|test|test-performance <validate|report> [--machine] [record]|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run>|build|install|mutants|covercheck-mutants [--select-staged|--select-range <base> <head>]|audit-local>" >&2
     exit 2
     ;;
 esac

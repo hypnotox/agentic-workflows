@@ -5,7 +5,7 @@
 
 Coverage, prose, working-memory citations, and the command-runner gate machinery.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/contextdelivery/**`, `internal/contextinput/**`, `internal/contextop/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `tools/**`, `x`. Topic selectors: `.githooks/pre-commit`, `.github/workflows/ci.yml`, `internal/coverage/**`, `internal/memorycite/**`, `internal/prosegate/**`, `tools/**`, `x`. Both domain and topic selectors must match. Run `awf topic tooling/quality-gates --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/contextdelivery/**`, `internal/contextinput/**`, `internal/contextop/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testperformance/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-performance.json`, `tools/**`, `x`. Topic selectors: `.githooks/pre-commit`, `.github/workflows/ci.yml`, `internal/coverage/**`, `internal/memorycite/**`, `internal/prosegate/**`, `internal/testperformance/**`, `test-performance.json`, `tools/**`, `x`. Both domain and topic selectors must match. Run `awf topic tooling/quality-gates --coverage` for current applicable and owned paths and marker sites.
 
 These packages and the command runner enforce the deterministic quality gates: coverage, prose punctuation, working-memory citations, and the gate tiers. The claims below capture the current gate contracts.
 
@@ -85,6 +85,11 @@ Backing: test
 Origin: ADR-0313
 Backing: test
 
+
+### `rule: verification-performance-contract`
+
+`test-performance.json` is the canonical versioned qualification record for fast, common-local, ordinary-full, exceptional mutation, and hosted critical-path workloads. It declares complete reference environments, cache and sample preparation, landed baselines, unchanged minimums and stronger targets, component evidence, and achieved observations. `./x test-performance validate` refuses malformed records and unlike environment evidence without rewriting the record; `./x test-performance report` renders human or machine evidence from the same observations. Wall-clock samples are qualification evidence rather than flaky correctness assertions, while schema, identity, workload, and component-regression failures block qualification.
+Origin: ADR-0314
 
 ### `invariant: pi-extension-container-gate`
 
