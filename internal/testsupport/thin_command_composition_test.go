@@ -78,8 +78,14 @@ func TestThinCommandCompositionCensus(t *testing.T) {
 
 // invariant: tooling/cli:cli-runner-instance-ownership (TestRunnerCompositionHasNoMutableProcessSeams)
 func TestRunnerCompositionHasNoMutableProcessSeams(t *testing.T) {
-	pkg := loadAWFCommandPackage(t)
-	forbidden := map[string]bool{"getwd": true, "stdin": true, "isInteractive": true, "handlers": true}
+	if violations := runnerCompositionViolations(t, loadAWFCommandPackage(t)); len(violations) != 0 {
+		t.Fatal(strings.Join(violations, "; "))
+	}
+}
+
+func runnerCompositionViolations(t *testing.T, pkg *packages.Package) []string {
+	t.Helper()
+	var violations []string
 	for _, file := range pkg.Syntax {
 		for _, decl := range file.Decls {
 			general, ok := decl.(*ast.GenDecl)
@@ -89,27 +95,84 @@ func TestRunnerCompositionHasNoMutableProcessSeams(t *testing.T) {
 			for _, spec := range general.Specs {
 				value := spec.(*ast.ValueSpec)
 				for _, name := range value.Names {
-					if forbidden[name.Name] {
-						t.Errorf("mutable package-global process seam %q remains", name.Name)
+					object, _ := pkg.TypesInfo.Defs[name].(*types.Var)
+					if object != nil && isCommandProcessSeamType(object.Type()) {
+						violations = append(violations, "mutable package-global process seam "+name.Name)
 					}
 				}
 			}
 		}
 	}
-	foundConstructor := false
-	ast.Inspect(functionBody(t, pkg, "run"), func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
+	freshRunnerReturn := false
+	for _, statement := range functionBody(t, pkg, "run").List {
+		returned, ok := statement.(*ast.ReturnStmt)
+		if !ok || len(returned.Results) != 1 {
+			continue
+		}
+		call, ok := returned.Results[0].(*ast.CallExpr)
 		if !ok {
-			return true
+			continue
 		}
-		if name, ok := call.Fun.(*ast.Ident); ok && name.Name == "newRunner" {
-			foundConstructor = true
+		selector, ok := call.Fun.(*ast.SelectorExpr)
+		if !ok || selector.Sel.Name != "run" {
+			continue
 		}
-		return true
-	})
-	if !foundConstructor {
-		t.Fatal("production run does not construct a fresh runner")
+		constructor, ok := selector.X.(*ast.CallExpr)
+		if !ok {
+			continue
+		}
+		name, named := constructor.Fun.(*ast.Ident)
+		if named && name.Name == "newRunner" {
+			freshRunnerReturn = true
+		}
 	}
+	if !freshRunnerReturn {
+		violations = append(violations, "production run does not return through its freshly constructed runner")
+	}
+	return violations
+}
+
+func isCommandProcessSeamType(value types.Type) bool {
+	switch typed := value.Underlying().(type) {
+	case *types.Signature:
+		if typed.Params().Len() != 0 || typed.Results().Len() != 1 && typed.Results().Len() != 2 {
+			return false
+		}
+		return typed.Results().At(0).Type().String() == "bool" || typed.Results().At(0).Type().String() == "string"
+	case *types.Interface:
+		return value.String() == "io.Reader"
+	case *types.Map:
+		named, ok := typed.Elem().(*types.Named)
+		return typed.Key().String() == "string" && ok && named.Obj().Name() == "handler"
+	default:
+		return false
+	}
+}
+
+func TestRunnerCompositionProofRejectsRenamedGlobalAndDiscardedRunner(t *testing.T) {
+	root := testsupport.RepoRoot(t)
+	path := filepath.Join(root, "cmd", "awf", "main.go")
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	source := string(raw)
+	t.Run("renamed global", func(t *testing.T) {
+		mutated := strings.Replace(source, "const gitCommandTimeout = awfgit.CommandTimeout", "var ambientDirectory = os.Getwd\n\nconst gitCommandTimeout = awfgit.CommandTimeout", 1)
+		pkg := loadAWFCommandPackageWithOverlay(t, map[string][]byte{path: []byte(mutated)})
+		if got := strings.Join(runnerCompositionViolations(t, pkg), "; "); !strings.Contains(got, "ambientDirectory") {
+			t.Fatalf("renamed global escaped proof: %q", got)
+		}
+	})
+	t.Run("discarded runner", func(t *testing.T) {
+		old := "return newRunner(os.Getwd, os.Stdin, stdinIsInteractive(os.Stdin)).run(args, stdout, stderr)"
+		new := "return runner{getwd: os.Getwd, stdin: os.Stdin, handlers: newHandlers(os.Stdin, stdinIsInteractive(os.Stdin))}.run(args, stdout, stderr)"
+		mutated := strings.Replace(source, old, new, 1)
+		pkg := loadAWFCommandPackageWithOverlay(t, map[string][]byte{path: []byte(mutated)})
+		if got := strings.Join(runnerCompositionViolations(t, pkg), "; "); !strings.Contains(got, "freshly constructed runner") {
+			t.Fatalf("discarded fresh runner escaped proof: %q", got)
+		}
+	})
 }
 
 type commandRoute struct {

@@ -173,7 +173,28 @@ func agentPath(root, name string) string {
 // suite exhaustive as the catalog grows.
 //
 // invariant: tooling/evaluations:evals-full-catalog-coverage (TestFullCatalogCoverage)
-// invariant: tooling/test-infrastructure:immutable-fixture-seeds (TestFullCatalogCoverage)
+// invariant: tooling/test-infrastructure:immutable-fixture-seeds (TestEvalFullCatalogSeedClonesAreIsolated)
+func TestEvalFullCatalogSeedClonesAreIsolated(t *testing.T) {
+	cat := loadCatalog(t)
+	first := cloneFullCatalogForTarget(t, cat, "claude")
+	seed := fullCatalogSeedForTarget(t, cat, "claude")
+	digest := seed.Digest()
+	second := cloneFullCatalogForTarget(t, cat, "claude")
+	if err := os.WriteFile(filepath.Join(first, "AGENTS.md"), []byte("mutated\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	body, err := os.ReadFile(filepath.Join(second, "AGENTS.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(body) == "mutated\n" {
+		t.Fatal("second evaluation clone changed through first")
+	}
+	if fullCatalogSeedForTarget(t, cat, "claude").Digest() != digest {
+		t.Fatal("evaluation seed digest changed after clone mutation")
+	}
+}
+
 func TestFullCatalogCoverage(t *testing.T) {
 	cat := loadCatalog(t)
 	for _, targetName := range []string{"claude", "pi"} {
