@@ -131,6 +131,16 @@ func TestGateRunnerModes(t *testing.T) {
 		if len(got) != 1 || !strings.Contains(got[0], "|test -p=1") {
 			t.Fatalf("native workload invocation=%q", got)
 		}
+
+		runner, err := os.ReadFile(filepath.Join(root, "x"))
+		if err != nil {
+			t.Fatal(err)
+		}
+		for _, expansion := range []string{`"${args[@]+"${args[@]}"}"`, `"${coverargs[@]+"${coverargs[@]}"}"`} {
+			if !strings.Contains(string(runner), expansion) {
+				t.Errorf("runner lacks Bash 3 nounset-safe optional expansion %s", expansion)
+			}
+		}
 	})
 	t.Run("hosted coverage evidence is exact and complete", func(t *testing.T) {
 		const candidate = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"

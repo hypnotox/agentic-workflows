@@ -148,7 +148,7 @@ run_go_shards() {
         fi
         if env -u AWF_PI_RUNTIME_SMOKE HOME="${job_tmps[job]}" TMPDIR="${job_tmps[job]}" GOTMPDIR="${job_tmps[job]}" \
           GOCACHE="$shared_gocache" GOMODCACHE="$shared_modcache" GOMAXPROCS="$gmp" \
-          go test -p=1 -timeout=20m -count=1 "${args[@]}" "${packages[@]}" "${coverargs[@]}"; then
+          go test -p=1 -timeout=20m -count=1 "${args[@]+"${args[@]}"}" "${packages[@]}" "${coverargs[@]+"${coverargs[@]}"}"; then
           job_status=0
         else
           job_status=$?
