@@ -173,18 +173,6 @@ func Parse(data []byte) (Record, error) {
 	return record, nil
 }
 
-// Canonical renders a validated record in its stable repository representation.
-func Canonical(record Record) ([]byte, error) {
-	if err := Validate(record); err != nil {
-		return nil, err
-	}
-	data, err := json.MarshalIndent(record, "", "  ")
-	if err != nil {
-		return nil, err
-	}
-	return append(data, '\n'), nil
-}
-
 type workloadContract struct {
 	kind     string
 	mutation string

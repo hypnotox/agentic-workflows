@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"io"
 	"os"
 	"path/filepath"
 	"strings"
@@ -155,5 +156,23 @@ func TestRunDispatchError(t *testing.T) {
 	}
 	if !strings.HasPrefix(errb.String(), "condition: awf:") {
 		t.Errorf("expected typed diagnostic, got %q", errb.String())
+	}
+}
+
+func TestRunnerComposesListAndRemoveDomainHandlers(t *testing.T) {
+	runner := newRunner(os.Getwd, os.Stdin, func() bool { return false })
+	root := t.TempDir()
+	for _, tc := range []struct {
+		name, handler string
+		ctx           *cmdCtx
+	}{
+		{name: "list", handler: "list", ctx: &cmdCtx{ctx: testContext(t), root: root, inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: io.Discard}},
+		{name: "remove domain", handler: "remove", ctx: &cmdCtx{ctx: testContext(t), root: root, sub: "domain", inv: invocation{positionals: []string{"missing"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: io.Discard}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if result := runner.handlers[tc.handler](tc.ctx); result.err == nil {
+				t.Fatal("bare-project handler unexpectedly succeeded")
+			}
+		})
 	}
 }

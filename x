@@ -42,6 +42,174 @@ run_deadcode_gate() {
   go tool deadcode -json ./... | go run ./cmd/deadcodecheck
 }
 
+go_shard_0='changelog cmd/awf cmd/deadcodecheck cmd/repoaudit internal/audit internal/checkresult internal/commitpolicy internal/configspec internal/contextq internal/currentstatecoord internal/frontmatter internal/initop internal/memorycite internal/pitfall internal/presentation internal/prosegate internal/render internal/snapshot internal/testsupport/fsfixture internal/upgrade tools/pi-extension-test/lockrun'
+go_shard_1='cmd/mutants cmd/testperformance internal/catalog internal/clispec internal/config internal/contextdelivery internal/contextspill internal/domainop internal/execution internal/generatedcheck internal/initspec internal/migrate internal/pitfallcheck internal/project internal/repositorycheck internal/testperformance internal/testsupport/gitfixture internal/vocabularycheck'
+go_shard_2='cmd/contextspilllog cmd/pincheck cmd/versioncheck internal/changelog internal/commitgateop internal/configcheck internal/contextinput internal/coverage internal/effort internal/filepublication internal/git internal/localdocop internal/outputplan internal/plan internal/projectlicense internal/publisher internal/referencecheck internal/resident internal/testsupport internal/topic internal/worktree'
+go_shard_3='cmd/covercheck cmd/releasecheck internal/adr internal/checkop internal/commitmsg internal/configop internal/contextop internal/currentstate internal/effortop internal/evals internal/filesystem internal/glossary internal/manifest internal/pathglob internal/plancheck internal/projectstate internal/refs internal/severity internal/testsupport/cmd/testtmpclean internal/topicop templates'
+
+go_shard_index() {
+  local package="$1"
+  case " $go_shard_0 " in *" $package "*) printf '0\n'; return;; esac
+  case " $go_shard_1 " in *" $package "*) printf '1\n'; return;; esac
+  case " $go_shard_2 " in *" $package "*) printf '2\n'; return;; esac
+  case " $go_shard_3 " in *" $package "*) printf '3\n'; return;; esac
+  echo "gate: Go package has no qualified shard: $package" >&2
+  return 1
+}
+
+run_go_shards() {
+  local profile_dir="$1" prefix='github.com/hypnotox/agentic-workflows/' import_path package index group slice slices name bucket ordinal job job_status gmp wave
+  local shared_gocache shared_modcache status=0
+  local -a caches=() shard0=() shard1=() shard2=() shard3=() packages=()
+  local -a job_groups=() job_slices=() job_regexes=() job_names=() job_tmps=() pids=() logs=() durations=() statuses=()
+  mapfile -t caches < <(go env GOCACHE GOMODCACHE)
+  [ "${#caches[@]}" -eq 2 ] || { echo "gate: Go cache locations unavailable" >&2; return 1; }
+  shared_gocache="${caches[0]}"; shared_modcache="${caches[1]}"
+  while IFS= read -r import_path; do
+    case "$import_path" in "$prefix"*) package="${import_path#"$prefix"}";; *) echo "gate: package outside module: $import_path" >&2; return 1;; esac
+    index="$(go_shard_index "$package")" || return
+    case "$index" in
+      0) shard0+=("./$package");;
+      1) shard1+=("./$package");;
+      2) shard2+=("./$package");;
+      3) shard3+=("./$package");;
+      *) echo "gate: invalid Go shard index for $package" >&2; return 1;;
+    esac
+  done < <(go list -f '{{.ImportPath}}' ./... | LC_ALL=C sort)
+  [ "${#shard0[@]}" -gt 0 ] && [ "${#shard1[@]}" -gt 0 ] && [ "${#shard2[@]}" -gt 0 ] && [ "${#shard3[@]}" -gt 0 ] || {
+    echo "gate: every qualified Go shard must contain at least one package" >&2
+    return 1
+  }
+
+  # The three measured dominant package groups are divided by complete top-level
+  # proving-unit names. A name occurs in exactly one slice; subtests remain with
+  # their owning top-level test. The fourth group is already below the slice cost.
+  for group in 0 1 2; do
+    case "$group" in
+      0) packages=("${shard0[@]}"); slices=4;;
+      1) packages=("${shard1[@]}"); slices=4;;
+      2) packages=("${shard2[@]}"); slices=3;;
+    esac
+    if ! go test -list '^(Test|Example|Fuzz)' "${packages[@]}" | grep -E '^(Test|Example|Fuzz)' | LC_ALL=C sort -u >"$profile_dir/group$group.names"; then
+      echo "gate: cannot enumerate proving units for Go shard group $group" >&2
+      return 1
+    fi
+    [ -s "$profile_dir/group$group.names" ] || { echo "gate: Go shard group $group has no proving units" >&2; return 1; }
+    for ((slice=0; slice<slices; slice++)); do : >"$profile_dir/group$group-$slice.names"; done
+    ordinal=0
+    while IFS= read -r name; do
+      bucket="$((ordinal % slices))"
+      printf '%s\n' "$name" >>"$profile_dir/group$group-$bucket.names"
+      ordinal="$((ordinal + 1))"
+    done <"$profile_dir/group$group.names"
+    for ((slice=0; slice<slices; slice++)); do
+      [ -s "$profile_dir/group$group-$slice.names" ] || { echo "gate: Go shard $group-$slice has no proving units" >&2; return 1; }
+      job_groups+=("$group")
+      job_slices+=("$slice")
+      job_regexes+=("^($(paste -sd'|' "$profile_dir/group$group-$slice.names"))$")
+      job_names+=("shard$group-$slice")
+    done
+  done
+  job_groups+=("3"); job_slices+=("0"); job_regexes+=(""); job_names+=("shard3-0")
+
+  # The already-small fourth group runs in a second wave. Giving its eval-heavy
+  # proving units two processors without concurrent shard contention keeps their
+  # qualified component below the landed serial maximum while retaining headroom.
+  for wave in 0 1; do
+    for job in "${!job_names[@]}"; do
+      group="${job_groups[job]}"; slice="${job_slices[job]}"
+      if { [ "$wave" -eq 0 ] && [ "$group" -eq 3 ]; } || { [ "$wave" -eq 1 ] && [ "$group" -ne 3 ]; }; then
+        continue
+      fi
+      case "$group" in
+        0) packages=("${shard0[@]}");;
+        1) packages=("${shard1[@]}");;
+        2) packages=("${shard2[@]}");;
+        3) packages=("${shard3[@]}");;
+      esac
+      gmp=1
+      [ "$group" -ne 3 ] || gmp=2
+      job_tmps[job]="$(mktemp -d "/tmp/j${job}XXX")"
+      cleanup_paths+=("${job_tmps[job]}")
+      logs[job]="$profile_dir/${job_names[job]}.log"
+      durations[job]="$profile_dir/${job_names[job]}.duration"
+      (
+        shard_started=$SECONDS
+        args=()
+        [ -z "${job_regexes[job]}" ] || args=(-run "${job_regexes[job]}")
+        if env -u AWF_PI_RUNTIME_SMOKE HOME="${job_tmps[job]}" TMPDIR="${job_tmps[job]}" GOTMPDIR="${job_tmps[job]}" \
+          GOCACHE="$shared_gocache" GOMODCACHE="$shared_modcache" GOMAXPROCS="$gmp" \
+          go test -p=1 -timeout=20m -count=1 "${args[@]}" "${packages[@]}" -coverpkg=./... -coverprofile="$profile_dir/${job_names[job]}.out"; then
+          job_status=0
+        else
+          job_status=$?
+        fi
+        printf '%s\n' "$((SECONDS - shard_started))" >"${durations[job]}"
+        exit "$job_status"
+      ) >"${logs[job]}" 2>&1 &
+      pids[job]=$!
+    done
+    for job in "${!job_names[@]}"; do
+      group="${job_groups[job]}"
+      if { [ "$wave" -eq 0 ] && [ "$group" -eq 3 ]; } || { [ "$wave" -eq 1 ] && [ "$group" -ne 3 ]; }; then
+        continue
+      fi
+      if wait "${pids[job]}"; then job_status=0; else job_status=$?; fi
+      statuses[job]="$job_status"
+    done
+  done
+  for job in "${!job_names[@]}"; do
+    cat "${logs[job]}"
+    if "$gate_timings"; then printf 'gate shard timing: %s %ss\n' "${job_names[job]}" "$(cat "${durations[job]}")" >&2; fi
+    if [ "${statuses[job]}" -ne 0 ]; then
+      echo "gate: Go shard ${job_names[job]#shard} failed with status ${statuses[job]}" >&2
+      [ "$status" -ne 0 ] || status="${statuses[job]}"
+    fi
+  done
+  return "$status"
+}
+
+run_platform_builds() {
+  local target
+  for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
+    env GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
+  done
+}
+
+run_parallel_gate_steps() {
+  local workspace="$1" index stage_status status=0
+  shift
+  local -a labels=() commands=() pids=() logs=() durations=() statuses=()
+  while [ "$#" -gt 0 ]; do
+    [ "$#" -ge 2 ] || { echo "gate: incomplete parallel stage declaration" >&2; return 2; }
+    labels+=("$1"); commands+=("$2"); shift 2
+  done
+  for index in "${!labels[@]}"; do
+    logs[index]="$workspace/parallel-$index.log"
+    durations[index]="$workspace/parallel-$index.duration"
+    (
+      stage_started=$SECONDS
+      if eval "${commands[index]}"; then stage_status=0; else stage_status=$?; fi
+      printf '%s\n' "$((SECONDS - stage_started))" >"${durations[index]}"
+      exit "$stage_status"
+    ) >"${logs[index]}" 2>&1 &
+    pids[index]=$!
+  done
+  for index in "${!labels[@]}"; do
+    if wait "${pids[index]}"; then stage_status=0; else stage_status=$?; fi
+    statuses[index]="$stage_status"
+  done
+  for index in "${!labels[@]}"; do
+    cat "${logs[index]}"
+    if "$gate_timings"; then printf 'gate timing: %s %ss\n' "${labels[index]}" "$(cat "${durations[index]}")" >&2; fi
+    if [ "${statuses[index]}" -ne 0 ]; then
+      echo "gate: stage ${labels[index]} failed with status ${statuses[index]}" >&2
+      [ "$status" -ne 0 ] || status="${statuses[index]}"
+    fi
+  done
+  return "$status"
+}
+
 run_advisory_lint() {
   local output status
   if output="$(go tool golangci-lint run --config .golangci-advisory.yml --issues-exit-code 0 "$@" 2>&1)"; then
@@ -90,7 +258,7 @@ covercheck_mutants_selected() {
 
 run_pi_runtime_smoke() {
   local output status
-  if output="$(env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/publisher -run '^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$' -count=1)"; then
+  if output="$(env AWF_PI_RUNTIME_SMOKE=1 go test -json ./internal/publisher -run '^TestPiRealRuntimeSmoke$' -count=1)"; then
     status=0
   else
     status=$?
@@ -99,7 +267,7 @@ run_pi_runtime_smoke() {
   if [ "$status" -ne 0 ]; then
     return "$status"
   fi
-  for proving_unit in TestPiEffortMemoryToolContract TestPiRealRuntimeSmoke; do
+  for proving_unit in TestPiRealRuntimeSmoke; do
     if ! grep -q '"Action":"pass".*"Test":"'"$proving_unit"'"' <<<"$output"; then
       echo "gate: Pi runtime smoke proving units did not run and pass" >&2
       return 1
@@ -246,15 +414,27 @@ case "$cmd" in
       # Full assurance always runs complete native behavioural lanes; it never
       # derives execution from the staged path set.
       prof="coverage.out"
-      run_gate_step go-test env -u AWF_PI_RUNTIME_SMOKE go test -p=1 -timeout=20m ./... -coverpkg=./... -coverprofile="$prof"
+      profile_dir="$(mktemp -d /tmp/gXXXXXX)"
+      cleanup_paths+=("$profile_dir")
+      rm -f -- "$prof"
+      run_gate_step go-test run_go_shards "$profile_dir"
+      run_gate_step coverage-merge sh -c 'dir="$1"; shift; go run ./cmd/covercheck --merge "$@" >"$dir/merged.out"' sh "$profile_dir" "$profile_dir"/shard*.out
+      mv "$profile_dir/merged.out" "$prof"
       run_gate_step covercheck go run ./cmd/covercheck --policy "$prof" coverage-baseline.json
-      run_gate_step pi-runtime-smoke run_pi_runtime_smoke
-      run_gate_step vet go vet ./...
-      run_gate_step advisory-lint run_advisory_lint
-      run_gate_step deadcode run_deadcode_gate
-      for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do
-        run_gate_step "build-${target//\//-}" env GOOS="${target%/*}" GOARCH="${target#*/}" go build ./...
-      done
+      # Pi owns the measured component ceiling and runs without analysis-stage
+      # contention. Capture its status, then still terminate every analysis stage.
+      if run_gate_step pi-runtime-smoke run_pi_runtime_smoke; then pi_status=0; else pi_status=$?; fi
+      if run_parallel_gate_steps "$profile_dir" \
+        vet 'go vet ./...' \
+        advisory-lint 'run_advisory_lint' \
+        deadcode 'run_deadcode_gate' \
+        platform-builds 'run_platform_builds'; then
+        parallel_status=0
+      else
+        parallel_status=$?
+      fi
+      [ "$pi_status" -eq 0 ] || exit "$pi_status"
+      [ "$parallel_status" -eq 0 ] || exit "$parallel_status"
       if [ "${#ranges[@]}" -eq 0 ]; then
         if covercheck_mutants_selected staged; then mutation=0; else mutation=$?; fi
       else

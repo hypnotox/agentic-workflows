@@ -21,7 +21,7 @@ func validRecord(t *testing.T) Record {
 
 func TestCanonicalTrackedRecord(t *testing.T) {
 	record := validRecord(t)
-	canonical, err := Canonical(record)
+	canonical, err := canonicalRecord(record)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,15 +243,15 @@ func TestLoadParseAndCanonicalErrorPaths(t *testing.T) {
 	}
 	invalid := validRecord(t)
 	invalid.Version = 0
-	if _, err := Canonical(invalid); err == nil {
+	if _, err := canonicalRecord(invalid); err == nil {
 		t.Fatal("Canonical accepted invalid record")
 	}
 	unencodable := validRecord(t)
 	unencodable.Baselines[0].Seconds = math.NaN()
-	if _, err := Canonical(unencodable); err == nil {
+	if _, err := canonicalRecord(unencodable); err == nil {
 		t.Fatal("Canonical encoded a non-JSON number")
 	}
-	for _, raw := range []string{"", "{", `{"x":`, "[", `[{"x":`} {
+	for _, raw := range []string{"", "{", `{"x"`, `{"x":`, "[", `[{"x":`} {
 		if err := rejectDuplicateKeys([]byte(raw)); err == nil {
 			t.Errorf("rejectDuplicateKeys(%q) succeeded", raw)
 		}
@@ -274,6 +274,10 @@ func TestAggregationAndQualificationEdges(t *testing.T) {
 	}
 	if evaluations := Evaluate(record, aggregates); len(evaluations) != 0 {
 		t.Fatalf("unbudgeted or unqualified evaluations = %#v", evaluations)
+	}
+	cold := []Aggregate{{Workload: "ordinary-full", Environment: record.Environments[0].ID, Cache: "cold", Samples: record.SampleMethod.ColdSamples}}
+	if evaluations := Evaluate(record, cold); len(evaluations) != 0 {
+		t.Fatalf("cold evidence qualified = %#v", evaluations)
 	}
 	if HasComponentRegressions(BuildReport(record)) {
 		t.Fatal("report invented a component regression")
@@ -313,6 +317,17 @@ func TestHumanReportIncludesComponentRegression(t *testing.T) {
 	}
 }
 
+func canonicalRecord(record Record) ([]byte, error) {
+	if err := Validate(record); err != nil {
+		return nil, err
+	}
+	data, err := json.MarshalIndent(record, "", "  ")
+	if err != nil {
+		return nil, err
+	}
+	return append(data, '\n'), nil
+}
+
 func cloneRecord(t *testing.T, record Record) Record {
 	t.Helper()
 	data, err := json.Marshal(record)
@@ -328,7 +343,7 @@ func cloneRecord(t *testing.T, record Record) Record {
 
 func mustCanonical(t *testing.T, record Record) []byte {
 	t.Helper()
-	data, err := Canonical(record)
+	data, err := canonicalRecord(record)
 	if err != nil {
 		t.Fatal(err)
 	}

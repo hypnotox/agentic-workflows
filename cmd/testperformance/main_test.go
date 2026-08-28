@@ -52,19 +52,22 @@ func TestReportEmitsHumanAndMachineFromSameRecord(t *testing.T) {
 	if code := run([]string{"testperformance", "report", "--machine", path}, &machine, &errb); code != 0 {
 		t.Fatalf("machine=%d: %s", code, errb.String())
 	}
-	if !strings.Contains(human.String(), "qualification record v2") || !strings.Contains(human.String(), "aggregate fast-gate on local-linux-amd64: cache=warm samples=3 seconds=1.229") || !strings.Contains(human.String(), "class=diagnostic result=coverage-policy-refused-expanded-identity") || !strings.Contains(human.String(), "change=-14.155s (-93.5%)") {
+	if !strings.Contains(human.String(), "qualification record v2") || !strings.Contains(human.String(), "aggregate fast-gate on local-linux-amd64: cache=warm samples=3 seconds=1.229") || !strings.Contains(human.String(), "aggregate ordinary-full on local-linux-amd64: cache=warm samples=3 seconds=122.575") || !strings.Contains(human.String(), "class=diagnostic result=coverage-policy-refused-expanded-identity") || !strings.Contains(human.String(), "ordinary-full on local-linux-amd64: 122.575s (budget 156.000s, meets=true") {
 		t.Fatalf("human=%q", human.String())
 	}
 	var report testperformance.Report
 	if err := json.Unmarshal(machine.Bytes(), &report); err != nil {
 		t.Fatalf("machine report: %v", err)
 	}
-	if len(report.Aggregates) != 1 {
+	if len(report.Aggregates) != 2 {
 		t.Fatalf("machine aggregates = %#v", report.Aggregates)
 	}
-	aggregate := report.Aggregates[0]
-	if aggregate.Workload != "fast-gate" || aggregate.Environment != "local-linux-amd64" || aggregate.Cache != "warm" || aggregate.Samples != 3 || aggregate.Seconds != 1.229 {
-		t.Fatalf("machine aggregate = %#v", aggregate)
+	fast, full := report.Aggregates[0], report.Aggregates[1]
+	if fast.Workload != "fast-gate" || fast.Environment != "local-linux-amd64" || fast.Cache != "warm" || fast.Samples != 3 || fast.Seconds != 1.229 {
+		t.Fatalf("fast aggregate = %#v", fast)
+	}
+	if full.Workload != "ordinary-full" || full.Environment != "local-linux-amd64" || full.Cache != "warm" || full.Samples != 3 || full.Seconds != 122.575 {
+		t.Fatalf("full aggregate = %#v", full)
 	}
 }
 
@@ -73,6 +76,13 @@ func TestReportBlocksDeterministicComponentRegression(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	filtered := record.Observations[:0]
+	for _, observation := range record.Observations {
+		if observation.Workload != "ordinary-full" || observation.EvidenceClass != "qualification" {
+			filtered = append(filtered, observation)
+		}
+	}
+	record.Observations = filtered
 	component := testperformance.Component{Stage: "go-test", Package: "internal/project", Test: "package-total", Seconds: 2}
 	for i := range record.Budgets {
 		if record.Budgets[i].Workload == "ordinary-full" {
@@ -88,10 +98,14 @@ func TestReportBlocksDeterministicComponentRegression(t *testing.T) {
 			Seconds: 100, Components: []testperformance.Component{component},
 		})
 	}
-	data, err := testperformance.Canonical(record)
+	if err := testperformance.Validate(record); err != nil {
+		t.Fatal(err)
+	}
+	data, err := json.MarshalIndent(record, "", "  ")
 	if err != nil {
 		t.Fatal(err)
 	}
+	data = append(data, '\n')
 	path := filepath.Join(t.TempDir(), "regression.json")
 	if err := os.WriteFile(path, data, 0o644); err != nil {
 		t.Fatal(err)

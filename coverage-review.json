@@ -20501,6 +20501,1131 @@
         "statements": 2
       },
       "reason": "The dedicated Linux identity holds a live O_PATH descriptor; this uncovered arm requires failure while opening or statting that already-live confined kernel handle, which has no deterministic standard-library fault seam."
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/dispatch.go",
+        "start": {
+          "line": 157,
+          "column": 23
+        },
+        "end": {
+          "line": 159,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/dispatch.go:156.22,158.4 1 in runCheckGroup, beginning `if c.sub != \"plan\" {`. The source exclusion records that clispec admits only the declared plan child before dispatch. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "cmd/awf/dispatch.go",
+        "start": {
+          "line": 156,
+          "column": 22
+        },
+        "end": {
+          "line": 158,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/init.go",
+        "start": {
+          "line": 21,
+          "column": 17
+        },
+        "end": {
+          "line": 23,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/init.go:25.17,27.4 1 in runInitWithProjectLoader, beginning `if err != nil {`. The source exclusion records that descriptors marshal to JSON; cannot fail. Adjacent success and refusal behavior is directly exercised, and no test-only production fault seam is introduced.",
+      "movedFrom": {
+        "file": "cmd/awf/init.go",
+        "start": {
+          "line": 25,
+          "column": 17
+        },
+        "end": {
+          "line": 27,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/init.go",
+        "start": {
+          "line": 46,
+          "column": 83
+        },
+        "end": {
+          "line": 48,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/init.go:50.83,52.5 1 in runInitWithProjectLoader, beginning `if presentErr := renderInitOutcome(partial.Outcome, stdout); presentErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
+        "file": "cmd/awf/init.go",
+        "start": {
+          "line": 50,
+          "column": 83
+        },
+        "end": {
+          "line": 52,
+          "column": 5
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 64,
+          "column": 16
+        },
+        "end": {
+          "line": 66,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:50.16,52.3 1 in function globalHelp, beginning `{ // coverage-ignore: checked-in command metadata is presentation-valid`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 50,
+          "column": 16
+        },
+        "end": {
+          "line": 52,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 68,
+          "column": 16
+        },
+        "end": {
+          "line": 70,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:54.16,56.3 1 in function globalHelp, beginning `{ // coverage-ignore: checked-in command metadata is presentation-valid`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 54,
+          "column": 16
+        },
+        "end": {
+          "line": 56,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 72,
+          "column": 16
+        },
+        "end": {
+          "line": 74,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:58.16,60.3 1 in function globalHelp, beginning `{ // coverage-ignore: checked-in command metadata is presentation-valid`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 58,
+          "column": 16
+        },
+        "end": {
+          "line": 60,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 80,
+          "column": 16
+        },
+        "end": {
+          "line": 82,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:66.16,68.3 1 in function globalHelp, beginning `{ // coverage-ignore: checked-in command metadata is presentation-valid`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 66,
+          "column": 16
+        },
+        "end": {
+          "line": 68,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 84,
+          "column": 16
+        },
+        "end": {
+          "line": 86,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:70.16,72.3 1 in function globalHelp, beginning `{ // coverage-ignore: checked-in command metadata is presentation-valid`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 70,
+          "column": 16
+        },
+        "end": {
+          "line": 72,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 100,
+          "column": 16
+        },
+        "end": {
+          "line": 102,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:86.16,88.3 1 in function commandSections, beginning `{ // coverage-ignore: fixed label/schema and commandRecords always produce arity-two records`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 86,
+          "column": 16
+        },
+        "end": {
+          "line": 88,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 123,
+          "column": 16
+        },
+        "end": {
+          "line": 125,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:109.16,111.3 1 in function commandSection, beginning `{ // coverage-ignore: fixed label/schema and commandRecords always produce arity-two records`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 109,
+          "column": 16
+        },
+        "end": {
+          "line": 111,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 178,
+          "column": 16
+        },
+        "end": {
+          "line": 180,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:164.16,166.3 1 in function renderHelp, beginning `{ // coverage-ignore: static clispec literals are constructor-valid`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 164,
+          "column": 16
+        },
+        "end": {
+          "line": 166,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 204,
+          "column": 80
+        },
+        "end": {
+          "line": 206,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:190.80,192.5 1 in function run, beginning `{ // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 190,
+          "column": 80
+        },
+        "end": {
+          "line": 192,
+          "column": 5
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 210,
+          "column": 17
+        },
+        "end": {
+          "line": 212,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:196.17,198.4 1 in function run, beginning `{ // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 196,
+          "column": 17
+        },
+        "end": {
+          "line": 198,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 213,
+          "column": 63
+        },
+        "end": {
+          "line": 215,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:199.63,201.4 1 in function run, beginning `{ // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 199,
+          "column": 63
+        },
+        "end": {
+          "line": 201,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 227,
+          "column": 86
+        },
+        "end": {
+          "line": 229,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/awf/main.go:213.86,215.4 1 in function run, beginning `{ // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 213,
+          "column": 86
+        },
+        "end": {
+          "line": 215,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 298,
+          "column": 42
+        },
+        "end": {
+          "line": 302,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/main.go:284.42,288.4 1 in completeHandlerResult, beginning `if err := result.release(); err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 284,
+          "column": 42
+        },
+        "end": {
+          "line": 288,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 343,
+          "column": 21
+        },
+        "end": {
+          "line": 345,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/main.go:329.21,331.4 1 in requireCommandCapability, beginning `if treeErr != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 329,
+          "column": 21
+        },
+        "end": {
+          "line": 331,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 433,
+          "column": 3
+        },
+        "end": {
+          "line": 433,
+          "column": 142
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/main.go:419.3,419.142 1 in guardProjectState, beginning `return fmt.Errorf(\"retired project layout is unsupported at live floor %d; restore a supported .awf control pair\", migrate.LiveSchemaFloor)`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 419,
+          "column": 3
+        },
+        "end": {
+          "line": 419,
+          "column": 142
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 435,
+          "column": 49
+        },
+        "end": {
+          "line": 437,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/main.go:421.49,423.3 1 in guardProjectState, beginning `if _, err := lock.AuthorityState(); err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 421,
+          "column": 49
+        },
+        "end": {
+          "line": 423,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 457,
+          "column": 64
+        },
+        "end": {
+          "line": 459,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/main.go:443.64,445.4 1 in projectGuardState, beginning `if configErr != nil && !errors.Is(configErr, os.ErrNotExist) {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 443,
+          "column": 64
+        },
+        "end": {
+          "line": 445,
+          "column": 4
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 470,
+          "column": 16
+        },
+        "end": {
+          "line": 472,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/main.go:456.16,458.3 1 in projectGuardState, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 456,
+          "column": 16
+        },
+        "end": {
+          "line": 458,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 567,
+          "column": 16
+        },
+        "end": {
+          "line": 569,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/main.go:553.16,555.3 1 in writeStatus, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 553,
+          "column": 16
+        },
+        "end": {
+          "line": 555,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 571,
+          "column": 16
+        },
+        "end": {
+          "line": 573,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Phase 4 post-review coverage reconciliation reviewed cmd/awf/main.go:557.16,559.3 1 in writeStatus, beginning `if err != nil {`. This is a command or presentation writer failure return; operation-level complete and partial outcomes are directly tested while deterministic output-writer failure remains admitted without a test-only command seam.",
+      "movedFrom": {
+        "file": "cmd/awf/main.go",
+        "start": {
+          "line": 557,
+          "column": 16
+        },
+        "end": {
+          "line": 559,
+          "column": 3
+        },
+        "statements": 1
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/covercheck/main.go",
+        "start": {
+          "line": 129,
+          "column": 16
+        },
+        "end": {
+          "line": 132,
+          "column": 3
+        },
+        "statements": 2
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/covercheck/main.go:117.16,120.3 2 in function generatePolicy, beginning `{ // coverage-ignore: Regenerate returned the same already-validated typed baseline`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/covercheck/main.go",
+        "start": {
+          "line": 117,
+          "column": 16
+        },
+        "end": {
+          "line": 120,
+          "column": 3
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/covercheck/main.go",
+        "start": {
+          "line": 137,
+          "column": 63
+        },
+        "end": {
+          "line": 140,
+          "column": 3
+        },
+        "statements": 2
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at cmd/covercheck/main.go:125.63,128.3 2 in function generatePolicy, beginning `{ // coverage-ignore: complete canonical bytes were just atomically replaced and verified in mem...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "cmd/covercheck/main.go",
+        "start": {
+          "line": 125,
+          "column": 63
+        },
+        "end": {
+          "line": 128,
+          "column": 3
+        },
+        "statements": 2
+      }
+    },
+    {
+      "identity": {
+        "file": "cmd/testperformance/main.go",
+        "start": {
+          "line": 13,
+          "column": 13
+        },
+        "end": {
+          "line": 15,
+          "column": 2
+        },
+        "statements": 1
+      },
+      "reason": "The terminating os.Exit composition wrapper is not invoked in-process; cmd/testperformance run behavior, usage, validation, human output, and machine output are directly exercised."
+    },
+    {
+      "identity": {
+        "file": "cmd/testperformance/main.go",
+        "start": {
+          "line": 59,
+          "column": 17
+        },
+        "end": {
+          "line": 62,
+          "column": 4
+        },
+        "statements": 2
+      },
+      "reason": "The report reaches this branch only after validation and contains JSON-native finite fields; focused machine-report tests exercise successful serialization, while inducing json.Marshal failure would require an invalid test-only representation."
+    },
+    {
+      "identity": {
+        "file": "internal/testperformance/testperformance.go",
+        "start": {
+          "line": 215,
+          "column": 21
+        },
+        "end": {
+          "line": 217,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "The exact required-workload cardinality and the closed workload validation immediately above make a missing required identity unreachable after all entries pass; missing and duplicate workload records are directly refused by focused validation tests."
+    },
+    {
+      "identity": {
+        "file": "internal/testperformance/testperformance.go",
+        "start": {
+          "line": 575,
+          "column": 18
+        },
+        "end": {
+          "line": 577,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Malformed and truncated qualification JSON is directly refused. This nested decoder token fault requires the decoder to report More and then fail before yielding the promised object key, which has no stable separately inducible byte sequence."
+    },
+    {
+      "identity": {
+        "file": "internal/testperformance/testperformance.go",
+        "start": {
+          "line": 598,
+          "column": 2
+        },
+        "end": {
+          "line": 598,
+          "column": 12
+        },
+        "statements": 1
+      },
+      "reason": "json.Decoder yields only object or array opening delimiters at this value-entry position; both admitted delimiters return through their owned cases, leaving the defensive default return unreachable."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 40,
+          "column": 21
+        },
+        "end": {
+          "line": 42,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture seed capture at internal/testsupport/treeseed.go:40 reports a filesystem, tar-writer, or stream fault after source validation. Mode, link, content, and clone isolation are directly tested; missing and non-directory sources are refused; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 47,
+          "column": 17
+        },
+        "end": {
+          "line": 49,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture seed capture at internal/testsupport/treeseed.go:47 reports a filesystem, tar-writer, or stream fault after source validation. Mode, link, content, and clone isolation are directly tested; missing and non-directory sources are refused; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 51,
+          "column": 17
+        },
+        "end": {
+          "line": 53,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture seed capture at internal/testsupport/treeseed.go:51 reports a filesystem, tar-writer, or stream fault after source validation. Mode, link, content, and clone isolation are directly tested; missing and non-directory sources are refused; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 57,
+          "column": 18
+        },
+        "end": {
+          "line": 59,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture seed capture at internal/testsupport/treeseed.go:57 reports a filesystem, tar-writer, or stream fault after source validation. Mode, link, content, and clone isolation are directly tested; missing and non-directory sources are refused; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 62,
+          "column": 17
+        },
+        "end": {
+          "line": 64,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture seed capture at internal/testsupport/treeseed.go:62 reports a filesystem, tar-writer, or stream fault after source validation. Mode, link, content, and clone isolation are directly tested; missing and non-directory sources are refused; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 66,
+          "column": 52
+        },
+        "end": {
+          "line": 68,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture seed capture at internal/testsupport/treeseed.go:66 reports a filesystem, tar-writer, or stream fault after source validation. Mode, link, content, and clone isolation are directly tested; missing and non-directory sources are refused; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 73,
+          "column": 17
+        },
+        "end": {
+          "line": 75,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture seed capture at internal/testsupport/treeseed.go:73 reports a filesystem, tar-writer, or stream fault after source validation. Mode, link, content, and clone isolation are directly tested; missing and non-directory sources are refused; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 78,
+          "column": 21
+        },
+        "end": {
+          "line": 80,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture seed capture at internal/testsupport/treeseed.go:78 reports a filesystem, tar-writer, or stream fault after source validation. Mode, link, content, and clone isolation are directly tested; missing and non-directory sources are refused; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 83,
+          "column": 16
+        },
+        "end": {
+          "line": 86,
+          "column": 3
+        },
+        "statements": 2
+      },
+      "reason": "Immutable fixture seed capture at internal/testsupport/treeseed.go:83 reports a filesystem, tar-writer, or stream fault after source validation. Mode, link, content, and clone isolation are directly tested; missing and non-directory sources are refused; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 87,
+          "column": 39
+        },
+        "end": {
+          "line": 89,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture seed capture at internal/testsupport/treeseed.go:87 reports a filesystem, tar-writer, or stream fault after source validation. Mode, link, content, and clone isolation are directly tested; missing and non-directory sources are refused; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 105,
+          "column": 44
+        },
+        "end": {
+          "line": 107,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:105 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 108,
+          "column": 56
+        },
+        "end": {
+          "line": 110,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:108 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 129,
+          "column": 51
+        },
+        "end": {
+          "line": 131,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:129 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 134,
+          "column": 65
+        },
+        "end": {
+          "line": 136,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:134 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 138,
+          "column": 18
+        },
+        "end": {
+          "line": 140,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:138 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 143,
+          "column": 22
+        },
+        "end": {
+          "line": 145,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:143 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 146,
+          "column": 23
+        },
+        "end": {
+          "line": 148,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:146 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 149,
+          "column": 54
+        },
+        "end": {
+          "line": 151,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:149 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 152,
+          "column": 78
+        },
+        "end": {
+          "line": 154,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:152 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 156,
+          "column": 65
+        },
+        "end": {
+          "line": 158,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:156 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 159,
+          "column": 60
+        },
+        "end": {
+          "line": 161,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:159 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 168,
+          "column": 73
+        },
+        "end": {
+          "line": 170,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:168 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 171,
+          "column": 92
+        },
+        "end": {
+          "line": 173,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:171 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 175,
+          "column": 65
+        },
+        "end": {
+          "line": 177,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:175 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/treeseed.go",
+        "start": {
+          "line": 178,
+          "column": 80
+        },
+        "end": {
+          "line": 180,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:178 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
     }
   ],
   "directives": [
@@ -29611,6 +30736,78 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "The immediate predecessor for `fmt.Fprintf(os.Stderr, \"pi-extension-test: wait for worker: %v\\n\", err)` at tools/pi-extension-test/lockrun/lockrun_unix.go:60 is `}` (tools/pi-extension-test/lockrun/lockrun_unix.go:59). Within `func run(args []string) int` at tools/pi-extension-test/lockrun/lockrun_unix.go:17, source review establishes Wait returns only ExitError after a successfully started command; this is therefore a closed-state fail-closed branch."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/dispatch.go",
+        "line": 157,
+        "targetLine": 157,
+        "reason": "clispec admits only the declared plan child before dispatch",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The command registry admits only `read plan` before this handler runs; focused read dispatch tests exercise the supported child and usage boundary without a second registry or test-only production path."
+    },
+    {
+      "directive": {
+        "file": "cmd/awf/init.go",
+        "line": 21,
+        "targetLine": 21,
+        "reason": "descriptors marshal to JSON; cannot fail",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The fixed catalog descriptors contain only validated JSON-native fields. Init description behavior is directly tested; serialization failure requires violating the descriptor type invariant."
+    },
+    {
+      "directive": {
+        "file": "cmd/covercheck/main.go",
+        "line": 129,
+        "targetLine": 129,
+        "reason": "Regenerate returned the same already-validated typed baseline",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Regenerate returns a validated typed baseline, so canonical serialization of that same value cannot fail without an invariant breach; policy generation is directly tested."
+    },
+    {
+      "directive": {
+        "file": "cmd/covercheck/main.go",
+        "line": 137,
+        "targetLine": 137,
+        "reason": "complete canonical bytes were just atomically replaced and verified in memory",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "The canonical bytes were atomically published immediately before this reload. Reaching the branch requires a concurrent namespace, storage, or permission fault rather than a safe deterministic trigger."
+    },
+    {
+      "directive": {
+        "file": "cmd/testperformance/main.go",
+        "line": 13,
+        "targetLine": 13,
+        "reason": "os.Exit wrapper; run is unit-tested",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "tested-process-exit",
+      "evidence": "The terminating process wrapper delegates entirely to run; focused command tests directly exercise usage, validation, human output, and machine output without exiting the test process."
+    },
+    {
+      "directive": {
+        "file": "cmd/testperformance/main.go",
+        "line": 59,
+        "targetLine": 59,
+        "reason": "validated Report contains only JSON-native finite values",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "The report is built from a validated qualification record and contains only JSON-native finite values; focused machine-report tests exercise successful serialization, and failure requires violating the typed report invariant."
     }
   ],
   "platformDirectives": [

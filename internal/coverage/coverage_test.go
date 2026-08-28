@@ -26,6 +26,13 @@ func writeProfile(t *testing.T, dir, body string) string {
 	return testsupport.WriteProfile(t, dir, body)
 }
 
+func writeNamedProfile(t *testing.T, dir, name, contents string) string {
+	t.Helper()
+	path := filepath.Join(dir, name)
+	testsupport.WriteFile(t, path, contents)
+	return path
+}
+
 // module builds a temp module root: go.mod + one source file, and returns root + modpath.
 func module(t *testing.T, src string) (root, modPath string) {
 	t.Helper()
@@ -356,5 +363,81 @@ func TestFilterProfileNoModuleLine(t *testing.T) {
 	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	if _, err := FilterProfile("x"); err == nil {
 		t.Fatal("expected no-module-line error")
+	}
+}
+
+func TestMergeProfilesIsDeterministicAndORMergesExactBlocks(t *testing.T) {
+	root := t.TempDir()
+	first := writeNamedProfile(t, root, "first.out", "mode: set\n"+
+		"example.com/m/a.go:2.1,2.5 1 0\n"+
+		"example.com/m/a.go:2.1,2.5 1 1\n"+
+		"example.com/m/c.go:4.1,4.5 1 0\n")
+	second := writeNamedProfile(t, root, "second.out", "mode: set\n"+
+		"example.com/m/a.go:2.1,2.5 1 0\n"+
+		"example.com/m/b.go:3.1,3.5 1 1\n"+
+		"example.com/m/c.go:4.1,4.5 1 0\n")
+
+	want := "mode: set\n" +
+		"example.com/m/a.go:2.1,2.5 1 1\n" +
+		"example.com/m/b.go:3.1,3.5 1 1\n" +
+		"example.com/m/c.go:4.1,4.5 1 0\n"
+	for _, paths := range [][]string{{first, second}, {second, first}} {
+		got, err := MergeProfiles(paths)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if got != want {
+			t.Fatalf("merged profile mismatch:\ngot  %q\nwant %q", got, want)
+		}
+	}
+}
+
+func TestMergeProfilesRejectsInvalidShardInputs(t *testing.T) {
+	const blockA = "example.com/m/a.go:2.1,2.5 1 0\n"
+	for _, tc := range []struct {
+		name       string
+		first      string
+		second     string
+		wantSuffix string
+	}{
+		{name: "mixed modes", first: "mode: set\n" + blockA, second: "mode: count\n" + blockA, wantSuffix: `: coverage: mixed profile modes: "set" and "count"`},
+		{name: "unsupported common mode", first: "mode: count\n" + blockA, second: "mode: count\n" + blockA, wantSuffix: `coverage: unsupported merge mode "count"; want "set"`},
+		{name: "malformed first header", first: "not a header\n" + blockA, second: "mode: set\n" + blockA, wantSuffix: `:1: coverage: malformed profile header "not a header"`},
+		{name: "malformed later header", first: "mode: set\n" + blockA, second: "mode: set\nmode: set\n" + blockA, wantSuffix: `:2: coverage: unexpected profile header "mode: set"`},
+		{name: "conflicting statement counts", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/a.go:2.1,2.5 2 0\n", wantSuffix: `:2: coverage: conflicting statement count for "example.com/m/a.go:2.1,2.5": 1 and 2`},
+		{name: "conflicting duplicate statement counts", first: "mode: set\n" + blockA + "example.com/m/a.go:2.1,2.5 2 0\n", second: "mode: set\n" + blockA, wantSuffix: `:3: coverage: conflicting statement count for "example.com/m/a.go:2.1,2.5": 1 and 2`},
+		{name: "noncanonical path", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/../m/a.go:2.1,2.5 1 0\n", wantSuffix: `:2: coverage: noncanonical profile path "example.com/m/../m/a.go"`},
+		{name: "reversed span", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/a.go:3.1,2.5 1 0\n", wantSuffix: `:2: coverage: reversed profile span "3.1,2.5"`},
+		{name: "negative statements", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/a.go:2.1,2.5 -1 0\n", wantSuffix: `:2: coverage: negative statement count for "example.com/m/a.go:2.1,2.5"`},
+		{name: "invalid set count", first: "mode: set\n" + blockA, second: "mode: set\nexample.com/m/a.go:2.1,2.5 1 2\n", wantSuffix: `:2: coverage: set-mode execution count for "example.com/m/a.go:2.1,2.5" must be 0 or 1`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := t.TempDir()
+			first := writeNamedProfile(t, root, "first.out", tc.first)
+			second := writeNamedProfile(t, root, "second.out", tc.second)
+			_, err := MergeProfiles([]string{first, second})
+			if err == nil {
+				t.Fatal("expected merge error")
+			}
+			if got := err.Error(); !strings.HasSuffix(got, tc.wantSuffix) {
+				t.Fatalf("error = %q, want suffix %q", got, tc.wantSuffix)
+			}
+		})
+	}
+}
+
+func TestMergeProfilesRequiresMultipleNonemptyProfiles(t *testing.T) {
+	if _, err := MergeProfiles(nil); err == nil || err.Error() != "coverage: merge requires at least two profiles" {
+		t.Fatalf("empty input error = %v", err)
+	}
+	root := t.TempDir()
+	empty := writeNamedProfile(t, root, "empty.out", "mode: set\n")
+	full := writeNamedProfile(t, root, "full.out", "mode: set\nexample.com/m/a.go:2.1,2.5 1 0\n")
+	if _, err := MergeProfiles([]string{empty, full}); err == nil || !strings.HasSuffix(err.Error(), ": coverage: profile contains no blocks") {
+		t.Fatalf("empty profile error = %v", err)
+	}
+	missingHeader := writeNamedProfile(t, root, "missing-header.out", "")
+	if _, err := MergeProfiles([]string{missingHeader, full}); err == nil || !strings.HasSuffix(err.Error(), ":1: coverage: missing profile header") {
+		t.Fatalf("missing header error = %v", err)
 	}
 }

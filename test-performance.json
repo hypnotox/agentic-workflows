@@ -517,6 +517,282 @@
           "seconds": 0
         }
       ]
+    },
+    {
+      "workload": "ordinary-full",
+      "environment": {
+        "id": "local-linux-amd64",
+        "kind": "local",
+        "cpu": "AMD Ryzen 5 7600X 6-Core Processor; 12 logical CPUs",
+        "os": "CachyOS; Linux 7.2.0-1-cachyos",
+        "architecture": "amd64",
+        "filesystem": "btrfs",
+        "memory": "31974732 KiB",
+        "runner_image": "local checkout",
+        "toolchain": "go1.26.4"
+      },
+      "cache": "cold",
+      "sample": 1,
+      "evidence_class": "diagnostic",
+      "result": "passed",
+      "seconds": 125.716,
+      "components": [
+        {
+          "stage": "go-test",
+          "package": "repository",
+          "test": "serial-profiled-lane",
+          "seconds": 114
+        },
+        {
+          "stage": "go-test",
+          "package": "cmd/awf",
+          "test": "package-total",
+          "seconds": 56.426
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/project",
+          "test": "package-total",
+          "seconds": 75.194
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/publisher",
+          "test": "package-total",
+          "seconds": 57.652
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/evals",
+          "test": "package-total",
+          "seconds": 17.645
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/contextop",
+          "test": "package-total",
+          "seconds": 1.265
+        },
+        {
+          "stage": "coverage-policy",
+          "package": "cmd/covercheck",
+          "test": "policy",
+          "seconds": 0
+        },
+        {
+          "stage": "pi-smoke",
+          "package": "repository",
+          "test": "runtime-smoke",
+          "seconds": 6
+        }
+      ]
+    },
+    {
+      "workload": "ordinary-full",
+      "environment": {
+        "id": "local-linux-amd64",
+        "kind": "local",
+        "cpu": "AMD Ryzen 5 7600X 6-Core Processor; 12 logical CPUs",
+        "os": "CachyOS; Linux 7.2.0-1-cachyos",
+        "architecture": "amd64",
+        "filesystem": "btrfs",
+        "memory": "31974732 KiB",
+        "runner_image": "local checkout",
+        "toolchain": "go1.26.4"
+      },
+      "cache": "warm",
+      "sample": 1,
+      "evidence_class": "qualification",
+      "result": "passed",
+      "seconds": 122.575,
+      "components": [
+        {
+          "stage": "go-test",
+          "package": "repository",
+          "test": "serial-profiled-lane",
+          "seconds": 112
+        },
+        {
+          "stage": "go-test",
+          "package": "cmd/awf",
+          "test": "package-total",
+          "seconds": 56.466
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/project",
+          "test": "package-total",
+          "seconds": 74.451
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/publisher",
+          "test": "package-total",
+          "seconds": 59.259
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/evals",
+          "test": "package-total",
+          "seconds": 17.738
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/contextop",
+          "test": "package-total",
+          "seconds": 1.268
+        },
+        {
+          "stage": "coverage-policy",
+          "package": "cmd/covercheck",
+          "test": "policy",
+          "seconds": 0
+        },
+        {
+          "stage": "pi-smoke",
+          "package": "repository",
+          "test": "runtime-smoke",
+          "seconds": 6
+        }
+      ]
+    },
+    {
+      "workload": "ordinary-full",
+      "environment": {
+        "id": "local-linux-amd64",
+        "kind": "local",
+        "cpu": "AMD Ryzen 5 7600X 6-Core Processor; 12 logical CPUs",
+        "os": "CachyOS; Linux 7.2.0-1-cachyos",
+        "architecture": "amd64",
+        "filesystem": "btrfs",
+        "memory": "31974732 KiB",
+        "runner_image": "local checkout",
+        "toolchain": "go1.26.4"
+      },
+      "cache": "warm",
+      "sample": 2,
+      "evidence_class": "qualification",
+      "result": "passed",
+      "seconds": 120.127,
+      "components": [
+        {
+          "stage": "go-test",
+          "package": "repository",
+          "test": "serial-profiled-lane",
+          "seconds": 109
+        },
+        {
+          "stage": "go-test",
+          "package": "cmd/awf",
+          "test": "package-total",
+          "seconds": 54.965
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/project",
+          "test": "package-total",
+          "seconds": 70.954
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/publisher",
+          "test": "package-total",
+          "seconds": 61.044
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/evals",
+          "test": "package-total",
+          "seconds": 14.357
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/contextop",
+          "test": "package-total",
+          "seconds": 1.269
+        },
+        {
+          "stage": "coverage-policy",
+          "package": "cmd/covercheck",
+          "test": "policy",
+          "seconds": 1
+        },
+        {
+          "stage": "pi-smoke",
+          "package": "repository",
+          "test": "runtime-smoke",
+          "seconds": 5
+        }
+      ]
+    },
+    {
+      "workload": "ordinary-full",
+      "environment": {
+        "id": "local-linux-amd64",
+        "kind": "local",
+        "cpu": "AMD Ryzen 5 7600X 6-Core Processor; 12 logical CPUs",
+        "os": "CachyOS; Linux 7.2.0-1-cachyos",
+        "architecture": "amd64",
+        "filesystem": "btrfs",
+        "memory": "31974732 KiB",
+        "runner_image": "local checkout",
+        "toolchain": "go1.26.4"
+      },
+      "cache": "warm",
+      "sample": 3,
+      "evidence_class": "qualification",
+      "result": "passed",
+      "seconds": 125.185,
+      "components": [
+        {
+          "stage": "go-test",
+          "package": "repository",
+          "test": "serial-profiled-lane",
+          "seconds": 114
+        },
+        {
+          "stage": "go-test",
+          "package": "cmd/awf",
+          "test": "package-total",
+          "seconds": 56.942
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/project",
+          "test": "package-total",
+          "seconds": 74.93
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/publisher",
+          "test": "package-total",
+          "seconds": 60.468
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/evals",
+          "test": "package-total",
+          "seconds": 19.391
+        },
+        {
+          "stage": "go-test",
+          "package": "internal/contextop",
+          "test": "package-total",
+          "seconds": 1.278
+        },
+        {
+          "stage": "coverage-policy",
+          "package": "cmd/covercheck",
+          "test": "policy",
+          "seconds": 0
+        },
+        {
+          "stage": "pi-smoke",
+          "package": "repository",
+          "test": "runtime-smoke",
+          "seconds": 6
+        }
+      ]
     }
   ]
 }

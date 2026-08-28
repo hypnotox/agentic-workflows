@@ -12,9 +12,9 @@ Backing: test
 
 ### `invariant: coverage-raw-identity-ratchet`
 
-The full gate evaluates one merged whole-module profile against the canonical `coverage-baseline.json`: every raw uncovered block is identified by module-relative file, exact span, and statement count, and any identity absent from the repository baseline or an applicable one of the six exact critical selectors blocks. Covered identities disappear on regeneration, while additions and moved spans require stored reasons, so an unrelated removal or aggregate-count swap cannot authorize a regression. Raw and filtered percentages remain reports only.
+The full gate deterministically partitions every top-level Go proving unit into isolated, contention-qualified slices, collects whole-`coverpkg` set profiles, and feeds their canonical OR-merged union to `coverage-baseline.json`. The merger rejects malformed headers, mixed modes, ambiguous paths, conflicting statement counts, and empty shards; policy then requires the complete reviewed universe digest. Every raw uncovered block is identified by module-relative file, exact span, and statement count, and any identity absent from the repository baseline or an applicable one of the six exact critical selectors blocks. Covered identities disappear on regeneration, while additions and moved spans require stored reasons, so an unrelated removal or aggregate-count swap cannot authorize a regression. Raw and filtered percentages remain reports only.
 Origin: ADR-0302
-Revised-by: ADR-0313
+Revised-by: ADR-0313, ADR-0314
 Backing: test
 
 ### `invariant: coverage-ignore-admission`

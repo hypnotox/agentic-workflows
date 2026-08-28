@@ -60,9 +60,13 @@ func TestGateRunnerModes(t *testing.T) {
 		"goos=|goarch=|pi=|run ./cmd/pincheck",
 	}
 	fullExtra := []string{
-		"goos=|goarch=|pi=|test -p=1 -timeout=20m ./... -coverpkg=./... -coverprofile=coverage.out",
+		"go-shard-0-0", "go-shard-0-1", "go-shard-0-2", "go-shard-0-3",
+		"go-shard-1-0", "go-shard-1-1", "go-shard-1-2", "go-shard-1-3",
+		"go-shard-2-0", "go-shard-2-1", "go-shard-2-2",
+		"go-shard-3-0",
+		"coverage-merge",
 		"goos=|goarch=|pi=|run ./cmd/covercheck --policy coverage.out coverage-baseline.json",
-		"goos=|goarch=|pi=1|test -json ./internal/publisher -run ^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$ -count=1",
+		"goos=|goarch=|pi=1|test -json ./internal/publisher -run ^TestPiRealRuntimeSmoke$ -count=1",
 		"goos=|goarch=|pi=|vet ./...",
 		"goos=|goarch=|pi=|tool golangci-lint run --config .golangci-advisory.yml --issues-exit-code 0",
 		"goos=|goarch=|pi=|tool deadcode -json ./...",
@@ -84,13 +88,19 @@ func TestGateRunnerModes(t *testing.T) {
 			if status != 0 {
 				t.Fatalf("status=%d output=%q", status, out)
 			}
-			if !slices.Equal(normalizeDeadcodePipeline(got), tc.want) {
+			got = normalizeGateInvocations(got)
+			if !slices.Equal(sortedStrings(got), sortedStrings(tc.want)) {
 				t.Fatalf("invocations=%q, want %q", got, tc.want)
+			}
+			if tc.name == "full" {
+				assertCoverageStageOrder(t, got)
 			}
 		})
 	}
 	_, _, fast := run("gate")
 	_, _, full := run("gate", "full", "--range", "base", "head")
+	fast = normalizeGateInvocations(fast)
+	full = normalizeGateInvocations(full)
 	for _, stage := range fullExtra {
 		if slices.Contains(fast, stage) {
 			t.Errorf("fast gate ran full stage %q", stage)
@@ -106,7 +116,7 @@ func TestGateRunnerModes(t *testing.T) {
 	if status != 0 {
 		t.Fatalf("timed full status=%d output=%q", status, out)
 	}
-	assertTimingLines(t, out, []string{"versioncheck", "build", "lint", "pincheck", "go-test", "covercheck", "pi-runtime-smoke", "vet", "advisory-lint", "deadcode", "build-linux-amd64", "build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64"})
+	assertTimingLines(t, out, []string{"versioncheck", "build", "lint", "pincheck", "go-test", "coverage-merge", "covercheck", "pi-runtime-smoke", "vet", "advisory-lint", "deadcode", "platform-builds"})
 
 	t.Run("owned range runs mutation last and preserves failure", func(t *testing.T) {
 		t.Setenv("FAKE_GIT_CHANGED_PATH", "cmd/covercheck/main.go")
@@ -117,7 +127,7 @@ func TestGateRunnerModes(t *testing.T) {
 		if len(lines) == 0 || !strings.HasPrefix(lines[len(lines)-1], "timeout 1800s bash ./x __covercheck-mutants-inner ") {
 			t.Fatalf("mutation invocation missing or misplaced: %q", lines)
 		}
-		assertTimingLines(t, out, []string{"versioncheck", "build", "lint", "pincheck", "go-test", "covercheck", "pi-runtime-smoke", "vet", "advisory-lint", "deadcode", "build-linux-amd64", "build-linux-arm64", "build-darwin-amd64", "build-darwin-arm64", "covercheck-mutation-regression"})
+		assertTimingLines(t, out, []string{"versioncheck", "build", "lint", "pincheck", "go-test", "coverage-merge", "covercheck", "pi-runtime-smoke", "vet", "advisory-lint", "deadcode", "platform-builds", "covercheck-mutation-regression"})
 
 		t.Setenv("FAKE_TIMEOUT_STATUS", "23")
 		out, status, _ = run("gate", "full", "timings", "--range", "base", "head")
@@ -131,31 +141,65 @@ func TestGateRunnerModes(t *testing.T) {
 			t.Errorf("x %v: status=%d output=%q invocations=%q", args, status, out, lines)
 		}
 	}
-	t.Run("failure short-circuits and records timing", func(t *testing.T) {
-		// The fixture's command fake carries failure selection through its environment.
-		t.Setenv("FAKE_GO_FAIL_CONTAINS", "vet ./...")
+	t.Run("failed shard prevents dependent coverage and waits for siblings", func(t *testing.T) {
+		t.Setenv("FAKE_GO_FAIL_CONTAINS", "./internal/project")
 		out, status, lines := run("gate", "full", "timings", "--range", "base", "head")
-		if status != 17 || !strings.Contains(out, "gate timing: vet ") || strings.Contains(strings.Join(lines, "\n"), "goos=linux|goarch=amd64|pi=|build ./...") {
+		normalized := normalizeGateInvocations(lines)
+		if status != 17 || !strings.Contains(out, "gate: Go shard 1-0 failed with status 17") || slices.Contains(normalized, "coverage-merge") {
+			t.Fatalf("status=%d output=%q invocations=%q", status, out, normalized)
+		}
+		for _, shard := range []string{"0-0", "0-1", "0-2", "0-3", "1-0", "1-1", "1-2", "1-3", "2-0", "2-1", "2-2", "3-0"} {
+			if !slices.Contains(normalized, "go-shard-"+shard) {
+				t.Errorf("sibling shard %s did not terminate: %q", shard, normalized)
+			}
+		}
+	})
+	t.Run("parallel failures all report after every stage terminates", func(t *testing.T) {
+		t.Setenv("FAKE_GO_FAIL_CONTAINS", "vet ./...")
+		t.Setenv("FAKE_PI_RESULT", "fail")
+		out, status, lines := run("gate", "full", "timings", "--range", "base", "head")
+		joined := strings.Join(lines, "\n")
+		if status != 1 || !strings.Contains(out, "gate: Pi runtime smoke proving units did not run and pass") ||
+			!strings.Contains(out, "gate: stage vet failed with status 17") ||
+			!strings.Contains(joined, "goos=linux|goarch=amd64|pi=|build ./...") {
 			t.Fatalf("status=%d output=%q invocations=%q", status, out, lines)
 		}
 	})
 }
 
-func normalizeDeadcodePipeline(lines []string) []string {
+func normalizeGateInvocations(lines []string) []string {
 	out := slices.Clone(lines)
-	tool, checker := -1, -1
 	for i, line := range out {
-		switch {
-		case strings.HasSuffix(line, "|tool deadcode -json ./..."):
-			tool = i
-		case strings.HasSuffix(line, "|run ./cmd/deadcodecheck"):
-			checker = i
+		for _, shard := range []string{"0-0", "0-1", "0-2", "0-3", "1-0", "1-1", "1-2", "1-3", "2-0", "2-1", "2-2", "3-0"} {
+			if strings.Contains(line, "|test -p=1 -timeout=20m -count=1 ") && strings.Contains(line, "/shard"+shard+".out") {
+				out[i] = "go-shard-" + shard
+			}
+		}
+		if strings.Contains(line, "|run ./cmd/covercheck --merge ") {
+			out[i] = "coverage-merge"
 		}
 	}
-	if tool >= 0 && checker >= 0 && tool > checker {
-		out[tool], out[checker] = out[checker], out[tool]
-	}
 	return out
+}
+
+func sortedStrings(values []string) []string {
+	out := slices.Clone(values)
+	slices.Sort(out)
+	return out
+}
+
+func assertCoverageStageOrder(t *testing.T, invocations []string) {
+	t.Helper()
+	merge := slices.Index(invocations, "coverage-merge")
+	policy := slices.Index(invocations, "goos=|goarch=|pi=|run ./cmd/covercheck --policy coverage.out coverage-baseline.json")
+	if merge < 0 || policy <= merge {
+		t.Fatalf("coverage dependency order = %q", invocations)
+	}
+	for _, shard := range []string{"0-0", "0-1", "0-2", "0-3", "1-0", "1-1", "1-2", "1-3", "2-0", "2-1", "2-2", "3-0"} {
+		if index := slices.Index(invocations, "go-shard-"+shard); index < 0 || index >= merge {
+			t.Fatalf("shard %s did not complete before merge: %q", shard, invocations)
+		}
+	}
 }
 
 func assertTimingLines(t *testing.T, output string, want []string) {
@@ -583,8 +627,21 @@ if [ "${1:-}" = env ]; then
   case "${2:-}" in
     GOOS) printf 'linux\n' ;;
     GOARCH) printf 'amd64\n' ;;
+    GOCACHE) printf '/tmp/fake-go-cache\n/tmp/fake-mod-cache\n' ;;
     *) exit 2 ;;
   esac
+  exit 0
+fi
+if [ "$*" = "list -f {{.ImportPath}} ./..." ]; then
+  printf '%s\n' \
+    github.com/hypnotox/agentic-workflows/cmd/awf \
+    github.com/hypnotox/agentic-workflows/internal/project \
+    github.com/hypnotox/agentic-workflows/internal/publisher \
+    github.com/hypnotox/agentic-workflows/cmd/covercheck
+  exit 0
+fi
+if [[ "$*" == test\ -list* ]]; then
+  printf '%s\n' TestAlpha TestBeta TestGamma TestDelta
   exit 0
 fi
 printf 'goos=%s|goarch=%s|pi=%s|%s\n' "${GOOS:-}" "${GOARCH:-}" "${AWF_PI_RUNTIME_SMOKE:-}" "$*" >>"$INVOCATION_LOG"
@@ -594,8 +651,7 @@ fi
 if [ -n "${FAKE_GO_FAIL_CONTAINS:-}" ] && [[ "$*" == *"$FAKE_GO_FAIL_CONTAINS"* ]]; then
   exit 17
 fi
-if [[ "$*" == "test -json ./internal/publisher -run ^TestPi(EffortMemoryToolContract|RealRuntimeSmoke)$ -count=1" ]]; then
-  printf '{"Time":"2026-08-02T00:00:00Z","Action":"%s","Package":"example/project","Test":"TestPiEffortMemoryToolContract","Elapsed":0}\n' "${FAKE_PI_RESULT:-pass}"
+if [[ "$*" == "test -json ./internal/publisher -run ^TestPiRealRuntimeSmoke$ -count=1" ]]; then
   printf '{"Time":"2026-08-02T00:00:00Z","Action":"%s","Package":"example/project","Test":"TestPiRealRuntimeSmoke","Elapsed":0}\n' "${FAKE_PI_RESULT:-pass}"
 fi
 `

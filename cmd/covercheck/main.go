@@ -31,6 +31,18 @@ func run(args []string, stdout, stderr io.Writer) int {
 			}
 			fmt.Fprint(stdout, filtered)
 			return 0
+		case "--merge":
+			if len(args) < 4 {
+				fmt.Fprintln(stderr, "usage: covercheck --merge <coverprofile> <coverprofile> [...]")
+				return 2
+			}
+			merged, err := coverage.MergeProfiles(args[2:])
+			if err != nil {
+				fmt.Fprintln(stderr, "covercheck:", err)
+				return 1
+			}
+			fmt.Fprint(stdout, merged)
+			return 0
 		case "--policy":
 			if len(args) != 4 {
 				fmt.Fprintln(stderr, "usage: covercheck --policy <coverprofile> <baseline>")

@@ -9,7 +9,7 @@
 
 ### Parallelism
 
-Run packages in parallel only when their mutable state is independent. `internal/snapshot`, `internal/project`, `internal/effort`, and fixtures do; `cmd/awf`, `internal/git`, `internal/migrate`, `internal/audit`, and `internal/worktree` do not. `t.Setenv` blocks its calling test, not the package; `internal/worktree` remains serial because package-level filesystem-ownership swaps race.
+Run tests concurrently in one process only when their mutable state is independent. The terminal gate may execute deterministic proving-unit slices in separate isolated process homes; package-global seam families remain serial within each process. `t.Setenv` blocks its calling test, not the package, and `internal/worktree` stays in-process serial because package-level filesystem-ownership swaps race.
 
 ### Test shape
 

@@ -10,6 +10,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"path"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -73,6 +74,103 @@ func mergeBlocks(blocks []block) []block {
 		uniq = append(uniq, b)
 	}
 	return uniq
+}
+
+// MergeProfiles parses nonempty set-mode shard profiles and returns their
+// canonical union. Execution counts are OR-merged and duplicate emissions
+// collapse to one line; the policy consumer validates the complete union digest.
+func MergeProfiles(profilePaths []string) (string, error) {
+	if len(profilePaths) < 2 {
+		return "", errors.New("coverage: merge requires at least two profiles")
+	}
+
+	var mode string
+	merged := map[string]block{}
+	for index, profilePath := range profilePaths {
+		profileMode, blocks, err := parseCoverageProfile(profilePath)
+		if err != nil {
+			return "", err
+		}
+		if len(blocks) == 0 {
+			return "", fmt.Errorf("%s: coverage: profile contains no blocks", profilePath)
+		}
+		if index == 0 {
+			mode = profileMode
+		} else if profileMode != mode {
+			return "", fmt.Errorf("%s: coverage: mixed profile modes: %q and %q", profilePath, mode, profileMode)
+		}
+
+		shard := make(map[string]block, len(blocks))
+		for _, current := range blocks {
+			if err := validateMergeBlock(current, profileMode == "set"); err != nil {
+				return "", fmt.Errorf("%s:%d: %w", profilePath, current.profileLine, err)
+			}
+			key := blockKey(current)
+			if previous, ok := shard[key]; ok {
+				if previous.numStmt != current.numStmt {
+					return "", fmt.Errorf("%s:%d: coverage: conflicting statement count for %q: %d and %d", profilePath, current.profileLine, key, previous.numStmt, current.numStmt)
+				}
+				previous.count = setCount(previous.count, current.count)
+				shard[key] = previous
+				continue
+			}
+			shard[key] = current
+		}
+
+		for key, current := range shard {
+			if previous, ok := merged[key]; ok {
+				if previous.numStmt != current.numStmt {
+					return "", fmt.Errorf("%s:%d: coverage: conflicting statement count for %q: %d and %d", profilePath, current.profileLine, key, previous.numStmt, current.numStmt)
+				}
+				previous.count = setCount(previous.count, current.count)
+				merged[key] = previous
+				continue
+			}
+			merged[key] = current
+		}
+	}
+	if mode != "set" {
+		return "", fmt.Errorf("coverage: unsupported merge mode %q; want %q", mode, "set")
+	}
+
+	canonical := make([]block, 0, len(merged))
+	for _, current := range merged {
+		canonical = append(canonical, current)
+	}
+	slices.SortFunc(canonical, compareBlock)
+	var output strings.Builder
+	output.WriteString("mode: set\n")
+	for _, current := range canonical {
+		fmt.Fprintf(&output, "%s:%s %d %d\n", current.file, current.span, current.numStmt, current.count)
+	}
+	return output.String(), nil
+}
+
+func blockKey(current block) string { return current.file + ":" + current.span }
+
+func setCount(left, right int) int {
+	if left > 0 || right > 0 {
+		return 1
+	}
+	return 0
+}
+
+func validateMergeBlock(current block, setMode bool) error {
+	if current.file == "" || path.IsAbs(current.file) || path.Clean(current.file) != current.file ||
+		strings.ContainsAny(current.file, `\:`) || !strings.Contains(current.file, "/") {
+		return fmt.Errorf("coverage: noncanonical profile path %q", current.file)
+	}
+	if current.endLine < current.startLine ||
+		(current.endLine == current.startLine && current.endColumn < current.startColumn) {
+		return fmt.Errorf("coverage: reversed profile span %q", current.span)
+	}
+	if current.numStmt < 0 {
+		return fmt.Errorf("coverage: negative statement count for %q", blockKey(current))
+	}
+	if setMode && current.count != 0 && current.count != 1 {
+		return fmt.Errorf("coverage: set-mode execution count for %q must be 0 or 1", blockKey(current))
+	}
+	return nil
 }
 
 // FilterProfile resolves the module root from the working directory and returns
@@ -140,36 +238,56 @@ type block struct {
 	endColumn   int
 	numStmt     int
 	count       int
+	profileLine int
 }
 
-func parseProfile(path string) ([]block, error) {
-	f, err := os.Open(path)
+func parseProfile(profilePath string) ([]block, error) {
+	_, blocks, err := parseCoverageProfile(profilePath)
+	return blocks, err
+}
+
+func parseCoverageProfile(profilePath string) (string, []block, error) {
+	f, err := os.Open(profilePath)
 	if err != nil {
-		return nil, err
+		return "", nil, err
 	}
 	defer func() { _ = f.Close() }()
+
+	var mode string
 	var blocks []block
 	sc := bufio.NewScanner(f)
-	first := true
+	lineNumber := 0
 	for sc.Scan() {
+		lineNumber++
 		line := sc.Text()
-		if first { // "mode: set" header
-			first = false
+		if lineNumber == 1 {
+			var ok bool
+			mode, ok = strings.CutPrefix(line, "mode: ")
+			if !ok || (mode != "set" && mode != "count" && mode != "atomic") {
+				return "", nil, fmt.Errorf("%s:1: coverage: malformed profile header %q", profilePath, line)
+			}
 			continue
 		}
 		if line == "" {
 			continue
 		}
-		b, err := parseLine(line)
-		if err != nil {
-			return nil, err
+		if strings.HasPrefix(line, "mode:") {
+			return "", nil, fmt.Errorf("%s:%d: coverage: unexpected profile header %q", profilePath, lineNumber, line)
 		}
-		blocks = append(blocks, b)
+		current, err := parseLine(line)
+		if err != nil {
+			return "", nil, fmt.Errorf("%s:%d: %w", profilePath, lineNumber, err)
+		}
+		current.profileLine = lineNumber
+		blocks = append(blocks, current)
 	}
 	if err := sc.Err(); err != nil {
-		return nil, err
+		return "", nil, fmt.Errorf("%s: coverage: scan profile: %w", profilePath, err)
 	}
-	return blocks, nil
+	if lineNumber == 0 {
+		return "", nil, fmt.Errorf("%s:1: coverage: missing profile header", profilePath)
+	}
+	return mode, blocks, nil
 }
 
 // parseLine parses "file:startLine.startCol,endLine.endCol numStmt count".
