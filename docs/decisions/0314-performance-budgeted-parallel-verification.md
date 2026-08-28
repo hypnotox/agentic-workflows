@@ -52,28 +52,31 @@ range-selected mutation path rather than hiding them behind one elapsed number.
    feedback targets 10 to 15 seconds. An ordinary full gate without selected mutation must improve
    by at least 4x from the 625.426-second baseline, at or below 156 seconds, and retains 55 seconds as
    the stronger target. The hosted CI critical path targets 60 seconds on its declared runner class.
-   Exceptional `cmd/covercheck` mutation has a separate budget. Qualification uses repeatable timing
-   evidence and component regressions rather than making one noisy wall-clock observation a flaky
-   correctness result.
+   Exceptional `cmd/covercheck` mutation has a separate budget. A repository-owned, versioned
+   qualification record identifies the local CPU, OS, architecture, filesystem, memory, exact
+   toolchain, cache preparation, and sample method, plus the hosted runner image and architecture.
+   Qualification uses repeatable timing evidence and component regressions rather than making one
+   noisy wall-clock observation a flaky correctness result. The performance contract lands as a rule
+   verified through that qualification record, not as a per-run test-backed timing invariant.
 
-2. `decision: remove-work-before-concurrency` Remove behaviorally redundant execution and repeated
-   mutable fixture construction before increasing concurrency. Retain every distinct safety,
-   recovery, rollback, topology, mutation-boundary, invariant-backing, and CLI exit or output oracle.
-   A broad matrix remains only when its cells prove distinct behavior; shared policy is tested once
-   at its owner with representative boundary cases at callers. Performance work must not weaken an
-   assertion, expected behavior, coverage admission, or required platform assurance.
+2. `decision: oracle-preserving-consolidation` Remove behaviorally redundant execution while
+   retaining every distinct safety, recovery, rollback, topology, mutation-boundary,
+   invariant-backing, and CLI exit or output oracle. A broad matrix remains only when its cells prove
+   distinct behavior; shared policy is tested once at its owner with representative boundary cases
+   at callers. Performance work must not weaken an assertion, expected behavior, coverage admission,
+   or required platform assurance.
 
 3. `decision: affected-package-feedback` Keep ADR-0313's commit gate unchanged and add a separate
    fail-closed affected-package behavioral feedback path. It selects changed Go packages, reverse
    dependents, and declared repository meta-suites. Shared generators, templates, configuration,
    tooling, or uncertain change evidence widen to the required safe universe. This path is the
    common local test-feedback workload; exhaustive full verification remains mandatory at terminal,
-   pre-push, CI, and release boundaries.
+   pre-push, CI, and release boundaries. Selection and conservative widening land as a test-backed
+   invariant.
 
 4. `decision: bounded-parallel-assurance` Execute necessary full assurance through deterministic,
    contention-qualified package shards and independent stage dependencies rather than an
-   unconditional package-parallelism flag. Local execution preserves stable grouped diagnostics and
-   cancels work whose prerequisites fail. Hosted CI may spend more aggregate compute to run native
+   unconditional package-parallelism flag. Hosted CI may spend more aggregate compute to run native
    Go shards, Pi behavior, analysis and policy, platform compilation, coverage aggregation, and
    release verification concurrently. Stable required conclusions depend on every required lane for
    the exact revision.
@@ -96,8 +99,11 @@ range-selected mutation path rather than hiding them behind one elapsed number.
    the existing `cmd/awf` composition boundary rather than package-global or testing-only production
    policy. The runner remains unexported, receives explicit one-operation dependencies, and continues
    to derive command membership and policy from `internal/clispec`; it is not a universal dependency
-   bag or a second command registry. Expensive reusable fixtures cache immutable representations or
-   read-only seeds and clone explicitly for mutation.
+   bag or a second command registry. This ownership lands as a test-backed invariant.
+
+8. `decision: immutable-fixture-seeds` Expensive reusable fixtures cache immutable representations or
+   read-only seeds and clone explicitly for mutation. Shared live mutable roots are forbidden. This
+   fixture-ownership boundary lands as a test-backed invariant in the test-infrastructure topic.
 
 ## State changes
 
@@ -107,6 +113,7 @@ range-selected mutation path rather than hiding them behind one elapsed number.
 - update `tooling/quality-gates:coverage-raw-identity-ratchet`
 - update `tooling/quality-gates:exact-revision-repository-acceptance`
 - add `tooling/cli:cli-runner-instance-ownership`
+- add `tooling/test-infrastructure:immutable-fixture-seeds`
 
 ## Consequences
 
@@ -115,11 +122,16 @@ fast gate remains a narrow commit boundary, while developers gain behaviorally m
 feedback and terminal verification becomes usable again. CI latency can fall through parallel jobs
 even when aggregate hosted compute rises.
 
-The implementation must first distinguish unique behavior from historical coverage-shaped
-enumeration. Moving an invariant marker, consolidating an umbrella, or replacing a command matrix
-requires evidence that the retained owner still proves the claim. Parallel fixture reuse also
-requires immutable state or explicit cloning; sharing live mutable roots would trade latency for
-races and nondeterminism.
+The implementation must distinguish unique behavior from historical coverage-shaped enumeration.
+Moving an invariant marker, consolidating an umbrella, or replacing a command matrix requires
+evidence that the retained owner still proves the claim. Parallel fixture reuse also requires
+immutable state or explicit cloning; sharing live mutable roots would trade latency for races and
+nondeterminism.
+
+Affected-package selection adds a maintained policy surface. Conservative false positives are
+intentional, and shared or uncertain changes may widen beyond the 10 to 15 second common-feedback
+target or require the full universe. The qualification record reports those widened workloads
+separately rather than misclassifying them as ordinary common feedback.
 
 Coverage collection may change representation but not policy meaning. Exact equivalence prototypes
 add temporary implementation work, and deterministic shard aggregation becomes a new trusted
