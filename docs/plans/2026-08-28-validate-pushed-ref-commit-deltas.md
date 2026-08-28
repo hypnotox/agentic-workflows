@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-28
 adrs: [validate-only-pushed-ref-commit-deltas]
-status: Proposed
+status: Implemented
 ---
 # Plan: Validate pushed ref commit deltas
 
@@ -56,3 +56,34 @@ Apply the plan-flexibility rule above when recording deviations. Delegated owner
 - Implementation route correction: the repository-wide rendered-execution sweep has its own explicit template data fixture. Added `internal/project/repository_awf_invocation_test.go` to the batch and supplied the same integration-branch projection there so the publication-safety oracle remains complete.
 - Terminal verification reconciliation: the publisher projection shifted reviewed uncovered identities and coverage-ignore directive locations. Updated `coverage-review.json` with the same reviewed reasons and regenerated `coverage-baseline.json` from the canonical merged profile.
 - Terminal verification fix: parallel verification exposed a tree-enumeration race when an operation-local trust file disappeared before metadata inspection. Added a red-then-green `internal/filesystem` regression, made only `fs.ErrNotExist` skip the vanished entry, preserved other metadata errors, and stress-proved the repository-root publisher sweep under matching file churn.
+
+### Terminal reconciliation
+Implementation range: add36a3f87be758c2229afb232ef62da57d929b7..8c5b1945c61959bd94876632f963d969588def0a
+Touched paths:
+- ".awf/awf.lock"
+- ".awf/hooks/pre-push.sh"
+- ".awf/topics/parts/rendering/singletons-and-payloads/current-state.md"
+- "changelog/CHANGELOG.md"
+- "coverage-baseline.json"
+- "coverage-review.json"
+- "docs/config-reference.md"
+- "docs/decisions/0315-validate-only-pushed-ref-commit-deltas.md"
+- "docs/decisions/INDEX.md"
+- "docs/plans/2026-08-28-validate-pushed-ref-commit-deltas.md"
+- "docs/topics/rendering/singletons-and-payloads.md"
+- "internal/configspec/spec.go"
+- "internal/filesystem/tree_entry.go"
+- "internal/filesystem/tree_entry_test.go"
+- "internal/project/hooks_test.go"
+- "internal/project/repository_awf_invocation_test.go"
+- "internal/publisher/confighash.go"
+- "internal/publisher/confighash_test.go"
+- "internal/publisher/render.go"
+- "internal/publisher/render_test.go"
+- "internal/render/vars.go"
+- "internal/render/vars_test.go"
+- "templates/hooks/pre-push.sh.tmpl"
+Material deviations:
+- Added the repository-wide rendered-execution fixture because the publication-safety sweep required the new template projection.
+- Reconciled moved publisher coverage identities and regenerated the canonical coverage baseline after terminal verification.
+- Fixed the operation-local tree-enumeration race exposed by parallel terminal verification and added its focused regression.

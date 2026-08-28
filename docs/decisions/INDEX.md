@@ -3,7 +3,6 @@
 ## In flight
 
 - [ADR-0314: Performance-budgeted parallel verification](0314-performance-budgeted-parallel-verification.md) (Implementing)
-- [ADR-0315: Validate only pushed ref commit deltas](0315-validate-only-pushed-ref-commit-deltas.md) (Implementing)
 
 ## History
 
@@ -320,3 +319,4 @@
 - [ADR-0311: Bind Terminal Plan Closure to Selected Implementation Evidence](0311-bind-terminal-plan-closure-to-selected-implementation-evidence.md) (Implemented)
 - [ADR-0312: Load curated release notes through GoReleaser](0312-load-curated-release-notes-through-goreleaser.md) (Implemented)
 - [ADR-0313: Separate commit and full verification gates](0313-separate-commit-and-full-verification-gates.md) (Implemented)
+- [ADR-0315: Validate only pushed ref commit deltas](0315-validate-only-pushed-ref-commit-deltas.md) (Implemented)
