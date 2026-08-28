@@ -280,7 +280,7 @@ case "$cmd" in
     go tool golangci-lint fmt --config .golangci-advisory.yml "$@"
     ;;
   test)
-    echo "test: Pi host lane skipped; run './x pi-test run' alone or './x gate' to include it" >&2
+    echo "test: Pi host lane skipped; run './x pi-test run' for focused verification or './x gate full' for terminal verification" >&2
     env -u AWF_PI_RUNTIME_SMOKE go test ./... "$@"
     ;;
   clean-test-tmp)

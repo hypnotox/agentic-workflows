@@ -2,7 +2,6 @@ package main
 
 import (
 	"archive/tar"
-	"archive/zip"
 	"bytes"
 	"compress/gzip"
 	"context"
@@ -483,8 +482,8 @@ func TestVerifyCIPreservesCandidateErrorIdentity(t *testing.T) {
 	})}
 
 	err := verifyCI(context.Background(), client, "https://api.example.test", "acme/repo", "token", sha)
-	if !errors.Is(err, transportErr) {
-		t.Fatalf("candidate error identity lost: %v", err)
+	if !errors.Is(err, transportErr) || !strings.Contains(err.Error(), "request GitHub API /repos/acme/repo/actions/runs/7/jobs") {
+		t.Fatalf("candidate error identity or endpoint context lost: %v", err)
 	}
 }
 
@@ -599,6 +598,10 @@ func TestExactRevisionWorkflowContract(t *testing.T) {
 		{"missing stable gate job", func(ci, _ map[string]any) { delete(workflowJobs(ci), "gate") }},
 		{"missing stable release-config job", func(ci, _ map[string]any) { delete(workflowJobs(ci), "release-config") }},
 		{"missing macOS dependency", func(ci, _ map[string]any) { workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"linux-full"} }},
+		{"missing always aggregation", func(ci, _ map[string]any) { delete(workflowMap(workflowJobs(ci)["gate"]), "if") }},
+		{"no-op native result requirement", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["gate"]), "Require native verification success")["run"] = "true"
+		}},
 		{"no-op Linux architecture", func(ci, _ map[string]any) {
 			run := stringValue(workflowStep(workflowMap(workflowJobs(ci)["linux-full"]), "Verify native Linux amd64")["run"])
 			workflowStep(workflowMap(workflowJobs(ci)["linux-full"]), "Verify native Linux amd64")["run"] = "echo " + strconv.Quote(run)
@@ -686,11 +689,16 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 		}
 	}
 	linux, macOS, gate := workflowMap(ciJobs["linux-full"]), workflowMap(ciJobs["macos-go"]), workflowMap(ciJobs["gate"])
+	runEquals := func(job map[string]any, step, want string) bool {
+		return strings.TrimSpace(stringValue(workflowStep(job, step)["run"])) == strings.TrimSpace(want)
+	}
 	if !workflowNeeds(gate, "linux-full") || !workflowNeeds(gate, "macos-go") {
 		problems = append(problems, "gate native dependencies")
 	}
-	runEquals := func(job map[string]any, step, want string) bool {
-		return strings.TrimSpace(stringValue(workflowStep(job, step)["run"])) == strings.TrimSpace(want)
+	const nativeAcceptance = `[ '${{ needs.linux-full.result }}' = success ]
+[ '${{ needs.macos-go.result }}' = success ]`
+	if stringValue(gate["if"]) != "${{ always() }}" || !runEquals(gate, "Require native verification success", nativeAcceptance) {
+		problems = append(problems, "gate native result acceptance")
 	}
 	const linuxNative = `[ "$(go env GOOS)" = linux ] && [ "$(go env GOARCH)" = amd64 ]`
 	const linuxFull = `case "$EVENT" in pull_request) base="$PR_BASE";; push) base="$PUSH_BASE";; *) base=invalid-base;; esac
@@ -901,16 +909,25 @@ func TestReleaseArchivesPortableSnapshot(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	dist := filepath.Join(root, "dist")
-	if err := os.RemoveAll(dist); err != nil {
+	dist := filepath.Join(t.TempDir(), "dist")
+	relativeDist, err := filepath.Rel(root, dist)
+	if err != nil {
 		t.Fatal(err)
 	}
-	t.Cleanup(func() {
-		if err := os.RemoveAll(dist); err != nil {
-			t.Errorf("remove snapshot dist: %v", err)
-		}
-	})
-	cmd := exec.Command("go", "run", "github.com/goreleaser/goreleaser/v2@v2.17.0", "release", "--snapshot", "--clean")
+	if relativeDist != ".." && !strings.HasPrefix(relativeDist, ".."+string(os.PathSeparator)) {
+		t.Fatalf("snapshot dist %q is inside checkout %q", dist, root)
+	}
+	config, err := os.ReadFile(filepath.Join(root, ".goreleaser.yaml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	configPath := filepath.Join(t.TempDir(), ".goreleaser.yaml")
+	isolatedConfig := fmt.Appendf(nil, "dist: %q\n", dist)
+	isolatedConfig = append(isolatedConfig, config...)
+	if err := os.WriteFile(configPath, isolatedConfig, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	cmd := exec.Command("go", "run", "github.com/goreleaser/goreleaser/v2@v2.17.0", "release", "--snapshot", "--clean", "--config", configPath)
 	cmd.Dir = root
 	if out, err := cmd.CombinedOutput(); err != nil {
 		t.Fatalf("build snapshot release: %v\n%s", err, out)
@@ -947,10 +964,6 @@ func TestReleaseArchivesPortableSnapshot(t *testing.T) {
 
 	for _, name := range names {
 		archive := filepath.Join(dist, name)
-		if strings.HasSuffix(name, ".zip") {
-			assertZipArchivePaths(t, archive, []string{"LICENSE", "README.md", "awf.exe"})
-			continue
-		}
 		entries := assertTarArchivePaths(t, archive, []string{"LICENSE", "README.md", "awf"})
 		for _, entry := range entries {
 			if strings.Contains(name, "_linux_") {
@@ -1011,7 +1024,7 @@ func assertSnapshotChecksums(t *testing.T, path string, archives []string) {
 	}
 	slices.Sort(names)
 	if !slices.Equal(names, archives) {
-		t.Fatalf("snapshot checksum entries = %q, want exactly six archives %q", names, archives)
+		t.Fatalf("snapshot checksum entries = %q, want exactly four archives %q", names, archives)
 	}
 }
 
@@ -1046,21 +1059,4 @@ func assertTarArchivePaths(t *testing.T, archive string, want []string) []*tar.H
 		t.Fatalf("archive %s paths = %q, want %q", filepath.Base(archive), names, want)
 	}
 	return entries
-}
-
-func assertZipArchivePaths(t *testing.T, archive string, want []string) {
-	t.Helper()
-	reader, err := zip.OpenReader(archive)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer reader.Close()
-	names := make([]string, 0, len(reader.File))
-	for _, entry := range reader.File {
-		names = append(names, entry.Name)
-	}
-	slices.Sort(names)
-	if !slices.Equal(names, want) {
-		t.Fatalf("archive %s paths = %q, want %q", filepath.Base(archive), names, want)
-	}
 }

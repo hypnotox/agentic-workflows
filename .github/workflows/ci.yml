@@ -93,10 +93,14 @@ jobs:
       - run: go test ./...
 
   gate:
+    if: ${{ always() }}
     needs: [linux-full, macos-go]
     runs-on: ubuntu-latest
     steps:
-      - run: true
+      - name: Require native verification success
+        run: |
+          [ '${{ needs.linux-full.result }}' = success ]
+          [ '${{ needs.macos-go.result }}' = success ]
 
   release-config:
     runs-on: ubuntu-latest

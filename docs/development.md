@@ -37,7 +37,7 @@ Run `./x` at the repository root with no argument for usage. Use rendered `./awf
 |---|---|
 | `./x gate [timings]` | Fast commit gate: version validation, one native build, blocking lint (including govet), and pin validation. |
 | `./x gate full [timings] [--range <base> <head>]...` | Terminal exhaustive verification: the commit tier plus complete native Go/coverage and Pi suites, vet, advisory lint, dead code, four Linux/Darwin release cross-builds, and exact-universe-selected mutation. Local calls use the staged candidate; ranges union remote evidence. |
-| `./x test [args]` | `go test ./...`, passing arguments through, without the host Pi lane. It names `./x pi-test run` and `./x gate` for the skipped lane and complete transaction. |
+| `./x test [args]` | `go test ./...`, passing arguments through, without the host Pi lane. It names `./x pi-test run` for focused Pi verification and `./x gate full` for terminal exhaustive verification. |
 | `./x pi-test run` | Run Pi tests on the pinned host Node runtime. The lane lock serializes each checkout; every run uses a narrow throwaway workspace. |
 | `./x clean-test-tmp [--all]` | Remove managed Linux/macOS test homes older than 24 hours, or all homes after warning. Partial cleanup exits nonzero. |
 | `./x lint` / `./x fmt` | Run `golangci-lint run` / `golangci-lint fmt`. |
