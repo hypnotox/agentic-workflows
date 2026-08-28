@@ -9,7 +9,11 @@
 package main
 
 import (
+	"archive/tar"
+	"compress/gzip"
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -18,6 +22,10 @@ import (
 	"net/http"
 	"net/url"
 	"os"
+	"os/exec"
+	"path"
+	"path/filepath"
+	"sort"
 	"strings"
 
 	changelogfs "github.com/hypnotox/agentic-workflows/changelog"
@@ -42,6 +50,12 @@ func dispatch(args []string, root, changelogFS fs.FS, stdout, stderr io.Writer, 
 			return 1
 		}
 		return 0
+	case len(args) == 2 && args[0] == "--verify-archives":
+		if err := verifyArchives(args[1]); err != nil {
+			fmt.Fprintf(stderr, "releasecheck: release archives: %v\n", err)
+			return 1
+		}
+		return 0
 	case len(args) == 2 && args[0] == "--verify-release-notes":
 		expected, err := os.ReadFile(args[1])
 		if err != nil {
@@ -54,7 +68,7 @@ func dispatch(args []string, root, changelogFS fs.FS, stdout, stderr io.Writer, 
 		}
 		return 0
 	default:
-		fmt.Fprintln(stderr, "usage: releasecheck [--verify-ci <sha> | --verify-release-notes <curated-notes-file>]")
+		fmt.Fprintln(stderr, "usage: releasecheck [--verify-archives <dist-root> | --verify-ci <sha> | --verify-release-notes <curated-notes-file>]")
 		return 2
 	}
 }
@@ -262,6 +276,233 @@ func verifyRequiredJobs(jobs jobsResponse) error {
 		if !ok {
 			return fmt.Errorf("required CI job %q did not complete successfully", name)
 		}
+	}
+	return nil
+}
+
+// verifyArchives validates the release artifacts produced in dist. It owns the
+// release portability contract so CI can validate the exact snapshot it built.
+func verifyArchives(dist string) error {
+	return verifyArchivesWithExtractor(dist, restrictedRootlessExtract)
+}
+
+type archiveEntry struct {
+	name         string
+	mode         fs.FileMode
+	uid, gid     int
+	uname, gname string
+	regular      bool
+}
+
+type releaseArchive struct {
+	name, path, version, os, arch string
+}
+
+var releaseTargets = []struct{ os, arch string }{
+	{"darwin", "amd64"}, {"darwin", "arm64"}, {"linux", "amd64"}, {"linux", "arm64"},
+}
+
+func verifyArchivesWithExtractor(dist string, extract func(string, string) error) error {
+	entries, err := os.ReadDir(dist)
+	if err != nil {
+		return fmt.Errorf("read dist root: %w", err)
+	}
+	archives := make(map[string]releaseArchive, len(releaseTargets))
+	version := ""
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), "awf_") {
+			continue
+		}
+		if !entry.Type().IsRegular() {
+			return fmt.Errorf("unexpected release artifact %q", entry.Name())
+		}
+		archive, ok := parseReleaseArchive(entry.Name())
+		if !ok {
+			return fmt.Errorf("unexpected release artifact %q", entry.Name())
+		}
+		key := archive.os + "/" + archive.arch
+		if _, exists := archives[key]; exists {
+			return fmt.Errorf("duplicate release archive for %s", key)
+		}
+		if version == "" {
+			version = archive.version
+		} else if archive.version != version {
+			return fmt.Errorf("release archive %q has version %q, want %q", archive.name, archive.version, version)
+		}
+		archive.path = filepath.Join(dist, entry.Name())
+		archives[key] = archive
+	}
+	for _, target := range releaseTargets {
+		key := target.os + "/" + target.arch
+		if _, ok := archives[key]; !ok {
+			return fmt.Errorf("missing release archive for %s", key)
+		}
+	}
+	if err := verifyArchiveChecksums(filepath.Join(dist, "checksums.txt"), archives); err != nil {
+		return err
+	}
+	for _, target := range releaseTargets {
+		archive := archives[target.os+"/"+target.arch]
+		contents, err := readArchive(archive.path)
+		if err != nil {
+			return fmt.Errorf("read archive %q: %w", archive.name, err)
+		}
+		if err := verifyArchiveContents(archive, contents); err != nil {
+			return err
+		}
+	}
+	linux := archives["linux/amd64"]
+	extracted, err := os.MkdirTemp(dist, ".releasecheck-extract-")
+	if err != nil {
+		return fmt.Errorf("prepare restricted rootless extraction: %w", err)
+	}
+	defer os.RemoveAll(extracted)
+	if err := extract(linux.path, extracted); err != nil {
+		return fmt.Errorf("restricted rootless extraction failed for %q: %w", linux.name, err)
+	}
+	return nil
+}
+
+func parseReleaseArchive(name string) (releaseArchive, bool) {
+	for _, target := range releaseTargets {
+		suffix := "_" + target.os + "_" + target.arch + ".tar.gz"
+		if strings.HasPrefix(name, "awf_") && strings.HasSuffix(name, suffix) && len(name) > len("awf_")+len(suffix) {
+			version := strings.TrimSuffix(strings.TrimPrefix(name, "awf_"), suffix)
+			return releaseArchive{name: name, version: version, os: target.os, arch: target.arch}, true
+		}
+	}
+	return releaseArchive{}, false
+}
+
+func verifyArchiveChecksums(checksumPath string, archives map[string]releaseArchive) error {
+	raw, err := os.ReadFile(checksumPath)
+	if err != nil {
+		return fmt.Errorf("read checksums: %w", err)
+	}
+	checksums := map[string]string{}
+	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
+		fields := strings.Fields(line)
+		if len(fields) != 2 || len(fields[0]) != sha256.Size*2 || strings.Trim(fields[1], "*") != fields[1] {
+			return fmt.Errorf("malformed checksum entry %q", line)
+		}
+		if _, err := hex.DecodeString(fields[0]); err != nil || strings.ToLower(fields[0]) != fields[0] {
+			return fmt.Errorf("malformed checksum entry %q", line)
+		}
+		if _, exists := checksums[fields[1]]; exists {
+			return fmt.Errorf("duplicate checksum entry for %q", fields[1])
+		}
+		checksums[fields[1]] = fields[0]
+	}
+	if len(checksums) != len(archives) {
+		return fmt.Errorf("checksum entries do not match release archives")
+	}
+	for _, target := range releaseTargets {
+		archive := archives[target.os+"/"+target.arch]
+		want, ok := checksums[archive.name]
+		if !ok {
+			return fmt.Errorf("missing checksum for %q", archive.name)
+		}
+		file, err := os.Open(archive.path)
+		if err != nil {
+			return fmt.Errorf("read archive %q: %w", archive.name, err)
+		}
+		hash := sha256.New()
+		_, copyErr := io.Copy(hash, file)
+		closeErr := file.Close()
+		if copyErr != nil || closeErr != nil {
+			return fmt.Errorf("read archive %q", archive.name)
+		}
+		if fmt.Sprintf("%x", hash.Sum(nil)) != want {
+			return fmt.Errorf("checksum mismatch for %q", archive.name)
+		}
+	}
+	return nil
+}
+
+func readArchive(filename string) ([]archiveEntry, error) {
+	file, err := os.Open(filename)
+	if err != nil {
+		return nil, err
+	}
+	defer file.Close()
+	compressed, err := gzip.NewReader(file)
+	if err != nil {
+		return nil, err
+	}
+	defer compressed.Close()
+	reader := tar.NewReader(compressed)
+	var entries []archiveEntry
+	for {
+		header, err := reader.Next()
+		if err == io.EOF {
+			return entries, nil
+		}
+		if err != nil {
+			return nil, err
+		}
+		if _, err := io.Copy(io.Discard, reader); err != nil {
+			return nil, err
+		}
+		entries = append(entries, archiveEntry{header.Name, header.FileInfo().Mode(), header.Uid, header.Gid, header.Uname, header.Gname, header.Typeflag == tar.TypeReg})
+	}
+}
+
+func verifyArchiveContents(archive releaseArchive, entries []archiveEntry) error {
+	want := map[string]fs.FileMode{"LICENSE": 0o644, "README.md": 0o644, "awf": 0o755}
+	seen := make(map[string]bool, len(entries))
+	for _, entry := range entries {
+		if !safeArchivePath(entry.name) {
+			return fmt.Errorf("archive %q has unsafe path %q", archive.name, entry.name)
+		}
+		mode, wanted := want[entry.name]
+		if !wanted || seen[entry.name] {
+			return fmt.Errorf("archive %q has unexpected member %q", archive.name, entry.name)
+		}
+		seen[entry.name] = true
+		if !entry.regular {
+			return fmt.Errorf("archive %q member %q is not a regular file", archive.name, entry.name)
+		}
+		if entry.mode != mode {
+			return fmt.Errorf("archive %q member %q mode %v, want %#o", archive.name, entry.name, entry.mode, mode)
+		}
+		if archive.os == "linux" && (entry.uid != 0 || entry.gid != 0 || entry.uname != "root" || entry.gname != "root") {
+			return fmt.Errorf("archive %q member %q ownership is not root:root", archive.name, entry.name)
+		}
+		if archive.os != "linux" && (entry.uname == "root" || entry.gname == "root") {
+			return fmt.Errorf("archive %q member %q has unexpected root ownership", archive.name, entry.name)
+		}
+	}
+	for name := range want {
+		if !seen[name] {
+			return fmt.Errorf("archive %q is missing member %q", archive.name, name)
+		}
+	}
+	return nil
+}
+
+func safeArchivePath(name string) bool {
+	return name != "" && !strings.ContainsRune(name, '\x00') && !path.IsAbs(name) && path.Clean(name) == name && name != "." && !strings.HasPrefix(name, "../")
+}
+
+func restrictedRootlessExtract(archive, destination string) error {
+	if err := os.MkdirAll(destination, 0o755); err != nil {
+		return err
+	}
+	cmd := exec.Command("unshare", "--user", "--map-root-user", "tar", "-xzf", archive, "-C", destination)
+	if out, err := cmd.CombinedOutput(); err != nil {
+		return fmt.Errorf("%w: %s", err, strings.TrimSpace(string(out)))
+	}
+	entries, err := os.ReadDir(destination)
+	if err != nil {
+		return err
+	}
+	names := make([]string, 0, len(entries))
+	for _, entry := range entries {
+		names = append(names, entry.Name())
+	}
+	sort.Strings(names)
+	if strings.Join(names, ",") != "LICENSE,README.md,awf" {
+		return fmt.Errorf("extracted members are not canonical")
 	}
 	return nil
 }

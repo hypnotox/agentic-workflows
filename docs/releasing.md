@@ -14,7 +14,7 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
    ./awf audit <previous-tag>..HEAD
    ```
 
-   The audit is advisory but must be clean. The required range starts at the previous tag and includes the commits being shipped, including stale-ADR authorization replay for schema-31-and-later merges. Local hooks are optional preflight. Before tagging, require the pushed `main` commit's CI run to succeed; the tag workflow verifies the release again.
+   The audit is advisory but must be clean. The required range starts at the previous tag and includes the commits being shipped, including stale-ADR authorization replay for schema-31-and-later merges. Local hooks are optional preflight. Before tagging, require the pushed `main` commit's complete CI run to succeed; the tag workflow consumes those exact-revision conclusions and verifies publication identity.
 
 2. Set `internal/project/VERSION` to the target `MAJOR.MINOR.PATCH` with its standing newline. Promote `changelog/CHANGELOG.md`'s entries: rename `## [Unreleased]` to `## [0.2.0] - YYYY-MM-DD`, then add a new empty `## [Unreleased]` above it. Entries are grouped by adopter-facing effect: Breaking changes, Features, Bug fixes, or Others.
 
@@ -26,7 +26,7 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
    git commit -m "chore(awf): bump version to v0.2.0"
    ```
 
-   A schema-coupled bump often already changed the version mid-cycle. It changes the version file and lock, not the changelog. During development the gate requires descending changelog entries with the newest at or below `project.Version`; releasecheck requires an exact newest-version match and an empty `[Unreleased]`. The canonical three-file release-prep transaction skips Go and Pi test suites locally while versioncheck and every static gate still run. The clean tag checkout later fails safe to both suites and reruns the complete gate before publication.
+   A schema-coupled bump often already changed the version mid-cycle. It changes the version file and lock, not the changelog. During development the gate requires descending changelog entries with the newest at or below `project.Version`; releasecheck requires an exact newest-version match and an empty `[Unreleased]`. The canonical three-file release-prep transaction skips Go and Pi test suites locally while versioncheck and every static gate still run. The pushed commit's required CI conclusions supply complete native, policy, coverage, Pi, mutation, and release-configuration assurance before tagging.
 
 3. Push `main` and wait for that commit's `CI / gate` and `CI / release-config` checks to succeed. The live `main` ruleset requires both checks from GitHub Actions without bypass actors. Then tag and push the matching version:
 
@@ -39,20 +39,19 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
 
 4. Watch the `Release` workflow. On success, Releases contains four archives, `checksums.txt`, and curated changelog notes. Linux tarballs record portable `root:root` ownership, executable mode for `awf`, and regular-file modes for `LICENSE` and `README.md`, so they extract under a restricted rootless user namespace as well as an ordinary user.
 
-The live GitHub `release tags` ruleset covers `refs/tags/v*` without bypass actors and requires successful `CI / gate` and `CI / release-config` checks from GitHub Actions on the exact target revision before tag creation or update. After GitHub accepts the tag, `.github/workflows/release.yml` verifies the canonical AGPL-3.0-only license artifacts, the same exact-SHA conclusions, tag ancestry on `main`, `project.Version`, the changelog, and `./x gate full && ./x check` before its needs-bound credential-bearing GoReleaser job. GoReleaser builds linux and darwin archives for amd64/arm64, bundles `LICENSE` and `README.md`, writes `checksums.txt`, and uses curated notes through `--release-notes`. It refuses a dirty checkout, including untracked files; workflow artifacts therefore belong under `$RUNNER_TEMP` or a deliberately ignored path. Release notes use `"$RUNNER_TEMP/release-notes.md"`. Commit-derived GoReleaser notes are disabled (ADR-0096).
+The live GitHub `release tags` ruleset covers `refs/tags/v*` without bypass actors and requires successful `CI / gate` and `CI / release-config` checks from GitHub Actions on the exact target revision before tag creation or update. `CI / release-config` constructs one production-equivalent snapshot and validates its membership, checksums, modes, ownership, and restricted rootless extraction against those same bytes. After GitHub accepts the tag, `.github/workflows/release.yml` verifies the same exact-SHA conclusions, checkout and tag identity, tag ancestry on `main`, `project.Version`, and curated notes before its needs-bound credential-bearing GoReleaser job. It does not repeat full repository or artifact assurance. GoReleaser builds linux and darwin archives for amd64/arm64, bundles `LICENSE` and `README.md`, writes `checksums.txt`, and uses curated notes through `--release-notes`. It refuses a dirty checkout, including untracked files; workflow artifacts therefore belong under `$RUNNER_TEMP` or a deliberately ignored path. Release notes use `"$RUNNER_TEMP/release-notes.md"`. Commit-derived GoReleaser notes are disabled (ADR-0096).
 
 ## Versioning
 
 awf is pre-1.0 and uses `vMAJOR.MINOR.PATCH` SemVer. The newline-terminated `internal/project/VERSION`, embedded as `project.Version`, is the single authority (ADR-0049): it drives `awf version`, lock `AWFVersion`, the bootstrap pin, and the binary-version gate. The tag must match it. `cmd/releasecheck` requires the canonical AGPL-3.0-only `LICENSE`, matching README badge and footer, archive inclusion, a newest changelog entry equal to `project.Version`, and an empty standing `[Unreleased]` section (ADR-0078). `minVersionBySchema` must cover the current schema generation at or below `project.Version`.
 
-## Preview locally
+## Validate configuration locally
 
 ```
 go run github.com/goreleaser/goreleaser/v2@v2.17.0 check
-go run github.com/goreleaser/goreleaser/v2@v2.17.0 release --snapshot --clean
 ```
 
-Keep the command version aligned with workflow `version:`; `cmd/pincheck` enforces the workflow pin (ADR-0079). `--snapshot` writes ignored `dist/` artifacts and does not publish. CI runs both commands in the `release-config` pull-request job.
+Keep the command version aligned with workflow `version:`; `cmd/pincheck` enforces the workflow pin (ADR-0079). Production snapshot construction and portability validation belong to the `CI / release-config` job. Ordinary local Go tests use synthetic archive fixtures and never invoke GoReleaser.
 
 ## Rollback
 
@@ -78,5 +77,5 @@ Adopter projects use permanent lock authority. A supported schema upgrade journa
 
 ### Exact revision acceptance
 
-Release verification reads the successful `CI / gate` and `CI / release-config` conclusions for the exact tag SHA before publication. The live tag ruleset requires the same app-bound conclusions before `refs/tags/v*` can be created or updated. The workflow checks out and rechecks that tag SHA immediately before GoReleaser. The verification job has read-only Actions credentials; the credential-bearing publish job needs it and retains curated notes, the project version, ancestry, and the previous-release-tag-to-candidate mutation range supplied to the full gate. These controls constrain publication; they are not an independent authenticity system for artifacts and checksums distributed through the same channel.
+Release verification reads the successful `CI / gate` and `CI / release-config` conclusions for the exact tag SHA before publication. The live tag ruleset requires the same app-bound conclusions before `refs/tags/v*` can be created or updated. The workflow checks out and rechecks that tag SHA immediately before GoReleaser. The verification job has read-only Actions credentials; the credential-bearing publish job needs it and retains curated notes, the project version, and ancestry. Native shards, coverage policy, Pi behavior, analysis, cross-builds, selected mutation, and production snapshot validation remain owned by the exact-revision CI run. These controls constrain publication; they are not an independent authenticity system for artifacts and checksums distributed through the same channel.
 

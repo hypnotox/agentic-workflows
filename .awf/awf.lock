@@ -818,8 +818,8 @@
     "docs/releasing.md": {
       "templateId": "docs/releasing.md.tmpl",
       "templateHash": "sha256:0683f8ceca62d4c5c91ce1058d1e2970f4336aced06b298b7ea3ef8cc328d78c",
-      "configHash": "sha256:97acded00ad1b482ec4f6870b26f9a1f7ca9dae611f0dd9bfba77be92a08decb",
-      "outputHash": "sha256:3144eefb9b68634543ac041a4e6941236aa79323be849ca1541cd31fe6c6ad15"
+      "configHash": "sha256:af02af05d89419573bd130ecfbe916c9b5d3ba6bc2c9b123cad47e129c0cd713",
+      "outputHash": "sha256:7c4e809c8e230654af41ccb6758c7a6ffc4d94d1fe1054e627c55ffb17303e6f"
     },
     "docs/research/index.md": {
       "templateId": "docs/local.md.tmpl",
@@ -837,8 +837,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:7195d966da7bffae968f42c8c7a9125eb16c001bce4a5d13ef1279f45ad41213",
-      "configHash": "sha256:b71db098220fa00d8a032386d1cf491071dbc58c926c2c1352ba1ffb6c1fd677",
-      "outputHash": "sha256:631ccd0d29c1ab6aab6476b955c350145437ef3af7bd0e9752360a4109599b44"
+      "configHash": "sha256:676aba24e05fe0556f01c48977f2cedff1ac229df350cb487b819de713870d1d",
+      "outputHash": "sha256:afddcf702986558eeee6e46fdb3397ae10166ad968aa023070033acc393bdc7a"
     },
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -1077,8 +1077,8 @@
     "docs/topics/tooling/changelog-and-release.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:5adc4623190cba3865b97643bd41625fdeb3a7d172b2d8f36dc94191aa863f41",
-      "outputHash": "sha256:95fd1e776ee230e6dee6b87848b3468a0bbba97f02f248bf2bb214a6498b2f08"
+      "configHash": "sha256:5fbbd6423756c095f43f79d21ffb56a65868aebf7d714b7f1129755ebcc70de8",
+      "outputHash": "sha256:9ae65d00234447d5df605c2afe137f60fb1ba38c381a7a3de91d2c921dfb3b68"
     },
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",
@@ -1149,8 +1149,8 @@
     "docs/topics/tooling/quality-gates.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:02c2f1e7f916a83a44b0b9701579a52e09175471b92a7bd7d5363cafc4974b36",
-      "outputHash": "sha256:e4b34c776e930609416115a81a29437ae68ea5c1221edb064ebe9230cdbcc84c"
+      "configHash": "sha256:37c8e9cf3d9340d8286b2d553db4082f26ad5002bd5bb7e066c5132f55f49f80",
+      "outputHash": "sha256:64ecb14d515e92391687a6a0491c543390b6ea582da32c606cf0e9c09c760982"
     },
     "docs/topics/tooling/test-infrastructure.md": {
       "templateId": "topics/topic.md.tmpl",

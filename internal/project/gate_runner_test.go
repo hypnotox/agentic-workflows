@@ -25,7 +25,7 @@ import (
 func TestGateRunnerModes(t *testing.T) {
 	root, logPath := gateRunnerFixture(t)
 	shardEnvPath := filepath.Join(root, "shard-environments.log")
-	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\nif [[ \"$*\" == *'rev-parse --show-toplevel'* ]]; then pwd; exit 0; fi\nif [[ \"$*\" == *cat-file* ]]; then exit 0; fi\nif [[ \"$*\" == *diff* ]]; then [ -z \"${FAKE_GIT_CHANGED_PATH:-}\" ] || printf '%s\\0' \"$FAKE_GIT_CHANGED_PATH\"; exit 0; fi\nexit 0\n")
+	testsupport.WriteFile(t, filepath.Join(root, "fake-bin", "git"), "#!/usr/bin/env bash\nif [ \"$*\" = 'rev-parse HEAD' ]; then printf 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa\\n'; exit 0; fi\nif [[ \"$*\" == *'rev-parse --show-toplevel'* ]]; then pwd; exit 0; fi\nif [[ \"$*\" == *cat-file* ]]; then exit 0; fi\nif [[ \"$*\" == *diff* ]]; then [ -z \"${FAKE_GIT_CHANGED_PATH:-}\" ] || printf '%s\\0' \"$FAKE_GIT_CHANGED_PATH\"; exit 0; fi\nexit 0\n")
 	if err := os.Chmod(filepath.Join(root, "fake-bin", "git"), 0o755); err != nil {
 		t.Fatal(err)
 	}
@@ -106,6 +106,59 @@ func TestGateRunnerModes(t *testing.T) {
 			}
 		})
 	}
+	t.Run("hosted workload primitive uses the same qualified slice", func(t *testing.T) {
+		out, status, got := run("native-shard", "--workload", "3-0")
+		if status != 0 {
+			t.Fatalf("status=%d output=%q", status, out)
+		}
+		if len(got) != 1 || !strings.Contains(got[0], "|test -p=1") || strings.Contains(got[0], "-coverprofile") {
+			t.Fatalf("native workload invocation=%q", got)
+		}
+		assertShardWorkloadEnvironment(t, shardEnvPath, "test -p=1", "2")
+		out, status, _ = run("native-shard", "--workload", "3-1")
+		if status != 2 || !strings.Contains(out, "invalid workload") {
+			t.Fatalf("invalid workload status=%d output=%q", status, out)
+		}
+	})
+	t.Run("hosted coverage evidence is exact and complete", func(t *testing.T) {
+		const candidate = "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+		artifacts := filepath.Join(root, "coverage-artifacts")
+		workloads := []string{"0-0", "0-1", "0-2", "0-3", "1-0", "1-1", "1-2", "1-3", "2-0", "2-1", "2-2", "3-0"}
+		for _, workload := range workloads {
+			directory := filepath.Join(artifacts, "coverage-"+workload)
+			out, status, _ := run("coverage-produce", workload, directory, candidate)
+			if status != 0 {
+				t.Fatalf("produce %s: status=%d output=%q", workload, status, out)
+			}
+		}
+		out, status, got := run("coverage-aggregate", artifacts)
+		if status != 0 || !strings.Contains(strings.Join(got, "\n"), "run ./cmd/covercheck --policy coverage.out coverage-baseline.json") {
+			t.Fatalf("aggregate status=%d output=%q invocations=%q", status, out, got)
+		}
+
+		manifest := filepath.Join(artifacts, "coverage-0-0", "manifest-0-0")
+		raw, err := os.ReadFile(manifest)
+		if err != nil {
+			t.Fatal(err)
+		}
+		if err := os.WriteFile(manifest, []byte(strings.Replace(string(raw), candidate, strings.Repeat("b", 40), 1)), 0o600); err != nil {
+			t.Fatal(err)
+		}
+		out, status, _ = run("coverage-aggregate", artifacts)
+		if status == 0 || !strings.Contains(out, "foreign SHA, platform, or toolchain evidence") {
+			t.Fatalf("foreign evidence status=%d output=%q", status, out)
+		}
+		if err := os.WriteFile(manifest, raw, 0o600); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(filepath.Join(artifacts, "coverage-3-0", "profile-3-0.out")); err != nil {
+			t.Fatal(err)
+		}
+		out, status, _ = run("coverage-aggregate", artifacts)
+		if status == 0 || !strings.Contains(out, "unexpected artifact files") {
+			t.Fatalf("missing profile status=%d output=%q", status, out)
+		}
+	})
 	_, _, fast := run("gate")
 	_, _, full := run("gate", "full", "--range", "base", "head")
 	fast = normalizeGateInvocations(fast)
@@ -208,7 +261,7 @@ func assertShardContracts(t *testing.T, invocations []string, environmentPath st
 		counts := map[string]int{}
 		seenSlices := 0
 		for _, invocation := range invocations {
-			if !strings.Contains(invocation, "/shard"+strconv.Itoa(group)+"-") {
+			if !strings.Contains(invocation, "test -p=1") || !strings.Contains(invocation, "/shard"+strconv.Itoa(group)+"-") {
 				continue
 			}
 			seenSlices++
@@ -262,6 +315,18 @@ func assertShardContracts(t *testing.T, invocations []string, environmentPath st
 		if gmp != wantGMP {
 			t.Errorf("shard processor bound for %q = %s, want %s", invocation, gmp, wantGMP)
 		}
+	}
+}
+
+func assertShardWorkloadEnvironment(t *testing.T, path, profile, wantGMP string) {
+	t.Helper()
+	data, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	parts := strings.Split(strings.TrimSpace(string(data)), "|")
+	if len(parts) != 5 || parts[3] != wantGMP || !strings.Contains(parts[4], profile) {
+		t.Fatalf("hosted workload environment = %q, want profile %q and GOMAXPROCS=%s", data, profile, wantGMP)
 	}
 }
 
@@ -515,9 +580,12 @@ func TestCovercheckMutantsRunnerContract(t *testing.T) {
 			if err := os.Chmod(filepath.Join(root, "fake-bin", "git"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			_, got, logged := run(nil, append([]string{"covercheck-mutants", "--evidence", "evidence"}, tc.args...)...)
+			output, got, logged := run(nil, append([]string{"covercheck-mutants", "--evidence", "evidence"}, tc.args...)...)
 			if tc.wantRun && (got != 0 || !slices.Contains(logged, "validate")) {
 				t.Fatalf("status=%d log=%q", got, logged)
+			}
+			if tc.name == "range rename pair selects destination" && strings.Contains(output, "uncertain change selection") {
+				t.Fatalf("valid range was treated as uncertain: %q", output)
 			}
 			if !tc.wantRun && (got != 0 || slices.Contains(logged, "validate")) {
 				t.Fatalf("status=%d log=%q", got, logged)
@@ -640,18 +708,78 @@ func TestCoverageActivationContracts(t *testing.T) {
 	ci := string(workflow)
 	for _, required := range []string{
 		"fetch-depth: 0",
-		"EVENT: ${{ github.event_name }}",
-		"PR_BASE: ${{ github.event.pull_request.base.sha }}",
-		"PUSH_BASE: ${{ github.event.before }}",
-		`./x gate full --range "$base" "$CANDIDATE"`,
+		"EVENT: '${{ github.event_name }}'",
+		"PR_BASE: '${{ github.event.pull_request.base.sha }}'",
+		"PUSH_BASE: '${{ github.event.before }}'",
+		`./x covercheck-mutants --select-range "$base" '${{ github.sha }}'`,
 	} {
 		if !strings.Contains(ci, required) {
 			t.Errorf("CI missing mutation contract %q", required)
 		}
 	}
-	if strings.Contains(ci, "covercheck-mutants") {
-		t.Error("CI must delegate range-qualified mutation to the full gate")
+	if strings.Contains(ci, `./x gate full --range`) {
+		t.Error("CI must not rerun all native assurance for range-qualified mutation")
 	}
+}
+
+func TestHostedShardWorkflowContracts(t *testing.T) {
+	data, err := os.ReadFile("../../.github/workflows/ci.yml")
+	if err != nil {
+		t.Fatal(err)
+	}
+	var document yaml.Node
+	if err := yaml.Unmarshal(data, &document); err != nil {
+		t.Fatal(err)
+	}
+	jobs := yamlMapValue(t, document.Content[0], "jobs")
+	for _, job := range []string{"linux-coverage", "coverage-policy", "macos-native", "pi", "analysis", "mutation", "gate", "release-config"} {
+		if yamlMapValue(t, jobs, job) == nil {
+			t.Errorf("CI lacks %s job", job)
+		}
+	}
+	wantWorkloads := []string{"0-0", "0-1", "0-2", "0-3", "1-0", "1-1", "1-2", "1-3", "2-0", "2-1", "2-2", "3-0"}
+	for _, job := range []string{"linux-coverage", "macos-native"} {
+		jobNode := yamlMapValue(t, jobs, job)
+		strategy := yamlMapValue(t, jobNode, "strategy")
+		if got := yamlMapValue(t, strategy, "fail-fast"); got == nil || got.Value != "false" {
+			t.Errorf("%s must disable matrix fail-fast", job)
+		}
+		workloads := yamlMapValue(t, yamlMapValue(t, strategy, "matrix"), "workload")
+		var got []string
+		for _, item := range workloads.Content {
+			got = append(got, item.Value)
+		}
+		if !slices.Equal(got, wantWorkloads) {
+			t.Errorf("%s workloads = %q, want %q", job, got, wantWorkloads)
+		}
+	}
+	gate := yamlMapValue(t, jobs, "gate")
+	if got := yamlMapValue(t, gate, "needs"); got == nil || len(got.Content) != 5 {
+		t.Error("stable gate must directly fan in all five assurance owners")
+	}
+	text := string(data)
+	for _, required := range []string{
+		"./x coverage-produce", "./x coverage-aggregate coverage-artifacts", "./x native-shard --workload", "./x covercheck-mutants --select-range",
+		"actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02", "actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093",
+		"go run ./cmd/releasecheck --verify-archives dist",
+	} {
+		if !strings.Contains(text, required) {
+			t.Errorf("CI lacks hosted shard contract %q", required)
+		}
+	}
+}
+
+func yamlMapValue(t *testing.T, mapping *yaml.Node, key string) *yaml.Node {
+	t.Helper()
+	if mapping == nil || mapping.Kind != yaml.MappingNode {
+		return nil
+	}
+	for i := 0; i < len(mapping.Content); i += 2 {
+		if mapping.Content[i].Value == key {
+			return mapping.Content[i+1]
+		}
+	}
+	return nil
 }
 
 func mutationRunnerFixture(t *testing.T) (string, string) {
@@ -730,6 +858,10 @@ if [ "${1:-}" = env ]; then
   esac
   exit 0
 fi
+if [ "$*" = version ]; then
+  printf 'go version go1.26.4 linux/amd64\n'
+  exit 0
+fi
 if [ "$*" = "list -f {{.ImportPath}} ./..." ]; then
   printf '%s\n' \
     github.com/hypnotox/agentic-workflows/cmd/awf \
@@ -743,8 +875,11 @@ if [[ "$*" == test\ -list* ]]; then
   exit 0
 fi
 printf 'goos=%s|goarch=%s|pi=%s|%s\n' "${GOOS:-}" "${GOARCH:-}" "${AWF_PI_RUNTIME_SMOKE:-}" "$*" >>"$INVOCATION_LOG"
-if [[ "$*" == test\ -p=1* && "$*" == *"/shard"*".out"* ]]; then
+if [[ "$*" == test\ -p=1* ]]; then
   printf '%s|%s|%s|%s|%s\n' "$HOME" "$TMPDIR" "$GOTMPDIR" "$GOMAXPROCS" "$*" >>"$SHARD_ENV_LOG"
+  for argument in "$@"; do
+    case "$argument" in -coverprofile=*) printf 'mode: set\nexample.go:1.1,1.2 1 1\n' >"${argument#-coverprofile=}";; esac
+  done
 fi
 if [ -n "${FAKE_GO_OUTPUT_CONTAINS:-}" ] && [[ "$*" == *"$FAKE_GO_OUTPUT_CONTAINS"* ]]; then
   printf '%s\n' "${FAKE_GO_OUTPUT:-}"
@@ -757,6 +892,9 @@ if [ -n "${FAKE_GO_FAIL_GOOS:-}" ] && [ "${GOOS:-}" = "$FAKE_GO_FAIL_GOOS" ] && 
 fi
 if [[ "$*" == "test -json ./internal/publisher -run ^TestPiRealRuntimeSmoke$ -count=1" ]]; then
   printf '{"Time":"2026-08-02T00:00:00Z","Action":"%s","Package":"example/project","Test":"TestPiRealRuntimeSmoke","Elapsed":0}\n' "${FAKE_PI_RESULT:-pass}"
+fi
+if [[ "$*" == run\ ./cmd/covercheck\ --merge* ]]; then
+  printf 'mode: set\nexample.go:1.1,1.2 1 1\n'
 fi
 `
 	testsupport.WriteFile(t, filepath.Join(fakeBin, "go"), fakeGo)

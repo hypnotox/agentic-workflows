@@ -49,7 +49,8 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 		"live GitHub `release tags` ruleset covers `refs/tags/v*` without bypass actors",
 		"requires successful `CI / gate` and `CI / release-config` checks",
 		"needs-bound credential-bearing GoReleaser job",
-		"`./x gate full && ./x check` before",
+		"Production snapshot construction and portability validation belong to the `CI / release-config` job.",
+		"Ordinary local Go tests use synthetic archive fixtures and never invoke GoReleaser.",
 	} {
 		if !strings.Contains(releasing, want) {
 			t.Errorf("self-hosted release guidance missing remote-policy contract %q", want)
@@ -72,19 +73,27 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 }
 
 func TestHostedGatesProvideRestrictedRootlessExtraction(t *testing.T) {
-	for _, path := range []string{".github/workflows/ci.yml", ".github/workflows/release.yml"} {
-		body, err := os.ReadFile(filepath.Join(repoRootDir(t), path))
-		if err != nil {
-			t.Fatalf("read %s: %v", path, err)
+	body, err := os.ReadFile(filepath.Join(repoRootDir(t), ".github/workflows/ci.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, want := range []string{
+		"kernel.apparmor_restrict_unprivileged_userns",
+		"unshare --user --map-root-user true",
+		"go run ./cmd/releasecheck --verify-archives dist",
+	} {
+		if !strings.Contains(string(body), want) {
+			t.Errorf("CI release-config does not provide %q", want)
 		}
-		workflow := string(body)
-		for _, want := range []string{
-			"kernel.apparmor_restrict_unprivileged_userns",
-			"unshare --user --map-root-user true",
-		} {
-			if !strings.Contains(workflow, want) {
-				t.Errorf("%s does not provide the restricted rootless extraction prerequisite %q", path, want)
-			}
+	}
+
+	release, err := os.ReadFile(filepath.Join(repoRootDir(t), ".github/workflows/release.yml"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, stale := range []string{"Gate (full release assurance)", "Drift check (rendered output matches config)", "unshare --user --map-root-user true"} {
+		if strings.Contains(string(release), stale) {
+			t.Errorf("release repeats CI-owned assurance %q", stale)
 		}
 	}
 }

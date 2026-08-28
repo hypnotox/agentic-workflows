@@ -40,9 +40,9 @@ Backing: test
 
 ### `invariant: release-gate-on-tag`
 
-The release workflow verifies successful exact-SHA CI conclusions, checkout and tag identity, origin/main ancestry, ./x gate full with previous-release range selection, and ./x check before its needs-bound credential-bearing GoReleaser publish step.
+The release workflow verifies successful exact-SHA CI conclusions, checkout and tag identity, origin/main ancestry, the release version, and curated notes before its needs-bound credential-bearing GoReleaser publish step. The stable CI release-configuration conclusion owns production snapshot construction and portability validation; the tag workflow does not repeat full repository assurance.
 Origin: ADR-0079
-Revised-by: ADR-0308, ADR-0313
+Revised-by: ADR-0308, ADR-0313, ADR-0314
 Backing: test
 
 ### `invariant: release-platforms`

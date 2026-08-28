@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"compress/gzip"
 	"context"
+	"crypto/sha256"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -14,9 +15,8 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"slices"
-	"strconv"
+	"sort"
 	"strings"
 	"testing"
 	"testing/fstest"
@@ -173,9 +173,9 @@ func TestUnreleasedBodyAtEOF(t *testing.T) {
 	}
 }
 
-// TestReleaseWorkflowGatesOnTag backs inv: release-gate-on-tag (ADR-0079) - the
-// Release workflow must run the ancestry check, ./x gate, and ./x check before
-// the GoReleaser step, so an untested or off-main tag cannot publish.
+// TestReleaseWorkflowGatesOnTag backs inv: release-gate-on-tag (ADR-0079).
+// Release publication consumes exact-SHA CI conclusions rather than rebuilding
+// their assurance, then retains tag identity and main ancestry before credentials.
 // invariant: tooling/changelog-and-release:release-gate-on-tag (TestReleaseWorkflowGatesOnTag)
 func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 	b, err := os.ReadFile("../../.github/workflows/release.yml")
@@ -188,9 +188,9 @@ func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 		t.Fatal("release.yml does not run the GoReleaser action")
 	}
 	for _, step := range []string{
+		`go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"`,
 		"git merge-base --is-ancestor HEAD origin/main",
-		"./x gate full",
-		"run: ./x check",
+		`[ "$(git rev-parse HEAD)" = "$candidate" ]`,
 	} {
 		idx := strings.Index(wf, step)
 		if idx < 0 {
@@ -199,6 +199,11 @@ func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 		}
 		if idx > build {
 			t.Errorf("%q must run before the GoReleaser step", step)
+		}
+	}
+	for _, duplicate := range []string{"./x gate", "./x check", "./x pi-test", "unshare --user"} {
+		if strings.Contains(wf, duplicate) {
+			t.Errorf("release.yml repeats CI-owned assurance %q", duplicate)
 		}
 	}
 }
@@ -597,56 +602,40 @@ func TestExactRevisionWorkflowContract(t *testing.T) {
 	}{
 		{"missing stable gate job", func(ci, _ map[string]any) { delete(workflowJobs(ci), "gate") }},
 		{"missing stable release-config job", func(ci, _ map[string]any) { delete(workflowJobs(ci), "release-config") }},
-		{"missing macOS dependency", func(ci, _ map[string]any) { workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"linux-full"} }},
+		{"renamed stable gate", func(ci, _ map[string]any) { workflowMap(workflowJobs(ci)["gate"])["name"] = "aggregate" }},
+		{"missing coverage dependency", func(ci, _ map[string]any) {
+			workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"macos-native", "pi", "analysis", "mutation"}
+		}},
 		{"missing always aggregation", func(ci, _ map[string]any) { delete(workflowMap(workflowJobs(ci)["gate"]), "if") }},
-		{"no-op native result requirement", func(ci, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(ci)["gate"]), "Require native verification success")["run"] = "true"
+		{"no-op dependency acceptance", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["gate"]), "Require all direct assurance dependencies")["run"] = "true"
 		}},
-		{"no-op Linux architecture", func(ci, _ map[string]any) {
-			run := stringValue(workflowStep(workflowMap(workflowJobs(ci)["linux-full"]), "Verify native Linux amd64")["run"])
-			workflowStep(workflowMap(workflowJobs(ci)["linux-full"]), "Verify native Linux amd64")["run"] = "echo " + strconv.Quote(run)
+		{"no-op Linux identity", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["linux-coverage"]), "Verify exact native Linux candidate")["run"] = "true"
 		}},
-		{"no-op macOS architecture", func(ci, _ map[string]any) {
-			run := stringValue(workflowStep(workflowMap(workflowJobs(ci)["macos-go"]), "Verify native macOS arm64")["run"])
-			workflowStep(workflowMap(workflowJobs(ci)["macos-go"]), "Verify native macOS arm64")["run"] = "echo " + strconv.Quote(run)
+		{"no-op coverage aggregation", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["coverage-policy"]), "Validate evidence and enforce coverage policy")["run"] = "true"
 		}},
-		{"no-op macOS native Go", func(ci, _ map[string]any) {
-			steps := workflowSteps(workflowMap(workflowJobs(ci)["macos-go"]))
-			workflowMap(steps[len(steps)-1])["run"] = "echo 'go test ./...'"
+		{"no-op macOS identity", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["macos-native"]), "Verify exact native macOS candidate")["run"] = "true"
+		}},
+		{"missing release archive validation", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["release-config"]), "Verify exact snapshot archives")["run"] = "true"
 		}},
 		{"no-op exact SHA verification", func(_, release map[string]any) {
-			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify bridge readiness and exact CI conclusions")["run"] = `echo 'go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"'`
-		}},
-		{"release Node runtime environment", func(_, release map[string]any) {
-			delete(workflowMap(workflowMap(workflowJobs(release)["verify"])["env"]), "AWF_PI_TEST_SKIP_NVM")
-		}},
-		{"release Node action pin", func(_, release map[string]any) {
-			workflowUsesStep(workflowJobs(release)["verify"], "actions/setup-node@")["uses"] = "actions/setup-node@fixture"
-		}},
-		{"release Node version", func(_, release map[string]any) {
-			workflowMap(workflowUsesStep(workflowJobs(release)["verify"], "actions/setup-node@")["with"])["node-version-file"] = "other"
-		}},
-		{"release Node cache", func(_, release map[string]any) {
-			workflowMap(workflowUsesStep(workflowJobs(release)["verify"], "actions/setup-node@")["with"])["cache"] = "other"
-		}},
-		{"release Node cache dependency", func(_, release map[string]any) {
-			workflowMap(workflowUsesStep(workflowJobs(release)["verify"], "actions/setup-node@")["with"])["cache-dependency-path"] = "other"
-		}},
-		{"release uses fast gate", func(_, release map[string]any) {
-			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Gate (full release assurance)")["run"] = "./x gate"
-		}},
-		{"release full gate lacks range", func(_, release map[string]any) {
-			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Gate (full release assurance)")["run"] = "./x gate full"
-		}},
-		{"no-op release range script", func(_, release map[string]any) {
-			run := stringValue(workflowStep(workflowMap(workflowJobs(release)["verify"]), "Gate (full release assurance)")["run"])
-			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Gate (full release assurance)")["run"] = "echo " + strconv.Quote(run)
+			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify bridge readiness and exact CI conclusions")["run"] = "true"
 		}},
 		{"release checkout is not exact", func(_, release map[string]any) {
 			workflowMap(workflowMap(workflowSteps(workflowMap(workflowJobs(release)["verify"]))[0])["with"])["ref"] = "HEAD"
 		}},
-		{"duplicate macOS full lane", func(ci, _ map[string]any) {
-			workflowMap(workflowSteps(workflowMap(workflowJobs(ci)["macos-go"]))[len(workflowSteps(workflowMap(workflowJobs(ci)["macos-go"])))-1])["run"] = "./x gate full"
+		{"publication loses verify dependency", func(_, release map[string]any) {
+			delete(workflowMap(workflowJobs(release)["publish"]), "needs")
+		}},
+		{"publication identity becomes no-op", func(_, release map[string]any) {
+			workflowStep(workflowMap(workflowJobs(release)["publish"]), "Repeat tag identity before publication")["run"] = "true"
+		}},
+		{"release duplicates local gate", func(_, release map[string]any) {
+			workflowMap(workflowJobs(release)["verify"])["steps"] = append(workflowSteps(workflowJobs(release)["verify"]), map[string]any{"run": "./x gate full"})
 		}},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
@@ -683,52 +672,58 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 		problems = append(problems, "CI name")
 	}
 	ciJobs, releaseJobs := workflowJobs(ci), workflowJobs(release)
-	for _, name := range []string{"linux-full", "macos-go", "gate", "release-config"} {
+	requiredCI := []string{"linux-coverage", "coverage-policy", "macos-native", "pi", "analysis", "mutation", "gate", "release-config"}
+	for _, name := range requiredCI {
 		if _, ok := ciJobs[name]; !ok {
 			problems = append(problems, "CI job "+name)
 		}
 	}
-	linux, macOS, gate := workflowMap(ciJobs["linux-full"]), workflowMap(ciJobs["macos-go"]), workflowMap(ciJobs["gate"])
 	runEquals := func(job map[string]any, step, want string) bool {
 		return strings.TrimSpace(stringValue(workflowStep(job, step)["run"])) == strings.TrimSpace(want)
 	}
-	if !workflowNeeds(gate, "linux-full") || !workflowNeeds(gate, "macos-go") {
-		problems = append(problems, "gate native dependencies")
+	linux := workflowMap(ciJobs["linux-coverage"])
+	coverage := workflowMap(ciJobs["coverage-policy"])
+	macOS := workflowMap(ciJobs["macos-native"])
+	gate := workflowMap(ciJobs["gate"])
+	releaseConfig := workflowMap(ciJobs["release-config"])
+	if gate["name"] != "gate" || releaseConfig["name"] != "release-config" {
+		problems = append(problems, "stable required conclusion names")
 	}
-	const nativeAcceptance = `[ '${{ needs.linux-full.result }}' = success ]
-[ '${{ needs.macos-go.result }}' = success ]`
-	if stringValue(gate["if"]) != "${{ always() }}" || !runEquals(gate, "Require native verification success", nativeAcceptance) {
-		problems = append(problems, "gate native result acceptance")
+	wantNeeds := []string{"analysis", "coverage-policy", "macos-native", "mutation", "pi"}
+	if !slices.Equal(workflowNeedNames(gate), wantNeeds) {
+		problems = append(problems, "gate assurance dependencies")
 	}
-	const linuxNative = `[ "$(go env GOOS)" = linux ] && [ "$(go env GOARCH)" = amd64 ]`
-	const linuxFull = `case "$EVENT" in pull_request) base="$PR_BASE";; push) base="$PUSH_BASE";; *) base=invalid-base;; esac
-./x gate full --range "$base" "$CANDIDATE"`
-	const macOSNative = `[ "$(go env GOOS)" = darwin ] && [ "$(go env GOARCH)" = arm64 ]`
-	if !runEquals(linux, "Verify native Linux amd64", linuxNative) {
-		problems = append(problems, "Linux amd64 assertion")
+	const acceptance = `[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ]
+[ '${{ needs.coverage-policy.result }}' = success ]
+[ '${{ needs.macos-native.result }}' = success ]
+[ '${{ needs.pi.result }}' = success ]
+[ '${{ needs.analysis.result }}' = success ]
+[ '${{ needs.mutation.result }}' = success ]`
+	if stringValue(gate["if"]) != "${{ always() }}" || !runEquals(gate, "Require all direct assurance dependencies", acceptance) {
+		problems = append(problems, "gate exact result acceptance")
 	}
-	if !runEquals(linux, "Gate (full Linux assurance)", linuxFull) {
-		problems = append(problems, "Linux full gate")
+	const linuxIdentity = `[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ] && [ "$(go env GOOS)" = linux ] && [ "$(go env GOARCH)" = amd64 ]`
+	const macOSIdentity = `[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ] && [ "$(go env GOOS)" = darwin ] && [ "$(go env GOARCH)" = arm64 ]`
+	if !runEquals(linux, "Verify exact native Linux candidate", linuxIdentity) || !runEquals(linux, "Produce coverage evidence", `./x coverage-produce '${{ matrix.workload }}' coverage-artifact '${{ github.sha }}'`) {
+		problems = append(problems, "Linux exact coverage shard")
 	}
-	if !runEquals(macOS, "Verify native macOS arm64", macOSNative) {
-		problems = append(problems, "macOS arm64 assertion")
+	if !workflowNeeds(coverage, "linux-coverage") || !runEquals(coverage, "Validate evidence and enforce coverage policy", "./x coverage-aggregate coverage-artifacts") {
+		problems = append(problems, "canonical coverage aggregation")
 	}
-	macOSNativeGo := 0
-	for _, step := range workflowSteps(macOS) {
-		if strings.TrimSpace(stringValue(workflowMap(step)["run"])) == "go test ./..." {
-			macOSNativeGo++
+	if !runEquals(macOS, "Verify exact native macOS candidate", macOSIdentity) || countExactRun(macOS, `./x native-shard --workload '${{ matrix.workload }}'`) != 1 {
+		problems = append(problems, "macOS exact native shard")
+	}
+	if countExactRun(releaseConfig, "go run ./cmd/releasecheck --verify-archives dist") != 1 || countActionArgs(releaseConfig, "goreleaser/goreleaser-action@", "release --snapshot --clean") != 1 {
+		problems = append(problems, "same-byte release archive validation")
+	}
+	for _, name := range requiredCI {
+		job := workflowMap(ciJobs[name])
+		steps := workflowSteps(job)
+		if len(steps) == 0 || workflowMap(workflowMap(steps[0])["with"])["ref"] != "${{ github.sha }}" {
+			problems = append(problems, "CI checkout exact SHA: "+name)
 		}
 	}
-	if macOSNativeGo != 1 {
-		problems = append(problems, "macOS native Go lane")
-	}
-	for _, step := range workflowSteps(macOS) {
-		run := stringValue(workflowMap(step)["run"])
-		if strings.Contains(run, "./x gate") || strings.Contains(run, "coverage") || strings.Contains(run, "pi-test") {
-			problems = append(problems, "duplicated macOS platform-independent lane")
-			break
-		}
-	}
+
 	verify, publish := workflowMap(releaseJobs["verify"]), workflowMap(releaseJobs["publish"])
 	if !runEquals(verify, "Verify bridge readiness and exact CI conclusions", `go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"`) {
 		problems = append(problems, "exact CI verification")
@@ -736,18 +731,13 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 	if !workflowPermissions(verify, "actions", "read") || !workflowPermissions(verify, "contents", "read") {
 		problems = append(problems, "read-only verification")
 	}
-	node := workflowUsesStep(verify, "actions/setup-node@")
-	nodeWith := workflowMap(node["with"])
-	if node["uses"] != "actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020" || nodeWith["node-version-file"] != ".nvmrc" || nodeWith["cache"] != "npm" || nodeWith["cache-dependency-path"] != "tools/pi-extension-test/package-lock.json" || workflowMap(verify["env"])["AWF_PI_TEST_SKIP_NVM"] != "1" {
-		problems = append(problems, "release Node runtime")
-	}
 	if !workflowNeeds(publish, "verify") || !workflowPermissions(publish, "contents", "write") {
 		problems = append(problems, "needs-bound publication")
 	}
 	for _, job := range []map[string]any{verify, publish} {
 		checkout := workflowMap(workflowSteps(job)[0])
 		if workflowMap(checkout["with"])["ref"] != "${{ github.sha }}" {
-			problems = append(problems, "checkout exact SHA")
+			problems = append(problems, "release checkout exact SHA")
 		}
 	}
 	const publicationIdentity = `[ "$(git rev-parse HEAD)" = '${{ github.sha }}' ]
@@ -755,15 +745,12 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 	if !runEquals(publish, "Repeat tag identity before publication", publicationIdentity) {
 		problems = append(problems, "publication tag identity")
 	}
-	const releaseFull = `candidate='${{ github.sha }}'
-previous="$(git tag --merged "$candidate" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vu | awk -v current="$GITHUB_REF_NAME" '$0 == current { found = 1; print prior; exit } { prior = $0 } END { if (!found) exit 2 }')"
-./x gate full --range "${previous:-invalid-base}" "$candidate"`
-	releaseGate := stringValue(workflowStep(verify, "Gate (full release assurance)")["run"])
-	if strings.TrimSpace(releaseGate) != strings.TrimSpace(releaseFull) {
-		problems = append(problems, "release full-gate range")
-	}
-	if strings.Contains(releaseGate, "covercheck-mutants") {
-		problems = append(problems, "obsolete standalone mutation blocker")
+	for _, raw := range workflowSteps(verify) {
+		run := stringValue(workflowMap(raw)["run"])
+		if strings.Contains(run, "./x gate") || strings.Contains(run, "./x check") || strings.Contains(run, "pi-test") || strings.Contains(run, "unshare --user") {
+			problems = append(problems, "release duplicates CI-owned assurance")
+			break
+		}
 	}
 	for name, raw := range releaseJobs {
 		job := workflowMap(raw)
@@ -775,6 +762,43 @@ previous="$(git tag --merged "$candidate" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' 
 		}
 	}
 	return problems
+}
+
+func workflowNeedNames(job map[string]any) []string {
+	var names []string
+	switch needs := job["needs"].(type) {
+	case string:
+		names = append(names, needs)
+	case []any:
+		for _, need := range needs {
+			if name, ok := need.(string); ok {
+				names = append(names, name)
+			}
+		}
+	}
+	slices.Sort(names)
+	return names
+}
+
+func countExactRun(job map[string]any, want string) int {
+	count := 0
+	for _, raw := range workflowSteps(job) {
+		if strings.TrimSpace(stringValue(workflowMap(raw)["run"])) == want {
+			count++
+		}
+	}
+	return count
+}
+
+func countActionArgs(job map[string]any, prefix, want string) int {
+	count := 0
+	for _, raw := range workflowSteps(job) {
+		step := workflowMap(raw)
+		if strings.HasPrefix(stringValue(step["uses"]), prefix) && workflowMap(step["with"])["args"] == want {
+			count++
+		}
+	}
+	return count
 }
 
 func workflowMap(value any) map[string]any {
@@ -789,15 +813,6 @@ func workflowStep(job any, name string) map[string]any {
 	for _, raw := range workflowSteps(job) {
 		step := workflowMap(raw)
 		if step["name"] == name {
-			return step
-		}
-	}
-	return map[string]any{}
-}
-func workflowUsesStep(job any, prefix string) map[string]any {
-	for _, raw := range workflowSteps(job) {
-		step := workflowMap(raw)
-		if strings.HasPrefix(stringValue(step["uses"]), prefix) {
 			return step
 		}
 	}
@@ -896,167 +911,382 @@ func TestVerifyCIRefusesTrailingDocumentsAndGarbage(t *testing.T) {
 	}
 }
 
-// TestReleaseArchivesPortableSnapshot runs the pinned snapshot production path.
-// A root-mapped user namespace can represent root:root archive entries as its own
-// identity but cannot represent this checkout's uid/gid. It therefore catches
-// ownership metadata rather than masking it with tar's --no-same-owner fallback.
-// invariant: tooling/changelog-and-release:release-platforms (TestReleaseArchivesPortableSnapshot)
-func TestReleaseArchivesPortableSnapshot(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("restricted rootless extraction fixture requires Linux user namespaces")
-	}
-	root, err := filepath.Abs("../..")
-	if err != nil {
-		t.Fatal(err)
-	}
-	dist := filepath.Join(t.TempDir(), "dist")
-	relativeDist, err := filepath.Rel(root, dist)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if relativeDist != ".." && !strings.HasPrefix(relativeDist, ".."+string(os.PathSeparator)) {
-		t.Fatalf("snapshot dist %q is inside checkout %q", dist, root)
-	}
-	config, err := os.ReadFile(filepath.Join(root, ".goreleaser.yaml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	configPath := filepath.Join(t.TempDir(), ".goreleaser.yaml")
-	isolatedConfig := fmt.Appendf(nil, "dist: %q\n", dist)
-	isolatedConfig = append(isolatedConfig, config...)
-	if err := os.WriteFile(configPath, isolatedConfig, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	cmd := exec.Command("go", "run", "github.com/goreleaser/goreleaser/v2@v2.17.0", "release", "--snapshot", "--clean", "--config", configPath)
-	cmd.Dir = root
-	if out, err := cmd.CombinedOutput(); err != nil {
-		t.Fatalf("build snapshot release: %v\n%s", err, out)
-	}
-
-	archives, err := filepath.Glob(filepath.Join(dist, "awf_*"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var names []string
-	for _, archive := range archives {
-		name := filepath.Base(archive)
-		if strings.HasSuffix(name, ".tar.gz") || strings.HasSuffix(name, ".zip") {
-			names = append(names, name)
-		}
-	}
-	slices.Sort(names)
-	if len(names) != 4 {
-		t.Fatalf("snapshot archive count = %d, want 4: %q", len(names), names)
-	}
-	assertSnapshotChecksums(t, filepath.Join(dist, "checksums.txt"), names)
-	for _, suffix := range []string{
-		"_darwin_amd64.tar.gz", "_darwin_arm64.tar.gz", "_linux_amd64.tar.gz",
-		"_linux_arm64.tar.gz",
+// invariant: tooling/changelog-and-release:release-platforms (TestVerifyArchivesSyntheticFixtures)
+func TestVerifyArchivesSyntheticFixtures(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(t *testing.T, dist string, files map[string]archiveFixture)
+		want   string
+	}{
+		{name: "canonical tar archives", want: ""},
+		{name: "malformed archive", mutate: func(t *testing.T, dist string, files map[string]archiveFixture) {
+			name := archiveName("darwin", "amd64", "tar.gz")
+			if err := os.WriteFile(filepath.Join(dist, name), []byte("not a gzip"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+			writeFixtureChecksums(t, dist, files)
+		}, want: `read archive "awf_1.2.3_darwin_amd64.tar.gz"`},
+		{name: "missing archive", mutate: func(t *testing.T, dist string, _ map[string]archiveFixture) {
+			if err := os.Remove(filepath.Join(dist, archiveName("darwin", "arm64", "tar.gz"))); err != nil {
+				t.Fatal(err)
+			}
+		}, want: "missing release archive for darwin/arm64"},
+		{name: "mismatched versions", mutate: func(t *testing.T, dist string, files map[string]archiveFixture) {
+			oldName := archiveName("darwin", "arm64", "tar.gz")
+			newName := "awf_9.9.9_darwin_arm64.tar.gz"
+			if err := os.Rename(filepath.Join(dist, oldName), filepath.Join(dist, newName)); err != nil {
+				t.Fatal(err)
+			}
+			files[newName] = files[oldName]
+			delete(files, oldName)
+			writeFixtureChecksums(t, dist, files)
+		}, want: `has version "9.9.9", want "1.2.3"`},
+		{name: "duplicate target", mutate: func(t *testing.T, dist string, files map[string]archiveFixture) {
+			name := "awf_9.9.9_darwin_amd64.tar.gz"
+			files[name] = files[archiveName("darwin", "amd64", "tar.gz")]
+			writeFixtureArchive(t, dist, name, files[name])
+			writeFixtureChecksums(t, dist, files)
+		}, want: "duplicate release archive for darwin/amd64"},
+		{name: "zip format", mutate: func(t *testing.T, dist string, _ map[string]archiveFixture) {
+			if err := os.WriteFile(filepath.Join(dist, archiveName("darwin", "amd64", "zip")), []byte("synthetic zip"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}, want: `unexpected release artifact "awf_1.2.3_darwin_amd64.zip"`},
+		{name: "nonregular archive", mutate: func(t *testing.T, dist string, _ map[string]archiveFixture) {
+			name := archiveName("darwin", "amd64", "tar.gz")
+			if err := os.Remove(filepath.Join(dist, name)); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.Symlink(archiveName("darwin", "arm64", "tar.gz"), filepath.Join(dist, name)); err != nil {
+				t.Fatal(err)
+			}
+		}, want: `unexpected release artifact "awf_1.2.3_darwin_amd64.tar.gz"`},
+		{name: "extra archive", mutate: func(t *testing.T, dist string, _ map[string]archiveFixture) {
+			if err := os.WriteFile(filepath.Join(dist, "awf_1.2.3_windows_amd64.zip"), nil, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}, want: `unexpected release artifact "awf_1.2.3_windows_amd64.zip"`},
+		{name: "unsafe member", mutate: func(t *testing.T, dist string, files map[string]archiveFixture) {
+			name := archiveName("darwin", "amd64", "tar.gz")
+			files[name] = archiveFixture{members: map[string]fixtureMember{"../escape": {mode: 0o644}, "README.md": {mode: 0o644}, "awf": {mode: 0o755}}}
+			writeFixtureArchive(t, dist, name, files[name])
+			writeFixtureChecksums(t, dist, files)
+		}, want: `has unsafe path "../escape"`},
+		{name: "wrong membership", mutate: func(t *testing.T, dist string, files map[string]archiveFixture) {
+			name := archiveName("darwin", "amd64", "tar.gz")
+			files[name] = archiveFixture{members: map[string]fixtureMember{"LICENSE": {mode: 0o644}, "README.md": {mode: 0o644}, "extra": {mode: 0o644}}}
+			writeFixtureArchive(t, dist, name, files[name])
+			writeFixtureChecksums(t, dist, files)
+		}, want: `has unexpected member "extra"`},
+		{name: "wrong mode", mutate: func(t *testing.T, dist string, files map[string]archiveFixture) {
+			name := archiveName("linux", "arm64", "tar.gz")
+			file := files[name]
+			member := file.members["awf"]
+			member.mode = 0o644
+			file.members["awf"] = member
+			files[name] = file
+			writeFixtureArchive(t, dist, name, file)
+			writeFixtureChecksums(t, dist, files)
+		}, want: `member "awf" mode -rw-r--r--, want 0755`},
+		{name: "wrong ownership", mutate: func(t *testing.T, dist string, files map[string]archiveFixture) {
+			name := archiveName("linux", "arm64", "tar.gz")
+			file := files[name]
+			member := file.members["LICENSE"]
+			member.uid = 99
+			member.uname = "builder"
+			file.members["LICENSE"] = member
+			files[name] = file
+			writeFixtureArchive(t, dist, name, file)
+			writeFixtureChecksums(t, dist, files)
+		}, want: `member "LICENSE" ownership is not root:root`},
+		{name: "missing checksum", mutate: func(t *testing.T, dist string, files map[string]archiveFixture) {
+			delete(files, archiveName("darwin", "arm64", "tar.gz"))
+			writeFixtureChecksums(t, dist, files)
+		}, want: "checksum entries do not match release archives"},
+		{name: "missing checksum file", mutate: func(t *testing.T, dist string, _ map[string]archiveFixture) {
+			if err := os.Remove(filepath.Join(dist, "checksums.txt")); err != nil {
+				t.Fatal(err)
+			}
+		}, want: "read checksums"},
+		{name: "malformed checksum", mutate: func(t *testing.T, dist string, _ map[string]archiveFixture) {
+			if err := os.WriteFile(filepath.Join(dist, "checksums.txt"), []byte("not-a-checksum\n"), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}, want: "malformed checksum entry"},
+		{name: "uppercase checksum", mutate: func(t *testing.T, dist string, _ map[string]archiveFixture) {
+			path := filepath.Join(dist, "checksums.txt")
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(path, []byte(strings.ToUpper(string(raw))), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}, want: "malformed checksum entry"},
+		{name: "checksum names wrong target", mutate: func(t *testing.T, dist string, _ map[string]archiveFixture) {
+			path := filepath.Join(dist, "checksums.txt")
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			raw = bytes.Replace(raw, []byte(archiveName("darwin", "amd64", "tar.gz")), []byte("foreign.tar.gz"), 1)
+			if err := os.WriteFile(path, raw, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}, want: `missing checksum for "awf_1.2.3_darwin_amd64.tar.gz"`},
+		{name: "duplicate checksum", mutate: func(t *testing.T, dist string, _ map[string]archiveFixture) {
+			path := filepath.Join(dist, "checksums.txt")
+			raw, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			line := strings.SplitN(string(raw), "\n", 2)[0]
+			if err := os.WriteFile(path, append(raw, []byte(line+"\n")...), 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}, want: "duplicate checksum entry"},
+		{name: "checksum mismatch", mutate: func(t *testing.T, dist string, _ map[string]archiveFixture) {
+			path := filepath.Join(dist, archiveName("darwin", "amd64", "tar.gz"))
+			file, err := os.OpenFile(path, os.O_APPEND|os.O_WRONLY, 0)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if _, err := file.Write([]byte("x")); err != nil {
+				t.Fatal(err)
+			}
+			if err := file.Close(); err != nil {
+				t.Fatal(err)
+			}
+		}, want: `checksum mismatch for "awf_1.2.3_darwin_amd64.tar.gz"`},
 	} {
-		found := false
-		for _, name := range names {
-			found = found || strings.HasSuffix(name, suffix)
-		}
-		if !found {
-			t.Errorf("snapshot archives = %q; missing target suffix %q", names, suffix)
-		}
-	}
-
-	for _, name := range names {
-		archive := filepath.Join(dist, name)
-		entries := assertTarArchivePaths(t, archive, []string{"LICENSE", "README.md", "awf"})
-		for _, entry := range entries {
-			if strings.Contains(name, "_linux_") {
-				if entry.Uid != 0 || entry.Gid != 0 || entry.Uname != "root" || entry.Gname != "root" {
-					t.Errorf("%s entry %s ownership = %d:%d %q:%q, want 0:0 root:root", name, entry.Name, entry.Uid, entry.Gid, entry.Uname, entry.Gname)
+		t.Run(tc.name, func(t *testing.T) {
+			dist, files := canonicalArchiveFixture(t)
+			if tc.mutate != nil {
+				tc.mutate(t, dist, files)
+			}
+			err := verifyArchivesWithExtractor(dist, func(_, _ string) error { return nil })
+			if tc.want == "" {
+				if err != nil {
+					t.Fatal(err)
 				}
-			} else if entry.Uname == "root" || entry.Gname == "root" {
-				t.Errorf("%s entry %s ownership = %d:%d %q:%q, want unchanged builder metadata rather than Linux normalization", name, entry.Name, entry.Uid, entry.Gid, entry.Uname, entry.Gname)
+				return
 			}
-			wantMode := int64(0o644)
-			if entry.Name == "awf" {
-				wantMode = 0o755
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want %q", err, tc.want)
 			}
-			if entry.Mode != wantMode {
-				t.Errorf("%s entry %s mode = %#o, want %#o", name, entry.Name, entry.Mode, wantMode)
-			}
-		}
+		})
 	}
+}
 
-	linux, err := filepath.Glob(filepath.Join(dist, "awf_*_linux_amd64.tar.gz"))
-	if err != nil || len(linux) != 1 {
-		t.Fatalf("linux amd64 snapshot archive = %q, err = %v", linux, err)
+func TestVerifyArchivesReportsRestrictedRootlessExtractionFailure(t *testing.T) {
+	dist, _ := canonicalArchiveFixture(t)
+	cause := errors.New("fixture extraction failure")
+	err := verifyArchivesWithExtractor(dist, func(_, _ string) error { return cause })
+	if err == nil || !errors.Is(err, cause) || !strings.Contains(err.Error(), `restricted rootless extraction failed for "awf_1.2.3_linux_amd64.tar.gz"`) {
+		t.Fatalf("error = %v", err)
 	}
-	extracted := t.TempDir()
-	// Do not add --no-same-owner: successful extraction must exercise the archive
-	// ownership metadata in the restricted rootless namespace.
-	extract := exec.Command("unshare", "--user", "--map-root-user", "tar", "-xzf", linux[0], "-C", extracted)
-	if out, err := extract.CombinedOutput(); err != nil {
-		t.Fatalf("restricted rootless extraction failed: %v\n%s", err, out)
+}
+
+func TestReadArchiveRefusals(t *testing.T) {
+	if _, err := readArchive(filepath.Join(t.TempDir(), "missing.tar.gz")); err == nil {
+		t.Fatal("missing archive accepted")
 	}
-	entries, err := os.ReadDir(extracted)
+	path := filepath.Join(t.TempDir(), "truncated.tar.gz")
+	file, err := os.Create(path)
 	if err != nil {
 		t.Fatal(err)
 	}
-	var extractedNames []string
-	for _, entry := range entries {
-		extractedNames = append(extractedNames, entry.Name())
+	compressed := gzip.NewWriter(file)
+	if _, err := compressed.Write([]byte("truncated tar body")); err != nil {
+		t.Fatal(err)
 	}
-	slices.Sort(extractedNames)
-	if !slices.Equal(extractedNames, []string{"LICENSE", "README.md", "awf"}) {
-		t.Fatalf("restricted rootless extracted paths = %q, want exactly binary, LICENSE, and README", extractedNames)
+	if err := compressed.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if err := file.Close(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := readArchive(path); err == nil {
+		t.Fatal("truncated tar accepted")
 	}
 }
 
-func assertSnapshotChecksums(t *testing.T, path string, archives []string) {
-	t.Helper()
-	raw, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatalf("read snapshot checksums: %v", err)
+func TestVerifyArchiveContentsRefusals(t *testing.T) {
+	archive := releaseArchive{name: "fixture.tar.gz", os: "darwin"}
+	canonical := []archiveEntry{
+		{name: "LICENSE", mode: 0o644, regular: true},
+		{name: "README.md", mode: 0o644, regular: true},
+		{name: "awf", mode: 0o755, regular: true},
 	}
-	var names []string
-	for _, line := range strings.Split(strings.TrimSpace(string(raw)), "\n") {
-		fields := strings.Fields(line)
-		if len(fields) != 2 || len(fields[0]) != 64 {
-			t.Fatalf("snapshot checksum line = %q, want SHA-256 and archive name", line)
+	for _, tc := range []struct {
+		name    string
+		entries []archiveEntry
+		want    string
+	}{
+		{name: "missing", entries: canonical[:2], want: `is missing member "awf"`},
+		{name: "duplicate", entries: append(slices.Clone(canonical), canonical[0]), want: `has unexpected member "LICENSE"`},
+		{name: "nonregular", entries: []archiveEntry{{name: "LICENSE", mode: 0o644}, canonical[1], canonical[2]}, want: `member "LICENSE" is not a regular file`},
+		{name: "darwin root owner", entries: []archiveEntry{{name: "LICENSE", mode: 0o644, regular: true, uname: "root"}, canonical[1], canonical[2]}, want: `member "LICENSE" has unexpected root ownership`},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			err := verifyArchiveContents(archive, tc.entries)
+			if err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("error = %v, want %q", err, tc.want)
+			}
+		})
+	}
+}
+
+func TestRestrictedRootlessExtractCommandAndMembership(t *testing.T) {
+	bin := t.TempDir()
+	argsPath := filepath.Join(t.TempDir(), "args")
+	t.Setenv("ARGS", argsPath)
+	t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
+	writeUnshare := func(body string) {
+		t.Helper()
+		path := filepath.Join(bin, "unshare")
+		if err := os.WriteFile(path, []byte("#!/bin/sh\nset -eu\n"+body), 0o755); err != nil {
+			t.Fatal(err)
 		}
-		names = append(names, fields[1])
 	}
-	slices.Sort(names)
-	if !slices.Equal(names, archives) {
-		t.Fatalf("snapshot checksum entries = %q, want exactly four archives %q", names, archives)
+	writeUnshare(`printf '%s\n' "$*" > "$ARGS"
+while [ "$#" -gt 0 ]; do
+  if [ "$1" = -C ]; then shift; destination="$1"; fi
+  shift
+done
+touch "$destination/LICENSE" "$destination/README.md" "$destination/awf"
+`)
+	destination := filepath.Join(t.TempDir(), "nested", "extract")
+	if err := restrictedRootlessExtract("fixture.tar.gz", destination); err != nil {
+		t.Fatal(err)
+	}
+	raw, err := os.ReadFile(argsPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := strings.TrimSpace(string(raw)); got != "--user --map-root-user tar -xzf fixture.tar.gz -C "+destination {
+		t.Fatalf("unshare arguments = %q", got)
+	}
+
+	writeUnshare("echo denied >&2\nexit 23\n")
+	if err := restrictedRootlessExtract("fixture.tar.gz", filepath.Join(t.TempDir(), "failure")); err == nil || !strings.Contains(err.Error(), "exit status 23: denied") {
+		t.Fatalf("failure error = %v", err)
+	}
+	writeUnshare(`while [ "$#" -gt 0 ]; do
+  if [ "$1" = -C ]; then shift; destination="$1"; fi
+  shift
+done
+touch "$destination/extra"
+`)
+	if err := restrictedRootlessExtract("fixture.tar.gz", filepath.Join(t.TempDir(), "extra")); err == nil || !strings.Contains(err.Error(), "extracted members are not canonical") {
+		t.Fatalf("membership error = %v", err)
+	}
+	writeUnshare(`while [ "$#" -gt 0 ]; do
+  if [ "$1" = -C ]; then shift; destination="$1"; fi
+  shift
+done
+rm -rf "$destination"
+`)
+	if err := restrictedRootlessExtract("fixture.tar.gz", filepath.Join(t.TempDir(), "removed")); err == nil {
+		t.Fatal("removed extraction root accepted")
+	}
+	blocked := filepath.Join(t.TempDir(), "file")
+	if err := os.WriteFile(blocked, nil, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := restrictedRootlessExtract("fixture.tar.gz", filepath.Join(blocked, "child")); err == nil {
+		t.Fatal("non-directory extraction root accepted")
 	}
 }
 
-func assertTarArchivePaths(t *testing.T, archive string, want []string) []*tar.Header {
+func TestDispatchRoutesArchiveVerification(t *testing.T) {
+	var out, errb bytes.Buffer
+	if code := dispatch([]string{"--verify-archives", filepath.Join(t.TempDir(), "missing")}, fstest.MapFS{}, fstest.MapFS{}, &out, &errb, http.DefaultClient, "", func(string) string { return "" }); code != 1 || !strings.Contains(errb.String(), "release archives: read dist root") {
+		t.Fatalf("archive dispatch = %d, %q", code, errb.String())
+	}
+}
+
+type fixtureMember struct {
+	mode         int64
+	uid, gid     int
+	uname, gname string
+}
+type archiveFixture struct {
+	members map[string]fixtureMember
+}
+
+func archiveName(os, arch, format string) string {
+	return "awf_1.2.3_" + os + "_" + arch + "." + format
+}
+
+func canonicalArchiveFixture(t *testing.T) (string, map[string]archiveFixture) {
 	t.Helper()
-	file, err := os.Open(archive)
+	dist := t.TempDir()
+	files := map[string]archiveFixture{}
+	for _, target := range releaseTargets {
+		format := "tar.gz"
+		member := fixtureMember{mode: 0o644, uid: 1000, gid: 1000, uname: "builder", gname: "builder"}
+		if target.os == "linux" {
+			member = fixtureMember{mode: 0o644, uname: "root", gname: "root"}
+		}
+		binary := member
+		binary.mode = 0o755
+		name := archiveName(target.os, target.arch, format)
+		files[name] = archiveFixture{members: map[string]fixtureMember{"LICENSE": member, "README.md": member, "awf": binary}}
+		writeFixtureArchive(t, dist, name, files[name])
+	}
+	writeFixtureChecksums(t, dist, files)
+	return dist, files
+}
+
+func writeFixtureArchive(t *testing.T, dist, name string, fixture archiveFixture) {
+	t.Helper()
+	file, err := os.Create(filepath.Join(dist, name))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer file.Close()
-	compressed, err := gzip.NewReader(file)
-	if err != nil {
+	compressed := gzip.NewWriter(file)
+	writer := tar.NewWriter(compressed)
+	names := make([]string, 0, len(fixture.members))
+	for name := range fixture.members {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	for _, name := range names {
+		member := fixture.members[name]
+		header := &tar.Header{Name: name, Mode: member.mode, Size: int64(len(name)), Uid: member.uid, Gid: member.gid, Uname: member.uname, Gname: member.gname}
+		if err := writer.WriteHeader(header); err != nil {
+			t.Fatal(err)
+		}
+		if _, err := writer.Write([]byte(name)); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := writer.Close(); err != nil {
 		t.Fatal(err)
 	}
-	defer compressed.Close()
-	reader := tar.NewReader(compressed)
-	var entries []*tar.Header
-	var names []string
-	for {
-		entry, err := reader.Next()
-		if err == io.EOF {
-			break
-		}
+	if err := compressed.Close(); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func writeFixtureChecksums(t *testing.T, dist string, files map[string]archiveFixture) {
+	t.Helper()
+	names := make([]string, 0, len(files))
+	for name := range files {
+		names = append(names, name)
+	}
+	sort.Strings(names)
+	var contents strings.Builder
+	for _, name := range names {
+		raw, err := os.ReadFile(filepath.Join(dist, name))
 		if err != nil {
 			t.Fatal(err)
 		}
-		entries = append(entries, entry)
-		names = append(names, entry.Name)
+		fmt.Fprintf(&contents, "%x  %s\n", sha256.Sum256(raw), name)
 	}
-	slices.Sort(names)
-	if !slices.Equal(names, want) {
-		t.Fatalf("archive %s paths = %q, want %q", filepath.Base(archive), names, want)
+	if err := os.WriteFile(filepath.Join(dist, "checksums.txt"), []byte(contents.String()), 0o600); err != nil {
+		t.Fatal(err)
 	}
-	return entries
 }

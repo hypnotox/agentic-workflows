@@ -52,7 +52,7 @@ func TestReportEmitsHumanAndMachineFromSameRecord(t *testing.T) {
 	if code := run([]string{"testperformance", "report", "--machine", path}, &machine, &errb); code != 0 {
 		t.Fatalf("machine=%d: %s", code, errb.String())
 	}
-	if !strings.Contains(human.String(), "qualification record v2") || !strings.Contains(human.String(), "aggregate common-feedback on local-linux-amd64: cache=warm samples=3 seconds=3.855") || !strings.Contains(human.String(), "aggregate fast-gate on local-linux-amd64: cache=warm samples=3 seconds=1.229") || !strings.Contains(human.String(), "aggregate ordinary-full on local-linux-amd64: cache=warm samples=3 seconds=122.575") || !strings.Contains(human.String(), "class=diagnostic result=coverage-policy-refused-expanded-identity") || !strings.Contains(human.String(), "ordinary-full on local-linux-amd64: 122.575s (budget 156.000s, meets=true") {
+	if !strings.Contains(human.String(), "qualification record v2") || !strings.Contains(human.String(), "aggregate common-feedback on local-linux-amd64: cache=warm samples=3 seconds=3.855") || !strings.Contains(human.String(), "aggregate fast-gate on local-linux-amd64: cache=warm samples=3 seconds=1.229") || !strings.Contains(human.String(), "aggregate ordinary-full on local-linux-amd64: cache=warm samples=3 seconds=129.081") || !strings.Contains(human.String(), "class=diagnostic result=coverage-policy-refused-expanded-identity") || !strings.Contains(human.String(), "ordinary-full on local-linux-amd64: 129.081s (budget 156.000s, meets=true") {
 		t.Fatalf("human=%q", human.String())
 	}
 	var report testperformance.Report
@@ -73,7 +73,7 @@ func TestReportEmitsHumanAndMachineFromSameRecord(t *testing.T) {
 	if fast.Environment != "local-linux-amd64" || fast.Cache != "warm" || fast.Samples != 3 || fast.Seconds != 1.229 {
 		t.Fatalf("fast aggregate = %#v", fast)
 	}
-	if full.Environment != "local-linux-amd64" || full.Cache != "warm" || full.Samples != 3 || full.Seconds != 122.575 {
+	if full.Environment != "local-linux-amd64" || full.Cache != "warm" || full.Samples != 3 || full.Seconds != 129.081 {
 		t.Fatalf("full aggregate = %#v", full)
 	}
 }

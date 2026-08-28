@@ -140,9 +140,9 @@ Backing: test
 
 ### `invariant: exact-revision-repository-acceptance`
 
-Repository wiring keeps stable `CI / gate` and `CI / release-config` jobs, makes the gate conclusion depend on Linux/amd64 full verification and macOS/arm64 native Go behavior for the exact revision, and verifies both stable conclusions for the exact release SHA before the credential-bearing publish job.
+Repository wiring keeps stable `CI / gate` and `CI / release-config` jobs for one exact revision. The gate conclusion requires native Linux coverage shards and canonical policy, native macOS shards, Pi behavior, analysis and cross-builds, and separately selected mutation. Release configuration constructs one snapshot and validates those same bytes. The release workflow verifies both stable conclusions for the exact release SHA before the credential-bearing publish job.
 Origin: ADR-0308
-Revised-by: ADR-0313
+Revised-by: ADR-0313, ADR-0314
 Backing: test
 
 ### `rule: hosted-main-acceptance-settings`

@@ -14,10 +14,6 @@ jobs:
     permissions:
       actions: read
       contents: read
-    env:
-      GITHUB_TOKEN: ${{ github.token }}
-      # setup-node is the authority in hosted release verification; the runner still validates .nvmrc exactly.
-      AWF_PI_TEST_SKIP_NVM: "1"
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with:
@@ -26,17 +22,14 @@ jobs:
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with:
-          node-version-file: .nvmrc
-          cache: npm
-          cache-dependency-path: tools/pi-extension-test/package-lock.json
       - name: Verify checkout and tag identity
         run: |
           candidate='${{ github.sha }}'
           [ "$(git rev-parse HEAD)" = "$candidate" ]
           [ "$(git rev-parse "${GITHUB_REF_NAME}^{}")" = "$candidate" ]
       - name: Verify bridge readiness and exact CI conclusions
+        env:
+          GITHUB_TOKEN: ${{ github.token }}
         run: go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"
       - name: Verify tag matches project.Version
         run: |
@@ -57,19 +50,6 @@ jobs:
         run: |
           git fetch origin main
           git merge-base --is-ancestor HEAD origin/main
-      - name: Enable restricted rootless extraction
-        run: |
-          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then
-            sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0
-          fi
-          unshare --user --map-root-user true
-      - name: Gate (full release assurance)
-        run: |
-          candidate='${{ github.sha }}'
-          previous="$(git tag --merged "$candidate" | grep -E '^v[0-9]+\.[0-9]+\.[0-9]+$' | sort -Vu | awk -v current="$GITHUB_REF_NAME" '$0 == current { found = 1; print prior; exit } { prior = $0 } END { if (!found) exit 2 }')"
-          ./x gate full --range "${previous:-invalid-base}" "$candidate"
-      - name: Drift check (rendered output matches config)
-        run: ./x check
       - name: Prepare release notes from the curated changelog
         run: go run ./cmd/awf changelog --version "${GITHUB_REF_NAME#v}" > "${RUNNER_TEMP}/release-notes.md"
   publish:

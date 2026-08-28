@@ -21626,6 +21626,681 @@
         "statements": 1
       },
       "reason": "Immutable fixture cloning at internal/testsupport/treeseed.go:178 reports a filesystem or stream fault after archive validation. Successful isolated clones, existing destinations, empty seeds, malformed archives, escaping paths, and unsupported entry types are directly tested; the remaining host faults require unsafe global I/O fault injection into shared test support."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 2,
+          "line": 40
+        },
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "column": 13,
+          "line": 38
+        },
+        "statements": 1
+      },
+      "reason": "Phase 6 coverage reconciliation: synthetic archive and command fixtures exercise canonical success plus practical malformed, missing, unsafe, ownership, mode, checksum, and rootless refusals; this retained block is an OS, filesystem, stream, or process boundary not deterministically induced without a test-only seam. Exact reviewed identity cmd/releasecheck/main.go:38.13,40.2 1 begins `func main() { // coverage-ignore: os.Exit wrapper; dispatch is unit-tested`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 11,
+          "line": 58
+        },
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "column": 3,
+          "line": 58
+        },
+        "statements": 1
+      },
+      "reason": "Phase 6 coverage reconciliation: synthetic archive and command fixtures exercise canonical success plus practical malformed, missing, unsafe, ownership, mode, checksum, and rootless refusals; this retained block is an OS, filesystem, stream, or process boundary not deterministically induced without a test-only seam. Exact reviewed identity cmd/releasecheck/main.go:58.3,58.11 1 begins `return 0`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 358
+        },
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "column": 16,
+          "line": 356
+        },
+        "statements": 1
+      },
+      "reason": "Phase 6 coverage reconciliation: synthetic archive and command fixtures exercise canonical success plus practical malformed, missing, unsafe, ownership, mode, checksum, and rootless refusals; this retained block is an OS, filesystem, stream, or process boundary not deterministically induced without a test-only seam. Exact reviewed identity cmd/releasecheck/main.go:356.16,358.3 1 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 408
+        },
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "column": 17,
+          "line": 406
+        },
+        "statements": 1
+      },
+      "reason": "Phase 6 coverage reconciliation: synthetic archive and command fixtures exercise canonical success plus practical malformed, missing, unsafe, ownership, mode, checksum, and rootless refusals; this retained block is an OS, filesystem, stream, or process boundary not deterministically induced without a test-only seam. Exact reviewed identity cmd/releasecheck/main.go:406.17,408.4 1 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 414
+        },
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "column": 40,
+          "line": 412
+        },
+        "statements": 1
+      },
+      "reason": "Phase 6 coverage reconciliation: synthetic archive and command fixtures exercise canonical success plus practical malformed, missing, unsafe, ownership, mode, checksum, and rootless refusals; this retained block is an OS, filesystem, stream, or process boundary not deterministically induced without a test-only seam. Exact reviewed identity cmd/releasecheck/main.go:412.40,414.4 1 begins `if copyErr != nil || closeErr != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 445
+        },
+        "file": "cmd/releasecheck/main.go",
+        "start": {
+          "column": 56,
+          "line": 443
+        },
+        "statements": 1
+      },
+      "reason": "Phase 6 coverage reconciliation: synthetic archive and command fixtures exercise canonical success plus practical malformed, missing, unsafe, ownership, mode, checksum, and rootless refusals; this retained block is an OS, filesystem, stream, or process boundary not deterministically induced without a test-only seam. Exact reviewed identity cmd/releasecheck/main.go:443.56,445.4 1 begins `if _, err := io.Copy(io.Discard, reader); err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 2,
+          "line": 28
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 13,
+          "line": 26
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:26.13,28.2 1 begins `func main() { // coverage-ignore: os.Exit wrapper; run is unit-tested`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 46
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 16,
+          "line": 43
+        },
+        "statements": 2
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:43.16,46.3 2 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 54
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 16,
+          "line": 51
+        },
+        "statements": 2
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:51.16,54.3 2 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 59
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 16,
+          "line": 56
+        },
+        "statements": 2
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:56.16,59.3 2 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 70
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 22,
+          "line": 68
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:68.22,70.4 1 begins `if parseErr != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 115,
+          "line": 77
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 16,
+          "line": 76
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:76.16,77.115 1 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 79
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 115,
+          "line": 77
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:77.115,79.4 1 begins `if writeErr := writeRefused(stdout, policy.Version, fmt.Errorf(\"read changed paths: %w\", err)); writeErr != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 81
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 9,
+          "line": 79
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:79.9,81.4 1 begins `} else {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 11,
+          "line": 82
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 3,
+          "line": 82
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:82.3,82.11 1 begins `return 2`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 89
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 56,
+          "line": 86
+        },
+        "statements": 2
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:86.56,89.3 2 begins `if writeErr := write(result, stdout); writeErr != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 17,
+          "line": 91
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 47,
+          "line": 90
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:90.47,91.17 1 begins `if err != nil || result.Outcome == \"refused\" {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 93
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 17,
+          "line": 91
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:91.17,93.4 1 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 11,
+          "line": 94
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 3,
+          "line": 94
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:94.3,94.11 1 begins `return 2`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 139
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 23,
+          "line": 137
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:137.23,139.3 1 begins `if len(targets) == 0 {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 144
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 16,
+          "line": 142
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:142.16,144.3 1 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 148
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 22,
+          "line": 146
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:146.22,148.3 1 begins `if len(caches) != 2 {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 5,
+          "line": 177
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 54,
+          "line": 175
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:175.54,177.5 1 begins `if _, err := stdout.Write(run.output); err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 202
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 51,
+          "line": 200
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:200.51,202.3 1 begins `if err := os.Mkdir(temporary, 0o700); err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 221
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 54,
+          "line": 219
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:219.54,221.4 1 begins `if err := json.Unmarshal(line, \u0026event); err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 2,
+          "line": 241
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 64,
+          "line": 239
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:239.64,241.2 1 begins `func writeRefused(out io.Writer, version int, err error) error {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 247
+        },
+        "file": "cmd/testselection/main.go",
+        "start": {
+          "column": 16,
+          "line": 245
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: command and executor tests exercise selection, conservative widening and refusal, bounded target execution, required-unit evidence, and output contracts; this retained block is a defensive or external process/filesystem failure branch whose additional seam would be test-shaped. Exact reviewed identity cmd/testselection/main.go:245.16,247.3 1 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 20
+        },
+        "file": "internal/git/working_changes.go",
+        "start": {
+          "column": 16,
+          "line": 18
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: porcelain-v2 fixtures exercise staged, unstaged, untracked, renamed, prefixed, and malformed evidence; this retained block is a native Git failure or defensive parser state not independently inducible through the real repository seam. Exact reviewed identity internal/git/working_changes.go:18.16,20.3 1 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 24
+        },
+        "file": "internal/git/working_changes.go",
+        "start": {
+          "column": 16,
+          "line": 22
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: porcelain-v2 fixtures exercise staged, unstaged, untracked, renamed, prefixed, and malformed evidence; this retained block is a native Git failure or defensive parser state not independently inducible through the real repository seam. Exact reviewed identity internal/git/working_changes.go:22.16,24.3 1 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 45
+        },
+        "file": "internal/git/working_changes.go",
+        "start": {
+          "column": 42,
+          "line": 43
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: porcelain-v2 fixtures exercise staged, unstaged, untracked, renamed, prefixed, and malformed evidence; this retained block is a native Git failure or defensive parser state not independently inducible through the real repository seam. Exact reviewed identity internal/git/working_changes.go:43.42,45.4 1 begins `if len(record) \u003c 3 || record[1] != ' ' {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 13,
+          "line": 54
+        },
+        "file": "internal/git/working_changes.go",
+        "start": {
+          "column": 12,
+          "line": 53
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: porcelain-v2 fixtures exercise staged, unstaged, untracked, renamed, prefixed, and malformed evidence; this retained block is a native Git failure or defensive parser state not independently inducible through the real repository seam. Exact reviewed identity internal/git/working_changes.go:53.12,54.13 1 begins `case 'u':`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 12,
+          "line": 56
+        },
+        "file": "internal/git/working_changes.go",
+        "start": {
+          "column": 12,
+          "line": 55
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: porcelain-v2 fixtures exercise staged, unstaged, untracked, renamed, prefixed, and malformed evidence; this retained block is a native Git failure or defensive parser state not independently inducible through the real repository seam. Exact reviewed identity internal/git/working_changes.go:55.12,56.12 1 begins `case '?':`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 71
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 16,
+          "line": 69
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:69.16,71.3 1 begins `if err != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 80
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 55,
+          "line": 78
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:78.55,80.3 1 begins `if err := decoder.Decode(\u0026struct{}{}); err != io.EOF {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 91
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 43,
+          "line": 89
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:89.43,91.4 1 begins `if suite.ID == \"\" || declared[suite.ID] {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 141
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 12,
+          "line": 139
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:139.12,141.3 1 begins `if shared {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 192
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 23,
+          "line": 190
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:190.23,192.3 1 begins `if len(imports) == 0 {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 77,
+          "line": 218
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 4,
+          "line": 218
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:218.4,218.77 1 begins `return nil, fmt.Errorf(\"decode go list for %s/%s: %w\", goos, goarch, err)`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 222
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 24,
+          "line": 220
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:220.24,222.4 1 begins `if item.Error != nil {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 226
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 91,
+          "line": 224
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:224.91,226.4 1 begins `if err != nil || rel == \"..\" || strings.HasPrefix(rel, \"..\"+string(filepath.Separator)) {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 12,
+          "line": 251
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 123,
+          "line": 250
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:250.123,251.12 1 begins `if strings.HasPrefix(value, \"GOOS=\") || strings.HasPrefix(value, \"GOARCH=\") || strings.HasPrefix(value, \"CGO_ENABLED=\") {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 5,
+          "line": 297
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 29,
+          "line": 295
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:295.29,297.5 1 begins `if err != nil || matched {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 14,
+          "line": 322
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 2,
+          "line": 322
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:322.2,322.14 1 begins `return false`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 3,
+          "line": 356
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 24,
+          "line": 354
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:354.24,356.3 1 begins `if len(selected) == 0 {`."
+    },
+    {
+      "identity": {
+        "end": {
+          "column": 4,
+          "line": 383
+        },
+        "file": "internal/testselection/selection.go",
+        "start": {
+          "column": 50,
+          "line": 381
+        },
+        "statements": 1
+      },
+      "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:381.50,383.4 1 begins `if _, ok := graph.packages[suite.Package]; !ok {`."
     }
   ],
   "directives": [
@@ -30808,6 +31483,102 @@
       },
       "class": "revalidated-impossible-state",
       "evidence": "The report is built from a validated qualification record and contains only JSON-native finite values; focused machine-report tests exercise successful serialization, and failure requires violating the typed report invariant."
+    },
+    {
+      "class": "tested-process-exit",
+      "directive": {
+        "executed": false,
+        "file": "cmd/releasecheck/main.go",
+        "line": 38,
+        "mapped": true,
+        "reason": "os.Exit wrapper; dispatch is unit-tested",
+        "targetLine": 38
+      },
+      "evidence": "cmd/releasecheck/main.go:38 is the terminating os.Exit composition wrapper. cmd/releasecheck/main_test.go directly exercises dispatch local, archive-validation, exact-CI, release-note, usage, and refusal behavior without terminating the test process."
+    },
+    {
+      "class": "tested-process-exit",
+      "directive": {
+        "executed": false,
+        "file": "cmd/testselection/main.go",
+        "line": 26,
+        "mapped": true,
+        "reason": "os.Exit wrapper; run is unit-tested",
+        "targetLine": 26
+      },
+      "evidence": "cmd/testselection/main.go:26 is the terminating os.Exit composition wrapper. cmd/testselection/main_test.go directly exercises run selection, refusal, execution, and output behavior without terminating the test process."
+    },
+    {
+      "class": "revalidated-impossible-state",
+      "directive": {
+        "executed": false,
+        "file": "internal/git/entrypoints_test.go",
+        "line": 103,
+        "mapped": true,
+        "reason": "Abs fails only when the working directory cannot be resolved, which would fail the test binary first",
+        "targetLine": 103
+      },
+      "evidence": "internal/git/entrypoints_test.go:103 guards filepath.Abs for the already-running package checkout; failure requires an unusable process working directory before the census test can execute."
+    },
+    {
+      "class": "revalidated-impossible-state",
+      "directive": {
+        "executed": false,
+        "file": "internal/git/entrypoints_test.go",
+        "line": 115,
+        "mapped": true,
+        "reason": "both parsed directories are checked-in package directories",
+        "targetLine": 115
+      },
+      "evidence": "internal/git/entrypoints_test.go:115 reads checked-in internal/git and cmd/awf directories after the test binary has loaded the same checkout; absence is an invalid test environment rather than a behavior branch."
+    },
+    {
+      "class": "revalidated-impossible-state",
+      "directive": {
+        "executed": false,
+        "file": "internal/git/entrypoints_test.go",
+        "line": 125,
+        "mapped": true,
+        "reason": "every file in a compiling package parses",
+        "targetLine": 125
+      },
+      "evidence": "internal/git/entrypoints_test.go:125 reparses Go files from packages that compiled to run this test, so a parse failure requires an inconsistent checkout after compilation."
+    },
+    {
+      "class": "revalidated-impossible-state",
+      "directive": {
+        "executed": false,
+        "file": "internal/git/entrypoints_test.go",
+        "line": 160,
+        "mapped": true,
+        "reason": "the parser rejects a method with an empty receiver list",
+        "targetLine": 160
+      },
+      "evidence": "internal/git/entrypoints_test.go:160 handles an AST state the Go parser cannot produce for a method declaration."
+    },
+    {
+      "class": "revalidated-impossible-state",
+      "directive": {
+        "executed": false,
+        "file": "internal/git/entrypoints_test.go",
+        "line": 168,
+        "mapped": true,
+        "reason": "no generic receiver exists in this package",
+        "targetLine": 168
+      },
+      "evidence": "internal/git/entrypoints_test.go:168 handles a receiver AST shape excluded by the checked-in internal/git declarations enumerated by this census."
+    },
+    {
+      "class": "revalidated-impossible-state",
+      "directive": {
+        "executed": false,
+        "file": "internal/git/entrypoints_test.go",
+        "line": 191,
+        "mapped": true,
+        "reason": "printing a parsed block to an in-memory buffer has no failure a test can provoke",
+        "targetLine": 191
+      },
+      "evidence": "internal/git/entrypoints_test.go:191 prints a parser-produced AST block to bytes.Buffer; neither side exposes a deterministic failure state."
     }
   ],
   "platformDirectives": [
