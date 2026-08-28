@@ -175,9 +175,18 @@ exec /usr/bin/mktemp "$@"
 		if err != nil {
 			t.Fatal(err)
 		}
-		home := strings.SplitN(strings.TrimSpace(string(data)), "|", 2)[0]
-		if want := filepath.Join(realRoot, "job"); home != want {
-			t.Fatalf("hosted workload HOME=%q, want canonical root %q", home, want)
+		parts := strings.Split(strings.TrimSpace(string(data)), "|")
+		if len(parts) != 5 {
+			t.Fatalf("hosted workload environment=%q", data)
+		}
+		want := filepath.Join(realRoot, "job")
+		for i, name := range []string{"HOME", "TMPDIR", "GOTMPDIR"} {
+			if parts[i] != want {
+				t.Errorf("hosted workload %s=%q, want canonical root %q", name, parts[i], want)
+			}
+		}
+		if _, err := os.Stat(want); !os.IsNotExist(err) {
+			t.Errorf("canonical shard root remains after cleanup: %v", err)
 		}
 	})
 	t.Run("hosted coverage evidence is exact and complete", func(t *testing.T) {
