@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: separate-commit-and-full-verification-gates
-status: Implementing
+status: Implemented
 date: 2026-08-27
 ---
 # ADR-0313: Separate commit and full verification gates
@@ -132,3 +132,4 @@ intentional compatibility break in this pre-1.0 project.
 - 2026-08-27: Proposed
 - 2026-08-27: Implementing; content-sha256: b5ffcfb22ac1d81c82e3aac424f0b82a116083682834bf1c16bb4b74caf000b4
 - 2026-08-27: Applied; operations: remove `tooling/quality-gates:staged-test-selection`, add `tooling/quality-gates:gate-tier-cadence`, update `tooling/quality-gates:coverage-raw-identity-ratchet`, update `tooling/quality-gates:coverage-ignore-admission`, update `tooling/quality-gates:covercheck-mutation-regression`, update `tooling/quality-gates:deadcode-gate`, update `tooling/quality-gates:pi-extension-container-gate`, update `tooling/quality-gates:gate-severity-by-protected-property`, update `tooling/quality-gates:exact-revision-repository-acceptance`, update `tooling/changelog-and-release:release-gate-on-tag`, add `tooling/changelog-and-release:release-platforms`
+- 2026-08-28: Implemented; content-sha256: b5ffcfb22ac1d81c82e3aac424f0b82a116083682834bf1c16bb4b74caf000b4

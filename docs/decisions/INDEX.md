@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0313: Separate commit and full verification gates](0313-separate-commit-and-full-verification-gates.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -318,3 +318,4 @@
 - [ADR-0310: Require Complete and Unambiguous Mutable Authority](0310-require-complete-and-unambiguous-mutable-authority.md) (Implemented)
 - [ADR-0311: Bind Terminal Plan Closure to Selected Implementation Evidence](0311-bind-terminal-plan-closure-to-selected-implementation-evidence.md) (Implemented)
 - [ADR-0312: Load curated release notes through GoReleaser](0312-load-curated-release-notes-through-goreleaser.md) (Implemented)
+- [ADR-0313: Separate commit and full verification gates](0313-separate-commit-and-full-verification-gates.md) (Implemented)
