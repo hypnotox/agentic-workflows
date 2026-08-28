@@ -112,6 +112,7 @@ range-selected mutation path rather than hiding them behind one elapsed number.
 - update `tooling/quality-gates:gate-tier-cadence`
 - update `tooling/quality-gates:coverage-raw-identity-ratchet`
 - update `tooling/quality-gates:exact-revision-repository-acceptance`
+- update `tooling/changelog-and-release:release-gate-on-tag`
 - add `tooling/cli:cli-runner-instance-ownership`
 - add `tooling/test-infrastructure:immutable-fixture-seeds`
 
@@ -170,3 +171,4 @@ must return for a new decision rather than silently relaxing assurance.
 - 2026-08-28: Applied; operations: add `tooling/quality-gates:affected-package-feedback`, update `tooling/quality-gates:gate-tier-cadence`
 - 2026-08-28: Reapplied; operations: add `tooling/quality-gates:affected-package-feedback`
 - 2026-08-28: Reapplied; operations: add `tooling/quality-gates:affected-package-feedback`
+- 2026-08-28: Amended; content-sha256: c3a5d0ee473870aa6bf37245d877e0639f5cddd4ace22bc07f12215d61d32bfb
