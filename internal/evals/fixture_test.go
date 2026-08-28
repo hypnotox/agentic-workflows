@@ -2,7 +2,6 @@ package evals
 
 import (
 	"context"
-	"fmt"
 	"os"
 	"path/filepath"
 	"sort"
@@ -24,23 +23,9 @@ import (
 const evalPrefix = "example"
 
 var (
-	evalSeedRootOnce sync.Once
-	evalSeedRoot     string
-	evalSeedRootErr  error
-	evalSeedMu       sync.Mutex
-	evalSeeds        = make(map[string]string)
+	evalSeedMu sync.Mutex
+	evalSeeds  = make(map[string]testsupport.TreeSeed)
 )
-
-func TestMain(m *testing.M) {
-	code := m.Run()
-	if evalSeedRoot != "" {
-		if err := os.RemoveAll(evalSeedRoot); err != nil && code == 0 {
-			fmt.Fprintf(os.Stderr, "remove eval fixture seeds: %v\n", err)
-			code = 1
-		}
-	}
-	os.Exit(code)
-}
 
 func evalPreparation(p *project.ProjectState, cfg *config.Config) (publisher.Preparation, error) {
 	return publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Prepare()
@@ -132,21 +117,14 @@ func catalogDocPath(root, name string, entry catalog.DocEntry) string {
 // fullCatalogSeedForTarget constructs one immutable full-catalog seed for each
 // target identity. The product renders both fixed targets, but target-specific
 // evals inspect only the requested tree.
-func fullCatalogSeedForTarget(t *testing.T, cat *catalog.Catalog, target string) string {
+func fullCatalogSeedForTarget(t *testing.T, cat *catalog.Catalog, target string) testsupport.TreeSeed {
 	t.Helper()
-	evalSeedRootOnce.Do(func() {
-		evalSeedRoot, evalSeedRootErr = os.MkdirTemp("", "awf-eval-seeds-")
-	})
-	if evalSeedRootErr != nil {
-		t.Fatalf("create eval fixture seed root: %v", evalSeedRootErr)
-	}
-
 	evalSeedMu.Lock()
 	defer evalSeedMu.Unlock()
-	if root := evalSeeds[target]; root != "" {
-		return root
+	if seed, ok := evalSeeds[target]; ok {
+		return seed
 	}
-	root := filepath.Join(evalSeedRoot, target)
+	root := filepath.Join(t.TempDir(), "seed")
 	testsupport.WriteAwfConfig(t, root, fullCatalogConfigForTarget(cat, target))
 	p, err := project.Open(testsupport.Context(t), root)
 	if err != nil {
@@ -159,8 +137,12 @@ func fullCatalogSeedForTarget(t *testing.T, cat *catalog.Catalog, target string)
 	if _, err := publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatalf("initialize: %v", err)
 	}
-	evalSeeds[target] = root
-	return root
+	seed, err := testsupport.CaptureTree(root)
+	if err != nil {
+		t.Fatalf("capture %s full-catalog seed: %v", target, err)
+	}
+	evalSeeds[target] = seed
+	return seed
 }
 
 // cloneFullCatalogForTarget gives each consumer an isolated fixture. Tests that
@@ -169,7 +151,7 @@ func cloneFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string
 	t.Helper()
 	seed := fullCatalogSeedForTarget(t, cat, target)
 	root := filepath.Join(t.TempDir(), "project")
-	if err := os.CopyFS(root, os.DirFS(seed)); err != nil {
+	if err := seed.Clone(root); err != nil {
 		t.Fatalf("clone %s full-catalog seed: %v", target, err)
 	}
 	return root

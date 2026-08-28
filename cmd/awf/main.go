@@ -22,19 +22,33 @@ import (
 
 func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) }
 
+func run(args []string, stdout, stderr io.Writer) int {
+	return newRunner(os.Getwd, os.Stdin, stdinIsInteractive(os.Stdin)).run(args, stdout, stderr)
+}
+
 // gitCommandTimeout is the deadline every command boundary puts on the git work
 // it starts. The value is the seam's, so awf and repoaudit cannot drift apart on
 // it; the choice to apply it here is this boundary's.
 const gitCommandTimeout = awfgit.CommandTimeout
 
-var getwd = os.Getwd
+// runner owns one command operation's process dependencies and handler
+// composition. It is assembled at main so tests can run independent operations
+// without changing package state.
+type runner struct {
+	getwd    func() (string, error)
+	stdin    io.Reader
+	handlers map[string]handler
+}
 
-var stdin io.Reader = os.Stdin
+func newRunner(getwd func() (string, error), stdin io.Reader, isInteractive func() bool) runner {
+	return runner{getwd: getwd, stdin: stdin, handlers: newHandlers(stdin, isInteractive)}
+}
 
-// isInteractive reports whether stdin is a terminal (so init should prompt).
-var isInteractive = func() bool {
-	fi, err := os.Stdin.Stat()
-	return err == nil && fi.Mode()&os.ModeCharDevice != 0
+func stdinIsInteractive(stdin *os.File) func() bool {
+	return func() bool {
+		fi, err := stdin.Stat()
+		return err == nil && fi.Mode()&os.ModeCharDevice != 0
+	}
 }
 
 // globalHelp renders the top-level `awf help` overview from each command's summary,
@@ -170,7 +184,7 @@ func renderHelp(dst io.Writer, spec clispec.Command, path string) error {
 // run is the CLI driver: it resolves args to a clispec command, prints help,
 // parses the arguments once, applies the gating classification, and dispatches
 // to the command's handler - a single parse-once path shared by every command.
-func run(args []string, stdout, stderr io.Writer) int {
+func (r runner) run(args []string, stdout, stderr io.Writer) int {
 	if len(args) < 2 {
 		return dispatchFailure(stdout, stderr, &usageErr{fmt.Sprintf("usage: %s [args]; run `awf help` for command details", clispec.UsageLine())})
 	}
@@ -201,7 +215,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 		}
 		return 0
 	}
-	cwd, err := getwd()
+	cwd, err := r.getwd()
 	if err != nil {
 		return dispatchFailure(stdout, stderr, err)
 	}
@@ -260,7 +274,7 @@ func run(args []string, stdout, stderr io.Writer) int {
 	// dispatch via sub.
 	handlerCtx, cancel := newGitCommandContext()
 	defer cancel()
-	result := handlers[top.Name](&cmdCtx{ctx: handlerCtx, root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: stdin})
+	result := r.handlers[top.Name](&cmdCtx{ctx: handlerCtx, root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: r.stdin})
 	return completeHandlerResult(stdout, stderr, result)
 }
 

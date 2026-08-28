@@ -165,3 +165,4 @@ must return for a new decision rather than silently relaxing assurance.
 - 2026-08-28: Proposed
 - 2026-08-28: Implementing; content-sha256: 0f3755ac6673043c4f5407821e5591f04503a4f3d26446bfb8f20017771d2249
 - 2026-08-28: Applied; operations: add `tooling/quality-gates:verification-performance-contract`
+- 2026-08-28: Applied; operations: add `tooling/cli:cli-runner-instance-ownership`, add `tooling/test-infrastructure:immutable-fixture-seeds`

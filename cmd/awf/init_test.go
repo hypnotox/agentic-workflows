@@ -23,7 +23,6 @@ import (
 // silent resolution path runs deterministically regardless of the real stdin.
 func forceNonInteractive(t *testing.T) {
 	t.Helper()
-	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 }
 
 // readConfig returns the scaffolded .awf/config.yaml under root.
@@ -54,13 +53,13 @@ func TestWriteInitDescriptorProtocolBytesAndErrors(t *testing.T) {
 }
 
 func TestInitDescribeReadOnly(t *testing.T) {
+	sourceRoot := testsupport.RepoRoot(t)
 	root := t.TempDir()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init", "--describe"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "init", "--describe"}, &out, &errb); code != 0 {
 		t.Fatalf("init --describe: exit %d (%s)", code, errb.String())
 	}
-	want, err := os.ReadFile(filepath.Join("testdata", "init-describe.json"))
+	want, err := os.ReadFile(filepath.Join(sourceRoot, "cmd", "awf", "testdata", "init-describe.json"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -76,10 +75,8 @@ func TestInitDescribeReadOnly(t *testing.T) {
 // invariant: tooling/init-and-enablement:explicit-answers-win (TestInitExplicitAnswersWin)
 func TestInitExplicitAnswersWin(t *testing.T) {
 	root := t.TempDir()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	forceNonInteractive(t)
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init", "--set", "gateCmd=make gate"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "init", "--set", "gateCmd=make gate"}, &out, &errb); code != 0 {
 		t.Fatalf("init --set: exit %d (%s)", code, errb.String())
 	}
 	if cfg := readInitConfig(t, root); !strings.Contains(cfg, "gateCmd: make gate") {
@@ -94,10 +91,8 @@ func TestInitExplicitAnswersWin(t *testing.T) {
 // invariant: tooling/init-and-enablement:init-profile-default-core (TestInitNonInteractiveDefault)
 func TestInitNonInteractiveDefault(t *testing.T) {
 	root := t.TempDir()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	forceNonInteractive(t)
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code != 0 {
 		t.Fatalf("init: exit %d (%s)", code, errb.String())
 	}
 	cfg := readInitConfig(t, root)
@@ -115,14 +110,12 @@ func TestInitNonInteractiveDefault(t *testing.T) {
 // TestInitAnswersFile asserts values come from a JSON answers file.
 func TestInitAnswersFile(t *testing.T) {
 	root := t.TempDir()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	forceNonInteractive(t)
 	ans := filepath.Join(t.TempDir(), "answers.json")
 	if err := os.WriteFile(ans, []byte(`{"testCmd":"go test ./..."}`), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init", "--answers", ans}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "init", "--answers", ans}, &out, &errb); code != 0 {
 		t.Fatalf("init --answers: exit %d (%s)", code, errb.String())
 	}
 	if cfg := readInitConfig(t, root); !strings.Contains(cfg, "testCmd: go test ./...") {
@@ -148,14 +141,12 @@ func TestInitErrorPaths(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-			forceNonInteractive(t)
 			args := tc.args
 			if tc.pre != nil {
 				args = tc.pre(root)
 			}
 			var out, errb bytes.Buffer
-			if code := run(args, &out, &errb); code == 0 {
+			if code := runFrom(root, args, &out, &errb); code == 0 {
 				t.Fatalf("expected non-zero exit for %s, got 0", tc.name)
 			}
 		})
@@ -169,18 +160,10 @@ func TestInitErrorPaths(t *testing.T) {
 // var; every other writing test forces non-interactive.
 func TestInitInteractivePromptWiring(t *testing.T) {
 	root := t.TempDir()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	origInteractive := isInteractive
-	isInteractive = func() bool { return true }
-	t.Cleanup(func() { isInteractive = origInteractive })
-	origStdin := stdin
 	// gateCmd reads the first value; every later prompt hits EOF and takes its
 	// empty default, so the invariants marker/globs stay unset.
-	stdin = strings.NewReader("core\nmake gate\n")
-	t.Cleanup(func() { stdin = origStdin })
-
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+	if code := newRunner(func() (string, error) { return root, nil }, strings.NewReader("core\nmake gate\n"), func() bool { return true }).run([]string{"awf", "init"}, &out, &errb); code != 0 {
 		t.Fatalf("interactive init: exit %d (%s)", code, errb.String())
 	}
 	cfg := readInitConfig(t, root)
@@ -196,18 +179,13 @@ func TestInitInteractivePromptWiring(t *testing.T) {
 // then discards - the config is kept, init says so, and only the sync runs.
 func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 	root := t.TempDir()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	testsupport.SwapVar(t, &isInteractive, func() bool { return true })
 	testsupport.WriteAwfConfig(t, root, "prefix: ex\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatal(err)
 	}
-	origStdin := stdin
-	stdin = strings.NewReader("answered-one\nanswered-two\nanswered-three\n")
-	t.Cleanup(func() { stdin = origStdin })
-
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+	r := newRunner(func() (string, error) { return root, nil }, strings.NewReader("answered-one\nanswered-two\nanswered-three\n"), func() bool { return true })
+	if code := r.run([]string{"awf", "init"}, &out, &errb); code != 0 {
 		t.Fatalf("init over existing config: exit %d (%s)", code, errb.String())
 	}
 	if strings.Contains(out.String(), "gateCmd:") {
@@ -221,7 +199,7 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 	}
 	// Explicit answers against an existing config are surfaced as ignored.
 	var out2 bytes.Buffer
-	if code := run([]string{"awf", "init", "--set", "gateCmd=make gate"}, &out2, &errb); code != 0 {
+	if code := r.run([]string{"awf", "init", "--set", "gateCmd=make gate"}, &out2, &errb); code != 0 {
 		t.Fatalf("init --set over existing config: exit %d (%s)", code, errb.String())
 	}
 	if !strings.Contains(out2.String(), "ignored") {
@@ -229,20 +207,18 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 	}
 }
 
-// TestIsInteractive exercises the real isInteractive seam (the result depends on
-// whether the test's stdin is a terminal; we only assert it runs without panic).
-func TestIsInteractive(t *testing.T) {
-	t.Logf("isInteractive() = %v", isInteractive())
+// TestStdinIsInteractive exercises the concrete process predicate (the result
+// depends on whether the test's stdin is a terminal; it must not panic).
+func TestStdinIsInteractive(t *testing.T) {
+	t.Logf("stdinIsInteractive() = %v", stdinIsInteractive(os.Stdin)())
 }
 
 // A commitScopes answer lands in audit.allowedScopes, never in vars; the
 // silent default writes no audit block (ADR-0051).
 func TestInitCommitScopesAnswer(t *testing.T) {
 	root := t.TempDir()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	forceNonInteractive(t)
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init", "--set", "commitScopes=adr, awf"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "init", "--set", "commitScopes=adr, awf"}, &out, &errb); code != 0 {
 		t.Fatalf("init --set commitScopes: exit %d (%s)", code, errb.String())
 	}
 	cfg := readInitConfig(t, root)
@@ -328,7 +304,6 @@ func TestRenderInitOutcomePropagatesFailures(t *testing.T) {
 }
 
 func TestInitPropagatesOrdinaryPresentationWriteFailures(t *testing.T) {
-	forceNonInteractive(t)
 	for _, test := range []struct {
 		name   string
 		root   func(*testing.T) string
@@ -351,10 +326,8 @@ func TestInitPropagatesOrdinaryPresentationWriteFailures(t *testing.T) {
 
 func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 	root := t.TempDir()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	forceNonInteractive(t)
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code != 0 {
 		t.Fatalf("init: exit %d (%s)", code, errb.String())
 	}
 	for _, want := range []string{
@@ -387,7 +360,6 @@ func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
-			testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 			for path, body := range tc.files {
 				testsupport.WriteFile(t, filepath.Join(root, path), body)
 			}
@@ -427,7 +399,6 @@ func testInitFirstADRChecksClean(t *testing.T) {
 			for _, name := range tc.legacy {
 				testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", name), testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle(name[:4]+": Old")))
 			}
-			testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 			// The gateCmd answer keeps the scaffold's enabled hooks singleton
 			// valid for the post-init syncs (ADR-0156 Decision 5).
 			if err := runInit(ctx, root, false, false, []string{"profile=full", "gateCmd=make gate"}, "", io.Discard); err != nil {
@@ -511,15 +482,13 @@ func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
 
 // invariant: tooling/init-and-enablement:init-collision-guard (TestInitGuardBlocksAndForceOverrides)
 func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
-	forceNonInteractive(t)
 	root := t.TempDir()
 	// A pre-existing, non-awf CLAUDE.md is a collision.
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
+	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code == 0 {
 		t.Fatal("expected init to fail on collision")
 	}
 	if !strings.Contains(errb.String(), "refusing to overwrite") {
@@ -535,7 +504,7 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 	// --force backs up the colliding file, then overwrites and completes.
 	out.Reset()
 	errb.Reset()
-	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "init", "--force"}, &out, &errb); code != 0 {
 		t.Fatalf("init --force failed: %s", errb.String())
 	}
 	// The original is preserved at <path>.awf-bak.
@@ -604,9 +573,8 @@ func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md.awf-bak"), []byte("v1\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "init", "--force"}, &out, &errb); code != 0 {
 		t.Fatalf("init --force: %s", errb.String())
 	}
 	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak")); string(b) != "v1\n" {
@@ -619,16 +587,15 @@ func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
 
 func TestInitIdempotentReinitNoCollision(t *testing.T) {
 	root := scaffoldProject(t)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code != 0 {
 		t.Fatalf("first init failed: %s", errb.String())
 	}
 	// Re-init over the now-managed tree: every planned path is in the prior lock,
 	// so p.InitCollisions skips them all and init proceeds without --force.
 	out.Reset()
 	errb.Reset()
-	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code != 0 {
 		t.Fatalf("re-init failed: %s", errb.String())
 	}
 }
@@ -647,14 +614,13 @@ func TestInitCollisionsOpenError(t *testing.T) {
 	if err := lock.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
+	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code == 0 {
 		t.Fatal("expected init to fail when project.Open errors")
 	}
 	// --force skips the probe, so the same malformed config now fails at
 	// runInit's own post-scaffold project.Open - keeping that branch covered.
-	if code := run([]string{"awf", "init", "--force"}, &out, &errb); code == 0 {
+	if code := runFrom(root, []string{"awf", "init", "--force"}, &out, &errb); code == 0 {
 		t.Fatal("expected init --force to fail when project.Open errors")
 	}
 }
@@ -691,11 +657,8 @@ func TestInitCollisionProbeRefusesBeforePrompts(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("mine\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	testsupport.SwapVar(t, &isInteractive, func() bool { return true })
-	testsupport.SwapVar(t, &stdin, io.Reader(strings.NewReader("SHOULD-NOT-BE-CONSUMED\n")))
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init"}, &out, &errb); code == 0 {
+	if code := newRunner(func() (string, error) { return root, nil }, strings.NewReader("SHOULD-NOT-BE-CONSUMED\n"), func() bool { return true }).run([]string{"awf", "init"}, &out, &errb); code == 0 {
 		t.Fatal("expected init to refuse on collision")
 	}
 	if !strings.Contains(errb.String(), "refusing to overwrite") {
@@ -722,10 +685,8 @@ func TestInitPostAnswerCollisionAfterProbePasses(t *testing.T) {
 	if err := os.WriteFile(skillPath, []byte("mine\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	forceNonInteractive(t)
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init", "--set", "skills=tdd"}, &out, &errb); code == 0 {
+	if code := runFrom(root, []string{"awf", "init", "--set", "skills=tdd"}, &out, &errb); code == 0 {
 		t.Fatal("expected init to refuse on the post-answer collision")
 	}
 	if !strings.Contains(errb.String(), "refusing to overwrite") {

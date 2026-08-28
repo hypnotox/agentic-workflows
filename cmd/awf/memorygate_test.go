@@ -186,9 +186,8 @@ func TestMemoryGateDispatch(t *testing.T) {
 	}
 	gitfixture.AddAll(t, gitfixture.At(root))
 	gitfixture.Commit(t, gitfixture.At(root), "fixture", nil)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb strings.Builder
-	if code := run([]string{"awf", "check", "repo", "memory"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "check", "repo", "memory"}, &out, &errb); code != 0 {
 		t.Fatalf("check repo memory exited %d: %s", code, errb.String())
 	}
 	if out.String() != completedCheckReport {

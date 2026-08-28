@@ -137,82 +137,84 @@ func runCheckGroup(c *cmdCtx) error {
 	}
 }
 
-// handlers maps a top-level command name to its handler. A group command (new)
+// newHandlers composes a runner's top-level handlers. A group command (new)
 // has a single handler that dispatches on c.sub; children are NOT separate keys.
-// TestHandlerRegistryParity asserts these keys match the clispec top-level names.
-var handlers = map[string]handler{
-	"init": func(c *cmdCtx) handlerResult {
-		return handlerFailure(runInit(c.ctx, c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], c.stdout))
-	},
-	"render": func(c *cmdCtx) handlerResult { return handlerFailure(runSync(c.ctx, c.root, c.stdout)) },
-	"check": func(c *cmdCtx) handlerResult {
-		result := runCheckGroup(c)
-		if c.sub == "staged commit" {
-			return handlerFailure(result)
-		}
-		return handlerReport(result)
-	},
-	"read": func(c *cmdCtx) handlerResult {
-		if c.sub != "plan" { // coverage-ignore: clispec admits only the declared plan child before dispatch
-			return handlerFailure(&usageErr{"usage: awf read plan <plan> <P[.T]>"})
-		}
-		return handlerFailure(runReadPlan(c.ctx, c.root, c.inv.positionals, c.stdout))
-	},
-	"audit": func(c *cmdCtx) handlerResult {
-		return handlerReport(runAudit(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
-	},
-	"effort": func(c *cmdCtx) handlerResult {
-		var release func() error
-		c.retainLease = func(value func() error) { release = value }
-		return handlerFailureHeld(runEffort(c, openEffortComposition), release)
-	},
-	"adr": func(c *cmdCtx) handlerResult { return handlerFailure(runADR(c)) },
-	"list": func(c *cmdCtx) handlerResult {
-		return handlerFailure(runList(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
-	},
-	"config": func(c *cmdCtx) handlerResult {
-		return handlerFailure(runConfig(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
-	},
-	"context": func(c *cmdCtx) handlerResult {
-		return handlerFailure(runContext(c.ctx, c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--uncovered"], c.inv.bools["--full"], c.inv.multi["--show"], c.stdout))
-	},
-	"topic": func(c *cmdCtx) handlerResult {
-		return handlerFailure(runTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.stdout))
-	},
-	"new": func(c *cmdCtx) handlerResult {
-		// For a recognized child, sub is the kind and positionals are the child's
-		// args; for an absent or unrecognized child, the typed token (if any) is
-		// the first positional. Reunite them so runNew's kind switch owns every
-		// usage / unknown-kind message.
-		kind, args := c.sub, c.inv.positionals
-		if kind == "" && len(args) > 0 {
-			kind, args = args[0], args[1:]
-		}
-		if kind == localDocumentKind {
-			var title *string
-			if value, present := c.inv.values["--title"]; present {
-				title = &value
+// Its process inputs are explicit so no command operation shares a mutable seam.
+func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]handler {
+	return map[string]handler{
+		"init": func(c *cmdCtx) handlerResult {
+			return handlerFailure(runInitWithProjectLoader(c.ctx, c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], promptInput, isInteractive(), c.stdout, newProjectLoader, gate))
+		},
+		"render": func(c *cmdCtx) handlerResult { return handlerFailure(runSync(c.ctx, c.root, c.stdout)) },
+		"check": func(c *cmdCtx) handlerResult {
+			result := runCheckGroup(c)
+			if c.sub == "staged commit" {
+				return handlerFailure(result)
 			}
-			return handlerFailure(newDoc(c.ctx, c.root, args, title, c.stdout))
-		}
-		return handlerFailure(runNew(c.ctx, c.root, kind, args, c.stdout))
-	},
-	"remove": func(c *cmdCtx) handlerResult {
-		if !project.IsFreeformDomainKind(c.sub) || len(c.inv.positionals) != 1 {
-			return handlerFailure(&usageErr{"usage: awf remove domain <name>"})
-		}
-		return handlerFailure(runRemoveDomain(c.ctx, c.root, c.inv.positionals[0], c.stdout))
-	},
-	"upgrade": func(c *cmdCtx) handlerResult {
-		var release func() error
-		stdout := leaseRetainingWriter{Writer: c.stdout, retain: func(value func() error) { release = value }}
-		return handlerFailureHeld(runUpgradeFlags(c.ctx, c.root, c.inv.bools["--recover"], stdout), release)
-	},
-	"uninstall": func(c *cmdCtx) handlerResult { return handlerFailure(runUninstall(c.ctx, c.root, c.stdout)) },
-	"changelog": func(c *cmdCtx) handlerResult {
-		return handlerFailure(runChangelog(c.inv.values["--version"], c.inv.values["--since"], c.inv.values["--range"], c.stdout))
-	},
-	"version": func(c *cmdCtx) handlerResult { return handlerFailure(runVersion(c.stdout)) },
+			return handlerReport(result)
+		},
+		"read": func(c *cmdCtx) handlerResult {
+			if c.sub != "plan" { // coverage-ignore: clispec admits only the declared plan child before dispatch
+				return handlerFailure(&usageErr{"usage: awf read plan <plan> <P[.T]>"})
+			}
+			return handlerFailure(runReadPlan(c.ctx, c.root, c.inv.positionals, c.stdout))
+		},
+		"audit": func(c *cmdCtx) handlerResult {
+			return handlerReport(runAudit(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
+		},
+		"effort": func(c *cmdCtx) handlerResult {
+			var release func() error
+			c.retainLease = func(value func() error) { release = value }
+			return handlerFailureHeld(runEffort(c, openEffortComposition), release)
+		},
+		"adr": func(c *cmdCtx) handlerResult { return handlerFailure(runADR(c)) },
+		"list": func(c *cmdCtx) handlerResult {
+			return handlerFailure(runList(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
+		},
+		"config": func(c *cmdCtx) handlerResult {
+			return handlerFailure(runConfig(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
+		},
+		"context": func(c *cmdCtx) handlerResult {
+			return handlerFailure(runContext(c.ctx, c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--uncovered"], c.inv.bools["--full"], c.inv.multi["--show"], c.stdout))
+		},
+		"topic": func(c *cmdCtx) handlerResult {
+			return handlerFailure(runTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.stdout))
+		},
+		"new": func(c *cmdCtx) handlerResult {
+			// For a recognized child, sub is the kind and positionals are the child's
+			// args; for an absent or unrecognized child, the typed token (if any) is
+			// the first positional. Reunite them so runNew's kind switch owns every
+			// usage / unknown-kind message.
+			kind, args := c.sub, c.inv.positionals
+			if kind == "" && len(args) > 0 {
+				kind, args = args[0], args[1:]
+			}
+			if kind == localDocumentKind {
+				var title *string
+				if value, present := c.inv.values["--title"]; present {
+					title = &value
+				}
+				return handlerFailure(newDoc(c.ctx, c.root, args, title, c.stdout))
+			}
+			return handlerFailure(runNew(c.ctx, c.root, kind, args, c.stdout))
+		},
+		"remove": func(c *cmdCtx) handlerResult {
+			if !project.IsFreeformDomainKind(c.sub) || len(c.inv.positionals) != 1 {
+				return handlerFailure(&usageErr{"usage: awf remove domain <name>"})
+			}
+			return handlerFailure(runRemoveDomain(c.ctx, c.root, c.inv.positionals[0], c.stdout))
+		},
+		"upgrade": func(c *cmdCtx) handlerResult {
+			var release func() error
+			stdout := leaseRetainingWriter{Writer: c.stdout, retain: func(value func() error) { release = value }}
+			return handlerFailureHeld(runUpgradeFlags(c.ctx, c.root, c.inv.bools["--recover"], stdout), release)
+		},
+		"uninstall": func(c *cmdCtx) handlerResult { return handlerFailure(runUninstall(c.ctx, c.root, c.stdout)) },
+		"changelog": func(c *cmdCtx) handlerResult {
+			return handlerFailure(runChangelog(c.inv.values["--version"], c.inv.values["--since"], c.inv.values["--range"], c.stdout))
+		},
+		"version": func(c *cmdCtx) handlerResult { return handlerFailure(runVersion(c.stdout)) },
+	}
 }
 
 // resolve descends through named children, returning the deepest leaf and its

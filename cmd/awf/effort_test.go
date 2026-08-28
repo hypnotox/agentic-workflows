@@ -357,10 +357,7 @@ func TestMemoryCommandHumanProtocolAndStdinBoundaries(t *testing.T) {
 		t.Fatalf("human read code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 
-	oldStdin := stdin
-	stdin = strings.NewReader(`{"edits":[{"oldText":"## Brief","newText":"## Updated brief"}]}`)
-	t.Cleanup(func() { stdin = oldStdin })
-	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "edit", "memory-cli")
+	code, stdout, stderr = runEffortCLIWithInput(t, root, strings.NewReader(`{"edits":[{"oldText":"## Brief","newText":"## Updated brief"}]}`), "effort", "memory", "edit", "memory-cli")
 	if code != 0 || stderr != "" || !strings.Contains(stdout, "status: edited") || !strings.Contains(stdout, "replacements: 1") {
 		t.Fatalf("human edit code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
@@ -375,8 +372,7 @@ func TestMemoryCommandHumanProtocolAndStdinBoundaries(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	stdin = strings.NewReader(`{"edits":[{"oldText":"## Updated brief","newText":"## Previewed brief"}]}`)
-	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "edit", "--json", "memory-cli", "--preview", "--owner", owner)
+	code, stdout, stderr = runEffortCLIWithInput(t, root, strings.NewReader(`{"edits":[{"oldText":"## Updated brief","newText":"## Previewed brief"}]}`), "effort", "memory", "edit", "--json", "memory-cli", "--preview", "--owner", owner)
 	if code != 0 || stderr != "" {
 		t.Fatalf("edit preview code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
@@ -387,8 +383,7 @@ func TestMemoryCommandHumanProtocolAndStdinBoundaries(t *testing.T) {
 	if len(envelope) != 4 || string(envelope["condition"]) != `"previewed"` || string(envelope["replacementCount"]) != "1" || envelope["diff"] == nil || envelope["memory"] != nil {
 		t.Fatalf("edit preview envelope=%v", envelope)
 	}
-	stdin = strings.NewReader(`{"edits":[{"oldText":"absent text","newText":"unused"}]}`)
-	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "edit", "memory-cli", "--preview", "--owner", owner, "--json")
+	code, stdout, stderr = runEffortCLIWithInput(t, root, strings.NewReader(`{"edits":[{"oldText":"absent text","newText":"unused"}]}`), "effort", "memory", "edit", "memory-cli", "--preview", "--owner", owner, "--json")
 	if code != 0 || stderr != "" || !strings.Contains(stdout, `"condition":"no-match"`) {
 		t.Fatalf("failed preview code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
@@ -582,10 +577,7 @@ func TestMemoryMalformedDiagnosticIsEntirelyBoundedAndUTF8Safe(t *testing.T) {
 	}
 
 	unknownKey := strings.Repeat("é", 30000)
-	oldStdin := stdin
-	stdin = strings.NewReader(`{"edits":[{"oldText":"x","newText":"y"}],"` + unknownKey + `":true}`)
-	t.Cleanup(func() { stdin = oldStdin })
-	code, stdout, stderr = runEffortCLI(t, root, "effort", "memory", "edit", "missing")
+	code, stdout, stderr = runEffortCLIWithInput(t, root, strings.NewReader(`{"edits":[{"oldText":"x","newText":"y"}],"`+unknownKey+`":true}`), "effort", "memory", "edit", "missing")
 	if code == 0 || stdout != "" {
 		t.Fatalf("oversized malformed request code=%d stdout=%q", code, stdout)
 	}
@@ -637,10 +629,13 @@ func TestMemoryProtocolBaseRefusalAndNullableMatrices(t *testing.T) {
 }
 
 func runEffortCLI(t *testing.T, root string, args ...string) (int, string, string) {
+	return runEffortCLIWithInput(t, root, os.Stdin, args...)
+}
+
+func runEffortCLIWithInput(t *testing.T, root string, stdin io.Reader, args ...string) (int, string, string) {
 	t.Helper()
-	t.Chdir(root)
 	var stdout, stderr bytes.Buffer
-	code := run(append([]string{"awf"}, args...), &stdout, &stderr)
+	code := newRunner(func() (string, error) { return root, nil }, stdin, func() bool { return false }).run(append([]string{"awf"}, args...), &stdout, &stderr)
 	return code, stdout.String(), stderr.String()
 }
 

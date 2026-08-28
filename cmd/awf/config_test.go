@@ -104,19 +104,19 @@ func TestRunConfigLiveAndSingleKey(t *testing.T) {
 func TestRunConfigDispatch(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
+	root := t.TempDir()
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "config"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "config"}, &out, &errb); code != 0 {
 		t.Fatalf("bare config: exit %d, stderr %q", code, errb.String())
 	}
 	if !strings.Contains(out.String(), "static") {
 		t.Errorf("bare config output missing static header:\n%s", out.String())
 	}
 	out.Reset()
-	if code := run([]string{"awf", "config", "gateCmd"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "config", "gateCmd"}, &out, &errb); code != 0 {
 		t.Fatalf("single-key config: exit %d", code)
 	}
-	if code := run([]string{"awf", "config", "nope"}, &out, &errb); code != 1 {
+	if code := runFrom(root, []string{"awf", "config", "nope"}, &out, &errb); code != 1 {
 		t.Errorf("unknown key should exit 1, got %d", code)
 	}
 }

@@ -29,10 +29,9 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 
 	t.Run("dispatch usage", func(t *testing.T) {
 		root := scaffoldProject(t)
-		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 		for _, args := range [][]string{{"awf", "new", "retired"}, {"awf", "new", "domain"}, {"awf", "remove"}, {"awf", "remove", "domain"}} {
 			var out, errOut bytes.Buffer
-			if code := run(args, &out, &errOut); code != 2 {
+			if code := runFrom(root, args, &out, &errOut); code != 2 {
 				t.Fatalf("%v exit = %d, stderr = %q", args, code, errOut.String())
 			}
 		}
@@ -204,15 +203,15 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 }
 
 func TestRunAddMissingSkillArg(t *testing.T) {
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
+	root := t.TempDir()
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "enable"}, &out, &errb); code != 2 {
+	if code := runFrom(root, []string{"awf", "enable"}, &out, &errb); code != 2 {
 		t.Fatalf("expected exit 2 for add without skill, got %d", code)
 	}
 }
 
 func TestRunArgValidation(t *testing.T) {
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return t.TempDir(), nil })
+	root := t.TempDir()
 	cases := []struct {
 		name string
 		args []string
@@ -225,7 +224,7 @@ func TestRunArgValidation(t *testing.T) {
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
 			var out, errb bytes.Buffer
-			if code := run(c.args, &out, &errb); code != 2 {
+			if code := runFrom(root, c.args, &out, &errb); code != 2 {
 				t.Fatalf("expected exit 2, got %d", code)
 			}
 			if !strings.Contains(errb.String(), c.want) {

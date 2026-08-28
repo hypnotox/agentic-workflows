@@ -6,6 +6,7 @@ import (
 	"go/ast"
 	"go/parser"
 	"go/token"
+	"os"
 	"path/filepath"
 	"strings"
 	"testing"
@@ -127,14 +128,9 @@ func TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures(t *testing.T) 
 			}
 			stdout.Reset()
 			stderr.Reset()
-			func() {
-				priorGetwd := getwd
-				defer func() { getwd = priorGetwd }()
-				getwd = func() (string, error) { return "", errors.New("working directory unavailable") }
-				if code := run([]string{"awf", name}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != "condition: awf: working directory unavailable\n" {
-					t.Fatalf("operational exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
-				}
-			}()
+			if code := newRunner(func() (string, error) { return "", errors.New("working directory unavailable") }, os.Stdin, func() bool { return false }).run([]string{"awf", name}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != "condition: awf: working directory unavailable\n" {
+				t.Fatalf("operational exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+			}
 		})
 	}
 }

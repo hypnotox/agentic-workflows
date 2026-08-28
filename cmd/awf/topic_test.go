@@ -359,9 +359,8 @@ func TestRunTopicDispatchAndReadOnly(t *testing.T) {
 		t.Fatalf("help = %d %s %s", code, help.String(), errOut.String())
 	}
 	root := t.TempDir()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var static bytes.Buffer
-	if code := run([]string{"awf", "topic", "schedule/contracts", "--coverage"}, &static, &errOut); code != 0 || !strings.Contains(static.String(), "static") {
+	if code := runFrom(root, []string{"awf", "topic", "schedule/contracts", "--coverage"}, &static, &errOut); code != 0 || !strings.Contains(static.String(), "static") {
 		t.Fatalf("dispatch = %d %s %s", code, static.String(), errOut.String())
 	}
 

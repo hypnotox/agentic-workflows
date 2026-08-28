@@ -4,6 +4,7 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
+	"sync"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -102,16 +103,33 @@ func withTestGateCmd(configYAML string) string {
 // sits on branch. A test that exercises branch-aware behaviour needs a real
 // repository, because the branch is read through the git seam rather than
 // injected (ADR-0193 keeps branch detection in one home).
+var (
+	gitScaffoldSeedOnce sync.Once
+	gitScaffoldSeed     testsupport.TreeSeed
+	gitScaffoldSeedErr  error
+)
+
 func gitScaffold(t *testing.T, branch string) string {
 	t.Helper()
-	repo := gitfixture.InitRepo(t)
-	root := repo.Root()
-	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+	gitScaffoldSeedOnce.Do(func() {
+		repo := gitfixture.InitRepo(t)
+		root := repo.Root()
+		gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+		testsupport.WriteAwfConfig(t, root, gitSampleYAML)
+		gitScaffoldSeed, gitScaffoldSeedErr = testsupport.CaptureTree(root)
+	})
+	if gitScaffoldSeedErr != nil {
+		t.Fatalf("prepare project Git seed: %v", gitScaffoldSeedErr)
+	}
+	root := filepath.Join(t.TempDir(), "project")
+	if err := gitScaffoldSeed.Clone(root); err != nil {
+		t.Fatalf("clone project Git seed: %v", err)
+	}
 	if branch != defaultFixtureBranch {
+		repo := gitfixture.At(root)
 		gitfixture.NativeBranch(t, repo, branch)
 		gitfixture.NativeCheckout(t, repo, branch)
 	}
-	testsupport.WriteAwfConfig(t, root, gitSampleYAML)
 	return root
 }
 

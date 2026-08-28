@@ -148,9 +148,8 @@ func TestRunAuditDispatch(t *testing.T) {
 	repo, base := auditProject(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "feat(awf): clean change", map[string]string{"main.go": "package x\nvar z int\n"})
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var outb, errb bytes.Buffer
-	if code := run([]string{"awf", "audit", base}, &outb, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "audit", base}, &outb, &errb); code != 0 {
 		t.Fatalf("expected exit 0, got %d (%s)", code, errb.String())
 	}
 }
@@ -177,9 +176,8 @@ func TestRunAuditDispatchFailingReport(t *testing.T) {
 	repo, base := auditProject(t)
 	root := repo.Root()
 	commit := gitfixture.Commit(t, repo, "not a conventional commit subject", map[string]string{"main.go": "package x\nvar y int\n"})
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var stdout, stderr bytes.Buffer
-	code := run([]string{"awf", "audit", base}, &stdout, &stderr)
+	code := runFrom(root, []string{"awf", "audit", base}, &stdout, &stderr)
 	if code != 1 {
 		t.Fatalf("exit code = %d, want 1; stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}

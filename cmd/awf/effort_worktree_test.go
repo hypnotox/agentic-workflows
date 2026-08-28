@@ -165,7 +165,7 @@ func TestEffortWorktreeCLIComposition(t *testing.T) {
 func TestEffortHandlerComposesTheProductionWiring(t *testing.T) {
 	root := commandRepo(t)
 	var out bytes.Buffer
-	if result := handlers["effort"](&cmdCtx{ctx: testContext(t), root: root, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}); result.err != nil {
+	if result := newRunner(os.Getwd, os.Stdin, func() bool { return false }).handlers["effort"](&cmdCtx{ctx: testContext(t), root: root, sub: "list", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}, stdout: &out}); result.err != nil {
 		t.Fatal(result.err)
 	}
 	if out.String() != "efforts: none\n" {

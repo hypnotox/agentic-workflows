@@ -57,10 +57,8 @@ func TestRunADRNumberThroughTheDriver(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(decisions, "pending-one.md"), pendingCLIRecord)
 	testsupport.WriteFile(t, filepath.Join(decisions, "pending-two.md"),
 		strings.ReplaceAll(pendingCLIRecord, "pending-one", "pending-two"))
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "adr", "number", "pending-two", "pending-one"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "adr", "number", "pending-two", "pending-one"}, &out, &errb); code != 0 {
 		t.Fatalf("exit %d: %s", code, errb.String())
 	}
 	if got, want := out.String(), "status: ADR numbering completed\n\ncollection:\n  assignments:\n    pending-two | 0001\n    pending-one | 0002\n"; got != want {

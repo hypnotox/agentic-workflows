@@ -15,10 +15,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
-func runInit(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, stdout io.Writer) error {
-	return runInitWithProjectLoader(ctx, root, force, describe, sets, answersFile, stdin, isInteractive(), stdout, newProjectLoader, gate)
-}
-
 func runInitWithProjectLoader(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, promptInput io.Reader, interactive bool, stdout io.Writer, loadProject initop.LoadProject, compatibilityGate initop.Gate) error {
 	if describe {
 		out, err := initspec.Describe(initspec.InitDescriptors(catalog.Standard.Vars))

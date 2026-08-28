@@ -28,6 +28,12 @@ awf new adr runs the binary-version compatibility gate before it reads or writes
 Origin: ADR-0042
 Backing: test
 
+### `invariant: cli-runner-instance-ownership`
+
+Each awf invocation uses a fresh unexported runner that owns its working-directory lookup, input, interactivity predicate, and handler composition. These dependencies are explicit one-operation seams, not mutable package globals; `internal/clispec` remains the only command-membership and policy source.
+Origin: ADR-0314
+Backing: test
+
 ### `invariant: cli-command-spec-single-source`
 
 The top-level usage line, awf help overview and order, structured command help model data (usage forms, descriptions, details, positionals, options, examples, and related commands), generated gated-command list, and bounded root README command block in top-level clispec order all derive from the clispec command table, with no parallel independent command-order membership decision and no parallel gated-command list.

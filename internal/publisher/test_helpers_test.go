@@ -38,6 +38,12 @@ func resolveTargets(names []string) ([]Target, error) { return projectstate.Reso
 var testConfigs sync.Map
 var targetOverrides sync.Map
 
+var (
+	initializedSampleSeedOnce sync.Once
+	initializedSampleSeed     testsupport.TreeSeed
+	initializedSampleSeedErr  error
+)
+
 const defaultFixtureBranch = "master"
 const pitfallsCfg = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"
 const debuggingVars = `vars:
@@ -237,6 +243,36 @@ func gitScaffold(t *testing.T, branch string) string {
 	return root
 }
 func scaffold(t *testing.T, source string) string { return scaffoldFiles(t, source, nil) }
+
+func initializedSampleProject(t *testing.T) (string, *ProjectState) {
+	t.Helper()
+	initializedSampleSeedOnce.Do(func() {
+		root := scaffold(t, sampleYAML)
+		state, err := Open(testContext(t), root)
+		if err != nil {
+			initializedSampleSeedErr = err
+			return
+		}
+		if err := syncProject(state); err != nil {
+			initializedSampleSeedErr = err
+			return
+		}
+		initializedSampleSeed, initializedSampleSeedErr = testsupport.CaptureTree(root)
+	})
+	if initializedSampleSeedErr != nil {
+		t.Fatalf("prepare publisher sample seed: %v", initializedSampleSeedErr)
+	}
+	root := filepath.Join(t.TempDir(), "project")
+	if err := initializedSampleSeed.Clone(root); err != nil {
+		t.Fatalf("clone publisher sample seed: %v", err)
+	}
+	state, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatalf("open cloned publisher sample seed: %v", err)
+	}
+	return root, state
+}
+
 func scaffoldFiles(t *testing.T, source string, files map[string]string) string {
 	t.Helper()
 	root := t.TempDir()

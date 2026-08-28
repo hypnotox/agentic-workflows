@@ -9,7 +9,6 @@ import (
 	"syscall"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
@@ -236,124 +235,25 @@ func TestInitAndUpgradeGateBehindVersion(t *testing.T) {
 	}
 }
 
-// gatedProbes maps every gated command to an invocation that reaches its gate.
-// Group children are keyed "<parent> <child>". The set is checked against
-// clispec below rather than trusted, so this table cannot silently fall behind
-// the spec.
-var gatedProbes = map[string][]string{
-	"render":                    {"awf", "render"},
-	"check":                     {"awf", "check"},
-	"check repo":                {"awf", "check", "repo"},
-	"check staged":              {"awf", "check", "staged"},
-	"check commit-policy":       {"awf", "check", "commit-policy", "HEAD"},
-	"check staged state":        {"awf", "check", "staged", "state"},
-	"check staged drift":        {"awf", "check", "staged", "drift"},
-	"check repo drift":          {"awf", "check", "repo", "drift"},
-	"check repo state":          {"awf", "check", "repo", "state"},
-	"check repo prose":          {"awf", "check", "repo", "prose"},
-	"check repo memory":         {"awf", "check", "repo", "memory"},
-	"check staged commit":       {"awf", "check", "staged", "commit"},
-	"read":                      {"awf", "read"},
-	"read plan":                 {"awf", "read", "plan", "2026-08-02-plan", "1"},
-	"audit":                     {"awf", "audit", "HEAD"},
-	"effort":                    {"awf", "effort", "list"},
-	"effort new":                {"awf", "effort", "new", "--slug", "gate-probe", "gate probe outcome"},
-	"effort list":               {"awf", "effort", "list"},
-	"effort show":               {"awf", "effort", "show", "gate-probe"},
-	"effort finish":             {"awf", "effort", "finish", "gate-probe"},
-	"effort worktree":           {"awf", "effort", "worktree", "add", "gate-probe"},
-	"effort integrate":          {"awf", "effort", "integrate", "gate-probe"},
-	"effort memory":             {"awf", "effort", "memory", "update", "gate-probe", "--phase", "phase"},
-	"effort memory read":        {"awf", "effort", "memory", "read", "gate-probe"},
-	"effort memory edit":        {"awf", "effort", "memory", "edit", "gate-probe"},
-	"effort memory update":      {"awf", "effort", "memory", "update", "gate-probe", "--phase", "phase"},
-	"effort activity":           {"awf", "effort", "activity", "attach", "gate-probe", "--owner", "00000000-0000-4000-8000-000000000001", "--json"},
-	"effort activity attach":    {"awf", "effort", "activity", "attach", "gate-probe", "--owner", "00000000-0000-4000-8000-000000000001", "--json"},
-	"effort activity heartbeat": {"awf", "effort", "activity", "heartbeat", "gate-probe", "--owner", "00000000-0000-4000-8000-000000000001", "--json"},
-	"effort activity detach":    {"awf", "effort", "activity", "detach", "gate-probe", "--owner", "00000000-0000-4000-8000-000000000001", "--json"},
-	"adr":                       {"awf", "adr", "number"},
-	"adr number":                {"awf", "adr", "number"},
-	"list":                      {"awf", "list"},
-	"config":                    {"awf", "config"},
-	"context":                   {"awf", "context", "README.md"},
-	"topic":                     {"awf", "topic", "rendering/doc-outputs"},
-	"new":                       {"awf", "new", "plan", "Gate probe"},
-	"new adr":                   {"awf", "new", "adr", "Gate probe"},
-	"new plan":                  {"awf", "new", "plan", "Gate probe"},
-	"new pitfall":               {"awf", "new", "pitfall", "Gate probe"},
-	"new doc":                   {"awf", "new", "doc", "runbooks/gate-probe", "Gate probe"},
-	"new topic":                 {"awf", "new", "topic", "rendering", "gate-probe"},
-	"new domain":                {"awf", "new", "domain", "gate-probe"},
-	"remove":                    {"awf", "remove", "domain", "gate-probe"},
-	"remove domain":             {"awf", "remove", "domain", "gate-probe"},
-}
-
-// gatedCommandKeys derives, from clispec alone, the key of every command whose
-// top-level family is not Ungated.
-func gatedCommandKeys() []string {
-	var keys []string
-	var add func(clispec.Command, string, bool)
-	add = func(c clispec.Command, path string, gated bool) {
-		gated = gated && c.Gating != clispec.Ungated
-		if gated {
-			keys = append(keys, path)
-		}
-		for _, child := range c.Children {
-			add(child, path+" "+child.Name, gated)
-		}
-	}
-	for _, c := range clispec.Commands {
-		add(c, c.Name, c.Gating != clispec.Ungated)
-	}
-	return keys
-}
-
-// TestDriverGatesGatedCommands confirms every command clispec marks gated
-// refuses on an ahead-schema project, and derives that set from clispec rather
-// than restating it, so a newly added gated command fails here until it gets a
-// probe. A Gated command refuses in the driver before its handler runs, which
-// for enable and disable also pins the gate-before-config-write guarantee: the
-// handler never runs, so no half-mutated config is stranded. A GatedInHandler
-// command refuses from inside its handler, after the static-fallback check that
-// lets config, context, and topic degrade outside an adopted tree. Both layers
-// must exit 1 on an adopted-but-ahead tree, which is what this asserts; the
-// per-handler tests above pin which layer does the refusing.
-func TestDriverGatesGatedCommands(t *testing.T) {
-	keys := gatedCommandKeys()
-	for _, key := range keys {
-		if _, ok := gatedProbes[key]; !ok {
-			t.Errorf("gated command %q has no probe: every gated command must be proven to refuse on an ahead-schema project", key)
-		}
-	}
-	if len(gatedProbes) != len(keys) {
-		known := make(map[string]bool, len(keys))
-		for _, key := range keys {
-			known[key] = true
-		}
-		for key := range gatedProbes {
-			if !known[key] {
-				t.Errorf("probe %q is not a gated command in clispec", key)
+// TestDriverAppliesBothGatePlacements retains one dispatch-level case for each
+// gate placement. Clispec owns the complete command inventory; owner and route
+// tests cover every member without rebuilding a project for each metadata row.
+func TestDriverAppliesBothGatePlacements(t *testing.T) {
+	root := aheadSchemaProject(t)
+	for _, test := range []struct {
+		name string
+		args []string
+	}{
+		{name: "driver", args: []string{"awf", "render"}},
+		{name: "handler", args: []string{"awf", "new", "pitfall", "Gate probe"}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			var stdout, stderr bytes.Buffer
+			if code := runAt(t, root, test.args, &stdout, &stderr); code != 1 {
+				t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 			}
-		}
-	}
-	for _, key := range keys {
-		t.Run(key, func(t *testing.T) {
-			root := aheadSchemaProject(t)
-			if strings.HasPrefix(key, "check staged") {
-				gitfixture.Add(t, gitfixture.At(root), ".awf/awf.lock")
-			}
-			var out, errb bytes.Buffer
-			code := runAt(t, root, gatedProbes[key], &out, &errb)
-			all := out.String() + errb.String()
-			if code != 1 {
-				t.Fatalf("%s: expected exit 1 on ahead schema, got %d (%s)", key, code, all)
-			}
-			// Exit 1 alone would also pass for an incidental failure unrelated to
-			// the gate, so pin the gate's own message. Before this assertion the
-			// fixture's lock carried pre-tracking authority, and every command
-			// here refused at the authority guard without reaching the gate.
-			if !strings.Contains(all, "update your pinned awf") {
-				t.Errorf("%s: refused without the version-gate message, so the refusal was not the gate: %s", key, all)
+			if all := stdout.String() + stderr.String(); !strings.Contains(all, "update your pinned awf") {
+				t.Fatalf("gate diagnostic = %q", all)
 			}
 		})
 	}

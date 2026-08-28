@@ -308,7 +308,7 @@ func TestContextDispatchHandler(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	var out bytes.Buffer
-	if result := handlers["context"](&cmdCtx{ctx: testContext(t), root: t.TempDir(), inv: invocation{bools: map[string]bool{}, values: map[string]string{}, multi: map[string][]string{}, positionals: []string{"x"}}, stdout: &out}); result.err != nil {
+	if result := newRunner(os.Getwd, os.Stdin, func() bool { return false }).handlers["context"](&cmdCtx{ctx: testContext(t), root: t.TempDir(), inv: invocation{bools: map[string]bool{}, values: map[string]string{}, multi: map[string][]string{}, positionals: []string{"x"}}, stdout: &out}); result.err != nil {
 		t.Fatal(result.err)
 	}
 }

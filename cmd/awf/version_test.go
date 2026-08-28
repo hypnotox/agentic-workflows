@@ -14,7 +14,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
@@ -182,7 +181,6 @@ func TestInitialAdoptionVersionImmutableAcrossCommands(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.SwapVar(t, &isInteractive, func() bool { return false })
 	if err := runInit(ctx, root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}

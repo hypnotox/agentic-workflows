@@ -88,9 +88,8 @@ func TestRunNewDocScaffoldsLocalDocument(t *testing.T) {
 
 	t.Run("explicit title through driver", func(t *testing.T) {
 		root := scaffoldProject(t)
-		testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 		var out, errOut bytes.Buffer
-		if code := run([]string{"awf", "new", "doc", "runbooks/api-v2", "How to operate API v2", "--title", "API v2"}, &out, &errOut); code != 0 {
+		if code := runFrom(root, []string{"awf", "new", "doc", "runbooks/api-v2", "How to operate API v2", "--title", "API v2"}, &out, &errOut); code != 0 {
 			t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 		}
 		assertLocalDocs(t, root, config.LocalDocs{{Name: "runbooks/api-v2", Title: "API v2", Description: "How to operate API v2"}})
@@ -148,11 +147,10 @@ func TestRunNewDocRefusesBeforeMutation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffoldProject(t)
-			testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 			beforeConfig := mustReadCLIFile(t, config.ConfigPath(root))
 			beforeLock := mustReadCLIFile(t, config.LockPath(root))
 			var out, errOut bytes.Buffer
-			if code := run(tc.args, &out, &errOut); code != tc.wantCode {
+			if code := runFrom(root, tc.args, &out, &errOut); code != tc.wantCode {
 				t.Fatalf("exit = %d, stderr = %q", code, errOut.String())
 			}
 			if got := mustReadCLIFile(t, config.ConfigPath(root)); got != beforeConfig {
@@ -409,19 +407,18 @@ func TestRunNewPlanRefusesExisting(t *testing.T) {
 // invariant: tooling/cli:cli-creation-and-inventory (TestRunNewDispatch)
 func TestRunNewDispatch(t *testing.T) {
 	root := scaffoldProject(t)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "new", "adr", "Some", "Title"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "new", "adr", "Some", "Title"}, &out, &errb); code != 0 {
 		t.Fatalf("expected exit 0, got %d (%s)", code, errb.String())
 	}
 	out.Reset()
 	errb.Reset()
-	if code := run([]string{"awf", "new", "pitfall", "One Complete Title"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "new", "pitfall", "One Complete Title"}, &out, &errb); code != 0 {
 		t.Fatalf("pitfall dispatch: exit %d (%s)", code, errb.String())
 	}
 	out.Reset()
 	errb.Reset()
-	if code := run([]string{"awf", "new", "pitfall", "split", "title"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "unexpected arguments") {
+	if code := runFrom(root, []string{"awf", "new", "pitfall", "split", "title"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "unexpected arguments") {
 		t.Fatalf("split pitfall title: exit %d (%s)", code, errb.String())
 	}
 }

@@ -178,38 +178,37 @@ func loadAWFCommandPackageWithOverlay(t *testing.T, overlay map[string][]byte) *
 
 func typedHandlers(t *testing.T, pkg *packages.Package) map[string]*ast.FuncLit {
 	t.Helper()
-	out := map[string]*ast.FuncLit{}
 	for _, file := range pkg.Syntax {
 		for _, decl := range file.Decls {
-			gen, ok := decl.(*ast.GenDecl)
-			if !ok || gen.Tok != token.VAR {
+			function, ok := decl.(*ast.FuncDecl)
+			if !ok || function.Name.Name != "newHandlers" {
 				continue
 			}
-			for _, spec := range gen.Specs {
-				value, ok := spec.(*ast.ValueSpec)
-				if !ok || len(value.Names) != 1 || value.Names[0].Name != "handlers" || len(value.Values) != 1 {
+			for _, statement := range function.Body.List {
+				returned, ok := statement.(*ast.ReturnStmt)
+				if !ok || len(returned.Results) != 1 {
 					continue
 				}
-				literal, ok := value.Values[0].(*ast.CompositeLit)
+				literal, ok := returned.Results[0].(*ast.CompositeLit)
 				if !ok {
-					t.Fatalf("handlers is not a composite literal")
+					t.Fatal("newHandlers does not return a composite literal")
 				}
+				out := map[string]*ast.FuncLit{}
 				for _, elt := range literal.Elts {
 					pair, ok := elt.(*ast.KeyValueExpr)
 					key, keyOK := stringLiteral(pair.Key)
 					fn, fnOK := pair.Value.(*ast.FuncLit)
 					if !ok || !keyOK || !fnOK {
-						t.Fatalf("unrecognized handlers entry")
+						t.Fatalf("unrecognized newHandlers entry")
 					}
 					out[key] = fn
 				}
+				return out
 			}
 		}
 	}
-	if len(out) == 0 {
-		t.Fatal("typed handlers registry not found")
-	}
-	return out
+	t.Fatal("instance-owned handlers composition not found")
+	return nil
 }
 
 func functionBody(t *testing.T, pkg *packages.Package, name string) *ast.BlockStmt {

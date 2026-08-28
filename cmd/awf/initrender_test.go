@@ -22,24 +22,22 @@ import (
 func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	forceNonInteractive(t)
 	root := gitfixture.InitRepo(t).Root()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 
 	var initOut, initErr bytes.Buffer
-	if code := run([]string{"awf", "init"}, &initOut, &initErr); code != 0 {
+	if code := runFrom(root, []string{"awf", "init"}, &initOut, &initErr); code != 0 {
 		t.Fatalf("init before first commit: exit %d (%s)", code, initErr.String())
 	}
 	// The unconditional hook payloads require a gate command before render or
 	// check. Init remains usable with the empty scaffolded value.
 	setScaffoldGateCmd(t, root)
 	var syncOut, syncErr bytes.Buffer
-	if code := run([]string{"awf", "render"}, &syncOut, &syncErr); code != 0 {
+	if code := runFrom(root, []string{"awf", "render"}, &syncOut, &syncErr); code != 0 {
 		t.Fatalf("render before first commit: exit %d (%s)", code, syncErr.String())
 	}
 	gitfixture.AddAll(t, gitfixture.At(root))
 	var checkOut, checkErr bytes.Buffer
-	if code := run([]string{"awf", "check"}, &checkOut, &checkErr); code != 0 {
+	if code := runFrom(root, []string{"awf", "check"}, &checkOut, &checkErr); code != 0 {
 		t.Fatalf("check before first commit: exit %d (%s)\n%s", code, checkErr.String(), checkOut.String())
 	}
 }
@@ -72,13 +70,11 @@ func TestInitFirstADRChecksCleanRender(t *testing.T) {
 func TestEmptyInitRendersCoherently(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	forceNonInteractive(t)
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "init"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code != 0 {
 		t.Fatalf("init: exit %d (%s)", code, errb.String())
 	}
 	err := filepath.WalkDir(root, func(path string, d fs.DirEntry, err error) error {

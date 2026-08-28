@@ -46,9 +46,26 @@ func containsLine(s, line string) bool {
 // TestHandlerRegistryParity asserts the handler registry and the clispec table
 // name exactly the same top-level commands - no command without a handler, no
 // handler without a command. Group children (new/adr...) are not separate keys.
+// invariant: tooling/cli:cli-runner-instance-ownership (TestRunnerInstancesOwnProcessDependencies)
+func TestRunnerInstancesOwnProcessDependencies(t *testing.T) {
+	first := newRunner(func() (string, error) { return "first", nil }, strings.NewReader("first"), func() bool { return false })
+	second := newRunner(func() (string, error) { return "second", nil }, strings.NewReader("second"), func() bool { return true })
+	delete(first.handlers, "version")
+	if _, ok := second.handlers["version"]; !ok {
+		t.Fatal("runner handler maps share mutable state")
+	}
+	if root, _ := first.getwd(); root != "first" {
+		t.Fatalf("first working directory = %q", root)
+	}
+	if root, _ := second.getwd(); root != "second" {
+		t.Fatalf("second working directory = %q", root)
+	}
+}
+
 func TestHandlerRegistryParity(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
+	handlers := newRunner(os.Getwd, os.Stdin, func() bool { return false }).handlers
 	for _, c := range clispec.Commands {
 		if _, ok := handlers[c.Name]; !ok {
 			t.Errorf("clispec command %q has no handler", c.Name)

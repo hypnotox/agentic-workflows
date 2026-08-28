@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func TestUninstallRemovesGeneratedFilesAndLock(t *testing.T) {
@@ -46,9 +44,8 @@ func TestRunUninstallDispatch(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := scaffoldProject(t)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "uninstall"}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "uninstall"}, &out, &errb); code != 0 {
 		t.Fatalf("uninstall dispatch failed: %s", errb.String())
 	}
 	if _, err := os.Stat(filepath.Join(root, "AGENTS.md")); !os.IsNotExist(err) {

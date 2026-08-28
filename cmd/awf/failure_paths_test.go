@@ -11,7 +11,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // corruptions is the ADR-0076 Decision 6 corrupt-lock variant matrix.
@@ -33,11 +32,10 @@ func corruptLock(t *testing.T, variant string) (string, []byte) {
 	return root, body
 }
 
-// runAt drives the full CLI dispatch with the process cwd at root.
+// runAt drives the full CLI dispatch against root.
 func runAt(t *testing.T, root string, args []string, stdout, stderr *bytes.Buffer) int {
 	t.Helper()
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
-	return run(args, stdout, stderr)
+	return runFrom(root, args, stdout, stderr)
 }
 
 // assertRefused asserts the run refused with the recovery hint, created no

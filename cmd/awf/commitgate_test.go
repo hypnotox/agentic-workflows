@@ -428,14 +428,13 @@ func TestDispatchCommitGate(t *testing.T) {
 	repo := gitfixture.At(root)
 	gitfixture.AddAll(t, repo)
 	gitfixture.Commit(t, repo, "fixture", nil)
-	testsupport.SwapVar(t, &getwd, func() (string, error) { return root, nil })
 	var out, errb bytes.Buffer
-	if code := run([]string{"awf", "check", "staged", "commit", writeMsg(t, "feat: via dispatch\n")}, &out, &errb); code != 0 {
+	if code := runFrom(root, []string{"awf", "check", "staged", "commit", writeMsg(t, "feat: via dispatch\n")}, &out, &errb); code != 0 {
 		t.Fatalf("dispatch check staged commit should accept a clean subject: code=%d err=%s", code, errb.String())
 	}
 	out.Reset()
 	errb.Reset()
-	if code := run([]string{"awf", "check", "staged", "commit", writeMsg(t, "nope not conventional\n")}, &out, &errb); code != 1 {
+	if code := runFrom(root, []string{"awf", "check", "staged", "commit", writeMsg(t, "nope not conventional\n")}, &out, &errb); code != 1 {
 		t.Fatalf("dispatch refusal exit = %d, want 1", code)
 	}
 	if out.String() != "check staged commit:\n  errors:\n    subject is not Conventional Commits (type(scope)?: subject)\n" || errb.String() != "condition: awf: check staged commit: rejected \"nope not conventional\"\n" {

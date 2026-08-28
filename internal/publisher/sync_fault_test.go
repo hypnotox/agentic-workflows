@@ -410,11 +410,7 @@ func TestSyncFilesystemFailuresPreserveErrorIdentity(t *testing.T) {
 		return s
 	}}} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, sampleYAML)
-			state, _ := Open(testContext(t), root)
-			if err := syncProject(state); err != nil {
-				t.Fatal(err)
-			}
+			_, state := initializedSampleProject(t)
 			filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
 			if err != nil {
 				t.Fatal(err)
@@ -557,11 +553,7 @@ func TestSyncReportsEveryCommittedPublicationCleanup(t *testing.T) {
 	}
 
 	t.Run("output replacement", func(t *testing.T) {
-		root := scaffold(t, sampleYAML)
-		state, _ := Open(testContext(t), root)
-		if err := syncProject(state); err != nil {
-			t.Fatal(err)
-		}
+		_, state := initializedSampleProject(t)
 		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
 		if err != nil {
 			t.Fatal(err)
@@ -580,11 +572,7 @@ func TestSyncReportsEveryCommittedPublicationCleanup(t *testing.T) {
 	})
 
 	t.Run("prune", func(t *testing.T) {
-		root := scaffold(t, sampleYAML)
-		state, _ := Open(testContext(t), root)
-		if err := syncProject(state); err != nil {
-			t.Fatal(err)
-		}
+		root, state := initializedSampleProject(t)
 		lock, err := manifest.Load(lockFile(root))
 		if err != nil {
 			t.Fatal(err)
@@ -613,11 +601,7 @@ func TestSyncReportsEveryCommittedPublicationCleanup(t *testing.T) {
 	})
 
 	t.Run("empty directory cleanup", func(t *testing.T) {
-		root := scaffold(t, sampleYAML)
-		state, _ := Open(testContext(t), root)
-		if err := syncProject(state); err != nil {
-			t.Fatal(err)
-		}
+		root, state := initializedSampleProject(t)
 		lock, err := manifest.Load(lockFile(root))
 		if err != nil {
 			t.Fatal(err)
@@ -646,11 +630,7 @@ func TestSyncReportsEveryCommittedPublicationCleanup(t *testing.T) {
 	})
 
 	t.Run("final lock replacement", func(t *testing.T) {
-		root := scaffold(t, sampleYAML)
-		state, _ := Open(testContext(t), root)
-		if err := syncProject(state); err != nil {
-			t.Fatal(err)
-		}
+		_, state := initializedSampleProject(t)
 		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
 		if err != nil {
 			t.Fatal(err)
@@ -670,11 +650,7 @@ func TestSyncReportsEveryCommittedPublicationCleanup(t *testing.T) {
 }
 
 func TestSyncCommittedEffectOrderingIsStable(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	state, _ := Open(testContext(t), root)
-	if err := syncProject(state); err != nil {
-		t.Fatal(err)
-	}
+	root, state := initializedSampleProject(t)
 	retired := []string{"b/one", "c/deep/three", "a/two"}
 	want := []Effect{
 		{Kind: "output-removed", Path: "a/two", Recovery: "rerun awf render to complete pruning and lock publication"},
@@ -723,11 +699,7 @@ func TestSyncReportDoesNotReportOutputWhenReplacementFails(t *testing.T) { syncF
 func TestSyncReportDoesNotReportOutputWhenWriteFails(t *testing.T)       { syncFailedOutput(t, false) }
 func syncFailedOutput(t *testing.T, corruptHash bool) {
 	t.Helper()
-	root := scaffold(t, sampleYAML)
-	state, _ := Open(testContext(t), root)
-	if err := syncProject(state); err != nil {
-		t.Fatal(err)
-	}
+	root, state := initializedSampleProject(t)
 	if corruptHash {
 		lock, err := manifest.Load(lockFile(root))
 		if err != nil {
@@ -760,14 +732,7 @@ func syncFailedOutput(t *testing.T, corruptHash bool) {
 }
 
 func TestSyncRefusesResidentModeMutationAfterObservationFailure(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	state, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := syncProject(state); err != nil {
-		t.Fatal(err)
-	}
+	_, state := initializedSampleProject(t)
 	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
 	if err != nil {
 		t.Fatal(err)
@@ -786,14 +751,7 @@ func TestSyncRefusesResidentModeMutationAfterObservationFailure(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncReportsResidentDirectoryModeCorrection)
 func TestSyncReportsResidentDirectoryModeCorrection(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	state, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := syncProject(state); err != nil {
-		t.Fatal(err)
-	}
+	root, state := initializedSampleProject(t)
 	residentDir := filepath.Join(root, ".awf", "efforts")
 	if err := os.Chmod(residentDir, 0o755); err != nil {
 		t.Fatal(err)
@@ -816,14 +774,7 @@ func TestSyncReportsResidentDirectoryModeCorrection(t *testing.T) {
 // that cannot be atomically replaced. Returning Result{} from Publisher.sync
 // when its terminal error is non-nil would lose the asserted committed change.
 func TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	state, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := syncProject(state); err != nil {
-		t.Fatal(err)
-	}
+	root, state := initializedSampleProject(t)
 	agents := filepath.Join(root, "AGENTS.md")
 	if err := os.Chmod(agents, 0o600); err != nil {
 		t.Fatal(err)
@@ -888,11 +839,7 @@ func TestSyncBackupPublicationRefusesParentSwap(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncAncestorCleanupRefusesParentSwap)
 func TestSyncAncestorCleanupRefusesParentSwap(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	state, _ := Open(testContext(t), root)
-	if err := syncProject(state); err != nil {
-		t.Fatal(err)
-	}
+	root, state := initializedSampleProject(t)
 	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
@@ -938,11 +885,7 @@ func TestSyncAncestorCleanupRefusesParentSwap(t *testing.T) {
 
 // invariant: config/migrations-and-locks:lock-atomic-save (TestSyncLockSaveRefusesParentSwap)
 func TestSyncLockSaveRefusesParentSwap(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	state, _ := Open(testContext(t), root)
-	if err := syncProject(state); err != nil {
-		t.Fatal(err)
-	}
+	root, state := initializedSampleProject(t)
 	before, err := os.ReadFile(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
@@ -1007,11 +950,7 @@ func TestConcurrentBackupsPublishCompleteCopies(t *testing.T) {
 }
 
 func TestSyncPrunesBeforeWritingReplacementLock(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	state, _ := Open(testContext(t), root)
-	if err := syncProject(state); err != nil {
-		t.Fatal(err)
-	}
+	root, state := initializedSampleProject(t)
 	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
