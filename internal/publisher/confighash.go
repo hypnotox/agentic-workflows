@@ -58,6 +58,9 @@ func artifactConfigHash(p renderInputs, assembled string, sc config.Sidecar, par
 		// outputs and adopters with no policy byte-stable.
 		proj["commitPolicy"] = p.cfg.CommitPolicy
 	}
+	if render.ReferencesIntegrationBranch(assembled) {
+		proj["integrationBranch"] = p.cfg.IntegrationBranch
+	}
 	// A template that reads .commitScopes re-renders when audit.allowedScopes
 	// changes; folding the resolved list in flags it stale (ADR-0051).
 	foldScopes := render.ReferencesScopes(assembled)

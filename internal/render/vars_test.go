@@ -103,6 +103,26 @@ func TestReferencesCommitPolicy(t *testing.T) {
 	}
 }
 
+func TestReferencesIntegrationBranch(t *testing.T) {
+	for _, src := range []string{
+		`{{ .integrationBranch }}`,
+		`{{ $.integrationBranchHex }}`,
+	} {
+		if !render.ReferencesIntegrationBranch(src) {
+			t.Errorf("integration-branch action not detected in %q", src)
+		}
+	}
+	for _, src := range []string{
+		"prose mentioning .integrationBranch outside an action",
+		"{{/* .integrationBranch is documented here */}}",
+		"{{- /* .integrationBranch with trim markers */ -}}",
+	} {
+		if render.ReferencesIntegrationBranch(src) {
+			t.Errorf("non-consuming integration-branch mention detected in %q", src)
+		}
+	}
+}
+
 func TestReferencesScopes(t *testing.T) {
 	if !render.ReferencesScopes("x {{ with .commitScopes }}y{{ end }} z") {
 		t.Error("expected a .commitScopes action to be detected")

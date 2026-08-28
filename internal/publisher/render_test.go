@@ -185,7 +185,14 @@ func TestCommitPolicyRenderDataProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got, ok := projectData(renderInputsForTest(p), config.Sidecar{}, map[string]bool{})["commitPolicy"].(*config.CommitPolicyConfig); !ok || got != nil {
+	data := projectData(renderInputsForTest(p), config.Sidecar{}, map[string]bool{})
+	if got := data["integrationBranch"]; got != "main" {
+		t.Fatalf("integrationBranch projection = %#v, want main", got)
+	}
+	if got := data["integrationBranchHex"]; got != "6d61696e" {
+		t.Fatalf("integrationBranchHex projection = %#v, want encoded main", got)
+	}
+	if got, ok := data["commitPolicy"].(*config.CommitPolicyConfig); !ok || got != nil {
 		t.Fatalf("absent commitPolicy projection = %#v, want typed nil", got)
 	}
 	policy := &config.CommitPolicyConfig{

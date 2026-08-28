@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: validate-only-pushed-ref-commit-deltas
-status: Proposed
+status: Implementing
 date: 2026-08-28
 ---
 # ADR-0315: Validate only pushed ref commit deltas
@@ -44,3 +44,5 @@ The explicit commit-policy preview command and reference-transaction hook retain
 ## Status history
 
 - 2026-08-28: Proposed
+- 2026-08-28: Implementing; content-sha256: bee4a72c5695abb98dd6304dea45a20114cad18a925ee6b4f084f0e6ac7eeff4
+- 2026-08-28: Applied; operations: update `rendering/singletons-and-payloads:commit-policy-hook-payloads`

@@ -127,6 +127,25 @@ vars:
 	}
 }
 
+func TestIntegrationBranchReflagsOnlyPrePushConsumer(t *testing.T) {
+	main := hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	release := hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: release/next\n")
+	if main["pre-push"].ConfigHash == release["pre-push"].ConfigHash || main["pre-push"].Content == release["pre-push"].Content {
+		t.Fatal("integrationBranch change did not reflag and regenerate pre-push")
+	}
+	if !strings.Contains(release["pre-push"].Content, "integration_branch_hex='72656c656173652f6e657874'") {
+		t.Fatalf("release integration branch not projected safely:\n%s", release["pre-push"].Content)
+	}
+	for name := range main {
+		if name == "pre-push" {
+			continue
+		}
+		if main[name].ConfigHash != release[name].ConfigHash || main[name].Content != release[name].Content {
+			t.Errorf("integrationBranch change reflagged unrelated %s payload", name)
+		}
+	}
+}
+
 // The policy payloads buffer complete hook input before invoking the common
 // verifier, evaluate only commit-bearing branch or tag targets, and run the
 // configured pre-push gate only after policy success.
@@ -153,15 +172,17 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		"mapfile -t updates",
 		`git cat-file -t "$object"`,
 		`git rev-parse --verify "$object^{}"`,
+		`git ls-remote`,
+		`integration_branch_hex='6d61696e'`,
 		`resolves to non-commit`,
-		`check commit-policy "${targets[@]}"`,
+		`check commit-policy "${policy_targets[@]}"`,
 		"./x gate full",
 	} {
 		if !strings.Contains(push, want) {
 			t.Errorf("pre-push missing %q:\n%s", want, push)
 		}
 	}
-	if policy, gate := strings.Index(push, `check commit-policy "${targets[@]}"`), strings.Index(push, "./x gate full"); policy < 0 || gate < policy {
+	if policy, gate := strings.Index(push, `check commit-policy "${policy_targets[@]}"`), strings.Index(push, "./x gate full"); policy < 0 || gate < policy {
 		t.Errorf("pre-push must run policy before gate:\n%s", push)
 	}
 
@@ -175,6 +196,13 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	head := strings.TrimSpace(runHookGit(t, root, "rev-parse", "HEAD"))
 	runHookGit(t, root, "tag", "-a", "pushed", "-m", "pushed")
 	tag := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/tags/pushed"))
+	remote := filepath.Join(t.TempDir(), "remote.git")
+	if err := os.Mkdir(remote, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	runHookGit(t, remote, "init", "--bare")
+	runHookGit(t, root, "remote", "add", "origin", remote)
+	runHookGit(t, root, "push", "origin", base+":refs/heads/main")
 
 	bin := filepath.Join(root, "bin")
 	if err := os.Mkdir(bin, 0o755); err != nil {
@@ -206,6 +234,9 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	pushPath := writeHook("pre-push", hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmdFull: gate\n")["pre-push"].Content)
 	run := func(path, input string, args ...string) (string, error) {
 		t.Helper()
+		if path == pushPath && len(args) == 0 {
+			args = []string{"origin", remote}
+		}
 		cmd := exec.Command("bash", append([]string{path}, args...)...)
 		cmd.Dir, cmd.Stdin = root, strings.NewReader(input)
 		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "HOOK_LOG="+log, "HOOK_FAIL="+filepath.Join(root, "fail-policy"))
@@ -279,7 +310,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	if output, err := run(pushPath, "refs/tags/outer-pushed "+outerTag+" refs/tags/outer-pushed "+base+"\nrefs/tags/pushed "+tag+" refs/tags/duplicate "+base+"\n"); err != nil {
 		t.Fatalf("tag push: %v: %s", err, output)
 	}
-	if got := readLog(); got != "policy:check commit-policy "+head+"\ngate:--range "+base+" "+outerTag+" --range "+base+" "+tag+"\n" {
+	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:--range "+base+" "+outerTag+" --range "+base+" "+tag+"\n" {
 		t.Fatalf("tag push argv/order = %q", got)
 	}
 	clearLog()
@@ -306,22 +337,38 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	if output, err := run(pushPath, "refs/heads/master "+head+" refs/heads/master "+base+"\n"); err != nil {
 		t.Fatalf("ordinary push: %v: %s", err, output)
 	}
-	if got := readLog(); got != "policy:check commit-policy "+head+"\ngate:--range "+base+" "+head+"\n" {
+	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:--range "+base+" "+head+"\n" {
 		t.Fatalf("ordinary push argv/order = %q", got)
+	}
+	clearLog()
+	if output, err := run(pushPath, "refs/heads/force "+side+" refs/heads/force "+head+"\n"); err != nil {
+		t.Fatalf("force push: %v: %s", err, output)
+	}
+	if got := readLog(); got != "policy:check commit-policy "+head+".."+side+"\ngate:--range "+head+" "+side+"\n" {
+		t.Fatalf("force push argv/order = %q", got)
 	}
 	clearLog()
 	if output, err := run(pushPath, "refs/heads/master "+head+" refs/heads/master "+base+"\nrefs/heads/other "+head+" refs/heads/other "+base+"\n"); err != nil {
 		t.Fatalf("multi-ref push: %v: %s", err, output)
 	}
-	if got := readLog(); got != "policy:check commit-policy "+head+"\ngate:--range "+base+" "+head+" --range "+base+" "+head+"\n" {
+	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:--range "+base+" "+head+" --range "+base+" "+head+"\n" {
 		t.Fatalf("multi-ref push argv/order = %q", got)
 	}
 	clearLog()
 	if output, err := run(pushPath, "refs/heads/new "+head+" refs/heads/new "+zeroOID+"\n"); err != nil {
 		t.Fatalf("new branch push: %v: %s", err, output)
 	}
-	if got := readLog(); got != "policy:check commit-policy "+head+"\ngate:--range invalid-base "+head+"\n" {
+	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:--range invalid-base "+head+"\n" {
 		t.Fatalf("new branch conservative argv/order = %q", got)
+	}
+	clearLog()
+	runHookGit(t, root, "push", "origin", ":refs/heads/main")
+	if output, err := run(pushPath, "refs/heads/new "+head+" refs/heads/new "+zeroOID+"\n"); err == nil || !strings.Contains(output, "destination integration branch") || readLog() != "" {
+		t.Fatalf("missing integration tip: err=%v output=%q log=%q", err, output, readLog())
+	}
+	runHookGit(t, root, "push", "origin", base+":refs/heads/main")
+	if output, err := run(pushPath, "refs/heads/new "+head+" refs/heads/new "+zeroOID+"\n", "origin", filepath.Join(t.TempDir(), "missing-remote")); err == nil || !strings.Contains(output, "destination integration branch") || readLog() != "" {
+		t.Fatalf("unavailable integration remote: err=%v output=%q log=%q", err, output, readLog())
 	}
 	clearLog()
 	if output, err := run(pushPath, "(delete) "+zeroOID+" refs/heads/deleted "+head+"\n"); err != nil {
@@ -501,11 +548,13 @@ func testCommitPolicyHooksNative(t *testing.T) {
 				t.Fatalf("identity refusal moved ref: %s -> %s", allowed, got)
 			}
 
-			run(true, "-c", "core.hooksPath=/dev/null", "commit", "--allow-empty", "--no-gpg-sign", "-m", "bypass")
-			bypass := strings.TrimSpace(run(true, "rev-parse", "HEAD"))
 			remote := filepath.Join(t.TempDir(), "remote")
 			gitfixture.InitNativeAt(t, remote)
+			runHookGit(t, remote, "config", "receive.denyCurrentBranch", "ignore")
 			run(true, "remote", "add", "origin", remote)
+			run(true, "-c", "core.hooksPath=/dev/null", "push", "origin", allowed+":refs/heads/master")
+			run(true, "-c", "core.hooksPath=/dev/null", "commit", "--allow-empty", "--no-gpg-sign", "-m", "bypass")
+			bypass := strings.TrimSpace(run(true, "rev-parse", "HEAD"))
 			if output := run(false, "push", "origin", "HEAD:refs/heads/main"); !strings.Contains(output, "signature | missing") {
 				t.Fatalf("pre-push refusal = %q", output)
 			}
@@ -516,6 +565,26 @@ func testCommitPolicyHooksNative(t *testing.T) {
 			if got := strings.TrimSpace(run(true, "rev-parse", "HEAD")); got != allowed || bypass == allowed {
 				t.Fatalf("cleanup failed: head=%s allowed=%s bypass=%s", got, allowed, bypass)
 			}
+
+			// Model a destination-authored exception that is already accepted by the
+			// remote. A conforming descendant must not re-evaluate that old tip.
+			run(true, "-c", "core.hooksPath=/dev/null", "commit", "--allow-empty", "--no-gpg-sign", "-m", "hosted exception")
+			hosted := strings.TrimSpace(run(true, "rev-parse", "HEAD"))
+			run(true, "-c", "core.hooksPath=/dev/null", "push", "origin", hosted+":refs/heads/main")
+			run(true, "commit", "--allow-empty", "-S", "-m", "conforming descendant")
+			conforming := strings.TrimSpace(run(true, "rev-parse", "HEAD"))
+			run(true, "push", "origin", "HEAD:refs/heads/main")
+			if output := run(true, "ls-remote", "origin", "refs/heads/main"); !strings.Contains(output, conforming) {
+				t.Fatalf("conforming descendant was not published: %q", output)
+			}
+			if body, err := os.ReadFile(gateLog); err != nil || strings.TrimSpace(string(body)) != "gate" {
+				t.Fatalf("conforming descendant gate log = %q, %v", body, err)
+			}
+			if err := os.Remove(gateLog); err != nil {
+				t.Fatal(err)
+			}
+
+			run(true, "commit", "--allow-empty", "-S", "-m", "missing baseline probe")
 			missingBaseline := strings.Repeat("f", len(base))
 			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(strings.Replace(config, base, missingBaseline, 1)), 0o644); err != nil {
 				t.Fatal(err)
@@ -523,8 +592,14 @@ func testCommitPolicyHooksNative(t *testing.T) {
 			if output := run(false, "push", "origin", "HEAD:refs/heads/main"); !strings.Contains(output, "state: baseline") || strings.Contains(output, "gate") {
 				t.Fatalf("baseline refusal = %q", output)
 			}
-			if output := run(true, "ls-remote", "--heads", "origin"); strings.TrimSpace(output) != "" {
-				t.Fatalf("refused push created remote ref: %q", output)
+			if _, err := os.Stat(gateLog); !os.IsNotExist(err) {
+				t.Fatalf("baseline refusal ran gate: %v", err)
+			}
+			if output := run(true, "ls-remote", "origin", "refs/heads/main"); !strings.Contains(output, conforming) {
+				t.Fatalf("refused push changed remote main: %q", output)
+			}
+			if output := run(true, "ls-remote", "origin", "refs/heads/master"); !strings.Contains(output, allowed) {
+				t.Fatalf("integration branch evidence changed: %q", output)
 			}
 		})
 	}

@@ -23,6 +23,7 @@ func invocationRenderData() map[string]any {
 	return map[string]any{
 		"prefix": "example", "vars": map[string]any{}, "layout": layout,
 		"data": map[string]any{}, "skills": map[string]bool{},
+		"integrationBranch": "main", "integrationBranchHex": "6d61696e",
 	}
 }
 

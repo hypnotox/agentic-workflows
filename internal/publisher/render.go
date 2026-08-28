@@ -82,16 +82,18 @@ type RenderedFile struct {
 // project vars, the sidecar's structured data, and the awf-given docs layout.
 func projectData(p renderInputs, sc config.Sidecar, eff map[string]bool) map[string]any {
 	return map[string]any{
-		"prefix":       p.cfg.Prefix,
-		"profile":      string(p.cfg.Profile),
-		"fullProfile":  fullProfile(p),
-		"vars":         nonNil(p.cfg.Vars),
-		"data":         nonNil(sc.Data),
-		"layout":       layout(p).templateMap(),
-		"version":      p.version,
-		"adrFormat":    adr.CurrentFormatMarker(),
-		"skills":       eff,
-		"commitScopes": commitScopesDisplay(p),
+		"prefix":               p.cfg.Prefix,
+		"profile":              string(p.cfg.Profile),
+		"fullProfile":          fullProfile(p),
+		"vars":                 nonNil(p.cfg.Vars),
+		"data":                 nonNil(sc.Data),
+		"layout":               layout(p).templateMap(),
+		"version":              p.version,
+		"adrFormat":            adr.CurrentFormatMarker(),
+		"skills":               eff,
+		"commitScopes":         commitScopesDisplay(p),
+		"integrationBranch":    p.cfg.IntegrationBranch,
+		"integrationBranchHex": fmt.Sprintf("%x", p.cfg.IntegrationBranch),
 		// commitPolicy is a typed projection, not reparsed YAML. A nil value is
 		// safe for publication templates: `with` and `if` treat it as absent.
 		"commitPolicy":  p.cfg.CommitPolicy,

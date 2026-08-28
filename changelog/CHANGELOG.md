@@ -18,6 +18,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Pre-push commit policy now validates only commits introduced by the pushed ref updates, so conforming descendants do not re-reject already-accepted remote history.
+
 - GitHub Releases now publish the tagged version's curated changelog section exactly while excluding commit-derived notes; affected blank release bodies from v0.18.0 through v0.40.0 are restored.
 
 ## [0.41.0] - 2026-08-27

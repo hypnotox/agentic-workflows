@@ -11,12 +11,20 @@ var scopesRE = regexp.MustCompile(`\{\{[^{}]*[.$]commitScopes[^{}]*\}\}`)
 
 var commitPolicyRE = regexp.MustCompile(`\{\{[^{}]*[.$]commitPolicy[^{}]*\}\}`)
 
+var integrationBranchRE = regexp.MustCompile(`\{\{[^{}]*[.$]integrationBranch[^{}]*\}\}`)
+
 var templateCommentRE = regexp.MustCompile(`(?s)\{\{-?\s*/\*.*?\*/\s*-?\}\}`)
 
 // ReferencesCommitPolicy reports whether a non-comment template action reads
 // the typed commit-policy render context.
 func ReferencesCommitPolicy(src string) bool {
 	return commitPolicyRE.MatchString(templateCommentRE.ReplaceAllString(src, ""))
+}
+
+// ReferencesIntegrationBranch reports whether a non-comment template action
+// reads the configured integration-branch render context.
+func ReferencesIntegrationBranch(src string) bool {
+	return integrationBranchRE.MatchString(templateCommentRE.ReplaceAllString(src, ""))
 }
 
 // ReferencesScopes reports whether src reads the resolved commit-scope render

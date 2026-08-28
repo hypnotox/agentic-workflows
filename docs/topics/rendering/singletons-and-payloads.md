@@ -39,8 +39,9 @@ Backing: test
 
 ### `invariant: commit-policy-hook-payloads`
 
-The rendered reference-transaction payload buffers the complete prepared transaction and checks commit-bearing local branch updates through the common commit-policy verifier before refs move; the rendered pre-push payload buffers every update, expands commit-bearing local branch and recursively peeled tag targets through the same verifier, and invokes the configured project gate only after policy succeeds. Both payloads remain inert until adopter-owned wiring activates them, resolve policy from the invoking worktree, and fail closed on malformed or unresolvable policy inputs without rewriting history.
+The rendered reference-transaction payload buffers the complete prepared transaction and checks commit-bearing local branch updates through the common commit-policy verifier before refs move. The rendered pre-push payload buffers every update and checks the deduplicated commit union introduced by the push: existing refs use their advertised remote tips, new commit-bearing refs use a freshly resolved destination integration-branch tip, recursively peeled tags contribute commits, and deletions contribute none. It invokes the configured project gate only after policy succeeds. Both payloads remain inert until adopter-owned wiring activates them, resolve policy from the invoking worktree, and fail closed on malformed or unresolvable required evidence without rewriting history.
 Origin: ADR-0228
+Revised-by: ADR-0315
 Backing: test
 
 ### `invariant: memory-gitignore-always-on`

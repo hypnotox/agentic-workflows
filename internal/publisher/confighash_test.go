@@ -99,6 +99,46 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 	}
 }
 
+func TestIntegrationBranchConsumerConfigHash(t *testing.T) {
+	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	eff := mustDeriveSkills(t, p)
+	consumerBefore, err := artifactConfigHash(renderInputsForTest(p), `{{ .integrationBranchHex }}`, config.Sidecar{}, nil, eff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unrelatedBefore, err := artifactConfigHash(renderInputsForTest(p), "plain prose mentioning .integrationBranch", config.Sidecar{}, nil, eff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	commentBefore, err := artifactConfigHash(renderInputsForTest(p), "{{/* .integrationBranch */}}", config.Sidecar{}, nil, eff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	testConfig(p).IntegrationBranch = "release/next"
+	consumerAfter, err := artifactConfigHash(renderInputsForTest(p), `{{ .integrationBranchHex }}`, config.Sidecar{}, nil, eff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	unrelatedAfter, err := artifactConfigHash(renderInputsForTest(p), "plain prose mentioning .integrationBranch", config.Sidecar{}, nil, eff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	commentAfter, err := artifactConfigHash(renderInputsForTest(p), "{{/* .integrationBranch */}}", config.Sidecar{}, nil, eff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if consumerBefore == consumerAfter {
+		t.Fatalf("integration-branch consumer hash unchanged: %q", consumerAfter)
+	}
+	if unrelatedBefore != unrelatedAfter || commentBefore != commentAfter {
+		t.Fatalf("non-consumer hashes changed: prose %q/%q comment %q/%q", unrelatedBefore, unrelatedAfter, commentBefore, commentAfter)
+	}
+}
+
 // invariant: config/configuration:template-source-root (TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash)
 func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) {
 	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
