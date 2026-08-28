@@ -1,6 +1,7 @@
 package filesystem
 
 import (
+	"errors"
 	"fmt"
 	"io/fs"
 )
@@ -13,6 +14,9 @@ func SupportedTreeEntry(entry fs.DirEntry) (bool, error) {
 		return entry.IsDir() || entry.Type().IsRegular(), nil
 	}
 	info, err := entry.Info()
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
 	if err != nil {
 		return false, fmt.Errorf("filesystem: inspect tree entry %q: %w", entry.Name(), err)
 	}

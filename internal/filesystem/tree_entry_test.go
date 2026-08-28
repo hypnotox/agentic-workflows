@@ -35,6 +35,11 @@ func TestSupportedTreeEntryResolvesAmbiguousType(t *testing.T) {
 			wantError: true,
 		},
 		{
+			name:  "entry disappeared after enumeration",
+			entry: treeEntryFixture{infoErr: fs.ErrNotExist},
+			want:  false,
+		},
+		{
 			name:  "known socket needs no info",
 			entry: treeEntryFixture{typ: fs.ModeSocket, infoErr: errors.New("must not inspect")},
 			want:  false,
