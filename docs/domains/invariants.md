@@ -25,5 +25,5 @@ Historical transition and stale-merge replay use a reduced committed projection 
 [All topics](../topics/invariants/index.md)
 
 - [Current-state authority](../topics/invariants/current-state-authority.md): How current-state claims are loaded, checked, and transitioned as the sole active authority.
-- [Topics and markers](../topics/invariants/topics-and-markers.md): How topic inputs, claims, and their relevance and proof markers are parsed and resolved, and how coverage evaluation selects its checks.
+- [Topics and markers](../topics/invariants/topics-and-markers.md): How topic inputs, claims, and proof markers are parsed and resolved, and how coverage evaluation selects its checks.
 

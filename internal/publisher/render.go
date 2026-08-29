@@ -70,10 +70,9 @@ type RenderedFile struct {
 	// consumption the assembled source cannot show (both ADR-0086).
 	kind, artifact string
 	partVarRefs    []string
-	// ConsumedInputs is observed at the render seam, independently of
-	// buildOutputDeclarations: the context artifact report reads the observed
-	// set, so a declaration omission or role mistake shows there rather than
-	// being papered over by the declaration it was derived from.
+	// ConsumedInputs records render-seam provenance independently of
+	// buildOutputDeclarations, so declaration parity exposes an omission or role
+	// mistake instead of deriving both sides from the declaration inventory.
 	ConsumedInputs     []OutputInput
 	ObservedTemplateID string
 }

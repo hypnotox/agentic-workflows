@@ -8,7 +8,7 @@
 <!-- awf:template-source templates/domains/domain.md.tmpl -->
 ## Current state
 
-Pi renders native discoverable skills, the subagent extension, and the lifecycle-independent handoff extension. Workflow templates exclusively own mandatory checkpoint persistence, approval stops, safe resumability, and truthful handoff-log timing; Pi replacement is discretionary only after an eligible persisted boundary. A replacement kickoff that restricts work to a managed worktree scopes that restriction to pre-integration execution and preserves the governed target-checkout switch for integration, deferred lifecycle closure, worktree removal, and retrospective. Every catalog skill uses the normal `.pi/skills/<prefix>-<name>/SKILL.md` layout; no router or hidden workflow body participates in selection.
+Pi renders native discoverable skills and the subagent extension. Workflow templates exclusively own mandatory checkpoint persistence, approval stops, safe resumability, and truthful handoff-log timing; Pi replacement is discretionary only after an eligible persisted boundary. A replacement kickoff that restricts work to a managed worktree scopes that restriction to pre-integration execution and preserves the governed target-checkout switch for integration, deferred lifecycle closure, worktree removal, and retrospective. Every catalog skill uses the normal `.pi/skills/<prefix>-<name>/SKILL.md` layout; no router or hidden workflow body participates in selection.
 
 The topic producer renders each valid pair to `docs/topics/<domain>/<topic>.md`, emits a title-and-summary-sorted `docs/topics/<domain>/index.md`, and adds compact topic navigation to the owning domain page. Generated output follows the normal manifest, drift, and prune lifecycle. Staged drift renders from the staged config and compares against the staged output tree; its intentionally narrow result includes only stale and hand-edited rendered outputs, leaving every other repository drift kind outside that transition check.
 
@@ -18,7 +18,7 @@ The catalog-derived mandatory Maintainable Code Design guide renders as an exten
 
 The glossary renders from two layers: a standard vocabulary the catalog ships into every adopter tree, overlaid by the project's authored `data.terms` records, merged into one case-insensitively sorted table. A project term overrides a shipped term of the same name, which is the only way to reword or retire one; an over-long meaning in either layer raises a non-failing advisory.
 
-Pi extension entrypoints check their required runtime APIs before registering hooks. Handoff remains lifecycle-independent: workflow templates own effort checkpoint, approval, safe-point, reorientation, and handoff-log policy; bounded kickoff carries instructions while replacement mechanics own no memory policy. A matched replacement persists one visible default-rendered `agent-handoff` custom message with the exact agent-ownership envelope, triggers the next turn through the replacement-bound API, and uses the same envelope for editor recovery while the current provider adapter still carries its content as a user-role message. After queueing replacement it emits Remote Pi's optional continuation disposition, and an absent or failing listener cannot block handoff.
+Pi extension entrypoints check their required runtime APIs before registering hooks.
 
 Pi rendering governs the retained subagent and effort extension outputs through the fixed target descriptor. Independently installed `pi-tools` owns general context usage, handoff, scheduling, execution, and presentation.
 

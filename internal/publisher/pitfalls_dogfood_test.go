@@ -243,7 +243,27 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 	if !slices.EqualFunc(workingNodes, stagedNodes, func(a, b outputplan.Node) bool {
 		aOutput, aRendered := a.Output()
 		bOutput, bRendered := b.Output()
-		return a.Path() == b.Path() && aRendered == bRendered && (!aRendered || aOutput.TemplateID() == bOutput.TemplateID()) && slices.Equal(a.Declarers(), b.Declarers())
+		return a.Path() == b.Path() &&
+			aRendered == bRendered &&
+			(!aRendered || (aOutput.Path() == bOutput.Path() &&
+				aOutput.Content() == bOutput.Content() &&
+				aOutput.TemplateID() == bOutput.TemplateID() &&
+				aOutput.TemplateHash() == bOutput.TemplateHash() &&
+				aOutput.ConfigHash() == bOutput.ConfigHash() &&
+				aOutput.RegenChecked() == bOutput.RegenChecked() &&
+				aOutput.Policy() == bOutput.Policy() &&
+				aOutput.Declarer() == bOutput.Declarer() &&
+				aOutput.DeclarerProjection() == bOutput.DeclarerProjection() &&
+				aOutput.Encoder() == bOutput.Encoder() &&
+				aOutput.Provenance() == bOutput.Provenance() &&
+				aOutput.Assembled() == bOutput.Assembled() &&
+				slices.Equal(aOutput.StubDefaults(), bOutput.StubDefaults()) &&
+				slices.Equal(aOutput.StubParts(), bOutput.StubParts()) &&
+				slices.Equal(aOutput.MarkerParts(), bOutput.MarkerParts()) &&
+				aOutput.Kind() == bOutput.Kind() &&
+				aOutput.Artifact() == bOutput.Artifact() &&
+				slices.Equal(aOutput.PartVarRefs(), bOutput.PartVarRefs()))) &&
+			slices.Equal(a.Declarers(), b.Declarers())
 	}) {
 		t.Fatalf("working/staged pitfall nodes differ:\nworking=%#v\nstaged=%#v", workingNodes, stagedNodes)
 	}
