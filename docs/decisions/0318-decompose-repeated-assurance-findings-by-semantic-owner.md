@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: decompose-repeated-assurance-findings-by-semantic-owner
-status: Implementing
+status: Implemented
 date: 2026-08-29
 ---
 # ADR-0318: Decompose repeated assurance findings by semantic owner
@@ -94,3 +94,4 @@ current-state authority determine the boundary in each implementation.
 - 2026-08-29: Proposed
 - 2026-08-29: Implementing; content-sha256: a4f7c9068b2b66938dc1b75543e77c78590aa0ebcdc00f06c221eaa76264db7a
 - 2026-08-29: Applied; operations: add `rendering/workflow-skill-templates:semantic-owner-assurance-decomposition`
+- 2026-08-29: Implemented; content-sha256: a4f7c9068b2b66938dc1b75543e77c78590aa0ebcdc00f06c221eaa76264db7a

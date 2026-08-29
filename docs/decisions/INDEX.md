@@ -2,8 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0317: Make implementation verification parent-owned](0317-make-implementation-verification-parent-owned.md) (Implementing)
-- [ADR-0318: Decompose repeated assurance findings by semantic owner](0318-decompose-repeated-assurance-findings-by-semantic-owner.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -323,3 +322,5 @@
 - [ADR-0314: Performance-budgeted parallel verification](0314-performance-budgeted-parallel-verification.md) (Implemented)
 - [ADR-0315: Validate only pushed ref commit deltas](0315-validate-only-pushed-ref-commit-deltas.md) (Implemented)
 - [ADR-0316: Validate only local reference-transaction commit deltas](0316-validate-only-local-reference-transaction-commit-deltas.md) (Implemented)
+- [ADR-0317: Make implementation verification parent-owned](0317-make-implementation-verification-parent-owned.md) (Implemented)
+- [ADR-0318: Decompose repeated assurance findings by semantic owner](0318-decompose-repeated-assurance-findings-by-semantic-owner.md) (Implemented)

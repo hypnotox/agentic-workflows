@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-29
 adrs: [make-implementation-verification-parent-owned, decompose-repeated-assurance-findings-by-semantic-owner]
-status: Proposed
+status: Implemented
 ---
 # Plan: Parent-Owned Verification and Semantic-Owner Assurance
 
@@ -85,3 +85,89 @@ Apply the plan-flexibility rule above when recording deviations. Delegated owner
 
 - Phase 1 review settlement: both unchanged-HEAD failure branches now direct retry with the selected `verificationCheckout`; implementer and phase-transaction proofs pin every receipt field and selective-freshness predicate; independent cheap-operation batching moved from the inline-only route to the shared plan-flexibility route. The shared move is a material route correction required by the plan-route authority identified during review; it changes no protected boundary. The single verify pass returned three mechanical proof gaps: exact retry-action matching, implementer worktree-state matching, and complete inline plus delegated receipt and freshness matching. Their direct proof corrections require no further review pass.
 - Phase 2 generated-prose evidence: inspected the Pi implementer and code reviewer, inline and delegated execution skills, implementation-review skill, workflow guide, generated workflow-skill topic, and ADR index. The shared semantic-owner contract remains coherent at every boundary, preserves distinct-location findings and unrelated-blocker isolation, and introduces no contradictory fragment or no-value residue. The existing escaped literal-placeholder focus item in the code reviewer remains intentional. Deviation: none. Phase review found two mechanical gaps: stale parent-transaction wording in the default Full workflow template and incomplete claim-proof coverage. Settlement restores parent-only integration, staging, checks, commits, and gates in that default and adds default Core/Full rendering, authored-home census, focused-evidence, empty-data, and clause/consumer proof. A verify pass is skipped because every correction is mechanical. Terminal full verification exposed one stale sync-composition expectation that still treated the implementer as `gateCmd`-dependent; the parent-owned transaction contract instead makes the execution skills the affected outputs, so the deterministic expectation follows those actual owners. The same run also saw two concurrent temporary Git-directory cleanup races. Repeated isolated reproduction identified detached automatic Git maintenance from native fixtures as the cause; repository-local `maintenance.auto=false` prevents that background writer, and a fixture contract test plus the unchanged stress reproduction carry the fix. The required full-gate retry then reached only the raw-identity ratchet: the added initialization guards and line-only moves received exact review evidence, and the canonical coverage policy was regenerated from that same whole-module profile before the next retry. Terminal composition review found two reasoned freshness gaps: changed-HEAD recovery could wrongly legitimize an unauthorized child commit on redispatch, and same-status mutations could stale a focused result. Settlement now requires parent restoration of the recorded before-run HEAD before redispatch and labels each focused command final-state only when it ran after the last overlapping mutation; parents rerun every non-final result. The single verify pass found three mechanical proof gaps: bind recovery to the actual recorded before-run value, pin the implementer receipt's boolean final-state label and rerun clause, and pin non-final reruns in both execution routes. Direct assertions and mutation checks close each gap without another review loop.
+
+### Terminal reconciliation
+Implementation range: ddb75cb94b327c7bb4136b01864708134cc8571d..c0ea750c07c258c44686b5f8ae8ab77fc2e31975
+Touched paths:
+- ".awf/awf.lock"
+- ".awf/topics/parts/rendering/pi-runtime/current-state.md"
+- ".awf/topics/parts/rendering/pi-workflows/current-state.md"
+- ".awf/topics/parts/rendering/workflow-skill-templates/current-state.md"
+- ".claude/agents/code-reviewer.md"
+- ".claude/agents/implementer.md"
+- ".claude/agents/plan-reviewer.md"
+- ".claude/skills/awf-bugfix/SKILL.md"
+- ".claude/skills/awf-executing-direct/SKILL.md"
+- ".claude/skills/awf-executing-plans/SKILL.md"
+- ".claude/skills/awf-reviewing-impl/SKILL.md"
+- ".claude/skills/awf-reviewing-plan/SKILL.md"
+- ".claude/skills/awf-subagent-driven-development/SKILL.md"
+- ".claude/skills/awf-tdd/SKILL.md"
+- ".claude/skills/awf-writing-plans/SKILL.md"
+- ".pi/agents/code-reviewer.md"
+- ".pi/agents/implementer.md"
+- ".pi/agents/plan-reviewer.md"
+- ".pi/extensions/awf-subagents/index.ts"
+- ".pi/skills/awf-bugfix/SKILL.md"
+- ".pi/skills/awf-executing-direct/SKILL.md"
+- ".pi/skills/awf-executing-plans/SKILL.md"
+- ".pi/skills/awf-reviewing-impl/SKILL.md"
+- ".pi/skills/awf-reviewing-plan/SKILL.md"
+- ".pi/skills/awf-subagent-driven-development/SKILL.md"
+- ".pi/skills/awf-tdd/SKILL.md"
+- ".pi/skills/awf-writing-plans/SKILL.md"
+- "changelog/CHANGELOG.md"
+- "cmd/awf/sync_composition_test.go"
+- "coverage-baseline.json"
+- "coverage-review.json"
+- "docs/config-reference.md"
+- "docs/decisions/0317-make-implementation-verification-parent-owned.md"
+- "docs/decisions/0318-decompose-repeated-assurance-findings-by-semantic-owner.md"
+- "docs/decisions/INDEX.md"
+- "docs/decisions/decompose-repeated-assurance-findings-by-semantic-owner.md"
+- "docs/decisions/make-implementation-verification-parent-owned.md"
+- "docs/pi-runtime-reference.md"
+- "docs/plans/2026-08-29-parent-owned-verification-and-semantic-owner-assurance.md"
+- "docs/plans/README.md"
+- "docs/plans/template.md"
+- "docs/testing.md"
+- "docs/topics/rendering/pi-runtime.md"
+- "docs/topics/rendering/pi-workflows.md"
+- "docs/topics/rendering/workflow-skill-templates.md"
+- "docs/workflow.md"
+- "internal/catalog/standard.go"
+- "internal/evals/concrete_maintainability_review_test.go"
+- "internal/evals/independent_workflow_escalation_test.go"
+- "internal/project/agent_template_test.go"
+- "internal/project/maintainable_workflow_template_test.go"
+- "internal/project/phase_transaction_ownership_test.go"
+- "internal/project/plan_detail_modes_test.go"
+- "internal/project/plan_execution_workflow_template_test.go"
+- "internal/project/publication_safe_template_test.go"
+- "internal/project/review_workflow_template_test.go"
+- "internal/publisher/target_test.go"
+- "internal/testsupport/gitfixture/gitfixture.go"
+- "internal/testsupport/gitfixture/gitfixture_test.go"
+- "internal/testsupport/gitfixture/native.go"
+- "templates/agents/code-reviewer.md.tmpl"
+- "templates/agents/implementer.md.tmpl"
+- "templates/agents/plan-reviewer.md.tmpl"
+- "templates/docs/pi-runtime-reference.md.tmpl"
+- "templates/docs/testing.md.tmpl"
+- "templates/docs/workflow.md.tmpl"
+- "templates/partials/implementation-autonomy.md"
+- "templates/partials/plan-flexibility.md"
+- "templates/partials/semantic-owner-assurance.md"
+- "templates/pi/awf-subagents/index.ts.tmpl"
+- "templates/plans-readme/README.md.tmpl"
+- "templates/plans-template/template.md.tmpl"
+- "templates/skills/executing-plans/SKILL.md.tmpl"
+- "templates/skills/reviewing-impl/SKILL.md.tmpl"
+- "templates/skills/subagent-driven-development/SKILL.md.tmpl"
+- "templates/skills/writing-plans/SKILL.md.tmpl"
+- "tools/pi-extension-test/tests/index.test.ts"
+- "tools/pi-extension-test/tests/profile-adapter.test.ts"
+Material deviations:
+- Moved independent cheap-operation batching from the inline-only route to the shared plan-flexibility owner so every execution mode preserves the approved guidance.
+- Corrected the terminal changed-output expectation to follow the execution-skill owners after the implementer stopped depending on the gate command.
+- Fixed detached Git auto-maintenance in native and go-git fixtures after terminal verification exposed cleanup races, then reconciled the moved raw-coverage identities.
