@@ -30,14 +30,18 @@ therefore must not claim mechanical detection of gate commands that the runtime 
 This decision preserves sequential implementation dispatch, exclusive parent-batch execution,
 managed-checkout selection, focused tests, report-only review, the fast and full gate semantics, and
 unrelated-defect routing. It does not introduce host-wide verification serialization,
-external-prerequisite preflights, or serialized integration windows.
+external-prerequisite preflights, or serialized integration windows. The separately approved
+semantic-owner assurance decomposition is a successor decision. Approved batching of independent
+cheap operations remains implementation-route guidance for the plan rather than a durable
+transaction-ownership commitment.
 
 ## Decision
 
 1. `decision: parent-owned-transaction` The parent owns every implementation transaction across
    inline and delegated execution: integration, explicit staging, the staged check, every commit, the
    fast commit gate, and terminal exhaustive verification. An implementation child never stages,
-   commits, or runs either gate; it runs only the focused tests and checks named by its bounded task.
+   commits, or runs either gate; it runs only focused tests and checks relevant to its bounded task
+   and reports every command and result.
 
 2. `decision: one-child-authority` Replace the commit-capable phase-owner and commit-disabled helper
    modes with one commit-disabled implementation-child authority. `subagent-driven` remains a plan
@@ -59,11 +63,12 @@ external-prerequisite preflights, or serialized integration windows.
    overlapping paths remain unchanged. Lost or unverifiable evidence and overlapping later mutation
    invalidate the affected receipt. No receipt substitutes for a parent-owned gate.
 
-5. `decision: honest-enforcement-boundary` Pi rejects any implementation result whose selected HEAD
-   changed and fails closed when no-commit verification cannot be established. The child no-gate
-   rule is enforced through the rendered implementer and dispatch contracts with deterministic
-   contract tests, not described as shell-command interception. Other runtimes retain the same
-   parent-owned semantic contract through their rendered roles and skills.
+5. `decision: honest-enforcement-boundary` Pi compares the selected HEAD before and after the child,
+   rejects a mismatch, and fails closed when that unchanged-HEAD comparison cannot be established.
+   The child no-commit and no-gate rules are enforced through the rendered implementer and dispatch
+   contracts with deterministic contract tests, not described as shell-command or intervening-history
+   interception. Other runtimes retain the same parent-owned semantic contract through their rendered
+   roles and skills.
 
 ## State changes
 
