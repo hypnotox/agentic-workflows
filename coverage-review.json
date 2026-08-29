@@ -2770,6 +2770,19 @@
       "identity": {
         "file": "internal/audit/historical.go",
         "start": {
+          "line": 61,
+          "column": 16
+        },
+        "end": {
+          "line": 63,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "The schema-46 audit forward-port fix inserted the retired-field translation above this unchanged historical-config marshal error branch, moving it from internal/audit/historical.go:57.16,59.3 1 to internal/audit/historical.go:61.16,63.3 1. The exact movedFrom identity preserves lineage. Prior review: Historical decoder error-formatting branch is defensive after decoder tests cover malformed JSON, YAML, schema horizons, unknown fields, and no-write adaptation; this exact formatting fallback has no distinct externally meaningful branch.",
+      "movedFrom": {
+        "file": "internal/audit/historical.go",
+        "start": {
           "line": 57,
           "column": 16
         },
@@ -2778,8 +2791,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Historical decoder error-formatting branch is defensive after decoder tests cover malformed JSON, YAML, schema horizons, unknown fields, and no-write adaptation; this exact formatting fallback has no distinct externally meaningful branch."
+      }
     },
     {
       "identity": {
@@ -12136,6 +12148,19 @@
       "identity": {
         "file": "internal/publisher/render.go",
         "start": {
+          "line": 213,
+          "column": 17
+        },
+        "end": {
+          "line": 215,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:214.17,216.4 1 to internal/publisher/render.go:213.17,215.4 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:214.17,216.4 1 in function planSections, beginning `{ // coverage-ignore: declaration-first output planning already parses this consumed part in the...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
+        "file": "internal/publisher/render.go",
+        "start": {
           "line": 214,
           "column": 17
         },
@@ -12144,11 +12169,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:214.17,216.4 1 in function planSections, beginning `{ // coverage-ignore: declaration-first output planning already parses this consumed part in the...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 333,
+          "column": 16
+        },
+        "end": {
+          "line": 335,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:334.16,336.3 1 to internal/publisher/render.go:333.16,335.3 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:334.16,336.3 1 in function templateSourceRootMarker, beginning `{ // coverage-ignore: live embedded templates are include-validated; render package tests own ma...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 334,
@@ -12159,11 +12196,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:334.16,336.3 1 in function templateSourceRootMarker, beginning `{ // coverage-ignore: live embedded templates are include-validated; render package tests own ma...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 459,
+          "column": 17
+        },
+        "end": {
+          "line": 461,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:460.17,462.4 1 to internal/publisher/render.go:459.17,461.4 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:460.17,462.4 1 in function renderKind, beginning `{ // coverage-ignore: declaration-first planning just parsed this enabled artifact sidecar`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 460,
@@ -12174,11 +12223,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:460.17,462.4 1 in function renderKind, beginning `{ // coverage-ignore: declaration-first planning just parsed this enabled artifact sidecar`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 597,
+          "column": 18
+        },
+        "end": {
+          "line": 599,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:598.18,600.5 1 to internal/publisher/render.go:597.18,599.5 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:598.18,600.5 1 in function renderAllBase, beginning `{ // coverage-ignore: targetOutputDeclarations read this same embedded template before render.`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 598,
@@ -12189,11 +12250,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:598.18,600.5 1 in function renderAllBase, beginning `{ // coverage-ignore: targetOutputDeclarations read this same embedded template before render.`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 605,
+          "column": 46
+        },
+        "end": {
+          "line": 607,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:606.46,608.5 1 to internal/publisher/render.go:605.46,607.5 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:606.46,608.5 1 in function renderAllBase, beginning `{ // coverage-ignore: validated target outputs cannot carry producer inputs`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 606,
@@ -12204,11 +12277,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:606.46,608.5 1 in function renderAllBase, beginning `{ // coverage-ignore: validated target outputs cannot carry producer inputs`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 614,
+          "column": 16
+        },
+        "end": {
+          "line": 616,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:615.16,617.3 1 to internal/publisher/render.go:614.16,616.3 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:615.16,617.3 1 in function renderAllBase, beginning `{ // coverage-ignore: declaration-first planning just parsed the agents-doc sidecar`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 615,
@@ -12219,11 +12304,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:615.16,617.3 1 in function renderAllBase, beginning `{ // coverage-ignore: declaration-first planning just parsed the agents-doc sidecar`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 629,
+          "column": 74
+        },
+        "end": {
+          "line": 631,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:630.74,632.4 1 to internal/publisher/render.go:629.74,631.4 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:630.74,632.4 1 in function renderAllBase, beginning `{ // coverage-ignore: declaration-first planning already read every catalog doc sidecar from the...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 630,
@@ -12234,11 +12331,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:630.74,632.4 1 in function renderAllBase, beginning `{ // coverage-ignore: declaration-first planning already read every catalog doc sidecar from the...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 681,
+          "column": 17
+        },
+        "end": {
+          "line": 683,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:682.17,684.4 1 to internal/publisher/render.go:681.17,683.4 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:682.17,684.4 1 in function renderAllBase, beginning `{ // coverage-ignore: conditional units use only fixed embedded templates and validated fixed ou...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 682,
@@ -12249,11 +12358,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:682.17,684.4 1 in function renderAllBase, beginning `{ // coverage-ignore: conditional units use only fixed embedded templates and validated fixed ou...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 690,
+          "column": 17
+        },
+        "end": {
+          "line": 692,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:691.17,693.4 1 to internal/publisher/render.go:690.17,692.4 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:691.17,693.4 1 in function renderAllBase, beginning `{ // coverage-ignore: resident templates are embedded and registered at startup`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 691,
@@ -12264,11 +12385,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:691.17,693.4 1 in function renderAllBase, beginning `{ // coverage-ignore: resident templates are embedded and registered at startup`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 720,
+          "column": 16
+        },
+        "end": {
+          "line": 722,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:721.16,723.3 1 to internal/publisher/render.go:720.16,722.3 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:721.16,723.3 1 in function renderTarget, beginning `{ // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 721,
@@ -12279,11 +12412,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:721.16,723.3 1 in function renderTarget, beginning `{ // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 724,
+          "column": 16
+        },
+        "end": {
+          "line": 726,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:725.16,727.3 1 to internal/publisher/render.go:724.16,726.3 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:725.16,727.3 1 in function renderTarget, beginning `{ // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 725,
@@ -12294,11 +12439,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:725.16,727.3 1 in function renderTarget, beginning `{ // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 763,
+          "column": 16
+        },
+        "end": {
+          "line": 765,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:764.16,766.3 1 to internal/publisher/render.go:763.16,765.3 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:764.16,766.3 1 in function renderTarget, beginning `{ // coverage-ignore: the producer already parsed the same sidecar and planSections read the sam...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 764,
@@ -12309,11 +12466,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:764.16,766.3 1 in function renderTarget, beginning `{ // coverage-ignore: the producer already parsed the same sidecar and planSections read the sam...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 771,
+          "column": 75
+        },
+        "end": {
+          "line": 773,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:772.75,774.3 1 to internal/publisher/render.go:771.75,773.3 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:772.75,774.3 1 in function renderTarget, beginning `{ // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot f...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 772,
@@ -12324,11 +12493,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:772.75,774.3 1 in function renderTarget, beginning `{ // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot f...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 788,
+          "column": 16
+        },
+        "end": {
+          "line": 790,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:789.16,791.3 1 to internal/publisher/render.go:788.16,790.3 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:789.16,791.3 1 in function renderTarget, beginning `{ // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template de...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 789,
@@ -12339,11 +12520,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:789.16,791.3 1 in function renderTarget, beginning `{ // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template de...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 814,
+          "column": 16
+        },
+        "end": {
+          "line": 816,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:815.16,817.3 1 to internal/publisher/render.go:814.16,816.3 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:815.16,817.3 1 in function renderTarget, beginning `{ // coverage-ignore: artifactConfigHash only fails on an unreadable consumed part, but planSect...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 815,
@@ -12354,11 +12547,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:815.16,817.3 1 in function renderTarget, beginning `{ // coverage-ignore: artifactConfigHash only fails on an unreadable consumed part, but planSect...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 857,
+          "column": 23
+        },
+        "end": {
+          "line": 859,
+          "column": 6
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:858.23,860.6 1 to internal/publisher/render.go:857.23,859.6 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:858.23,860.6 1 in function validateTemplateSources, beginning `{ // coverage-ignore: non-absence Lstat failures are OS-dependent and the error-preserving branc...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 858,
@@ -12369,11 +12574,23 @@
           "column": 6
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:858.23,860.6 1 in function validateTemplateSources, beginning `{ // coverage-ignore: non-absence Lstat failures are OS-dependent and the error-preserving branc...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 867,
+          "column": 17
+        },
+        "end": {
+          "line": 869,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:868.17,870.4 1 to internal/publisher/render.go:867.17,869.4 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:868.17,870.4 1 in function validateTemplateSources, beginning `{ // coverage-ignore: composed working and immutable snapshot readers return absence separately;...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 868,
@@ -12384,11 +12601,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:868.17,870.4 1 in function validateTemplateSources, beginning `{ // coverage-ignore: composed working and immutable snapshot readers return absence separately;...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 897,
+          "column": 17
+        },
+        "end": {
+          "line": 899,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:898.17,900.4 1 to internal/publisher/render.go:897.17,899.4 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:898.17,900.4 1 in function observeRenderInputs, beginning `{ // coverage-ignore: render producers parse this sidecar before input observation, and filesyst...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 898,
@@ -12399,11 +12628,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:898.17,900.4 1 in function observeRenderInputs, beginning `{ // coverage-ignore: render producers parse this sidecar before input observation, and filesyst...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 966,
+          "column": 17
+        },
+        "end": {
+          "line": 968,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:967.17,969.4 1 to internal/publisher/render.go:966.17,968.4 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:967.17,969.4 1 in function generatePitfallLeaves, beginning `{ // coverage-ignore: embedded leaf template and validated typed data cannot fail at this point`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 967,
@@ -12414,11 +12655,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:967.17,969.4 1 in function generatePitfallLeaves, beginning `{ // coverage-ignore: embedded leaf template and validated typed data cannot fail at this point`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/render.go",
+        "start": {
+          "line": 1009,
+          "column": 17
+        },
+        "end": {
+          "line": 1011,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Terminal coverage reconciliation moved the unchanged reviewed block from internal/publisher/render.go:1010.17,1012.4 1 to internal/publisher/render.go:1009.17,1011.4 1 after the retained policy coordinate was one line ahead of the source. The exact movedFrom identity preserves lineage. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:1010.17,1012.4 1 in function generateDomainDocs, beginning `{ // coverage-ignore: .data.domain/.data.topics are always set and the template is embedded, so ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/render.go",
         "start": {
           "line": 1010,
@@ -12429,8 +12682,7 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/render.go:1010.17,1012.4 1 in function generateDomainDocs, beginning `{ // coverage-ignore: .data.domain/.data.topics are always set and the template is embedded, so ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
@@ -33623,242 +33875,242 @@
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 214,
-        "targetLine": 214,
+        "line": 213,
+        "targetLine": 213,
         "reason": "declaration-first output planning already parses this consumed part in the same operation",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/publisher/render.go:214, `if err != nil {` follows the concrete operation `b, exists, err := p.cfg.ReadPart(kind, artifact, s)` at internal/publisher/render.go:213 in `func planSections(p renderInputs, kind, artifact string, declared []string, sec map[string]config.SectionOverride, segs []render.Segment, outPath string, style render.CommentStyle, expectedHeadings ...map[string]string) (map[string]render.SectionPlan, error)` (internal/publisher/render.go:153). The reviewed failure condition is declaration-first output planning already parses this consumed part in the same operation; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/publisher/render.go:213, `if err != nil {` follows the concrete operation `b, exists, err := p.cfg.ReadPart(kind, artifact, s)` at internal/publisher/render.go:212 in `func planSections(p renderInputs, kind, artifact string, declared []string, sec map[string]config.SectionOverride, segs []render.Segment, outPath string, style render.CommentStyle, expectedHeadings ...map[string]string) (map[string]render.SectionPlan, error)` (internal/publisher/render.go:152). The reviewed failure condition is declaration-first output planning already parses this consumed part in the same operation; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 334,
-        "targetLine": 334,
+        "line": 333,
+        "targetLine": 333,
         "reason": "live embedded templates are include-validated; render package tests own malformed expansion",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:334, `if err != nil {` is guarded by the preceding `expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)` at internal/publisher/render.go:333; in `func templateSourceRootMarker(p renderInputs, tid string) (string, []OutputInput, error)` (internal/publisher/render.go:324), the predecessor invariant is live embedded templates are include-validated; render package tests own malformed expansion. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:333, `if err != nil {` is guarded by the preceding `expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)` at internal/publisher/render.go:332; in `func templateSourceRootMarker(p renderInputs, tid string) (string, []OutputInput, error)` (internal/publisher/render.go:323), the predecessor invariant is live embedded templates are include-validated; render package tests own malformed expansion. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 460,
-        "targetLine": 460,
+        "line": 459,
+        "targetLine": 459,
         "reason": "declaration-first planning just parsed this enabled artifact sidecar",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:460, `if err != nil {` is guarded by the preceding `sc, err := p.cfg.Sidecar(spec.kind, name)` at internal/publisher/render.go:459; in `func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]RenderedFile, error)` (internal/publisher/render.go:456), the predecessor invariant is declaration-first planning just parsed this enabled artifact sidecar. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:459, `if err != nil {` is guarded by the preceding `sc, err := p.cfg.Sidecar(spec.kind, name)` at internal/publisher/render.go:458; in `func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]RenderedFile, error)` (internal/publisher/render.go:455), the predecessor invariant is declaration-first planning just parsed this enabled artifact sidecar. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 598,
-        "targetLine": 598,
+        "line": 597,
+        "targetLine": 597,
         "reason": "targetOutputDeclarations read this same embedded template before render.",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:598, `if err != nil {` is guarded by the preceding `})` at internal/publisher/render.go:597; in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:516), the predecessor invariant is targetOutputDeclarations read this same embedded template before render. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:597, `if err != nil {` is guarded by the preceding `})` at internal/publisher/render.go:596; in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:515), the predecessor invariant is targetOutputDeclarations read this same embedded template before render. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 606,
-        "targetLine": 606,
+        "line": 605,
+        "targetLine": 605,
         "reason": "validated target outputs cannot carry producer inputs",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `for _, input := range targetOutput.Inputs {` at internal/publisher/render.go:606 is `rf.Provenance = targetOutput.Provenance` (internal/publisher/render.go:605). Within `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` at internal/publisher/render.go:516, source review establishes validated target outputs cannot carry producer inputs; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `for _, input := range targetOutput.Inputs {` at internal/publisher/render.go:605 is `rf.Provenance = targetOutput.Provenance` (internal/publisher/render.go:604). Within `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` at internal/publisher/render.go:515, source review establishes validated target outputs cannot carry producer inputs; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 615,
-        "targetLine": 615,
+        "line": 614,
+        "targetLine": 614,
         "reason": "declaration-first planning just parsed the agents-doc sidecar",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/render.go:615 is `ad, err := p.cfg.Sidecar(\"agents-doc\", \"\")` (internal/publisher/render.go:614). Within `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` at internal/publisher/render.go:516, source review establishes declaration-first planning just parsed the agents-doc sidecar; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/render.go:614 is `ad, err := p.cfg.Sidecar(\"agents-doc\", \"\")` (internal/publisher/render.go:613). Within `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` at internal/publisher/render.go:515, source review establishes declaration-first planning just parsed the agents-doc sidecar; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 630,
-        "targetLine": 630,
+        "line": 629,
+        "targetLine": 629,
         "reason": "declaration-first planning already read every catalog doc sidecar from the same filesystem invocation",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `for _, name := range slices.Sorted(maps.Keys(projectCatalog(p).Docs)) {` at internal/publisher/render.go:629 feeds `if ok, sidecarErr := p.cfg.HasSidecar(\"docs\", name); sidecarErr != nil {` at internal/publisher/render.go:630 in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:516). Its concrete fault condition is declaration-first planning already read every catalog doc sidecar from the same filesystem invocation, so no safe portable production input induces this error path."
+      "evidence": "The source predecessor `for _, name := range slices.Sorted(maps.Keys(projectCatalog(p).Docs)) {` at internal/publisher/render.go:628 feeds `if ok, sidecarErr := p.cfg.HasSidecar(\"docs\", name); sidecarErr != nil {` at internal/publisher/render.go:629 in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:515). Its concrete fault condition is declaration-first planning already read every catalog doc sidecar from the same filesystem invocation, so no safe portable production input induces this error path."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 682,
-        "targetLine": 682,
+        "line": 681,
+        "targetLine": 681,
         "reason": "conditional units use only fixed embedded templates and validated fixed output paths; renderTarget owns malformed-input error coverage",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:682, `if err != nil {` is guarded by the preceding `\u0026renderOutputOptions{encoder: PlainAgentDialect})` at internal/publisher/render.go:681; in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:516), the predecessor invariant is conditional units use only fixed embedded templates and validated fixed output paths; renderTarget owns malformed-input error coverage. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:681, `if err != nil {` is guarded by the preceding `\u0026renderOutputOptions{encoder: PlainAgentDialect})` at internal/publisher/render.go:680; in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:515), the predecessor invariant is conditional units use only fixed embedded templates and validated fixed output paths; renderTarget owns malformed-input error coverage. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 691,
-        "targetLine": 691,
+        "line": 690,
+        "targetLine": 690,
         "reason": "resident templates are embedded and registered at startup",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:691, `if err != nil {` is guarded by the preceding `rf, err := renderResidentMarker(p, name, eff)` at internal/publisher/render.go:690; in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:516), the predecessor invariant is resident templates are embedded and registered at startup. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:690, `if err != nil {` is guarded by the preceding `rf, err := renderResidentMarker(p, name, eff)` at internal/publisher/render.go:689; in `func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error)` (internal/publisher/render.go:515), the predecessor invariant is resident templates are embedded and registered at startup. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 721,
-        "targetLine": 721,
+        "line": 720,
+        "targetLine": 720,
         "reason": "awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through the render pass; its error branches are unit-tested in internal/render",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:721, `if err != nil {` is guarded by the preceding `expandedSource, err := render.ExpandIncludesSource(string(src), tid, templates.FS)` at internal/publisher/render.go:720; in `func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` (internal/publisher/render.go:711), the predecessor invariant is awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through the render pass; its error branches are unit-tested in internal/render. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:720, `if err != nil {` is guarded by the preceding `expandedSource, err := render.ExpandIncludesSource(string(src), tid, templates.FS)` at internal/publisher/render.go:719; in `func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` (internal/publisher/render.go:710), the predecessor invariant is awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through the render pass; its error branches are unit-tested in internal/render. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 725,
-        "targetLine": 725,
+        "line": 724,
+        "targetLine": 724,
         "reason": "awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through the render pass; its error branch is unit-tested in internal/render",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` begins at internal/publisher/render.go:711; its branch `if err != nil {` at internal/publisher/render.go:725 follows `strippedSource, err := render.StripAuthoringCommentsSource(expandedSource)` at internal/publisher/render.go:724. That flow establishes awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through the render pass; its error branch is unit-tested in internal/render, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` begins at internal/publisher/render.go:710; its branch `if err != nil {` at internal/publisher/render.go:724 follows `strippedSource, err := render.StripAuthoringCommentsSource(expandedSource)` at internal/publisher/render.go:723. That flow establishes awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through the render pass; its error branch is unit-tested in internal/render, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 764,
-        "targetLine": 764,
+        "line": 763,
+        "targetLine": 763,
         "reason": "the producer already parsed the same sidecar and planSections read the same parts in this invocation",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` begins at internal/publisher/render.go:711; its branch `if err != nil {` at internal/publisher/render.go:764 follows `}` at internal/publisher/render.go:763. That flow establishes the producer already parsed the same sidecar and planSections read the same parts in this invocation, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` begins at internal/publisher/render.go:710; its branch `if err != nil {` at internal/publisher/render.go:763 follows `}` at internal/publisher/render.go:762. That flow establishes the producer already parsed the same sidecar and planSections read the same parts in this invocation, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 772,
-        "targetLine": 772,
+        "line": 771,
+        "targetLine": 771,
         "reason": "awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branches are unit-tested in internal/render",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:772, `if err := render.CheckResidualMarkersSource(assembledSource); err != nil {` is guarded by the preceding `assembled := assembledSource.AuthoredText()` at internal/publisher/render.go:771; in `func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` (internal/publisher/render.go:711), the predecessor invariant is awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branches are unit-tested in internal/render. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:771, `if err := render.CheckResidualMarkersSource(assembledSource); err != nil {` is guarded by the preceding `assembled := assembledSource.AuthoredText()` at internal/publisher/render.go:770; in `func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` (internal/publisher/render.go:710), the predecessor invariant is awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branches are unit-tested in internal/render. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 789,
-        "targetLine": 789,
+        "line": 788,
+        "targetLine": 788,
         "reason": "with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through the render pass; its own parse/execute error branches are unit-tested in internal/render",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/render.go:789 is `}` (internal/publisher/render.go:788). Within `func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` at internal/publisher/render.go:711, source review establishes with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through the render pass; its own parse/execute error branches are unit-tested in internal/render; this is therefore a closed-state fail-closed branch."
+      "evidence": "The immediate predecessor for `if err != nil {` at internal/publisher/render.go:788 is `}` (internal/publisher/render.go:787). Within `func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` at internal/publisher/render.go:710, source review establishes with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through the render pass; its own parse/execute error branches are unit-tested in internal/render; this is therefore a closed-state fail-closed branch."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 815,
-        "targetLine": 815,
+        "line": 814,
+        "targetLine": 814,
         "reason": "artifactConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` (starts internal/publisher/render.go:711) checks `if err != nil {` at internal/publisher/render.go:815 after `}` at internal/publisher/render.go:814. Here artifactConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "`func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error)` (starts internal/publisher/render.go:710) checks `if err != nil {` at internal/publisher/render.go:814 after `}` at internal/publisher/render.go:813. Here artifactConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths; exercising this exact branch requires an unportable environmental failure."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 858,
-        "targetLine": 858,
+        "line": 857,
+        "targetLine": 857,
         "reason": "non-absence Lstat failures are OS-dependent and the error-preserving branch is direct",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `}` at internal/publisher/render.go:857 feeds `if statErr != nil {` at internal/publisher/render.go:858 in `func validateTemplateSources(p renderInputs, source render.SourceText, root string) error` (internal/publisher/render.go:841). Its concrete fault condition is non-absence Lstat failures are OS-dependent and the error-preserving branch is direct, so no safe portable production input induces this error path."
+      "evidence": "The source predecessor `}` at internal/publisher/render.go:856 feeds `if statErr != nil {` at internal/publisher/render.go:857 in `func validateTemplateSources(p renderInputs, source render.SourceText, root string) error` (internal/publisher/render.go:840). Its concrete fault condition is non-absence Lstat failures are OS-dependent and the error-preserving branch is direct, so no safe portable production input induces this error path."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 868,
-        "targetLine": 868,
+        "line": 867,
+        "targetLine": 867,
         "reason": "composed working and immutable snapshot readers return absence separately; their I/O failures are tested at reader ownership",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/publisher/render.go:868, `if err != nil {` follows the concrete operation `_, ok, err := projectTreeReader(p).ReadFile(candidate)` at internal/publisher/render.go:867 in `func validateTemplateSources(p renderInputs, source render.SourceText, root string) error` (internal/publisher/render.go:841). The reviewed failure condition is composed working and immutable snapshot readers return absence separately; their I/O failures are tested at reader ownership; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/publisher/render.go:867, `if err != nil {` follows the concrete operation `_, ok, err := projectTreeReader(p).ReadFile(candidate)` at internal/publisher/render.go:866 in `func validateTemplateSources(p renderInputs, source render.SourceText, root string) error` (internal/publisher/render.go:840). The reviewed failure condition is composed working and immutable snapshot readers return absence separately; their I/O failures are tested at reader ownership; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 898,
-        "targetLine": 898,
+        "line": 897,
+        "targetLine": 897,
         "reason": "render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/publisher/render.go:898, `if err != nil {` follows the concrete operation `has, err := p.cfg.HasSidecar(kind, artifact)` at internal/publisher/render.go:897 in `func observeRenderInputs(p renderInputs, kind, artifact, tid, outPath string, plan map[string]render.SectionPlan) ([]OutputInput, error)` (internal/publisher/render.go:891). The reviewed failure condition is render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "At internal/publisher/render.go:897, `if err != nil {` follows the concrete operation `has, err := p.cfg.HasSidecar(kind, artifact)` at internal/publisher/render.go:896 in `func observeRenderInputs(p renderInputs, kind, artifact, tid, outPath string, plan map[string]render.SectionPlan) ([]OutputInput, error)` (internal/publisher/render.go:890). The reviewed failure condition is render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 967,
-        "targetLine": 967,
+        "line": 966,
+        "targetLine": 966,
         "reason": "embedded leaf template and validated typed data cannot fail at this point",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/publisher/render.go:967, `if err != nil {` is guarded by the preceding `\u0026renderOutputOptions{sources: []string{entry.SourcePath}})` at internal/publisher/render.go:966; in `func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus, eff map[string]bool) ([]RenderedFile, error)` (internal/publisher/render.go:960), the predecessor invariant is embedded leaf template and validated typed data cannot fail at this point. Only violation of that closed state reaches this guard."
+      "evidence": "At internal/publisher/render.go:966, `if err != nil {` is guarded by the preceding `\u0026renderOutputOptions{sources: []string{entry.SourcePath}})` at internal/publisher/render.go:965; in `func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus, eff map[string]bool) ([]RenderedFile, error)` (internal/publisher/render.go:959), the predecessor invariant is embedded leaf template and validated typed data cannot fail at this point. Only violation of that closed state reaches this guard."
     },
     {
       "directive": {
         "file": "internal/publisher/render.go",
-        "line": 1010,
-        "targetLine": 1010,
+        "line": 1009,
+        "targetLine": 1009,
         "reason": ".data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce \u003cno value\u003e or a read error here",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func generateDomainDocs(p renderInputs, topics topic.Corpus, eff map[string]bool) ([]RenderedFile, error)` begins at internal/publisher/render.go:998; its branch `if err != nil {` at internal/publisher/render.go:1010 follows `}})` at internal/publisher/render.go:1009. That flow establishes .data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce \u003cno value\u003e or a read error here, making the defensive return unreachable without an invariant breach."
+      "evidence": "`func generateDomainDocs(p renderInputs, topics topic.Corpus, eff map[string]bool) ([]RenderedFile, error)` begins at internal/publisher/render.go:997; its branch `if err != nil {` at internal/publisher/render.go:1009 follows `}})` at internal/publisher/render.go:1008. That flow establishes .data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce \u003cno value\u003e or a read error here, making the defensive return unreachable without an invariant breach."
     },
     {
       "directive": {
