@@ -75,6 +75,46 @@ func TestConcreteMaintainabilityReviewScenarios(t *testing.T) {
 	}
 }
 
+// invariant: rendering/workflow-skill-templates:semantic-owner-assurance-decomposition (TestSemanticOwnerAssuranceScenarios)
+func TestSemanticOwnerAssuranceScenarios(t *testing.T) {
+	for _, profile := range []string{"core", "full"} {
+		t.Run(profile, func(t *testing.T) {
+			root := syncPlanFlexibilityProfile(t, profile)
+			for _, target := range []string{"pi", "claude"} {
+				t.Run(target, func(t *testing.T) {
+					bodies := map[string]string{
+						"implementer":    read(t, filepath.Join(root, "."+target, "agents", "implementer.md")),
+						"code-reviewer":  read(t, filepath.Join(root, "."+target, "agents", "code-reviewer.md")),
+						"reviewing-impl": read(t, planSkillPath(root, target, "reviewing-impl")),
+					}
+					if profile == "full" {
+						bodies["executing-plans"] = read(t, planSkillPath(root, target, "executing-plans"))
+						bodies["subagent-driven-development"] = read(t, planSkillPath(root, target, "subagent-driven-development"))
+					}
+					for consumer, body := range bodies {
+						for _, want := range []string{
+							"separates independently verifiable owners into distinct implementation, settlement, and assurance units",
+							"cross-owner composition is itself one coherent transaction or protected contract",
+							"same underlying semantic concern or violated contract across separable owners",
+							"not severity, reviewer lens, or remediation classification",
+							"partitions the finite remaining scope",
+							"ordinary bounded review",
+							"without another reviewer dispatch",
+							"terminal assurance covers composed integration effects and the complete range",
+							"Unrelated blockers stay under implementation-autonomy routing and never widen the active outcome",
+							"No file, line, commit, task, finding-count, or elapsed-time threshold",
+						} {
+							if !strings.Contains(body, want) {
+								t.Errorf("%s missing semantic-owner scenario clause %q", consumer, want)
+							}
+						}
+					}
+				})
+			}
+		})
+	}
+}
+
 func maintainabilityFieldMappings() []string {
 	return []string{
 		"`location` records the affected location",

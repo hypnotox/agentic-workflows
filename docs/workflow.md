@@ -39,6 +39,14 @@ The protected-contract rule in the workflow document governs what a plan may not
 
 Reconcile a Proposed plan only when another phase or reviewer could rely on stale material instructions. Inconsequential and independently local edits require no deviation record. A delegated owner reports material cross-owner revisions for parent reconciliation. A helper remains confined to its assigned paths and gains no scope, commit, review, checkpoint, handoff, or outcome authority from route flexibility.
 
+<!-- awf:template-source templates/partials/semantic-owner-assurance.md -->
+**Semantic-owner assurance.**
+
+Before assigning or reviewing a broad implementation unit, the parent identifies its semantic owners. It separates independently verifiable owners into distinct implementation, settlement, and assurance units. Work stays together only when its cross-owner composition is itself one coherent transaction or protected contract.
+
+Repeated findings of the same underlying semantic concern or violated contract across separable owners show that the assurance boundary is oversized. Finding class here means that shared concern or contract, not severity, reviewer lens, or remediation classification. Before further assurance, the parent partitions the finite remaining scope into separable owner units. Each genuinely fresh implementation transaction receives ordinary bounded review. Residual findings from the originating transaction's sole verify pass receive parent-owned settlement and deterministic verification without another reviewer dispatch.
+
+Decomposition preserves parent-owned focused evidence for each fresh unit, and terminal assurance covers composed integration effects and the complete range under its own single verify-pass bound and terminal verification obligations. Unrelated blockers stay under implementation-autonomy routing and never widen the active outcome. No file, line, commit, task, finding-count, or elapsed-time threshold defines an oversized unit; semantic ownership, dependency and representation boundaries, independent verifiability, and the concrete finding pattern do.
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl#chain -->
 <!-- awf:edit chain: from .awf/parts/workflow/chain.md -->

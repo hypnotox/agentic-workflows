@@ -16,6 +16,8 @@ query a single version or a range.
 
 ### Features
 
+- Implementation and assurance routes now separate independently verifiable semantic owners, treat repeated same-concern findings across separable owners as an oversized boundary, and retain terminal cross-owner composition coverage without numeric thresholds or recursive review.
+
 - Parents now exclusively integrate, stage, check staged state, commit, run fast gates, and perform terminal exhaustive verification. Implementation children return structured focused-evidence receipts that parents inventory and reuse only while checkout, authority, and overlapping paths stay fresh.
 
 - Add separate fail-closed affected-package behavioral feedback with complete reverse-dependent selection, declared meta-suites, visible conservative widening, and unchanged commit and terminal gates.
