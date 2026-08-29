@@ -311,6 +311,18 @@ func releaseNotesWorkflowError(wf string) error {
 		goreleaserPath = normalizedNotesPath(strings.TrimPrefix(argLine, "--release-notes"))
 	}
 
+	repair := strings.Index(publish, `gh release edit "$GITHUB_REF_NAME" --notes-file`)
+	var repairPath string
+	if repair < 0 {
+		errs = append(errs, errors.New("release.yml does not restore the exact curated body after GoReleaser publication"))
+	} else {
+		if build >= 0 && repair < build {
+			errs = append(errs, errors.New("published release-note restoration must run after GoReleaser"))
+		}
+		repairLine := workflowLineFrom(publish, repair)
+		repairPath = normalizedNotesPath(strings.TrimPrefix(repairLine, `gh release edit "$GITHUB_REF_NAME" --notes-file`))
+	}
+
 	verify := strings.Index(publish, "Verify published release notes")
 	var verifyPath string
 	if verify < 0 {
@@ -318,6 +330,9 @@ func releaseNotesWorkflowError(wf string) error {
 	} else {
 		if build >= 0 && verify < build {
 			errs = append(errs, errors.New("published release-note verification must run after GoReleaser"))
+		}
+		if repair >= 0 && verify < repair {
+			errs = append(errs, errors.New("published release-note verification must run after exact-body restoration"))
 		}
 		verifyBlock := publish[verify:]
 		if verifyCmd := strings.Index(verifyBlock, "releasecheck --verify-release-notes"); verifyCmd < 0 {
@@ -335,6 +350,9 @@ func releaseNotesWorkflowError(wf string) error {
 	if goreleaserPath != extractPath {
 		errs = append(errs, fmt.Errorf("GoReleaser notes path = %q, extraction path = %q", goreleaserPath, extractPath))
 	}
+	if repairPath != extractPath {
+		errs = append(errs, fmt.Errorf("restoration notes path = %q, extraction path = %q", repairPath, extractPath))
+	}
 	if verifyPath != extractPath {
 		errs = append(errs, fmt.Errorf("verification notes path = %q, extraction path = %q", verifyPath, extractPath))
 	}
@@ -343,8 +361,9 @@ func releaseNotesWorkflowError(wf string) error {
 
 // TestReleaseNotesFromCuratedChangelog backs inv: release-notes-from-changelog
 // (ADR-0096, ADR-load-curated-release-notes-through-goreleaser). The Release workflow
-// must feed the tagged curated section through GoReleaser's enabled changelog pipe, then
-// compare the published body with that exact file. Commit-derived configuration stays absent.
+// must feed the tagged curated section through GoReleaser's enabled changelog pipe, restore
+// that exact body after publisher normalization, then compare it with the same file.
+// Commit-derived configuration stays absent.
 // invariant: tooling/changelog-and-release:release-notes-from-changelog (TestReleaseNotesFromCuratedChangelog)
 func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 	wfb, err := os.ReadFile("../../.github/workflows/release.yml")
@@ -362,6 +381,7 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 	}{
 		{name: "fixed version", old: `${GITHUB_REF_NAME#v}`, new: `0.41.0`},
 		{name: "different GoReleaser path", old: `${{ runner.temp }}/release-notes.md`, new: `${{ runner.temp }}/other.md`},
+		{name: "different restoration path", old: `gh release edit "$GITHUB_REF_NAME" --notes-file "${RUNNER_TEMP}/release-notes.md"`, new: `gh release edit "$GITHUB_REF_NAME" --notes-file "${RUNNER_TEMP}/other.md"`},
 		{name: "different verification path", old: `--verify-release-notes "${RUNNER_TEMP}/release-notes.md"`, new: `--verify-release-notes "${RUNNER_TEMP}/other.md"`},
 	} {
 		t.Run("rejects "+mutation.name, func(t *testing.T) {

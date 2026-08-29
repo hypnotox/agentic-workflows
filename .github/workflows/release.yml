@@ -77,6 +77,10 @@ jobs:
           args: release --clean --release-notes ${{ runner.temp }}/release-notes.md
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Restore exact curated release notes
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: gh release edit "$GITHUB_REF_NAME" --notes-file "${RUNNER_TEMP}/release-notes.md"
       - name: Verify published release notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
