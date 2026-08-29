@@ -28,6 +28,13 @@ func TestInitRepoAndCommit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	cfg, err := repo.Config()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := cfg.Raw.Section("maintenance").Option("auto"); got != "false" {
+		t.Errorf("fixture-local maintenance.auto = %q, want false", got)
+	}
 	c, err := repo.CommitObject(plumbing.NewHash(head))
 	if err != nil {
 		t.Fatal(err)
@@ -44,6 +51,13 @@ func TestNativeLaneIsolation(t *testing.T) {
 	t.Setenv("GIT_DIR", t.TempDir())
 	t.Setenv("GIT_CONFIG_GLOBAL", "/nonexistent/gitconfig")
 	fx := gitfixture.InitNativeAt(t, t.TempDir())
+	got, err := gitfixture.NativeRun(fx, "config", "--local", "--get", "maintenance.auto")
+	if err != nil {
+		t.Fatalf("read fixture-local maintenance.auto: %v", err)
+	}
+	if got != "false" {
+		t.Errorf("fixture-local maintenance.auto = %q, want false", got)
+	}
 	if err := os.WriteFile(filepath.Join(fx.Root(), "a.txt"), []byte("1\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

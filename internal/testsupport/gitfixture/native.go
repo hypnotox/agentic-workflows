@@ -42,6 +42,7 @@ func InitNativeObjectFormat(t *testing.T, root, format string) Fixture {
 	f := Fixture{root: root}
 	nativeConfig(t, f, "user.name", authorName)
 	nativeConfig(t, f, "user.email", authorEmail)
+	nativeConfig(t, f, maintenanceAutoKey, maintenanceAutoValue)
 	return f
 }
 

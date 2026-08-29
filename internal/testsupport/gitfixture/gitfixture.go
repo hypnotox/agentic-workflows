@@ -34,8 +34,10 @@ import (
 // authorName and authorEmail are the fixed commit identity both lanes use, so a
 // go-git-built and a natively-built fixture carry the same authorship.
 const (
-	authorName  = "T"
-	authorEmail = "t@example.com"
+	authorName           = "T"
+	authorEmail          = "t@example.com"
+	maintenanceAutoKey   = "maintenance.auto"
+	maintenanceAutoValue = "false"
 )
 
 // Sig is the fixed commit signature the go-git lane writes. It stays exported
@@ -66,8 +68,17 @@ func InitRepo(t testing.TB) Fixture {
 // test wrote before the repository existed.
 func InitRepoAt(t testing.TB, root string) Fixture {
 	t.Helper()
-	if _, err := git.PlainInit(root, false); err != nil { // coverage-ignore: PlainInit into an existing writable directory fails only on a permission fault a test cannot trigger
+	repo, err := git.PlainInit(root, false)
+	if err != nil { // coverage-ignore: PlainInit into an existing writable directory fails only on a permission fault a test cannot trigger
 		t.Fatalf("init: %v", err)
+	}
+	cfg, err := repo.Storer.Config()
+	if err != nil { // coverage-ignore: a repository just initialized by go-git always carries readable local config
+		t.Fatalf("read fixture config: %v", err)
+	}
+	cfg.Raw.Section("maintenance").SetOption("auto", maintenanceAutoValue)
+	if err := repo.Storer.SetConfig(cfg); err != nil { // coverage-ignore: writing local config in a writable fixture directory fails only on a permission fault a test cannot trigger
+		t.Fatalf("disable fixture auto-maintenance: %v", err)
 	}
 	return Fixture{root: root}
 }
