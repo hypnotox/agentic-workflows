@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-adopt-the-pi-cockpit-effort-integration-contract: Adopt the Pi Cockpit Effort Integration Contract](adopt-the-pi-cockpit-effort-integration-contract.md) (Proposed)
 
 ## History
 
