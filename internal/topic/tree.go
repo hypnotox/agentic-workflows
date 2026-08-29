@@ -26,8 +26,9 @@ const (
 	treePartSuffix     = "/current-state.md"
 )
 
-// LoadCorpusFromReader adapts a neutral selected operation tree to the
-// immutable snapshot representation owned by this package's existing loader.
+// LoadCorpusFromReader loads retained topic authority first, then streams each
+// selected marker source through the scanner so aggregate source bytes never
+// become part of one materialized snapshot.
 func LoadCorpusFromReader(read TreeReader, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
 	paths, err := read.Paths("")
 	if err != nil {
@@ -39,7 +40,7 @@ func LoadCorpusFromReader(read TreeReader, cfg *config.Config, adrs adr.Corpus) 
 	}
 	files := make([]snapshot.File, 0, len(paths))
 	for _, path := range paths {
-		if !corpusInputPath(path, cfg.CurrentState, domainSidecars) {
+		if !authorityInputPath(path, domainSidecars) {
 			continue
 		}
 		data, found, err := read.ReadFile(path)
@@ -54,19 +55,22 @@ func LoadCorpusFromReader(read TreeReader, cfg *config.Config, adrs adr.Corpus) 
 	if err != nil {
 		return Corpus{}, err
 	}
-	return LoadCorpusFromTree(tree, cfg, adrs)
+	corpus, err := corpusFromTreeFiles(tree, scannableTreeFiles(tree), cfg, adrs)
+	if err != nil {
+		return Corpus{}, err
+	}
+	markers, err := markerIndexFromReader(read, paths, corpus, cfg.CurrentState)
+	if err != nil {
+		return Corpus{}, err
+	}
+	corpus.Markers = markers
+	return corpus, nil
 }
 
-func corpusInputPath(path string, current *config.CurrentStateConfig, domainSidecars map[string]bool) bool {
-	if resident.IsResidentPath(path) {
-		return false
-	}
-	const nestedConfigSuffix = "/" + config.DirName + "/config.yaml"
-	return domainSidecars[path] ||
-		strings.HasSuffix(path, nestedConfigSuffix) ||
+func authorityInputPath(path string, domainSidecars map[string]bool) bool {
+	return !resident.IsResidentPath(path) && (domainSidecars[path] ||
 		(strings.HasPrefix(path, treeMetadataPrefix) && strings.HasSuffix(path, ".yaml")) ||
-		(strings.HasPrefix(path, treePartsPrefix) && strings.HasSuffix(path, treePartSuffix)) ||
-		(current != nil && len(matchingSources(current, path)) != 0)
+		(strings.HasPrefix(path, treePartsPrefix) && strings.HasSuffix(path, treePartSuffix)))
 }
 
 // LoadCorpusFromTree parses the complete current-state topic corpus from an
@@ -74,6 +78,19 @@ func corpusInputPath(path string, current *config.CurrentStateConfig, domainSide
 // callers that need the complete repository projection.
 func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
 	files := scannableTreeFiles(tree)
+	c, err := corpusFromTreeFiles(tree, files, cfg, adrs)
+	if err != nil {
+		return Corpus{}, err
+	}
+	markers, err := markerIndexFromTreeFiles(files, c, cfg.CurrentState)
+	if err != nil {
+		return Corpus{}, err
+	}
+	c.Markers = markers
+	return c, nil
+}
+
+func corpusFromTreeFiles(tree *snapshot.Tree, files []snapshot.File, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
 	metadata, parts, err := authorityEntriesFromTreeFiles(files)
 	if err != nil {
 		return Corpus{}, err
@@ -86,16 +103,7 @@ func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus
 		}
 		domainPaths[d] = paths
 	}
-	c, err := assembleCorpus(metadata, parts, cfg.Domains, domainPaths, adrs)
-	if err != nil {
-		return Corpus{}, err
-	}
-	markers, err := markerIndexFromTreeFiles(files, c, cfg.CurrentState)
-	if err != nil {
-		return Corpus{}, err
-	}
-	c.Markers = markers
-	return c, nil
+	return assembleCorpus(metadata, parts, cfg.Domains, domainPaths, adrs)
 }
 
 // LoadAuthorityCorpusFromFiles parses the reduced topic authority from the
@@ -164,6 +172,36 @@ func domainPathsFromTree(tree *snapshot.Tree, domain string) ([]string, error) {
 	return slices.Clone(sc.Paths), nil
 }
 
+func markerIndexFromReader(read TreeReader, paths []string, corpus Corpus, cfg *config.CurrentStateConfig) (MarkerIndex, error) {
+	idx := MarkerIndex{sites: map[string][]MarkerSite{}}
+	if cfg != nil {
+		nested := nestedProjectRootsFromPaths(paths)
+		for _, path := range paths {
+			if resident.IsResidentPath(path) || belowAnyRoot(path, nested) {
+				continue
+			}
+			sources := matchingSources(cfg, path)
+			if len(sources) == 0 {
+				continue
+			}
+			data, found, err := read.ReadFile(path)
+			if err != nil {
+				return MarkerIndex{}, err
+			}
+			if !found {
+				continue
+			}
+			if err := scanMarkerBytes(idx, path, data, sources, corpus, cfg); err != nil {
+				return MarkerIndex{}, fmt.Errorf("scan current-state markers: %w", err)
+			}
+		}
+	}
+	if err := finalizeMarkerIndex(idx, corpus); err != nil {
+		return MarkerIndex{}, err
+	}
+	return idx, nil
+}
+
 // markerIndexFromTreeFiles scans a snapshot's files for current-state markers,
 // reusing the byte-fed scan/validate core. The snapshot is already the selected
 // Git universe (nested repositories and ignored paths are excluded upstream), so
@@ -196,11 +234,19 @@ func markerIndexFromTreeFiles(files []snapshot.File, corpus Corpus, cfg *config.
 // though they are not nested Git repositories, so snapshot marker scans must
 // reproduce the filesystem scanner's .awf boundary explicitly.
 func nestedProjectRoots(files []snapshot.File) []string {
+	paths := make([]string, len(files))
+	for i, file := range files {
+		paths[i] = file.Path
+	}
+	return nestedProjectRootsFromPaths(paths)
+}
+
+func nestedProjectRootsFromPaths(paths []string) []string {
 	const suffix = "/" + config.DirName + "/config.yaml"
 	var roots []string
-	for _, f := range files {
-		if strings.HasSuffix(f.Path, suffix) {
-			roots = append(roots, strings.TrimSuffix(f.Path, suffix))
+	for _, path := range paths {
+		if strings.HasSuffix(path, suffix) {
+			roots = append(roots, strings.TrimSuffix(path, suffix))
 		}
 	}
 	slices.Sort(roots)

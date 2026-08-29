@@ -1,11 +1,14 @@
 package topic
 
 import (
+	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 	"testing"
+	"weak"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -340,10 +343,45 @@ func (r readerForLoadCorpusTest) ReadFile(name string) ([]byte, bool, error) {
 	return data, ok, nil
 }
 
+const markerReadPayloadSize = 1 << 20
+
+type markerReadPayload struct{ data [markerReadPayloadSize]byte }
+
+type streamingMarkerReader struct {
+	paths    []string
+	payloads []weak.Pointer[markerReadPayload]
+	reads    int
+}
+
+func (r *streamingMarkerReader) Paths(string) ([]string, error) { return r.paths, nil }
+func (r *streamingMarkerReader) ReadFile(string) ([]byte, bool, error) {
+	if r.reads >= 2 {
+		runtime.GC()
+		if r.payloads[0].Value() != nil {
+			return nil, false, errors.New("prior marker payload remains retained")
+		}
+	}
+	payload := new(markerReadPayload)
+	r.payloads = append(r.payloads, weak.Make(payload))
+	r.reads++
+	return payload.data[:], true, nil
+}
+
 func TestLoadCorpusFromReaderPropagatesReadFailure(t *testing.T) {
 	_, err := LoadCorpusFromReader(readerForLoadCorpusTest{paths: []string{".awf/topics/metadata/alpha/one.yaml"}, readErr: os.ErrPermission}, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"), oneImplementedADR())
 	if err == nil || !strings.Contains(err.Error(), "permission denied") {
 		t.Fatalf("LoadCorpusFromReader error = %v", err)
+	}
+}
+
+func TestLoadCorpusFromReaderStreamsMarkerSources(t *testing.T) {
+	reader := &streamingMarkerReader{paths: []string{"first.go", "second.go", "third.go"}}
+	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: //\n")
+	if _, err := LoadCorpusFromReader(reader, cfg, oneImplementedADR()); err != nil {
+		t.Fatal(err)
+	}
+	if reader.reads != len(reader.paths) {
+		t.Fatalf("marker reads = %d, want %d", reader.reads, len(reader.paths))
 	}
 }
 
