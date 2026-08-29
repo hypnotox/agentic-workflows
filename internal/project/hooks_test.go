@@ -127,17 +127,20 @@ vars:
 	}
 }
 
-func TestIntegrationBranchReflagsOnlyPrePushConsumer(t *testing.T) {
+func TestIntegrationBranchReflagsPolicyConsumers(t *testing.T) {
 	main := hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
 	release := hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: release/next\n")
-	if main["pre-push"].ConfigHash == release["pre-push"].ConfigHash || main["pre-push"].Content == release["pre-push"].Content {
-		t.Fatal("integrationBranch change did not reflag and regenerate pre-push")
-	}
-	if !strings.Contains(release["pre-push"].Content, "integration_branch_hex='72656c656173652f6e657874'") {
-		t.Fatalf("release integration branch not projected safely:\n%s", release["pre-push"].Content)
+	consumers := map[string]bool{"pre-push": true, "reference-transaction": true}
+	for name := range consumers {
+		if main[name].ConfigHash == release[name].ConfigHash || main[name].Content == release[name].Content {
+			t.Errorf("integrationBranch change did not reflag and regenerate %s", name)
+		}
+		if !strings.Contains(release[name].Content, "integration_branch_hex='72656c656173652f6e657874'") {
+			t.Errorf("release integration branch not projected safely into %s:\n%s", name, release[name].Content)
+		}
 	}
 	for name := range main {
-		if name == "pre-push" {
+		if consumers[name] {
 			continue
 		}
 		if main[name].ConfigHash != release[name].ConfigHash || main[name].Content != release[name].Content {
@@ -157,6 +160,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		`[[ "${1:-}" == "prepared" ]] || exit 0`,
 		`while IFS= read -r update || [[ -n "$update" ]]; do updates+=("$update"); done`,
 		`refs/heads/*`,
+		`integration_branch_hex='6d61696e'`,
 		`"$old_oid..$new_oid"`,
 		`check commit-policy "${targets[@]}"`,
 		`refs changed: false`,
@@ -166,6 +170,9 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		if !strings.Contains(transaction, want) {
 			t.Errorf("reference-transaction missing %q:\n%s", want, transaction)
 		}
+	}
+	if strings.Contains(transaction, "git ls-remote") {
+		t.Errorf("reference-transaction must resolve integration evidence locally:\n%s", transaction)
 	}
 	push := got["pre-push"].Content
 	for _, want := range []string{
@@ -201,6 +208,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	base := strings.TrimSpace(runHookGit(t, root, "rev-parse", "HEAD"))
 	runHookGit(t, root, "commit", "--allow-empty", "-m", "update")
 	head := strings.TrimSpace(runHookGit(t, root, "rev-parse", "HEAD"))
+	runHookGit(t, root, "branch", "main", base)
 	runHookGit(t, root, "tag", "-a", "pushed", "-m", "pushed")
 	tag := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/tags/pushed"))
 	remote := filepath.Join(t.TempDir(), "remote.git")
@@ -308,9 +316,23 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		t.Fatalf("deletion evaluated policy: err=%v output=%q log=%q", err, output, readLog())
 	}
 	clearLog()
-	if output, err := run(transactionPath, zeroOID+" "+head+" refs/heads/created\n", "prepared"); err != nil || readLog() != "policy:check commit-policy "+head+"\n" {
+	if output, err := run(transactionPath, zeroOID+" "+head+" refs/heads/created\n", "prepared"); err != nil || readLog() != "policy:check commit-policy "+base+".."+head+"\n" {
 		t.Fatalf("new branch target: err=%v output=%q log=%q", err, output, readLog())
 	}
+	clearLog()
+	if output, err := run(transactionPath, base+" "+head+" refs/heads/main\n"+zeroOID+" "+head+" refs/heads/created\n", "prepared"); err != nil || readLog() != "policy:check commit-policy "+base+".."+head+"\n" {
+		t.Fatalf("same-transaction integration update changed new-branch base: err=%v output=%q log=%q", err, output, readLog())
+	}
+	runHookGit(t, root, "branch", "-D", "main")
+	clearLog()
+	if output, err := run(transactionPath, zeroOID+" "+head+" refs/heads/created\n", "prepared"); err == nil || !strings.Contains(output, "local integration branch") || readLog() != "" {
+		t.Fatalf("missing local integration branch evidence: err=%v output=%q log=%q", err, output, readLog())
+	}
+	clearLog()
+	if output, err := run(transactionPath, base+" "+head+" refs/heads/master\n", "prepared"); err != nil || readLog() != "policy:check commit-policy "+base+".."+head+"\n" {
+		t.Fatalf("existing branch unnecessarily required integration evidence: err=%v output=%q log=%q", err, output, readLog())
+	}
+	runHookGit(t, root, "branch", "main", base)
 	tree := strings.TrimSpace(runHookGit(t, root, "rev-parse", "HEAD^{tree}"))
 	side := strings.TrimSpace(runHookGit(t, root, "commit-tree", tree, "-p", base, "-m", "side"))
 	clearLog()
@@ -524,8 +546,16 @@ func testCommitPolicyHooksNative(t *testing.T) {
 			run(true, "commit", "--allow-empty", "-S", "-m", "allowed")
 			allowed := strings.TrimSpace(run(true, "rev-parse", "HEAD"))
 
+			// A new local branch at the integration tip introduces no commit even
+			// when inherited history contains an accepted policy exception.
+			run(true, "-c", "core.hooksPath=/dev/null", "commit", "--allow-empty", "--no-gpg-sign", "-m", "inherited exception")
+			inheritedException := strings.TrimSpace(run(true, "rev-parse", "HEAD"))
 			linked := filepath.Join(t.TempDir(), "linked")
-			run(true, "worktree", "add", "-b", "linked-policy", linked, allowed)
+			run(true, "worktree", "add", "-b", "linked-policy", linked, inheritedException)
+			run(true, "-c", "core.hooksPath=/dev/null", "reset", "--hard", allowed)
+			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(config), 0o644); err != nil {
+				t.Fatal(err)
+			}
 			linkedConfig := strings.Replace(config, "    - name: Allowed\n      email: allowed@example.test", "    - name: Linked\n      email: linked@example.test", 1)
 			linkedConfig = strings.Replace(linkedConfig, "    - principal: allowed@example.test", "    - principal: linked@example.test", 1)
 			if err := os.WriteFile(filepath.Join(linked, ".awf", "config.yaml"), []byte(linkedConfig), 0o644); err != nil {

@@ -18,6 +18,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Local branch and worktree creation now checks only commits introduced beyond the configured local integration branch instead of revalidating inherited history.
+
 - Rendered commit-policy hooks now run on macOS's system Bash while preserving fail-closed pushed-ref validation.
 
 - Pre-push commit policy now validates only commits introduced by the pushed ref updates, so conforming descendants do not re-reject already-accepted remote history.

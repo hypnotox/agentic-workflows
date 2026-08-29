@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: validate-only-local-reference-transaction-commit-deltas
-status: Proposed
+status: Implementing
 date: 2026-08-29
 ---
 # ADR-validate-only-local-reference-transaction-commit-deltas: Validate only local reference-transaction commit deltas
@@ -47,3 +47,5 @@ Pre-push retains its destination-derived evidence and remote publication role. T
 ## Status history
 
 - 2026-08-29: Proposed
+- 2026-08-29: Implementing; content-sha256: fb7b34279af5a8290bf2c473ce6f781ef15d965d0a2f17ae1ef5b275d25db823
+- 2026-08-29: Applied; operations: update `rendering/singletons-and-payloads:commit-policy-hook-payloads`
