@@ -7,6 +7,8 @@ help:
     commands:
       init | Scaffold .awf/ and render the selected governance footprint
       render | Re-render after a template or config change
+      edit | Replace one semantically identified artifact part
+      reset | Restore one semantically identified artifact part
       check | Verify the repository and staged universes
       read | Read a focused current-state authority projection
       resolve | Resolve lexical paths to current-state authority

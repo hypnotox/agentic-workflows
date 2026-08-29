@@ -5,7 +5,7 @@
 - `internal/repositorycheck`: the policy-free RepositoryChecker preserves explicit owner-result order and compatibility projections without preparing inputs or inferring classification.
 - `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving bounded compatibility adapters and unrelated project operations.
 - `internal/currentstatecoord`: focused application operations select immutable working or staged universes, coordinate ADR, topic, plan, current-state authority, and staged output preparation, and return semantic results without absorbing domain or commit-authorization policy.
-- Focused operation packages: `internal/initop`, `internal/checkop`, `internal/topicop`, `internal/effortop`, `internal/commitgateop`, `internal/domainop`, and `internal/localdocop` own bounded command use cases above their semantic mechanisms.
+- Focused operation packages: `internal/initop`, `internal/checkop`, `internal/topicop`, `internal/effortop`, `internal/commitgateop`, `internal/domainop`, `internal/localdocop`, and `internal/authoringop` own bounded command use cases above their semantic mechanisms. `internal/authoringop` resolves semantic part identities, validates a complete candidate tree, publishes one confined source, and composes ordinary leased synchronization.
 - `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.

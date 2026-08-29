@@ -21,6 +21,10 @@ Use the repository `./awf` wrapper for local commands. For workflow and effort c
 [Workflow](workflow.md); for a command refusal, recovery, or upgrade residue, see
 [Debugging](debugging.md).
 
+Author one declared convention part by semantic identity with `./awf edit <kind> <name> <part> --content <text>` or `./awf edit <kind> <name> <part> --stdin`. Exactly one input mode is required, and an explicitly empty `--content` value remains an authored override. The closed kinds are `doc`, `skill`, `agent`, and `domain`; names and parts come from the selected catalog and project configuration rather than filesystem paths.
+
+Use `./awf reset <kind> <name> <part>` to remove a convention-part override and restore its inherited default. A configured local document is addressed as `doc <name> body`; edit replaces only its body and reset restores the empty body while preserving its declaration and awf-owned shell. Both commands validate the complete candidate project before changing the source, then render and update the lock. If a later source or publication step fails, follow the reported residue-first recovery actions and rerun `./awf render`; no rollback is implied.
+
 Owner-managed installations support the current awf release and one previous release. The supported
 floor advances only after every managed repository pin has been upgraded to remain at or above it;
 older installed releases are unsupported. Use `bash .awf/upgrade.sh` from the repository root to
@@ -31,9 +35,9 @@ upgrade the pinned binary and project together. Live project authority starts at
 <!-- awf:edit config-and-overrides: from .awf/parts/working-with-awf/config-and-overrides.md -->
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
 ## Config and overrides
-Configuration keys and placeholder semantics are in the [configuration reference](config-reference.md). A convention part replaces its section body; `awf:edit` names its source and `sectionDefault` extends a default.
+Configuration keys and placeholder semantics are in the [configuration reference](config-reference.md). A convention part replaces its section body; `awf:edit` names its source and `sectionDefault` extends a default. Prefer `./awf edit <kind> <name> <part> --content <text>` or `--stdin` to replace one declared part, and `./awf reset <kind> <name> <part>` to restore its inherited default. These commands resolve catalog and configured identities without exposing `.awf` paths, validate the complete candidate, and synchronize generated output and the lock.
 
-Local documents are declared in `localDocs` or with `./awf new doc <name> <description> [--title <title>]`. It creates `docs/<name>.md` (`api-v2` becomes `Api V2` without `--title`). Edit only its body between `awf:edit-in-place` and `awf:end`; render and check after editing. Removal or uninstall preserves a present body as `.awf-bak`.
+Local documents are declared in `localDocs` or with `./awf new doc <name> <description> [--title <title>]`. It creates `docs/<name>.md` (`api-v2` becomes `Api V2` without `--title`). Address its only authorable part as `./awf edit doc <name> body`; reset empties only that body. Direct editing remains confined between `awf:edit-in-place` and `awf:end`, followed by render and check. Removal or uninstall preserves a present body as `.awf-bak`.
 
 For generated guidance, `awf:edit` names the owning convention part and `awf:source` names reader authority. Use `./awf new pitfall "<Title>"` for an authored pitfall source, then render; never edit its generated index or leaf.
 

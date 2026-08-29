@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Features
+
+- Add non-interactive `awf edit <kind> <name> <part>` and `awf reset <kind> <name> <part>` commands for semantically resolved convention parts and configured local-document bodies, with complete candidate validation, automatic rendering, and explicit partial-effect recovery.
+
 ### Breaking changes
 
 - Replace `awf context` with focused `awf read topic`, `awf read adr`, and `awf resolve topic` authority queries; CodeGraph now owns structural source navigation and Git owns changed-path selection. Remove live config and pitfall `tags`, `contextIgnore`, and `state:` or `touches-state:` markers; only `invariant:` remains as a proof-only marker boundary.

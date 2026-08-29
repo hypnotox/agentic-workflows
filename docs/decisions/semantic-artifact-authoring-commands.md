@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: semantic-artifact-authoring-commands
-status: Proposed
+status: Implementing
 date: 2026-08-29
 ---
 # ADR-semantic-artifact-authoring-commands: Semantic Artifact Authoring Commands
@@ -119,3 +119,5 @@ authoring and awf validation.
 ## Status history
 
 - 2026-08-29: Proposed
+- 2026-08-29: Implementing; content-sha256: 3556b3006f1c1afe354aea299e19101a6e99b3bf8ef195fa9567f36ccdca64c3
+- 2026-08-29: Applied; operations: update `rendering/inplace-and-placeholders:local-doc-body-inline`, add `rendering/sync-and-drift:authoring-sync-transaction`

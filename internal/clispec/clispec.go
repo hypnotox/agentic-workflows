@@ -182,6 +182,29 @@ var Commands = []Command{
 		Help: Help{Usage: []string{"awf render"}, Description: "Re-render both targets after a template or config change and update .awf/awf.lock."},
 	},
 	{
+		Name: "edit", Summary: "Replace one semantically identified artifact part",
+		BoolFlags: []string{"--stdin"}, ValueFlags: []string{"--content"}, MinPos: 3, MaxPos: 3, Gating: Gated,
+		Help: Help{
+			Usage:       []string{"awf edit <kind> <name> <part> --content <text>", "awf edit <kind> <name> <part> --stdin"},
+			Description: "Replace one declared convention part or a configured local document's body, validate the complete candidate project, then render and update the lock.",
+			Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind: doc, skill, agent, or domain"}, {Name: "<name>", Description: "catalog, configured-domain, or configured-local-document name"}, {Name: "<part>", Description: "declared part name; local documents expose only body"}},
+			Options:     []HelpItem{{Name: "--content", Description: "<text> exact replacement content, including an explicit empty value"}, {Name: "--stdin", Description: "read exact replacement content non-interactively from stdin"}},
+			Examples:    []string{"awf edit doc architecture components --stdin"},
+			Related:     []string{"awf reset <kind> <name> <part>"},
+		},
+	},
+	{
+		Name: "reset", Summary: "Restore one semantically identified artifact part",
+		MinPos: 3, MaxPos: 3, Gating: Gated,
+		Help: Help{
+			Usage:       []string{"awf reset <kind> <name> <part>"},
+			Description: "Remove one authored convention-part override, or empty a configured local document body, then render inherited content and update the lock.",
+			Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind: doc, skill, agent, or domain"}, {Name: "<name>", Description: "catalog, configured-domain, or configured-local-document name"}, {Name: "<part>", Description: "declared part name; local documents expose only body"}},
+			Examples:    []string{"awf reset doc runbooks/incident body"},
+			Related:     []string{"awf edit <kind> <name> <part>"},
+		},
+	},
+	{
 		Name: "check", Summary: "Verify the repository and staged universes",
 		MaxPos: -1, Gating: Gated,
 		Help: Help{Usage: []string{"awf check", "awf check repo [subcommand]", "awf check staged [subcommand]", "awf check commit-policy <revision-or-range>..."}, Description: "Bare check runs both universes. The repo universe checks drift, profile-applicable authority,", Details: []string{"and the opt-in scans; the staged universe validates the HEAD-to-index transition.", "Outside a Git repository bare check runs the repo universe and reports that the", "staged universe is unavailable."}},

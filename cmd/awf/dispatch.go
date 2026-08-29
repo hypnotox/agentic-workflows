@@ -8,6 +8,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/authoringop"
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
@@ -146,6 +147,8 @@ func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]ha
 			return handlerFailure(runInitWithProjectLoader(c.ctx, c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], promptInput, isInteractive(), c.stdout, newProjectLoader, gate))
 		},
 		"render": func(c *cmdCtx) handlerResult { return handlerFailure(runSync(c.ctx, c.root, c.stdout)) },
+		"edit":   func(c *cmdCtx) handlerResult { return handlerReport(runPartAuthoring(c, authoringop.Edit)) },
+		"reset":  func(c *cmdCtx) handlerResult { return handlerReport(runPartAuthoring(c, authoringop.Reset)) },
 		"check": func(c *cmdCtx) handlerResult {
 			result := runCheckGroup(c)
 			if c.sub == "staged commit" {

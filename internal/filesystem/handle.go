@@ -461,6 +461,34 @@ func (h *Handle) Read(path string) ([]byte, error) {
 	return b, nil
 }
 
+// ReadExpected reads the exact regular-file entry retained by expected. It
+// refuses if the selected path changed between identity observation and open.
+func (h *Handle) ReadExpected(path string, expected *ExpectedIdentity) ([]byte, fs.FileMode, error) {
+	if err := validPath(path); err != nil {
+		return nil, 0, fmt.Errorf("filesystem: read expected %q: %w", path, err)
+	}
+	if expected == nil || !expected.valid() {
+		return nil, 0, fmt.Errorf("filesystem: read expected %q: %w", path, ErrIdentityChanged)
+	}
+	file, err := h.root.Open(path)
+	if err != nil {
+		return nil, 0, fmt.Errorf("filesystem: read expected %q: %w", path, err)
+	}
+	defer file.Close() //nolint:errcheck // a read-only close cannot change the observed bytes
+	info, err := file.Stat()
+	if err != nil {
+		return nil, 0, fmt.Errorf("filesystem: identify expected %q: %w", path, err)
+	}
+	if !expected.SameFile(info) || !info.Mode().IsRegular() {
+		return nil, 0, fmt.Errorf("filesystem: read expected %q: %w", path, ErrIdentityChanged)
+	}
+	contents, err := io.ReadAll(file)
+	if err != nil {
+		return nil, 0, fmt.Errorf("filesystem: read expected %q: %w", path, err)
+	}
+	return contents, info.Mode().Perm(), nil
+}
+
 // ReadWithMode reads path and returns its permission mode from one confined open.
 func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error) {
 	if err := validPath(path); err != nil {

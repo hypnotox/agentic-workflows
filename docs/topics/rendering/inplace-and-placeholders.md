@@ -37,8 +37,9 @@ Backing: test
 
 ### `invariant: local-doc-body-inline`
 
-A declared local document has one unrestricted adopter-owned body between `awf:edit-in-place` and `awf:end`; its shared shell and heading are awf-owned and ordinary in-place readback preserves the body.
+A declared local document has one unrestricted adopter-owned body between `awf:edit-in-place` and `awf:end`; its shared shell and heading are awf-owned and ordinary in-place readback preserves the body. Semantic part authoring exposes only that synthetic `body`: edit replaces its exact body and reset restores the empty template default without changing the declaration or awf-owned shell.
 Origin: ADR-0272
+Revised-by: ADR-semantic-artifact-authoring-commands
 Backing: test
 
 ### `invariant: in-place-readback`

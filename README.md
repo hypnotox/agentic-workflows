@@ -133,6 +133,8 @@ Punctuation findings are advisory Warnings with zero exit.
 |---|---|
 | `awf init [flags]` | Scaffold .awf/ and render the selected governance footprint |
 | `awf render` | Re-render after a template or config change |
+| `awf edit <kind> <name> <part> --content <text>` | Replace one semantically identified artifact part |
+| `awf reset <kind> <name> <part>` | Restore one semantically identified artifact part |
 | `awf check` | Verify the repository and staged universes |
 | `awf read <subcommand>` | Read a focused current-state authority projection |
 | `awf resolve topic <path>...` | Resolve lexical paths to current-state authority |

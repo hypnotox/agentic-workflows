@@ -1,6 +1,7 @@
 package publisher
 
 import (
+	"errors"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -77,6 +78,36 @@ func (b inPlaceBoundary) readBody(output string) (body string, found bool) {
 		}
 	}
 	return trimBlankFraming(bodyLines), true
+}
+
+// ReplaceLocalDocumentBody replaces only the adopter-owned body of a rendered
+// configured local document. The marker recognition and framing policy stay
+// with the same boundary owner used by ordinary in-place readback.
+func ReplaceLocalDocumentBody(output []byte, body string) ([]byte, error) {
+	text := string(output)
+	lines := strings.Split(text, "\n")
+	prefixes := render.PointerLinePrefixes("body", render.HTMLComment)
+	start := -1
+	for i, line := range lines {
+		if hasAnyPrefix(strings.TrimSpace(line), prefixes) {
+			start = i
+			break
+		}
+	}
+	if start < 0 {
+		return nil, errors.New("local document body boundary is missing")
+	}
+	// A configured local document has one synthetic, final in-place section.
+	// Preserve every byte through its pointer and regenerate only the owned blank
+	// framing around the exact requested body.
+	result := strings.Join(lines[:start+1], "\n") + "\n\n"
+	if body != "" {
+		result += body
+		if !strings.HasSuffix(body, "\n") {
+			result += "\n"
+		}
+	}
+	return []byte(result), nil
 }
 
 func atxHeadingLine(s string) bool {

@@ -60,6 +60,8 @@ func TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures(t *testing.T) 
 	families := map[string]string{
 		"init":      "TestInitDescribeReadOnly",
 		"render":    "TestEmptyInitChecksOnUnbornHead",
+		"edit":      "TestPartAuthoringCLI",
+		"reset":     "TestPartAuthoringCLI",
 		"check":     "TestRunCheckCleanThenDirty",
 		"read":      "TestReadPlanCommand",
 		"resolve":   "TestRunResolveTopicUsage",

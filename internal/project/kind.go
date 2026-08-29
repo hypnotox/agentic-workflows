@@ -3,9 +3,11 @@ package project
 import (
 	"fmt"
 	"maps"
+	"path/filepath"
 	"slices"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
 // kindDescriptor resolves the per-kind facets the dispatch sites share. Facets are
@@ -103,4 +105,54 @@ func CatalogNames(cat *catalog.Catalog, singular string) ([]string, bool) {
 func IsFreeformDomainKind(singular string) bool {
 	d, ok := descriptorBySingular(singular)
 	return ok && d.freeformDomain
+}
+
+// AuthoringTarget is the semantic resolution of one authorable part. SourcePath
+// is project-relative and is either a convention part or, for Local, the
+// configured document output whose synthetic body is the authored source.
+type AuthoringTarget struct {
+	Kind, Name, Part string
+	SourcePath       string
+	Local            bool
+}
+
+// ResolveAuthoringTarget resolves a singular kind, semantic artifact name, and
+// declared part against the selected project catalog and configuration without
+// widening ProjectState's compatibility facade.
+func ResolveAuthoringTarget(s *ProjectState, cfg *config.Config, kind, name, part string) (AuthoringTarget, error) {
+	if s == nil || s.state == nil || cfg == nil {
+		return AuthoringTarget{}, fmt.Errorf("project: missing authoring authority")
+	}
+	descriptor, ok := descriptorBySingular(kind)
+	if !ok {
+		return AuthoringTarget{}, fmt.Errorf("unknown artifact kind %q; expected one of %v", kind, Kinds())
+	}
+	if kind == "doc" {
+		for _, local := range cfg.NormalizedLocalDocs() {
+			if local.Name != name {
+				continue
+			}
+			if part != "body" {
+				return AuthoringTarget{}, fmt.Errorf("configured local document %q exposes only part body", name)
+			}
+			return AuthoringTarget{Kind: kind, Name: name, Part: part, SourcePath: filepath.ToSlash(filepath.Join(config.DocsDir, name+".md")), Local: true}, nil
+		}
+	}
+	if descriptor.freeformDomain {
+		if !slices.Contains(cfg.Domains, name) {
+			return AuthoringTarget{}, fmt.Errorf("domain %q is not configured", name)
+		}
+	} else if _, found := descriptor.sections(s.catalog(), name); !found {
+		return AuthoringTarget{}, fmt.Errorf("%s %q is not present in the selected catalog", kind, name)
+	}
+	sections, _ := descriptor.sections(s.catalog(), name)
+	if !slices.Contains(sections, part) {
+		return AuthoringTarget{}, fmt.Errorf("part %q is not declared for %s %q", part, kind, name)
+	}
+	absolute := cfg.PartPath(descriptor.Plural, name, part)
+	relative, err := filepath.Rel(s.Root(), absolute)
+	if err != nil {
+		return AuthoringTarget{}, fmt.Errorf("resolve convention part path: %w", err)
+	}
+	return AuthoringTarget{Kind: kind, Name: name, Part: part, SourcePath: filepath.ToSlash(relative)}, nil
 }

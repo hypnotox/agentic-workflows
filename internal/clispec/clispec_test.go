@@ -59,6 +59,30 @@ func TestReadPlanSpec(t *testing.T) {
 	}
 }
 
+func TestPartAuthoringCommandGrammar(t *testing.T) {
+	edit, ok := Lookup("edit")
+	if !ok || edit.Gating != Gated || edit.MinPos != 3 || edit.MaxPos != 3 {
+		t.Fatalf("edit spec = %#v, found %v", edit, ok)
+	}
+	if got := strings.Join(edit.ValueFlags, ","); got != "--content" {
+		t.Fatalf("edit value flags = %q", got)
+	}
+	if got := strings.Join(edit.BoolFlags, ","); got != "--stdin" {
+		t.Fatalf("edit bool flags = %q", got)
+	}
+	reset, ok := Lookup("reset")
+	if !ok || reset.Gating != Gated || reset.MinPos != 3 || reset.MaxPos != 3 || len(reset.ValueFlags)+len(reset.BoolFlags) != 0 {
+		t.Fatalf("reset spec = %#v, found %v", reset, ok)
+	}
+	for _, command := range []Command{edit, reset} {
+		for _, token := range []string{"<kind>", "<name>", "<part>"} {
+			if !strings.Contains(helpText(command), token) {
+				t.Errorf("%s help missing %s", command.Name, token)
+			}
+		}
+	}
+}
+
 func TestConfigurationSurfaceGrammar(t *testing.T) {
 	for _, retired := range []string{"enable", "disable", "target"} {
 		if _, ok := Lookup(retired); ok {
@@ -493,7 +517,7 @@ func TestLookup(t *testing.T) {
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"render", "check", "read", "resolve", "audit", "effort", "adr", "list", "config", "new", "remove"}
+	want := []string{"render", "edit", "reset", "check", "read", "resolve", "audit", "effort", "adr", "list", "config", "new", "remove"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

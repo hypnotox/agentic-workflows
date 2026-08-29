@@ -9,6 +9,7 @@ paths:
   - internal/testselection/**
   - internal/changelog/**
   - internal/checkop/**
+  - internal/authoringop/**
   - internal/configop/**
   - internal/commitgateop/**
   - internal/domainop/**

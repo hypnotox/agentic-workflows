@@ -117,6 +117,18 @@ func newLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolve
 	return &Loader{loadConfigTree: loadConfigTree, view: catalog.NewView(standard), resolveResidentRoot: resolveResidentRoot, repo: repo}
 }
 
+// WithConfigLoader returns the same project-opening authority with one bounded
+// candidate config-tree loader. It preserves catalog, resident-root, and Git
+// policy while allowing an operation to validate an overlaid candidate tree.
+func (l *Loader) WithConfigLoader(load LoadConfigTree) *Loader {
+	if l == nil || load == nil {
+		panic("project Loader: missing candidate config loader")
+	}
+	copy := *l
+	copy.loadConfigTree = load
+	return &copy
+}
+
 // ProjectState preserves the RF-002 compatibility name for the lower immutable state owner.
 type ProjectState struct{ state *projectstate.ProjectState }
 
