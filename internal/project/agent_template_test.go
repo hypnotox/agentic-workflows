@@ -290,6 +290,7 @@ func TestImplementerAgent(t *testing.T) {
 		"terminal exhaustive verification",
 		"assigned scope; canonical checkout",
 		"starting and ending HEAD and",
+		"`git status --short`",
 		"changed paths",
 		"exact focused command with cwd, argv, exit status",
 		"actual result",
