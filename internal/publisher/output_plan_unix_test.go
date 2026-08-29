@@ -3,6 +3,7 @@
 package publisher
 
 import (
+	"errors"
 	"net"
 	"os"
 	"path/filepath"
@@ -28,8 +29,12 @@ func TestFilesystemProjectReaderReadLinesIsBounded(t *testing.T) {
 	if err != nil || !found || !slices.Equal(lines, []string{"first", "second"}) {
 		t.Fatalf("ReadLines = found %t, lines %#v, error %v", found, lines, err)
 	}
-	if _, err := reader.ReadLines("source.go", 4, func(string) error { return nil }); err == nil {
-		t.Fatal("ReadLines accepted a line beyond its byte bound")
+	if _, err := reader.ReadLines("source.go", 3, func(string) error { return nil }); err == nil {
+		t.Fatal("ReadLines accepted a line beyond its scanner bound")
+	}
+	visitErr := errors.New("visit failed")
+	if _, err := reader.ReadLines("source.go", 64, func(string) error { return visitErr }); !errors.Is(err, visitErr) {
+		t.Fatalf("ReadLines visitor error = %v, want %v", err, visitErr)
 	}
 }
 
