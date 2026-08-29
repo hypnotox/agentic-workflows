@@ -463,7 +463,7 @@
       "templateId": "",
       "templateHash": "",
       "configHash": "sha256:619a4dec6900da1feb21570a9a316b719f4802bf7686ce13e6cd6114d391b3e6",
-      "outputHash": "sha256:2261075eb3a89fd49c989fd857ba3d5f704f4fcbe2db205a34de3e43aaee535c",
+      "outputHash": "sha256:ed4671e94c10374dab3a7c218dce813cda9165a8d24cd685c9ba86f43d4cf061",
       "regenChecked": true
     },
     "docs/decisions/README.md": {
@@ -529,7 +529,7 @@
       "templateId": "domains/domain.md.tmpl",
       "templateHash": "sha256:3b63f14df376b2970524575e6361c62b1c416544d85fa883c188fd68aef6c7be",
       "configHash": "sha256:30c059731588ff94ee248350823fecfc03ce92aa42b471db4d7b012d3b6a6983",
-      "outputHash": "sha256:db888db4d4f5518bb2b06419060ce4dfca00b92fdb823fe506e5eafb8109c179",
+      "outputHash": "sha256:6612757eb00481a7a5e1b0af815995f12744d4279a3dd7d4c52dd328aac76cd7",
       "regenChecked": true
     },
     "docs/glossary.md": {
@@ -1074,6 +1074,12 @@
       "configHash": "sha256:38e2b6d111fcfc4e0856ed5f210ed6c7cb3da2960ee08134b913e6c1a2a07eb4",
       "outputHash": "sha256:62690cc1e9a01b1fcdd51ae688b095243837342022dff8f93e31f4691044f6ca"
     },
+    "docs/topics/tooling/authority-queries.md": {
+      "templateId": "topics/topic.md.tmpl",
+      "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
+      "configHash": "sha256:26c4e34bb425eea3a3619d8fc173e116aff9981f639a2d22c119f642f96e6b17",
+      "outputHash": "sha256:a5311ef8fb427d472a3021881125b0d9d7849f2d2333d5133910c52c580bee29"
+    },
     "docs/topics/tooling/changelog-and-release.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
@@ -1131,8 +1137,8 @@
     "docs/topics/tooling/index.md": {
       "templateId": "topics/index.md.tmpl",
       "templateHash": "sha256:58a9398b187ea9c7c2c3321299b70f8e6faf3f06778c44e6a2232224f3481ab1",
-      "configHash": "sha256:1490f3132943f3f9b5e28ee75703090930e81ddfea4aa127e96bd410291ff3ca",
-      "outputHash": "sha256:6faa3fd62e644f3bb051191dfa36e317fab813a41260c88b2b2bb8427a2ddbfd"
+      "configHash": "sha256:79cc88c486df0749543de68d4d7b0469b2e25b8bbb183b8e6d4bfaa2e5f5fc54",
+      "outputHash": "sha256:ab38f8b0e35d4f66de0d9bf441600b3e57da90829ac152eeca90d8aecde0c32b"
     },
     "docs/topics/tooling/init-and-enablement.md": {
       "templateId": "topics/topic.md.tmpl",

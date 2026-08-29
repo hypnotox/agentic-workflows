@@ -5,6 +5,7 @@
 
 - [Audit and snapshots](audit-and-snapshots.md): Workflow-conformance auditing and the immutable git snapshot layer.
 - [Audit commands](audit-commands.md): The advisory audit surfaces: audit, repoaudit, mutants.
+- [Authority Queries](authority-queries.md): Read-only commands that expose current-state and ADR authority without duplicating code navigation.
 - [CLI](cli.md): Command dispatch and the behaviour of the awf command surfaces.
 - [Changelog and release](changelog-and-release.md): The changelog pipeline and release-notes contracts.
 - [Commit policy](commit-policy.md): Opt-in author, committer, and SSH-signature policy for exact Git commit objects.

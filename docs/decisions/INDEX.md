@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-delegate-relevance-discovery-to-codegraph: Delegate relevance discovery to CodeGraph](delegate-relevance-discovery-to-codegraph.md) (Proposed)
 
 ## History
 
