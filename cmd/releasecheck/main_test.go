@@ -396,6 +396,25 @@ func TestReleaseNotesFromCuratedChangelog(t *testing.T) {
 		})
 	}
 
+	const restoreLine = `        run: gh release edit "$GITHUB_REF_NAME" --notes-file "${RUNNER_TEMP}/release-notes.md"`
+	withoutRestore := strings.Replace(wf, restoreLine+"\n", "", 1)
+	if withoutRestore == wf {
+		t.Fatal("restoration command not found")
+	}
+	for name, mutated := range map[string]string{
+		"restoration before GoReleaser":  strings.Replace(withoutRestore, "      - uses: goreleaser/", restoreLine+"\n      - uses: goreleaser/", 1),
+		"restoration after verification": strings.Replace(withoutRestore, `        run: go run ./cmd/releasecheck --verify-release-notes "${RUNNER_TEMP}/release-notes.md"`, `        run: go run ./cmd/releasecheck --verify-release-notes "${RUNNER_TEMP}/release-notes.md"`+"\n"+restoreLine, 1),
+	} {
+		t.Run("rejects "+name, func(t *testing.T) {
+			if mutated == withoutRestore {
+				t.Fatal("workflow ordering mutation target not found")
+			}
+			if err := releaseNotesWorkflowError(mutated); err == nil {
+				t.Fatal("workflow ordering mutation passed the release-note invariant")
+			}
+		})
+	}
+
 	glb, err := os.ReadFile("../../.goreleaser.yaml")
 	if err != nil {
 		t.Fatalf("read goreleaser config: %v", err)
