@@ -63,7 +63,6 @@ func TestAuditLockHistoricalHorizonAndRouting(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:retired-keys-forward-ported (TestAuditConfigTreatsOnlyPreProfileSnapshotAsFull)
 func TestAuditConfigTreatsOnlyPreProfileSnapshotAsFull(t *testing.T) {
 	tree := auditTree(t, []snapshot.File{{
 		Path: ".awf/config.yaml", Mode: snapshot.Regular,
@@ -78,6 +77,21 @@ func TestAuditConfigTreatsOnlyPreProfileSnapshotAsFull(t *testing.T) {
 	}
 	if _, err := auditConfig(t.TempDir(), auditSelection(t, tree), &historicalLock{SchemaVersion: 46}); err == nil {
 		t.Fatal("profile-schema historical config without profile accepted")
+	}
+}
+
+// invariant: config/migrations-and-locks:retired-keys-forward-ported (TestAuditConfigForwardPortsSchema46RelevanceFields)
+func TestAuditConfigForwardPortsSchema46RelevanceFields(t *testing.T) {
+	tree := auditTree(t, []snapshot.File{{
+		Path: ".awf/config.yaml", Mode: snapshot.Regular,
+		Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\ntags:\n  - workflow\ncontextIgnore:\n  - vendor/**\n"),
+	}})
+	cfg, err := auditConfig(t.TempDir(), auditSelection(t, tree), &historicalLock{SchemaVersion: 46})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Prefix != "test" || cfg.Profile != catalog.ProfileFull || cfg.IntegrationBranch != "main" {
+		t.Fatalf("forward-ported historical config = %#v", cfg)
 	}
 }
 

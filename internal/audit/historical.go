@@ -45,6 +45,10 @@ func decodeHistoricalConfig(src []byte, schema int) ([]byte, error) {
 	deleteNested(value, "currentState", "topicCoverage", "topicFanout", "maxClaimsPerTopic", "maxTopicsPerPath")
 	deleteNested(value, "proseGate", "enabled")
 	deleteNested(value, "memoryCite", "enabled")
+	if schema < 47 {
+		delete(value, "tags")
+		delete(value, "contextIgnore")
+	}
 	// These facts were materialized by historical migrations before today's
 	// strict semantic parser consumed the tree.
 	if schema < 30 && emptyValue(value["integrationBranch"]) {
