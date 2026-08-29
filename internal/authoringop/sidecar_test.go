@@ -8,6 +8,7 @@ import (
 	"testing"
 )
 
+// invariant: tooling/cli:semantic-artifact-authoring (TestSidecarAuthoringCreatesAndRemovesLeaf)
 func TestSidecarAuthoringCreatesAndRemovesLeaf(t *testing.T) {
 	root, loader := transactionFixture(t, false)
 	req := Request{Mode: Edit, Kind: "skill", Name: "tdd", Part: "data.example", Sidecar: true, SidecarMode: "value", Value: "text"}
@@ -37,5 +38,35 @@ func TestSidecarAuthoringCreatesAndRemovesLeaf(t *testing.T) {
 	}
 	if _, err = os.Stat(source); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("sidecar remains: %v", err)
+	}
+}
+
+func TestUnchangedSidecarAuthoringStillSynchronizesCommittedAuthority(t *testing.T) {
+	root, loader := transactionFixture(t, false)
+	req := Request{Mode: Edit, Kind: "skill", Name: "tdd", Part: "data.example", Sidecar: true, SidecarMode: "value", Value: "text"}
+	if _, err := Run(context.Background(), root, req, loader, nil); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")
+	before, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(output, append(before, []byte("\nmanual drift\n")...), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	outcome, err := Run(context.Background(), root, req, loader, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if outcome.Source != SourceNone || !outcome.Publisher.HasCommittedEffects() {
+		t.Fatalf("unchanged synchronized outcome = %#v", outcome)
+	}
+	after, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if string(after) != string(before) {
+		t.Fatalf("unchanged authoring left drift: %q", after)
 	}
 }

@@ -23,6 +23,7 @@ func resolverFixture(t *testing.T) (*project.ProjectState, *config.Config) {
 	return state, cfg
 }
 
+// invariant: tooling/cli:semantic-artifact-authoring (TestResolveSidecarUsesSemanticCapabilitiesAndOwnedLayouts)
 func TestResolveSidecarUsesSemanticCapabilitiesAndOwnedLayouts(t *testing.T) {
 	state, cfg := resolverFixture(t)
 	cases := []struct {

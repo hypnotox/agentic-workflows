@@ -280,25 +280,26 @@ func EditSidecar(src []byte, edit SidecarEdit) ([]byte, bool, bool, error) {
 			}
 			seq = old
 		}
-		found := -1
-		for i, v := range seq.Content {
-			if reflect.DeepEqual(nodeValue(v), nodeValue(n)) {
-				found = i
-				break
-			}
-		}
 		if edit.Mode == "add" {
-			if found >= 0 {
-				return src, true, false, nil
+			for _, v := range seq.Content {
+				if reflect.DeepEqual(nodeValue(v), nodeValue(n)) {
+					return src, true, false, nil
+				}
 			}
 			seq.Style = 0
 			seq.Content = append(seq.Content, n)
 		} else {
-			if found < 0 {
+			retained := make([]*yaml.Node, 0, len(seq.Content))
+			for _, v := range seq.Content {
+				if !reflect.DeepEqual(nodeValue(v), nodeValue(n)) {
+					retained = append(retained, v)
+				}
+			}
+			if len(retained) == len(seq.Content) {
 				return src, true, false, nil
 			}
 			seq.Style = 0
-			seq.Content = append(seq.Content[:found], seq.Content[found+1:]...)
+			seq.Content = retained
 		}
 	default:
 		return nil, false, false, fmt.Errorf("config: unknown sidecar edit mode %q", edit.Mode)

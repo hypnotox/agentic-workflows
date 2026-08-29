@@ -133,6 +133,7 @@ func TestSidecarAuthoringCLIUsesTypedIdempotentModes(t *testing.T) {
 	}
 }
 
+// invariant: tooling/cli:semantic-artifact-authoring (TestSidecarAuthoringCLISupportsKnownBooleanAndDomainCapabilities)
 func TestSidecarAuthoringCLISupportsKnownBooleanAndDomainCapabilities(t *testing.T) {
 	root := syncedGitProject(t, minimalYAML+"domains: [tooling]\n")
 	run := func(args ...string) {
@@ -155,6 +156,7 @@ func TestSidecarAuthoringCLISupportsKnownBooleanAndDomainCapabilities(t *testing
 	}
 }
 
+// invariant: tooling/cli:semantic-artifact-authoring (TestSidecarAuthoringCLIRejectsModesCapabilitiesAndInvalidCandidateWithoutMutation)
 func TestSidecarAuthoringCLIRejectsModesCapabilitiesAndInvalidCandidateWithoutMutation(t *testing.T) {
 	root := scaffoldProject(t)
 	outputPath := ".claude/skills/example-tdd/SKILL.md"

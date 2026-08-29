@@ -96,6 +96,7 @@ func TestPartAuthoringValidatesBeforeSourceAndSynchronizesCommittedAuthority(t *
 	}
 }
 
+// invariant: tooling/cli:semantic-artifact-authoring (TestInvalidCandidateLeavesSourceOutputAndLockUnchanged)
 func TestInvalidCandidateLeavesSourceOutputAndLockUnchanged(t *testing.T) {
 	root, loader := transactionFixture(t, false)
 	section := catalog.Standard.Skills["tdd"].Sections[0]
@@ -273,6 +274,7 @@ func TestRunAcquiresLeaseBeforeAuthorityRead(t *testing.T) {
 }
 
 // invariant: rendering/sync-and-drift:authoring-sync-transaction (TestPublisherFaultRetainsCommittedSourceAndRecovery)
+// invariant: tooling/cli:semantic-artifact-authoring (TestPublisherFaultRetainsCommittedSourceAndRecovery)
 func TestPublisherFaultRetainsCommittedSourceAndRecovery(t *testing.T) {
 	root, loader := transactionFixture(t, false)
 	section := catalog.Standard.Skills["tdd"].Sections[0]

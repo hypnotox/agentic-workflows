@@ -181,7 +181,7 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 	}
 
 	if request.Sidecar && !changed {
-		return outcome, nil
+		return synchronizeCommitted(ctx, root, loader, lease, outcome)
 	}
 
 	if !target.Local && (request.Mode == Edit || request.Sidecar) {
@@ -238,6 +238,10 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 		return outcome, err
 	}
 
+	return synchronizeCommitted(ctx, root, loader, lease, outcome)
+}
+
+func synchronizeCommitted(ctx context.Context, root string, loader *project.Loader, lease *filesystem.Lease, outcome Outcome) (Outcome, error) {
 	committedState, committedConfig, err := loader.OpenForOperation(ctx, root)
 	if err != nil {
 		return outcome, partial(outcome, err, "repair committed source authority, then rerun awf render")

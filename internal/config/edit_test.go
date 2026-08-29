@@ -123,6 +123,8 @@ func TestSidecarLeafRoundTrip(t *testing.T) {
 		t.Fatalf("final reset=%q present=%v changed=%v err=%v", out, present, changed, err)
 	}
 }
+
+// invariant: config/configuration:sidecar-authoring-roundtrip (TestSidecarLeafStructuredListsAndPruning)
 func TestSidecarLeafStructuredListsAndPruning(t *testing.T) {
 	src := []byte("# retained\ndata:\n  members: [1, {name: api, enabled: true}] # list\n  sibling: keep\nother: value # untouched\n")
 	number, err := DecodeJSONValue(`1`)
@@ -147,6 +149,7 @@ func TestSidecarLeafStructuredListsAndPruning(t *testing.T) {
 	}
 }
 
+// invariant: config/configuration:sidecar-authoring-roundtrip (TestSidecarLeafModesAndRefusals)
 func TestSidecarLeafModesAndRefusals(t *testing.T) {
 	out, present, changed, err := EditSidecar(nil, SidecarEdit{Field: "data.value", Mode: "value", Value: ""})
 	if err != nil || !present || !changed || string(out) != "data:\n  value: \"\"\n" {
@@ -160,6 +163,18 @@ func TestSidecarLeafModesAndRefusals(t *testing.T) {
 	}
 	if _, _, _, err := EditSidecar(nil, SidecarEdit{Field: "data.value", Mode: "unknown", Value: "x"}); err == nil {
 		t.Fatal("unknown mode accepted")
+	}
+}
+
+func TestSidecarListRemovalRemovesEveryStructuralDuplicate(t *testing.T) {
+	src := []byte("items:\n  - one\n  - two\n  - one\n  - three\n  - one\n")
+	out, present, changed, err := EditSidecar(src, SidecarEdit{Field: "items", Mode: "remove", Value: "one"})
+	if err != nil || !present || !changed || string(out) != "items:\n  - two\n  - three\n" {
+		t.Fatalf("duplicate removal = %q present=%v changed=%v err=%v", out, present, changed, err)
+	}
+	retry, present, changed, err := EditSidecar(out, SidecarEdit{Field: "items", Mode: "remove", Value: "one"})
+	if err != nil || !present || changed || string(retry) != string(out) {
+		t.Fatalf("duplicate removal retry = %q present=%v changed=%v err=%v", retry, present, changed, err)
 	}
 }
 
