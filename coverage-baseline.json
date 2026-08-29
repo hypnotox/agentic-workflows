@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "6c00208aa91a46cba5f1104e3c43f1f3be5658dc1d2daddf4cad7198289fc9a9",
+  "universeSHA256": "2bb766e397ee9c482ad37dca4721b6abb3542725d38554a37dcff4bd9a6f64c9",
   "repository": [
     {
       "identity": {
@@ -14131,19 +14131,17 @@
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 112,
-          "column": 47
+          "line": 136,
+          "column": 15
         },
         "end": {
-          "line": 114,
+          "line": 138,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Render memory-bound reconciliation: ReadLines must stop and propagate a marker visitor's validation error. Marker tests directly cover scan and validation failures through the neutral reader boundary, while filesystem-reader tests cover bounded delivery; duplicating the same callback failure at this adapter adds no distinct behavioral oracle."
-    },
-    {
-      "identity": {
+      "reason": "Render memory-bound reconciliation moved the unchanged Publisher Entries metadata-error branch from internal/publisher/output_plan.go:109.15,111.4 by inserting the bounded ReadLines adapter before it. Prior review: filesystem.SupportedTreeEntry directly proves ambiguous metadata errors, while reaching this propagation branch requires a permission-dependent or concurrent DirEntry.Info failure during filepath.WalkDir; a reader injection seam would be metric-only production design.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 132,
@@ -14154,50 +14152,38 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved the unchanged Publisher Entries metadata-error branch from internal/publisher/output_plan.go:109.15,111.4 by inserting the bounded ReadLines adapter before it. Prior review: filesystem.SupportedTreeEntry directly proves ambiguous metadata errors, while reaching this propagation branch requires a permission-dependent or concurrent DirEntry.Info failure during filepath.WalkDir; a reader injection seam would be metric-only production design.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 109,
-          "column": 15
-        },
-        "end": {
-          "line": 111,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 139,
+          "line": 143,
           "column": 15
         },
         "end": {
-          "line": 141,
+          "line": 145,
           "column": 4
         },
         "statements": 1
       },
-      "reason": "Render memory-bound reconciliation moved this unchanged filepath.Rel impossible-state branch from internal/publisher/output_plan.go:116.15,118.4 by inserting the bounded ReadLines adapter before it. Prior review: WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 116,
-          "column": 15
-        },
-        "end": {
-          "line": 118,
-          "column": 4
-        },
-        "statements": 1
-      }
+      "reason": "Socket closure reconciliation: filesystem.SupportedTreeEntry directly proves ambiguous metadata errors, while reaching this Publisher Paths propagation branch requires a permission-dependent or concurrent DirEntry.Info failure during filepath.WalkDir; a reader injection seam would be metric-only production design."
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 170,
+          "column": 15
+        },
+        "end": {
+          "line": 172,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:166.15,168.4 1 in function literal, beginning `{ // coverage-ignore: p is always rooted at r.root, so Rel cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 166,
@@ -14208,11 +14194,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:166.15,168.4 1 in function literal, beginning `{ // coverage-ignore: p is always rooted at r.root, so Rel cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 193,
+          "column": 15
+        },
+        "end": {
+          "line": 195,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged filepath.Rel impossible-state branch from internal/publisher/output_plan.go:166.15,168.4 by inserting the bounded ReadLines adapter before it. The old identity is also occupied by another shifted raw miss, so no unambiguous movedFrom link exists. Prior review: each walked path is rooted at r.root, so Rel cannot fail on a supported platform.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 189,
@@ -14223,11 +14221,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged filepath.Rel impossible-state branch from internal/publisher/output_plan.go:166.15,168.4 by inserting the bounded ReadLines adapter before it. The old identity is also occupied by another shifted raw miss, so no unambiguous movedFrom link exists. Prior review: each walked path is rooted at r.root, so Rel cannot fail on a supported platform."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 289,
+          "column": 17
+        },
+        "end": {
+          "line": 291,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:262.17,264.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:262.17,264.4 1 in function literal, beginning `{ // coverage-ignore: embedded templates are validated by the production render path and focused...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 285,
@@ -14238,23 +14248,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:262.17,264.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:262.17,264.4 1 in function literal, beginning `{ // coverage-ignore: embedded templates are validated by the production render path and focused...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 262,
-          "column": 17
-        },
-        "end": {
-          "line": 264,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 328,
+          "column": 18
+        },
+        "end": {
+          "line": 330,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:301.18,303.5 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:301.18,303.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: catalog skill template IDs and embedded sources are validated static autho...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 324,
@@ -14265,23 +14275,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:301.18,303.5 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:301.18,303.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: catalog skill template IDs and embedded sources are validated static autho...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 301,
-          "column": 18
-        },
-        "end": {
-          "line": 303,
-          "column": 5
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 343,
+          "column": 19
+        },
+        "end": {
+          "line": 345,
+          "column": 6
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:316.19,318.6 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:316.19,318.6 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: catalog agent template IDs and embedded sources are validated static autho...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 339,
@@ -14292,23 +14302,23 @@
           "column": 6
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:316.19,318.6 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:316.19,318.6 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: catalog agent template IDs and embedded sources are validated static autho...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 316,
-          "column": 19
-        },
-        "end": {
-          "line": 318,
-          "column": 6
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 361,
+          "column": 19
+        },
+        "end": {
+          "line": 363,
+          "column": 6
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:334.19,336.6 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:334.19,336.6 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: validated target-output descriptors own embedded Markdown template identit...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 357,
@@ -14319,23 +14329,23 @@
           "column": 6
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:334.19,336.6 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:334.19,336.6 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: validated target-output descriptors own embedded Markdown template identit...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 334,
-          "column": 19
-        },
-        "end": {
-          "line": 336,
-          "column": 6
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 434,
+          "column": 17
+        },
+        "end": {
+          "line": 436,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:407.17,409.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:407.17,409.4 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: localDocTID is a closed embedded Markdown identity, validated by the templ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 430,
@@ -14346,23 +14356,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:407.17,409.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:407.17,409.4 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: localDocTID is a closed embedded Markdown identity, validated by the templ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 407,
-          "column": 17
-        },
-        "end": {
-          "line": 409,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 441,
+          "column": 17
+        },
+        "end": {
+          "line": 443,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:414.17,416.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:414.17,416.4 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the pitfall entry descriptor owns one validated embedded Markdown template...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 437,
@@ -14373,23 +14383,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:414.17,416.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:414.17,416.4 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the pitfall entry descriptor owns one validated embedded Markdown template...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 414,
-          "column": 17
-        },
-        "end": {
-          "line": 416,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 466,
+          "column": 18
+        },
+        "end": {
+          "line": 468,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:462.18,464.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the same domain metadata enumeration succeeded earlier in this declaration...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 462,
@@ -14400,11 +14410,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:462.18,464.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the same domain metadata enumeration succeeded earlier in this declaration...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 481,
+          "column": 18
+        },
+        "end": {
+          "line": 483,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:454.18,456.5 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:454.18,456.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: topicTID is a validated compile-time embedded identity`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 477,
@@ -14415,23 +14437,23 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:454.18,456.5 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:454.18,456.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: topicTID is a validated compile-time embedded identity`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 454,
-          "column": 18
-        },
-        "end": {
-          "line": 456,
-          "column": 5
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 489,
+          "column": 18
+        },
+        "end": {
+          "line": 491,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:462.18,464.5 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:462.18,464.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the same domain metadata enumeration succeeded earlier in this declaration...`; retained as visible debt because this activation does not justify metric-only production or oracle changes. The previous identity is also occupied by another shifted raw miss, so no unambiguous movedFrom link exists.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 485,
@@ -14442,18 +14464,17 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:462.18,464.5 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:462.18,464.5 1 in function buildOutputDeclarations, beginning `{ // coverage-ignore: the same domain metadata enumeration succeeded earlier in this declaration...`; retained as visible debt because this activation does not justify metric-only production or oracle changes. The previous identity is also occupied by another shifted raw miss, so no unambiguous movedFrom link exists."
+      }
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 496,
+          "line": 500,
           "column": 19
         },
         "end": {
-          "line": 498,
+          "line": 502,
           "column": 6
         },
         "statements": 1
@@ -14462,39 +14483,12 @@
       "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 473,
+          "line": 496,
           "column": 19
         },
         "end": {
-          "line": 475,
+          "line": 498,
           "column": 6
-        },
-        "statements": 1
-      }
-    },
-    {
-      "identity": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 672,
-          "column": 18
-        },
-        "end": {
-          "line": 674,
-          "column": 5
-        },
-        "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:649.18,651.5 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:649.18,651.5 1 in function targetOutputDeclarations, beginning `{ // coverage-ignore: embedded target-output templates are include-well-formed; render package t...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 649,
-          "column": 18
-        },
-        "end": {
-          "line": 651,
-          "column": 5
         },
         "statements": 1
       }
@@ -14557,11 +14551,26 @@
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 736,
+          "line": 684,
+          "column": 18
+        },
+        "end": {
+          "line": 686,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:657.18,659.5 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:657.18,659.5 1 in function targetOutputDeclarations, beginning `{ // coverage-ignore: no target output has parts and its descriptor projection is marshalable`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+    },
+    {
+      "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 740,
           "column": 49
         },
         "end": {
-          "line": 738,
+          "line": 742,
           "column": 3
         },
         "statements": 1
@@ -14570,11 +14579,11 @@
       "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 713,
+          "line": 736,
           "column": 49
         },
         "end": {
-          "line": 715,
+          "line": 738,
           "column": 3
         },
         "statements": 1
@@ -14582,6 +14591,19 @@
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 777,
+          "column": 55
+        },
+        "end": {
+          "line": 779,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:750.55,752.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:750.55,752.4 1 in function outputPlanWithPitfalls: the duplicate-output error branch after adding a base rendered file to the output plan; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 773,
@@ -14592,23 +14614,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:750.55,752.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:750.55,752.4 1 in function outputPlanWithPitfalls: the duplicate-output error branch after adding a base rendered file to the output plan; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 750,
-          "column": 55
-        },
-        "end": {
-          "line": 752,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 791,
+          "column": 16
+        },
+        "end": {
+          "line": 793,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:764.16,766.3 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:764.16,766.3 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: the same embedded leaf template and validated corpus are closed inputs her...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 787,
@@ -14619,23 +14641,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:764.16,766.3 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:764.16,766.3 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: the same embedded leaf template and validated corpus are closed inputs her...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 764,
-          "column": 16
-        },
-        "end": {
-          "line": 766,
-          "column": 3
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 796,
+          "column": 78
+        },
+        "end": {
+          "line": 798,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:769.78,771.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:769.78,771.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: validated unique slugs derive unique leaf paths`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 792,
@@ -14646,23 +14668,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:769.78,771.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:769.78,771.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: validated unique slugs derive unique leaf paths`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 769,
-          "column": 78
-        },
-        "end": {
-          "line": 771,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 814,
+          "column": 55
+        },
+        "end": {
+          "line": 816,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:787.55,789.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:787.55,789.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: generated INDEX.md has a reserved unique path.`; retained as visible debt because this activation does not justify metric-only production or oracle changes. The previous identity is also occupied by another shifted raw miss, so no unambiguous movedFrom link exists.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 810,
@@ -14673,11 +14695,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:787.55,789.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:787.55,789.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: generated INDEX.md has a reserved unique path.`; retained as visible debt because this activation does not justify metric-only production or oracle changes. The previous identity is also occupied by another shifted raw miss, so no unambiguous movedFrom link exists."
+      }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 818,
+          "column": 17
+        },
+        "end": {
+          "line": 820,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:791.17,793.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:791.17,793.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: renderTarget cannot fail here: .data.domain/.data.topics are always set an...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 814,
@@ -14688,23 +14722,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:791.17,793.4 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:791.17,793.4 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: renderTarget cannot fail here: .data.domain/.data.topics are always set an...`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 791,
-          "column": 17
-        },
-        "end": {
-          "line": 793,
-          "column": 4
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
+        "file": "internal/publisher/output_plan.go",
+        "start": {
+          "line": 822,
+          "column": 53
+        },
+        "end": {
+          "line": 824,
+          "column": 5
+        },
+        "statements": 1
+      },
+      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:795.53,797.5 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:795.53,797.5 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: validated domain names produce distinct paths.`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
+      "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
           "line": 818,
@@ -14715,30 +14749,17 @@
           "column": 5
         },
         "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation moved this unchanged reviewed block from internal/publisher/output_plan.go:795.53,797.5 by inserting the bounded ReadLines adapter before it. Prior review: Initial RF-009 admission of existing uncovered behavior at internal/publisher/output_plan.go:795.53,797.5 1 in function outputPlanWithPitfalls, beginning `{ // coverage-ignore: validated domain names produce distinct paths.`; retained as visible debt because this activation does not justify metric-only production or oracle changes.",
-      "movedFrom": {
-        "file": "internal/publisher/output_plan.go",
-        "start": {
-          "line": 795,
-          "column": 53
-        },
-        "end": {
-          "line": 797,
-          "column": 5
-        },
-        "statements": 1
       }
     },
     {
       "identity": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 832,
+          "line": 836,
           "column": 75
         },
         "end": {
-          "line": 834,
+          "line": 838,
           "column": 4
         },
         "statements": 1
@@ -14747,11 +14768,11 @@
       "movedFrom": {
         "file": "internal/publisher/output_plan.go",
         "start": {
-          "line": 809,
+          "line": 832,
           "column": 75
         },
         "end": {
-          "line": 811,
+          "line": 834,
           "column": 4
         },
         "statements": 1
@@ -18308,21 +18329,6 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at internal/topic/corpus.go:100.37,102.5 1 in function assembleCorpus, beginning `{ // coverage-ignore: one canonical pair owns each path-derived topic ID, and local duplicates f...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/topic/markers.go",
-        "start": {
-          "line": 94,
-          "column": 38
-        },
-        "end": {
-          "line": 96,
-          "column": 5
-        },
-        "statements": 1
-      },
-      "reason": "Render memory-bound reconciliation: the byte-fed immutable-tree adapter applies the same 4 MiB line ceiling as the filesystem scanner. Filesystem-reader tests directly prove oversized-line rejection, while snapshot marker tests prove the shared scan behavior; duplicating a 4 MiB fixture in the byte adapter adds cost without a distinct oracle."
     },
     {
       "identity": {
@@ -23088,23 +23094,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 112,
-            "column": 47
-          },
-          "end": {
-            "line": 114,
-            "column": 4
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/publisher/output_plan.go",
-          "start": {
-            "line": 132,
+            "line": 136,
             "column": 15
           },
           "end": {
-            "line": 134,
+            "line": 138,
             "column": 4
           },
           "statements": 1
@@ -23112,11 +23106,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 139,
+            "line": 143,
             "column": 15
           },
           "end": {
-            "line": 141,
+            "line": 145,
             "column": 4
           },
           "statements": 1
@@ -23124,11 +23118,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 166,
+            "line": 170,
             "column": 15
           },
           "end": {
-            "line": 168,
+            "line": 172,
             "column": 4
           },
           "statements": 1
@@ -23136,11 +23130,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 189,
+            "line": 193,
             "column": 15
           },
           "end": {
-            "line": 191,
+            "line": 195,
             "column": 4
           },
           "statements": 1
@@ -23148,11 +23142,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 285,
+            "line": 289,
             "column": 17
           },
           "end": {
-            "line": 287,
+            "line": 291,
             "column": 4
           },
           "statements": 1
@@ -23160,11 +23154,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 324,
+            "line": 328,
             "column": 18
           },
           "end": {
-            "line": 326,
+            "line": 330,
             "column": 5
           },
           "statements": 1
@@ -23172,11 +23166,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 339,
+            "line": 343,
             "column": 19
           },
           "end": {
-            "line": 341,
+            "line": 345,
             "column": 6
           },
           "statements": 1
@@ -23184,11 +23178,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 357,
+            "line": 361,
             "column": 19
           },
           "end": {
-            "line": 359,
+            "line": 363,
             "column": 6
           },
           "statements": 1
@@ -23196,11 +23190,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 430,
+            "line": 434,
             "column": 17
           },
           "end": {
-            "line": 432,
+            "line": 436,
             "column": 4
           },
           "statements": 1
@@ -23208,11 +23202,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 437,
+            "line": 441,
             "column": 17
           },
           "end": {
-            "line": 439,
+            "line": 443,
             "column": 4
           },
           "statements": 1
@@ -23220,11 +23214,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 462,
+            "line": 466,
             "column": 18
           },
           "end": {
-            "line": 464,
+            "line": 468,
             "column": 5
           },
           "statements": 1
@@ -23232,11 +23226,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 477,
+            "line": 481,
             "column": 18
           },
           "end": {
-            "line": 479,
+            "line": 483,
             "column": 5
           },
           "statements": 1
@@ -23244,11 +23238,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 485,
+            "line": 489,
             "column": 18
           },
           "end": {
-            "line": 487,
+            "line": 491,
             "column": 5
           },
           "statements": 1
@@ -23256,24 +23250,12 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 496,
+            "line": 500,
             "column": 19
           },
           "end": {
-            "line": 498,
+            "line": 502,
             "column": 6
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/publisher/output_plan.go",
-          "start": {
-            "line": 672,
-            "column": 18
-          },
-          "end": {
-            "line": 674,
-            "column": 5
           },
           "statements": 1
         },
@@ -23304,11 +23286,23 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 736,
+            "line": 684,
+            "column": 18
+          },
+          "end": {
+            "line": 686,
+            "column": 5
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 740,
             "column": 49
           },
           "end": {
-            "line": 738,
+            "line": 742,
             "column": 3
           },
           "statements": 1
@@ -23316,11 +23310,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 773,
+            "line": 777,
             "column": 55
           },
           "end": {
-            "line": 775,
+            "line": 779,
             "column": 4
           },
           "statements": 1
@@ -23328,11 +23322,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 787,
+            "line": 791,
             "column": 16
           },
           "end": {
-            "line": 789,
+            "line": 793,
             "column": 3
           },
           "statements": 1
@@ -23340,23 +23334,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 792,
+            "line": 796,
             "column": 78
           },
           "end": {
-            "line": 794,
-            "column": 4
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/publisher/output_plan.go",
-          "start": {
-            "line": 810,
-            "column": 55
-          },
-          "end": {
-            "line": 812,
+            "line": 798,
             "column": 4
           },
           "statements": 1
@@ -23365,7 +23347,7 @@
           "file": "internal/publisher/output_plan.go",
           "start": {
             "line": 814,
-            "column": 17
+            "column": 55
           },
           "end": {
             "line": 816,
@@ -23377,10 +23359,22 @@
           "file": "internal/publisher/output_plan.go",
           "start": {
             "line": 818,
-            "column": 53
+            "column": 17
           },
           "end": {
             "line": 820,
+            "column": 4
+          },
+          "statements": 1
+        },
+        {
+          "file": "internal/publisher/output_plan.go",
+          "start": {
+            "line": 822,
+            "column": 53
+          },
+          "end": {
+            "line": 824,
             "column": 5
           },
           "statements": 1
@@ -23388,11 +23382,11 @@
         {
           "file": "internal/publisher/output_plan.go",
           "start": {
-            "line": 832,
+            "line": 836,
             "column": 75
           },
           "end": {
-            "line": 834,
+            "line": 838,
             "column": 4
           },
           "statements": 1
@@ -27326,18 +27320,6 @@
           },
           "end": {
             "line": 99,
-            "column": 5
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/topic/markers.go",
-          "start": {
-            "line": 94,
-            "column": 38
-          },
-          "end": {
-            "line": 96,
             "column": 5
           },
           "statements": 1
@@ -33229,8 +33211,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 139,
-        "targetLine": 139,
+        "line": 143,
+        "targetLine": 143,
         "reason": "WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform",
         "mapped": true,
         "executed": false
@@ -33241,8 +33223,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 189,
-        "targetLine": 189,
+        "line": 193,
+        "targetLine": 193,
         "reason": "p is always rooted at r.root, so Rel cannot fail",
         "mapped": true,
         "executed": false
@@ -33253,8 +33235,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 285,
-        "targetLine": 285,
+        "line": 289,
+        "targetLine": 289,
         "reason": "embedded templates are validated by the production render path and focused include tests",
         "mapped": true,
         "executed": false
@@ -33265,8 +33247,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 324,
-        "targetLine": 324,
+        "line": 328,
+        "targetLine": 328,
         "reason": "catalog skill template IDs and embedded sources are validated static authority",
         "mapped": true,
         "executed": false
@@ -33277,8 +33259,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 339,
-        "targetLine": 339,
+        "line": 343,
+        "targetLine": 343,
         "reason": "catalog agent template IDs and embedded sources are validated static authority",
         "mapped": true,
         "executed": false
@@ -33289,8 +33271,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 357,
-        "targetLine": 357,
+        "line": 361,
+        "targetLine": 361,
         "reason": "validated target-output descriptors own embedded Markdown template identities; markdownInputs error propagation is covered through enabled bridge declarations",
         "mapped": true,
         "executed": false
@@ -33301,8 +33283,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 430,
-        "targetLine": 430,
+        "line": 434,
+        "targetLine": 434,
         "reason": "localDocTID is a closed embedded Markdown identity, validated by the template census",
         "mapped": true,
         "executed": false
@@ -33313,8 +33295,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 437,
-        "targetLine": 437,
+        "line": 441,
+        "targetLine": 441,
         "reason": "the pitfall entry descriptor owns one validated embedded Markdown template identity",
         "mapped": true,
         "executed": false
@@ -33325,8 +33307,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 462,
-        "targetLine": 462,
+        "line": 466,
+        "targetLine": 466,
         "reason": "the domain descriptor owns one validated embedded template identity",
         "mapped": true,
         "executed": false
@@ -33337,8 +33319,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 477,
-        "targetLine": 477,
+        "line": 481,
+        "targetLine": 481,
         "reason": "topicTID is a validated compile-time embedded identity",
         "mapped": true,
         "executed": false
@@ -33349,8 +33331,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 485,
-        "targetLine": 485,
+        "line": 489,
+        "targetLine": 489,
         "reason": "the same domain metadata enumeration succeeded earlier in this declaration pass",
         "mapped": true,
         "executed": false
@@ -33361,8 +33343,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 496,
-        "targetLine": 496,
+        "line": 500,
+        "targetLine": 500,
         "reason": "topicIndexTID is a validated compile-time embedded identity",
         "mapped": true,
         "executed": false
@@ -33373,8 +33355,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 672,
-        "targetLine": 672,
+        "line": 676,
+        "targetLine": 676,
         "reason": "embedded target-output templates are include-well-formed; render package tests own malformed includes",
         "mapped": true,
         "executed": false
@@ -33385,8 +33367,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 676,
-        "targetLine": 676,
+        "line": 680,
+        "targetLine": 680,
         "reason": "embedded target-output templates have well-formed authoring comments; render package tests malformed input",
         "mapped": true,
         "executed": false
@@ -33397,8 +33379,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 680,
-        "targetLine": 680,
+        "line": 684,
+        "targetLine": 684,
         "reason": "no target output has parts and its descriptor projection is marshalable",
         "mapped": true,
         "executed": false
@@ -33409,8 +33391,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 736,
-        "targetLine": 736,
+        "line": 740,
+        "targetLine": 740,
         "reason": "renderAllBase already resolved every live identity; TestValidateLiveTemplatesRejectsMissingTargetTemplate proves the defensive check",
         "mapped": true,
         "executed": false
@@ -33421,8 +33403,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 772,
-        "targetLine": 773,
+        "line": 776,
+        "targetLine": 777,
         "reason": "base output paths are unique by renderAllBase's precondition.",
         "mapped": true,
         "executed": false
@@ -33433,8 +33415,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 787,
-        "targetLine": 787,
+        "line": 791,
+        "targetLine": 791,
         "reason": "the same embedded leaf template and validated corpus are closed inputs here",
         "mapped": true,
         "executed": false
@@ -33445,8 +33427,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 792,
-        "targetLine": 792,
+        "line": 796,
+        "targetLine": 796,
         "reason": "validated unique slugs derive unique leaf paths",
         "mapped": true,
         "executed": false
@@ -33457,8 +33439,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 810,
-        "targetLine": 810,
+        "line": 814,
+        "targetLine": 814,
         "reason": "generated INDEX.md has a reserved unique path.",
         "mapped": true,
         "executed": false
@@ -33469,8 +33451,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 814,
-        "targetLine": 814,
+        "line": 818,
+        "targetLine": 818,
         "reason": "renderTarget cannot fail here: .data.domain/.data.topics are always set and the domain template is compile-time embedded",
         "mapped": true,
         "executed": false
@@ -33481,8 +33463,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 818,
-        "targetLine": 818,
+        "line": 822,
+        "targetLine": 822,
         "reason": "validated domain names produce distinct paths.",
         "mapped": true,
         "executed": false
@@ -33493,8 +33475,8 @@
     {
       "directive": {
         "file": "internal/publisher/output_plan.go",
-        "line": 831,
-        "targetLine": 832,
+        "line": 835,
+        "targetLine": 836,
         "reason": "config reference has a reserved unique path.",
         "mapped": true,
         "executed": false
