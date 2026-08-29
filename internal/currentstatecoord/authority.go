@@ -30,14 +30,29 @@ func ResolveTopics(root string, repo *awfgit.Repo, ctx context.Context, paths []
 	sections := make([]presentation.Section, 0, len(paths))
 	for _, path := range paths {
 		domains, topics := topic.PathAuthority(ws.Loaded.Topics, path)
-		nodes := []presentation.Node{authorityLiteralField("path", path), authorityItems("domains", domains), authorityItems("topics", topics)}
-		section, err := presentation.NewSection("resolution", nodes...)
+		pathField, err := authorityLiteralField("path", path)
+		if err != nil {
+			return presentation.Detail{}, err
+		}
+		domainItems, err := authorityItems("domains", domains)
+		if err != nil {
+			return presentation.Detail{}, err
+		}
+		topicItems, err := authorityItems("topics", topics)
+		if err != nil {
+			return presentation.Detail{}, err
+		}
+		section, err := presentation.NewSection("resolution", pathField, domainItems, topicItems)
 		if err != nil {
 			return presentation.Detail{}, err
 		}
 		sections = append(sections, section)
 	}
-	return presentation.Detail{Fields: []presentation.Field{authorityField("query", "topic resolution")}, Sections: sections}, nil
+	query, err := authorityField("query", "topic resolution")
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	return presentation.Detail{Fields: []presentation.Field{query}, Sections: sections}, nil
 }
 
 // UncoveredPaths reports the whole-working-tree unowned census. It is an
@@ -68,7 +83,19 @@ func UncoveredPaths(root string, repo *awfgit.Repo, ctx context.Context) (presen
 		owned[path] = true
 	}
 	paths = collapseUnowned(unowned, owned)
-	return presentation.Detail{Fields: []presentation.Field{authorityField("query", "uncovered paths")}, Sections: []presentation.Section{authoritySection("uncovered", authorityItems("paths", paths))}}, nil
+	query, err := authorityField("query", "uncovered paths")
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	pathItems, err := authorityItems("paths", paths)
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	section, err := presentation.NewSection("uncovered", pathItems)
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	return presentation.Detail{Fields: []presentation.Field{query}, Sections: []presentation.Section{section}}, nil
 }
 
 // authorityCensusPaths selects the whole-repository query population. It is
@@ -166,19 +193,56 @@ func ReadADR(root string, repo *awfgit.Repo, ctx context.Context, identity strin
 		return presentation.Detail{}, err
 	}
 	if len(drift) != 0 {
-		return presentation.Detail{}, fmt.Errorf("parse linked plans: malformed plan")
+		diagnostics := make([]string, len(drift))
+		for i, finding := range drift {
+			diagnostics[i] = finding.Path + ": " + finding.Detail
+		}
+		slices.Sort(diagnostics)
+		return presentation.Detail{}, fmt.Errorf("parse linked plans: %s", strings.Join(diagnostics, "; "))
 	}
 	linked := []string{}
 	for _, p := range plans {
 		for _, link := range p.ADRs {
-			if link.Identity() == identity {
+			linkedRecord, found := ws.Loaded.Corpus.ByIdentity(link.Identity())
+			if found && linkedRecord.Identity() == record.Identity() {
 				linked = append(linked, p.Filename)
 				break
 			}
 		}
 	}
-	nodes := []presentation.Node{authorityLiteralField("identity", "ADR-"+identity), authorityField("status", record.Status), authorityItems("applied", formatApplied(progress.Applied)), authorityItems("remaining", formatOperations(progress.Remaining)), authorityItems("canceled", formatOperations(progress.Canceled)), authorityItems("linked-plans", linked)}
-	return presentation.Detail{Fields: []presentation.Field{authorityField("query", "ADR")}, Sections: []presentation.Section{authoritySection("adr", nodes...)}}, nil
+	identityField, err := authorityLiteralField("identity", "ADR-"+record.Identity())
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	statusField, err := authorityField("status", record.Status)
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	appliedItems, err := authorityItems("applied", formatApplied(progress.Applied))
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	remainingItems, err := authorityItems("remaining", formatOperations(progress.Remaining))
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	canceledItems, err := authorityItems("canceled", formatOperations(progress.Canceled))
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	linkedItems, err := authorityItems("linked-plans", linked)
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	section, err := presentation.NewSection("adr", identityField, statusField, appliedItems, remainingItems, canceledItems, linkedItems)
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	query, err := authorityField("query", "ADR")
+	if err != nil {
+		return presentation.Detail{}, err
+	}
+	return presentation.Detail{Fields: []presentation.Field{query}, Sections: []presentation.Section{section}}, nil
 }
 
 func validateAuthority(ws workingState) error {
@@ -212,30 +276,37 @@ func formatApplied(operations []adr.AppliedOperation) []string {
 	}
 	return out
 }
-func authorityField(label, text string) presentation.Field {
-	v, _ := presentation.Prose(text)
-	f, _ := presentation.NewField(label, v)
-	return f
+func authorityField(label, text string) (presentation.Field, error) {
+	value, err := presentation.Prose(text)
+	if err != nil {
+		return presentation.Field{}, err
+	}
+	return presentation.NewField(label, value)
 }
-func authorityLiteralField(label, text string) presentation.Field {
-	v, _ := presentation.Literal(text)
-	f, _ := presentation.NewField(label, v)
-	return f
+
+func authorityLiteralField(label, text string) (presentation.Field, error) {
+	value, err := presentation.Literal(text)
+	if err != nil {
+		return presentation.Field{}, err
+	}
+	return presentation.NewField(label, value)
 }
-func authorityItems(label string, items []string) presentation.Node {
+
+func authorityItems(label string, items []string) (presentation.Node, error) {
 	if len(items) == 0 {
-		return authorityField(label, "none")
+		field, err := authorityField(label, "none")
+		return field, err
 	}
 	values := make([]presentation.Value, len(items))
 	for i, item := range items {
-		values[i], _ = presentation.Literal(item)
+		value, err := presentation.Literal(item)
+		if err != nil {
+			return nil, err
+		}
+		values[i] = value
 	}
-	l, _ := presentation.NewList(label, values...)
-	return l
-}
-func authoritySection(label string, nodes ...presentation.Node) presentation.Section {
-	s, _ := presentation.NewSection(label, nodes...)
-	return s
+	list, err := presentation.NewList(label, values...)
+	return list, err
 }
 
 // normalizeAuthorityPath makes a command argument repository-relative and
@@ -255,6 +326,9 @@ func NormalizeAuthorityPath(root, value string) (string, error) {
 	candidate = filepath.ToSlash(filepath.Clean(candidate))
 	if candidate == "." || candidate == ".." || strings.HasPrefix(candidate, "../") {
 		return "", fmt.Errorf("path %q is outside the repository", value)
+	}
+	if _, err := presentation.Literal(candidate); err != nil {
+		return "", fmt.Errorf("path %q is malformed: %w", value, err)
 	}
 	return candidate, nil
 }

@@ -17,6 +17,7 @@ func TestAuthorityCensusTopmostCollapseAndIndependentExclusions(t *testing.T) {
 		{Path: "free/b.txt", Mode: snapshot.Regular},
 		{Path: "also-free/a.txt", Mode: snapshot.Regular},
 		{Path: "generated/out.txt", Mode: snapshot.Regular},
+		{Path: ".awf/efforts/current/memory.md", Mode: snapshot.Regular},
 		{Path: "nested/.awf/config.yaml", Mode: snapshot.Regular},
 		{Path: "nested/hidden.txt", Mode: snapshot.Regular},
 	})
