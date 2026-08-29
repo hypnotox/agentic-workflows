@@ -519,6 +519,110 @@ func TestExpectedIdentityReplacementAndRemovalRefuseStaleEntries(t *testing.T) {
 	}
 }
 
+// invariant: tooling/filesystem-access:root-confined-paths (TestReadExpectedRetainsObservedRegularIdentity)
+// invariant: rendering/sync-and-drift:authoring-sync-transaction (TestReadExpectedRetainsObservedRegularIdentity)
+func TestReadExpectedRetainsObservedRegularIdentity(t *testing.T) {
+	root := t.TempDir()
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	if err := os.WriteFile(filepath.Join(root, "artifact"), []byte("observed"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := h.ExpectedIdentity("artifact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := expected.Release(); err != nil {
+			t.Errorf("release expected identity: %v", err)
+		}
+	}()
+	contents, mode, err := h.ReadExpected("artifact", expected)
+	if err != nil || string(contents) != "observed" || mode.Perm() != 0o640 {
+		t.Fatalf("retained expected read = %q, %v, %v", contents, mode, err)
+	}
+}
+
+// invariant: tooling/filesystem-access:root-confined-paths (TestReadExpectedRefusesInvalidOrUnusableIdentity)
+func TestReadExpectedRefusesInvalidOrUnusableIdentity(t *testing.T) {
+	root := t.TempDir()
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	if err := os.WriteFile(filepath.Join(root, "artifact"), []byte("observed"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := h.ReadExpected("artifact", nil); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("nil identity read = %v, want identity change", err)
+	}
+	released, err := h.ExpectedIdentity("artifact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := released.Release(); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := h.ReadExpected("artifact", released); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("released identity read = %v, want identity change", err)
+	}
+	if _, _, err := h.ReadExpected("../artifact", released); err == nil {
+		t.Fatal("invalid expected read path succeeded")
+	}
+}
+
+// invariant: tooling/filesystem-access:root-confined-paths (TestReadExpectedRefusesReplacementAndNonRegularIdentity)
+// invariant: rendering/sync-and-drift:authoring-sync-transaction (TestReadExpectedRefusesReplacementAndNonRegularIdentity)
+func TestReadExpectedRefusesReplacementAndNonRegularIdentity(t *testing.T) {
+	root := t.TempDir()
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	artifact := filepath.Join(root, "artifact")
+	if err := os.WriteFile(artifact, []byte("observed"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := h.ExpectedIdentity("artifact")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := expected.Release(); err != nil {
+			t.Errorf("release replaced identity: %v", err)
+		}
+	}()
+	if err := os.Remove(artifact); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(artifact, []byte("replacement"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := h.ReadExpected("artifact", expected); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("replaced expected read = %v, want identity change", err)
+	}
+	if err := os.Mkdir(filepath.Join(root, "directory"), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	directory, err := h.ExpectedIdentity("directory")
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer func() {
+		if err := directory.Release(); err != nil {
+			t.Errorf("release directory identity: %v", err)
+		}
+	}()
+	if _, _, err := h.ReadExpected("directory", directory); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("non-regular expected read = %v, want identity change", err)
+	}
+}
+
 func TestCreateDirectoryReturnsPublishedIdentityAndRefusesExistingDestination(t *testing.T) {
 	container := t.TempDir()
 	root := filepath.Join(container, "root")

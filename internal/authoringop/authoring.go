@@ -66,6 +66,7 @@ func Run(ctx context.Context, root string, request Request, loader *project.Load
 		return Outcome{}, errors.New("authoring operation requires a covering project lease")
 	}
 	outcome, operationErr := runLeased(ctx, root, request, loader, lease)
+	operationErr = normalizePostRunError(outcome, operationErr)
 	releaseErr := release()
 	if releaseErr == nil {
 		return outcome, operationErr
@@ -87,6 +88,19 @@ func Run(ctx context.Context, root string, request Request, loader *project.Load
 
 func committed(outcome Outcome) bool {
 	return outcome.Source != SourceNone || len(outcome.CreatedParents) != 0 || len(outcome.Residue) != 0 || outcome.Publisher.HasCommittedEffects()
+}
+
+// normalizePostRunError retains committed effects when deferred cleanup turns an
+// otherwise successful leased operation into a plain error.
+func normalizePostRunError(outcome Outcome, err error) error {
+	if err == nil || !committed(outcome) {
+		return err
+	}
+	var existing *PartialError
+	if errors.As(err, &existing) {
+		return err
+	}
+	return partial(outcome, err, "repair the post-commit fault, then rerun awf render")
 }
 
 func runLeased(ctx context.Context, root string, request Request, loader *project.Loader, lease *filesystem.Lease) (outcome Outcome, returnErr error) {
