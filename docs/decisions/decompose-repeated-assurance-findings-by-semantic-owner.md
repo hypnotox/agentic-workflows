@@ -34,21 +34,31 @@ without expanding the active outcome.
    cross-owner composition is itself one coherent transaction or protected contract.
 
 2. `decision: repeated-findings-trigger-decomposition` When an initial review or its bounded verify
-   pass returns repeated findings of the same class across separable semantic owners, the parent
-   treats that pattern as evidence of an oversized assurance boundary. Remaining work and subsequent
-   assurance are decomposed by owner rather than sent through another same-shaped broad settlement
-   or review loop.
+   pass returns repeated findings of the same underlying semantic concern or violated contract across
+   separable owners, the parent treats that pattern as evidence of an oversized assurance boundary.
+   Finding class here means that shared concern or contract, not severity, reviewer lens, or the
+   mechanical, reasoned, and user-decision remediation classifications.
 
-3. `decision: preserve-composition-assurance` Decomposition never drops cross-owner composition
-   coverage. The parent retains focused evidence for each fresh unit, reviews integration effects
-   after composition, and preserves the existing single verify-pass bound, complete-range audit, and
-   terminal assurance obligations.
+3. `decision: finite-bounded-transition` Before further assurance, the parent partitions the finite
+   remaining scope into separable owner units. Each genuinely fresh implementation transaction then
+   follows ordinary bounded review. Findings from the originating transaction's sole verify pass
+   receive parent-owned settlement and deterministic verification without another reviewer dispatch;
+   they do not recursively restart that review.
 
-4. `decision: semantic-not-numeric` No file, line, commit, task, finding-count, or elapsed-time
+4. `decision: preserve-composition-assurance` Decomposition never drops cross-owner composition
+   coverage. The parent retains focused evidence for each fresh unit and reviews composed integration
+   effects through ordinary terminal assurance after the units settle, preserving that review's own
+   single verify-pass bound, complete-range audit, and terminal verification obligations.
+
+5. `decision: semantic-not-numeric` No file, line, commit, task, finding-count, or elapsed-time
    threshold defines an oversized unit. The boundary follows semantic ownership, dependency and
    representation boundaries, independent verifiability, and the concrete finding pattern. The exact
    regrouping remains implementation route detail and is reconciled into a mutable plan only when
    another phase or reviewer can rely on it.
+
+6. `decision: publication-safe-guidance` Every affected rendered workflow template preserves
+   missingkey-zero behavior, renders coherently with empty variables, and emits no no-value or
+   unresolved-value token, backed by deterministic tests.
 
 ## State changes
 
