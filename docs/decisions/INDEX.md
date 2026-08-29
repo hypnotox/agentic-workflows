@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-make-implementation-verification-parent-owned: Make implementation verification parent-owned](make-implementation-verification-parent-owned.md) (Proposed)
 
 ## History
 
