@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: make-implementation-verification-parent-owned
-status: Proposed
+status: Implementing
 date: 2026-08-29
 ---
 # ADR-make-implementation-verification-parent-owned: Make implementation verification parent-owned
@@ -117,3 +117,5 @@ the remedy for unsafe concurrent verification.
 ## Status history
 
 - 2026-08-29: Proposed
+- 2026-08-29: Implementing; content-sha256: 7685b0e5f2d87d23850914731bffd42d2618b0b43ac963ec691076a7cbefdd31
+- 2026-08-29: Applied; operations: update `rendering/workflow-skill-templates:phase-transaction-ownership`, update `rendering/workflow-skill-templates:plan-task-detail-modes`, update `rendering/workflow-skill-templates:maintainable-code-subagent-contract`, update `rendering/workflow-skill-templates:implementer-role-contract`, update `rendering/pi-runtime:pi-implementation-state-boundary`, update `rendering/pi-workflows:pi-structured-exploration-contract`, update `rendering/pi-workflows:pi-implement-role-artifact`

@@ -457,7 +457,7 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 		"approved outcome, material scope, settled durable boundaries, and required verification",
 		"Diagnose a source contradiction, correctness or safety concern, review finding, blocker symptom, or failed check",
 		"reasoned non-mechanical deviation that another owner or reviewer can rely on records its changed detail, rationale, governing authority, and verification",
-		"commit-capable owner may add an omitted path",
+		"The parent may add an omitted path",
 		"necessary to complete the approved outcome",
 		"An omitted path alone is not a reason to stop",
 		"Do not replan the approved outcome, broaden material scope, overturn settled durable choices, weaken an oracle, or perform unrelated cleanup",
@@ -790,7 +790,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "no independent need for brainstorming", "material choice or clarification", "Re-evaluate planning", "only when that independent need fires", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"subagent-driven-development": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled durable choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "explicitly identify the parent-supplied approved boundary", "allowCommits: true", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
+			"docs/maintainable-code-design.md", "preserve the plan's settled durable choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "explicitly identify the parent-supplied approved boundary", "commit-disabled implementation child", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"bugfix": {wants: []string{
 			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "For materially larger work, route the disposition through the active workflow's design discussion", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
@@ -865,12 +865,12 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 		{
 			name: "Pi", data: map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout(), "targetSubagentTools": true},
 			dispatch: "known clean and green baseline", review: "Review is report-only and phase-level", reportOnly: "parent-owned",
-			wants: []string{"allowCommits: true", "complete phase", "explicitly identify the parent-supplied approved boundary", "stages the complete transaction"},
+			wants: []string{"commit-disabled implementation child", "complete phase", "explicitly identify the parent-supplied approved boundary", "parent independently inventories the checkout"},
 		},
 		{
 			name: "generic", data: data,
 			dispatch: "known clean and green baseline", review: "Review is report-only and phase-level", reportOnly: "parent-owned",
-			wants: []string{"complete phase", "explicitly identify the parent-supplied approved boundary", "stages the complete transaction"},
+			wants: []string{"commit-disabled implementation child", "complete phase", "explicitly identify the parent-supplied approved boundary", "parent independently inventories the checkout"},
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -898,14 +898,14 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 		"Resolve implementation findings autonomously",
 		"applicable ADRs, current-state claims, and repository authority",
 		"reasoned non-mechanical deviation that another owner or reviewer can rely on records its changed detail, rationale, governing authority, and verification",
-		"commit-capable owner may add an omitted path",
+		"The parent may add an omitted path",
 		"An omitted path alone is not a reason to stop",
-		"report an added path only when another owner or reviewer can rely on that material change",
-		"In helper mode, never modify an unassigned path",
-		"necessity to the parent so it can preserve the ownership partition",
+		"implementation child reports the necessity",
+		"never modifies an unassigned path",
 		"Do not replan the approved outcome, broaden material scope",
 		"or perform unrelated cleanup",
-		"`deviations: none` or each deviation with changed detail, rationale, governing authority, and verification",
+		"`deviations: none` or each changed detail, rationale, governing authority",
+		"and verification, plus deliberately out-of-scope work",
 		"current and target owner",
 		"residual debt",
 	} {

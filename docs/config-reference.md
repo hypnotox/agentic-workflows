@@ -102,7 +102,7 @@ Each var is consumed only while a rendered artifact references it. State reads: 
 declined; the generic prose renders).
 
 - `gateCmd`: Command that runs the fast pre-commit gate. Consumed while a rendered artifact's template references it, by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel), and by divergent effort-integration guidance.
-  State: set (`./x gate`). Consumed by: agent implementer, agents-doc, hooks pre-commit, hooks pre-push, skill adr-lifecycle, skill executing-plans, skill retrospective, skill reviewing-impl, skill subagent-driven-development, skill writing-plans.
+  State: set (`./x gate`). Consumed by: agents-doc, hooks pre-commit, hooks pre-push, skill adr-lifecycle, skill executing-plans, skill retrospective, skill reviewing-impl, skill subagent-driven-development, skill writing-plans.
 - `gateCmdFull`: Command for terminal exhaustive verification, if the project has one. Terminal exhaustive verification command, consumed while a rendered artifact's template references it.
   State: set (`./x gate full`). Consumed by: hooks pre-push.
 - `checkCmd`: Command that checks rendered output for drift. Leave empty to run through the always-rendered `./awf` wrapper. Consumed while a rendered artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.

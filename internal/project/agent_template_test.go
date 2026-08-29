@@ -272,35 +272,28 @@ func TestImplementerAgent(t *testing.T) {
 	}
 	// One phrase per contract clause, so a dropped clause fails loudly.
 	for _, want := range []string{
-		"Scoped implementation subagent for example",
-		"Phase owner",
-		"commits disabled",
-		"act as a helper and say so in your report",
+		"Commit-disabled implementation child for example work",
+		"commit-disabled implementation child",
+		"commits are forbidden",
+		"The parent alone owns integration",
 		"Your brief is the whole job",
-		"In phase-owner mode, an omitted path alone is not a reason to stop",
-		"report an added path only when another owner or reviewer can rely on that material change",
-		"In helper mode, never modify an unassigned path",
-		"necessity to the parent so it can preserve the ownership partition",
+		"report an omitted necessary path to the parent",
+		"implementation child reports the necessity",
 		"adding an abstraction with no current call site",
-		"Its skill catalog and workflow-chain routing do not bind you",
-		"no workflow skill, create or resume no effort, and write to no working-memory file",
+		"workflow-chain routing do not bind you",
+		"invoke no workflow skill, create or resume no effort",
 		"Iterating on failures is the work",
-		"Never make a check pass by weakening what it proves",
+		"Never weaken an assertion, golden, fixture, or check",
 		"There is nobody to wait for",
-		"That report is the escalation",
-		"`./awf check staged`",
-		"`make gate`",
-		// Each enumerated stopped field and owner step gets its own want, since
-		// section parity catches only whole-section loss, not intra-section drift.
-		"Stage the complete transaction explicitly, by path",
-		"Create exactly one commit",
-		"the exact output of `git status --short`",
-		"what you completed",
-		"what remains",
-		"either the failing required check, named, with its actual output",
+		"stopped receipt for the parent",
+		"fast gates",
+		"terminal exhaustive verification",
+		"starting and ending HEAD and",
+		"completed and remaining work",
+		"named failing required check with actual output",
 		"`deviations: none`",
 		"changed detail, rationale, governing authority, and verification",
-		"what you already tried, so the next attempt does not repeat it",
+		"what was already tried",
 		"There is no third outcome",
 		"The invariants, conventions, and commands in the repository's agent guide bind you",
 		"current and target owner",
@@ -317,8 +310,8 @@ func TestImplementerAgent(t *testing.T) {
 	}
 	returnSchema := out[returnStart:]
 	for _, want := range []string{
-		"narrow authority conflict",
-		"required authority change",
+		"narrow authority",
+		"conflict, required authority change",
 		"material outcome or scope change",
 		"unresolved design fork",
 		"unsafe completion",
@@ -368,7 +361,7 @@ func TestImplementerAgent(t *testing.T) {
 			t.Errorf("executing-plans lost the explicit subject %q:\n%s", subject, inline)
 		}
 	}
-	if !strings.Contains(inline, "You inventory each return") {
+	if !strings.Contains(inline, "You independently inventory each return") {
 		t.Errorf("executing-plans' batch imperatives lost their explicit subject:\n%s", inline)
 	}
 }

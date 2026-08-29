@@ -10,8 +10,8 @@ Pi loads generated project-extension code only after project trust. The retained
 `subagent_grounding`, whose required `task` carries the workflow's premise and altitude check;
 `subagent_explore`, which requires `{task, breadth, detail}` with breadth `targeted`, `bounded`, or
 `broad` and independently selected detail `paths`, `summary`, or `analysis`; `subagent_review_code`,
-which takes a required review `task`; and `subagent_implement`, which takes required `task` and
-`allowCommits` plus optional `verificationCheckout`. Full additionally exposes
+which takes a required review `task`; and `subagent_implement`, which takes required `task` plus
+optional `verificationCheckout`. Full additionally exposes
 `subagent_review_adr` and `subagent_review_plan`, each with a required review `task`. Omission verifies the project-root checkout.
 An explicit value resolves relative to the project root after one leading `@` is removed, must be
 an exact live checkout root for the same Git common directory, and must be the parent checkout or a canonical accessible descendant. It is the implementation child's base CWD and the before-and-after commit-policy snapshot identity. Omission keeps both at the project root. This alignment does not bind deliberately targeted mutation paths or move the parent Pi session.
@@ -40,16 +40,7 @@ transaction, offers an embedded recommended preset only when every referenced mo
 registered and authenticated, presents per-model pricing with request-wide tiers distinguished
 from base rates alongside context and output limits and capability markers, enforces the
 repository gitignore rule at save time, persists atomically, and leaves the file unchanged on
-cancellation. Long implementations select ownership independently per phase so one plan may mix modes. A
-subagent-driven phase has one commit-capable owner from a clean green baseline through staged check,
-gate, and its closing commit, while inline phases remain parent-owned. Heading-identified tasks are ordered
-steps, not transaction or checkpoint boundaries. Explicit batch helpers stay sequential and
-commit-disabled, receive path-disjoint subsets, never own shared files, and return to the parent for
-integration. The parent owns report-only review settlement and checkpoints only after findings
-resolve. A dirty stop is inventoried before the parent completes inline, restores and restarts the
-complete phase, or transfers the complete revised phase with recovery context; blind task-level
-succession is forbidden. This guidance does not promise runtime phase enforcement; Pi serialization
-and exclusive implementation-tool batching are unchanged.
+cancellation. Long implementations may mix inline and subagent-driven execution, but the parent owns every transaction in either mode: integration, explicit staging, staged checks, commits, fast gates, and terminal exhaustive verification. Heading-identified tasks are ordered steps, not transaction or checkpoint boundaries. Every implementation child is commit-disabled, stays sequential, receives a path-confined subset, and returns a structured focused-evidence receipt. The parent inventories the real checkout, rejects boundary violations, confirms the reported end state and unchanged HEAD, and reuses focused evidence only while checkout, relevant authority, and overlapping paths remain unchanged. Unverifiable state or overlapping later mutation invalidates affected evidence; no receipt replaces a parent gate. This guidance does not promise shell-command interception; Pi proves selected-HEAD identity while rendered contracts govern child behavior. Pi serialization and exclusive implementation-tool batching are unchanged.
 
 Exploration treats breadth as an adaptive maximum. Not-found is successful execution; broad absence
 names the project search universe and searched surfaces. After not-found, inconclusive, unverified,
@@ -58,8 +49,7 @@ detail, or widen breadth. Give each child one independent information need and f
 selecting breadth, detail, and model tier per child. A fan-out may combine a large analysis child with
 small targeted paths or summary children. Refinement that depends on a prior result remains
 sequential. Grounding, exploration, and review follow awf's no-mutation profile policy.
-Implementation must run alone in its parent tool batch, remains sequential, and may commit only when
-the orchestrator sets `allowCommits: true`. When a task explicitly operates in a supplied managed
+Implementation must run alone in its parent tool batch and remains sequential and commit-disabled. When a task explicitly operates in a supplied managed
 worktree, the caller sets `verificationCheckout` to that path and keeps actual mutation paths
 explicit; root work omits the field. In Pi, model omission uses the configured role default and an
 exact tier reference is supplied only for a deliberate override.

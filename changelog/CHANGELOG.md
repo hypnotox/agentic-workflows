@@ -10,9 +10,13 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Pi implementation profiles no longer accept `allowCommits`; every implementation child is commit-disabled and selected-HEAD verification fails closed when either snapshot is unavailable or HEAD changes.
+
 - Split the fast commit gate from terminal full verification and end Windows release support.
 
 ### Features
+
+- Parents now exclusively integrate, stage, check staged state, commit, run fast gates, and perform terminal exhaustive verification. Implementation children return structured focused-evidence receipts that parents inventory and reuse only while checkout, authority, and overlapping paths stay fresh.
 
 - Add separate fail-closed affected-package behavioral feedback with complete reverse-dependent selection, declared meta-suites, visible conservative widening, and unchanged commit and terminal gates.
 

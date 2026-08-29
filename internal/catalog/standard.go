@@ -186,8 +186,8 @@ var Standard = &Catalog{
 		// the dispatching parent.
 		"implementer": {
 			Name:        "implementer",
-			Description: "Scoped implementation subagent for {{ .prefix }} work, dispatched either as a commit-capable phase owner or as a commit-disabled path-confined helper.\nReturns a structured completed or stopped report.",
-			Sections:    []string{"identity", "task-scope", "guide-authority", "green-obligation", "escalation", "owner-transaction", "return-schema"},
+			Description: "Commit-disabled implementation child for {{ .prefix }} work.\nReturns a structured completed or stopped focused-evidence receipt.",
+			Sections:    []string{"identity", "task-scope", "guide-authority", "green-obligation", "escalation", "return-schema"},
 			Data: map[string]any{
 				"prohibitedShortcuts": []any{
 					map[string]any{"description": "adding an abstraction with no current call site, on the argument that a later change will use it"},
