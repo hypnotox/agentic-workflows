@@ -54,6 +54,7 @@ The current context exclusion list serves the removed navigation census and also
 - add `invariants/current-state-authority:production-packages-domain-owned`
 - add `invariants/current-state-authority:domain-owned-coverage-no-ignore`
 - update `rendering/sync-and-drift:managed-output-attribution`
+- update `rendering/project-output-plan:check-report-single-plan`
 - update `code-design/dependency-composition:repository-layer-direction`
 - update `code-design/dependency-composition:repository-extraction-owners`
 - update `code-design/state-ownership:project-derived-state-ownership`
@@ -138,3 +139,5 @@ Rendered workflow guidance continues to obey the existing publication-safe unset
 
 - 2026-08-29: Amended; content-sha256: fdf3be3686c9640549c28cee22d7dbe7fdccccbf888d9ad75c6d2b439787b576
 - 2026-08-29: Applied; operations: update `code-design/dependency-composition:repository-extraction-owners`, update `tooling/audit-and-snapshots:managed-history-decode-horizon`
+
+- 2026-08-29: Amended; content-sha256: e9ed9f51851f0d3e13dc62208ad7e3c67f5e7658e971cc174489653c469939cf
