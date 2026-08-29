@@ -109,9 +109,11 @@ evidence before inventory. A completed receipt means only that assigned implemen
 feedback finished; it never implies a commit or terminal verification.
 
 Every receipt identifies: assigned scope; canonical checkout; starting and ending HEAD and
-`git status --short`; changed paths; each exact focused command with cwd, argv, exit status, and
-actual result; completed and remaining work; deviations; separately routed blockers; and applicable
-generated-output or fixture evidence.
+`git status --short`; changed paths; each exact focused command with cwd, argv, exit status, and actual result;
+whether it ran after the last mutation to every overlapping path; completed and remaining work;
+deviations; separately routed blockers; and applicable generated-output or fixture evidence.
+Only a focused command explicitly reported as final-state is reusable; label every command
+`final-state: true` or `final-state: false`.
 
 **completed** includes `deviations: none` or each changed detail, rationale, governing authority,
 and verification, plus deliberately out-of-scope work and focused generated-prose meaning-review
@@ -125,7 +127,7 @@ unsafe completion, or persistently unreachable verification boundary; it also in
 completed, what remains, exact `git status --short`, and what was already tried.
 
 There is no third outcome. The parent independently inventories the real checkout, validates path
-confinement and reported end state, confirms unchanged HEAD, and reuses focused evidence only while
-checkout identity, relevant authority, and overlapping paths remain unchanged. Lost or unverifiable
-evidence and later overlapping mutation invalidate the affected receipt. No receipt substitutes for
-a parent-owned gate.
+confinement and reported end state, confirms unchanged HEAD, and reuses only explicitly final-state
+focused results while checkout identity, relevant authority, and overlapping paths remain unchanged.
+It reruns any non-final or unverifiable result. Lost or unverifiable evidence and later overlapping
+mutation invalidate the affected receipt. No receipt substitutes for a parent-owned gate.

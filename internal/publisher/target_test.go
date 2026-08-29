@@ -1122,6 +1122,8 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"commitVerification: verified ? \"verified\" : \"unavailable\"",
 		"commitVerification: COMMIT_VERIFICATION_SCHEMA",
 		"Implementation changed HEAD",
+		"restore the recorded before-run HEAD",
+		"before redispatch",
 		"Implementation verification unavailable",
 		"resolveVerificationCheckout",
 		`requested.startsWith("@") ? requested.slice(1) : requested`,

@@ -294,6 +294,8 @@ func TestImplementerAgent(t *testing.T) {
 		"changed paths",
 		"exact focused command with cwd, argv, exit status",
 		"actual result",
+		"ran after the last mutation to every overlapping path",
+		"Only a focused command explicitly reported as final-state is reusable",
 		"completed and remaining work",
 		"separately routed blockers",
 		"generated-output or fixture evidence",
