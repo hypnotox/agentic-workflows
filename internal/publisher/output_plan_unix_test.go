@@ -59,7 +59,7 @@ func TestFilesystemProjectReaderReadLinesAcceptsExactMarkerBoundary(t *testing.T
 				return nil
 			})
 			if tc.wantErr {
-				if err == nil || visits != 0 {
+				if err == nil || !strings.Contains(err.Error(), "line exceeds 4194304 bytes") || visits != 0 {
 					t.Fatalf("over-bound read visits=%d error=%v", visits, err)
 				}
 				return

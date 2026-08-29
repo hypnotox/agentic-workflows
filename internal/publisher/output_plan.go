@@ -107,7 +107,7 @@ func (r filesystemProjectReader) ReadLines(path string, maxLineBytes int, visit 
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, min(64*1024, maxLineBytes+1)), maxLineBytes+1)
+	scanner.Buffer(make([]byte, min(64*1024, maxLineBytes+2)), maxLineBytes+2)
 	for scanner.Scan() {
 		line := scanner.Text()
 		if len(line) > maxLineBytes {
