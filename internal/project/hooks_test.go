@@ -232,7 +232,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	for name, body := range map[string]string{
 		"awf":  "#!/usr/bin/env bash\nprintf 'policy:%s\\n' \"$*\" >>\"$HOOK_LOG\"\n[[ ! -e \"$HOOK_FAIL\" ]]\n",
 		"gate": "#!/usr/bin/env bash\nprintf 'gate:%s\\n' \"$*\" >>\"$HOOK_LOG\"\n",
-		"git":   "#!/usr/bin/env bash\nif [[ -n \"${HOOK_FORBID_REMOTE:-}\" && \"${1:-}\" == ls-remote ]]; then\n  printf 'remote:%s\\n' \"$*\" >>\"$HOOK_REMOTE_LOG\"\n  exit 97\nfi\nexec " + shellQuote(realGit) + " \"$@\"\n",
+		"git":  "#!/usr/bin/env bash\nif [[ -n \"${HOOK_FORBID_REMOTE:-}\" && \"${1:-}\" == ls-remote ]]; then\n  printf 'remote:%s\\n' \"$*\" >>\"$HOOK_REMOTE_LOG\"\n  exit 97\nfi\nexec " + shellQuote(realGit) + " \"$@\"\n",
 	} {
 		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0o755); err != nil {
 			t.Fatal(err)
