@@ -38,33 +38,41 @@ reporting any committed source or publication effects honestly.
    `agent`, and `domain`; configured local documents use `doc`. Names, parts, and fields resolve
    through catalog and project semantics rather than rendered-output or `.awf` paths.
 2. `decision: direct-part-input` Part editing creates or replaces the selected body from exactly one
-   direct `--content` value or stdin input. Part reset removes the authored override and restores its
-   inherited default. The common path invokes no editor and requires no temporary input file.
+   `--content <text>` value or `--stdin` input. Part reset removes the authored override and restores
+   its inherited default. The common path invokes no editor and requires no temporary input file.
 3. `decision: leaf-sidecar-mutation` A sidecar field is a leaf-only dotted semantic path, including
    data keys, data-default controls, section drop controls, and the domain paths leaf. Editing accepts
-   exactly one whole scalar, whole JSON, scalar-list add or remove, or JSON-list add or remove
-   operation. Adds and removes are idempotent under scalar or structural equality, preserve retained
-   list order, and require the complete structured value for JSON removal. Reset removes the leaf,
-   prunes empty parent mappings, and removes a sidecar that has no authored fields left.
+   exactly one of `--value <text>`, `--json-value <json>`, `--add <text>`, `--add-json <json>`,
+   `--remove <text>`, or `--remove-json <json>`. Scalar flags carry strings and JSON flags carry
+   structured values. Adds and removes are idempotent under scalar or structural equality, preserve
+   retained list order, and require the complete structured value for JSON removal. Reset removes
+   the leaf, prunes empty parent mappings, and removes a sidecar that has no authored fields left.
+   Sidecar mutation uses the configuration owner's YAML-node round trip, preserving unrelated
+   comments and ordering rather than re-marshaling the complete typed sidecar.
 4. `decision: capability-aware-resolution` Authorability is a capability of the selected kind,
    artifact, part, and field combination rather than a document-wide generated or non-generated
    classification. Unsupported combinations and intermediate mapping replacement are rejected.
    Structured input and the complete candidate project are validated before source publication.
+   Candidate validation and ordinary rendering preserve existing template semantics, including
+   `missingkey=zero` behavior and the prohibition on emitted no-value tokens for empty strings.
 5. `decision: local-document-body` A configured local document exposes only the synthetic part
    `body`. Edit replaces only that in-place body; reset restores the local-document template default,
    currently empty, while preserving the declaration and awf-owned shell. In-place boundary parsing
    has one semantic owner shared with ordinary publication behavior.
 6. `decision: validated-publication-transaction` Each authoring operation acquires the complete
    applicable lease, observes exact source identities internally, validates one overlaid candidate
-   universe without mutation, publishes the authored source through the confined filesystem
-   boundary, reloads committed authority, and invokes ordinary render and synchronization. A failure
-   before source publication changes no bytes. A later failure reports authoring-owned source and
-   setup effects separately from publisher effects, with actionable recovery steps; the operation
-   claims no crash atomicity.
+   universe through both configuration and project-tree readers without mutation, publishes the
+   authored source through the confined filesystem boundary, reloads committed authority, and
+   invokes ordinary render and synchronization. A failure before source publication changes no
+   bytes. A later failure reports authoring-owned source and setup effects separately from publisher
+   effects, with actionable recovery steps; the operation claims no crash atomicity.
 7. `decision: friction-boundary` The commands expose no expected SHA or other concurrency token,
    no path-based identity, no arbitrary intermediate-mapping replacement, and no batch-mutation
    language. Sidecar mutation remains under `edit sidecar` rather than introducing a top-level `set`
    family.
+8. `decision: current-state-assurance` The three added State changes are test-backed invariants, and
+   the updated local-document-body claim remains a test-backed invariant. Implementation supplies
+   the corresponding `invariant:` test evidence with each applied claim operation.
 
 ## State changes
 
@@ -104,6 +112,7 @@ authoring and awf validation.
 | Add `awf set sidecar` | Creates a broad top-level family for one specialized authoring target instead of keeping edit and reset parallel. |
 | Require an expected SHA from the caller | Adds read-before-write ceremony, especially for fresh content, while the filesystem boundary can enforce observed identity internally. |
 | Mutate the source without rendering | Leaves generated outputs and the lock stale after the nominally successful low-friction operation. |
+| Add batch mutation | Expands grammar, validation, and partial-outcome complexity beyond focused, retryable single-part and single-leaf operations. |
 | Re-marshal complete typed sidecars | Loses unrelated YAML comments and representation details and bypasses the established YAML-node ownership model. |
 | Promise rollback or crash atomicity across the transaction | Conflicts with existing honest partial-effect semantics and cannot cover process or filesystem failure reliably. |
 
