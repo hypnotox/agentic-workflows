@@ -18,9 +18,9 @@ The current context exclusion list serves the removed navigation census and also
 ## Decision
 
 1. `decision: external-navigation-boundary` CodeGraph is the expected and documented owner of source discovery, architecture, callers, dependencies, and impact analysis; Git owns changed-path selection. awf will not retain a parallel general context or relevance engine.
-2. `decision: focused-authority-commands` awf will expose only focused read-only authority operations: verb-subject topic and ADR reads, exact path-to-topic resolution that reports owning domains and applicable topics or explicit absence, and one whole-repository unowned-path census. Query absence succeeds, while `awf check` remains the enforcement owner.
-3. `decision: relevance-metadata-retirement` awf will remove the active tag vocabulary and pitfall tags while retaining pitfall domains, remove `state:` and `touches-state:` markers while retaining `invariant:` proof markers, and remove the context exclusion surface without replacement. Frozen legacy ADR tags remain historical parser compatibility rather than live vocabulary.
-4. `decision: governance-core-retained` Domains, topic selectors, current claims, proof backing, authority coverage and fan-out, ADR-to-claim transitions, parsed plan links, generated-output provenance, publication, and drift remain with their existing semantic owners because CodeGraph does not replace them.
+2. `decision: focused-authority-commands` awf will expose only `awf read topic <domain>/<topic>[:<claim>]`, `awf resolve topic <path>...`, `awf resolve topic --uncovered`, and `awf read adr <identity>`. Path resolution reports owning domains and applicable topics or explicit absence, the uncovered form accepts no scan roots, and ADR reads report lifecycle status, canonical operation progress, and parsed linked plans by default. Query absence succeeds, while `awf check` remains the enforcement owner.
+3. `decision: relevance-metadata-retirement` awf will remove the active tag vocabulary and pitfall tags while retaining optional validated pitfall domains and their generated domain grouping, remove `state:` and `touches-state:` markers while retaining `invariant:` proof markers, and remove the context exclusion surface without replacement. Frozen legacy ADR tags remain historical parser compatibility rather than live vocabulary.
+4. `decision: governance-core-retained` Domains, topic selectors, current claims, proof backing, authority coverage and fan-out, ADR-to-claim transitions, parsed plan links, generated-output planning and provenance, publication, and drift remain with their existing semantic owners because CodeGraph does not replace them.
 5. `decision: clean-cutover` The obsolete context command, projections, compatibility aliases, packages, spill behavior, and context-only publisher observations will be removed rather than deprecated. Upgrade will migrate live config and pitfall sources before strict decoding; arbitrary retired navigation comments may remain inert in adopter-owned source.
 
 ## State changes
@@ -56,9 +56,11 @@ The current context exclusion list serves the removed navigation census and also
 - remove `invariants/current-state-authority:uncovered-lists-unowned-unignored`
 - add `invariants/current-state-authority:uncovered-lists-unowned`
 - update `invariants/current-state-authority:accepted-authority-is-pending-only`
+- update `invariants/current-state-authority:accepted-does-not-override-current`
 - update `invariants/current-state-authority:current-state-sole-active-authority`
 - update `invariants/current-state-authority:historical-rationale-is-explicit`
 - update `invariants/topics-and-markers:claim-id-qualified`
+- update `invariants/topics-and-markers:invariant-marker-close-token`
 - update `invariants/topics-and-markers:invariants-three-state`
 - remove `invariants/topics-and-markers:relevance-markers-only-narrow`
 - remove `invariants/topics-and-markers:touches-marker-advisory`
@@ -71,6 +73,10 @@ The current context exclusion list serves the removed navigation census and also
 - remove `config/validation:tag-not-domain-name`
 - update `rendering/doc-outputs:pitfall-corpus-validated`
 - update `rendering/workflow-skill-templates:implementer-context-grounding`
+- update `rendering/workflow-skill-templates:implementer-role-contract`
+- update `rendering/workflow-skill-templates:explorer-and-grounding-role-contracts`
+- update `rendering/workflow-skill-templates:orienting-single-home`
+- update `rendering/workflow-skill-templates:closed-workflow-profiles`
 - update `adr-system/adr-lifecycle:corpus-owns-status-literals`
 - update `tooling/cli:explicit-output-bypasses`
 - update `tooling/cli:check-severity-by-protected-property`
@@ -82,7 +88,9 @@ The general context subsystem, its delivery protocol, and its manual relevance i
 
 Path resolution remains useful for proposed files and therefore reports absence without failing. The whole-repository census retains visibility into paths outside every configured domain without restoring scan-root selection. Coverage remains stricter because a domain-owned path has no ignore escape hatch.
 
-Existing projects require a schema migration that removes config tags, context exclusions, and pitfall tag frontmatter before the new strict parser runs. Retired source markers outside awf's owned config tree are harmless inert comments rather than a reason to mutate arbitrary adopter source. Legacy ADR bytes remain parseable for append-only history.
+Existing projects require a schema migration that removes config tags, context exclusions, and pitfall tag frontmatter before the new strict parser runs. Config parsing and rendering stop carrying those fields, migration removes them before strict decoding, and output-plan hashes and the lock manifest converge on the reduced inputs without a compatibility reader. Retired source markers outside awf's owned config tree are harmless inert comments rather than a reason to mutate arbitrary adopter source. Legacy ADR bytes remain parseable for append-only history.
+
+Rendered workflow guidance continues to obey the existing publication-safe unset-variable contract: empty values preserve coherent text and emit no unresolved or no-value token.
 
 ## Alternatives Considered
 
@@ -92,6 +100,7 @@ Existing projects require a schema migration that removes config tags, context e
 | Shrink `awf context` in place | Retains an overloaded command boundary instead of assigning focused authority operations to their semantic owners. |
 | Remove all path-to-authority lookup | CodeGraph cannot infer normative domain and topic applicability. |
 | Keep tags as prose taxonomy | Maintains a second governed vocabulary and heuristic checks for navigation that no longer justifies its cost. |
+| Keep built-in navigation to avoid an external expectation | Avoids reliance on user-provided CodeGraph, but retains the duplicate machinery whose removal supplies the intended simplification. |
 | Remove proof markers with navigation markers | CodeGraph cannot express the authored test-to-invariant backing assertion. |
 
 ## Status history
