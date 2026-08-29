@@ -220,6 +220,8 @@ func commandRoutes() map[string]commandRoute {
 		{"adr number", "adr", "runADR", []string{"github.com/hypnotox/agentic-workflows/internal/currentstatecoord.NumberPendingADRsLeased"}, false},
 		{"list", "list", "runList", []string{"github.com/hypnotox/agentic-workflows/internal/project.BuildListDocument"}, false},
 		{"config", "config", "runConfig", []string{"github.com/hypnotox/agentic-workflows/internal/configop.Run"}, false},
+		{"edit sidecar", "edit", "runSidecarAuthoring", []string{"github.com/hypnotox/agentic-workflows/internal/authoringop.Run"}, false},
+		{"reset sidecar", "reset", "runSidecarAuthoring", []string{"github.com/hypnotox/agentic-workflows/internal/authoringop.Run"}, false},
 		{"new adr", "new", "newADR", []string{"github.com/hypnotox/agentic-workflows/internal/project.NewADRLeased"}, false},
 		{"new plan", "new", "newPlan", []string{"github.com/hypnotox/agentic-workflows/internal/project.NewPlanLeased"}, false},
 		{"new topic", "new", "newTopic", []string{"github.com/hypnotox/agentic-workflows/internal/topicop.CreateLeased"}, false},
