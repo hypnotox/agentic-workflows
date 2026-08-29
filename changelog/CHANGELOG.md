@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.42.0] - 2026-08-29
+
 ### Breaking changes
 
 - Generated Pi effort integration now uses `pi-cockpit:*` events and `PiCockpit*` structural types exclusively. There are no `remote-pi:*` aliases; adopters must upgrade awf and Pi Cockpit together.
