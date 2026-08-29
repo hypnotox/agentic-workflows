@@ -186,9 +186,6 @@ func TestGlobalTopicPathOwnership(t *testing.T) {
 	if !reflect.DeepEqual(applicability.ApplicablePaths, paths) || !reflect.DeepEqual(applicability.OwnedPaths, []string{"internal/owned/a.go"}) {
 		t.Fatalf("applicability = %#v", applicability)
 	}
-	if got := TopicsForPath(corpus, "outside/elsewhere.go"); len(got) != 1 || got[0].ID != owner.ID {
-		t.Fatalf("global applicability outside ownership = %#v", got)
-	}
 	gotCoverage := EvaluateCoverage(corpus, paths, CoveragePolicy{Coverage: true})
 	wantCoverage := []CoverageFinding{
 		{Path: "internal/elsewhere.go", Domain: "core", Kind: Uncovered, Severity: severity.Error, CandidateTopics: []string{"core/global-owner"}},

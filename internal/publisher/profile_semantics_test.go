@@ -12,7 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-const governanceFootprintContract = "Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, context, and audit capabilities."
+const governanceFootprintContract = "Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, and audit capabilities."
 
 // invariant: rendering/workflow-skill-templates:closed-workflow-profiles (TestGovernanceFootprintsShareQualityBar)
 func TestGovernanceFootprintsShareQualityBar(t *testing.T) {

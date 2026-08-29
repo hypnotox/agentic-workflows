@@ -36,7 +36,7 @@ Since ADR-0188, post-first-stamp status flips are content-pure: a post-Accepted 
 
 ## Decomposing the `internal/project` god object
 
-ADR-0195 executed the split: `internal/contextq` owns ContextState querying and `internal/resident` owns resident-root policy and anchoring; the core retains cycle-bound sync. Its empirical cluster map, verified cycles, and per-symbol coupling census justify the reversed sequencing, while `code-design/dependency-composition` owns generic dependency direction. Still open: a future package-cohesion pattern owning `receiver-reads-owned-state` (methods read a receiver field; otherwise take parameters), and any further core decomposition. ADR-0195 accepted both as future effort rather than silent scope.
+ADR-0195's empirical cluster map, verified cycles, and per-symbol coupling census supported extracting resident-root policy and anchoring into `internal/resident`, while `code-design/dependency-composition` owns generic dependency direction. Still open: a future package-cohesion pattern owning `receiver-reads-owned-state` (methods read a receiver field; otherwise take parameters), and any further core decomposition. ADR-0195 accepted both as future effort rather than silent scope.
 
 ## A `coverage-ignore` the profile records as executed is a false ignore
 

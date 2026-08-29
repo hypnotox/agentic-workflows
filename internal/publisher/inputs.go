@@ -257,14 +257,6 @@ func clonePlans(plans []plan.Plan) []plan.Plan {
 	return out
 }
 
-func freezeInputs(inputs []OutputInput) []outputplan.Input {
-	out := make([]outputplan.Input, len(inputs))
-	for i, input := range inputs {
-		out[i] = outputplan.NewInput(input.Path, input.Role)
-	}
-	return out
-}
-
 func freezeOutput(file RenderedFile) outputplan.Output {
 	return outputplan.NewOutput(outputplan.OutputSpec{
 		Path: file.Path, Content: file.Content, TemplateID: file.TemplateID,
@@ -275,16 +267,8 @@ func freezeOutput(file RenderedFile) outputplan.Output {
 		Assembled: file.assembled, StubDefaults: file.stubDefaults,
 		StubParts: file.stubParts, MarkerParts: file.markerParts,
 		Kind: file.kind, Artifact: file.artifact, PartVarRefs: file.partVarRefs,
-		ConsumedInputs: freezeInputs(file.ConsumedInputs), ObservedTemplateID: file.ObservedTemplateID,
+		ObservedTemplateID: file.ObservedTemplateID,
 	})
-}
-
-func freezeDeclarations(declarations []OutputDeclaration) []outputplan.Declaration {
-	out := make([]outputplan.Declaration, len(declarations))
-	for i, declaration := range declarations {
-		out[i] = outputplan.NewDeclaration(declaration.Path, declaration.TemplateID, declaration.Declarers, freezeInputs(declaration.Inputs), declaration.Dependencies)
-	}
-	return out
 }
 
 func freezePlan(plan *OutputPlan) outputplan.Plan {
@@ -299,12 +283,10 @@ func freezePlan(plan *OutputPlan) outputplan.Plan {
 		nodes = append(nodes, outputplan.NewNode(outputplan.NodeSpec{
 			Path: node.Path, Recipe: recipe, Policy: node.Policy,
 			Declarers: node.Declarers, DeclarerProjections: node.DeclarerProjections,
-			DependsOn: node.DependsOn, ConsumedInputs: freezeInputs(node.ConsumedInputs),
-			ObservedTemplateID: node.ObservedTemplateID, Output: output,
+			DependsOn: node.DependsOn, ObservedTemplateID: node.ObservedTemplateID, Output: output,
 		}))
 	}
-	declarations := freezeDeclarations(plan.Declarations)
-	return outputplan.New(nodes, declarations)
+	return outputplan.New(nodes)
 }
 
 // BuildConfigReference derives the live configuration reference from this operation's plan.

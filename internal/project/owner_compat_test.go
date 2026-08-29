@@ -28,7 +28,7 @@ func ownerPlan(files []RenderedFile) outputplan.Plan {
 		out := outputplan.NewOutput(outputplan.OutputSpec{Path: file.Path, Content: file.Content, TemplateID: file.TemplateID, TemplateHash: file.TemplateHash, ConfigHash: file.ConfigHash, Policy: file.Policy, Assembled: file.assembled, Kind: file.kind, Artifact: file.artifact, PartVarRefs: file.partVarRefs})
 		nodes = append(nodes, outputplan.NewNode(outputplan.NodeSpec{Path: file.Path, Output: &out}))
 	}
-	return outputplan.New(nodes, nil)
+	return outputplan.New(nodes)
 }
 
 func compatibilityDrift(result checkresult.Result) []manifest.Drift {

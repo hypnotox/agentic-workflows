@@ -20,7 +20,7 @@ The glossary renders from two layers: a standard vocabulary the catalog ships in
 
 Pi extension entrypoints check their required runtime APIs before registering hooks. Handoff remains lifecycle-independent: workflow templates own effort checkpoint, approval, safe-point, reorientation, and handoff-log policy; bounded kickoff carries instructions while replacement mechanics own no memory policy. A matched replacement persists one visible default-rendered `agent-handoff` custom message with the exact agent-ownership envelope, triggers the next turn through the replacement-bound API, and uses the same envelope for editor recovery while the current provider adapter still carries its content as a user-role message. After queueing replacement it emits Remote Pi's optional continuation disposition, and an absent or failing listener cannot block handoff.
 
-Pi rendering governs five TypeScript outputs. Context usage is observational and transient: its unavailable form is publication-safe, model-window terminology is neutral, active-branch compactions are counted, and it has no warning or pressure action.
+Pi rendering governs the retained subagent and effort extension outputs through the fixed target descriptor. Independently installed `pi-tools` owns general context usage, handoff, scheduling, execution, and presentation.
 
 
 <!-- awf:template-source templates/domains/domain.md.tmpl -->

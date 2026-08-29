@@ -1,7 +1,7 @@
 {
   "version": 1,
   "modulePath": "github.com/hypnotox/agentic-workflows",
-  "universeSHA256": "35e4d0e15d5f8ee41c8c9cbf34f14115df2dc87a132a128247174b4926c03884",
+  "universeSHA256": "2bab558251e315755d2ff410216daa9343ec091ff2469ee80b6497174b44c622",
   "repository": [
     {
       "identity": {
@@ -11324,21 +11324,6 @@
     },
     {
       "identity": {
-        "file": "internal/outputplan/outputplan.go",
-        "start": {
-          "line": 45,
-          "column": 53
-        },
-        "end": {
-          "line": 45,
-          "column": 70
-        },
-        "statements": 1
-      },
-      "reason": "CodeGraph relevance delegation review of internal/outputplan/outputplan.go:45.53,45.70 1 in Role, branch `func (i Input) Role() ArtifactRole { return i.role }`. Output-plan integration tests exercise role-based declaration selection and generated provenance. This trivial immutable role accessor remains visible raw debt rather than adding an implementation-shaped getter test."
-    },
-    {
-      "identity": {
         "file": "internal/pitfall/pitfall.go",
         "start": {
           "line": 59,
@@ -15248,21 +15233,6 @@
     },
     {
       "identity": {
-        "file": "internal/snapshot/selection.go",
-        "start": {
-          "line": 80,
-          "column": 36
-        },
-        "end": {
-          "line": 80,
-          "column": 81
-        },
-        "statements": 1
-      },
-      "reason": "CodeGraph relevance delegation review of internal/snapshot/selection.go:80.36,80.81 1 in List, branch `func (i *Inventory) List() []Entry { return append([]Entry(nil), i.entries...) }`. Snapshot selection tests exercise immutable entries through staged and working-tree consumers. This defensive-copy getter body remains visible debt rather than adding a test coupled only to the one-line copy expression."
-    },
-    {
-      "identity": {
         "file": "internal/snapshot/working.go",
         "start": {
           "line": 29,
@@ -16841,21 +16811,6 @@
         "statements": 1
       },
       "reason": "Initial RF-009 admission of existing uncovered behavior at internal/topic/corpus.go:100.37,102.5 1 in function assembleCorpus, beginning `{ // coverage-ignore: one canonical pair owns each path-derived topic ID, and local duplicates f...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
-    },
-    {
-      "identity": {
-        "file": "internal/topic/coverage.go",
-        "start": {
-          "line": 170,
-          "column": 44
-        },
-        "end": {
-          "line": 170,
-          "column": 100
-        },
-        "statements": 1
-      },
-      "reason": "CodeGraph relevance delegation review of internal/topic/coverage.go:170.44,170.100 1 in TopicsForPath, branch `} } slices.SortFunc(out, func(a, b Topic) int { return strings.Compare(a.ID.String(), b.ID.String()) })`. Topic coverage tests exercise deterministic applicability and selector ordering with observable topic results. This comparator callback remains raw debt because adding a test that merely forces sort internals would not strengthen the ordering contract beyond the existing result assertions."
     },
     {
       "identity": {
@@ -25434,18 +25389,6 @@
           "end": {
             "line": 99,
             "column": 5
-          },
-          "statements": 1
-        },
-        {
-          "file": "internal/topic/coverage.go",
-          "start": {
-            "line": 170,
-            "column": 44
-          },
-          "end": {
-            "line": 170,
-            "column": 100
           },
           "statements": 1
         },

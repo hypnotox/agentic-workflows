@@ -16,7 +16,7 @@
 | adaptive maximum | An exploration breadth limit that starts with the cheapest targeted lookup, widens only on evidence, and reports exhaustion. |
 | anchored glob | awf's glob dialect, where a pattern matches a full slash-separated repo-relative path: `*.go` is top-level, `**/*.go` any depth, and `cmd/**` a subtree. |
 | application batch | One implicit terminal application or explicit Applied event containing a nonempty, duplicate-free unordered set of not-yet-applied operations. Its identity is its position in the owning ADR history. |
-| authoring comment | A whole-line `<!-- awf:comment ... -->` in a template default or convention part, stripped at ingestion. It carries qualified `touches-state:` tags. |
+| authoring comment | A whole-line `<!-- awf:comment ... -->` in a template default or convention part, stripped at ingestion. |
 | check-in | A deliberate stop naming the issue, options, recommendation, and blocked next action for the user. It differs from a continuity notice; a mandatory approval check-in is its unconditional approval subtype. |
 | checker-cmd idiom | A repo-only gate or release checker with a coverage-ignored `main` that exits a unit-tested `run(args, stdout, stderr) int` seam. |
 | claim | One globally identified normative unit of a current-state topic: a rule or invariant heading, prose, and canonical metadata. Its `<domain>/<topic>:<slug>` identity is targeted by markers and operations. |
@@ -31,7 +31,7 @@
 | current-state topic | A domain-owned document whose metadata and authored part define claims read by `awf read topic`, `awf resolve topic`, and `awf check`. Its claims, not ADRs, are current authority. |
 | decision index | The generated decisions index listing in-flight ADRs by number, title, and status and terminal ADRs as compact history. It does not infer currentness or render supersession chains. |
 | deletion-as-acknowledgement | The var three-state model: set is configured, present-but-empty is the seeded to-do, and absent is a deliberate permanent decline. |
-| domain paths | A domain's `paths:`-declared anchored-glob file territory, which bounds topic ownership, context, and coverage. |
+| domain paths | A domain's `paths:`-declared anchored-glob file territory, which bounds topic ownership, path resolution, and coverage. |
 | dominated operation | An applied update absorbed by an applied remove: retained as history but establishing no current claim or authority. |
 | drift | Divergence between a generated file and what the config would produce now, or between a declaration and reality. The check command is the oracle, and drift fails it. |
 | effort | One active slugged unit of continuity, owning a working-memory file when multi-step work, likely continuation, coordination, delegation, or durable observations make continuity materially useful. Work without that need uses none. |

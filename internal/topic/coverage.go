@@ -154,23 +154,6 @@ func EvaluateCoverage(c Corpus, paths []string, policy CoveragePolicy) []Coverag
 	return findings
 }
 
-// TopicsForPath returns the topics applicable to a repo-relative path: every
-// global topic plus every path-scoped topic whose effective scope (its owning
-// domain's paths intersected with the topic's own selectors) covers the path.
-// Scoped topics are domain-bounded; global topics remain applicable outside
-// their bounded ownership. Results are sorted by topic ID, so a caller's
-// per-file selection is deterministic.
-func TopicsForPath(c Corpus, path string) []Topic {
-	var out []Topic
-	for _, t := range c.all {
-		if topicMatchesPath(t, c.DomainPaths[t.ID.Domain], path) {
-			out = append(out, t)
-		}
-	}
-	slices.SortFunc(out, func(a, b Topic) int { return strings.Compare(a.ID.String(), b.ID.String()) })
-	return out
-}
-
 // coveredByDomain reports whether domain has a claim-bearing topic whose
 // bounded ownership covers path.
 func coveredByDomain(c Corpus, domain, path string) bool {

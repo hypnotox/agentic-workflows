@@ -24,7 +24,7 @@ import (
 // than supplying a rendered template value.
 var ProfileDescriptor = catalog.VarDescriptor{
 	Key: "profile", Kind: "enum", Target: "profile",
-	Description: "Governance footprint: Core includes the operational workflow; Full adds ADR, plan, current-state, context, and audit capabilities at the same quality bar.",
+	Description: "Governance footprint: Core includes the operational workflow; Full adds ADR, plan, current-state authority, and audit capabilities at the same quality bar.",
 	Default:     "core", Options: []string{"core", "full"},
 }
 

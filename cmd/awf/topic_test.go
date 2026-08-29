@@ -333,7 +333,7 @@ func TestReadTopicJSONIsRejectedBySpecAndDriver(t *testing.T) {
 	if code := run([]string{"awf", "read", "topic", "--help"}, &help, &stderr); code != 0 || stderr.Len() != 0 || strings.Contains(help.String(), "--json") {
 		t.Fatalf("read topic help exit=%d stdout=%q stderr=%q", code, help.String(), stderr.String())
 	}
-	if code := run([]string{"awf", "read", "topic", "schedule/contracts", "--json"}, &stdout, &stderr); code != 2 || stdout.Len() != 0 || !strings.Contains(stderr.String(), `unknown flag "--json"`) {
+	if code := run([]string{"awf", "read", "topic", "schedule/contracts", "--json"}, &stdout, &stderr); code != 2 || stdout.Len() != 0 || !strings.Contains(stderr.String(), `awf read topic: unknown flag "--json"`) || strings.Contains(stderr.String(), `awf topic:`) {
 		t.Fatalf("read topic --json exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 }

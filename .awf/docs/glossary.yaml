@@ -31,7 +31,7 @@ data:
       meaning: "awf's glob dialect, where a pattern matches a full slash-separated repo-relative path: `*.go` is top-level, `**/*.go` any depth, and `cmd/**` a subtree."
       domains: [config]
     - term: authoring comment
-      meaning: "A whole-line `<!-- awf:comment ... -->` in a template default or convention part, stripped at ingestion. It carries qualified `touches-state:` tags."
+      meaning: "A whole-line `<!-- awf:comment ... -->` in a template default or convention part, stripped at ingestion."
       domains: [rendering]
     - term: claim provenance
       meaning: "Links tying a claim to its ADR history: required `Origin:` and optional ordered `Revised-by:`. They aid navigation, not authority."
@@ -91,7 +91,7 @@ data:
       meaning: "The var three-state model: set is configured, present-but-empty is the seeded to-do, and absent is a deliberate permanent decline."
       domains: [config]
     - term: domain paths
-      meaning: "A domain's `paths:`-declared anchored-glob file territory, which bounds topic ownership, context, and coverage."
+      meaning: "A domain's `paths:`-declared anchored-glob file territory, which bounds topic ownership, path resolution, and coverage."
       domains: [config]
     - term: invariant backing
       meaning: "The ledger-not-proof model: `Backing: test` requires a text-matched proof marker but does not prove the test asserts the claim; `Backing: unbacked` forbids a marker and requires `Verify:`."

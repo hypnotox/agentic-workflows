@@ -62,8 +62,8 @@ const coverageBaselinePath = "coverage-baseline.json"
 // rendered templates, the shipped CLI, the config/lock schema, the artifact catalog
 // (since ADR-0068 a new shipped skill/agent can land as a pure catalog entry), and
 // the packages that decide what the shipped commands actually answer or write.
-// The behaviour roots were added after a real miss: `awf context` reported an
-// in-flight decision record as frozen, and the fix under internal/adr and
+// The behaviour roots were added after a real miss: an authority query reported
+// an in-flight decision record as frozen, and the fix under internal/adr and
 // internal/project drew no finding because only the declarative roots were listed.
 // A source root belongs here when changing it alone can change what an adopter
 // observes without any template or schema moving. Test files under these roots are

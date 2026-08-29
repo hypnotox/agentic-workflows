@@ -41,7 +41,11 @@ awf does not pin its revision, so it can be patched or updated without an awf re
 is established by a successful protocol-v2 capability handshake and final awf profile registration.
 A missing, incompatible, late, or rejected handshake reports an actionable error and activates no
 awf fallback. `pi-tools` owns general context usage, handoff, and subagent execution mechanics; awf
-renders the workflow-specific profile adapter and, when enabled, its effort integration.
+renders the workflow-specific profile adapter and, when enabled, its effort integration. CodeGraph
+is the expected source-navigation tool for structural discovery, architecture, callers,
+dependencies, and impact analysis, while Git selects changed paths. awf does not check that
+CodeGraph is installed; its focused read and resolve commands supply normative project authority
+that structural navigation cannot infer.
 
 The awf-owned effort extension requires the APIs provided by the
 [`fork-v0.84.2.2` Pi release](https://github.com/hypnotox/pi/releases/tag/fork-v0.84.2.2)
@@ -74,7 +78,7 @@ awf list
 ```
 
 `awf init` creates a Core `.awf/` tree and renders the workflow. Use `awf init --profile full`
-to add ADR, plan, current-state, context, and workflow-audit governance. Both footprints use the
+to add ADR, plan, current-state authority, and workflow-audit governance. Both footprints use the
 same correctness, autonomy, maintainability, and review-quality bar. Existing repositories upgrade
 explicitly to Full. Commit both the source tree and its rendered outputs. After changing
 `.awf/`, render and check again:
@@ -99,7 +103,7 @@ collision. `awf init --force` first saves each replaced file as `<path>.awf-bak`
 
 Core includes the operational workflow: brainstorming, implementation, testing, review, efforts,
 and managed worktrees. Full adds ADRs for durable decisions, plans for sequenced work,
-current-state authority, context, and workflow audit. These governance footprints select artifacts,
+current-state authority, and workflow audit. These governance footprints select artifacts,
 not different standards of rigor or autonomy.
 
 ```mermaid
@@ -144,6 +148,8 @@ Punctuation findings are advisory Warnings with zero exit.
 | `awf changelog [--version <v> \| --since <v> \| --range <from>..<to>]` | Print the embedded changelog, or one version/range of it |
 | `awf version` | Print the awf version |
 <!-- awf:clispec-commands:end -->
+
+Use `awf read topic <domain>/<topic>[:<claim>]` and `awf read adr <identity>` for focused authority. Use `awf resolve topic <path>...` for lexical path ownership and `awf resolve topic --uncovered` for the whole-repository unowned-path census. A path with no authority reports `none` successfully; `awf check` remains the enforcement oracle.
 
 Run `awf help` for complete usage. See
 [Working with awf](docs/working-with-awf.md) for configuration, overrides, upgrades,

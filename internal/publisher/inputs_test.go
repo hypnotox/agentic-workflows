@@ -393,19 +393,6 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 			}
 		}
 	}
-	declarations := planProjection.Declarations()
-	if len(declarations) > 0 {
-		declarations[0] = declarations[len(declarations)-1]
-		for _, values := range [][]string{declarations[0].Declarers()} {
-			if len(values) > 0 {
-				values[0] = "mutated"
-			}
-		}
-		inputs := declarations[0].Inputs()
-		if len(inputs) > 0 {
-			inputs[0] = inputs[len(inputs)-1]
-		}
-	}
 	outputs := planProjection.Outputs()
 	if len(outputs) > 0 {
 		outputs[0] = outputs[len(outputs)-1]

@@ -107,7 +107,7 @@ var varAvailability = map[string]string{
 var keys = []Entry{
 	{
 		Path: "profile", Type: "enum: core or full", Default: "core for fresh init; existing repositories migrate to full",
-		Description:  "Selects one closed governance footprint. Core includes the operational workflow. Full adds decision records, plans, current-state authority, context, and governance audit. The footprints use the same correctness, autonomy, maintainability, and review-quality bar.",
+		Description:  "Selects one closed governance footprint. Core includes the operational workflow. Full adds decision records, plans, current-state authority, and governance audit. The footprints use the same correctness, autonomy, maintainability, and review-quality bar.",
 		Availability: "Always; required and visible.",
 	},
 	{

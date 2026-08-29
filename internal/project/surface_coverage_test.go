@@ -16,7 +16,7 @@ import (
 
 func TestAdvisoryCompatibilityAndReportErrorPaths(t *testing.T) {
 	if got := advisoryCompatibilityFiles(func() *OutputPlan {
-		plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "declaration-only"})}, nil)
+		plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "declaration-only"})})
 		return &plan
 	}()); len(got) != 0 {
 		t.Fatalf("compatibility files = %#v", got)

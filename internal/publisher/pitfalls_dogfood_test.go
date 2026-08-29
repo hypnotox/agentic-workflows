@@ -229,21 +229,23 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	pitfallDeclarations := func(all []outputplan.Declaration) []outputplan.Declaration {
-		var out []outputplan.Declaration
-		for _, declaration := range all {
-			if declaration.Path() == "docs/pitfalls.md" || strings.HasPrefix(declaration.Path(), "docs/pitfalls/") {
-				out = append(out, declaration)
+	pitfallNodes := func(all []outputplan.Node) []outputplan.Node {
+		var out []outputplan.Node
+		for _, node := range all {
+			if node.Path() == "docs/pitfalls.md" || strings.HasPrefix(node.Path(), "docs/pitfalls/") {
+				out = append(out, node)
 			}
 		}
 		return out
 	}
-	workingDeclarations := working.Declarations()
-	stagedDeclarations := staged.Declarations()
-	if !slices.EqualFunc(pitfallDeclarations(workingDeclarations), pitfallDeclarations(stagedDeclarations), func(a, b outputplan.Declaration) bool {
-		return a.Path() == b.Path() && a.TemplateID() == b.TemplateID() && slices.Equal(a.Declarers(), b.Declarers()) && slices.Equal(a.Inputs(), b.Inputs())
+	workingNodes := pitfallNodes(working.Nodes())
+	stagedNodes := pitfallNodes(staged.Nodes())
+	if !slices.EqualFunc(workingNodes, stagedNodes, func(a, b outputplan.Node) bool {
+		aOutput, aRendered := a.Output()
+		bOutput, bRendered := b.Output()
+		return a.Path() == b.Path() && aRendered == bRendered && (!aRendered || aOutput.TemplateID() == bOutput.TemplateID()) && slices.Equal(a.Declarers(), b.Declarers())
 	}) {
-		t.Fatalf("working/staged pitfall declarations differ:\nworking=%#v\nstaged=%#v", pitfallDeclarations(workingDeclarations), pitfallDeclarations(stagedDeclarations))
+		t.Fatalf("working/staged pitfall nodes differ:\nworking=%#v\nstaged=%#v", workingNodes, stagedNodes)
 	}
 }
 

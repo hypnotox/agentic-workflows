@@ -229,7 +229,7 @@ func (r runner) run(args []string, stdout, stderr io.Writer) int {
 		}
 		return 0
 	}
-	inv, err := parseArgs(cmd, rest)
+	inv, err := parseArgs(qualifiedParseSpec(cmd, top, sub), rest)
 	if err != nil {
 		if top.Name == "effort" && (sub == "memory" || strings.HasPrefix(sub, "memory ")) {
 			err = &usageErr{boundedMemoryCommandError(err).Error()}
@@ -594,3 +594,10 @@ func dispatchFailure(stdout, stderr io.Writer, err error) int {
 type usageErr struct{ msg string }
 
 func (e *usageErr) Error() string { return e.msg }
+
+func qualifiedParseSpec(cmd, top clispec.Command, sub string) clispec.Command {
+	if top.Name == "read" || top.Name == "resolve" {
+		cmd.Name = strings.TrimSpace(top.Name + " " + sub)
+	}
+	return cmd
+}
