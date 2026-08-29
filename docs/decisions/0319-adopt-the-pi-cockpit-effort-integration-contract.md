@@ -4,7 +4,7 @@ slug: adopt-the-pi-cockpit-effort-integration-contract
 status: Implementing
 date: 2026-08-29
 ---
-# ADR-adopt-the-pi-cockpit-effort-integration-contract: Adopt the Pi Cockpit Effort Integration Contract
+# ADR-0319: Adopt the Pi Cockpit Effort Integration Contract
 
 
 ## Context

@@ -15,7 +15,7 @@ The Pi runtime floor and the awf/pi-tools ownership boundary.
 
 The fixed Pi target renders the awf subagent profile adapter and bounded model-routing module with provenance; `effort-workflow` additionally renders the Pi-target-owned `using-effort` skill and `awf-effort` index/client pair through the same output predicate. The effort client alone strictly invokes and decodes activity protocol v2 and owner-scoped memory protocol v1 through bounded transport; its index owns direct serialized association, fixed-path transient context, dynamic memory-tool activation, Pi file-queue participation, heartbeat/shutdown lifecycle, and Pi Cockpit translation. The profile adapter owns protocol-v2 registration, role policy, model routing, and Git policy, while independently installed pi-tools owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation. No awf context-usage, handoff, runner, telemetry, workflow-router, scheduler, process-supervisor, or progress-renderer output renders, and every retained file follows normal output-plan, drift, cleanup, target-sensitive hash, generated-checkout, adopter-example, editor-quiet, and container-coverage semantics.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209, ADR-0218, ADR-0225, ADR-0239, ADR-0251, ADR-0279, ADR-adopt-the-pi-cockpit-effort-integration-contract
+Revised-by: ADR-0162, ADR-0164, ADR-0167, ADR-0173, ADR-0209, ADR-0218, ADR-0225, ADR-0239, ADR-0251, ADR-0279, ADR-0319
 Backing: test
 
 ### `invariant: pi-implementation-state-boundary`
@@ -36,7 +36,7 @@ Backing: test
 
 The retained awf effort entrypoint requires the adopter-supplied compatible Pi runtime APIs it directly uses, including active-tool access and the package-exported real-path file-mutation queue; its actionable incompatibility guard and numeric 0.84.2 floor remain scoped to that output, with pi-ai and pi-tui 0.84.2 and the checksummed fork-v0.84.2.2 artifact as its proof graph. The direct `using_effort` companion needs no `changeCwd` capability and optional Pi Cockpit events remain advisory. The profile adapter has no package-version read or Pi minimum-runtime guard; it instead requires independently installed pi-tools protocol v2, treats final profile registration as compatibility, and reports one actionable no-fallback failure when capability is missing, incompatible, late, or rejected.
 Origin: ADR-0148
-Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-0218, ADR-0219, ADR-0225, ADR-0239, ADR-0279, ADR-0283, ADR-adopt-the-pi-cockpit-effort-integration-contract
+Revised-by: ADR-0162, ADR-0167, ADR-0209, ADR-0218, ADR-0219, ADR-0225, ADR-0239, ADR-0279, ADR-0283, ADR-0319
 Backing: test
 
 ### `invariant: pi-real-runtime-smoke`
