@@ -1,6 +1,6 @@
 This topic records the current ownership contract for generated executable adapter-runtime outputs.
 
-Context usage is a generated adapter output under the same ownership and generated executable coverage exclusion as the other Pi extension outputs.
+The retained Pi subagent and effort extensions share the same generated-output ownership and whole-tree coverage exclusion.
 
 ## Claims
 

@@ -72,10 +72,7 @@ A reasoned non-mechanical deviation that another owner or reviewer can rely on r
 
 Stop and report through the active workflow only when authorities conflict or must change, the approved outcome or material scope must change, a genuine unresolved design fork remains, safe or correct completion inside the boundary is impossible, or required verification remains unreachable after reasonable diagnosis and remediation.
 <!-- awf:template-source templates/skills/subagent-driven-development/SKILL.md.tmpl -->
-Extract the complete phase: goal, ordered tasks, exact paths, semantic boundary and ownership, external/internal representations and their translation point, allowed dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, validation expectations, dependencies, prior phase commits, checks, closing subject, and the phase's batch of the ADR's declared State changes operations (V2). The owner runs `./awf context <the phase's exact paths>` before editing.
-<!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
-<!-- awf:template-source templates/skills/subagent-driven-development/SKILL.md.tmpl -->
+Extract the complete phase: goal, ordered tasks, exact paths, semantic boundary and ownership, external/internal representations and their translation point, allowed dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, validation expectations, dependencies, prior phase commits, checks, closing subject, and the phase's batch of the ADR's declared State changes operations (V2). The owner uses CodeGraph when discovery or a structural question exists before editing. The owner runs `./awf resolve topic <the phase's exact paths>` and reads applicable topics with `./awf read topic`.
 The owner preserves the settled durable design or reports invalidating source facts; does not replan, broaden the task, or perform unrelated cleanup.
 <!-- awf:template-source templates/skills/subagent-driven-development/SKILL.md.tmpl#dispatch-conventions -->
 <!-- awf:edit dispatch-conventions: default; create .awf/skills/parts/subagent-driven-development/dispatch-conventions.md to override -->

@@ -84,10 +84,7 @@ Skip review only for a locally obvious, low-risk, directly verified change where
 
    **Effort evidence.** When an effort exists, provide its fixed slug and owned memory path read-only. Paste every user-provenance decision-log entry verbatim, including whatever `Record:` blocks exist. The absence of an effort omits those fields. Effort-free review creates no effort, memory, checkpoint, retrospective, or topology work.
 
-   **Authority context.** Include the plan or requirements. With concrete SHAs, direct the reviewer to run `./awf context --show invariants --show all-rules --show evidence --show pending $(git diff --name-only ${baseSha}..${headSha})`.
-<!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
-<!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl -->
+   **Authority context.** Include the plan or requirements. Git selects changed paths with `git diff --name-only ${baseSha}..${headSha}`; use CodeGraph only for structural discovery or impact questions, then run `./awf resolve topic <changed paths>` and `./awf read topic <domain>/<topic>[:<claim>]` for applicable authority.
 Call `subagent_review_code` exactly once with the complete brief in `task`. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; omit the `model` field to use configured role routing, overriding deliberately with the tier's exact `provider/model-id`. Never pass `default`, `auto`, or `inherit parent` as a model value. Full tier definitions: docs/workflow.md. Require report-only findings shaped as `[{focus, severity, location, issue, suggested_fix, classification}]`; never ask the reviewer to edit, commit, or re-review.
 
 <!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl#classify-route-findings -->

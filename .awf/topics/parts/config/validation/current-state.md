@@ -1,4 +1,4 @@
-Config-tree validation rules: names, path globs, targets, tags, and anchoring.
+Config-tree validation rules: names, path globs, targets, and anchoring.
 
 ## Claims
 
@@ -30,12 +30,6 @@ Backing: test
 ### `invariant: pathglob-anchored`
 
 pathglob.Match is an anchored full-path doublestar match against a slash-separated repo-relative path: a bare star-dot-go pattern does not match cmd/a.go, a leading double-star form matches both a.go and cmd/a.go, and cmd followed by double-star matches every file under cmd/; no production matcher matches against a basename.
-Origin: ADR-0148
-Backing: test
-
-### `invariant: tag-not-domain-name`
-
-With a non-empty tag vocabulary and a non-empty domain set, awf check fails when any vocabulary member name equals a configured domain name; a project with no domains or an empty vocabulary is inert.
 Origin: ADR-0148
 Backing: test
 

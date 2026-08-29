@@ -3,8 +3,6 @@
 <!-- awf:template-source templates/pitfalls/entry.md.tmpl -->
 # An ad hoc empty scan still needs proof that the probe ran
 
-**Tags:** verification-discipline
-
 Material plan post-checks now require a success sentinel or checked exit status before empty
 output proves absence. The residual hazard is an ad hoc probe outside that contract. A
 compound command that errors mid-sequence can silently skip a later scan: during the

@@ -95,7 +95,6 @@ func AppendLocalDoc(src []byte, doc LocalDoc) ([]byte, error) {
 // key (ADR-0026). The edited sequence is normalized to block style, so a flow-style
 // input (`key: [a, b]`) is accepted. Adding a member already present is a no-op;
 // removing a member absent from the key (or a key absent on remove) errors.
-// touches-state: config/configuration:config-mutation-roundtrip - yaml.Node add/remove round-trip; proof in edit_test.go
 func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 	doc, root, err := parseMapping(src)
 	if err != nil {
@@ -119,7 +118,6 @@ func SetArrayMember(src []byte, key, name string, add bool) ([]byte, error) {
 		case idx < 0:
 			return nil, fmt.Errorf("config: no %q entry under %q", name, key)
 		default:
-			// touches-state: config/configuration:remove-block-scoped - block-scoped sequence removal; proof in edit_test.go
 			val.Content = append(val.Content[:idx], val.Content[idx+1:]...)
 		}
 	default: // bare `key:` (null value)
@@ -148,7 +146,6 @@ func parseMapping(src []byte) (*yaml.Node, *yaml.Node, error) {
 // encoder fixed at two-space indentation. Both MarshalSkeleton (construction) and
 // SetArrayMember (mutation) route through it, so the on-disk format has exactly one
 // definition.
-// touches-state: config/configuration:config-serialization-owned - single config.yaml serialization funnel; proof in edit_test.go
 func encode(v any) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)

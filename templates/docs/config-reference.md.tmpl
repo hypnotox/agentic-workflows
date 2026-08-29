@@ -36,7 +36,7 @@ To write the placeholder syntax literally in a part (for documentation), put a b
 
 {{if ne .profile "core"}}### Path globs and domain territories
 
-Every configurable or built-in glob uses one anchored dialect against a slash-separated repository-relative path. `*.ts` matches only top-level files; use `**/*.ts` at any depth. `src/**` covers a subtree and `src/api/*.ts` scopes one directory. Domain `paths` declare the territory of current-state topic ownership; context and coverage use the same selectors. Working-tree and staged loading reject empty, duplicate, or malformed selectors, while historical audit projection omits domain sidecars.
+Every configurable or built-in glob uses one anchored dialect against a slash-separated repository-relative path. `*.ts` matches only top-level files; use `**/*.ts` at any depth. `src/**` covers a subtree and `src/api/*.ts` scopes one directory. Domain `paths` declare the territory of current-state topic ownership; topic resolution and coverage use the same selectors. Working-tree and staged loading reject empty, duplicate, or malformed selectors, while historical audit projection omits domain sidecars.
 
 ### Unset-var notes and recovery
 
@@ -78,6 +78,6 @@ declined; the generic prose renders).
 ## Pitfall sources
 
 Pitfalls are direct regular `.awf/docs/pitfalls/<lowercase-kebab-slug>.md` files with strict
-frontmatter: required `title`, {{if ne .profile "core"}}optional `domains`, `tags`, and {{end}}positive `related` lists, then a
+frontmatter: required `title`, {{if ne .profile "core"}}optional `domains` and {{end}}positive `related` lists, then a
 nonblank Markdown body. The slug `index` is reserved. `.awf/docs/pitfalls.yaml` is optional and may
 contain only ordinary `prepend` or `append` section configuration; it is never an entry registry.

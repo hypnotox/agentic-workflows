@@ -1,7 +1,6 @@
 ---
 title: "A staged-symlink fixture needs a real blob, a gitlink does not"
 domains: ["tooling"]
-tags: ["test-support", "verification-discipline"]
 ---
 The ADR-0158 memory-gate tests needed a staged non-regular entry to prove the command's
 Scannable filter drops it. The prose-gate sibling fabricates one by appending an index

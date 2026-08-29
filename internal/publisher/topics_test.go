@@ -633,11 +633,11 @@ Backing: test
 	}
 	runQuery := func(args ...string) string {
 		t.Helper()
-		cmd := exec.Command(binary, append([]string{"topic"}, args...)...)
+		cmd := exec.Command(binary, append([]string{"read", "topic"}, args...)...)
 		cmd.Dir = root
 		output, err := cmd.CombinedOutput()
 		if err != nil {
-			t.Fatalf("awf topic %v: %v: %s", args, err, output)
+			t.Fatalf("awf read topic %v: %v: %s", args, err, output)
 		}
 		return string(output)
 	}

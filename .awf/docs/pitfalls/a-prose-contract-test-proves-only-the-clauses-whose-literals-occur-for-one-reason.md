@@ -1,7 +1,6 @@
 ---
 title: "A prose-contract test proves only the clauses whose literals occur for one reason"
 domains: ["rendering", "invariants"]
-tags: ["test-support", "verification-discipline"]
 related: [245]
 ---
 A test that backs a current-state claim about generated prose asserts substrings, and a

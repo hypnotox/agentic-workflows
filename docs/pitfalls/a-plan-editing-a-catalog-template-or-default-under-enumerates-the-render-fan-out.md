@@ -5,6 +5,4 @@
 
 **Domains:** rendering
 
-**Tags:** render-completeness, multi-target
-
 Enumerate both targets, the root lock, generated outputs, and the changelog obligation for the one adopted root.

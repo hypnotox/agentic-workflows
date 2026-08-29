@@ -5,8 +5,6 @@
 
 **Domains:** adr-system
 
-**Tags:** cross-references, link-resolution
-
 An ADR's kebab filename is derived from its title at `awf new adr` time, but retellings
 drift ("convention-parts-raw-not-templated" vs the actual "convention-parts-are-raw-input");
 three invented link targets landed in ADR-0087's first draft (2026-07-10) and survived to

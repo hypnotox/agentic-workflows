@@ -5,7 +5,7 @@
 
 The supported live-schema migration and journaled recovery runtime.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/contextdelivery/**`, `internal/contextinput/**`, `internal/contextop/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testperformance/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-performance.json`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `internal/upgrade/**`. Both domain and topic selectors must match. Run `awf topic tooling/upgrade-runtime --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/coverage/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testperformance/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-performance.json`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `internal/upgrade/**`. Both domain and topic selectors must match. Run `awf read topic tooling/upgrade-runtime --coverage` for current applicable and owned paths and marker sites.
 
 The upgrade package plans supported live-schema migrations and commits them through a root-confined journal with the replacement lock last. When a schema advance discards resident state, the journal records each proven resident as a quarantine-by-rename operation alongside tracked file images, so failure restores the resident whole and successful cleanup discards it only after the lock commits. The claims below capture the current upgrade-runtime contracts.
 
@@ -25,12 +25,14 @@ Origin: ADR-0136
 Revised-by: ADR-0310
 Backing: unbacked
 Verify: Failures injected during preparation, rename, prune, lock replacement, rollback, and cleanup recover to matching tree digests; truncated, trailing, reordered, non-lock-final, missing-digest, mismatched-digest, and forged-commit journals leave the complete project tree unchanged; every other project command refuses in every journal phase including lock-committed; and postcommit recovery removes only transaction residue.
+
 ### `invariant: upgraded-runtime-has-one-authority-engine`
 
-After the new lock lands, normal context and invariant reporting cannot consume legacy ADR tags, supersession edges, or invariant declarations.
+After the new lock lands, live configuration, pitfall rendering, and invariant reporting cannot consume retired tags, context exclusions, navigation markers, legacy supersession edges, or legacy invariant declarations; frozen ADR tags remain historical parser data only.
 Origin: ADR-0136
+Revised-by: ADR-0320
 Backing: unbacked
-Verify: A migrated fixture retaining contradictory legacy metadata affects output and enforcement only through its topic claims.
+Verify: A migrated fixture retaining contradictory legacy ADR metadata and inert navigation comments affects output and enforcement only through current topic claims and named proof markers.
 
 ### `rule: installed-release-compatibility-floor`
 

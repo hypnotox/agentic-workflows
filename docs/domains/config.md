@@ -20,5 +20,5 @@ Schema generation 31 removes permanent ADR routing cutoffs and gap sets. A schem
 - [Configspec and reference](../topics/config/configspec-and-reference.md): The config-spec model and the generated configuration reference.
 - [Configuration](../topics/config/configuration.md): The .awf config tree schema, its serialization, and the anchored path-glob dialect.
 - [Migrations and locks](../topics/config/migrations-and-locks.md): Config schema-generation migrations and the awf.lock manifest.
-- [Validation](../topics/config/validation.md): Config-tree validation rules: names, globs, targets, tags, anchoring.
+- [Validation](../topics/config/validation.md): Config-tree validation rules: names, globs, targets, and anchoring.
 

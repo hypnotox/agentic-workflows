@@ -5,8 +5,6 @@
 
 **Domains:** tooling
 
-**Tags:** test-support, verification-discipline
-
 The ADR-0158 memory-gate tests needed a staged non-regular entry to prove the command's
 Scannable filter drops it. The prose-gate sibling fabricates one by appending an index
 entry with filemode.Submodule and a synthetic hash, and that works only because the

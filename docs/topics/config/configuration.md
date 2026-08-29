@@ -5,7 +5,7 @@
 
 The .awf config tree schema, its serialization, and the anchored path-glob dialect.
 
-**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`, `internal/vocabularycheck/**`. Topic selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`, `internal/vocabularycheck/**`. Both domain and topic selectors must match. Run `awf topic config/configuration --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`. Topic selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`. Both domain and topic selectors must match. Run `awf read topic config/configuration --coverage` for current applicable and owned paths and marker sites.
 
 These packages load, validate, and describe the .awf config tree and the anchored path-glob dialect it uses. The claims below capture the current configuration contracts.
 
@@ -108,23 +108,8 @@ The optional `render.templateSourceRoot` is a normalized repository-relative dir
 Origin: ADR-0263
 Backing: test
 
-### `invariant: tag-coverage-note`
+### `invariant: no-active-tag-system`
 
-Under a non-empty tag vocabulary, awf check emits a Warning for each authored pitfall that carries zero tags and for no tagged pitfall, never changing the exit code; legacy ADR tags are excluded, and an empty or absent vocabulary is inert.
-Origin: ADR-0109
-Revised-by: ADR-0295, ADR-0298
-Backing: test
-
-### `invariant: tag-frequency-note`
-
-Under a non-empty tag vocabulary, awf check emits a Warning for each vocabulary tag carried by strictly more than 25 percent of the pitfalls that carry at least one vocabulary tag, and for no tag at or below that share, without changing the exit code; legacy ADR tags are excluded.
-Origin: ADR-0109
-Revised-by: ADR-0295, ADR-0298
-Backing: test
-
-### `invariant: tag-vocabulary-governed`
-
-With a non-empty tag vocabulary, awf check fails on any tag used by an authored pitfall that is not a declared vocabulary member and on any vocabulary entry whose meaning is empty; parsed legacy ADR tags are historical metadata outside current membership validation, and with an empty or absent vocabulary the rule is inert.
-Origin: ADR-0103
-Revised-by: ADR-0298
+The live config schema exposes no `tags` key, authored pitfall metadata exposes no `tags:` field, and strict decoding rejects both retired surfaces after migration; frozen legacy ADR tags remain parseable history.
+Origin: ADR-0320
 Backing: test

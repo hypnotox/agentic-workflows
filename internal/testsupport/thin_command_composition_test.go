@@ -201,6 +201,9 @@ func commandRoutes() map[string]commandRoute {
 		{"check staged drift", "check", "runCheckStagedDrift", []string{"github.com/hypnotox/agentic-workflows/internal/checkop.Run"}, false},
 		{"check staged commit", "check", "runCommitGateWithDependencies", []string{"github.com/hypnotox/agentic-workflows/internal/commitgateop.RunWithDependencies"}, false},
 		{"read plan", "read", "runReadPlan", []string{"github.com/hypnotox/agentic-workflows/internal/currentstatecoord.ReadPlan"}, false},
+		{"read topic", "read", "runReadTopic", []string{"github.com/hypnotox/agentic-workflows/internal/topicop.Run"}, false},
+		{"read adr", "read", "runReadADR", []string{"github.com/hypnotox/agentic-workflows/internal/currentstatecoord.ReadADR"}, false},
+		{"resolve topic", "resolve", "runResolveTopic", []string{"github.com/hypnotox/agentic-workflows/internal/currentstatecoord.NormalizeAuthorityPath", "github.com/hypnotox/agentic-workflows/internal/currentstatecoord.ResolveTopics", "github.com/hypnotox/agentic-workflows/internal/currentstatecoord.UncoveredPaths"}, false},
 		{"audit", "audit", "runAudit", []string{"github.com/hypnotox/agentic-workflows/internal/audit.RunConfigured"}, false},
 		{"effort new", "effort", "runEffort", []string{"github.com/hypnotox/agentic-workflows/internal/effortop.New"}, false},
 		{"effort list", "effort", "runEffort", []string{"github.com/hypnotox/agentic-workflows/internal/effortop.List"}, false},
@@ -217,8 +220,6 @@ func commandRoutes() map[string]commandRoute {
 		{"adr number", "adr", "runADR", []string{"github.com/hypnotox/agentic-workflows/internal/currentstatecoord.NumberPendingADRsLeased"}, false},
 		{"list", "list", "runList", []string{"github.com/hypnotox/agentic-workflows/internal/project.BuildListDocument"}, false},
 		{"config", "config", "runConfig", []string{"github.com/hypnotox/agentic-workflows/internal/configop.Run"}, false},
-		{"context", "context", "runContextWithDelivery", []string{"github.com/hypnotox/agentic-workflows/internal/contextop.Run"}, false},
-		{"topic", "topic", "runTopic", []string{"github.com/hypnotox/agentic-workflows/internal/topicop.Run"}, false},
 		{"new adr", "new", "newADR", []string{"github.com/hypnotox/agentic-workflows/internal/project.NewADRLeased"}, false},
 		{"new plan", "new", "newPlan", []string{"github.com/hypnotox/agentic-workflows/internal/project.NewPlanLeased"}, false},
 		{"new topic", "new", "newTopic", []string{"github.com/hypnotox/agentic-workflows/internal/topicop.CreateLeased"}, false},
@@ -818,8 +819,8 @@ func semanticOwnerPackages() map[string]bool {
 	const module = "github.com/hypnotox/agentic-workflows/internal/"
 	owners := map[string]bool{}
 	for _, name := range []string{
-		"audit", "changelog", "checkop", "commitgateop", "configop", "contextop", "contextq",
-		"currentstatecoord", "domainop", "effort", "effortop", "initop", "localdocop",
+		"audit", "changelog", "checkop", "commitgateop", "configop", "currentstatecoord",
+		"domainop", "effort", "effortop", "initop", "localdocop",
 		"project", "publisher", "repositorycheck", "resident", "topicop", "upgrade", "worktree",
 	} {
 		owners[module+name] = true

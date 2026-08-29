@@ -3,8 +3,6 @@
 <!-- awf:template-source templates/pitfalls/entry.md.tmpl -->
 # Ad hoc compound mutations still need target read\-back
 
-**Tags:** verification-discipline
-
 Material plan post-checks now require reading back every target after a compound mutation.
 Interactive and otherwise unplanned command chains remain exposed: a failed `cd <dir> &&
 <edit>` can skip the edit while a later unchained command succeeds, making the block appear

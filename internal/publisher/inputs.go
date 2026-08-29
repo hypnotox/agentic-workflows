@@ -12,12 +12,12 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/glossary"
+	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
-	"github.com/hypnotox/agentic-workflows/internal/vocabularycheck"
 )
 
 type renderInputs struct {
@@ -38,7 +38,7 @@ func (p renderInputs) catalog() *catalog.Catalog { return p.selected }
 func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
 func fullProfile(p renderInputs) bool                { return p.cfg == nil || p.cfg.Profile != catalog.ProfileCore }
 
-func deriveContextSemantics(p renderInputs) (adr.Corpus, topic.Corpus, error) {
+func deriveAuthoritySemantics(p renderInputs) (adr.Corpus, topic.Corpus, error) {
 	corpus := adr.Corpus{}
 	topics := topic.Corpus{}
 	if !fullProfile(p) {
@@ -56,7 +56,7 @@ func deriveContextSemantics(p renderInputs) (adr.Corpus, topic.Corpus, error) {
 }
 
 func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
-	corpus, topics, err := deriveContextSemantics(p)
+	corpus, topics, err := deriveAuthoritySemantics(p)
 	if err != nil {
 		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
@@ -100,30 +100,6 @@ func derivePlans(p renderInputs) ([]plan.Plan, error) {
 // Publisher is the sole output-plan construction and rendering coordinator.
 type Publisher struct{ inputs renderInputs }
 
-// ContextPreparation is Publisher's focused semantic and declaration projection
-// for ordinary context. It intentionally has no rendered output nodes or check
-// projections.
-type ContextPreparation struct {
-	adrs         adr.Corpus
-	topics       topic.Corpus
-	plans        []plan.Plan
-	declarations []outputplan.Declaration
-}
-
-// ADRs returns a defensive ADR corpus.
-func (p ContextPreparation) ADRs() adr.Corpus { return p.adrs.Clone() }
-
-// Topics returns a defensive topic corpus.
-func (p ContextPreparation) Topics() topic.Corpus { return p.topics.Clone() }
-
-// Plans returns a defensive parsed-plan projection.
-func (p ContextPreparation) Plans() []plan.Plan { return clonePlans(p.plans) }
-
-// Declarations returns defensive output declarations without an output plan.
-func (p ContextPreparation) Declarations() []outputplan.Declaration {
-	return slices.Clone(p.declarations)
-}
-
 // Preparation is one Publisher-owned derivation and its direct semantic
 // projections for residual consumers.
 type Preparation struct {
@@ -136,7 +112,7 @@ type Preparation struct {
 	plans      []plan.Plan
 	plansError error
 	generated  generatedcheck.AdditionalInput
-	vocabulary vocabularycheck.Input
+	glossary   glossarycheck.Input
 }
 
 // New composes a Publisher from immutable loaded facts and an explicit operation tree reader.
@@ -150,24 +126,6 @@ func New(state *projectstate.ProjectState, cfg *config.Config, read ProjectTreeR
 	return &Publisher{inputs: newRenderInputs(state, privateConfig, read, version)}
 }
 
-// PrepareContext derives only the semantic and declaration facts ordinary context
-// needs. It deliberately does not construct rendered nodes or check projections.
-func (p *Publisher) PrepareContext() (ContextPreparation, error) {
-	adrs, topics, err := deriveContextSemantics(p.inputs)
-	if err != nil {
-		return ContextPreparation{}, err
-	}
-	plans, err := derivePlans(p.inputs)
-	if err != nil {
-		return ContextPreparation{}, err
-	}
-	declarations, err := buildOutputDeclarations(p.inputs.cfg, projectCatalog(p.inputs), p.inputs.targets(), projectTreeReader(p.inputs), adrs)
-	if err != nil {
-		return ContextPreparation{}, err
-	}
-	return ContextPreparation{adrs: adrs, topics: topics, plans: clonePlans(plans), declarations: freezeDeclarations(declarations)}, nil
-}
-
 // Prepare derives one operation universe and constructs exactly one immutable plan.
 func (p *Publisher) Prepare() (Preparation, error) {
 	adrs, pitfalls, topics, skills, err := deriveOperationStateWithPitfalls(p.inputs)
@@ -179,7 +137,7 @@ func (p *Publisher) Prepare() (Preparation, error) {
 	if err != nil {
 		return Preparation{}, err
 	}
-	vocabulary, err := vocabularySemantics(p.inputs, pitfalls)
+	glossary, err := glossarySemantics(p.inputs)
 	if err != nil { // coverage-ignore: output-plan construction already validated the same glossary input
 		return Preparation{}, err
 	}
@@ -187,7 +145,7 @@ func (p *Publisher) Prepare() (Preparation, error) {
 	if err != nil {
 		return Preparation{}, err
 	}
-	return Preparation{publisher: p, plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr, generated: generated, vocabulary: vocabulary}, nil
+	return Preparation{publisher: p, plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr, generated: generated, glossary: glossary}, nil
 }
 
 // Plan derives exactly one immutable plan for this operation.
@@ -222,32 +180,29 @@ func (p Preparation) GeneratedOutput() generatedcheck.AdditionalInput {
 	return cloneGeneratedOutput(p.generated)
 }
 
-// Vocabulary returns a defensive prepared vocabulary projection.
-func (p Preparation) Vocabulary() vocabularycheck.Input { return cloneVocabularyInput(p.vocabulary) }
+// Glossary returns a defensive prepared glossary projection.
+func (p Preparation) Glossary() glossarycheck.Input { return cloneGlossaryInput(p.glossary) }
 
-func vocabularySemantics(p renderInputs, pitfalls pitfall.Corpus) (vocabularycheck.Input, error) {
+func glossarySemantics(p renderInputs) (glossarycheck.Input, error) {
 	sc, err := p.cfg.Sidecar("docs", "glossary")
 	if err != nil { // coverage-ignore: project loading already validated the selected sidecar
-		return vocabularycheck.Input{}, err
+		return glossarycheck.Input{}, err
 	}
 	authored, err := glossary.Records(sc.Data["terms"])
 	if err != nil { // coverage-ignore: output-plan glossary transform already validated authored records
-		return vocabularycheck.Input{}, err
+		return glossarycheck.Input{}, err
 	}
 	merged, err := glossary.Merge(withDefaultData(sc, projectCatalog(p).Docs["glossary"].Data, glossary.SpecializedListDataKeys("docs", "glossary")...))
 	if err != nil { // coverage-ignore: output-plan glossary transform already validated the merged records
-		return vocabularycheck.Input{}, err
+		return glossarycheck.Input{}, err
 	}
-	enabled := fullProfile(p)
-	return vocabularycheck.Input{GlossaryEnabled: enabled, Authored: authored, Merged: merged, Domains: slices.Clone(p.cfg.Domains), Tags: maps.Clone(p.cfg.Tags), Pitfalls: clonePitfallCorpus(pitfalls)}, nil
+	return glossarycheck.Input{Enabled: fullProfile(p), Authored: authored, Merged: merged, Domains: slices.Clone(p.cfg.Domains)}, nil
 }
-func cloneVocabularyInput(in vocabularycheck.Input) vocabularycheck.Input {
+func cloneGlossaryInput(in glossarycheck.Input) glossarycheck.Input {
 	out := in
 	out.Authored = slices.Clone(in.Authored)
 	out.Merged = slices.Clone(in.Merged)
 	out.Domains = slices.Clone(in.Domains)
-	out.Tags = maps.Clone(in.Tags)
-	out.Pitfalls = clonePitfallCorpus(in.Pitfalls)
 	for i := range out.Authored {
 		out.Authored[i].Domains = slices.Clone(out.Authored[i].Domains)
 	}
@@ -272,7 +227,6 @@ func clonePitfallCorpus(corpus pitfall.Corpus) pitfall.Corpus {
 	entries := corpus.All()
 	for i := range entries {
 		entries[i].Domains = slices.Clone(entries[i].Domains)
-		entries[i].Tags = slices.Clone(entries[i].Tags)
 		entries[i].Related = slices.Clone(entries[i].Related)
 		entries[i].Source = slices.Clone(entries[i].Source)
 	}
@@ -303,14 +257,6 @@ func clonePlans(plans []plan.Plan) []plan.Plan {
 	return out
 }
 
-func freezeInputs(inputs []OutputInput) []outputplan.Input {
-	out := make([]outputplan.Input, len(inputs))
-	for i, input := range inputs {
-		out[i] = outputplan.NewInput(input.Path, input.Role)
-	}
-	return out
-}
-
 func freezeOutput(file RenderedFile) outputplan.Output {
 	return outputplan.NewOutput(outputplan.OutputSpec{
 		Path: file.Path, Content: file.Content, TemplateID: file.TemplateID,
@@ -321,16 +267,8 @@ func freezeOutput(file RenderedFile) outputplan.Output {
 		Assembled: file.assembled, StubDefaults: file.stubDefaults,
 		StubParts: file.stubParts, MarkerParts: file.markerParts,
 		Kind: file.kind, Artifact: file.artifact, PartVarRefs: file.partVarRefs,
-		ConsumedInputs: freezeInputs(file.ConsumedInputs), ObservedTemplateID: file.ObservedTemplateID,
+		ObservedTemplateID: file.ObservedTemplateID,
 	})
-}
-
-func freezeDeclarations(declarations []OutputDeclaration) []outputplan.Declaration {
-	out := make([]outputplan.Declaration, len(declarations))
-	for i, declaration := range declarations {
-		out[i] = outputplan.NewDeclaration(declaration.Path, declaration.TemplateID, declaration.Declarers, freezeInputs(declaration.Inputs), declaration.Dependencies)
-	}
-	return out
 }
 
 func freezePlan(plan *OutputPlan) outputplan.Plan {
@@ -345,12 +283,10 @@ func freezePlan(plan *OutputPlan) outputplan.Plan {
 		nodes = append(nodes, outputplan.NewNode(outputplan.NodeSpec{
 			Path: node.Path, Recipe: recipe, Policy: node.Policy,
 			Declarers: node.Declarers, DeclarerProjections: node.DeclarerProjections,
-			DependsOn: node.DependsOn, ConsumedInputs: freezeInputs(node.ConsumedInputs),
-			ObservedTemplateID: node.ObservedTemplateID, Output: output,
+			DependsOn: node.DependsOn, ObservedTemplateID: node.ObservedTemplateID, Output: output,
 		}))
 	}
-	declarations := freezeDeclarations(plan.Declarations)
-	return outputplan.New(nodes, declarations)
+	return outputplan.New(nodes)
 }
 
 // BuildConfigReference derives the live configuration reference from this operation's plan.

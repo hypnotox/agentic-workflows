@@ -391,7 +391,7 @@ func TestPlanTaskDetailContractRejectsInversions(t *testing.T) {
 		name, from, to string
 	}{
 		{"change-specific outcome removed", "State the change-specific observable outcome", "State an implementation summary"},
-		{"field vocabulary narrowed", "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
+		{"field glossary narrowed", "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
 		{"empty decision arrays allowed", "`Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`", "`Applying` and `Context` may be empty JSON arrays"},
 		{"optional aids made mandatory", "`Latitude`, `Kind: batch`, `Representative`, and `Edge` are optional aids", "`Latitude`, `Kind: batch`, `Representative`, and `Edge` are mandatory"},
 		{"spike body allowed", "`Kind: spike` requires `Question`, no body, and an answer in Notes", "`Kind: spike` permits a body"},

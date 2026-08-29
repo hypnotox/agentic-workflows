@@ -5,7 +5,7 @@
 
 Generated documentation outputs: domain and topic docs, layout, pitfalls, stubs, skill references.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `internal/vocabularycheck/**`, `templates/**`. Topic selectors: `internal/glossary/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/vocabularycheck/**`. Both domain and topic selectors must match. Run `awf topic rendering/doc-outputs --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`. Both domain and topic selectors must match. Run `awf read topic rendering/doc-outputs --coverage` for current applicable and owned paths and marker sites.
 
 Generated documentation outputs: domain and topic documents, docs layout, the pitfall corpus and generated family, unauthored-content stubs, and skill-reference hygiene.
 
@@ -51,8 +51,9 @@ Backing: test
 
 ### `invariant: pitfall-corpus-validated`
 
-The pitfall source loader accepts only direct regular lowercase-kebab `.md` leaves under `.awf/docs/pitfalls`, reserves `index`, strictly validates required single-line titles, optional duplicate-free metadata, nonblank bodies, and corpus-wide title uniqueness, and makes malformed sources hard errors for render and check.
+The pitfall source loader accepts only direct regular lowercase-kebab `.md` leaves under `.awf/docs/pitfalls`, reserves `index`, strictly validates a required single-line title plus optional duplicate-free domains and related ADRs, rejects retired tag metadata, requires a nonblank body, and enforces corpus-wide title uniqueness for render and check.
 Origin: ADR-0262
+Revised-by: ADR-0320
 Backing: test
 
 ### `invariant: pitfall-output-complete`
@@ -102,6 +103,7 @@ Origin: ADR-0148
 Revised-by: ADR-0159
 Backing: unbacked
 Verify: Creating and removing a topic in a render fixture changes awf render, awf check, the output plan, the lock, the index, and stale-output pruning consistently.
+
 ### `invariant: working-with-awf-mandatory`
 
 The working-with-awf doc renders as an always-on singleton for every project, present in the plain-singleton set and the catalog's singleton kinds.

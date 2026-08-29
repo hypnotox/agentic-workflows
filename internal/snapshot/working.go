@@ -14,8 +14,8 @@ import (
 // symlink modes preserved. Symlinks are not followed; their target is retained
 // as inert bytes. Deleted, ignored, and nested-repository paths are excluded
 // by the handle's WorkingPaths. It is the complete selected filesystem
-// universe; generated, contextIgnore, and other eligibility filters are applied
-// by downstream consumers, not here.
+// universe; generated-output and other consumer-specific eligibility filters
+// are applied by downstream consumers, not here.
 func WorkingTree(ctx context.Context, repo *git.Repo) (*Tree, error) {
 	paths, err := repo.WorkingPaths(ctx)
 	if err != nil {
@@ -53,55 +53,4 @@ func WorkingTree(ctx context.Context, repo *git.Repo) (*Tree, error) {
 		files = append(files, File{Path: p, Mode: mode, Bytes: data})
 	}
 	return NewTree(files)
-}
-
-// WorkingContextFromEntries captures selected bytes against one already-read
-// Git-owned inventory. It keeps enumeration and reading in the same operation
-// without silently taking a second live view.
-func WorkingContextFromEntries(ctx context.Context, repo *git.Repo, entries []git.TreeEntry, selected []string) (*LiveContext, error) {
-	if repo == nil {
-		return nil, git.ErrNotARepository
-	}
-	inventoryEntries := make([]Entry, len(entries))
-	for n, entry := range entries {
-		inventoryEntries[n] = Entry{Path: entry.Path, Mode: Mode(entry.Mode)}
-	}
-	inventory, err := NewInventory(inventoryEntries)
-	if err != nil {
-		return nil, err
-	}
-	files := make([]File, 0, len(selected))
-	seen := map[string]bool{}
-	for _, p := range selected {
-		if ctx.Err() != nil {
-			return nil, ctx.Err()
-		}
-		if seen[p] {
-			continue
-		}
-		seen[p] = true
-		entry, ok := inventory.Lookup(p)
-		if !ok {
-			continue
-		}
-		full := filepath.Join(repo.Root(), filepath.FromSlash(p))
-		var bytes []byte
-		if entry.Mode == Symlink {
-			target, err := os.Readlink(full)
-			if err != nil {
-				return nil, fmt.Errorf("snapshot working readlink %s: %w", p, err)
-			}
-			bytes = []byte(target)
-		} else {
-			data, err := os.ReadFile(full)
-			if err != nil {
-				return nil, fmt.Errorf("snapshot working read %s: %w", p, err)
-			}
-			bytes = data
-		}
-		files = append(files, File{Path: p, Mode: entry.Mode, Bytes: bytes})
-	}
-	// Every selected file came from the validated inventory and was de-duplicated.
-	selection, _ := NewSelection(files)
-	return NewLiveContext(inventory, selection)
 }

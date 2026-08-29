@@ -5,9 +5,9 @@
 
 Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs/pitfalls/*.md`.
 
-{{ with .data.pitfalls }}{{ with .Entries }}| Pitfall | Domains | Tags | Related ADRs |
-| --- | --- | --- | --- |
-{{ range . }}| [{{ .TableTitle }}](pitfalls/{{ .Slug }}.md) | {{ if .Domains }}{{ .DomainsText }}{{ else }}Unassigned{{ end }} | {{ .TagsText }} | {{ range $i, $n := .Related }}{{ if $i }}, {{ end }}ADR-{{ printf "%04d" $n }}{{ end }} |
+{{ with .data.pitfalls }}{{ with .Entries }}| Pitfall | Domains | Related ADRs |
+| --- | --- | --- |
+{{ range . }}| [{{ .TableTitle }}](pitfalls/{{ .Slug }}.md) | {{ if .Domains }}{{ .DomainsText }}{{ else }}Unassigned{{ end }} | {{ range $i, $n := .Related }}{{ if $i }}, {{ end }}ADR-{{ printf "%04d" $n }}{{ end }} |
 {{ end }}
 ## By domain
 

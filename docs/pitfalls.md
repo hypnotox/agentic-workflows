@@ -12,49 +12,49 @@ This guide contains only current hazards that require human judgment or action b
 <!-- awf:template-source templates/docs/pitfalls.md.tmpl -->
 Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs/pitfalls/*.md`.
 
-| Pitfall | Domains | Tags | Related ADRs |
-| --- | --- | --- | --- |
-| [\`adr\.ADR\.Title\` already carries the \`ADR\-NNNN\: \` prefix](pitfalls/adr-adr-title-already-carries-the-adr-nnnn-prefix.md) | adr\-system | adr\-parsing\, context\-query |  |
-| [A census number is only as good as its stated query](pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md) | adr\-system | verification\-discipline |  |
-| [A faked collaborator makes both the fixtures and the assertion vocabulary unfalsifiable](pitfalls/a-faked-collaborator-makes-both-the-fixtures-and-the-assertion-vocabulary-unfalsifiable.md) | rendering\, tooling | test\-support\, verification\-discipline | ADR-0244 |
-| [A future code\-fence marker must account for Linguist aliases](pitfalls/a-future-code-fence-marker-must-account-for-linguist-aliases.md) | adr\-system | plan\-taxonomy\, commit\-gate | ADR-0111 |
-| [A future non\-catalog render singleton still has hand\-wired fan\-out](pitfalls/a-future-non-catalog-render-singleton-still-has-hand-wired-fan-out.md) | rendering | render\-completeness\, closed\-config\-tree\, template\-embed |  |
-| [A milestone\-time check must not double as an every\-commit test](pitfalls/a-milestone-time-check-must-not-double-as-an-every-commit-test.md) | tooling | release\-pipeline\, changelog |  |
-| [A new output language needs an exercised real render target](pitfalls/a-new-output-language-needs-an-exercised-real-render-target.md) | rendering | editable\-sections\, provenance\-markers\, command\-runner |  |
-| [A plan editing a catalog template or default under\-enumerates the render fan\-out](pitfalls/a-plan-editing-a-catalog-template-or-default-under-enumerates-the-render-fan-out.md) | rendering | render\-completeness\, multi\-target |  |
-| [A proof marker does not prove every clause in its invariant claim](pitfalls/a-proof-marker-does-not-prove-every-clause-in-its-invariant-claim.md) | invariants | invariant\-backing |  |
-| [A prose\-contract test proves only the clauses whose literals occur for one reason](pitfalls/a-prose-contract-test-proves-only-the-clauses-whose-literals-occur-for-one-reason.md) | rendering\, invariants | test\-support\, verification\-discipline | ADR-0245 |
-| [A scripted sweep over ADR prose can silently unmake the structure it edits](pitfalls/a-scripted-sweep-over-adr-prose-can-silently-unmake-the-structure-it-edits.md) | adr\-system | adr\-parsing | ADR-0135 |
-| [A staged\-symlink fixture needs a real blob\, a gitlink does not](pitfalls/a-staged-symlink-fixture-needs-a-real-blob-a-gitlink-does-not.md) | tooling | test\-support\, verification\-discipline |  |
-| [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md) | invariants\, rendering | cross\-references\, render\-completeness |  |
-| [Ad hoc compound mutations still need target read\-back](pitfalls/ad-hoc-compound-mutations-still-need-target-read-back.md) | Unassigned | verification\-discipline |  |
-| [An ad hoc empty scan still needs proof that the probe ran](pitfalls/an-ad-hoc-empty-scan-still-needs-proof-that-the-probe-ran.md) | Unassigned | verification\-discipline |  |
-| [An ad hoc post\-check can still overrun the change\'s scope](pitfalls/an-ad-hoc-post-check-can-still-overrun-the-change-s-scope.md) | tooling | verification\-discipline\, plan\-taxonomy | ADR-0115 |
-| [An attribute\-filtered pinned\-set test exempts every other attribute value](pitfalls/an-attribute-filtered-pinned-set-test-exempts-every-other-attribute-value.md) | tooling | pinned\-set\-tests\, invariant\-backing |  |
-| [An ordered\-phrase assertion cannot reach a site ahead of its first anchor](pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md) | rendering\, invariants | invariant\-backing\, verification\-discipline |  |
-| [An ordering proof written against the log proves nothing](pitfalls/an-ordering-proof-written-against-the-log-proves-nothing.md) | tooling\, invariants | invariant\-backing\, coverage\-gate | ADR-0175 |
-| [Check the Open boundary before ignoring an assembly error](pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md) | tooling | coverage\-gate\, cli\-dispatch | ADR-0012, ADR-0092, ADR-0102 |
-| [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md) | tooling | static\-linting |  |
-| [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md) | tooling | gofmt\-doccomment |  |
-| [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md) | rendering | target\-seam\, verification\-discipline |  |
-| [Keep SSH alive through long pre\-push gates](pitfalls/keep-ssh-alive-through-long-pre-push-gates.md) | tooling | git\-hooks\, release\-pipeline |  |
-| [Link ADRs by their on\-disk filename\, never by constructing one from the title](pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md) | adr\-system | cross\-references\, link\-resolution |  |
-| [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md) | tooling\, adr\-system | commit\-gate\, worktree\-isolation | ADR-0202 |
-| [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md) | tooling | coverage\-gate |  |
-| [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md) | rendering | convention\-parts\, template\-overlay |  |
-| [Pin the Go toolchain when preview compilers break lint](pitfalls/pin-the-go-toolchain-when-preview-compilers-break-lint.md) | tooling | static\-linting |  |
-| [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md) | invariants\, adr\-system\, tooling | invariant\-backing\, worktree\-isolation\, git\-hooks | ADR-0205, ADR-0206 |
-| [Raw\-byte ADR surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md) | config | schema\-migration\, adr\-parsing | ADR-0120 |
-| [Raw\-byte offsets go stale the moment an earlier pass edits the file](pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md) | config | schema\-migration\, adr\-parsing | ADR-0128 |
-| [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md) | rendering | kind\-descriptor\, catalog\-derived\-tests\, verification\-discipline |  |
-| [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md) | rendering\, tooling | plan\-artifact\, verification\-discipline |  |
-| [Resolve review ranges from Git rather than transcribing SHAs](pitfalls/resolve-review-ranges-from-git-rather-than-transcribing-shas.md) | Unassigned | verification\-discipline |  |
-| [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md) | rendering\, adr\-system | render\-completeness\, template\-residue | ADR-0191 |
-| [Reuse the repository boundary for new filesystem walks](pitfalls/reuse-the-repository-boundary-for-new-filesystem-walks.md) | tooling | repo\-open |  |
-| [Scope a claim to the command\'s actual input](pitfalls/scope-a-claim-to-the-command-s-actual-input.md) | invariants | invariant\-backing\, verification\-discipline |  |
-| [Sidecar \`data\` is not placeholder\-substituted\, drop \`\{\{\=awf\:\.\.\.\}\}\` escapes when converting a part](pitfalls/sidecar-data-is-not-placeholder-substituted-drop-awf-escapes-when-converting-a-part.md) | rendering | placeholder\-degradation\, sidecar\-fields | ADR-0089, ADR-0099 |
-| [Use absolute generations for historical migration shapes](pitfalls/use-absolute-generations-for-historical-migration-shapes.md) | config | schema\-migration\, version\-authority |  |
-| [When retiring a config key\, handle historical writers](pitfalls/when-retiring-a-config-key-handle-historical-writers.md) | config | schema\-migration\, verification\-discipline |  |
+| Pitfall | Domains | Related ADRs |
+| --- | --- | --- |
+| [\`adr\.ADR\.Title\` already carries the \`ADR\-NNNN\: \` prefix](pitfalls/adr-adr-title-already-carries-the-adr-nnnn-prefix.md) | adr\-system |  |
+| [A census number is only as good as its stated query](pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md) | adr\-system |  |
+| [A faked collaborator makes both the fixtures and the assertion vocabulary unfalsifiable](pitfalls/a-faked-collaborator-makes-both-the-fixtures-and-the-assertion-vocabulary-unfalsifiable.md) | rendering\, tooling | ADR-0244 |
+| [A future code\-fence marker must account for Linguist aliases](pitfalls/a-future-code-fence-marker-must-account-for-linguist-aliases.md) | adr\-system | ADR-0111 |
+| [A future non\-catalog render singleton still has hand\-wired fan\-out](pitfalls/a-future-non-catalog-render-singleton-still-has-hand-wired-fan-out.md) | rendering |  |
+| [A milestone\-time check must not double as an every\-commit test](pitfalls/a-milestone-time-check-must-not-double-as-an-every-commit-test.md) | tooling |  |
+| [A new output language needs an exercised real render target](pitfalls/a-new-output-language-needs-an-exercised-real-render-target.md) | rendering |  |
+| [A plan editing a catalog template or default under\-enumerates the render fan\-out](pitfalls/a-plan-editing-a-catalog-template-or-default-under-enumerates-the-render-fan-out.md) | rendering |  |
+| [A proof marker does not prove every clause in its invariant claim](pitfalls/a-proof-marker-does-not-prove-every-clause-in-its-invariant-claim.md) | invariants |  |
+| [A prose\-contract test proves only the clauses whose literals occur for one reason](pitfalls/a-prose-contract-test-proves-only-the-clauses-whose-literals-occur-for-one-reason.md) | rendering\, invariants | ADR-0245 |
+| [A scripted sweep over ADR prose can silently unmake the structure it edits](pitfalls/a-scripted-sweep-over-adr-prose-can-silently-unmake-the-structure-it-edits.md) | adr\-system | ADR-0135 |
+| [A staged\-symlink fixture needs a real blob\, a gitlink does not](pitfalls/a-staged-symlink-fixture-needs-a-real-blob-a-gitlink-does-not.md) | tooling |  |
+| [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md) | invariants\, rendering |  |
+| [Ad hoc compound mutations still need target read\-back](pitfalls/ad-hoc-compound-mutations-still-need-target-read-back.md) | Unassigned |  |
+| [An ad hoc empty scan still needs proof that the probe ran](pitfalls/an-ad-hoc-empty-scan-still-needs-proof-that-the-probe-ran.md) | Unassigned |  |
+| [An ad hoc post\-check can still overrun the change\'s scope](pitfalls/an-ad-hoc-post-check-can-still-overrun-the-change-s-scope.md) | tooling | ADR-0115 |
+| [An attribute\-filtered pinned\-set test exempts every other attribute value](pitfalls/an-attribute-filtered-pinned-set-test-exempts-every-other-attribute-value.md) | tooling |  |
+| [An ordered\-phrase assertion cannot reach a site ahead of its first anchor](pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md) | rendering\, invariants |  |
+| [An ordering proof written against the log proves nothing](pitfalls/an-ordering-proof-written-against-the-log-proves-nothing.md) | tooling\, invariants | ADR-0175 |
+| [Check the Open boundary before ignoring an assembly error](pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md) | tooling | ADR-0012, ADR-0092, ADR-0102 |
+| [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md) | tooling |  |
+| [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md) | tooling |  |
+| [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md) | rendering |  |
+| [Keep SSH alive through long pre\-push gates](pitfalls/keep-ssh-alive-through-long-pre-push-gates.md) | tooling |  |
+| [Link ADRs by their on\-disk filename\, never by constructing one from the title](pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md) | adr\-system |  |
+| [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md) | tooling\, adr\-system | ADR-0202 |
+| [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md) | tooling |  |
+| [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md) | rendering |  |
+| [Pin the Go toolchain when preview compilers break lint](pitfalls/pin-the-go-toolchain-when-preview-compilers-break-lint.md) | tooling |  |
+| [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md) | invariants\, adr\-system\, tooling | ADR-0205, ADR-0206 |
+| [Raw\-byte ADR surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md) | config | ADR-0120 |
+| [Raw\-byte offsets go stale the moment an earlier pass edits the file](pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md) | config | ADR-0128 |
+| [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md) | rendering |  |
+| [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md) | rendering\, tooling |  |
+| [Resolve review ranges from Git rather than transcribing SHAs](pitfalls/resolve-review-ranges-from-git-rather-than-transcribing-shas.md) | Unassigned |  |
+| [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md) | rendering\, adr\-system | ADR-0191 |
+| [Reuse the repository boundary for new filesystem walks](pitfalls/reuse-the-repository-boundary-for-new-filesystem-walks.md) | tooling |  |
+| [Scope a claim to the command\'s actual input](pitfalls/scope-a-claim-to-the-command-s-actual-input.md) | invariants |  |
+| [Sidecar \`data\` is not placeholder\-substituted\, drop \`\{\{\=awf\:\.\.\.\}\}\` escapes when converting a part](pitfalls/sidecar-data-is-not-placeholder-substituted-drop-awf-escapes-when-converting-a-part.md) | rendering | ADR-0089, ADR-0099 |
+| [Use absolute generations for historical migration shapes](pitfalls/use-absolute-generations-for-historical-migration-shapes.md) | config |  |
+| [When retiring a config key\, handle historical writers](pitfalls/when-retiring-a-config-key-handle-historical-writers.md) | config |  |
 
 ## By domain
 

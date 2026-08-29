@@ -8,12 +8,12 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
-	"github.com/hypnotox/agentic-workflows/internal/vocabularycheck"
 )
 
 func operationInputs(state *ProjectState, cfg *config.Config) renderInputs {
@@ -30,12 +30,12 @@ type OperationSemantics struct {
 	Plans           []plan.Plan
 	PlansError      error
 	GeneratedOutput generatedcheck.AdditionalInput
-	Vocabulary      vocabularycheck.Input
+	Glossary        glossarycheck.Input
 }
 
 // AdvisoryNotes reports non-blocking project checks from one prepared universe.
 func AdvisoryNotes(state *ProjectState, cfg *config.Config, output outputplan.Plan, semantics OperationSemantics) ([]string, error) {
-	return advisoryNotes(operationInputs(state, cfg), semantics.Plans, semantics.PlansError, &output, semantics.Vocabulary)
+	return advisoryNotes(operationInputs(state, cfg), semantics.Plans, semantics.PlansError, &output, semantics.Glossary)
 }
 
 // BuildCheckReport checks the selected project tree using one prepared universe.

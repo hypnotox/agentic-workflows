@@ -5,8 +5,6 @@
 
 **Domains:** rendering, invariants
 
-**Tags:** invariant-backing, verification-discipline
-
 `assertOrderedBody` advances a cursor past each matched phrase, so every phrase must
 occur after the previous one and nothing before the FIRST anchor is scanned at all.
 Appending a phrase to an ordered list therefore proves nothing about prose that renders

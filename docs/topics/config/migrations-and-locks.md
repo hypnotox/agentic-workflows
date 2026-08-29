@@ -5,7 +5,7 @@
 
 Config schema-generation migrations and the awf.lock manifest.
 
-**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`, `internal/vocabularycheck/**`. Topic selectors: `internal/manifest/**`, `internal/migrate/**`. Both domain and topic selectors must match. Run `awf topic config/migrations-and-locks --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`. Topic selectors: `internal/manifest/**`, `internal/migrate/**`. Both domain and topic selectors must match. Run `awf read topic config/migrations-and-locks --coverage` for current applicable and owned paths and marker sites.
 
 The migrate package executes supported live schema advances, while audit decodes represented historical schemas read-only. These claims capture the live migration seam and lock contracts.
 

@@ -1,7 +1,6 @@
 ---
 title: "Enabled linters constrain API shape, sketch signatures against them"
 domains: ["tooling"]
-tags: ["static-linting"]
 ---
 An ADR- or plan-sketched Go signature can be unimplementable as written: the `nilnil` linter
 forbids returning a nil pointer beside a nil error, so a "missing → `(nil, nil)`" empty-state

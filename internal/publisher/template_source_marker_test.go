@@ -97,7 +97,7 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	if skill == nil {
 		t.Fatal("writing-plans skill missing from producer matrix")
 	}
-	include := "<!-- awf:template-source templates/partials/context-orientation.md -->"
+	include := "<!-- awf:template-source templates/partials/gate-cadence.md -->"
 	returned := "<!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl -->"
 	enter := strings.Index(skill.Content, include)
 	back := -1

@@ -17,7 +17,7 @@
 !.pi/
 .pi/awf-subagents.local.json
 
-# Per-checkout maintainer caches, including golangci-lint and context-spill
+# Per-checkout maintainer caches, including golangci-lint
 # observability, are operator-owned and never committed.
 /.cache/
 

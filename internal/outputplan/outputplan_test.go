@@ -5,28 +5,19 @@ import (
 	"testing"
 )
 
-func TestPlanAndDeclarationsAreDefensiveValues(t *testing.T) {
-	declarers := []string{"publisher"}
-	inputs := []Input{NewInput("source", ArtifactTemplate)}
-	dependencies := []string{"dependency"}
-	declaration := NewDeclaration("out", "template", declarers, inputs, dependencies)
+func TestPlanAndNodesAreDefensiveValues(t *testing.T) {
 	outputParts := []string{"part"}
-	output := NewOutput(OutputSpec{Path: "out", StubParts: outputParts, ConsumedInputs: inputs})
+	output := NewOutput(OutputSpec{Path: "out", StubParts: outputParts})
 	nodeDeclarers := []string{"publisher"}
-	node := NewNode(NodeSpec{Path: "out", Declarers: nodeDeclarers, ConsumedInputs: inputs, Output: &output})
+	node := NewNode(NodeSpec{Path: "out", Declarers: nodeDeclarers, Output: &output})
 	nodes := []Node{node}
-	declarations := []Declaration{declaration}
-	plan := New(nodes, declarations)
+	plan := New(nodes)
 
-	declarers[0], inputs[0], dependencies[0], outputParts[0], nodeDeclarers[0] = "mutated", NewInput("mutated", ArtifactConfig), "mutated", "mutated", "mutated"
-	nodes[0], declarations[0] = Node{}, Declaration{}
+	outputParts[0], nodeDeclarers[0] = "mutated", "mutated"
+	nodes[0] = Node{}
 
 	if got := plan.Paths(); !reflect.DeepEqual(got, []string{"out"}) {
 		t.Fatalf("paths after input mutation = %v", got)
-	}
-	gotDeclaration := plan.Declarations()[0]
-	if !reflect.DeepEqual(gotDeclaration.Declarers(), []string{"publisher"}) || gotDeclaration.Inputs()[0].Path() != "source" {
-		t.Fatalf("declaration aliases construction input: %#v", gotDeclaration)
 	}
 	gotOutput, ok := plan.Nodes()[0].Output()
 	if !ok || !reflect.DeepEqual(gotOutput.StubParts(), []string{"part"}) {
@@ -34,25 +25,17 @@ func TestPlanAndDeclarationsAreDefensiveValues(t *testing.T) {
 	}
 
 	projectedNodes := plan.Nodes()
-	projectedDeclarations := plan.Declarations()
 	projectedPaths := plan.Paths()
 	projectedOutputs := plan.Outputs()
-	projectedNodes[0], projectedDeclarations[0], projectedPaths[0], projectedOutputs[0] = Node{}, Declaration{}, "mutated", Output{}
-	if plan.Paths()[0] != "out" || plan.Declarations()[0].Path() != "out" || plan.Outputs()[0].Path() != "out" {
+	projectedNodes[0], projectedPaths[0], projectedOutputs[0] = Node{}, "mutated", Output{}
+	if plan.Paths()[0] != "out" || plan.Outputs()[0].Path() != "out" {
 		t.Fatal("plan projections mutate stored values")
 	}
 }
 
-func TestDeclarationTemplateIDProjectsConstructionValue(t *testing.T) {
-	declaration := NewDeclaration("declared", "declaration-template", nil, nil, nil)
-	if declaration.TemplateID() != "declaration-template" {
-		t.Fatalf("declaration template id = %q", declaration.TemplateID())
-	}
-}
-
 func TestNodeAndOutputSliceProjectionsAreDefensive(t *testing.T) {
-	output := NewOutput(OutputSpec{Path: "out", StubDefaults: []string{"default"}, StubParts: []string{"part"}, MarkerParts: []string{"marker"}, PartVarRefs: []string{"var"}, ConsumedInputs: []Input{NewInput("source", ArtifactTemplate)}})
-	node := NewNode(NodeSpec{Path: "out", Declarers: []string{"one"}, DeclarerProjections: []string{"projection"}, DependsOn: []string{"dependency"}, ConsumedInputs: []Input{NewInput("source", ArtifactTemplate)}, Output: &output})
+	output := NewOutput(OutputSpec{Path: "out", StubDefaults: []string{"default"}, StubParts: []string{"part"}, MarkerParts: []string{"marker"}, PartVarRefs: []string{"var"}})
+	node := NewNode(NodeSpec{Path: "out", Declarers: []string{"one"}, DeclarerProjections: []string{"projection"}, DependsOn: []string{"dependency"}, Output: &output})
 
 	for _, values := range [][]string{node.Declarers(), output.StubDefaults(), output.StubParts(), output.MarkerParts(), output.PartVarRefs()} {
 		values[0] = "mutated"

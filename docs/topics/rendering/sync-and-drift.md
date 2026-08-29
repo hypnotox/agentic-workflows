@@ -5,7 +5,7 @@
 
 How sync and check detect and report: drift hash inputs, attribution, backups, residue, pruning, cleanup, and current-state coverage and fan-out evaluation.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `internal/vocabularycheck/**`, `templates/**`. Topic selectors: `internal/generatedcheck/**`, `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf topic rendering/sync-and-drift --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/generatedcheck/**`, `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf read topic rendering/sync-and-drift --coverage` for current applicable and owned paths and marker sites.
 
 How awf render and awf check detect and report drift: per-file config-hash inputs, managed-output attribution and provenance, foreign-file backups, residue scanning, ancestor pruning, and uninstall cleanup.
 
@@ -60,9 +60,9 @@ Backing: test
 
 ### `invariant: managed-output-attribution`
 
-A reader-injected declaration builder enumerates selected-governance-footprint managed writes before rendering, retaining sorted declarers and exact inputs and supplying context source/output edges; those declarations classify their paths as generated.
+A reader-injected declaration builder enumerates selected-governance-footprint managed writes before rendering, retaining sorted declarers and exact inputs; those declarations are the output plan's generated-path classification.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-0278, ADR-0292
+Revised-by: ADR-0251, ADR-0278, ADR-0292, ADR-0320
 Backing: test
 
 ### `invariant: ordinary-render-freshness`

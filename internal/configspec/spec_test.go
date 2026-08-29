@@ -178,8 +178,6 @@ func TestLiveStateClassificationsDeriveProjectValues(t *testing.T) {
 		}
 	}
 	for _, path := range []string{
-		"tags",
-		"contextIgnore",
 		"commitPolicy.grandfatheredThrough",
 		"commitPolicy.allowedIdentities",
 		"commitPolicy.requireSignedCommits",

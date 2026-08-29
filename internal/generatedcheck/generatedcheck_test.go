@@ -111,7 +111,7 @@ func TestStagedReadFailure(t *testing.T) {
 	}
 }
 func planFor(out outputplan.Output) outputplan.Plan {
-	return outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: out.Path(), Output: &out})}, nil)
+	return outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: out.Path(), Output: &out})})
 }
 func empty(t *testing.T) checkresult.Result {
 	t.Helper()

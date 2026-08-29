@@ -14,11 +14,7 @@ import (
 
 type MarkerKind string
 
-const (
-	StateMarker   MarkerKind = "state"
-	ProofMarker   MarkerKind = "invariant"
-	TouchesMarker MarkerKind = "touches-state"
-)
+const ProofMarker MarkerKind = "invariant"
 
 type MarkerSite struct {
 	Path    string     `json:"path"`
@@ -52,15 +48,10 @@ func (m MarkerIndex) All() []MarkerSite {
 
 const claimIDPattern = `[a-z0-9]+(?:-[a-z0-9]+)*/[a-z0-9]+(?:-[a-z0-9]+)*:[a-z0-9]+(?:-[a-z0-9]+)*`
 
-// Each marker kind gets its own expression so a trailing name is grammatically
-// available only to a proof marker (ADR-0199). The name group is greedy, so a
-// name containing parentheses captures through to the payload's final closing
-// parenthesis. Requiring a non-space first and last character enforces the
-// no-surrounding-whitespace rule here, at parse time, rather than letting
-// " TestFoo " reach the occurrence check and be reported as a missing unit.
-var statePayloadRE = regexp.MustCompile(`^state: (` + claimIDPattern + `)$`)
+// The name group is greedy, so a name containing parentheses captures through
+// the payload's final closing parenthesis. Requiring a non-space first and last
+// character enforces the no-surrounding-whitespace rule at parse time.
 var proofPayloadRE = regexp.MustCompile(`^invariant: (` + claimIDPattern + `) \((\S(?:.*\S)?)\)$`)
-var touchesPayloadRE = regexp.MustCompile(`^touches-state: (` + claimIDPattern + `) - (.+)$`)
 
 // unnamedProofPayloadRE is the diagnostic fallback for a proof marker that
 // proofPayloadRE rejected. It deliberately also matches a padded or empty
@@ -160,51 +151,29 @@ func markerPayload(line string, src config.CurrentStateSource) (string, bool) {
 	}
 	return payload, true
 }
-func markerCandidate(payload string) bool {
-	for _, prefix := range []string{"state:", "invariant:", "touches-state:"} {
-		if strings.HasPrefix(payload, prefix) {
-			return true
-		}
-	}
-	return false
-}
+func markerCandidate(payload string) bool { return strings.HasPrefix(payload, "invariant:") }
 
-// resolveMarker parses one marker payload into a site, returning the proof
-// name alongside it. The name is empty for a state or touches marker, which
-// have no grammatical slot for one.
+// resolveMarker parses one proof marker payload into a site and proving-unit name.
 func resolveMarker(path string, line int, payload string, corpus Corpus, cfg *config.CurrentStateConfig) (MarkerSite, string, error) {
-	s := MarkerSite{Path: path, Line: line}
-	name := ""
-	if m := statePayloadRE.FindStringSubmatch(payload); m != nil {
-		s.Kind = StateMarker
-		s.ClaimID = m[1]
-	} else if m := proofPayloadRE.FindStringSubmatch(payload); m != nil {
-		s.Kind = ProofMarker
-		s.ClaimID = m[1]
-		name = m[2]
-	} else if m := unnamedProofPayloadRE.FindStringSubmatch(payload); m != nil {
-		return s, "", fmt.Errorf("%s:%d: proof marker for %s does not name a proving unit", path, line, m[1])
-	} else if m := touchesPayloadRE.FindStringSubmatch(payload); m != nil {
-		s.Kind = TouchesMarker
-		s.ClaimID = m[1]
-		s.Note = strings.TrimSpace(m[2])
+	s := MarkerSite{Path: path, Line: line, Kind: ProofMarker}
+	match := proofPayloadRE.FindStringSubmatch(payload)
+	if match != nil {
+		s.ClaimID = match[1]
+	} else if unnamed := unnamedProofPayloadRE.FindStringSubmatch(payload); unnamed != nil {
+		return s, "", fmt.Errorf("%s:%d: proof marker for %s does not name a proving unit", path, line, unnamed[1])
 	} else {
 		return s, "", fmt.Errorf("%s:%d: malformed current-state marker %q", path, line, payload)
 	}
+	name := match[2]
 	claim, ok := corpus.byClaim[s.ClaimID]
 	if !ok {
 		return s, "", fmt.Errorf("%s:%d: unknown claim ID %s", path, line, s.ClaimID)
 	}
-	t := corpus.byTopic[strings.Split(s.ClaimID, ":")[0]]
-	if s.Kind == ProofMarker {
-		if claim.Type != Invariant || claim.Backing != TestBacking {
-			return s, "", fmt.Errorf("%s:%d: proof marker targets non-test-backed invariant %s", path, line, s.ClaimID)
-		}
-		if !matchesAny(cfg.TestGlobs, path) {
-			return s, "", fmt.Errorf("%s:%d: proof marker is outside currentState.testGlobs", path, line)
-		}
-	} else if !topicMatchesPath(*t, corpus.DomainPaths[t.ID.Domain], path) {
-		return s, "", fmt.Errorf("%s:%d: marker for %s is outside effective topic scope", path, line, s.ClaimID)
+	if claim.Type != Invariant || claim.Backing != TestBacking {
+		return s, "", fmt.Errorf("%s:%d: proof marker targets non-test-backed invariant %s", path, line, s.ClaimID)
+	}
+	if !matchesAny(cfg.TestGlobs, path) {
+		return s, "", fmt.Errorf("%s:%d: proof marker is outside currentState.testGlobs", path, line)
 	}
 	return s, name, nil
 }
@@ -275,6 +244,25 @@ func identRune(r rune) bool {
 
 // topicMatchesPath answers repository-wide applicability. A global topic is
 // authoritative everywhere, including outside the bounded paths it may own.
+// PathAuthority returns deterministic owning domains and applicable topics for a lexical repository path. Global topics are applicable outside bounded domain ownership but do not create a domain owner.
+func PathAuthority(c Corpus, path string) ([]string, []string) {
+	domains := []string{}
+	for domain, selectors := range c.DomainPaths {
+		if pathglob.MatchAny(selectors, path) {
+			domains = append(domains, domain)
+		}
+	}
+	slices.Sort(domains)
+	topics := []string{}
+	for _, candidate := range c.All() {
+		if topicMatchesPath(candidate, c.DomainPaths[candidate.ID.Domain], path) {
+			topics = append(topics, candidate.ID.String())
+		}
+	}
+	slices.Sort(topics)
+	return domains, topics
+}
+
 func topicMatchesPath(t Topic, domainPaths []string, path string) bool {
 	if t.Metadata.Applies == "global" {
 		return true

@@ -1,6 +1,7 @@
 package publisher
 
 import (
+	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -8,6 +9,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 )
 
@@ -18,6 +20,15 @@ func loadPitfallCorpus(p renderInputs) (pitfall.Corpus, error) {
 }
 
 func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
+	generation := migrate.Current()
+	if lockBytes, found, err := reader.ReadFile(config.DirName + "/awf.lock"); err == nil && found {
+		var header struct {
+			SchemaVersion int `json:"schemaVersion"`
+		}
+		if json.Unmarshal(lockBytes, &header) == nil && header.SchemaVersion != 0 {
+			generation = header.SchemaVersion
+		}
+	}
 	paths, err := reader.Paths(pitfallsSourceDir + "/")
 	if err != nil {
 		return pitfall.Corpus{}, err
@@ -39,6 +50,10 @@ func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
 		if !ok { // coverage-ignore: filesystem Lstat proved presence and snapshot enumeration includes only the same immutable tree
 			regular = false
 		}
+		b, err = migrate.PitfallBytesForGeneration(generation, b)
+		if err != nil {
+			return pitfall.Corpus{}, fmt.Errorf("migrate pitfall source %s: %w", source, err)
+		}
 		files = append(files, pitfall.SourceFile{Path: filepath.ToSlash(source), Bytes: b, Regular: regular})
 	}
 	return pitfall.Load(files)
@@ -46,8 +61,8 @@ func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
 
 type pitfallIndexEntry struct {
 	Slug, Title, LinkTitle, TableTitle string
-	Domains, Tags                      []string
-	DomainsText, TagsText              string
+	Domains                            []string
+	DomainsText                        string
 	Related                            []int
 }
 type pitfallDomainGroup struct {
@@ -62,8 +77,8 @@ type pitfallIndexModel struct {
 
 type pitfallLeafModel struct {
 	Slug, Title, Heading, Source, Body string
-	Domains, Tags                      []string
-	DomainsText, TagsText              string
+	Domains                            []string
+	DomainsText                        string
 	Related                            []int
 }
 
@@ -78,7 +93,7 @@ func buildPitfallIndex(corpus pitfall.Corpus) pitfallIndexModel {
 	model := pitfallIndexModel{}
 	groups := map[string][]pitfallIndexEntry{}
 	for _, e := range entries {
-		item := pitfallIndexEntry{Slug: e.Slug, Title: e.Title, LinkTitle: pitfall.EscapeLinkLabel(e.Title), TableTitle: pitfall.EscapeTableCell(e.Title), Domains: e.Domains, Tags: e.Tags, DomainsText: pitfall.EscapeTableCell(strings.Join(e.Domains, ", ")), TagsText: pitfall.EscapeTableCell(strings.Join(e.Tags, ", ")), Related: e.Related}
+		item := pitfallIndexEntry{Slug: e.Slug, Title: e.Title, LinkTitle: pitfall.EscapeLinkLabel(e.Title), TableTitle: pitfall.EscapeTableCell(e.Title), Domains: e.Domains, DomainsText: pitfall.EscapeTableCell(strings.Join(e.Domains, ", ")), Related: e.Related}
 		model.Entries = append(model.Entries, item)
 		if len(e.Domains) == 0 {
 			model.Unassigned = append(model.Unassigned, item)
@@ -110,7 +125,7 @@ func pitfallIndexSidecar(sc config.Sidecar, corpus pitfall.Corpus) config.Sideca
 }
 
 func pitfallLeafData(e pitfall.Entry) map[string]any {
-	return map[string]any{"pitfall": pitfallLeafModel{Slug: e.Slug, Title: e.Title, Heading: pitfall.EscapeHeading(e.Title), Source: e.SourcePath, Body: e.Body, Domains: e.Domains, Tags: e.Tags, DomainsText: strings.Join(e.Domains, ", "), TagsText: strings.Join(e.Tags, ", "), Related: e.Related}}
+	return map[string]any{"pitfall": pitfallLeafModel{Slug: e.Slug, Title: e.Title, Heading: pitfall.EscapeHeading(e.Title), Source: e.SourcePath, Body: e.Body, Domains: e.Domains, DomainsText: strings.Join(e.Domains, ", "), Related: e.Related}}
 }
 
 // pitfallSourcePaths returns stable provenance inputs for the complete corpus.

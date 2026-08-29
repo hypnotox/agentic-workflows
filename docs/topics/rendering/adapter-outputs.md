@@ -5,11 +5,11 @@
 
 Generated executable adapter-runtime outputs and their ownership boundary.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `internal/vocabularycheck/**`, `templates/**`. Topic selectors: `.pi/extensions/**`. Both domain and topic selectors must match. Run `awf topic rendering/adapter-outputs --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`. Both domain and topic selectors must match. Run `awf read topic rendering/adapter-outputs --coverage` for current applicable and owned paths and marker sites.
 
 This topic records the current ownership contract for generated executable adapter-runtime outputs.
 
-Context usage is a generated adapter output under the same ownership and generated executable coverage exclusion as the other Pi extension outputs.
+The retained Pi subagent and effort extensions share the same generated-output ownership and whole-tree coverage exclusion.
 
 ## Claims
 

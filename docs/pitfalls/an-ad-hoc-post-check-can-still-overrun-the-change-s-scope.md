@@ -5,8 +5,6 @@
 
 **Domains:** tooling
 
-**Tags:** verification-discipline, plan-taxonomy
-
 **Related ADRs:** ADR-0115
 
 Material plan post-checks now name their population, exclusions, lifecycle snapshot, and

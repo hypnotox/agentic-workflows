@@ -4,13 +4,12 @@
 - `internal/checkresult`: owns immutable ranked findings with explicit protected properties and separately unranked information.
 - `internal/repositorycheck`: the policy-free RepositoryChecker preserves explicit owner-result order and compatibility projections without preparing inputs or inferring classification.
 - `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving bounded compatibility adapters and unrelated project operations.
-- `internal/currentstatecoord`: focused application operations select immutable universes, coordinate ADR, topic, plan, and current-state authority, and return semantic results without absorbing domain or commit-authorization policy. For ordinary explicit context it selects a complete live inventory and separately selected immutable bytes before translating them into neutral context input.
-- Focused operation packages: `internal/initop`, `internal/checkop`, `internal/contextop`, `internal/topicop`, `internal/effortop`, `internal/commitgateop`, `internal/domainop`, and `internal/localdocop` own bounded command use cases above their semantic mechanisms.
-- `internal/contextinput`: owns the neutral immutable context input consumed below application coordination.
+- `internal/currentstatecoord`: focused application operations select immutable working or staged universes, coordinate ADR, topic, plan, current-state authority, and staged output preparation, and return semantic results without absorbing domain or commit-authorization policy.
+- Focused operation packages: `internal/initop`, `internal/checkop`, `internal/topicop`, `internal/effortop`, `internal/commitgateop`, `internal/domainop`, and `internal/localdocop` own bounded command use cases above their semantic mechanisms.
 - `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.
 - `internal/snapshot` and `internal/filesystem`: immutable input and confined filesystem boundaries; snapshot keeps live path-and-mode inventory distinct from selected content bytes.
 - `cmd/awf`: thin CLI composition root for command lookup, parsing, concrete construction, one focused invocation, renderer or protocol-bypass selection, streams, and exit mapping.
 - Generated Pi extensions: an awf-owned protocol-v2 profile adapter and retained effort integration. Independently installed, unpinned `hypnotox/pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation; successful handshake and final profile registration define compatibility, with an actionable no-fallback failure otherwise.
-- Auxiliary commands: `cmd/contextspilllog`, `cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`, `cmd/releasecheck`, `cmd/repoaudit`, `cmd/testperformance`, `cmd/testselection`, and `cmd/versioncheck`.
+- Auxiliary commands: `cmd/covercheck`, `cmd/deadcodecheck`, `cmd/mutants`, `cmd/pincheck`, `cmd/releasecheck`, `cmd/repoaudit`, `cmd/testperformance`, `cmd/testselection`, and `cmd/versioncheck`.

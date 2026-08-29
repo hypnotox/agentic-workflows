@@ -671,11 +671,12 @@ func TestRepositoryPreCommitMaterializesAlternateIndexInLinkedWorktree(t *testin
 	// The synchronized fixture supplies the real generated payload. The staged
 	// x command below is the narrow behavioral oracle that payload invokes.
 	gitfixture.Commit(t, repo, "hook matrix base", map[string]string{
-		"modify":     "original\n",
-		"delete":     "original\n",
-		"rename-old": "original\n",
-		"executable": "#!/bin/sh\necho original\n",
-		"x":          "#!/bin/sh\nexit 0\n",
+		"modify":          "original\n",
+		"delete":          "original\n",
+		"delete-dir/only": "original\n",
+		"rename-old":      "original\n",
+		"executable":      "#!/bin/sh\necho original\n",
+		"x":               "#!/bin/sh\nexit 0\n",
 	})
 	linked := filepath.Join(t.TempDir(), "linked")
 	gitRun := func(dir, index string, args ...string) string {
@@ -754,13 +755,18 @@ func TestRepositoryPreCommitMaterializesAlternateIndexInLinkedWorktree(t *testin
 		{
 			name: "delete",
 			stage: func(index string) {
-				if err := os.Remove(filepath.Join(linked, "delete")); err != nil {
-					t.Fatal(err)
+				for _, path := range []string{"delete", "delete-dir/only"} {
+					if err := os.Remove(filepath.Join(linked, path)); err != nil {
+						t.Fatal(err)
+					}
 				}
-				gitRun(linked, index, "add", "-A", "delete")
+				gitRun(linked, index, "add", "-A", "delete", "delete-dir/only")
 			},
-			compensate: func() { testsupport.WriteFile(t, filepath.Join(linked, "delete"), "working repair\n") },
-			xBehavior:  "touch \"$AWF_PAYLOAD_MARKER\"\ntest ! -e delete\n",
+			compensate: func() {
+				testsupport.WriteFile(t, filepath.Join(linked, "delete"), "working repair\n")
+				testsupport.WriteFile(t, filepath.Join(linked, "delete-dir/only"), "working repair\n")
+			},
+			xBehavior: "touch \"$AWF_PAYLOAD_MARKER\"\ntest ! -e delete && test ! -e delete-dir\n",
 		},
 		{
 			name: "rename",
@@ -812,7 +818,7 @@ func TestRepositoryPreCommitMaterializesAlternateIndexInLinkedWorktree(t *testin
 
 			marker := filepath.Join(t.TempDir(), "payload-ran")
 			tmp := t.TempDir()
-			paths := []string{"add", "modify", "delete", "rename-old", "rename-new", "executable", "x", ".awf/hooks/pre-commit.sh"}
+			paths := []string{"add", "modify", "delete", "delete-dir/only", "rename-old", "rename-new", "executable", "x", ".awf/hooks/pre-commit.sh"}
 			worktreeBefore := map[string][]byte{}
 			missingBefore := map[string]bool{}
 			for _, path := range paths {

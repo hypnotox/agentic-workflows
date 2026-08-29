@@ -46,6 +46,7 @@ func TestParseBytesRecognizesV2Marker(t *testing.T) {
 	}
 }
 
+// invariant: config/configuration:no-active-tag-system (TestParseDirExtractsTagsAndRelated)
 func TestParseDirExtractsTagsAndRelated(t *testing.T) {
 	dir := t.TempDir()
 	content := testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),

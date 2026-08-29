@@ -67,7 +67,6 @@ func versionLine(info *debug.BuildInfo, ok bool) string {
 // authority (ADR-0049): no ldflags var or module build info feeds version
 // gating, lock stamping, or bootstrap pinning.
 func awfVersion() string {
-	// touches-state: tooling/cli:single-version-authority - sole version-authority return; proof in version_test.go
 	return project.Version
 }
 

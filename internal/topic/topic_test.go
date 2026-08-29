@@ -95,7 +95,7 @@ Verify: inspect output
 
 // invariant: invariants/topics-and-markers:invariants-duplicate-slug (TestClaimSummaryMetadata)
 // invariant: invariants/topics-and-markers:unbacked-requires-verify-note (TestClaimSummaryMetadata)
-// invariant: tooling/context-and-topic:context-summary-projection (TestClaimSummaryMetadata)
+// invariant: tooling/authority-queries:authority-read-projections (TestClaimSummaryMetadata)
 func TestClaimSummaryMetadata(t *testing.T) {
 	parse := func(summary string) (Claim, error) {
 		body := "Intro.\n\n## Claims\n\n### `rule: x`\nProse.\n" + summary + "Origin: ADR-0001\n"

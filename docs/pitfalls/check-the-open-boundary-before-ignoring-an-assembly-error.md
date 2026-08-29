@@ -5,8 +5,6 @@
 
 **Domains:** tooling
 
-**Tags:** coverage-gate, cli-dispatch
-
 **Related ADRs:** ADR-0012, ADR-0092, ADR-0102
 
 Before adding `coverage-ignore` to an assembly error, verify whether `Open` already validates

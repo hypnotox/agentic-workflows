@@ -31,7 +31,8 @@ func readInitConfig(t *testing.T, root string) string {
 
 // TestInitDescribeReadOnly asserts `awf init --describe` prints the descriptor
 // schema as JSON and writes nothing (no .awf/ created).
-// invariant: tooling/context-and-topic:describe-read-only (TestInitDescribeReadOnly)
+// invariant: tooling/cli:init-describe-read-only (TestInitDescribeReadOnly)
+// invariant: tooling/cli:init-describe-read-only (TestInitDescribeReadOnly)
 func TestWriteInitDescriptorProtocolBytesAndErrors(t *testing.T) {
 	const payload = `{"descriptors":["x"]}`
 	var out bytes.Buffer

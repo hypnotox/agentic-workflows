@@ -15,13 +15,13 @@ import (
 )
 
 // consumerPatterns are the packages the resident single-home claim scopes
-// itself to - the sync core and every command binary - plus internal/contextq,
+// itself to - the sync core and every command binary,
 // a live consumer carved out of the core after the claim was scoped (the proof
 // is deliberately stricter than the claim sentence's "internal/project or
 // cmd"). internal/git is deliberately absent - its ResidentName constants are
 // the git seam's own spelling, decided untouched by ADR-0195 item 7 and
 // recorded there as a tolerated parallel.
-var consumerPatterns = []string{"./internal/project/...", "./internal/contextq/...", "./cmd/..."}
+var consumerPatterns = []string{"./internal/project/...", "./cmd/..."}
 
 // loadConsumerPackages loads the production sources of every package that
 // consumes resident policy (tests excluded), optionally overlaying one file so
@@ -53,20 +53,17 @@ func loadConsumerPackages(t *testing.T, overlay map[string][]byte) []*packages.P
 	// Each pattern half must resolve to real packages: a pattern that silently
 	// matches nothing would leave half the claimed scope unscanned while the
 	// aggregate check above stays green.
-	var hasProject, hasContextq, hasCmd bool
+	var hasProject, hasCmd bool
 	for _, pkg := range pkgs {
 		if strings.Contains(pkg.PkgPath, "/internal/project") {
 			hasProject = true
-		}
-		if strings.Contains(pkg.PkgPath, "/internal/contextq") {
-			hasContextq = true
 		}
 		if strings.Contains(pkg.PkgPath, "/cmd/") {
 			hasCmd = true
 		}
 	}
-	if !hasProject || !hasContextq || !hasCmd {
-		t.Fatalf("a consumer pattern matched no packages (project=%v contextq=%v cmd=%v)", hasProject, hasContextq, hasCmd)
+	if !hasProject || !hasCmd {
+		t.Fatalf("a consumer pattern matched no packages (project=%v cmd=%v)", hasProject, hasCmd)
 	}
 	return pkgs
 }

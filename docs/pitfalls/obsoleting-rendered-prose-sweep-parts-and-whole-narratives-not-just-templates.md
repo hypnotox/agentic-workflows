@@ -5,8 +5,6 @@
 
 **Domains:** rendering
 
-**Tags:** convention-parts, template-overlay
-
 Fixing a template's default sentence does not reach a project whose convention part
 *overrides* that section; awf's own `.awf/parts/agents-doc/awf-setup.md` kept ADR-0081's
 obsoleted "disable them as a unit" instruction past the template rewrite, a sync, and three

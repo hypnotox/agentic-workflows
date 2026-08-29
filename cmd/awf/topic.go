@@ -9,8 +9,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topicop"
 )
 
-// runTopic composes the live operation and retains command rendering and exits.
-func runTopic(ctx context.Context, cwd, selector string, history, references, coverage bool, stdout io.Writer) error {
+// runReadTopic composes the live operation and retains command rendering and exits.
+func runReadTopic(ctx context.Context, cwd, selector string, history, references, coverage bool, stdout io.Writer) error {
 	detail, err := topicop.Run(ctx, cwd, topicop.Input{Selector: selector, History: history, References: references, Coverage: coverage}, openProjectOperation, gate)
 	if err != nil {
 		var usage *topicop.UsageError

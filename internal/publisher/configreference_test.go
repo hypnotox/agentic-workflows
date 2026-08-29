@@ -72,11 +72,6 @@ func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 	if err := validateLiveStateAuthority(wrongStatic, resolvers); err == nil || !strings.Contains(err.Error(), "static live-state key") {
 		t.Fatalf("wrong static classification error = %v", err)
 	}
-	omittedResolver := currentValueResolvers(renderInputsForTest(p))
-	delete(omittedResolver, "tags")
-	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), omittedResolver); err == nil || !strings.Contains(err.Error(), `live-state key "tags" has no resolver`) {
-		t.Fatalf("omitted resolver error = %v", err)
-	}
 	staticResolver := currentValueResolvers(renderInputsForTest(p))
 	staticResolver["commitPolicy.allowedIdentities[].name"] = func() string { return "wrong" }
 	if err := validateLiveStateAuthority(configspec.LiveStateClassifications(), staticResolver); err == nil || !strings.Contains(err.Error(), `static live-state key "commitPolicy.allowedIdentities[].name" has a resolver`) {
@@ -88,7 +83,7 @@ func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 		t.Fatalf("extra resolver error = %v", err)
 	}
 	unknown := configspec.LiveStateClassifications()
-	unknown["tags"] = configspec.LiveStateClass(99)
+	unknown["prefix"] = configspec.LiveStateClass(99)
 	if err := validateLiveStateAuthority(unknown, resolvers); err == nil || !strings.Contains(err.Error(), "unknown class") {
 		t.Fatalf("unknown classification error = %v", err)
 	}
@@ -222,7 +217,6 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 
 	absent := "prefix: example\nprofile: full\nintegrationBranch: main\n"
 	assertValues(t, absent, map[string]string{
-		"tags": "(none)", "contextIgnore": "(none)",
 		"commitPolicy.grandfatheredThrough": "(none)",
 		"commitPolicy.allowedIdentities":    "(none)",
 		"commitPolicy.requireSignedCommits": "false (default)",
@@ -248,11 +242,7 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 		}
 	})
 
-	configured := absent + `tags:
-  release: Release work.
-  security: Security work.
-contextIgnore: [docs/**, README.md]
-commitPolicy:
+	configured := absent + `commitPolicy:
   grandfatheredThrough: aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa
   allowedIdentities:
     - name: Ada
@@ -263,7 +253,6 @@ commitPolicy:
       key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIFSyHgjX4Y74rFN//IDMW2HBGkTMn5JF1Ls6VJr4pojt
 `
 	assertValues(t, configured, map[string]string{
-		"tags": "2 tags", "contextIgnore": "2 patterns",
 		"commitPolicy.grandfatheredThrough": "`aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa`",
 		"commitPolicy.allowedIdentities":    "1 identities",
 		"commitPolicy.requireSignedCommits": "true",

@@ -126,18 +126,6 @@ func currentValueResolvers(p renderInputs) map[string]func() string {
 		},
 		"localDocs": func() string { return strconv.Itoa(len(p.cfg.LocalDocs)) + " configured" },
 		"domains":   func() string { return strconv.Itoa(len(p.cfg.Domains)) + " configured" },
-		"tags": func() string {
-			if len(p.cfg.Tags) == 0 {
-				return "(none)"
-			}
-			return strconv.Itoa(len(p.cfg.Tags)) + " tags"
-		},
-		"contextIgnore": func() string {
-			if len(p.cfg.ContextIgnore) == 0 {
-				return "(none)"
-			}
-			return strconv.Itoa(len(p.cfg.ContextIgnore)) + " patterns"
-		},
 		"commitPolicy.grandfatheredThrough": func() string {
 			if p.cfg.CommitPolicy == nil || p.cfg.CommitPolicy.GrandfatheredThrough == "" {
 				return "(none)"
@@ -396,7 +384,7 @@ func configReferenceData(p renderInputs, files []RenderedFile) (map[string]any, 
 // dataKeyRowsTyped filters described data keys to catalog artifacts and the
 // always-on agents-doc.
 func fullOnlyConfigKey(path string) bool {
-	return path == "domains" || path == "tags" || path == "contextIgnore" || path == "sidecar.paths" ||
+	return path == "domains" || path == "sidecar.paths" ||
 		strings.HasPrefix(path, "currentState.") || strings.HasPrefix(path, "memoryCite.")
 }
 
@@ -457,7 +445,7 @@ func dataKeyRowsTyped(p renderInputs) ([]DataKeyRow, error) {
 		}
 		description := d.Description
 		if !fullProfile(p) && d.Kind == "docs" && d.Artifact == "glossary" && d.Key == "terms" {
-			description = "The glossary's terms as an ordered list of `{term, meaning}` records; the table renders always sorted (case-insensitive, pipes escaped), and an empty term or meaning, an interior newline, an unknown record key, or a case-insensitive duplicate term fails the render naming the offending term. A term here overrides the standard vocabulary awf ships of the same case-insensitive name. Unset, the doc renders the standard vocabulary alone."
+			description = "The glossary's terms as an ordered list of `{term, meaning}` records; the table renders always sorted (case-insensitive, pipes escaped), and an empty term or meaning, an interior newline, an unknown record key, or a case-insensitive duplicate term fails the render naming the offending term. A term here overrides the standard glossary awf ships of the same case-insensitive name. Unset, the doc renders the standard glossary alone."
 		}
 		if d.Kind == "agents" && d.Key == "focusItems" {
 			var names []string

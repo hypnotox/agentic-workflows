@@ -34,32 +34,6 @@ type Policy struct {
 	Regenerate          bool
 }
 
-// Input is one semantic input consumed by an output.
-type Input struct {
-	path string
-	role ArtifactRole
-}
-
-func NewInput(path string, role ArtifactRole) Input { return Input{path: path, role: role} }
-func (i Input) Path() string                        { return i.path }
-func (i Input) Role() ArtifactRole                  { return i.role }
-
-// Declaration records one deterministic output and its semantic inputs.
-type Declaration struct {
-	path, templateID string
-	declarers        []string
-	inputs           []Input
-	dependencies     []string
-}
-
-func NewDeclaration(path, templateID string, declarers []string, inputs []Input, dependencies []string) Declaration {
-	return Declaration{path: path, templateID: templateID, declarers: slices.Clone(declarers), inputs: slices.Clone(inputs), dependencies: slices.Clone(dependencies)}
-}
-func (d Declaration) Path() string        { return d.path }
-func (d Declaration) TemplateID() string  { return d.templateID }
-func (d Declaration) Declarers() []string { return slices.Clone(d.declarers) }
-func (d Declaration) Inputs() []Input     { return slices.Clone(d.inputs) }
-
 // Recipe is the normalized output-affecting identity used for coalescing.
 type Recipe struct {
 	templateID, templateHash, configHash string
@@ -81,7 +55,6 @@ type OutputSpec struct {
 	Provenance                                          int
 	Assembled, Kind, Artifact                           string
 	StubDefaults, StubParts, MarkerParts, PartVarRefs   []string
-	ConsumedInputs                                      []Input
 	ObservedTemplateID                                  string
 }
 
@@ -95,7 +68,6 @@ func NewOutput(spec OutputSpec) Output {
 	spec.StubParts = slices.Clone(spec.StubParts)
 	spec.MarkerParts = slices.Clone(spec.MarkerParts)
 	spec.PartVarRefs = slices.Clone(spec.PartVarRefs)
-	spec.ConsumedInputs = slices.Clone(spec.ConsumedInputs)
 	return Output{spec: spec}
 }
 func (o Output) Path() string               { return o.spec.Path }
@@ -125,7 +97,6 @@ type NodeSpec struct {
 	Declarers           []string
 	DeclarerProjections []string
 	DependsOn           []string
-	ConsumedInputs      []Input
 	ObservedTemplateID  string
 	Output              *Output
 }
@@ -137,7 +108,6 @@ func NewNode(spec NodeSpec) Node {
 	spec.Declarers = slices.Clone(spec.Declarers)
 	spec.DeclarerProjections = slices.Clone(spec.DeclarerProjections)
 	spec.DependsOn = slices.Clone(spec.DependsOn)
-	spec.ConsumedInputs = slices.Clone(spec.ConsumedInputs)
 	if spec.Output != nil {
 		copy := *spec.Output
 		spec.Output = &copy
@@ -155,15 +125,11 @@ func (n Node) Output() (Output, bool) {
 
 // Plan is the immutable desired-output authority for one operation.
 type Plan struct {
-	nodes        []Node
-	declarations []Declaration
+	nodes []Node
 }
 
-func New(nodes []Node, declarations []Declaration) Plan {
-	return Plan{nodes: slices.Clone(nodes), declarations: slices.Clone(declarations)}
-}
-func (p Plan) Nodes() []Node               { return slices.Clone(p.nodes) }
-func (p Plan) Declarations() []Declaration { return slices.Clone(p.declarations) }
+func New(nodes []Node) Plan  { return Plan{nodes: slices.Clone(nodes)} }
+func (p Plan) Nodes() []Node { return slices.Clone(p.nodes) }
 func (p Plan) Paths() []string {
 	out := make([]string, 0, len(p.nodes))
 	for _, node := range p.nodes {

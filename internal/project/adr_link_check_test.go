@@ -9,7 +9,7 @@ import (
 )
 
 // A dangling ADR related: number yields adr-related-link drift; a resolving one
-// yields none. Unconditional (no vocabulary configured here).
+// yields none. Unconditional (no glossary configured here).
 // invariant: adr-system/adr-lifecycle:adr-related-link-resolved (TestCheckADRRelatedLinks)
 func TestCheckADRRelatedLinks(t *testing.T) {
 	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\n")

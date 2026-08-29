@@ -27,7 +27,7 @@ func renderPitfallFiles(t *testing.T, root string) map[string]string {
 
 func TestPitfallCorpusRendersIndexAndLeaves(t *testing.T) {
 	root := scaffoldFiles(t, pitfallsCfg, map[string]string{
-		"docs/pitfalls/second.md": pitfallSource("Second", "domains: [rendering]\ntags: [proof]\nrelated: [1]\n", "second body\n"),
+		"docs/pitfalls/second.md": pitfallSource("Second", "domains: [rendering]\nrelated: [1]\n", "second body\n"),
 		"docs/pitfalls/first.md":  pitfallSource("First [literal] | title", "", "first body\n"),
 	})
 	files := renderPitfallFiles(t, root)
@@ -38,7 +38,7 @@ func TestPitfallCorpusRendersIndexAndLeaves(t *testing.T) {
 		t.Fatalf("unexpected index:\n%s", index)
 	}
 	leaf := files["docs/pitfalls/second.md"]
-	for _, want := range []string{"<!-- awf:source .awf/docs/pitfalls/second.md -->", "# Second", "**Domains:** rendering", "**Tags:** proof", "ADR-0001", "second body"} {
+	for _, want := range []string{"<!-- awf:source .awf/docs/pitfalls/second.md -->", "# Second", "**Domains:** rendering", "ADR-0001", "second body"} {
 		if !strings.Contains(leaf, want) {
 			t.Errorf("leaf missing %q:\n%s", want, leaf)
 		}
@@ -74,7 +74,7 @@ func TestPitfallMetadataProjectionKeepsMarkdownStructure(t *testing.T) {
 	const domain = "# [domain] | `code` \\ path\r\nnext"
 	const tag = "tag | [literal] `tick` \\ value\r\ncontinued"
 	root := scaffoldFiles(t, pitfallsCfg, map[string]string{
-		"docs/pitfalls/punctuation.md": pitfallSource("'# [Title] | `tick` \\ literal'", "domains: [\"# [domain] | `code` \\\\ path\\r\\nnext\"]\ntags: [\"tag | [literal] `tick` \\\\ value\\r\\ncontinued\"]\n", "body bytes | remain `verbatim`\n"),
+		"docs/pitfalls/punctuation.md": pitfallSource("'# [Title] | `tick` \\ literal'", "domains: [\"# [domain] | `code` \\\\ path\\r\\nnext\"]\n", "body bytes | remain `verbatim`\n"),
 	})
 	files := renderPitfallFiles(t, root)
 	index := files["docs/pitfalls.md"]
@@ -89,10 +89,10 @@ func TestPitfallMetadataProjectionKeepsMarkdownStructure(t *testing.T) {
 			break
 		}
 	}
-	if row == "" || countMarkdownTableDelimiters(row) != 5 {
+	if row == "" || countMarkdownTableDelimiters(row) != 4 {
 		t.Fatalf("metadata row structure = %q, delimiters=%d", row, countMarkdownTableDelimiters(row))
 	}
-	for _, want := range []string{pitfall.EscapeTableCell(domain), pitfall.EscapeTableCell(tag), "[\\# \\[Title\\] \\| \\`tick\\` \\\\ literal](pitfalls/punctuation.md)"} {
+	for _, want := range []string{pitfall.EscapeTableCell(domain), "[\\# \\[Title\\] \\| \\`tick\\` \\\\ literal](pitfalls/punctuation.md)"} {
 		if !strings.Contains(row, want) {
 			t.Fatalf("metadata row missing literal projection %q: %s", want, row)
 		}

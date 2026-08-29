@@ -1,7 +1,6 @@
 ---
 title: "Obsoleting rendered prose: sweep parts and whole narratives, not just templates"
 domains: ["rendering"]
-tags: ["convention-parts", "template-overlay"]
 ---
 Fixing a template's default sentence does not reach a project whose convention part
 *overrides* that section; awf's own `.awf/parts/agents-doc/awf-setup.md` kept ADR-0081's

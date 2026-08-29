@@ -104,12 +104,13 @@ func TestDailyAdvancedDocumentationOwnership(t *testing.T) {
 					}
 				}
 			}
-			for _, want := range []string{"exceeds 8,192 bytes", "near-match"} {
-				if !strings.Contains(string(debugging), want) {
-					t.Errorf("debugging missing recovery sentinel %q", want)
-				}
-			}
 			if profile == "full" {
+				for _, want := range []string{"Current-state authority", "CodeGraph", "./awf resolve topic", "./awf read adr"} {
+					if !strings.Contains(string(debugging), want) {
+						t.Errorf("debugging missing authority sentinel %q", want)
+					}
+				}
+
 				for _, want := range []string{"awf changelog --since"} {
 					if !strings.Contains(string(debugging), want) {
 						t.Errorf("debugging missing advanced upgrade sentinel %q", want)

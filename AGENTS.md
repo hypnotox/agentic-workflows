@@ -79,7 +79,7 @@ go test ./...: run the test suite
 ./awf new pitfall "<Title>": scaffold one authored pitfall source without rendering
 ```
 
-Use `./awf read plan <plan> <P[.T]>` for executable plan scope. For command flags and daily use, see [docs/working-with-awf.md](docs/working-with-awf.md). For context-spill recovery, see [docs/debugging.md](docs/debugging.md); selected native skills own effort and ADR lifecycle procedure.
+Use `./awf read plan <plan> <P[.T]>` for executable plan scope. For command flags and daily use, see [docs/working-with-awf.md](docs/working-with-awf.md). Use CodeGraph for structural discovery; Git selects changed paths. In Full use `./awf resolve topic`, `./awf read topic`, and `./awf read adr` for normative authority. Selected native skills own effort and ADR lifecycle procedure.
 
 
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl#document-map -->

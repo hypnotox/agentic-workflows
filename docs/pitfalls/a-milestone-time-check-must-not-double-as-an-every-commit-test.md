@@ -5,8 +5,6 @@
 
 **Domains:** tooling
 
-**Tags:** release-pipeline, changelog
-
 `cmd/releasecheck` (ADR-0078) holds a condition that is *supposed* to be false mid-cycle: the
 exact changelog pin only has to be true at tag time, and a normal in-cycle repo carries a
 non-empty `[Unreleased]`. An early draft of its test suite ran the real check against the live

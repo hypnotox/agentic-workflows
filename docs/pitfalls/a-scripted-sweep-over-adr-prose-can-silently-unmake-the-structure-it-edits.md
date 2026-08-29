@@ -5,8 +5,6 @@
 
 **Domains:** adr-system
 
-**Tags:** adr-parsing
-
 **Related ADRs:** ADR-0135
 
 Editing ADR bodies across the corpus by script (the project-atomic cutover rewrote every

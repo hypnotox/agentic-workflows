@@ -1,7 +1,6 @@
 ---
 title: "Raw-byte offsets go stale the moment an earlier pass edits the file"
 domains: ["config"]
-tags: ["schema-migration", "adr-parsing"]
 related: [128]
 ---
 `ADR.DecisionStart`/`DecisionEnd` are byte offsets into the bytes that were *parsed*. A

@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -216,29 +217,55 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitfixture.Stage(t, repo, map[string]string{".awf/awf.lock": string(lockBytes)})
-	working, err := contextStateProject(p, testContext(t))
+	working, err := testPublisher(renderInputsForTest(p)).Plan()
 	if err != nil {
 		t.Fatal(err)
 	}
-	staged, err := StagedContextState(testContext(t), root)
+	stagedOutput, err := currentstatecoord.PrepareStagedOutput(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	pitfallDeclarations := func(all []outputplan.Declaration) []outputplan.Declaration {
-		var out []outputplan.Declaration
-		for _, declaration := range all {
-			if declaration.Path() == "docs/pitfalls.md" || strings.HasPrefix(declaration.Path(), "docs/pitfalls/") {
-				out = append(out, declaration)
+	staged, err := New(stagedOutput.State, stagedOutput.Config, stagedOutput.Reader, Version).Plan()
+	if err != nil {
+		t.Fatal(err)
+	}
+	pitfallNodes := func(all []outputplan.Node) []outputplan.Node {
+		var out []outputplan.Node
+		for _, node := range all {
+			if node.Path() == "docs/pitfalls.md" || strings.HasPrefix(node.Path(), "docs/pitfalls/") {
+				out = append(out, node)
 			}
 		}
 		return out
 	}
-	workingDeclarations := working.Snapshot().Declarations
-	stagedDeclarations := staged.Snapshot().Declarations
-	if !slices.EqualFunc(pitfallDeclarations(workingDeclarations), pitfallDeclarations(stagedDeclarations), func(a, b outputplan.Declaration) bool {
-		return a.Path() == b.Path() && a.TemplateID() == b.TemplateID() && slices.Equal(a.Declarers(), b.Declarers()) && slices.Equal(a.Inputs(), b.Inputs())
+	workingNodes := pitfallNodes(working.Nodes())
+	stagedNodes := pitfallNodes(staged.Nodes())
+	if !slices.EqualFunc(workingNodes, stagedNodes, func(a, b outputplan.Node) bool {
+		aOutput, aRendered := a.Output()
+		bOutput, bRendered := b.Output()
+		return a.Path() == b.Path() &&
+			aRendered == bRendered &&
+			(!aRendered || (aOutput.Path() == bOutput.Path() &&
+				aOutput.Content() == bOutput.Content() &&
+				aOutput.TemplateID() == bOutput.TemplateID() &&
+				aOutput.TemplateHash() == bOutput.TemplateHash() &&
+				aOutput.ConfigHash() == bOutput.ConfigHash() &&
+				aOutput.RegenChecked() == bOutput.RegenChecked() &&
+				aOutput.Policy() == bOutput.Policy() &&
+				aOutput.Declarer() == bOutput.Declarer() &&
+				aOutput.DeclarerProjection() == bOutput.DeclarerProjection() &&
+				aOutput.Encoder() == bOutput.Encoder() &&
+				aOutput.Provenance() == bOutput.Provenance() &&
+				aOutput.Assembled() == bOutput.Assembled() &&
+				slices.Equal(aOutput.StubDefaults(), bOutput.StubDefaults()) &&
+				slices.Equal(aOutput.StubParts(), bOutput.StubParts()) &&
+				slices.Equal(aOutput.MarkerParts(), bOutput.MarkerParts()) &&
+				aOutput.Kind() == bOutput.Kind() &&
+				aOutput.Artifact() == bOutput.Artifact() &&
+				slices.Equal(aOutput.PartVarRefs(), bOutput.PartVarRefs()))) &&
+			slices.Equal(a.Declarers(), b.Declarers())
 	}) {
-		t.Fatalf("working/staged pitfall declarations differ:\nworking=%#v\nstaged=%#v", pitfallDeclarations(workingDeclarations), pitfallDeclarations(stagedDeclarations))
+		t.Fatalf("working/staged pitfall nodes differ:\nworking=%#v\nstaged=%#v", workingNodes, stagedNodes)
 	}
 }
 
@@ -403,7 +430,7 @@ func pitfallSemanticHomeFindings(sources map[string][]byte) []string {
 			findings = append(findings, declaration+" homes = "+strings.Join(paths, ", "))
 		}
 	}
-	wantConsumers := map[string]bool{"internal/project": true, "internal/publisher": true, "internal/pitfallcheck": true, "internal/vocabularycheck": true}
+	wantConsumers := map[string]bool{"internal/project": true, "internal/publisher": true, "internal/pitfallcheck": true, "internal/migrate": true}
 	for consumer := range consumers {
 		if !wantConsumers[consumer] {
 			findings = append(findings, "unexpected pitfall consumer "+consumer)

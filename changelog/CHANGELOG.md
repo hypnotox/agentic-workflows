@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Replace `awf context` with focused `awf read topic`, `awf read adr`, and `awf resolve topic` authority queries; CodeGraph now owns structural source navigation and Git owns changed-path selection. Remove live config and pitfall `tags`, `contextIgnore`, and `state:` or `touches-state:` markers; only `invariant:` remains as a proof-only marker boundary.
+
 ## [0.42.0] - 2026-08-29
 
 ### Breaking changes

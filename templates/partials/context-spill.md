@@ -1,1 +1,0 @@
-{{if ne .profile "core"}}On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.{{end}}

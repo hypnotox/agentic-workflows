@@ -5,11 +5,17 @@
 
 Command dispatch and the behaviour of the awf command surfaces.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/contextdelivery/**`, `internal/contextinput/**`, `internal/contextop/**`, `internal/contextq/**`, `internal/contextspill/**`, `internal/coverage/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testperformance/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-performance.json`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/configop/**`, `internal/domainop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/repositorycheck/**`. Both domain and topic selectors must match. Run `awf topic tooling/cli --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/coverage/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testperformance/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-performance.json`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/configop/**`, `internal/domainop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/repositorycheck/**`. Both domain and topic selectors must match. Run `awf read topic tooling/cli --coverage` for current applicable and owned paths and marker sites.
 
 The cmd packages and their spec helpers implement the awf command surfaces and their dispatch. Effort commands manage optional durable coordination, memory, and managed worktrees.
 
 ## Claims
+
+### `invariant: init-describe-read-only`
+
+`awf init --describe` is a read-only descriptor query and remains available without project mutation.
+Origin: ADR-0320
+Backing: test
 
 ### `invariant: cli-creation-and-inventory`
 
@@ -71,9 +77,9 @@ Backing: test
 
 ### `invariant: explicit-output-bypasses`
 
-Only authored plan projections, selected changelog content, effort activity JSON, owner-scoped effort memory protocol JSON, init descriptor JSON, and the context spill notice bypass the presentation tree on successful output, each under byte-exact tests. Memory protocol JSON is a required protocol-1 machine envelope selected only by mutually required `--owner` and `--json`, while owner-free memory output remains ordinary presentation; its writer requires the complete newline-terminated envelope and treats a short write as failure. The exact `writeRendererFailure` terminal mechanism diagnostic is separate, is reachable only after presentation rendering fails, and is not an alternate successful renderer.
+Only authored plan projections, selected changelog content, effort activity JSON, owner-scoped effort memory protocol JSON, init descriptor JSON bypass the presentation tree on successful output, each under byte-exact tests. Memory protocol JSON is a required protocol-1 machine envelope selected only by mutually required `--owner` and `--json`, while owner-free memory output remains ordinary presentation; its writer requires the complete newline-terminated envelope and treats a short write as failure. The exact `writeRendererFailure` terminal mechanism diagnostic is separate, is reachable only after presentation rendering fails, and is not an alternate successful renderer.
 Origin: ADR-0234
-Revised-by: ADR-0239
+Revised-by: ADR-0239, ADR-0320
 Backing: test
 
 ### `invariant: gated-commands-generated`
@@ -126,9 +132,9 @@ Backing: test
 
 ### `invariant: check-severity-by-protected-property`
 
-Each semantic check owner emits immutable results in which every ranked finding names its fixed Error or Warning rank and protected property. No consumer recovers classification from evidence kind, presentation category, or slice placement. Every `awf check` Error protects correctness, safety, authority, or reproducibility and makes the command exit nonzero. Style, readability, plan-detail, fan-out, and other heuristic findings use Warning and exit zero. Optional improvements, unused vocabulary, context suggestions, non-blocking compatibility notices, and successful operation notes remain unranked Information and exit zero. Direct and aggregate readable output visibly separates `errors`, `warnings`, and `information`; information is not a third finding rank.
+Each semantic check owner emits immutable results in which every ranked finding names its fixed Error or Warning rank and protected property. No consumer recovers classification from evidence kind, presentation category, or slice placement. Every `awf check` Error protects correctness, safety, authority, or reproducibility and makes the command exit nonzero. Style, readability, plan-detail, fan-out, and other heuristic findings use Warning and exit zero. Optional improvements, unused vocabulary, non-blocking compatibility notices, and successful operation notes remain unranked Information and exit zero. Direct and aggregate readable output visibly separates `errors`, `warnings`, and `information`; information is not a third finding rank.
 Origin: ADR-0295
-Revised-by: ADR-0300
+Revised-by: ADR-0300, ADR-0320
 Backing: test
 
 ### `invariant: single-os-exit`

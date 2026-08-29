@@ -20,20 +20,19 @@ import (
 const projectPackageMode = packages.NeedName | packages.NeedFiles | packages.NeedCompiledGoFiles |
 	packages.NeedSyntax | packages.NeedTypes | packages.NeedTypesInfo
 
-// stateOwnershipPatterns are the packages the widened claim quantifies over:
-// lower project state and the query and resident consumers.
-var stateOwnershipPatterns = []string{"./internal/projectstate", "./internal/contextq", "./internal/resident"}
+// stateOwnershipPatterns are the packages the claim quantifies over: lower
+// project state and the resident consumer.
+var stateOwnershipPatterns = []string{"./internal/projectstate", "./internal/resident"}
 
 // watchedLongLivedTypes are each package's constructed long-lived values: a
 // field write outside the constructing function is the shape the claim
-// forbids. The conforming constructions are Loader.Open, contextq.New, and resident.NewRoots.
+// forbids. The conforming constructions are Loader.Open and resident.NewRoots.
 var watchedLongLivedTypes = map[string]map[string]bool{
 	"github.com/hypnotox/agentic-workflows/internal/projectstate": {"ProjectState": true},
-	"github.com/hypnotox/agentic-workflows/internal/contextq":     {"Query": true},
 	"github.com/hypnotox/agentic-workflows/internal/resident":     {"Roots": true},
 }
 
-// loadProjectPackage loads the three state-owned packages, optionally
+// loadProjectPackage loads the state-owned packages, optionally
 // overlaying one file so a negative case can be committed rather than
 // hand-mutated.
 func loadProjectPackage(t *testing.T, overlay map[string][]byte) []*packages.Package {
@@ -245,11 +244,11 @@ func projectFieldWriteFindings(pkgs []*packages.Package) []string {
 }
 
 // TestProjectDerivedStateOwnership proves that no production function in
-// internal/projectstate, internal/contextq, or internal/resident writes a field of
-// that package's constructed long-lived values (ProjectState, Query, Roots)
-// outside the function that constructs the value: the derived state is threaded
-// to its consumers, and Roots is fixed at construction. The conforming
-// constructions are Loader.Open, contextq.New, and resident.NewRoots. The beginInvocation-absence assertion below is retained
+// internal/projectstate or internal/resident writes a field of that package's
+// constructed long-lived values (ProjectState and Roots) outside the function
+// that constructs the value: the derived state is threaded to its consumers,
+// and Roots is fixed at construction. The conforming constructions are
+// Loader.Open and resident.NewRoots. The beginInvocation-absence assertion below is retained
 // hardening beyond the current claim body, which no longer names it.
 //
 // invariant: code-design/state-ownership:project-derived-state-ownership (TestProjectDerivedStateOwnership)
@@ -263,14 +262,12 @@ func TestProjectDerivedStateOwnership(t *testing.T) {
 
 	// One combined overlay proves every detector branch without paying for a
 	// separate packages.Load per mutation shape. Lower-state mutations live in
-	// their declaring package, while project and contextq fixtures retain the
-	// derivation and independent long-lived-state cases.
+	// their declaring package while retaining the derivation cases.
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
 	projectStateFixture := filepath.Join(root, filepath.FromSlash("internal/projectstate/state_ownership_mutation_fixture.go"))
-	contextqFixture := filepath.Join(root, filepath.FromSlash("internal/contextq/state_ownership_mutation_fixture.go"))
 	mutation := loadProjectPackage(t, map[string][]byte{
 		projectStateFixture: []byte(`package projectstate
 
@@ -298,14 +295,6 @@ func (p *ProjectState) mutationOverwritesWholeValue() {
 	*p = ProjectState{invokingRoot: "mutated"}
 }
 `),
-		contextqFixture: []byte(`package contextq
-
-import "github.com/hypnotox/agentic-workflows/internal/contextinput"
-
-func (q *Query) mutationReplacesStateAfterConstruction(state contextinput.Snapshot) {
-	q.state = state
-}
-`),
 	})
 	findings := projectFieldWriteFindings(mutation)
 	hasPrefix := func(prefix string) bool {
@@ -318,7 +307,6 @@ func (q *Query) mutationReplacesStateAfterConstruction(state contextinput.Snapsh
 		"mutationWritesStateAfterConstruction writes s.nested",
 		"mutationWritesViaPointer takes the address of p.invokingRoot",
 		"mutationOverwritesWholeValue replaces the whole value p",
-		"mutationReplacesStateAfterConstruction writes q.state",
 	} {
 		if !hasPrefix(want) {
 			t.Errorf("mutation %q escaped the field-write detector: %#v", want, findings)

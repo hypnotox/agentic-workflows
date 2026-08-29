@@ -5,7 +5,7 @@
 
 What a package owns and states, what earns an export, and how exported surface stays documented.
 
-**Applicability:** Global topic: applies repository-wide. It declares no bounded ownership selectors. Run `awf topic code-design/package-composition --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Global topic: applies repository-wide. It declares no bounded ownership selectors. Run `awf read topic code-design/package-composition --coverage` for current applicable and owned paths and marker sites.
 
 This topic governs packages and exported surface introduced by new work and sites
 deliberately converted under its authority. Existing undocumented exported declarations,

@@ -1,7 +1,6 @@
 ---
 title: "A scripted sweep over ADR prose can silently unmake the structure it edits"
 domains: ["adr-system"]
-tags: ["adr-parsing"]
 related: [135]
 ---
 Editing ADR bodies across the corpus by script (the project-atomic cutover rewrote every

@@ -25,12 +25,12 @@ func projectSemantics(prepared publisher.Preparation) project.OperationSemantics
 	return project.OperationSemantics{
 		ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
 		EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(),
-		Vocabulary: prepared.Vocabulary(),
+		Glossary: prepared.Glossary(),
 	}
 }
 
 func stagedDriftResult(ctx context.Context, root string) (checkresult.Result, error) {
-	prep, err := project.PrepareStagedContextState(ctx, root)
+	prep, err := project.PrepareStagedOutputState(ctx, root)
 	if err != nil {
 		return checkresult.Result{}, err
 	}

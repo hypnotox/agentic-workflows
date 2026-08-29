@@ -1,4 +1,5 @@
 paths:
+  - internal/glossarycheck/**
   - internal/outputplan/**
   - internal/publisher/**
   - .pi/extensions/**
@@ -8,7 +9,6 @@ paths:
   - internal/projectstate/**
   - internal/pitfall/**
   - internal/pitfallcheck/**
-  - internal/vocabularycheck/**
   - internal/glossary/**
   - internal/resident/**
   - internal/refs/**

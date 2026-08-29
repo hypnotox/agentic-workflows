@@ -1,7 +1,6 @@
 ---
 title: "Retiring a concept needs paraphrase sweeps, not just identifier greps"
 domains: ["rendering", "adr-system"]
-tags: ["render-completeness", "template-residue"]
 related: [191]
 ---
 Grepping for a retired concept's identifier misses the prose that teaches the concept

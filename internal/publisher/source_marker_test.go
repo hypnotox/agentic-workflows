@@ -18,7 +18,7 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 		"domains/rendering.yaml":       "paths: ['internal/**']\n",
 		"docs/glossary.yaml":           "data:\n  standardTerms:\n  terms:\n",
 		"docs/pitfalls/fixture.md":     pitfallSource("Fixture pitfall", "domains: [rendering]\n", "first body\n"),
-		"docs/pitfalls/second-kind.md": pitfallSource("Second heterogeneous pitfall", "tags: [proof]\nrelated: [1]\n", "second body with different metadata\n"),
+		"docs/pitfalls/second-kind.md": pitfallSource("Second heterogeneous pitfall", "", "second body with different metadata\n"),
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-08-07-fixture.md"), "---\nformat: plan-v2\ndate: 2026-08-07\nadrs: []\nstatus: Proposed\n---\n# Plan: Fixture\n")
 	writeProjectTopic(t, root, "opaque", "Opaque", "applies: global\n")
@@ -36,7 +36,7 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 		byPath[f.Path] = f.Content
 	}
 	positive := map[string]string{
-		"docs/glossary.md":                ".awf/docs/glossary.yaml derived:awf-standard-vocabulary",
+		"docs/glossary.md":                ".awf/docs/glossary.yaml derived:awf-standard-glossary",
 		"docs/pitfalls.md":                ".awf/docs/pitfalls/*.md",
 		"docs/pitfalls/fixture.md":        ".awf/docs/pitfalls/fixture.md",
 		"docs/pitfalls/second-kind.md":    ".awf/docs/pitfalls/second-kind.md",

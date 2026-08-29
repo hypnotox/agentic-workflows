@@ -72,10 +72,7 @@ A reasoned non-mechanical deviation that another owner or reviewer can rely on r
 
 Stop and report through the active workflow only when authorities conflict or must change, the approved outcome or material scope must change, a genuine unresolved design fork remains, safe or correct completion inside the boundary is impossible, or required verification remains unreachable after reasonable diagnosis and remediation.
 <!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl -->
-You run `./awf context <the phase's exact paths>` before editing.
-<!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
-<!-- awf:template-source templates/skills/executing-plans/SKILL.md.tmpl -->
+When discovery or a structural question exists, use CodeGraph before editing. Run `./awf resolve topic <the phase's exact paths>` and read applicable topics with `./awf read topic`.
 **Rule.** For an `inline` phase, the parent owns every ordered task, integration, staged check, every commit, fast gate, terminal exhaustive verification, report-only phase review, focused settlement commit, and checkpoint.
 
 **Flexible helper detail.** A batch may dispatch explicitly partitioned sequential commit-disabled helpers only. Each helper is the `implementer` agent in commit-disabled mode, and its rendered contract governs path confinement, green obligation, escalation, and return shape. Each brief explicitly identifies the parent-supplied approved boundary. When an effort exists, the brief carries its slug and exact owned memory path as read-only context; helpers never edit shared memory.

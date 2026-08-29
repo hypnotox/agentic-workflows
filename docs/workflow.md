@@ -24,7 +24,7 @@ Everything else about how the change is carried out is the route: phase and task
 Precedence is decided per constraint, not per rule. A clause that bears only on how a change is carried out is subordinate to the protected contract, so one rule may be protected in its protected clauses and subordinate in its route clauses. A route detail binds only when a settled decision states that it is load-bearing.
 
 <!-- awf:template-source templates/partials/governance-footprints.md -->
-Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, context, and audit capabilities.
+Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, and audit capabilities.
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ### Model selection

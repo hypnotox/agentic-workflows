@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
@@ -154,7 +153,7 @@ func TestEvaluateCoverageFanoutBoundary(t *testing.T) {
 	}
 }
 
-// invariant: tooling/context-and-topic:context-applicability-navigation (TestApplicabilityForTopic)
+// invariant: tooling/authority-queries:path-topic-resolution (TestApplicabilityForTopic)
 func TestApplicabilityForTopic(t *testing.T) {
 	markers := MarkerIndex{sites: map[string][]MarkerSite{"d/t:c": {{Path: "z", Line: 2, ClaimID: "d/t:c"}, {Path: "a", Line: 1, ClaimID: "d/t:c"}}}}
 	topic := Topic{ID: TopicID{"d", "t"}, Metadata: Metadata{Paths: []string{"internal/**"}}, Claims: []Claim{{ID: "d/t:c"}}}
@@ -186,12 +185,6 @@ func TestGlobalTopicPathOwnership(t *testing.T) {
 	applicability := ApplicabilityForTopic(owner, corpus.DomainPaths["core"], MarkerIndex{sites: map[string][]MarkerSite{}}, paths)
 	if !reflect.DeepEqual(applicability.ApplicablePaths, paths) || !reflect.DeepEqual(applicability.OwnedPaths, []string{"internal/owned/a.go"}) {
 		t.Fatalf("applicability = %#v", applicability)
-	}
-	if got := TopicsForPath(corpus, "outside/elsewhere.go"); len(got) != 1 || got[0].ID != owner.ID {
-		t.Fatalf("global applicability outside ownership = %#v", got)
-	}
-	if _, _, err := resolveMarker("outside/elsewhere.go", 1, "state: core/global-owner:claim", corpus, &config.CurrentStateConfig{}); err != nil {
-		t.Fatalf("global marker outside ownership: %v", err)
 	}
 	gotCoverage := EvaluateCoverage(corpus, paths, CoveragePolicy{Coverage: true})
 	wantCoverage := []CoverageFinding{

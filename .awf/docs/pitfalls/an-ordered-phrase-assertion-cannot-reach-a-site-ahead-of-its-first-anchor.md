@@ -1,7 +1,6 @@
 ---
 title: "An ordered-phrase assertion cannot reach a site ahead of its first anchor"
 domains: ["rendering", "invariants"]
-tags: ["invariant-backing", "verification-discipline"]
 ---
 `assertOrderedBody` advances a cursor past each matched phrase, so every phrase must
 occur after the previous one and nothing before the FIRST anchor is scanned at all.

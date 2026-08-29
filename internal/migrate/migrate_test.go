@@ -15,6 +15,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -89,29 +90,29 @@ func TestUnsupportedSourcesRefuseWithoutMutation(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:migration-ordering (TestSchema46IsNoopAndFutureMigrationIsOrdered)
-func TestSchema46IsNoopAndFutureMigrationIsOrdered(t *testing.T) {
+// invariant: config/migrations-and-locks:migration-ordering (TestSchema47MigrationAndFutureOrdering)
+func TestSchema47MigrationAndFutureOrdering(t *testing.T) {
 	root := t.TempDir()
 	writeLock(t, root, LiveSchemaFloor)
 	applied, _, _, err := Build(context.Background(), root)
-	if err != nil || len(applied) != 0 {
+	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName}) {
 		t.Fatalf("schema 46: applied=%v err=%v", applied, err)
 	}
 	original := registry
 	var calls []string
 	registry = append(registry,
-		Migration{To: LiveSchemaFloor + 1, Name: "first future", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) {
+		Migration{To: Current() + 1, Name: "first future", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) {
 			calls = append(calls, "first")
 			return []FileMutation{{Path: ".awf/future.yaml", Content: []byte("future\n"), Mode: 0o600}}, nil
 		}},
-		Migration{To: LiveSchemaFloor + 2, Name: "second future", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) {
+		Migration{To: Current() + 2, Name: "second future", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) {
 			calls = append(calls, "second")
 			return []FileMutation{{Path: ".awf/retired.yaml", Remove: true}}, nil
 		}},
 	)
 	t.Cleanup(func() { registry = original })
 	applied, _, mutations, err := Build(context.Background(), root)
-	if err != nil || !slices.Equal(applied, []string{"first future", "second future"}) || !slices.Equal(calls, []string{"first", "second"}) {
+	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName, "first future", "second future"}) || !slices.Equal(calls, []string{"first", "second"}) {
 		t.Fatalf("future seam: applied=%v calls=%v err=%v", applied, calls, err)
 	}
 	if len(mutations) != 2 || mutations[0].Path != ".awf/future.yaml" || mutations[1].Path != ".awf/retired.yaml" || !mutations[1].Remove {
@@ -124,23 +125,23 @@ func TestSchema46IsNoopAndFutureMigrationIsOrdered(t *testing.T) {
 
 func TestOrderedMigrationStepsReadAndCoalesceTheProposedTree(t *testing.T) {
 	root := t.TempDir()
-	writeLock(t, root, LiveSchemaFloor)
+	writeLock(t, root, Current())
 	original := registry
 	registry = append(registry,
-		Migration{To: LiveSchemaFloor + 1, Name: "write first image", Build: func(_ context.Context, tree *ProposedTree, _ *Changes) ([]FileMutation, error) {
+		Migration{To: Current() + 1, Name: "write first image", Build: func(_ context.Context, tree *ProposedTree, _ *Changes) ([]FileMutation, error) {
 			if _, _, err := tree.Read(".awf/future.yaml"); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("initial proposed read error = %v, want not-exist", err)
 			}
 			return []FileMutation{{Path: ".awf/future.yaml", Content: []byte("first\n"), Mode: 0o640}}, nil
 		}},
-		Migration{To: LiveSchemaFloor + 2, Name: "remove first image", Build: func(_ context.Context, tree *ProposedTree, _ *Changes) ([]FileMutation, error) {
+		Migration{To: Current() + 2, Name: "remove first image", Build: func(_ context.Context, tree *ProposedTree, _ *Changes) ([]FileMutation, error) {
 			contents, mode, err := tree.Read(".awf/future.yaml")
 			if err != nil || string(contents) != "first\n" || mode != 0o640 {
 				t.Fatalf("proposed read = %q mode=%#o err=%v", contents, mode, err)
 			}
 			return []FileMutation{{Path: ".awf/future.yaml", Remove: true}}, nil
 		}},
-		Migration{To: LiveSchemaFloor + 3, Name: "replace removed image", Build: func(_ context.Context, tree *ProposedTree, _ *Changes) ([]FileMutation, error) {
+		Migration{To: Current() + 3, Name: "replace removed image", Build: func(_ context.Context, tree *ProposedTree, _ *Changes) ([]FileMutation, error) {
 			if _, _, err := tree.Read(".awf/future.yaml"); !errors.Is(err, os.ErrNotExist) {
 				t.Fatalf("removed proposed read error = %v, want not-exist", err)
 			}
@@ -189,7 +190,7 @@ func TestBuildValidatesPlannedPathsAgainstTheConfinedTree(t *testing.T) {
 
 func TestAheadSchemaRefuses(t *testing.T) {
 	root := t.TempDir()
-	writeLock(t, root, LiveSchemaFloor+1)
+	writeLock(t, root, Current()+1)
 	_, _, _, err := Build(context.Background(), root)
 	if !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
 		t.Fatalf("error=%v", err)
@@ -212,7 +213,7 @@ func TestSupportedMigrationClassifierAndFailure(t *testing.T) {
 
 	original := registry
 	failure := errors.New("future migration failed")
-	registry = append(registry, Migration{To: LiveSchemaFloor + 1, Name: "future", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) { return nil, failure }})
+	registry = append(registry, Migration{To: Current() + 1, Name: "future", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) { return nil, failure }})
 	t.Cleanup(func() { registry = original })
 
 	err := CheckLiveGeneration(LiveSchemaFloor)
@@ -221,7 +222,7 @@ func TestSupportedMigrationClassifierAndFailure(t *testing.T) {
 		t.Fatalf("CheckLiveGeneration() error = %v, want upgrade requirement", err)
 	}
 	root := t.TempDir()
-	writeLock(t, root, LiveSchemaFloor)
+	writeLock(t, root, Current()-1)
 	_, _, _, err = Build(context.Background(), root)
 	if !errors.Is(err, failure) || !strings.Contains(err.Error(), `migration "future"`) {
 		t.Fatalf("Upgrade() error = %v, want named migration failure", err)
@@ -361,5 +362,30 @@ func TestGenerationPreservesControlPathStatFailures(t *testing.T) {
 				t.Fatalf("Generation error = %v, want stat loop", err)
 			}
 		})
+	}
+}
+
+func TestRetireRelevanceMetadataMigration(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteFile(t, config.ConfigPath(root), "# keep\nprefix: test\nprofile: full\nintegrationBranch: main\ntags: {one: meaning}\ncontextIgnore:\n  - docs/**\nvars: {kept: value}\n")
+	testsupport.WriteFile(t, filepath.Join(root, pitfall.SourceDir, "with-domain.md"), "---\ntitle: With domain\ndomains: [rendering]\ntags: [one]\nrelated: [1]\n---\nbody\n")
+	testsupport.WriteFile(t, filepath.Join(root, pitfall.SourceDir, "without-domain.md"), "---\ntitle: Without domain\ntags:\n  - one\n---\nbody\n")
+	if err := (&manifest.Lock{AWFVersion: "0.39.2", SchemaVersion: LiveSchemaFloor, Files: map[string]manifest.Entry{}}).Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+	applied, changes, mutations, err := Build(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(applied, []string{retireRelevanceMetadataName}) || len(changes) != 4 || len(mutations) != 3 {
+		t.Fatalf("applied=%v changes=%v mutations=%v", applied, changes, mutations)
+	}
+	for _, mutation := range mutations {
+		if strings.Contains(string(mutation.Content), "tags:") || strings.Contains(string(mutation.Content), "contextIgnore:") {
+			t.Fatalf("retired metadata remains in %s: %s", mutation.Path, mutation.Content)
+		}
+		if mutation.Path == config.DirName+"/config.yaml" && (!strings.Contains(string(mutation.Content), "# keep") || !strings.Contains(string(mutation.Content), "vars: {kept: value}")) {
+			t.Fatalf("unrelated config formatting changed: %s", mutation.Content)
+		}
 	}
 }

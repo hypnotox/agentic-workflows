@@ -367,7 +367,7 @@ func TestImplementerAgent(t *testing.T) {
 	if !strings.Contains(inline, "You, the parent executing this plan, resolve a missing or stale phase path") {
 		t.Errorf("executing-plans' raise-concerns imperative lost its explicit subject:\n%s", inline)
 	}
-	for _, subject := range []string{"you preserve the plan's settled", "You run `./awf context"} {
+	for _, subject := range []string{"you preserve the plan's settled", "When discovery or a structural question exists"} {
 		if !strings.Contains(inline, subject) {
 			t.Errorf("executing-plans lost the explicit subject %q:\n%s", subject, inline)
 		}
@@ -428,15 +428,14 @@ func TestGroundingCheckerAgent(t *testing.T) {
 		"do not edit files or commit",
 		"Work only from the brief you were given",
 		"never edit it",
-		// The shared orientation ladder partial reaches this contract too,
-		// including its current-state-first ordering and the conditional that
-		// keeps history off every dispatch.
-		"Ground guide-first, in order",
-		"domain docs under `docs/domains`",
-		"Current-state documentation is what binds",
-		"only when current state leaves what you are seeing unexplained",
-		"For managed context calls, provide one or more explicit paths",
-		"omit `--show` and `--full` detail flags on the initial query",
+		// The shared orientation ladder reaches this contract with CodeGraph
+		// discovery and focused Full authority reads.
+		"Ground guide-first:",
+		"CodeGraph for source discovery",
+		"exact-known-file read",
+		"./awf resolve topic <paths>",
+		"./awf read topic <domain>/<topic>[:<claim>]",
+		"./awf read adr <identity>",
 		"do the named types, functions, and packages exist",
 		"Surface unstated assumptions",
 		"Assess whether the work needs a decision record",

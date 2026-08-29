@@ -17,10 +17,12 @@ Backing: test
 
 ### `invariant: claim-id-qualified`
 
-Every parsed rule and invariant has the unique identity <domain>/<topic>:<local-slug>; claim references and relevance, touches, and proof markers resolve through that identity, while Origin and Revised-by resolve through the ADR corpus.
+Every parsed rule and invariant has the unique identity <domain>/<topic>:<local-slug>; claim references and proof markers resolve through that identity, while Origin and Revised-by resolve through the ADR corpus.
 Origin: ADR-0134
+Revised-by: ADR-0320
 Backing: unbacked
 Verify: Topic corpus tests exercise duplicate local slugs across different and identical topics plus valid and dangling claim and ADR references.
+
 ### `invariant: coverage-evaluation-selects-checks`
 
 A coverage evaluation caller selects which checks run: coverage and fan-out are requested independently, an unrequested check produces none of its findings, no rank value suppresses a requested one, and the uncovered report requests coverage only.
@@ -36,8 +38,9 @@ Backing: test
 
 ### `invariant: invariant-marker-close-token`
 
-When a current-state marker source declares a close token, the payload extractor strips exactly one trailing close token from a matched marker line before the slug and any touches note are parsed, and rejects a marker line that is missing the declared close token.
+When a proof-marker source declares a close token, the payload extractor strips exactly one trailing close token before parsing the qualified claim and proving-unit name, and rejects a candidate proof marker missing that close token.
 Origin: ADR-0121
+Revised-by: ADR-0320
 Backing: test
 
 ### `invariant: invariants-duplicate-slug`
@@ -66,8 +69,9 @@ Backing: test
 
 ### `invariant: invariants-three-state`
 
-A test-backed claim that carries no matching proof marker fails to load, and an unbacked claim that carries any proof marker also fails to load. A touches-state marker is advisory context only and never satisfies a backing obligation.
+A test-backed claim with no matching proof marker fails to load, an unbacked claim carrying any proof marker fails to load, and ordinary comments outside the proof-only marker grammar are inert.
 Origin: ADR-0008
+Revised-by: ADR-0320
 Backing: test
 
 ### `invariant: invariants-unbacked-detected`
@@ -82,18 +86,13 @@ A proof invariant: marker backs a claim only when its file matches a configured 
 Origin: ADR-0105
 Backing: test
 
-### `invariant: relevance-markers-only-narrow`
-
-A relevance marker selects claims only from an already applicable topic and never repairs uncovered topic metadata.
-Origin: ADR-0134
-Backing: unbacked
-Verify: The same qualified marker inside topic scope narrows output while outside scope it fails and the path remains uncovered.
 ### `invariant: topic-identity-path-derived`
 
 A topic has one path-derived domain and topic identity that no second registry can contradict.
 Origin: ADR-0134
 Backing: unbacked
 Verify: Renaming an unreferenced fixture topic changes its identity and output paths deterministically, and a retained reference to the old identity fails the rename with a dangling-reference diagnostic.
+
 ### `invariant: topic-scope-cannot-expand-domain`
 
 A path-scoped topic applies and owns only where its selectors and its parent domain both match; applies: global remains repository-wide applicable, while its optional selectors declare only domain-bounded ownership.
@@ -101,6 +100,7 @@ Origin: ADR-0134
 Revised-by: ADR-0257
 Backing: unbacked
 Verify: Queries inside and outside the domain intersection match only the intersection, and a global topic stored under the same domain applies everywhere while owning only its selector and domain intersection.
+
 ### `invariant: topic-scope-is-domain-bounded`
 
 Every topic has one owning domain; path ownership is bounded by that domain, while an explicit globally applicable topic remains stored under its owner and may be authoritative repository-wide without creating domain ownership outside its bounded selectors.
@@ -108,11 +108,6 @@ Origin: ADR-0133
 Revised-by: ADR-0257
 Backing: unbacked
 Verify: A path-scoped selector that also matches outside its parent domain yields context only for the domain-owned match, and an applies: global topic under the same domain applies repository-wide while ownership remains within the domain intersection.
-### `invariant: touches-marker-advisory`
-
-A touches-state marker records a related code site for a claim but never counts toward a test-backed invariant claim's proof requirement.
-Origin: ADR-0105
-Backing: test
 
 ### `invariant: unbacked-refuses-proof`
 
@@ -128,13 +123,19 @@ Backing: test
 
 ### `invariant: rendered-applicability-selectors-only`
 
-A rendered topic document's applicability paragraph carries only declarations: a global topic states repository-wide applicability and, when present, its bounded ownership selectors and owning-domain selectors; a scoped topic states its owning-domain and topic selectors. It states the applicable both-must-match ownership rule and a drilldown to `awf topic <id> --coverage`, never embeds current applicable or owned paths or marker sites, and degrades empty selector lists to coherent prose.
+A rendered topic document's applicability paragraph carries only declarations: a global topic states repository-wide applicability and, when present, its bounded ownership selectors and owning-domain selectors; a scoped topic states its owning-domain and topic selectors. It states the applicable both-must-match ownership rule and a drilldown to `awf read topic <id> --coverage`, never embeds current applicable or owned paths or marker sites, and degrades empty selector lists to coherent prose.
 Origin: ADR-0147
-Revised-by: ADR-0257
+Revised-by: ADR-0257, ADR-0320
 Backing: test
 
 ### `invariant: proof-marker-names-its-unit`
 
 A proof marker names the unit that proves its claim, `invariant: <domain>/<topic>:<slug> (<name>)`, and building the marker index rejects a proof marker that carries no name. The name is free text, and it must occur verbatim on a line of the marker's own file whose trimmed form does not open with that family's marker token, with the match unflanked by a letter, digit, or underscore; otherwise the scan fails at that marker's line.
 Origin: ADR-0205
+Backing: test
+
+### `invariant: proof-only-marker-grammar`
+
+The current-state marker scanner recognizes only named `invariant:` proof markers; `state:` and `touches-state:` payloads are unrecognized inert comments and create no relationship, scope validation, or backing result.
+Origin: ADR-0320
 Backing: test

@@ -1,7 +1,6 @@
 ---
 title: "Reuse the repository boundary for new filesystem walks"
 domains: ["tooling"]
-tags: ["repo-open"]
 ---
 New tests should use `testsupport.WalkRepoFiles`; production code should use the Git-derived
 selected file set or implement the same nested-checkout pruning. A plain recursive walk can

@@ -5,8 +5,6 @@
 
 **Domains:** config
 
-**Tags:** schema-migration, adr-parsing
-
 **Related ADRs:** ADR-0128
 
 `ADR.DecisionStart`/`DecisionEnd` are byte offsets into the bytes that were *parsed*. A

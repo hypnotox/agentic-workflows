@@ -6,6 +6,6 @@ paths:
   - internal/project/**
   - internal/pitfall/**
   - internal/pitfallcheck/**
-  - internal/vocabularycheck/**
+  - internal/glossarycheck/**
   - internal/glossary/**
   - internal/referencecheck/**

@@ -24,7 +24,7 @@ func TestADRRelatedPreservesLinkAndOrderEvidence(t *testing.T) {
 }
 func TestCheckPreservesReferenceEvidence(t *testing.T) {
 	out := outputplan.NewOutput(outputplan.OutputSpec{Path: "docs/a.md", Content: "[bad](missing.md) demo-tdd", Policy: outputplan.Policy{ScanReferences: true, ScanSkillReferences: true}})
-	plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "docs/a.md", Output: &out})}, nil)
+	plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "docs/a.md", Output: &out})})
 	got, err := Check(plan, "demo", map[string]bool{}, map[string]bool{"tdd": true}, func(string) bool { return false })
 	if err != nil {
 		t.Fatal(err)

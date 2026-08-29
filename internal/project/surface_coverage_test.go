@@ -16,7 +16,7 @@ import (
 
 func TestAdvisoryCompatibilityAndReportErrorPaths(t *testing.T) {
 	if got := advisoryCompatibilityFiles(func() *OutputPlan {
-		plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "declaration-only"})}, nil)
+		plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "declaration-only"})})
 		return &plan
 	}()); len(got) != 0 {
 		t.Fatalf("compatibility files = %#v", got)
@@ -28,7 +28,7 @@ func TestAdvisoryCompatibilityAndReportErrorPaths(t *testing.T) {
 
 func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 	t.Run("pitfalls", func(t *testing.T) {
-		root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\ntags:\n  narrow: Narrow.\n", map[string]string{
+		root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
 			"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n",
 		})
 		p, err := Open(testContext(t), root)
@@ -79,7 +79,7 @@ func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
 	if planErr != nil {
 		t.Fatal(planErr)
 	}
-	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Vocabulary: prepared.Vocabulary()}
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
 	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), prepared.Plan(), semantics); err != nil {
 		t.Fatalf("CheckReport changed after preparation: %v after %d glossary reads", err, reader.reads)
 	}

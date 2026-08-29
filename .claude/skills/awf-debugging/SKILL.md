@@ -70,14 +70,9 @@ Any time behaviour is wrong and the cause is not yet known. Skip only for a one-
 4. **Evaluate continuity when the investigation becomes a change.** Investigation remains effort-free unless durable continuity materially helps. When it does, invoke `awf-effort-workflow` before establishing fix evidence or mutating files. If an effort exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give exploring children that context read-only; otherwise omit effort and memory fields. Repository sources and current-state documentation remain authoritative, and standalone memory is forbidden.
 
 
-5. **Establish the strongest practical durable oracle.** Once the defective surface is located, exercise the selected evidence against the unfixed behaviour before touching the fix. Use the preferred automated red-then-green path for an ordinary deterministic defect; otherwise record the concrete impracticality reason and strongest reproducible alternative. Invoke `awf-tdd` for the project's durable verification discipline. First run `./awf context <the suspect paths>`.
-<!-- awf:template-source templates/partials/context-orientation.md -->
-Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `./awf topic` where the work touches a claimed surface.
-<!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
+5. **Establish the strongest practical durable oracle.** Once the defective surface is located, exercise the selected evidence against the unfixed behaviour before touching the fix. Use the preferred automated red-then-green path for an ordinary deterministic defect; otherwise record the concrete impracticality reason and strongest reproducible alternative. Invoke `awf-tdd` for the project's durable verification discipline. First inspect the suspect source and verification paths. Use CodeGraph for discovery or structural questions, then run `./awf resolve topic <the suspect paths>` and read applicable topics.
 
 
-<!-- awf:template-source templates/skills/debugging/SKILL.md.tmpl -->
 6. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then run the narrowest relevant durable verification and follow the shared gate cadence below.
 
 7. **Hand off.** When the root cause is confirmed and the durable oracle is established, invoke `awf-bugfix` for the fix + commit + review discipline. If investigation reveals a design gap rather than a defect, invoke `awf-brainstorming` instead.

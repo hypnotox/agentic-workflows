@@ -8,7 +8,7 @@ import (
 
 // CheckStagedDriftResult compares one Publisher plan entirely within its prepared
 // index universe and retains generated-output classification from its owner.
-func CheckStagedDriftResult(prep *ContextPreparation, plan outputplan.Plan) (checkresult.Result, error) {
+func CheckStagedDriftResult(prep *OutputPreparation, plan outputplan.Plan) (checkresult.Result, error) {
 	indexed := map[string]bool{}
 	for _, file := range prep.Tree().List() {
 		indexed[file.Path] = true

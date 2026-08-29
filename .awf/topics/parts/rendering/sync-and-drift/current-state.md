@@ -51,9 +51,9 @@ Backing: test
 
 ### `invariant: managed-output-attribution`
 
-A reader-injected declaration builder enumerates selected-governance-footprint managed writes before rendering, retaining sorted declarers and exact inputs and supplying context source/output edges; those declarations classify their paths as generated.
+A reader-injected declaration builder enumerates selected-governance-footprint managed writes before rendering, retaining sorted declarers and exact inputs; those declarations are the output plan's generated-path classification.
 Origin: ADR-0148
-Revised-by: ADR-0251, ADR-0278, ADR-0292
+Revised-by: ADR-0251, ADR-0278, ADR-0292, ADR-0320
 Backing: test
 
 ### `invariant: ordinary-render-freshness`

@@ -5,8 +5,6 @@
 
 **Domains:** invariants
 
-**Tags:** invariant-backing
-
 The backing checker proves that a named test-scoped marker exists, not that the test
 exercises every clause of the claim. Read the claim as a conjunction, identify each status,
 direction, artifact, and failure branch it names, and confirm each clause has a refuting case.

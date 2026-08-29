@@ -1,7 +1,6 @@
 ---
 title: "Sidecar `data` is not placeholder-substituted, drop `{{=awf:...}}` escapes when converting a part"
 domains: ["rendering"]
-tags: ["placeholder-degradation", "sidecar-fields"]
 related: [89, 99]
 ---
 A raw convention part is run through awf's `{{=awf:...}}` sandbox substitution before Go templating

@@ -12,7 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-const governanceFootprintContract = "Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, context, and audit capabilities."
+const governanceFootprintContract = "Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, and audit capabilities."
 
 // invariant: rendering/workflow-skill-templates:closed-workflow-profiles (TestGovernanceFootprintsShareQualityBar)
 func TestGovernanceFootprintsShareQualityBar(t *testing.T) {
@@ -69,7 +69,7 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 	// adopter prose. Each entry names an executable command, artifact identity,
 	// reviewer schema, or workflow instruction that Core must not expose.
 	forbiddenCoreOperationalReferences := []string{
-		"`./awf context", "`./awf adr", "`./awf plan", "`./awf audit",
+		"`./awf adr", "`./awf plan", "`./awf audit",
 		"example-proposing-adr", "example-writing-plans", "example-reviewing-plan",
 		"example-executing-plans", "example-subagent-driven-development", "example-adr-lifecycle",
 		"adr-reviewer", "plan-reviewer",
@@ -139,13 +139,12 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 			}
 
 			if tc.profile == catalog.ProfileFull {
-				foundContext, foundADR := false, false
+				foundADR := false
 				for _, file := range files {
-					foundContext = foundContext || strings.Contains(file.Content, "./awf context")
 					foundADR = foundADR || strings.Contains(file.Content, "-proposing-adr")
 				}
-				if !foundContext || !foundADR {
-					t.Fatalf("Full output lost governance semantics: context=%v ADR=%v", foundContext, foundADR)
+				if !foundADR {
+					t.Fatalf("Full output lost governance semantics: ADR=%v", foundADR)
 				}
 			}
 		})

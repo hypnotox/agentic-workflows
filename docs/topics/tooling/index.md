@@ -5,10 +5,10 @@
 
 - [Audit and snapshots](audit-and-snapshots.md): Workflow-conformance auditing and the immutable git snapshot layer.
 - [Audit commands](audit-commands.md): The advisory audit surfaces: audit, repoaudit, mutants.
+- [Authority Queries](authority-queries.md): Read-only commands that expose current-state and ADR authority without duplicating code navigation.
 - [CLI](cli.md): Command dispatch and the behaviour of the awf command surfaces.
 - [Changelog and release](changelog-and-release.md): The changelog pipeline and release-notes contracts.
 - [Commit policy](commit-policy.md): Opt-in author, committer, and SSH-signature policy for exact Git commit objects.
-- [Context and topic](context-and-topic.md): The read-only orientation surfaces: context, topic, describe, uncovered.
 - [Effort management](effort-management.md): Binary-owned effort records and optional resources.
 - [Evaluations](evaluations.md): The golden-task evaluation suite.
 - [File publication](file-publication.md): Atomic no-replace complete-file publication shared across production consumers.

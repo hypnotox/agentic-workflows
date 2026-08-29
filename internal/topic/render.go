@@ -48,9 +48,9 @@ func topicItems(topics []Topic, prefix string) []TopicListItem {
 
 // applicabilitySummary renders the selectors-only applicability paragraph: the
 // concrete matched paths and marker sites stay out of committed docs and live
-// in `awf topic <id> --coverage` (ADR-0147).
+// in `awf read topic <id> --coverage` (ADR-0147).
 func applicabilitySummary(id string, a TopicApplicability) string {
-	drilldown := fmt.Sprintf("Run `awf topic %s --coverage` for current applicable and owned paths and marker sites.", id)
+	drilldown := fmt.Sprintf("Run `awf read topic %s --coverage` for current applicable and owned paths and marker sites.", id)
 	if a.DeclaredGlobal {
 		if len(a.TopicPaths) == 0 {
 			return "Global topic: applies repository-wide. It declares no bounded ownership selectors. " + drilldown

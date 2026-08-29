@@ -69,7 +69,7 @@ func TestOrientingTemplate(t *testing.T) {
 	if !strings.Contains(out, "name: example-orienting") {
 		t.Errorf("expected 'name: example-orienting' in output:\n%s", out)
 	}
-	for _, want := range []string{"Load when beginning repository orientation", "Do not load for exact-known-file inspection", "Four moments call for orientation", "Ground guide-first, in order", "`example-exploring`", "A discrepancy resolves in favor of the repository"} {
+	for _, want := range []string{"Load when beginning repository orientation", "Do not load for exact-known-file inspection", "Four moments call for orientation", "Ground guide-first:", "CodeGraph", "./awf resolve topic", "`example-exploring`", "A discrepancy resolves in favor of the repository"} {
 		if !strings.Contains(out, want) {
 			t.Errorf("orienting render missing %q:\n%s", want, out)
 		}
@@ -96,9 +96,8 @@ func TestOrientingSkillContract(t *testing.T) {
 			for _, want := range []string{
 				"Four moments call for orientation",
 				"**Fresh work:**", "**Effort resume:**", "**Handoff takeover:**", "**Mid-chain re-orientation:**",
-				"Ground guide-first, in order", "domain docs under `docs/domains`",
-				"Current-state documentation is what binds",
-				"only when current state leaves what you are seeing unexplained",
+				"Ground guide-first:", "CodeGraph for source discovery",
+				"./awf resolve topic", "./awf read topic", "./awf read adr",
 				"one or more exploration subagents",
 				"one information need", "every child is report-only",
 				"location is unknown", "and inline search would pollute the parent context",
@@ -106,7 +105,7 @@ func TestOrientingSkillContract(t *testing.T) {
 				"landed since the checkpoint", "git worktree list", "against the decision index",
 				"its decision log including every `Record:` block present", "not yours to re-decide",
 				"cited plan and file existence", "A discrepancy resolves in favor of the repository",
-				"never creates an effort, never commits", "never prescribe `--full`",
+				"never creates an effort, never commits", "exact-known-file",
 				"single-pass and advisory, never a chain gate",
 			} {
 				if !strings.Contains(body, want) {
@@ -114,7 +113,7 @@ func TestOrientingSkillContract(t *testing.T) {
 				}
 			}
 			agent := files[adapter.AgentPath("grounding-checker")]
-			for _, want := range []string{"Ground guide-first, in order", "For managed context calls, provide one or more explicit paths", "omit `--show` and `--full` detail flags on the initial query", "never prescribe `--full`", "AWF_CONTEXT_SPILL_V1"} {
+			for _, want := range []string{"Ground guide-first:", "CodeGraph", "./awf resolve topic", "./awf read topic", "./awf read adr"} {
 				if !strings.Contains(agent, want) {
 					t.Errorf("%s grounding-checker missing %q", target, want)
 				}

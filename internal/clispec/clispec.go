@@ -169,7 +169,6 @@ func helpItems(label string, items []HelpItem) (presentation.RecordGroup, error)
 
 // Commands is the ordered command table - the sole source of the command set,
 // `awf help` order, the usage line, gated-command list, and bounded README command projection.
-// touches-state: tooling/cli:cli-command-spec-single-source - sole command-table source; proofs in clispec_test.go and readme_test.go
 var Commands = []Command{
 	{
 		Name: "init", Summary: "Scaffold .awf/ and render the selected governance footprint",
@@ -217,13 +216,23 @@ var Commands = []Command{
 	},
 
 	{
-		Name: "read", Summary: "Read an executable projection from a parsed artifact",
+		Name: "read", Summary: "Read a focused current-state authority projection",
 		MaxPos: 0, Gating: Gated,
-		Help: Help{Usage: []string{"awf read <subcommand>"}, Description: "Read a bounded executable projection from a parsed project artifact."},
+		Help: Help{Usage: []string{"awf read <subcommand>"}, Description: "Read a bounded projection from parsed current-state authority."},
 		Children: []Command{
 			{Name: "plan", Summary: "Read one exact plan phase or task projection", MinPos: 2, MaxPos: 2, FullOnly: true,
 				Help: Help{Usage: []string{"awf read plan <plan> <P[.T]>"}, Description: "Resolve <plan> as an exact filename or exact filename stem under the configured", Details: []string{"plans directory. P selects a complete phase; P.T selects one task plus its phase", "closure. Plan-v2 always includes task-scoped Decisions and phase outcomes; plan-v1", "retains its original closure. Selectors are canonical positive integers, and failures", "list available exact plan names or selectors."}, Positionals: []HelpItem{{Name: "<plan>", Description: "exact plan filename or filename stem"}, {Name: "<P[.T]>", Description: "canonical positive phase or phase.task selector"}}}},
+			{Name: "topic", Summary: "Read one topic or claim authority projection", BoolFlags: []string{"--history", "--references", "--coverage"}, MinPos: 1, MaxPos: 1, FullOnly: true,
+				Help: Help{Usage: []string{"awf read topic <domain>/<topic>[:<claim>] [flags]"}, Description: "Read active topic or claim authority with optional direct history, references, and coverage.", Positionals: []HelpItem{{Name: "<domain>/<topic>[:<claim>]", Description: "current-state topic or claim identifier"}}, Options: []HelpItem{{Name: "--history", Description: "add direct ADR history"}, {Name: "--references", Description: "add direct claim references"}, {Name: "--coverage", Description: "add ownership and marker coverage"}}}},
+			{Name: "adr", Summary: "Read lifecycle and operation progress for one ADR", MinPos: 1, MaxPos: 1, FullOnly: true,
+				Help: Help{Usage: []string{"awf read adr <identity>"}, Description: "Read an ADR lifecycle status, operation progress, and linked plans.", Positionals: []HelpItem{{Name: "<identity>", Description: "ADR number or retained slug identity"}}}},
 		},
+	},
+	{
+		Name: "resolve", Summary: "Resolve lexical paths to current-state authority", MaxPos: 0, Gating: Gated,
+		Help: Help{Usage: []string{"awf resolve topic <path>...", "awf resolve topic --uncovered"}, Description: "Resolve repository-relative paths to owning domains and applicable topics, or census unowned paths."},
+		Children: []Command{{Name: "topic", Summary: "Resolve topic authority for paths or the whole repository", BoolFlags: []string{"--uncovered"}, MinPos: 0, MaxPos: -1, FullOnly: true,
+			Help: Help{Usage: []string{"awf resolve topic <path>...", "awf resolve topic --uncovered"}, Description: "Resolve lexical proposed or existing paths without mutation. The uncovered census accepts no positional paths.", Positionals: []HelpItem{{Name: "<path>", Description: "repository-relative path"}}, Options: []HelpItem{{Name: "--uncovered", Description: "report the whole-repository unowned census"}}}}},
 	},
 	{
 		Name: "audit", Summary: "Report workflow-conformance findings over a commit range (advisory)",
@@ -290,16 +299,6 @@ var Commands = []Command{
 		Name: "config", Summary: "Describe config keys and vars (live state inside a project)",
 		MaxPos: 1, Gating: GatedInHandler,
 		Help: Help{Usage: []string{"awf config [<key-or-var>]"}, Description: "Print the configuration reference: every config key, var, sidecar field, and", Details: []string{"data key with descriptions, defaults, and availability. Inside an awf project", "the output adds live state (current values and which catalog artifacts consume", "each var). Outside one, a static catalog-wide reference prints.", "With an argument, print just that entry (a config key path like", "audit.allowedScopes, a var name like gateCmd, a sidecar field like", "sidecar.dataDefaults, or a data key name)."}, Positionals: []HelpItem{{Name: "<key-or-var>", Description: "config key, var, sidecar field, or data key"}}},
-	},
-	{
-		Name: "context", Summary: "Orient by request with compact current-state impact reports", FullOnly: true,
-		BoolFlags: []string{"--staged", "--uncovered", "--full"}, ValueFlags: []string{"--range", "--show"}, Repeatable: []string{"--show"}, MaxPos: -1, Gating: GatedInHandler,
-		Help: Help{Usage: []string{"awf context [<path>...] [--show <facet>]... [--full] [--staged] [--range <a>..<b>] [--uncovered]"}, Description: "Report request-oriented current-state impact. Bare directories use tier 0:", Details: []string{"census, compact groups, classification, compact provenance, domains, topics,", "per-topic invariant/rule counts, and bounded pending summaries. Bare exact files", "and Git-selected staged/range files add tier-1 relationships declared on that", "file, rendering only non-empty State, Touches, and Proofs marker-kind sets.", "Groups of at most three list every member and larger groups disclose no paths.", "Repeat --show with one of relationships, invariants, all-rules, evidence,", "selectors, references, pending, or artifacts. relationships expands a directory's", "aggregated direct relationships; invariants and all-rules expand non-direct claim", "summaries. evidence and references only enrich claims already visible through a", "tier or authority facet. Only artifacts may refine directory grouping. --full is", "exactly the normalized union of all eight facets. --show and --full cannot be", "combined with --uncovered. JSON is not supported.", "The complete human rendering is written unchanged through 8,192 bytes. Larger", "results spill to an owner-only temporary file outside the repository and stdout", "receives AWF_CONTEXT_SPILL_V1, its decimal byte count and text format, followed", "by the absolute path. A caller that receives the notice owns deletion.", "Provide paths explicitly, or resolve sorted exact files from Git with --staged", "or --range <a>..<b>. With --uncovered, positional args are optional scan roots;", "--range is not accepted."}, Positionals: []HelpItem{{Name: "<path>", Description: "repository path or directory to orient against"}}, Options: []HelpItem{{Name: "--show", Description: "<facet>        add one bounded detail facet (repeatable)"}, {Name: "--full", Description: "add all eight facets"}, {Name: "--staged", Description: "use the staged index universe"}, {Name: "--range", Description: "<a>..<b>      use paths changed between revisions a and b"}, {Name: "--uncovered", Description: "report unowned and uncovered paths"}}},
-	},
-	{
-		Name: "topic", Summary: "Query current claims, history, references, and applicability", FullOnly: true,
-		BoolFlags: []string{"--history", "--references", "--coverage"}, MinPos: 1, MaxPos: 1, Gating: GatedInHandler,
-		Help: Help{Usage: []string{"awf topic <domain>/<topic>[:<claim>] [flags]"}, Description: "Query one current-state topic or claim, active by default. Default output includes", Details: []string{"title and summary for a topic plus claim types, prose, and backing state. Detail", "flags are independent and direct-only. A removed claim identity resolves only", "with --history and returns operation history without an active tombstone. Outside", "an awf project, a static command reference prints without version gating."}, Positionals: []HelpItem{{Name: "<domain>/<topic>[:<claim>]", Description: "current-state topic or claim identifier"}}, Options: []HelpItem{{Name: "--history", Description: "add direct Origin, Revised-by, and Removed-by ADR details"}, {Name: "--references", Description: "add sorted direct incoming and outgoing claim IDs"}, {Name: "--coverage", Description: "add separate domain/topic scopes, current matches, and marker sites"}}},
 	},
 	{
 		Name: "new", Summary: "Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall, doc}",

@@ -197,9 +197,9 @@ func planTemplateTaxonomyProblems(text string) []string {
 			problems = append(problems, "retired plan-v1 declaration remains: "+retired)
 		}
 	}
-	const vocabulary = "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`"
-	if !strings.Contains(text, vocabulary) {
-		problems = append(problems, "missing exact task field vocabulary")
+	const glossary = "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`"
+	if !strings.Contains(text, glossary) {
+		problems = append(problems, "missing exact task field glossary")
 	}
 	if !strings.Contains(text, "`Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`") {
 		problems = append(problems, "missing Decision-array omission contract")
@@ -236,7 +236,7 @@ func TestPlanTemplateTaxonomyRejectsInversions(t *testing.T) {
 		{"phase close", "### Phase close", "### Finish"},
 		{"commit fence", "```commit", "```text"},
 		{"definition", "## Definition of done", "## Verification"},
-		{"field vocabulary", "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
+		{"field glossary", "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
 		{"decision array omission", "`Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`", "`Applying` and `Context` may be empty arrays"},
 		{"goal substance", "State the outcome and, in one line, its non-goals.", ""},
 		{"architecture substance", "State the execution structure and dependency direction without repeating ADR rationale.", ""},

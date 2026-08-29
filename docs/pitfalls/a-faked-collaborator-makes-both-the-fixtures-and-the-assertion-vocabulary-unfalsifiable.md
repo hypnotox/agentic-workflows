@@ -5,8 +5,6 @@
 
 **Domains:** rendering, tooling
 
-**Tags:** test-support, verification-discipline
-
 **Related ADRs:** ADR-0244
 
 Where a test fakes or fixtures a collaborator, the proof inherits the fake's model of that

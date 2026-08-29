@@ -10,8 +10,9 @@ func source(path, front, body string) SourceFile {
 }
 
 // invariant: rendering/doc-outputs:pitfall-corpus-validated (TestCorpusContract)
+// invariant: config/configuration:no-active-tag-system (TestCorpusContract)
 func TestCorpusContract(t *testing.T) {
-	valid := source(SourceDir+"/alpha.md", "title: Alpha\ndomains: [rendering]\ntags: [proof]\nrelated: [1]\n", "body\n")
+	valid := source(SourceDir+"/alpha.md", "title: Alpha\ndomains: [rendering]\nrelated: [1]\n", "body\n")
 	corpus, err := Load([]SourceFile{valid})
 	if err != nil || corpus.Len() != 1 {
 		t.Fatalf("load = %#v, %v", corpus.All(), err)
@@ -43,6 +44,7 @@ func TestCorpusContract(t *testing.T) {
 		{"title-number", source(SourceDir+"/a.md", "title: 12\n", "body\n"), "string scalar"},
 		{"title-bool", source(SourceDir+"/a.md", "title: true\n", "body\n"), "string scalar"},
 		{"unknown", source(SourceDir+"/a.md", "title: A\nunknown: x\n", "body\n"), "field unknown"},
+		{"retired-tags", source(SourceDir+"/a.md", "title: A\ntags: [legacy]\n", "body\n"), "field tags"},
 		{"duplicate-key", source(SourceDir+"/a.md", "title: A\ntitle: B\n", "body\n"), "duplicate pitfall metadata key"},
 		{"missing-title", source(SourceDir+"/a.md", "domains: [x]\n", "body\n"), "required title"},
 		{"empty-title", source(SourceDir+"/a.md", "title: '  '\n", "body\n"), "title is empty"},
@@ -56,13 +58,6 @@ func TestCorpusContract(t *testing.T) {
 		{"numeric-domain", source(SourceDir+"/a.md", "title: A\ndomains: [12]\n", "body\n"), "string scalars"},
 		{"bool-domain", source(SourceDir+"/a.md", "title: A\ndomains: [true]\n", "body\n"), "string scalars"},
 		{"duplicate-domain", source(SourceDir+"/a.md", "title: A\ndomains: [x, x]\n", "body\n"), "duplicate domains"},
-		{"bad-tag", source(SourceDir+"/a.md", "title: A\ntags: [' x ']\n", "body\n"), "tags entries"},
-		{"empty-tags-list", source(SourceDir+"/a.md", "title: A\ntags: []\n", "body\n"), "nonempty list"},
-		{"null-tags", source(SourceDir+"/a.md", "title: A\ntags: null\n", "body\n"), "nonempty list"},
-		{"scalar-tags", source(SourceDir+"/a.md", "title: A\ntags: proof\n", "body\n"), "nonempty list"},
-		{"mapping-tags", source(SourceDir+"/a.md", "title: A\ntags: {proof: true}\n", "body\n"), "nonempty list"},
-		{"numeric-tag", source(SourceDir+"/a.md", "title: A\ntags: [1]\n", "body\n"), "string scalars"},
-		{"bool-tag", source(SourceDir+"/a.md", "title: A\ntags: [false]\n", "body\n"), "string scalars"},
 		{"bad-related", source(SourceDir+"/a.md", "title: A\nrelated: [0]\n", "body\n"), "positive"},
 		{"empty-related-list", source(SourceDir+"/a.md", "title: A\nrelated: []\n", "body\n"), "nonempty list"},
 		{"null-related", source(SourceDir+"/a.md", "title: A\nrelated: null\n", "body\n"), "nonempty list"},
@@ -137,7 +132,7 @@ func TestAllocationSerializationEscaping(t *testing.T) {
 			t.Fatalf("%q allocated", title)
 		}
 	}
-	e := Entry{Slug: "a", SourcePath: SourceDir + "/a.md", Title: "A [x] | `y` \\ z", Domains: []string{"d"}, Tags: []string{"t"}, Related: []int{2}, Body: "body"}
+	e := Entry{Slug: "a", SourcePath: SourceDir + "/a.md", Title: "A [x] | `y` \\ z", Domains: []string{"d"}, Related: []int{2}, Body: "body"}
 	serialized, err := Serialize(e)
 	if err != nil {
 		t.Fatal(err)

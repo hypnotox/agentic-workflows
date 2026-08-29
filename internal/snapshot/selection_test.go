@@ -132,58 +132,6 @@ func TestNewSelectionFromBlobs(t *testing.T) {
 	}
 }
 
-func TestLiveContextKeepsInventorySeparateAndRejectsInvalidSelections(t *testing.T) {
-	inventory, err := snapshot.NewInventory([]snapshot.Entry{
-		{Path: "run", Mode: snapshot.Executable},
-		{Path: "unread", Mode: snapshot.Regular},
-		{Path: "link", Mode: snapshot.Symlink},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	selected, err := snapshot.NewSelection([]snapshot.File{{Path: "run", Mode: snapshot.Executable, Bytes: []byte("run")}})
-	if err != nil {
-		t.Fatal(err)
-	}
-	live, err := snapshot.NewLiveContext(inventory, selected)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if entry, ok := live.Inventory().Lookup("unread"); !ok || entry.Mode != snapshot.Regular {
-		t.Fatalf("unread inventory entry = %#v, %v", entry, ok)
-	}
-	if _, ok := live.Selection().Lookup("unread"); ok {
-		t.Fatal("unread inventory entry gained selected bytes")
-	}
-	for _, entries := range [][]snapshot.Entry{
-		{{Path: "bad", Mode: snapshot.Mode(99)}},
-		{{Path: "../bad", Mode: snapshot.Regular}},
-		{{Path: "same", Mode: snapshot.Regular}, {Path: "same", Mode: snapshot.Regular}},
-	} {
-		if _, err := snapshot.NewInventory(entries); err == nil {
-			t.Fatalf("NewInventory(%#v) accepted invalid entries", entries)
-		}
-	}
-	missing, _ := snapshot.NewSelection([]snapshot.File{{Path: "missing", Mode: snapshot.Regular}})
-	wrongMode, _ := snapshot.NewSelection([]snapshot.File{{Path: "run", Mode: snapshot.Regular}})
-	for _, tc := range []struct {
-		name      string
-		inventory *snapshot.Inventory
-		selected  *snapshot.Selection
-	}{
-		{"nil inventory", nil, selected},
-		{"nil selection", inventory, nil},
-		{"missing selected path", inventory, missing},
-		{"selected mode differs", inventory, wrongMode},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			if _, err := snapshot.NewLiveContext(tc.inventory, tc.selected); !errors.Is(err, snapshot.ErrUnsafePath) {
-				t.Fatalf("NewLiveContext() = %v, want unsafe path", err)
-			}
-		})
-	}
-}
-
 func selectionOnly(*snapshot.Selection) {}
 
 func treeOnly(*snapshot.Tree) {}

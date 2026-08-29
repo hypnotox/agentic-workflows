@@ -5,7 +5,7 @@
 
 How ADR records are parsed, identified, and moved through their lifecycle states.
 
-**Applicability:** Owning domain selectors: `internal/adr/**`, `internal/frontmatter/**`, `internal/plan/**`, `internal/plancheck/**`. Topic selectors: `internal/adr/**`. Both domain and topic selectors must match. Run `awf topic adr-system/adr-lifecycle --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/adr/**`, `internal/frontmatter/**`, `internal/plan/**`, `internal/plancheck/**`. Topic selectors: `internal/adr/**`. Both domain and topic selectors must match. Run `awf read topic adr-system/adr-lifecycle --coverage` for current applicable and owned paths and marker sites.
 
 The adr package parses decision records, derives their identity, and validates their lifecycle. The claims below capture the current parsing and status contracts.
 
@@ -125,8 +125,9 @@ Backing: test
 
 ### `invariant: corpus-owns-status-literals`
 
-No non-test production file outside internal/adr compares an ADR status against a string literal or tests it with a status prefix, except awf context's enumerated Tier-2 exclusion.
+No non-test production file outside internal/adr compares an ADR status against a string literal or tests it with a status prefix.
 Origin: ADR-0130
+Revised-by: ADR-0320
 Backing: test
 
 ### `invariant: corpus-parsed-once`

@@ -27,10 +27,9 @@ When a needed fact's location is unknown and inline search would pollute the par
 <!-- awf:end -->
 
 <!-- awf:section context-command -->
-## Managed context
+## Navigation and authority
 
-{{if ne .profile "core"}}Once candidate files are identified, run `./awf context <paths>` to resolve their owning domains and the applicable current-state claims; read the topics and any Accepted pending changes it surfaces, and the ADRs behind a claim only when the rationale matters. Apply the shared managed-context discipline above to this call.{{else}}Once candidate files are identified, read the relevant project documentation, source, tests, and history directly.{{end}}
-<!-- awf:include context-spill -->
+When discovery or a structural question exists, use CodeGraph to locate candidate source and inspect architecture, callers, dependencies, or impact. Once candidate paths are known,{{if ne .profile "core"}} run `./awf resolve topic <paths>`, then `./awf read topic <domain>/<topic>[:<claim>]` for applicable authority and `./awf read adr <identity>` when ADR lifecycle, progress, rationale, or linked plans matter.{{else}} read the relevant project documentation, source, tests, and history directly.{{end}}
 <!-- awf:end -->
 
 <!-- awf:section resume-revalidation -->

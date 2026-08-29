@@ -5,7 +5,7 @@
 
 What a value owns, and where state derived during one operation lives.
 
-**Applicability:** Global topic: applies repository-wide. It declares no bounded ownership selectors. Run `awf topic code-design/state-ownership --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Global topic: applies repository-wide. It declares no bounded ownership selectors. Run `awf read topic code-design/state-ownership --coverage` for current applicable and owned paths and marker sites.
 
 This topic governs values introduced by new work and derived state deliberately converted under its authority. Existing post-construction field writes and cached derivations remain bounded future candidates until a concrete consumer brings them into scope; this authority does not require a wholesale conversion.
 
@@ -37,7 +37,7 @@ Backing: unbacked
 Verify: For each changed derived value, enumerate its production sites within one operation and confirm exactly one, with every other consumer receiving the value.
 ### `invariant: project-derived-state-ownership`
 
-No production function in internal/project, internal/contextq, or internal/resident writes a field of that package's constructed long-lived values outside the function that constructs the value: the ADR corpus, topic corpus, effective skill set, and context state are derived by the operation that needs them and threaded to their consumers, and Roots is fixed at construction as an input to the value that owns it.
+No production function in internal/projectstate or internal/resident writes a field of that package's constructed long-lived values outside the function that constructs the value: project state is fixed by `Loader.Open`, and resident Roots is fixed at construction.
 Origin: ADR-0180
-Revised-by: ADR-0195
+Revised-by: ADR-0195, ADR-0320
 Backing: test

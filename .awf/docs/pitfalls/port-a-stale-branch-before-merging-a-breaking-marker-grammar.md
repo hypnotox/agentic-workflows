@@ -1,7 +1,6 @@
 ---
 title: "Port a stale branch before merging a breaking marker grammar"
 domains: ["invariants", "adr-system", "tooling"]
-tags: ["invariant-backing", "worktree-isolation", "git-hooks"]
 related: [205, 206]
 ---
 Before merging a checker that cannot read the old marker grammar, land compatibility parsing

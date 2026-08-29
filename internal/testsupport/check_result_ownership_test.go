@@ -104,8 +104,8 @@ func TestProducerRankPropertyCensus(t *testing.T) {
 		`internal/currentstatecoord/currentstate.go:currentStateResult:severity.Error|propertyPlanArtifact`,
 		`internal/prosegate/prosegate.go:Result:severity.Warn|"prose-restraint"`,
 		`internal/referencecheck/referencecheck.go:finding:severity.Error|property`,
-		`internal/vocabularycheck/vocabularycheck.go:errorFinding:severity.Error|PropertyCorrectness`,
-		`internal/vocabularycheck/vocabularycheck.go:warning:severity.Warn|PropertyHeuristic`,
+		`internal/glossarycheck/glossarycheck.go:errorFinding:severity.Error|PropertyCorrectness`,
+		`internal/glossarycheck/glossarycheck.go:warning:severity.Warn|PropertyHeuristic`,
 	}
 	var got []string
 	testsupport.WalkRepoSources(t, root, func(relative string, content []byte) {
@@ -132,7 +132,7 @@ func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
 		"internal/configcheck": true, "internal/generatedcheck": true,
 		"internal/memorycite": true, "internal/pitfallcheck": true,
 		"internal/plancheck": true, "internal/prosegate": true,
-		"internal/referencecheck": true, "internal/vocabularycheck": true,
+		"internal/referencecheck": true, "internal/glossarycheck": true,
 	}
 	aggregatorImports := map[string]bool{}
 	var kindAccesses []string

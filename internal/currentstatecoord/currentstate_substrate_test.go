@@ -8,8 +8,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
-// TestCurrentStateContextSubstrateFailuresAndEmptyHead retains staged helper contracts.
-func TestCurrentStateContextSubstrateFailuresAndEmptyHead(t *testing.T) {
+// TestCurrentStateSubstrateFailuresAndEmptyHead retains staged helper contracts.
+func TestCurrentStateSubstrateFailuresAndEmptyHead(t *testing.T) {
 	tree, err := snapshot.NewTree(nil)
 	if err != nil {
 		t.Fatal(err)
@@ -56,8 +56,8 @@ func TestLoadTreeCurrentStatePropagatesAuthorityParseFailure(t *testing.T) {
 	}
 }
 
-func TestPrepareStagedContextPropagatesSnapshotFailure(t *testing.T) {
-	if _, err := PrepareStagedContext(context.Background(), t.TempDir()); err == nil {
-		t.Fatal("staged context accepted a non-repository")
+func TestPrepareStagedOutputPropagatesSnapshotFailure(t *testing.T) {
+	if _, err := PrepareStagedOutput(context.Background(), t.TempDir()); err == nil {
+		t.Fatal("staged output preparation accepted a non-repository")
 	}
 }

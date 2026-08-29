@@ -41,11 +41,7 @@ This report-only audit may run without an effort. If continuity independently fi
 <!-- awf:template-source templates/partials/escalation-menu.md -->
 perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated.
 <!-- awf:template-source templates/skills/refactor-coupling-audit/SKILL.md.tmpl -->
-When both the coupling evidence location is unknown and inline search would pollute the parent context, invoke `awf-exploring` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve the categories and the structured output contract. Ground the audit before the categories: run `./awf context <the refactor's source and destination paths>` so the coupling findings land in the ADR Context section against current authority.
-<!-- awf:template-source templates/partials/context-orientation.md -->
-Start by querying the explicit paths named above without `--show` or `--full` detail flags, then drill down with `./awf topic` where the work touches a claimed surface.
-<!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
+When both the coupling evidence location is unknown and inline search would pollute the parent context, invoke `awf-exploring` once per information need with breadth and detail. Keep an exact-known-file or genuinely trivial category check inline. Preserve the categories and the structured output contract. Ground the audit before the categories: use CodeGraph for discovery or structural questions, then run `./awf resolve topic <the refactor's source and destination paths>` and read applicable topics so the coupling findings land in the ADR Context section against current authority.
 
 <!-- awf:template-source templates/skills/refactor-coupling-audit/SKILL.md.tmpl#category-1-top-level-files -->
 <!-- awf:edit category-1-top-level-files: default; create .awf/skills/parts/refactor-coupling-audit/category-1-top-level-files.md to override -->

@@ -168,7 +168,7 @@ func TestOrdinaryCommandOutputUsesPresentation(t *testing.T) {
 			t.Errorf("%s findings = %v, want exactly one %q finding", fixture, findings, want)
 		}
 	}
-	for _, fixture := range []string{"positive-read-plan.go", "positive-changelog.go", "positive-activity.go", "positive-memory.go", "positive-init.go", "positive-context-delivery.go", "positive-shadow.go"} {
+	for _, fixture := range []string{"positive-read-plan.go", "positive-changelog.go", "positive-activity.go", "positive-memory.go", "positive-init.go", "positive-shadow.go"} {
 		if findings := fixtureFindings(t, fixture); len(findings) != 0 {
 			t.Errorf("%s findings: %v", fixture, findings)
 		}
@@ -213,15 +213,12 @@ var successfulBypasses = map[string]bool{
 	modulePath + "/cmd/awf.writeEffortActivityProtocol": true,
 	modulePath + "/cmd/awf.writeEffortMemoryProtocol":   true,
 	modulePath + "/cmd/awf.writeInitDescriptorProtocol": true,
-	modulePath + "/internal/contextdelivery.Deliver":    true,
 }
 
 // These exact helpers write authored files or spill-file storage rather than a
 // user-visible presentation. They are serialization sinks, not output bypasses.
 var nonPresentationWrites = map[string]bool{
 	modulePath + "/cmd/awf.writeAndCloseTopicFile":          true,
-	modulePath + "/internal/contextdelivery.writeFull":      true,
-	modulePath + "/internal/contextq.contextGroupKey":       true,
 	modulePath + "/internal/effort.replaceResidentExpected": true,
 	modulePath + "/internal/effort.replaceMemory":           true,
 	modulePath + "/internal/effort.publishNew":              true,
@@ -247,7 +244,7 @@ func loadPresentationPackages(t *testing.T, overlay map[string][]byte) []*packag
 	t.Helper()
 	patterns := []string{
 		"./cmd/awf", "./internal/audit", "./internal/clispec", "./internal/commitpolicy",
-		"./internal/contextdelivery", "./internal/contextq", "./internal/effort", "./internal/initspec",
+		"./internal/effort", "./internal/initspec",
 		"./internal/memorycite", "./internal/project", "./internal/prosegate", "./internal/resident",
 		"./internal/topic", "./internal/upgrade", "./internal/worktree",
 	}

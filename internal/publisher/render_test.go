@@ -277,7 +277,7 @@ func TestUnknownPlaceholderInsideCommentRenders(t *testing.T) {
 // regression in include expansion or renderTarget strip wiring leaks it into
 // every scaffolded project's rendered README.
 func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
-	const directive = "<!-- awf:comment touches-state: rendering/templates:template-source-residue - the embedded ADR README include is source-only -->"
+	const directive = "<!-- awf:comment the embedded ADR README include is source-only -->"
 	src, err := fs.ReadFile(templates.FS, "adr-readme/README.md.tmpl")
 	if err != nil {
 		t.Fatal(err)

@@ -30,7 +30,7 @@ type fallbackCase struct {
 var unsetFallbackCases = []fallbackCase{
 	{
 		tmpl: "agents/grounding-checker.md.tmpl",
-		want: []string{"Ground guide-first, in order", "Current-state documentation is what binds"},
+		want: []string{"Ground guide-first:", "CodeGraph", "./awf resolve topic"},
 	},
 	{
 		tmpl: "agents/implementer.md.tmpl",
@@ -82,7 +82,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/orienting/SKILL.md.tmpl",
-		want: []string{"Ground guide-first, in order", "`example-exploring`"},
+		want: []string{"Ground guide-first:", "CodeGraph", "`example-exploring`"},
 	},
 	{
 		tmpl: "skills/refactor-coupling-audit/SKILL.md.tmpl",

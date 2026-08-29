@@ -68,8 +68,8 @@ func TestPresentAuditRefusal(t *testing.T) {
 		err  error
 		want string
 	}{
-		{name: "below horizon", err: &audit.HistoricalHorizonError{Schema: 2, Floor: 3, Horizon: 46}, want: "supporting schemas 3 through 46"},
-		{name: "above horizon", err: &audit.HistoricalHorizonError{Schema: 47, Floor: 3, Horizon: 46}, want: "supporting schemas 3 through 46"},
+		{name: "below horizon", err: &audit.HistoricalHorizonError{Schema: 2, Floor: 3, Horizon: 47}, want: "supporting schemas 3 through 47"},
+		{name: "above horizon", err: &audit.HistoricalHorizonError{Schema: 47, Floor: 3, Horizon: 47}, want: "supporting schemas 3 through 47"},
 		{name: "partial authority", err: &audit.PartialHistoricalAuthorityError{Config: true, Lock: false}, want: "restore the complete .awf/config.yaml and .awf/awf.lock pair"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

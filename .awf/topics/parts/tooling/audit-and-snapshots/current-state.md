@@ -108,6 +108,6 @@ Backing: test
 
 ### `rule: managed-history-decode-horizon`
 
-Audit owns read-only decoding of managed schemas 3 through its explicit horizon 46, including represented pre-31 lock routing fields. A pre-.awf revision is empty; malformed, partial, or out-of-horizon authority refuses with recovery direction and is never promoted to live authority.
+Audit owns read-only decoding of managed schemas 3 through its explicit horizon 47, including represented pre-31 lock routing fields. A pre-.awf revision is empty; malformed, partial, or out-of-horizon authority refuses with recovery direction and is never promoted to live authority.
 Origin: ADR-0297
-Revised-by: ADR-0303
+Revised-by: ADR-0303, ADR-0320
