@@ -500,7 +500,7 @@ func TestSemanticOwnerAssuranceDecomposition(t *testing.T) {
 			t.Errorf("semantic-owner partial must not interrupt consumer structure with heading %q", line)
 		}
 	}
-	for _, want := range []string{
+	clauses := []string{
 		"Before assigning or reviewing a broad implementation unit, the parent identifies its semantic owners",
 		"separates independently verifiable owners into distinct implementation, settlement, and assurance units",
 		"cross-owner composition is itself one coherent transaction or protected contract",
@@ -510,13 +510,39 @@ func TestSemanticOwnerAssuranceDecomposition(t *testing.T) {
 		"ordinary bounded review",
 		"originating transaction's sole verify pass",
 		"without another reviewer dispatch",
+		"parent-owned focused evidence for each fresh unit",
 		"terminal assurance covers composed integration effects and the complete range",
 		"Unrelated blockers stay under implementation-autonomy routing and never widen the active outcome",
 		"No file, line, commit, task, finding-count, or elapsed-time threshold",
-	} {
+	}
+	for _, want := range clauses {
 		if !strings.Contains(body, want) {
 			t.Errorf("semantic-owner contract missing %q", want)
 		}
+		if mutated := strings.Replace(body, want, "missing-semantic-owner-clause", 1); strings.Contains(mutated, want) {
+			t.Errorf("semantic-owner mutation failed to remove %q", want)
+		}
+	}
+
+	const signature = "Finding class here means that shared concern or contract"
+	var homes []string
+	if err := fs.WalkDir(templates.FS, ".", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil || entry.IsDir() {
+			return err
+		}
+		data, readErr := fs.ReadFile(templates.FS, path)
+		if readErr != nil {
+			return readErr
+		}
+		if strings.Contains(string(data), signature) {
+			homes = append(homes, path)
+		}
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	if len(homes) != 1 || homes[0] != "partials/semantic-owner-assurance.md" {
+		t.Errorf("semantic-owner operative home census = %v, want only shared partial", homes)
 	}
 
 	consumers := []string{
@@ -534,6 +560,19 @@ func TestSemanticOwnerAssuranceDecomposition(t *testing.T) {
 		}
 		if got := strings.Count(string(source), "<!-- awf:include semantic-owner-assurance -->"); got != 1 {
 			t.Errorf("%s semantic-owner include count = %d, want 1", path, got)
+		}
+	}
+
+	for _, profile := range []string{"core", "full"} {
+		out := renderGolden(t, "docs/workflow.md.tmpl", map[string]any{
+			"profile": profile, "prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+			"skills": map[string]bool{}, "layout": testLayout(),
+		})
+		assertNoLeaks(t, out)
+		for _, clause := range clauses {
+			if !strings.Contains(out, clause) {
+				t.Errorf("%s workflow missing semantic-owner clause %q", profile, clause)
+			}
 		}
 	}
 

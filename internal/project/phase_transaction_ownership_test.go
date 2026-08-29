@@ -23,6 +23,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"subagent": normalize(renderSkillGolden(t, "subagent-driven-development", data)),
 			"readme":   normalize(renderGolden(t, "plans-readme/README.md.tmpl", data)),
 			"template": normalize(renderGolden(t, "plans-template/template.md.tmpl", data)),
+			"workflow": normalize(renderGolden(t, "docs/workflow.md.tmpl", data)),
 		}
 	}
 	configured := map[string]any{
@@ -123,6 +124,13 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"format: plan-v2", "**Execution mode: inline.**", "Completes: [\"plan-outcome\"]", "### Task 1.1:",
 			"### Phase close", "Name the one closing commit", "Generic staging, gate, clean-tree, checkpoint, routing, and reviewer protocol belongs to workflow owners",
 			"```commit", "## Definition of done")
+		assertAll("workflow",
+			"The parent takes every complete phase", "integration, explicit staging, staged check, every commit, fast gates, and terminal exhaustive verification",
+			"one sequential commit-disabled implementation child", "runs only bounded focused checks and never stages, commits, or runs a gate",
+			"The parent owns every report-only review settlement")
+		if strings.Contains(surfaces["workflow"], "One commit-capable owner takes a complete subagent-driven phase") {
+			t.Errorf("%s/workflow retains delegated transaction ownership", variant)
+		}
 
 		for _, name := range []string{"inline", "subagent"} {
 			body := surfaces[name]

@@ -149,7 +149,7 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 			assertContainsAll(t, target+" workflow", workflow,
 				"Evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review triggers independently at intake", "activate newly warranted support before further mutation", "each establish the approved boundary", "load-bearing", "sequencing, coordination, or resumability", "Each written artifact gets a fresh-context review", "line count", "artifact type")
 			assertContainsAll(t, target+" workflow ownership", workflow,
-				"No line count, artifact type, or another mechanism firing selects a trigger", "parent owns inline integration", "one independently green coherent implementation transaction", "A checkpoint never creates an effort", "routine implementation checkpoint occurs only after a phase's closing commit has received report-only review")
+				"No line count, artifact type, or another mechanism firing selects a trigger", "The parent takes every complete phase", "through integration", "explicit staging, staged check, every commit, fast gates, and terminal exhaustive verification", "one independently green coherent implementation transaction", "A checkpoint never creates an effort", "routine implementation checkpoint occurs only after a phase's closing commit has received report-only review")
 			for name, body := range bodies {
 				for _, piOnly := range []string{"handoff_session", "[session context]", "Continue with effort <slug>."} {
 					if strings.Contains(body, piOnly) {

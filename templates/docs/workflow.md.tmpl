@@ -35,11 +35,13 @@ You own the project's long-term health, not just the task in front of you: defec
 
 A plan phase is one independently green coherent implementation transaction and declares `inline`
 or `subagent-driven` ownership independently of every other phase. Heading-identified tasks are ordered steps,
-not commit, dispatch, review, or checkpoint boundaries. One commit-capable owner takes a complete
-subagent-driven phase from a known clean green baseline through staged check, gate, and closing
-commit; the parent owns inline integration and all report-only review settlement. Sequential
-commit-disabled helpers may execute only explicit path-disjoint batch subsets, never shared files or
-the closing commit. If a phase owner stops dirty, the parent inventories the checkout and explicitly
+not commit, dispatch, review, or checkpoint boundaries. The parent takes every complete phase from a known clean green baseline through integration,
+explicit staging, staged check, every commit, fast gates, and terminal exhaustive verification. A
+subagent-driven phase uses one sequential commit-disabled implementation child for its complete
+assigned scope; the child runs only bounded focused checks and never stages, commits, or runs a gate.
+The parent owns every report-only review settlement. Additional commit-disabled helpers may execute
+only explicit path-disjoint batch subsets, never shared files or the closing commit. If a phase owner
+stops dirty, the parent inventories the checkout and explicitly
 completes inline, restores and restarts the complete phase, or transfers the complete revised phase
 with recovery context; it never issues a blind task-level continuation. Runtime phase enforcement
 is not promised. A plan-v2 task projection may include a generated scope notice, Phase close, and

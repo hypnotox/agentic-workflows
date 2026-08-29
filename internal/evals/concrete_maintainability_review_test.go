@@ -86,12 +86,18 @@ func TestSemanticOwnerAssuranceScenarios(t *testing.T) {
 						"implementer":    read(t, filepath.Join(root, "."+target, "agents", "implementer.md")),
 						"code-reviewer":  read(t, filepath.Join(root, "."+target, "agents", "code-reviewer.md")),
 						"reviewing-impl": read(t, planSkillPath(root, target, "reviewing-impl")),
+						"workflow":       read(t, filepath.Join(root, "docs", "workflow.md")),
 					}
 					if profile == "full" {
 						bodies["executing-plans"] = read(t, planSkillPath(root, target, "executing-plans"))
 						bodies["subagent-driven-development"] = read(t, planSkillPath(root, target, "subagent-driven-development"))
 					}
 					for consumer, body := range bodies {
+						for _, residue := range []string{"<no value>", "<nil>"} {
+							if strings.Contains(body, residue) {
+								t.Errorf("%s contains empty-data residue %q", consumer, residue)
+							}
+						}
 						for _, want := range []string{
 							"separates independently verifiable owners into distinct implementation, settlement, and assurance units",
 							"cross-owner composition is itself one coherent transaction or protected contract",
@@ -100,6 +106,7 @@ func TestSemanticOwnerAssuranceScenarios(t *testing.T) {
 							"partitions the finite remaining scope",
 							"ordinary bounded review",
 							"without another reviewer dispatch",
+							"parent-owned focused evidence for each fresh unit",
 							"terminal assurance covers composed integration effects and the complete range",
 							"Unrelated blockers stay under implementation-autonomy routing and never widen the active outcome",
 							"No file, line, commit, task, finding-count, or elapsed-time threshold",
