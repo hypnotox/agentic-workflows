@@ -376,7 +376,7 @@ func TestPiStructuredExplorationContractRender(t *testing.T) {
 		{"awf-review-adr", "subagent_review_adr", `task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_REVIEW_CONCURRENCY", false},
 		{"awf-review-plan", "subagent_review_plan", `task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_REVIEW_CONCURRENCY", false},
 		{"awf-review-code", "subagent_review_code", `task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_REVIEW_CONCURRENCY", false},
-		{"awf-implement", "subagent_implement", `task: Type.String({ minLength: 1 }), allowCommits: Type.Boolean(), verificationCheckout: Type.Optional(Type.String()), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: 1", true},
+		{"awf-implement", "subagent_implement", `task: Type.String({ minLength: 1 }), verificationCheckout: Type.Optional(Type.String()), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: 1", true},
 	}
 	for _, profile := range profiles {
 		t.Run(profile.id, func(t *testing.T) {
@@ -1118,11 +1118,13 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"parseFrontmatter",
 		"const verified = state.before.available && after.available",
 		"const changed = verified && state.before.head !== after.head",
-		"state.allowCommits && verified && !changed",
+		"const failure = !verified",
 		"commitVerification: verified ? \"verified\" : \"unavailable\"",
 		"commitVerification: COMMIT_VERIFICATION_SCHEMA",
-		"commit-capable but created no commit",
-		"committed despite allowCommits=false",
+		"Implementation changed HEAD",
+		"restore the recorded before-run HEAD",
+		"before redispatch",
+		"Implementation verification unavailable",
 		"resolveVerificationCheckout",
 		`requested.startsWith("@") ? requested.slice(1) : requested`,
 		`["rev-parse", "--show-toplevel"]`,
@@ -1133,7 +1135,7 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"administrative backlink",
 		"same repository as the project root",
 		"snapshot(pi, verificationCheckout)",
-		"retry with verificationCheckout set to that checkout root",
+		"selected HEAD could not be compared before and after",
 		"invocationCheckout",
 		"cwd: verificationCheckout",
 	} {

@@ -34,7 +34,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "agents/implementer.md.tmpl",
-		want: []string{"the project's gate command"},
+		want: []string{"The parent alone owns integration"},
 		ban:  []string{"Shortcuts that are never acceptable here", "``"},
 	},
 	{
@@ -139,7 +139,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/executing-plans/SKILL.md.tmpl",
-		want: []string{"the project's gate", "Auto-commit the phase only when green"},
+		want: []string{"the project's gate", "The parent commits the integrated phase"},
 	},
 	{
 		tmpl: "skills/proposing-adr/SKILL.md.tmpl",
@@ -171,7 +171,7 @@ var unsetFallbackCases = []fallbackCase{
 	},
 	{
 		tmpl: "skills/subagent-driven-development/SKILL.md.tmpl",
-		want: []string{"known clean and green baseline", "the project's gate", "wired pre-commit hook enforces both", "Sequential dispatch only, never parallel"},
+		want: []string{"known clean and green baseline", "the project's gate", "terminal exhaustive verification", "Sequential dispatch only, never parallel"},
 	},
 	{
 		tmpl: "skills/writing-plans/SKILL.md.tmpl",

@@ -1,0 +1,7 @@
+**Semantic-owner assurance.**
+
+Before assigning or reviewing a broad implementation unit, the parent identifies its semantic owners. It separates independently verifiable owners into distinct implementation, settlement, and assurance units. Work stays together only when its cross-owner composition is itself one coherent transaction or protected contract.
+
+Repeated findings of the same underlying semantic concern or violated contract across separable owners show that the assurance boundary is oversized. Finding class here means that shared concern or contract, not severity, reviewer lens, or remediation classification. Before further assurance, the parent partitions the finite remaining scope into separable owner units. Each genuinely fresh implementation transaction receives ordinary bounded review. Residual findings from the originating transaction's sole verify pass receive parent-owned settlement and deterministic verification without another reviewer dispatch.
+
+Decomposition preserves parent-owned focused evidence for each fresh unit, and terminal assurance covers composed integration effects and the complete range under its own single verify-pass bound and terminal verification obligations. Unrelated blockers stay under implementation-autonomy routing and never widen the active outcome. No file, line, commit, task, finding-count, or elapsed-time threshold defines an oversized unit; semantic ownership, dependency and representation boundaries, independent verifiability, and the concrete finding pattern do.

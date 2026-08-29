@@ -13939,6 +13939,19 @@
       "identity": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
+          "line": 72,
+          "column": 16
+        },
+        "end": {
+          "line": 74,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:69.54,71.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
           "line": 69,
           "column": 54
         },
@@ -13947,11 +13960,53 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:69.54,71.3 1 in function InitRepoAt, beginning `{ // coverage-ignore: PlainInit into an existing writable directory fails only on a permission f...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 76,
+          "column": 16
+        },
+        "end": {
+          "line": 78,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "InitRepoAt reads local config from the go-git repository it just initialized; failure requires a broken storer rather than a portable fixture input, while successful maintenance isolation is directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 80,
+          "column": 51
+        },
+        "end": {
+          "line": 82,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "InitRepoAt writes local config inside a fresh writable fixture; failure requires an unportable filesystem or storer fault, while successful maintenance isolation is directly tested."
+    },
+    {
+      "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 114,
+          "column": 82
+        },
+        "end": {
+          "line": 116,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:103.82,105.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 103,
@@ -13962,11 +14017,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:103.82,105.3 1 in function AddAll, beginning `{ // coverage-ignore: staging a readable fixture worktree wholesale fails only on a permission f...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 152,
+          "column": 16
+        },
+        "end": {
+          "line": 154,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:141.16,143.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 141,
@@ -13977,11 +14044,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:141.16,143.3 1 in function Commit, beginning `{ // coverage-ignore: Commit with a valid signature and staged tree cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 171,
+          "column": 16
+        },
+        "end": {
+          "line": 173,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:160.16,162.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 160,
@@ -13992,11 +14071,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:160.16,162.3 1 in function Merge, beginning `{ // coverage-ignore: Commit with valid parents and signature on a healthy worktree cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 192,
+          "column": 47
+        },
+        "end": {
+          "line": 194,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:181.47,183.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 181,
@@ -14007,11 +14098,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:181.47,183.3 1 in function Graft, beginning `{ // coverage-ignore: encoding a commit built from resolved fixture hashes cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 196,
+          "column": 16
+        },
+        "end": {
+          "line": 198,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:185.16,187.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 185,
@@ -14022,11 +14125,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:185.16,187.3 1 in function Graft, beginning `{ // coverage-ignore: storing an encoded object into the fixture's own object database cannot fa...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 206,
+          "column": 16
+        },
+        "end": {
+          "line": 208,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:195.16,197.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 195,
@@ -14037,11 +14152,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:195.16,197.3 1 in function TreeHash, beginning `{ // coverage-ignore: reading back a commit the fixture just wrote cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 221,
+          "column": 57
+        },
+        "end": {
+          "line": 223,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:210.57,212.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 210,
@@ -14052,11 +14179,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:210.57,212.3 1 in function CheckoutNewBranch, beginning `{ // coverage-ignore: creating a branch at a commit the fixture just wrote cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 232,
+          "column": 16
+        },
+        "end": {
+          "line": 234,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:221.16,223.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 221,
@@ -14067,11 +14206,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:221.16,223.3 1 in function appendIndexEntry, beginning `{ // coverage-ignore: reading the index of a healthy fixture repository cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 236,
+          "column": 50
+        },
+        "end": {
+          "line": 238,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:225.50,227.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 225,
@@ -14082,11 +14233,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:225.50,227.3 1 in function appendIndexEntry, beginning `{ // coverage-ignore: writing back an index just read cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 254,
+          "column": 41
+        },
+        "end": {
+          "line": 256,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:243.41,245.4 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 243,
@@ -14097,11 +14260,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:243.41,245.4 1 in function addAll, beginning `{ // coverage-ignore: Add of a path the caller asserts exists cannot fail in a test fixture`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 264,
+          "column": 44
+        },
+        "end": {
+          "line": 266,
+          "column": 4
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:253.44,255.4 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 253,
@@ -14112,11 +14287,23 @@
           "column": 4
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:253.44,255.4 1 in function removeFrom, beginning `{ // coverage-ignore: Remove of a path the caller asserts is tracked cannot fail in a test fixtu...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 274,
+          "column": 63
+        },
+        "end": {
+          "line": 276,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:263.63,265.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 263,
@@ -14127,11 +14314,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:263.63,265.3 1 in function writeUnder, beginning `{ // coverage-ignore: MkdirAll under a fresh t.TempDir() fails only on a permission fault a test...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 277,
+          "column": 66
+        },
+        "end": {
+          "line": 279,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:266.66,268.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 266,
@@ -14142,11 +14341,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:266.66,268.3 1 in function writeUnder, beginning `{ // coverage-ignore: writing into the repo's own worktree dir fails only on a permission fault ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 286,
+          "column": 16
+        },
+        "end": {
+          "line": 288,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:275.16,277.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 275,
@@ -14157,11 +14368,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:275.16,277.3 1 in function open, beginning `{ // coverage-ignore: opening a repository the fixture itself created cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "start": {
+          "line": 296,
+          "column": 16
+        },
+        "end": {
+          "line": 298,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/gitfixture.go:285.16,287.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "start": {
           "line": 285,
@@ -14172,8 +14395,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/gitfixture.go:285.16,287.3 1 in function worktree, beginning `{ // coverage-ignore: Worktree() on a non-bare fixture repository cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
@@ -14188,10 +14410,35 @@
         },
         "statements": 1
       },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/native.go:39.16,41.3 1 in function InitNativeObjectFormat, beginning `{ // coverage-ignore: init into a writable fixture directory fails only on a permission fault a ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/native.go:39.16,41.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
+        "file": "internal/testsupport/gitfixture/native.go",
+        "start": {
+          "line": 39,
+          "column": 16
+        },
+        "end": {
+          "line": 41,
+          "column": 3
+        },
+        "statements": 1
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/native.go",
+        "start": {
+          "line": 118,
+          "column": 57
+        },
+        "end": {
+          "line": 120,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/native.go:117.57,119.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/native.go",
         "start": {
           "line": 117,
@@ -14202,11 +14449,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/native.go:117.57,119.3 1 in function NativeSSHKey, beginning `{ // coverage-ignore: requires a missing or broken test dependency`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/native.go",
+        "start": {
+          "line": 122,
+          "column": 16
+        },
+        "end": {
+          "line": 124,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/native.go:121.16,123.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/native.go",
         "start": {
           "line": 121,
@@ -14217,11 +14476,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/native.go:121.16,123.3 1 in function NativeSSHKey, beginning `{ // coverage-ignore: ssh-keygen just created the public key`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/native.go",
+        "start": {
+          "line": 126,
+          "column": 21
+        },
+        "end": {
+          "line": 128,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/native.go:125.21,127.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/native.go",
         "start": {
           "line": 125,
@@ -14232,11 +14503,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/native.go:125.21,127.3 1 in function NativeSSHKey, beginning `{ // coverage-ignore: ssh-keygen emits an algorithm and base64 record`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/native.go",
+        "start": {
+          "line": 173,
+          "column": 16
+        },
+        "end": {
+          "line": 175,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/native.go:172.16,174.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/native.go",
         "start": {
           "line": 172,
@@ -14247,11 +14530,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/native.go:172.16,174.3 1 in function NativeCatFile, beginning `{ // coverage-ignore: the caller names an object it just created`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/native.go",
+        "start": {
+          "line": 183,
+          "column": 16
+        },
+        "end": {
+          "line": 185,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/native.go:182.16,184.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/native.go",
         "start": {
           "line": 182,
@@ -14262,11 +14557,23 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/native.go:182.16,184.3 1 in function NativeHashObject, beginning `{ // coverage-ignore: hashing valid bytes into a writable fixture object database cannot fail`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/native.go",
+        "start": {
+          "line": 213,
+          "column": 2
+        },
+        "end": {
+          "line": 214,
+          "column": 14
+        },
+        "statements": 2
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/native.go:212.2,213.14 2 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/native.go",
         "start": {
           "line": 212,
@@ -14277,11 +14584,23 @@
           "column": 14
         },
         "statements": 2
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/native.go:212.2,213.14 2 in function NativeRevisionExists, beginning `t.Fatalf(\"git rev-parse --verify --quiet %s: %v\\n%s\", rev, err, output)`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
+        "file": "internal/testsupport/gitfixture/native.go",
+        "start": {
+          "line": 285,
+          "column": 16
+        },
+        "end": {
+          "line": 287,
+          "column": 3
+        },
+        "statements": 1
+      },
+      "reason": "Fixture auto-maintenance isolation moved the previously reviewed raw miss from internal/testsupport/gitfixture/native.go:284.16,286.3 1 without changing its guarded operation or reachability; the existing focused fixture behavior remains directly tested.",
+      "movedFrom": {
         "file": "internal/testsupport/gitfixture/native.go",
         "start": {
           "line": 284,
@@ -14292,8 +14611,7 @@
           "column": 3
         },
         "statements": 1
-      },
-      "reason": "Initial RF-009 admission of existing uncovered behavior at internal/testsupport/gitfixture/native.go:291.16,293.3 1 in function mustNative, beginning `{ // coverage-ignore: an invocation the caller asserts succeeds fails only on a broken fixture, ...`; retained as visible debt because this activation does not justify metric-only production or oracle changes."
+      }
     },
     {
       "identity": {
@@ -21629,14 +21947,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 2,
-          "line": 40
-        },
         "file": "cmd/releasecheck/main.go",
         "start": {
-          "column": 13,
-          "line": 38
+          "line": 38,
+          "column": 13
+        },
+        "end": {
+          "line": 40,
+          "column": 2
         },
         "statements": 1
       },
@@ -21644,14 +21962,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 11,
-          "line": 58
-        },
         "file": "cmd/releasecheck/main.go",
         "start": {
-          "column": 3,
-          "line": 58
+          "line": 58,
+          "column": 3
+        },
+        "end": {
+          "line": 58,
+          "column": 11
         },
         "statements": 1
       },
@@ -21659,14 +21977,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 358
-        },
         "file": "cmd/releasecheck/main.go",
         "start": {
-          "column": 16,
-          "line": 356
+          "line": 356,
+          "column": 16
+        },
+        "end": {
+          "line": 358,
+          "column": 3
         },
         "statements": 1
       },
@@ -21674,14 +21992,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 408
-        },
         "file": "cmd/releasecheck/main.go",
         "start": {
-          "column": 17,
-          "line": 406
+          "line": 406,
+          "column": 17
+        },
+        "end": {
+          "line": 408,
+          "column": 4
         },
         "statements": 1
       },
@@ -21689,14 +22007,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 414
-        },
         "file": "cmd/releasecheck/main.go",
         "start": {
-          "column": 40,
-          "line": 412
+          "line": 412,
+          "column": 40
+        },
+        "end": {
+          "line": 414,
+          "column": 4
         },
         "statements": 1
       },
@@ -21704,14 +22022,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 445
-        },
         "file": "cmd/releasecheck/main.go",
         "start": {
-          "column": 56,
-          "line": 443
+          "line": 443,
+          "column": 56
+        },
+        "end": {
+          "line": 445,
+          "column": 4
         },
         "statements": 1
       },
@@ -21719,14 +22037,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 2,
-          "line": 28
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 13,
-          "line": 26
+          "line": 26,
+          "column": 13
+        },
+        "end": {
+          "line": 28,
+          "column": 2
         },
         "statements": 1
       },
@@ -21734,14 +22052,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 46
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 16,
-          "line": 43
+          "line": 43,
+          "column": 16
+        },
+        "end": {
+          "line": 46,
+          "column": 3
         },
         "statements": 2
       },
@@ -21749,14 +22067,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 54
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 16,
-          "line": 51
+          "line": 51,
+          "column": 16
+        },
+        "end": {
+          "line": 54,
+          "column": 3
         },
         "statements": 2
       },
@@ -21764,14 +22082,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 59
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 16,
-          "line": 56
+          "line": 56,
+          "column": 16
+        },
+        "end": {
+          "line": 59,
+          "column": 3
         },
         "statements": 2
       },
@@ -21779,14 +22097,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 70
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 22,
-          "line": 68
+          "line": 68,
+          "column": 22
+        },
+        "end": {
+          "line": 70,
+          "column": 4
         },
         "statements": 1
       },
@@ -21794,14 +22112,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 115,
-          "line": 77
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 16,
-          "line": 76
+          "line": 76,
+          "column": 16
+        },
+        "end": {
+          "line": 77,
+          "column": 115
         },
         "statements": 1
       },
@@ -21809,14 +22127,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 79
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 115,
-          "line": 77
+          "line": 77,
+          "column": 115
+        },
+        "end": {
+          "line": 79,
+          "column": 4
         },
         "statements": 1
       },
@@ -21824,14 +22142,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 81
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 9,
-          "line": 79
+          "line": 79,
+          "column": 9
+        },
+        "end": {
+          "line": 81,
+          "column": 4
         },
         "statements": 1
       },
@@ -21839,14 +22157,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 11,
-          "line": 82
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 3,
-          "line": 82
+          "line": 82,
+          "column": 3
+        },
+        "end": {
+          "line": 82,
+          "column": 11
         },
         "statements": 1
       },
@@ -21854,14 +22172,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 89
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 56,
-          "line": 86
+          "line": 86,
+          "column": 56
+        },
+        "end": {
+          "line": 89,
+          "column": 3
         },
         "statements": 2
       },
@@ -21869,14 +22187,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 17,
-          "line": 91
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 47,
-          "line": 90
+          "line": 90,
+          "column": 47
+        },
+        "end": {
+          "line": 91,
+          "column": 17
         },
         "statements": 1
       },
@@ -21884,14 +22202,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 93
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 17,
-          "line": 91
+          "line": 91,
+          "column": 17
+        },
+        "end": {
+          "line": 93,
+          "column": 4
         },
         "statements": 1
       },
@@ -21899,14 +22217,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 11,
-          "line": 94
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 3,
-          "line": 94
+          "line": 94,
+          "column": 3
+        },
+        "end": {
+          "line": 94,
+          "column": 11
         },
         "statements": 1
       },
@@ -21914,14 +22232,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 139
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 23,
-          "line": 137
+          "line": 137,
+          "column": 23
+        },
+        "end": {
+          "line": 139,
+          "column": 3
         },
         "statements": 1
       },
@@ -21929,14 +22247,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 144
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 16,
-          "line": 142
+          "line": 142,
+          "column": 16
+        },
+        "end": {
+          "line": 144,
+          "column": 3
         },
         "statements": 1
       },
@@ -21944,14 +22262,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 148
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 22,
-          "line": 146
+          "line": 146,
+          "column": 22
+        },
+        "end": {
+          "line": 148,
+          "column": 3
         },
         "statements": 1
       },
@@ -21959,14 +22277,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 5,
-          "line": 177
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 54,
-          "line": 175
+          "line": 175,
+          "column": 54
+        },
+        "end": {
+          "line": 177,
+          "column": 5
         },
         "statements": 1
       },
@@ -21974,14 +22292,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 202
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 51,
-          "line": 200
+          "line": 200,
+          "column": 51
+        },
+        "end": {
+          "line": 202,
+          "column": 3
         },
         "statements": 1
       },
@@ -21989,14 +22307,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 221
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 54,
-          "line": 219
+          "line": 219,
+          "column": 54
+        },
+        "end": {
+          "line": 221,
+          "column": 4
         },
         "statements": 1
       },
@@ -22004,14 +22322,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 2,
-          "line": 241
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 64,
-          "line": 239
+          "line": 239,
+          "column": 64
+        },
+        "end": {
+          "line": 241,
+          "column": 2
         },
         "statements": 1
       },
@@ -22019,14 +22337,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 247
-        },
         "file": "cmd/testselection/main.go",
         "start": {
-          "column": 16,
-          "line": 245
+          "line": 245,
+          "column": 16
+        },
+        "end": {
+          "line": 247,
+          "column": 3
         },
         "statements": 1
       },
@@ -22034,14 +22352,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 20
-        },
         "file": "internal/git/working_changes.go",
         "start": {
-          "column": 16,
-          "line": 18
+          "line": 18,
+          "column": 16
+        },
+        "end": {
+          "line": 20,
+          "column": 3
         },
         "statements": 1
       },
@@ -22049,14 +22367,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 24
-        },
         "file": "internal/git/working_changes.go",
         "start": {
-          "column": 16,
-          "line": 22
+          "line": 22,
+          "column": 16
+        },
+        "end": {
+          "line": 24,
+          "column": 3
         },
         "statements": 1
       },
@@ -22064,14 +22382,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 45
-        },
         "file": "internal/git/working_changes.go",
         "start": {
-          "column": 42,
-          "line": 43
+          "line": 43,
+          "column": 42
+        },
+        "end": {
+          "line": 45,
+          "column": 4
         },
         "statements": 1
       },
@@ -22079,14 +22397,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 13,
-          "line": 54
-        },
         "file": "internal/git/working_changes.go",
         "start": {
-          "column": 12,
-          "line": 53
+          "line": 53,
+          "column": 12
+        },
+        "end": {
+          "line": 54,
+          "column": 13
         },
         "statements": 1
       },
@@ -22094,14 +22412,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 12,
-          "line": 56
-        },
         "file": "internal/git/working_changes.go",
         "start": {
-          "column": 12,
-          "line": 55
+          "line": 55,
+          "column": 12
+        },
+        "end": {
+          "line": 56,
+          "column": 12
         },
         "statements": 1
       },
@@ -22109,14 +22427,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 71
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 16,
-          "line": 69
+          "line": 69,
+          "column": 16
+        },
+        "end": {
+          "line": 71,
+          "column": 3
         },
         "statements": 1
       },
@@ -22124,14 +22442,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 80
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 55,
-          "line": 78
+          "line": 78,
+          "column": 55
+        },
+        "end": {
+          "line": 80,
+          "column": 3
         },
         "statements": 1
       },
@@ -22139,14 +22457,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 91
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 43,
-          "line": 89
+          "line": 89,
+          "column": 43
+        },
+        "end": {
+          "line": 91,
+          "column": 4
         },
         "statements": 1
       },
@@ -22154,14 +22472,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 141
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 12,
-          "line": 139
+          "line": 139,
+          "column": 12
+        },
+        "end": {
+          "line": 141,
+          "column": 3
         },
         "statements": 1
       },
@@ -22169,14 +22487,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 192
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 23,
-          "line": 190
+          "line": 190,
+          "column": 23
+        },
+        "end": {
+          "line": 192,
+          "column": 3
         },
         "statements": 1
       },
@@ -22184,14 +22502,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 77,
-          "line": 218
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 4,
-          "line": 218
+          "line": 218,
+          "column": 4
+        },
+        "end": {
+          "line": 218,
+          "column": 77
         },
         "statements": 1
       },
@@ -22199,14 +22517,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 222
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 24,
-          "line": 220
+          "line": 220,
+          "column": 24
+        },
+        "end": {
+          "line": 222,
+          "column": 4
         },
         "statements": 1
       },
@@ -22214,14 +22532,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 226
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 91,
-          "line": 224
+          "line": 224,
+          "column": 91
+        },
+        "end": {
+          "line": 226,
+          "column": 4
         },
         "statements": 1
       },
@@ -22229,14 +22547,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 12,
-          "line": 251
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 123,
-          "line": 250
+          "line": 250,
+          "column": 123
+        },
+        "end": {
+          "line": 251,
+          "column": 12
         },
         "statements": 1
       },
@@ -22244,14 +22562,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 5,
-          "line": 297
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 29,
-          "line": 295
+          "line": 295,
+          "column": 29
+        },
+        "end": {
+          "line": 297,
+          "column": 5
         },
         "statements": 1
       },
@@ -22259,14 +22577,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 14,
-          "line": 322
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 2,
-          "line": 322
+          "line": 322,
+          "column": 2
+        },
+        "end": {
+          "line": 322,
+          "column": 14
         },
         "statements": 1
       },
@@ -22274,14 +22592,14 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 3,
-          "line": 356
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 24,
-          "line": 354
+          "line": 354,
+          "column": 24
+        },
+        "end": {
+          "line": 356,
+          "column": 3
         },
         "statements": 1
       },
@@ -22289,20 +22607,19 @@
     },
     {
       "identity": {
-        "end": {
-          "column": 4,
-          "line": 383
-        },
         "file": "internal/testselection/selection.go",
         "start": {
-          "column": 50,
-          "line": 381
+          "line": 381,
+          "column": 50
+        },
+        "end": {
+          "line": 383,
+          "column": 4
         },
         "statements": 1
       },
       "reason": "Phase 5 terminal coverage reconciliation: focused selector tests exercise strict policy parsing, supported-platform graph union, ownership, reverse closure, meta-suites, widening, and refusal; this retained block is a defensive decoder, platform-discovery, filesystem, or graph state not worth a test-only production seam. Exact reviewed identity internal/testselection/selection.go:381.50,383.4 1 begins `if _, ok := graph.packages[suite.Package]; !ok {`."
-    }
-  ,
+    },
     {
       "identity": {
         "file": "internal/testsupport/shorttemp.go",
@@ -30366,194 +30683,218 @@
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 69,
-        "targetLine": 69,
+        "line": 72,
+        "targetLine": 72,
         "reason": "PlainInit into an existing writable directory fails only on a permission fault a test cannot trigger",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/testsupport/gitfixture/gitfixture.go:69, `if _, err := git.PlainInit(root, false); err != nil {` follows the concrete operation `t.Helper()` at internal/testsupport/gitfixture/gitfixture.go:68 in `func InitRepoAt(t testing.TB, root string) Fixture` (internal/testsupport/gitfixture/gitfixture.go:67). The reviewed failure condition is PlainInit into an existing writable directory fails only on a permission fault a test cannot trigger; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:69 to internal/testsupport/gitfixture/gitfixture.go:72. Source review confirms it still guards the same operation under the same reviewed uninducible-deterministic-fault condition: PlainInit into an existing writable directory fails only on a permission fault a test cannot trigger."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 103,
-        "targetLine": 103,
+        "line": 76,
+        "targetLine": 76,
+        "reason": "a repository just initialized by go-git always carries readable local config",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "InitRepoAt calls repo.Storer.Config immediately after git.PlainInit returned that same repository. The go-git storer created by successful initialization always carries readable local config; a failure requires a broken dependency state, while the normal configuration path is directly tested."
+    },
+    {
+      "directive": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "line": 80,
+        "targetLine": 80,
+        "reason": "writing local config in a writable fixture directory fails only on a permission fault a test cannot trigger",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "uninducible-deterministic-fault",
+      "evidence": "InitRepoAt writes maintenance.auto to the local config of a fresh repository under t.TempDir. Reaching this branch requires an unportable filesystem or storer fault; the successful persisted setting and native-command behavior are directly tested."
+    },
+    {
+      "directive": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "line": 114,
+        "targetLine": 114,
         "reason": "staging a readable fixture worktree wholesale fails only on a permission fault a test cannot trigger",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func AddAll(t testing.TB, f Fixture)` (starts internal/testsupport/gitfixture/gitfixture.go:101) checks `if err := worktree(t, f).AddWithOptions(&git.AddOptions{All: true}); err != nil {` at internal/testsupport/gitfixture/gitfixture.go:103 after `t.Helper()` at internal/testsupport/gitfixture/gitfixture.go:102. Here staging a readable fixture worktree wholesale fails only on a permission fault a test cannot trigger; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:103 to internal/testsupport/gitfixture/gitfixture.go:114. Source review confirms it still guards the same operation under the same reviewed uninducible-deterministic-fault condition: staging a readable fixture worktree wholesale fails only on a permission fault a test cannot trigger."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 141,
-        "targetLine": 141,
+        "line": 152,
+        "targetLine": 152,
         "reason": "Commit with a valid signature and staged tree cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/testsupport/gitfixture/gitfixture.go:141, `if err != nil {` is guarded by the preceding `h, err := wt.Commit(msg, &git.CommitOptions{Author: Sig, Committer: Sig})` at internal/testsupport/gitfixture/gitfixture.go:140; in `func Commit(t testing.TB, f Fixture, msg string, write map[string]string, remove ...string) string` (internal/testsupport/gitfixture/gitfixture.go:135), the predecessor invariant is Commit with a valid signature and staged tree cannot fail. Only violation of that closed state reaches this guard."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:141 to internal/testsupport/gitfixture/gitfixture.go:152. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: Commit with a valid signature and staged tree cannot fail."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 160,
-        "targetLine": 160,
+        "line": 171,
+        "targetLine": 171,
         "reason": "Commit with valid parents and signature on a healthy worktree cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func Merge(t testing.TB, f Fixture, msg string, parents ...string) string` begins at internal/testsupport/gitfixture/gitfixture.go:152; its branch `if err != nil {` at internal/testsupport/gitfixture/gitfixture.go:160 follows `})` at internal/testsupport/gitfixture/gitfixture.go:159. That flow establishes Commit with valid parents and signature on a healthy worktree cannot fail, making the defensive return unreachable without an invariant breach."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:160 to internal/testsupport/gitfixture/gitfixture.go:171. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: Commit with valid parents and signature on a healthy worktree cannot fail."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 181,
-        "targetLine": 181,
+        "line": 192,
+        "targetLine": 192,
         "reason": "encoding a commit built from resolved fixture hashes cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func Graft(t testing.TB, f Fixture, msg, treeFrom string, parents ...string) string` begins at internal/testsupport/gitfixture/gitfixture.go:170; its branch `if err := commit.Encode(encoded); err != nil {` at internal/testsupport/gitfixture/gitfixture.go:181 follows `encoded := repo.Storer.NewEncodedObject()` at internal/testsupport/gitfixture/gitfixture.go:180. That flow establishes encoding a commit built from resolved fixture hashes cannot fail, making the defensive return unreachable without an invariant breach."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:181 to internal/testsupport/gitfixture/gitfixture.go:192. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: encoding a commit built from resolved fixture hashes cannot fail."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 185,
-        "targetLine": 185,
+        "line": 196,
+        "targetLine": 196,
         "reason": "storing an encoded object into the fixture's own object database cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/testsupport/gitfixture/gitfixture.go:185 is `h, err := repo.Storer.SetEncodedObject(encoded)` (internal/testsupport/gitfixture/gitfixture.go:184). Within `func Graft(t testing.TB, f Fixture, msg, treeFrom string, parents ...string) string` at internal/testsupport/gitfixture/gitfixture.go:170, source review establishes storing an encoded object into the fixture's own object database cannot fail; this is therefore a closed-state fail-closed branch."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:185 to internal/testsupport/gitfixture/gitfixture.go:196. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: storing an encoded object into the fixture's own object database cannot fail."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 195,
-        "targetLine": 195,
+        "line": 206,
+        "targetLine": 206,
         "reason": "reading back a commit the fixture just wrote cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/testsupport/gitfixture/gitfixture.go:195, `if err != nil {` is guarded by the preceding `commit, err := open(t, f).CommitObject(plumbing.NewHash(rev))` at internal/testsupport/gitfixture/gitfixture.go:194; in `func TreeHash(t testing.TB, f Fixture, rev string) string` (internal/testsupport/gitfixture/gitfixture.go:192), the predecessor invariant is reading back a commit the fixture just wrote cannot fail. Only violation of that closed state reaches this guard."
-    },
-    {
-      "directive": {
-        "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 210,
-        "targetLine": 210,
-        "reason": "creating a branch at a commit the fixture just wrote cannot fail",
-        "mapped": true,
-        "executed": false
-      },
-      "class": "revalidated-impossible-state",
-      "evidence": "At internal/testsupport/gitfixture/gitfixture.go:210, `if err := worktree(t, f).Checkout(options); err != nil {` is guarded by the preceding `}` at internal/testsupport/gitfixture/gitfixture.go:209; in `func CheckoutNewBranch(t testing.TB, f Fixture, name, at string)` (internal/testsupport/gitfixture/gitfixture.go:203), the predecessor invariant is creating a branch at a commit the fixture just wrote cannot fail. Only violation of that closed state reaches this guard."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:195 to internal/testsupport/gitfixture/gitfixture.go:206. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: reading back a commit the fixture just wrote cannot fail."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
         "line": 221,
         "targetLine": 221,
+        "reason": "creating a branch at a commit the fixture just wrote cannot fail",
+        "mapped": true,
+        "executed": false
+      },
+      "class": "revalidated-impossible-state",
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:210 to internal/testsupport/gitfixture/gitfixture.go:221. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: creating a branch at a commit the fixture just wrote cannot fail."
+    },
+    {
+      "directive": {
+        "file": "internal/testsupport/gitfixture/gitfixture.go",
+        "line": 232,
+        "targetLine": 232,
         "reason": "reading the index of a healthy fixture repository cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/testsupport/gitfixture/gitfixture.go:221 is `idx, err := repo.Storer.Index()` (internal/testsupport/gitfixture/gitfixture.go:220). Within `func appendIndexEntry(t testing.TB, f Fixture, entry *indexformat.Entry)` at internal/testsupport/gitfixture/gitfixture.go:217, source review establishes reading the index of a healthy fixture repository cannot fail; this is therefore a closed-state fail-closed branch."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:221 to internal/testsupport/gitfixture/gitfixture.go:232. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: reading the index of a healthy fixture repository cannot fail."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 225,
-        "targetLine": 225,
+        "line": 236,
+        "targetLine": 236,
         "reason": "writing back an index just read cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/testsupport/gitfixture/gitfixture.go:225, `if err := repo.Storer.SetIndex(idx); err != nil {` is guarded by the preceding `idx.Entries = append(idx.Entries, entry)` at internal/testsupport/gitfixture/gitfixture.go:224; in `func appendIndexEntry(t testing.TB, f Fixture, entry *indexformat.Entry)` (internal/testsupport/gitfixture/gitfixture.go:217), the predecessor invariant is writing back an index just read cannot fail. Only violation of that closed state reaches this guard."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:225 to internal/testsupport/gitfixture/gitfixture.go:236. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: writing back an index just read cannot fail."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 243,
-        "targetLine": 243,
+        "line": 254,
+        "targetLine": 254,
         "reason": "Add of a path the caller asserts exists cannot fail in a test fixture",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/testsupport/gitfixture/gitfixture.go:243, `if _, err := wt.Add(name); err != nil {` is guarded by the preceding `for _, name := range paths {` at internal/testsupport/gitfixture/gitfixture.go:242; in `func addAll(t testing.TB, wt *git.Worktree, paths []string)` (internal/testsupport/gitfixture/gitfixture.go:240), the predecessor invariant is Add of a path the caller asserts exists cannot fail in a test fixture. Only violation of that closed state reaches this guard."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:243 to internal/testsupport/gitfixture/gitfixture.go:254. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: Add of a path the caller asserts exists cannot fail in a test fixture."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 253,
-        "targetLine": 253,
+        "line": 264,
+        "targetLine": 264,
         "reason": "Remove of a path the caller asserts is tracked cannot fail in a test fixture",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func removeFrom(t testing.TB, wt *git.Worktree, names []string)` begins at internal/testsupport/gitfixture/gitfixture.go:250; its branch `if _, err := wt.Remove(name); err != nil {` at internal/testsupport/gitfixture/gitfixture.go:253 follows `for _, name := range names {` at internal/testsupport/gitfixture/gitfixture.go:252. That flow establishes Remove of a path the caller asserts is tracked cannot fail in a test fixture, making the defensive return unreachable without an invariant breach."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:253 to internal/testsupport/gitfixture/gitfixture.go:264. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: Remove of a path the caller asserts is tracked cannot fail in a test fixture."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 263,
-        "targetLine": 263,
+        "line": 274,
+        "targetLine": 274,
         "reason": "MkdirAll under a fresh t.TempDir() fails only on a permission fault a test cannot trigger",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `full := filepath.Join(root, name)` at internal/testsupport/gitfixture/gitfixture.go:262 feeds `if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {` at internal/testsupport/gitfixture/gitfixture.go:263 in `func writeUnder(t testing.TB, root, name, content string, mode os.FileMode)` (internal/testsupport/gitfixture/gitfixture.go:260). Its concrete fault condition is MkdirAll under a fresh t.TempDir() fails only on a permission fault a test cannot trigger, so no safe portable production input induces this error path."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:263 to internal/testsupport/gitfixture/gitfixture.go:274. Source review confirms it still guards the same operation under the same reviewed uninducible-deterministic-fault condition: MkdirAll under a fresh t.TempDir() fails only on a permission fault a test cannot trigger."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 266,
-        "targetLine": 266,
+        "line": 277,
+        "targetLine": 277,
         "reason": "writing into the repo's own worktree dir fails only on a permission fault a test cannot trigger",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `}` at internal/testsupport/gitfixture/gitfixture.go:265 feeds `if err := os.WriteFile(full, []byte(content), mode); err != nil {` at internal/testsupport/gitfixture/gitfixture.go:266 in `func writeUnder(t testing.TB, root, name, content string, mode os.FileMode)` (internal/testsupport/gitfixture/gitfixture.go:260). Its concrete fault condition is writing into the repo's own worktree dir fails only on a permission fault a test cannot trigger, so no safe portable production input induces this error path."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:266 to internal/testsupport/gitfixture/gitfixture.go:277. Source review confirms it still guards the same operation under the same reviewed uninducible-deterministic-fault condition: writing into the repo's own worktree dir fails only on a permission fault a test cannot trigger."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 275,
-        "targetLine": 275,
+        "line": 286,
+        "targetLine": 286,
         "reason": "opening a repository the fixture itself created cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "The immediate predecessor for `if err != nil {` at internal/testsupport/gitfixture/gitfixture.go:275 is `repo, err := git.PlainOpen(f.root)` (internal/testsupport/gitfixture/gitfixture.go:274). Within `func open(t testing.TB, f Fixture) *git.Repository` at internal/testsupport/gitfixture/gitfixture.go:272, source review establishes opening a repository the fixture itself created cannot fail; this is therefore a closed-state fail-closed branch."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:275 to internal/testsupport/gitfixture/gitfixture.go:286. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: opening a repository the fixture itself created cannot fail."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/gitfixture.go",
-        "line": 285,
-        "targetLine": 285,
+        "line": 296,
+        "targetLine": 296,
         "reason": "Worktree() on a non-bare fixture repository cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "At internal/testsupport/gitfixture/gitfixture.go:285, `if err != nil {` is guarded by the preceding `wt, err := open(t, f).Worktree()` at internal/testsupport/gitfixture/gitfixture.go:284; in `func worktree(t testing.TB, f Fixture) *git.Worktree` (internal/testsupport/gitfixture/gitfixture.go:282), the predecessor invariant is Worktree() on a non-bare fixture repository cannot fail. Only violation of that closed state reaches this guard."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/gitfixture.go:285 to internal/testsupport/gitfixture/gitfixture.go:296. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: Worktree() on a non-bare fixture repository cannot fail."
     },
     {
       "directive": {
@@ -30565,91 +30906,91 @@
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `}` at internal/testsupport/gitfixture/native.go:38 feeds `if err != nil {` at internal/testsupport/gitfixture/native.go:39 in `func InitNativeObjectFormat(t *testing.T, root, format string) Fixture` (internal/testsupport/gitfixture/native.go:33). Its concrete fault condition is init into a writable fixture directory fails only on a permission fault a test cannot trigger, so no safe portable production input induces this error path."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/native.go:39 to internal/testsupport/gitfixture/native.go:39. Source review confirms it still guards the same operation under the same reviewed uninducible-deterministic-fault condition: init into a writable fixture directory fails only on a permission fault a test cannot trigger."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/native.go",
-        "line": 117,
-        "targetLine": 117,
+        "line": 118,
+        "targetLine": 118,
         "reason": "requires a missing or broken test dependency",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `command := exec.Command(\"ssh-keygen\", \"-q\", \"-t\", \"ed25519\", \"-N\", \"\", \"-f\", path)` at internal/testsupport/gitfixture/native.go:116 feeds `if output, err := command.CombinedOutput(); err != nil {` at internal/testsupport/gitfixture/native.go:117 in `func NativeSSHKey(t *testing.T) (string, string)` (internal/testsupport/gitfixture/native.go:113). Its concrete fault condition is requires a missing or broken test dependency, so no safe portable production input induces this error path."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/native.go:117 to internal/testsupport/gitfixture/native.go:118. Source review confirms it still guards the same operation under the same reviewed uninducible-deterministic-fault condition: requires a missing or broken test dependency."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/native.go",
-        "line": 121,
-        "targetLine": 121,
+        "line": 122,
+        "targetLine": 122,
         "reason": "ssh-keygen just created the public key",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/testsupport/gitfixture/native.go:121, `if err != nil {` follows the concrete operation `body, err := os.ReadFile(path + \".pub\")` at internal/testsupport/gitfixture/native.go:120 in `func NativeSSHKey(t *testing.T) (string, string)` (internal/testsupport/gitfixture/native.go:113). The reviewed failure condition is ssh-keygen just created the public key; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/native.go:121 to internal/testsupport/gitfixture/native.go:122. Source review confirms it still guards the same operation under the same reviewed uninducible-deterministic-fault condition: ssh-keygen just created the public key."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/native.go",
-        "line": 125,
-        "targetLine": 125,
+        "line": 126,
+        "targetLine": 126,
         "reason": "ssh-keygen emits an algorithm and base64 record",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`func NativeSSHKey(t *testing.T) (string, string)` (starts internal/testsupport/gitfixture/native.go:113) checks `if len(fields) < 2 {` at internal/testsupport/gitfixture/native.go:125 after `fields := strings.Fields(string(body))` at internal/testsupport/gitfixture/native.go:124. Here ssh-keygen emits an algorithm and base64 record; exercising this exact branch requires an unportable environmental failure."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/native.go:125 to internal/testsupport/gitfixture/native.go:126. Source review confirms it still guards the same operation under the same reviewed uninducible-deterministic-fault condition: ssh-keygen emits an algorithm and base64 record."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/native.go",
-        "line": 172,
-        "targetLine": 172,
+        "line": 173,
+        "targetLine": 173,
         "reason": "the caller names an object it just created",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "At internal/testsupport/gitfixture/native.go:172, `if err != nil {` follows the concrete operation `output, err := runNativeBytes(f, nil, \"cat-file\", objectType, rev)` at internal/testsupport/gitfixture/native.go:171 in `func NativeCatFile(t *testing.T, f Fixture, objectType, rev string) []byte` (internal/testsupport/gitfixture/native.go:169). The reviewed failure condition is the caller names an object it just created; it needs an OS, runtime, filesystem, dependency, or namespace fault rather than a safe portable trigger."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/native.go:172 to internal/testsupport/gitfixture/native.go:173. Source review confirms it still guards the same operation under the same reviewed uninducible-deterministic-fault condition: the caller names an object it just created."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/native.go",
-        "line": 182,
-        "targetLine": 182,
+        "line": 183,
+        "targetLine": 183,
         "reason": "hashing valid bytes into a writable fixture object database cannot fail",
         "mapped": true,
         "executed": false
       },
       "class": "revalidated-impossible-state",
-      "evidence": "`func NativeHashObject(t *testing.T, f Fixture, objectType string, body []byte) string` begins at internal/testsupport/gitfixture/native.go:179; its branch `if err != nil {` at internal/testsupport/gitfixture/native.go:182 follows `output, err := runNativeBytes(f, body, \"hash-object\", \"-t\", objectType, \"-w\", \"--stdin\")` at internal/testsupport/gitfixture/native.go:181. That flow establishes hashing valid bytes into a writable fixture object database cannot fail, making the defensive return unreachable without an invariant breach."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/native.go:182 to internal/testsupport/gitfixture/native.go:183. Source review confirms it still guards the same operation under the same reviewed revalidated-impossible-state condition: hashing valid bytes into a writable fixture object database cannot fail."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/native.go",
-        "line": 211,
-        "targetLine": 212,
+        "line": 212,
+        "targetLine": 213,
         "reason": "rev-parse --verify --quiet answers a resolvable revision with 0 and an unresolvable one with 1; any other exit needs a broken fixture or a missing git binary, which reds the suite by other means",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "`NativeRevisionExists` handles successful resolution at lines 204-205 and the documented unresolved exit code 1 at lines 207-210; the `t.Fatalf` operation at line 212 is reached only for a broken fixture, missing Git executable, or other environmental failure that already invalidates the test environment."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/native.go:211 to internal/testsupport/gitfixture/native.go:212. Source review confirms it still guards the same operation under the same reviewed uninducible-deterministic-fault condition: rev-parse --verify --quiet answers a resolvable revision with 0 and an unresolvable one with 1; any other exit needs a broken fixture or a missing git binary, which reds the suite by other means."
     },
     {
       "directive": {
         "file": "internal/testsupport/gitfixture/native.go",
-        "line": 284,
-        "targetLine": 284,
+        "line": 285,
+        "targetLine": 285,
         "reason": "an invocation the caller asserts succeeds fails only on a broken fixture, which reds the suite by other means",
         "mapped": true,
         "executed": false
       },
       "class": "uninducible-deterministic-fault",
-      "evidence": "The source predecessor `output, err := runNative(f, args...)` at internal/testsupport/gitfixture/native.go:290 feeds `if err != nil {` at internal/testsupport/gitfixture/native.go:291 in `func mustNative(t *testing.T, f Fixture, args ...string) string` (internal/testsupport/gitfixture/native.go:288). Its concrete fault condition is an invocation the caller asserts succeeds fails only on a broken fixture, which reds the suite by other means, so no safe portable production input induces this error path."
+      "evidence": "Fixture auto-maintenance isolation moved this unchanged directive from internal/testsupport/gitfixture/native.go:284 to internal/testsupport/gitfixture/native.go:285. Source review confirms it still guards the same operation under the same reviewed uninducible-deterministic-fault condition: an invocation the caller asserts succeeds fails only on a broken fixture, which reds the suite by other means."
     },
     {
       "directive": {
@@ -31516,102 +31857,101 @@
       "evidence": "The report is built from a validated qualification record and contains only JSON-native finite values; focused machine-report tests exercise successful serialization, and failure requires violating the typed report invariant."
     },
     {
-      "class": "tested-process-exit",
       "directive": {
-        "executed": false,
         "file": "cmd/releasecheck/main.go",
         "line": 38,
-        "mapped": true,
+        "targetLine": 38,
         "reason": "os.Exit wrapper; dispatch is unit-tested",
-        "targetLine": 38
+        "mapped": true,
+        "executed": false
       },
+      "class": "tested-process-exit",
       "evidence": "cmd/releasecheck/main.go:38 is the terminating os.Exit composition wrapper. cmd/releasecheck/main_test.go directly exercises dispatch local, archive-validation, exact-CI, release-note, usage, and refusal behavior without terminating the test process."
     },
     {
-      "class": "tested-process-exit",
       "directive": {
-        "executed": false,
         "file": "cmd/testselection/main.go",
         "line": 26,
-        "mapped": true,
+        "targetLine": 26,
         "reason": "os.Exit wrapper; run is unit-tested",
-        "targetLine": 26
+        "mapped": true,
+        "executed": false
       },
+      "class": "tested-process-exit",
       "evidence": "cmd/testselection/main.go:26 is the terminating os.Exit composition wrapper. cmd/testselection/main_test.go directly exercises run selection, refusal, execution, and output behavior without terminating the test process."
     },
     {
-      "class": "revalidated-impossible-state",
       "directive": {
-        "executed": false,
         "file": "internal/git/entrypoints_test.go",
         "line": 103,
-        "mapped": true,
+        "targetLine": 103,
         "reason": "Abs fails only when the working directory cannot be resolved, which would fail the test binary first",
-        "targetLine": 103
+        "mapped": true,
+        "executed": false
       },
+      "class": "revalidated-impossible-state",
       "evidence": "internal/git/entrypoints_test.go:103 guards filepath.Abs for the already-running package checkout; failure requires an unusable process working directory before the census test can execute."
     },
     {
-      "class": "revalidated-impossible-state",
       "directive": {
-        "executed": false,
         "file": "internal/git/entrypoints_test.go",
         "line": 115,
-        "mapped": true,
+        "targetLine": 115,
         "reason": "both parsed directories are checked-in package directories",
-        "targetLine": 115
+        "mapped": true,
+        "executed": false
       },
+      "class": "revalidated-impossible-state",
       "evidence": "internal/git/entrypoints_test.go:115 reads checked-in internal/git and cmd/awf directories after the test binary has loaded the same checkout; absence is an invalid test environment rather than a behavior branch."
     },
     {
-      "class": "revalidated-impossible-state",
       "directive": {
-        "executed": false,
         "file": "internal/git/entrypoints_test.go",
         "line": 125,
-        "mapped": true,
+        "targetLine": 125,
         "reason": "every file in a compiling package parses",
-        "targetLine": 125
+        "mapped": true,
+        "executed": false
       },
+      "class": "revalidated-impossible-state",
       "evidence": "internal/git/entrypoints_test.go:125 reparses Go files from packages that compiled to run this test, so a parse failure requires an inconsistent checkout after compilation."
     },
     {
-      "class": "revalidated-impossible-state",
       "directive": {
-        "executed": false,
         "file": "internal/git/entrypoints_test.go",
         "line": 160,
-        "mapped": true,
+        "targetLine": 160,
         "reason": "the parser rejects a method with an empty receiver list",
-        "targetLine": 160
+        "mapped": true,
+        "executed": false
       },
+      "class": "revalidated-impossible-state",
       "evidence": "internal/git/entrypoints_test.go:160 handles an AST state the Go parser cannot produce for a method declaration."
     },
     {
-      "class": "revalidated-impossible-state",
       "directive": {
-        "executed": false,
         "file": "internal/git/entrypoints_test.go",
         "line": 168,
-        "mapped": true,
+        "targetLine": 168,
         "reason": "no generic receiver exists in this package",
-        "targetLine": 168
+        "mapped": true,
+        "executed": false
       },
+      "class": "revalidated-impossible-state",
       "evidence": "internal/git/entrypoints_test.go:168 handles a receiver AST shape excluded by the checked-in internal/git declarations enumerated by this census."
     },
     {
-      "class": "revalidated-impossible-state",
       "directive": {
-        "executed": false,
         "file": "internal/git/entrypoints_test.go",
         "line": 191,
-        "mapped": true,
+        "targetLine": 191,
         "reason": "printing a parsed block to an in-memory buffer has no failure a test can provoke",
-        "targetLine": 191
+        "mapped": true,
+        "executed": false
       },
+      "class": "revalidated-impossible-state",
       "evidence": "internal/git/entrypoints_test.go:191 prints a parser-produced AST block to bytes.Buffer; neither side exposes a deterministic failure state."
-    }
-  ,
+    },
     {
       "directive": {
         "file": "internal/testsupport/shorttemp.go",
