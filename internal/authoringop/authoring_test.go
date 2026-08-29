@@ -148,6 +148,29 @@ func TestLocalDocumentBodyEditAndResetPreserveShell(t *testing.T) {
 	}
 }
 
+// invariant: rendering/sync-and-drift:authoring-sync-transaction (TestCommittedMutationSourceEffectIncludesResetRemoval)
+func TestCommittedMutationSourceEffectIncludesResetRemoval(t *testing.T) {
+	cases := []struct {
+		name    string
+		request Request
+		local   bool
+		existed bool
+		want    SourceEffect
+	}{
+		{name: "created", request: Request{Mode: Edit}, want: SourceCreated},
+		{name: "replaced", request: Request{Mode: Edit}, existed: true, want: SourceReplaced},
+		{name: "removed", request: Request{Mode: Reset}, existed: true, want: SourceRemoved},
+		{name: "local body", request: Request{Mode: Reset}, local: true, existed: true, want: SourceLocalBody},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			if got := committedSourceEffect(tc.request, tc.local, tc.existed); got != tc.want {
+				t.Fatalf("committed source effect = %q, want %q", got, tc.want)
+			}
+		})
+	}
+}
+
 // invariant: rendering/sync-and-drift:authoring-sync-transaction (TestPostRunCommittedPlainFaultNormalizesToPartial)
 func TestPostRunCommittedPlainFaultNormalizesToPartial(t *testing.T) {
 	fault := errors.New("handle close sentinel")

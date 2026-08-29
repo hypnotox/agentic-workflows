@@ -201,15 +201,7 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 	if err != nil {
 		if committedPath, residue, didCommit := filesystem.CommittedPublication(err); didCommit {
 			_ = committedPath
-			if target.Local {
-				outcome.Source = SourceLocalBody
-			} else if request.Mode == Edit {
-				if identity == nil {
-					outcome.Source = SourceCreated
-				} else {
-					outcome.Source = SourceReplaced
-				}
-			}
+			outcome.Source = committedSourceEffect(request, target.Local, identity != nil)
 			if residue != "" {
 				outcome.Residue = append(outcome.Residue, residue)
 			}
@@ -230,6 +222,19 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 		return outcome, partial(outcome, syncErr, "remove reported residue first, repair the publisher fault, then rerun awf render")
 	}
 	return outcome, nil
+}
+
+func committedSourceEffect(request Request, local, existed bool) SourceEffect {
+	if local {
+		return SourceLocalBody
+	}
+	if request.Mode == Reset {
+		return SourceRemoved
+	}
+	if existed {
+		return SourceReplaced
+	}
+	return SourceCreated
 }
 
 func candidateSource(request Request, local bool, before []byte) ([]byte, bool, error) {
