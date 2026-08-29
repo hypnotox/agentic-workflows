@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-0320: Delegate relevance discovery to CodeGraph](0320-delegate-relevance-discovery-to-codegraph.md) (Implementing)
+_No decisions are in flight._
 
 ## History
 
@@ -325,3 +325,4 @@
 - [ADR-0317: Make implementation verification parent-owned](0317-make-implementation-verification-parent-owned.md) (Implemented)
 - [ADR-0318: Decompose repeated assurance findings by semantic owner](0318-decompose-repeated-assurance-findings-by-semantic-owner.md) (Implemented)
 - [ADR-0319: Adopt the Pi Cockpit Effort Integration Contract](0319-adopt-the-pi-cockpit-effort-integration-contract.md) (Implemented)
+- [ADR-0320: Delegate relevance discovery to CodeGraph](0320-delegate-relevance-discovery-to-codegraph.md) (Implemented)

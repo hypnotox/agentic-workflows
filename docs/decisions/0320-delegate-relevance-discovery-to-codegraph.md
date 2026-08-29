@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: delegate-relevance-discovery-to-codegraph
-status: Implementing
+status: Implemented
 date: 2026-08-29
 ---
 # ADR-0320: Delegate relevance discovery to CodeGraph
@@ -143,3 +143,5 @@ Rendered workflow guidance continues to obey the existing publication-safe unset
 - 2026-08-29: Amended; content-sha256: e9ed9f51851f0d3e13dc62208ad7e3c67f5e7658e971cc174489653c469939cf
 
 - 2026-08-29: Applied; operations: update `rendering/project-output-plan:check-report-single-plan`
+
+- 2026-08-29: Implemented; content-sha256: e9ed9f51851f0d3e13dc62208ad7e3c67f5e7658e971cc174489653c469939cf
