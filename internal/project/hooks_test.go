@@ -223,10 +223,16 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	if err := os.Mkdir(bin, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	realGit, err := exec.LookPath("git")
+	if err != nil {
+		t.Fatal(err)
+	}
 	log := filepath.Join(root, "hook.log")
+	remoteLog := filepath.Join(root, "remote.log")
 	for name, body := range map[string]string{
 		"awf":  "#!/usr/bin/env bash\nprintf 'policy:%s\\n' \"$*\" >>\"$HOOK_LOG\"\n[[ ! -e \"$HOOK_FAIL\" ]]\n",
 		"gate": "#!/usr/bin/env bash\nprintf 'gate:%s\\n' \"$*\" >>\"$HOOK_LOG\"\n",
+		"git":   "#!/usr/bin/env bash\nif [[ -n \"${HOOK_FORBID_REMOTE:-}\" && \"${1:-}\" == ls-remote ]]; then\n  printf 'remote:%s\\n' \"$*\" >>\"$HOOK_REMOTE_LOG\"\n  exit 97\nfi\nexec " + shellQuote(realGit) + " \"$@\"\n",
 	} {
 		if err := os.WriteFile(filepath.Join(bin, name), []byte(body), 0o755); err != nil {
 			t.Fatal(err)
@@ -246,6 +252,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		return path
 	}
 	transactionPath := writeHook("reference-transaction", transaction)
+	malformedIntegrationPath := writeHook("reference-transaction-malformed-integration", strings.Replace(transaction, "integration_branch_hex='6d61696e'", "integration_branch_hex='6d61696e2e2e626164'", 1))
 	pushPath := writeHook("pre-push", hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmdFull: gate\n")["pre-push"].Content)
 	bashEnv := filepath.Join(root, "bash3-env")
 	if err := os.WriteFile(bashEnv, []byte("enable -n mapfile\n"), 0o600); err != nil {
@@ -258,7 +265,10 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		}
 		cmd := exec.Command("bash", append([]string{path}, args...)...)
 		cmd.Dir, cmd.Stdin = root, strings.NewReader(input)
-		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "HOOK_LOG="+log, "HOOK_FAIL="+filepath.Join(root, "fail-policy"), "BASH_ENV="+bashEnv)
+		cmd.Env = append(os.Environ(), "PATH="+bin+":"+os.Getenv("PATH"), "HOOK_LOG="+log, "HOOK_REMOTE_LOG="+remoteLog, "HOOK_FAIL="+filepath.Join(root, "fail-policy"), "BASH_ENV="+bashEnv)
+		if path != pushPath {
+			cmd.Env = append(cmd.Env, "HOOK_FORBID_REMOTE=1")
+		}
 		out, err := cmd.CombinedOutput()
 		return string(out), err
 	}
@@ -311,6 +321,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		t.Fatalf("backward update evaluated policy: err=%v output=%q log=%q", err, output, readLog())
 	}
 	zeroOID := strings.Repeat("0", len(head))
+	missing := strings.Repeat("f", len(head))
 	clearLog()
 	if output, err := run(transactionPath, head+" "+zeroOID+" refs/heads/deleted\n", "prepared"); err != nil || readLog() != "" {
 		t.Fatalf("deletion evaluated policy: err=%v output=%q log=%q", err, output, readLog())
@@ -318,6 +329,13 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	clearLog()
 	if output, err := run(transactionPath, zeroOID+" "+head+" refs/heads/created\n", "prepared"); err != nil || readLog() != "policy:check commit-policy "+base+".."+head+"\n" {
 		t.Fatalf("new branch target: err=%v output=%q log=%q", err, output, readLog())
+	}
+	if body, err := os.ReadFile(remoteLog); !os.IsNotExist(err) || len(body) != 0 {
+		t.Fatalf("local reference transaction attempted remote Git operation: body=%q err=%v", body, err)
+	}
+	clearLog()
+	if output, err := run(malformedIntegrationPath, zeroOID+" "+head+" refs/heads/created\n", "prepared"); err == nil || !strings.Contains(output, "local integration branch refs/heads/main..bad is malformed") || readLog() != "" {
+		t.Fatalf("malformed local integration evidence: err=%v output=%q log=%q", err, output, readLog())
 	}
 	clearLog()
 	if output, err := run(transactionPath, base+" "+head+" refs/heads/main\n"+zeroOID+" "+head+" refs/heads/created\n", "prepared"); err != nil || readLog() != "policy:check commit-policy "+base+".."+head+"\n" {
@@ -334,6 +352,34 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	}
 	runHookGit(t, root, "branch", "main", base)
 	tree := strings.TrimSpace(runHookGit(t, root, "rev-parse", "HEAD^{tree}"))
+	mainRefPath := strings.TrimSpace(runHookGit(t, root, "rev-parse", "--git-path", "refs/heads/main"))
+	if !filepath.IsAbs(mainRefPath) {
+		mainRefPath = filepath.Join(root, mainRefPath)
+	}
+	if err := os.WriteFile(mainRefPath, []byte(missing+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clearLog()
+	if output, err := run(transactionPath, zeroOID+" "+head+" refs/heads/created\n", "prepared"); err == nil || readLog() != "" {
+		t.Fatalf("missing local integration object did not fail closed: err=%v output=%q log=%q", err, output, readLog())
+	}
+	if err := os.WriteFile(mainRefPath, []byte(tree+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clearLog()
+	if output, err := run(transactionPath, zeroOID+" "+head+" refs/heads/created\n", "prepared"); err == nil || !strings.Contains(output, "does not name a commit") || readLog() != "" {
+		t.Fatalf("non-commit local integration evidence: err=%v output=%q log=%q", err, output, readLog())
+	}
+	if err := os.WriteFile(mainRefPath, []byte(head+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	clearLog()
+	if output, err := run(transactionPath, zeroOID+" "+base+" refs/heads/behind\n", "prepared"); err != nil || readLog() != "" {
+		t.Fatalf("new branch behind integration evaluated policy: err=%v output=%q log=%q", err, output, readLog())
+	}
+	if err := os.WriteFile(mainRefPath, []byte(base+"\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	side := strings.TrimSpace(runHookGit(t, root, "commit-tree", tree, "-p", base, "-m", "side"))
 	clearLog()
 	if output, err := run(transactionPath, head+" "+side+" refs/heads/diverged\n", "prepared"); err != nil || readLog() != "policy:check commit-policy "+head+".."+side+"\n" {
@@ -361,7 +407,6 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		t.Fatalf("non-commit tag: err=%v output=%q log=%q", err, output, readLog())
 	}
 	clearLog()
-	missing := strings.Repeat("f", len(head))
 	if output, err := run(pushPath, "refs/heads/missing "+missing+" refs/heads/missing "+base+"\n"); err == nil || !strings.Contains(output, "names missing object") || readLog() != "" {
 		t.Fatalf("missing push object: err=%v output=%q log=%q", err, output, readLog())
 	}
