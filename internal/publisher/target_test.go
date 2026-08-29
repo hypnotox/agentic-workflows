@@ -93,6 +93,11 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	if got := strings.Count(effort, "requestCapabilities()"); got != 2 {
 		t.Errorf("awf effort extension capability request count = %d, want factory plus session start", got)
 	}
+	for _, forbidden := range []string{"RemotePi", "remote-pi:"} {
+		if strings.Contains(effort, forbidden) {
+			t.Errorf("awf effort extension retains legacy integration identity %q", forbidden)
+		}
+	}
 	for _, forbidden := range []string{"name-override", "nameOverride", "NameOverride", "_displayName"} {
 		if strings.Contains(effort, forbidden) {
 			t.Errorf("awf effort extension retains routing-name contract %q", forbidden)
