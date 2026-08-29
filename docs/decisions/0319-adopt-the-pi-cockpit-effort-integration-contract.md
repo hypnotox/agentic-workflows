@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: adopt-the-pi-cockpit-effort-integration-contract
-status: Implementing
+status: Implemented
 date: 2026-08-29
 ---
 # ADR-0319: Adopt the Pi Cockpit Effort Integration Contract
@@ -48,3 +48,4 @@ The rename touches the template, generated dogfood output, structural tests, pub
 - 2026-08-29: Proposed
 - 2026-08-29: Implementing; content-sha256: 193ca7b5332c4afddd104ab97da2ed128c4ce119a536adf5dff2ba022fb5ab13
 - 2026-08-29: Applied; operations: update `rendering/pi-workflows:pi-effort-session-association`, update `rendering/pi-runtime:pi-extension-target-render`, update `rendering/pi-runtime:pi-minimum-runtime`
+- 2026-08-29: Implemented; content-sha256: 193ca7b5332c4afddd104ab97da2ed128c4ce119a536adf5dff2ba022fb5ab13

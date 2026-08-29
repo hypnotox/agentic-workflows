@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-29
 adrs: [adopt-the-pi-cockpit-effort-integration-contract]
-status: Proposed
+status: Implemented
 ---
 # Plan: Adopt the Pi Cockpit effort integration contract
 
@@ -96,3 +96,23 @@ Once v0.42.0 is verified, resume the separate `rename-pi-cockpit` effort in `/ho
 
 - 2026-08-29 plan-review settlement: bounded the old-identity census to named active surfaces and the Unreleased changelog snapshot, with checked no-match status and an explicit historical-record exclusion. This makes the hard-cutover proof reproducible without rewriting frozen history.
 - 2026-08-29 plan-review settlement: removed the unsupported signed-tag commitment and retained the repository release runbook as the sole tag-procedure authority. User authorization covers creating the release, not adding a new signing policy.
+
+### Terminal reconciliation
+Implementation range: 5a573f83ba158045077a51b5f8838952c7c31f4c..120eabe021dd256cf4f3d2f827f55bed80cb1cf8
+Touched paths:
+- ".awf/awf.lock"
+- ".awf/topics/parts/rendering/pi-runtime/current-state.md"
+- ".awf/topics/parts/rendering/pi-workflows/current-state.md"
+- ".pi/extensions/awf-effort/index.ts"
+- "changelog/CHANGELOG.md"
+- "docs/decisions/0319-adopt-the-pi-cockpit-effort-integration-contract.md"
+- "docs/decisions/INDEX.md"
+- "docs/decisions/adopt-the-pi-cockpit-effort-integration-contract.md"
+- "docs/topics/rendering/pi-runtime.md"
+- "docs/topics/rendering/pi-workflows.md"
+- "internal/project/VERSION"
+- "internal/publisher/target_test.go"
+- "templates/pi/awf-effort/index.ts.tmpl"
+- "tools/pi-extension-test/tests/using-effort.test.ts"
+Material deviations:
+- none
