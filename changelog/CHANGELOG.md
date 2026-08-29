@@ -14,6 +14,8 @@ query a single version or a range.
 
 ### Features
 
+- Generated testing guidance now distinguishes focused, affected, fast or normal, and full feedback, and tells adopters how to document lane ownership, environment constraints, and reproducible warm and cold durations.
+
 - Add separate fail-closed affected-package behavioral feedback with complete reverse-dependent selection, declared meta-suites, visible conservative widening, and unchanged commit and terminal gates.
 
 ### Bug fixes

@@ -836,9 +836,9 @@
     },
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
-      "templateHash": "sha256:7195d966da7bffae968f42c8c7a9125eb16c001bce4a5d13ef1279f45ad41213",
+      "templateHash": "sha256:72f42b4ad75836ed8aea66f479f11c9afeeaff21d042318aa5cde5b43427ae67",
       "configHash": "sha256:676aba24e05fe0556f01c48977f2cedff1ac229df350cb487b819de713870d1d",
-      "outputHash": "sha256:afddcf702986558eeee6e46fdb3397ae10166ad968aa023070033acc393bdc7a"
+      "outputHash": "sha256:29b1d5c14e695f98b4426371d428d60a2a017a326eb8cbdbff2a4979e8a2ec6b"
     },
     "docs/topics/adr-system/adr-lifecycle.md": {
       "templateId": "topics/topic.md.tmpl",
