@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-validate-only-local-reference-transaction-commit-deltas: Validate only local reference-transaction commit deltas](validate-only-local-reference-transaction-commit-deltas.md) (Implementing)
+- [ADR-0316: Validate only local reference-transaction commit deltas](0316-validate-only-local-reference-transaction-commit-deltas.md) (Implementing)
 
 ## History
 

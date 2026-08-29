@@ -4,7 +4,7 @@ slug: validate-only-local-reference-transaction-commit-deltas
 status: Implementing
 date: 2026-08-29
 ---
-# ADR-validate-only-local-reference-transaction-commit-deltas: Validate only local reference-transaction commit deltas
+# ADR-0316: Validate only local reference-transaction commit deltas
 
 ## Context
 

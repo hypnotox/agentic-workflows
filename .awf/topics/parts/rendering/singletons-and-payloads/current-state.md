@@ -32,7 +32,7 @@ Backing: test
 
 The rendered reference-transaction payload buffers each prepared transaction and checks the deduplicated commit union introduced to local branches before refs move: existing branches use their old tips, new branches use the configured integration branch's local pre-transaction tip, and deletions and backward-only updates contribute none. It resolves required integration evidence from the exact local branch without remote or same-transaction fallback. The rendered pre-push payload buffers every update and checks the deduplicated commit union introduced by the push: existing refs use their advertised remote tips, new commit-bearing refs use a freshly resolved destination integration-branch tip, recursively peeled tags contribute commits, and deletions contribute none. It invokes the configured project gate only after policy succeeds. Both payloads remain inert until adopter-owned wiring activates them, resolve policy from the invoking worktree, and fail closed on malformed or unresolvable required evidence without rewriting history.
 Origin: ADR-0228
-Revised-by: ADR-0315, ADR-validate-only-local-reference-transaction-commit-deltas
+Revised-by: ADR-0315, ADR-0316
 Backing: test
 
 ### `invariant: memory-gitignore-always-on`
