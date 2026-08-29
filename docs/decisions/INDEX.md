@@ -2,6 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
+- [ADR-decompose-repeated-assurance-findings-by-semantic-owner: Decompose repeated assurance findings by semantic owner](decompose-repeated-assurance-findings-by-semantic-owner.md) (Proposed)
 - [ADR-make-implementation-verification-parent-owned: Make implementation verification parent-owned](make-implementation-verification-parent-owned.md) (Proposed)
 
 ## History
