@@ -99,3 +99,79 @@ func TestSetArrayMemberPreservesComments(t *testing.T) {
 		t.Errorf("member not added:\n%s", got)
 	}
 }
+
+// invariant: config/configuration:sidecar-authoring-roundtrip (TestSidecarLeafRoundTrip)
+func TestSidecarLeafRoundTrip(t *testing.T) {
+	src := []byte("# retained\ndata:\n  old: keep # comment\nitems: [one, two]\n")
+	out, present, changed, err := EditSidecar(src, SidecarEdit{Field: "data.new", Mode: "value", Value: "text"})
+	if err != nil || !present || !changed {
+		t.Fatalf("edit=%q present=%v changed=%v err=%v", out, present, changed, err)
+	}
+	if !strings.Contains(string(out), "old: keep # comment") || !strings.Contains(string(out), "new: text") {
+		t.Fatalf("unrelated YAML was not retained: %s", out)
+	}
+	out, present, changed, err = EditSidecar(out, SidecarEdit{Field: "items", Mode: "add", Value: "two"})
+	if err != nil || !present || changed {
+		t.Fatalf("duplicate add changed=%v err=%v", changed, err)
+	}
+	out, present, changed, err = EditSidecar(out, SidecarEdit{Field: "items", Mode: "remove", Value: "one"})
+	if err != nil || !changed || !strings.Contains(string(out), "- two") {
+		t.Fatalf("remove=%q present=%v changed=%v err=%v", out, present, changed, err)
+	}
+	out, present, changed, err = EditSidecar([]byte("data:\n  item: x\n"), SidecarEdit{Field: "data.item", Mode: "reset"})
+	if err != nil || present || !changed || out != nil {
+		t.Fatalf("final reset=%q present=%v changed=%v err=%v", out, present, changed, err)
+	}
+}
+func TestSidecarLeafStructuredListsAndPruning(t *testing.T) {
+	src := []byte("# retained\ndata:\n  members: [1, {name: api, enabled: true}] # list\n  sibling: keep\nother: value # untouched\n")
+	number, err := DecodeJSONValue(`1`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, present, changed, err := EditSidecar(src, SidecarEdit{Field: "data.members", Mode: "add", Value: number})
+	if err != nil || !present || changed || string(out) != string(src) {
+		t.Fatalf("structurally duplicate number changed source: %q present=%v changed=%v err=%v", out, present, changed, err)
+	}
+	mapping, err := DecodeJSONValue(`{"enabled":true,"name":"api"}`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, present, changed, err = EditSidecar(src, SidecarEdit{Field: "data.members", Mode: "remove", Value: mapping})
+	if err != nil || !present || !changed || strings.Contains(string(out), "enabled: true") || !strings.Contains(string(out), "sibling: keep") || !strings.Contains(string(out), "other: value # untouched") {
+		t.Fatalf("structured removal = %q present=%v changed=%v err=%v", out, present, changed, err)
+	}
+	out, present, changed, err = EditSidecar([]byte("data:\n  nested:\n    leaf: value\n  sibling: keep\n"), SidecarEdit{Field: "data.nested.leaf", Mode: "reset"})
+	if err != nil || !present || !changed || strings.Contains(string(out), "nested:") || !strings.Contains(string(out), "sibling: keep") {
+		t.Fatalf("ancestor pruning = %q present=%v changed=%v err=%v", out, present, changed, err)
+	}
+}
+
+func TestSidecarLeafModesAndRefusals(t *testing.T) {
+	out, present, changed, err := EditSidecar(nil, SidecarEdit{Field: "data.value", Mode: "value", Value: ""})
+	if err != nil || !present || !changed || string(out) != "data:\n  value: \"\"\n" {
+		t.Fatalf("empty scalar = %q present=%v changed=%v err=%v", out, present, changed, err)
+	}
+	if out, present, changed, err = EditSidecar([]byte("data:\n  value: text\n"), SidecarEdit{Field: "data.absent", Mode: "remove", Value: "x"}); err != nil || !present || changed || string(out) != "data:\n  value: text\n" {
+		t.Fatalf("absent remove = %q present=%v changed=%v err=%v", out, present, changed, err)
+	}
+	if _, _, _, err := EditSidecar([]byte("data: scalar\n"), SidecarEdit{Field: "data.key", Mode: "value", Value: "x"}); err == nil || !strings.Contains(err.Error(), "intermediate mapping conflict") {
+		t.Fatalf("intermediate conflict = %v", err)
+	}
+	if _, _, _, err := EditSidecar(nil, SidecarEdit{Field: "data.value", Mode: "unknown", Value: "x"}); err == nil {
+		t.Fatal("unknown mode accepted")
+	}
+}
+
+func TestDecodeJSONValueExactlyOne(t *testing.T) {
+	for _, input := range []string{`{"x":[1]}`, `true`, `null`, `"text"`, `1`} {
+		if _, err := DecodeJSONValue(input); err != nil {
+			t.Fatalf("valid JSON %q: %v", input, err)
+		}
+	}
+	for _, input := range []string{`1 2`, ``, `{`, `true false`} {
+		if _, err := DecodeJSONValue(input); err == nil {
+			t.Fatalf("accepted invalid or trailing JSON %q", input)
+		}
+	}
+}

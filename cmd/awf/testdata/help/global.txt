@@ -23,6 +23,12 @@ help:
       uninstall | Remove awf's generated files (keeps .awf/)
       changelog | Print the embedded changelog, or one version/range of it
       version | Print the awf version
+    edit:
+      commands:
+        sidecar | Edit one semantically identified sidecar leaf
+    reset:
+      commands:
+        sidecar | Reset one semantically identified sidecar leaf
     check:
       commands:
         commit-policy | Verify exact commit provenance for explicit targets

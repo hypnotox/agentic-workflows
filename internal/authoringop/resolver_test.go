@@ -23,6 +23,46 @@ func resolverFixture(t *testing.T) (*project.ProjectState, *config.Config) {
 	return state, cfg
 }
 
+func TestResolveSidecarUsesSemanticCapabilitiesAndOwnedLayouts(t *testing.T) {
+	state, cfg := resolverFixture(t)
+	cases := []struct {
+		kind, name, field, path string
+	}{
+		{"skill", "tdd", "data.custom", ".awf/skills/tdd.yaml"},
+		{"agent", "implementer", "dataDefaults.tools", ".awf/agents/implementer.yaml"},
+		{"doc", "architecture", "data.custom", ".awf/docs/architecture.yaml"},
+		{"doc", "working-with-awf", "data.custom", ".awf/working-with-awf.yaml"},
+		{"doc", "glossary", "data.custom", ".awf/docs/glossary.yaml"},
+		{"domain", "tooling", "paths", ".awf/domains/tooling.yaml"},
+	}
+	for _, tc := range cases {
+		t.Run(tc.kind+"/"+tc.name+"/"+tc.field, func(t *testing.T) {
+			target, err := ResolveSidecar(state, cfg, tc.kind, tc.name, tc.field)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if target.SourcePath != tc.path || target.Local {
+				t.Fatalf("target = %#v, want path %q", target, tc.path)
+			}
+		})
+	}
+	section := catalog.Standard.Skills["tdd"].Sections[0]
+	for _, tc := range []struct{ kind, name, field string }{
+		{"bogus", "x", "data.key"},
+		{"skill", "absent", "data.key"},
+		{"domain", "absent", "paths"},
+		{"domain", "tooling", "data.key"},
+		{"skill", "tdd", "data"},
+		{"skill", "tdd", "sections.absent.drop"},
+		{"skill", "tdd", "sections." + section},
+		{"doc", "runbooks/incident", "data.key"},
+	} {
+		if _, err := ResolveSidecar(state, cfg, tc.kind, tc.name, tc.field); err == nil {
+			t.Errorf("accepted invalid sidecar target %#v", tc)
+		}
+	}
+}
+
 func TestResolvePartUsesKindCatalogConfigurationAndLayouts(t *testing.T) {
 	state, cfg := resolverFixture(t)
 	cases := []struct {

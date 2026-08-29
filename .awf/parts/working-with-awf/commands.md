@@ -4,6 +4,8 @@ Author one declared convention part by semantic identity with `./awf edit <kind>
 
 Use `./awf reset <kind> <name> <part>` to remove a convention-part override and restore its inherited default. A configured local document is addressed as `doc <name> body`; edit replaces only its body and reset restores the empty body while preserving its declaration and awf-owned shell. Both commands validate the complete candidate project before changing the source, then render and update the lock. If a later source or publication step fails, follow the reported residue-first recovery actions and rerun `./awf render`; no rollback is implied.
 
+Use `./awf edit sidecar <kind> <name> <field>` for one leaf-only dotted sidecar field and exactly one of `--value`, `--json-value`, `--add`, `--add-json`, `--remove`, or `--remove-json`. Scalar modes author strings; JSON modes accept one complete JSON value and preserve structured values. Add and remove operate on the authored list only, are structurally idempotent, and retain order. `./awf reset sidecar <kind> <name> <field>` removes the authored leaf and cleans empty parents and a final empty sidecar. Fields include `data.<key>`, valid `dataDefaults.<key>` controls, declared `sections.<section>.drop`, and domain `paths`; unsupported or intermediate fields refuse.
+
 Owner-managed installations support the current awf release and one previous release. The supported
 floor advances only after every managed repository pin has been upgraded to remain at or above it;
 older installed releases are unsupported. Use `bash .awf/upgrade.sh` from the repository root to

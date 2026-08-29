@@ -32,6 +32,11 @@ type Request struct {
 	Mode             Mode
 	Kind, Name, Part string
 	Content          []byte
+	// Sidecar selects a configuration-owned sidecar leaf. SidecarMode is value,
+	// add, remove, or reset; Value is already typed by the CLI boundary.
+	Sidecar     bool
+	SidecarMode string
+	Value       any
 }
 
 // LeaseAcquirer is the narrow operation dependency used to retain the complete
@@ -114,7 +119,12 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 	if err != nil {
 		return Outcome{}, err
 	}
-	target, err := ResolvePart(state, cfg, request.Kind, request.Name, request.Part)
+	var target project.AuthoringTarget
+	if request.Sidecar {
+		target, err = ResolveSidecar(state, cfg, request.Kind, request.Name, request.Part)
+	} else {
+		target, err = ResolvePart(state, cfg, request.Kind, request.Name, request.Part)
+	}
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -141,7 +151,14 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 		return outcome, fmt.Errorf("configured local document output %s is absent; run awf render first", target.SourcePath)
 	}
 
-	candidateBytes, candidatePresent, err := candidateSource(request, target.Local, before)
+	var candidateBytes []byte
+	var candidatePresent, changed bool
+	if request.Sidecar {
+		candidateBytes, candidatePresent, changed, err = config.EditSidecar(before, config.SidecarEdit{Field: request.Part, Mode: request.SidecarMode, Value: request.Value})
+	} else {
+		candidateBytes, candidatePresent, err = candidateSource(request, target.Local, before)
+		changed = true
+	}
 	if err != nil {
 		return outcome, err
 	}
@@ -163,7 +180,11 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 		return outcome, fmt.Errorf("validate complete candidate project: %w", err)
 	}
 
-	if !target.Local && request.Mode == Edit {
+	if request.Sidecar && !changed {
+		return outcome, nil
+	}
+
+	if !target.Local && (request.Mode == Edit || request.Sidecar) {
 		parents := missingParents(files, path.Dir(target.SourcePath))
 		if len(parents) != 0 {
 			if err := files.MkdirAll(path.Dir(target.SourcePath), 0o755); err != nil {
@@ -183,7 +204,12 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 		if err == nil {
 			outcome.Source = SourceLocalBody
 		}
-	case request.Mode == Edit:
+	case request.Sidecar && !candidatePresent && identity != nil:
+		err = files.RemoveExpected(target.SourcePath, identity)
+		if err == nil {
+			outcome.Source = SourceRemoved
+		}
+	case request.Mode == Edit || request.Sidecar:
 		err = files.ReplaceExpected(target.SourcePath, identity, candidateBytes, mode)
 		if err == nil {
 			if identity == nil {

@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Features
 
+- Add `awf edit sidecar <kind> <name> <field>` and matching reset commands for capability-valid typed sidecar leaves, including idempotent authored-list changes and automatic rendering.
+
 - Add non-interactive `awf edit <kind> <name> <part>` and `awf reset <kind> <name> <part>` commands for semantically resolved convention parts and configured local-document bodies, with complete candidate validation, automatic rendering, and explicit partial-effect recovery.
 
 ### Breaking changes

@@ -184,6 +184,8 @@ var Commands = []Command{
 	{
 		Name: "edit", Summary: "Replace one semantically identified artifact part",
 		BoolFlags: []string{"--stdin"}, ValueFlags: []string{"--content"}, MinPos: 3, MaxPos: 3, Gating: Gated,
+		Children: []Command{{Name: "sidecar", Summary: "Edit one semantically identified sidecar leaf", ValueFlags: []string{"--value", "--json-value", "--add", "--add-json", "--remove", "--remove-json"}, MinPos: 3, MaxPos: 3,
+			Help: Help{Usage: []string{"awf edit sidecar <kind> <name> <field> --value <text>", "awf edit sidecar <kind> <name> <field> --json-value <json>", "awf edit sidecar <kind> <name> <field> --add <text>", "awf edit sidecar <kind> <name> <field> --add-json <json>", "awf edit sidecar <kind> <name> <field> --remove <text>", "awf edit sidecar <kind> <name> <field> --remove-json <json>"}, Description: "Edit one capability-valid sidecar leaf and synchronize the project.", Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind: doc, skill, agent, or domain"}, {Name: "<name>", Description: "semantic artifact name"}, {Name: "<field>", Description: "leaf-only dotted sidecar field"}}, Options: []HelpItem{{Name: "--value", Description: "replace with a string"}, {Name: "--json-value", Description: "replace with one JSON value"}, {Name: "--add", Description: "add one string list member"}, {Name: "--add-json", Description: "add one JSON list member"}, {Name: "--remove", Description: "remove one string list member"}, {Name: "--remove-json", Description: "remove one complete JSON list member"}}}}},
 		Help: Help{
 			Usage:       []string{"awf edit <kind> <name> <part> --content <text>", "awf edit <kind> <name> <part> --stdin"},
 			Description: "Replace one declared convention part or a configured local document's body, validate the complete candidate project, then render and update the lock.",
@@ -196,6 +198,7 @@ var Commands = []Command{
 	{
 		Name: "reset", Summary: "Restore one semantically identified artifact part",
 		MinPos: 3, MaxPos: 3, Gating: Gated,
+		Children: []Command{{Name: "sidecar", Summary: "Reset one semantically identified sidecar leaf", MinPos: 3, MaxPos: 3, Help: Help{Usage: []string{"awf reset sidecar <kind> <name> <field>"}, Description: "Remove one authored sidecar leaf, prune empty parents, and synchronize the project.", Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind: doc, skill, agent, or domain"}, {Name: "<name>", Description: "semantic artifact name"}, {Name: "<field>", Description: "leaf-only dotted sidecar field"}}}}},
 		Help: Help{
 			Usage:       []string{"awf reset <kind> <name> <part>"},
 			Description: "Remove one authored convention-part override, or empty a configured local document body, then render inherited content and update the lock.",

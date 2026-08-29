@@ -2,6 +2,12 @@ These packages load, validate, and describe the .awf config tree and the anchore
 
 ## Claims
 
+### `invariant: sidecar-authoring-roundtrip`
+
+Sidecar leaf authoring mutates YAML nodes through configuration-owned two-space encoding, preserves unrelated ordering and comments, compares list entries structurally, and removes empty ancestor mappings and a final empty sidecar. Scalar modes write strings while JSON modes retain one complete structured JSON value.
+Origin: ADR-semantic-artifact-authoring-commands
+Backing: test
+
 ### `rule: config-expresses-repo-facts-only`
 
 Configuration records repository facts, including the selected closed governance footprint under the required `profile` key. Other awf behavior preferences and transitional adoption differences remain fixed in awf; additive `localDocs` records repository-specific document metadata without selecting standard artifacts.

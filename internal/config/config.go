@@ -703,15 +703,18 @@ func ConfigPath(root string) string { return filepath.Join(RootDir(root), "confi
 // LockPath returns the awf.lock path for a project root.
 func LockPath(root string) string { return filepath.Join(RootDir(root), "awf.lock") }
 
+// SidecarPath returns a config-relative sidecar path.
+func (c *Config) SidecarPath(kind, name string) string {
+	if IsSingletonKind(kind) {
+		return kind + ".yaml"
+	}
+	return filepath.ToSlash(filepath.Join(kind, name+".yaml"))
+}
+
 // Sidecar reads <root>/<kind>/<name>.yaml; agents-doc lives at <root>/agents-doc.yaml.
 // A missing file yields a zero Sidecar (publication-safe: empty data/sections).
 func (c *Config) Sidecar(kind, name string) (Sidecar, error) {
-	var rel string
-	if IsSingletonKind(kind) {
-		rel = kind + ".yaml"
-	} else {
-		rel = filepath.Join(kind, name+".yaml")
-	}
+	rel := c.SidecarPath(kind, name)
 	var b []byte
 	if c.filesystem {
 		var err error

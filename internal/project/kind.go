@@ -5,6 +5,7 @@ import (
 	"maps"
 	"path/filepath"
 	"slices"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -119,6 +120,46 @@ type AuthoringTarget struct {
 // ResolveAuthoringTarget resolves a singular kind, semantic artifact name, and
 // declared part against the selected project catalog and configuration without
 // widening ProjectState's compatibility facade.
+// ResolveSidecarTarget resolves a capability-valid leaf and its configuration-owned path.
+func ResolveSidecarTarget(s *ProjectState, cfg *config.Config, kind, name, field string) (AuthoringTarget, error) {
+	if s == nil || s.state == nil || cfg == nil {
+		return AuthoringTarget{}, fmt.Errorf("project: missing authoring authority")
+	}
+	d, ok := descriptorBySingular(kind)
+	if !ok {
+		return AuthoringTarget{}, fmt.Errorf("unknown artifact kind %q; expected one of %v", kind, Kinds())
+	}
+	if d.freeformDomain {
+		if !slices.Contains(cfg.Domains, name) {
+			return AuthoringTarget{}, fmt.Errorf("domain %q is not configured", name)
+		}
+	} else if _, found := d.sections(s.catalog(), name); !found {
+		return AuthoringTarget{}, fmt.Errorf("%s %q is not present in the selected catalog", kind, name)
+	}
+	parts := strings.Split(field, ".")
+	valid := false
+	switch {
+	case len(parts) == 2 && parts[0] == "data":
+		valid = parts[1] != "" && kind != "domain"
+	case len(parts) == 2 && parts[0] == "dataDefaults":
+		valid = parts[1] != "" && kind != "domain"
+	case len(parts) == 3 && parts[0] == "sections" && parts[2] == "drop":
+		sections, _ := d.sections(s.catalog(), name)
+		valid = slices.Contains(sections, parts[1]) && kind != "domain"
+	case len(parts) == 1 && parts[0] == "paths":
+		valid = kind == "domain"
+	}
+	if !valid {
+		return AuthoringTarget{}, fmt.Errorf("sidecar field %q is not authorable for %s %q", field, kind, name)
+	}
+	sidecarKind, sidecarName := d.Plural, name
+	if kind == "doc" && s.catalog().Docs[name].Mandatory {
+		sidecarKind, sidecarName = name, ""
+	}
+	rel := filepath.ToSlash(filepath.Join(config.DirName, cfg.SidecarPath(sidecarKind, sidecarName)))
+	return AuthoringTarget{Kind: kind, Name: name, Part: field, SourcePath: rel}, nil
+}
+
 func ResolveAuthoringTarget(s *ProjectState, cfg *config.Config, kind, name, part string) (AuthoringTarget, error) {
 	if s == nil || s.state == nil || cfg == nil {
 		return AuthoringTarget{}, fmt.Errorf("project: missing authoring authority")

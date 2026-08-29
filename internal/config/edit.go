@@ -2,8 +2,12 @@ package config
 
 import (
 	"bytes"
+	"encoding/json"
 	"errors"
 	"fmt"
+	"io"
+	"reflect"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"gopkg.in/yaml.v3"
@@ -181,4 +185,159 @@ func strScalar(v string) *yaml.Node {
 
 func blockSeq(name string) *yaml.Node {
 	return &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq", Content: []*yaml.Node{strScalar(name)}}
+}
+
+// SidecarEdit describes one leaf-only YAML sidecar mutation.
+type SidecarEdit struct {
+	Field string
+	Mode  string
+	Value any
+}
+
+// EditSidecar applies a leaf mutation without rebuilding unrelated YAML nodes.
+// It returns source bytes, whether the sidecar remains present, and whether bytes changed.
+func EditSidecar(src []byte, edit SidecarEdit) ([]byte, bool, bool, error) {
+	parts := strings.Split(edit.Field, ".")
+	if edit.Field == "" {
+		return nil, false, false, fmt.Errorf("config: empty sidecar field")
+	}
+	var doc *yaml.Node
+	var root *yaml.Node
+	var err error
+	if len(src) == 0 {
+		doc = &yaml.Node{Kind: yaml.DocumentNode}
+		root = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		doc.Content = []*yaml.Node{root}
+	} else if doc, root, err = parseMapping(src); err != nil {
+		return nil, false, false, err
+	}
+	parents := []*yaml.Node{root}
+	current := root
+	for _, key := range parts[:len(parts)-1] {
+		v, _ := mapValue(current, key)
+		if v == nil {
+			v = &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+			current.Content = append(current.Content, strScalar(key), v)
+		}
+		if v.Kind != yaml.MappingNode {
+			return nil, false, false, fmt.Errorf("config: sidecar field %q has intermediate mapping conflict", edit.Field)
+		}
+		current = v
+		parents = append(parents, current)
+	}
+	key := parts[len(parts)-1]
+	old, idx := mapValue(current, key)
+	switch edit.Mode {
+	case "reset":
+		if old == nil {
+			return src, len(src) != 0, false, nil
+		}
+		current.Content = append(current.Content[:idx-1], current.Content[idx+1:]...)
+		for i := len(parents) - 1; i > 0; i-- {
+			p := parents[i]
+			if len(p.Content) != 0 {
+				break
+			}
+			parent := parents[i-1]
+			for j := 1; j < len(parent.Content); j += 2 {
+				if parent.Content[j] == p {
+					parent.Content = append(parent.Content[:j-1], parent.Content[j+1:]...)
+					break
+				}
+			}
+		}
+		if len(root.Content) == 0 {
+			return nil, false, true, nil
+		}
+	case "value":
+		n, err := valueNode(edit.Value)
+		if err != nil {
+			return nil, false, false, err
+		}
+		if old != nil && reflect.DeepEqual(nodeValue(old), nodeValue(n)) {
+			return src, true, false, nil
+		}
+		if old == nil {
+			current.Content = append(current.Content, strScalar(key), n)
+		} else {
+			current.Content[idx] = n
+		}
+	case "add", "remove":
+		n, err := valueNode(edit.Value)
+		if err != nil {
+			return nil, false, false, err
+		}
+		var seq *yaml.Node
+		if old == nil {
+			if edit.Mode == "remove" {
+				return src, len(src) != 0, false, nil
+			}
+			seq = &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+			current.Content = append(current.Content, strScalar(key), seq)
+		} else {
+			if old.Kind != yaml.SequenceNode {
+				return nil, false, false, fmt.Errorf("config: sidecar field %q is not a list", edit.Field)
+			}
+			seq = old
+		}
+		found := -1
+		for i, v := range seq.Content {
+			if reflect.DeepEqual(nodeValue(v), nodeValue(n)) {
+				found = i
+				break
+			}
+		}
+		if edit.Mode == "add" {
+			if found >= 0 {
+				return src, true, false, nil
+			}
+			seq.Style = 0
+			seq.Content = append(seq.Content, n)
+		} else {
+			if found < 0 {
+				return src, true, false, nil
+			}
+			seq.Style = 0
+			seq.Content = append(seq.Content[:found], seq.Content[found+1:]...)
+		}
+	default:
+		return nil, false, false, fmt.Errorf("config: unknown sidecar edit mode %q", edit.Mode)
+	}
+	out, err := encode(doc)
+	if err != nil {
+		return nil, false, false, err
+	}
+	return out, true, true, nil
+}
+func valueNode(v any) (*yaml.Node, error) {
+	b, err := yaml.Marshal(v)
+	if err != nil {
+		return nil, err
+	}
+	var d yaml.Node
+	if err := yaml.Unmarshal(b, &d); err != nil {
+		return nil, err
+	}
+	if len(d.Content) == 0 {
+		return nil, fmt.Errorf("config: empty value")
+	}
+	return d.Content[0], nil
+}
+func nodeValue(n *yaml.Node) any { var v any; _ = n.Decode(&v); return v }
+
+// DecodeJSONValue decodes exactly one JSON value. JSON's decoder rejects trailing documents.
+func DecodeJSONValue(s string) (any, error) {
+	var v any
+	dec := json.NewDecoder(strings.NewReader(s))
+	if err := dec.Decode(&v); err != nil {
+		return nil, err
+	}
+	var extra any
+	if err := dec.Decode(&extra); err != io.EOF {
+		if err == nil {
+			return nil, fmt.Errorf("trailing JSON value")
+		}
+		return nil, err
+	}
+	return v, nil
 }
