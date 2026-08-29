@@ -50,14 +50,14 @@ async function harness(replies: any[] = [], opts: { directory?: any; emitThrows?
   recorder = createExtensionRecorder({ activeTools: opts.active, exec: async (_command, args) => { let reply = replies.shift() ?? success(args[2] as any, args[5], args[3]); if (typeof reply === "function") reply = await reply(args); if (reply instanceof Error) throw reply; return { code: 0, stdout: typeof reply === "string" ? reply : line(reply), stderr: "", killed: false }; } });
   const queueCalls: any[] = [];
   const queue = opts.queue ?? (async (path: string, work: any) => { queueCalls.push(path); return work(); });
-  if (Object.hasOwn(opts, "factoryCapabilities")) recorder.api.events.on("remote-pi:capabilities:request", () => recorder.api.events.emit("remote-pi:capabilities", opts.factoryCapabilities));
+  if (Object.hasOwn(opts, "factoryCapabilities")) recorder.api.events.on("pi-cockpit:capabilities:request", () => recorder.api.events.emit("pi-cockpit:capabilities", opts.factoryCapabilities));
   if (opts.emitThrows) (recorder.api.events as any).emit = () => { throw new Error("emit"); };
   let n = 0; await recorder.install((pi: any) => registerEffort(pi, { uuid: () => n++ ? OTHER : OWNER, isDirectory: opts.directory ?? (async () => true), packageVersion: "0.84.2", fileMutationQueue: queue, memoryExec: opts.memoryExec }));
   await recorder.ready;
   const tool = () => recorder.tools.find((value:any) => value.name === "using_effort");
   const ctx = recorder.makeContext({ cwd: "/repo" });
   const hook = (name: string) => recorder.handlers.get(name)?.at(-1);
-  return { recorder, pi: recorder.api, hooks: { get: hook }, listeners: { get: (name: string) => (payload?: unknown) => recorder.api.events.emit(name, payload) }, get events() { return recorder.emissions.filter(([name]:any) => name !== "remote-pi:capabilities"); }, get calls() { return recorder.apiCalls.filter((call:any) => call.name === "exec").map((call:any) => call.args[1]); }, get options() { return recorder.apiCalls.filter((call:any) => call.name === "exec").map((call:any) => call.args[2]); }, queueCalls, active: () => recorder.activeTools, tool, ctx };
+  return { recorder, pi: recorder.api, hooks: { get: hook }, listeners: { get: (name: string) => (payload?: unknown) => recorder.api.events.emit(name, payload) }, get events() { return recorder.emissions.filter(([name]:any) => name !== "pi-cockpit:capabilities"); }, get calls() { return recorder.apiCalls.filter((call:any) => call.name === "exec").map((call:any) => call.args[1]); }, get options() { return recorder.apiCalls.filter((call:any) => call.name === "exec").map((call:any) => call.args[2]); }, queueCalls, active: () => recorder.activeTools, tool, ctx };
 }
 test("effort harness awaits recorder installation", async () => {
   const h = await harness();
@@ -136,7 +136,7 @@ test("direct association handles impossible success, detach refusal, and shutdow
   assert.equal(shutdownRefusal.hooks.get("context")({ messages: [] }, shutdownRefusal.ctx), undefined);
   const restart = await harness([success()]); await request(restart, { effort: "demo" }); restart.hooks.get("session_start")({});
   assert.equal(restart.hooks.get("context")({ messages: [] }, restart.ctx), undefined);
-  assert.deepEqual(restart.events.at(-3), ["remote-pi:metadata:set", { namespace: "awf", value: null }]);
+  assert.deepEqual(restart.events.at(-3), ["pi-cockpit:metadata:set", { namespace: "awf", value: null }]);
 });
 
 test("association lifecycle covers idle turns, malformed heartbeat facts, and serialized recovery", async () => {
@@ -181,15 +181,15 @@ test("using_effort serializes overlapping invocations in invocation order", asyn
 
 test("factory negotiation is synchronous and suffix changes preserve the complete association", async () => {
   const h = await harness([success(), { schemaVersion: 2, condition: "detached" }], { factoryCapabilities: { unrelated: true, displaySuffix: { version: 1 } } });
-  assert.deepEqual(h.events, [["remote-pi:capabilities:request", undefined], ["remote-pi:display-suffix:set", { value: null }]], "factory response did not run through preinstalled listeners");
+  assert.deepEqual(h.events, [["pi-cockpit:capabilities:request", undefined], ["pi-cockpit:display-suffix:set", { value: null }]], "factory response did not run through preinstalled listeners");
   await request(h, { effort: "demo" });
   const contextBefore = h.hooks.get("context")({ messages: [] }, h.ctx).messages[0].content;
-  const metadataBefore = h.events.filter(([name]: any) => name === "remote-pi:metadata:set");
-  assert.deepEqual(metadataBefore.at(-1), ["remote-pi:metadata:set", { namespace: "awf", value: { effort: { slug: "demo", title: "Demo" }, memory: { phase: "Build", next: "Test", updated: TIME }, activity: { heartbeatAt: TIME } } }]);
-  h.listeners.get("remote-pi:capabilities")({ displaySuffix: { version: 2 } });
-  h.listeners.get("remote-pi:capabilities")({ displaySuffix: { version: 1 } });
-  h.listeners.get("remote-pi:display-suffix:request")();
-  assert.deepEqual(h.events.filter(([name]: any) => name === "remote-pi:metadata:set"), metadataBefore, "suffix negotiation republished or changed metadata");
+  const metadataBefore = h.events.filter(([name]: any) => name === "pi-cockpit:metadata:set");
+  assert.deepEqual(metadataBefore.at(-1), ["pi-cockpit:metadata:set", { namespace: "awf", value: { effort: { slug: "demo", title: "Demo" }, memory: { phase: "Build", next: "Test", updated: TIME }, activity: { heartbeatAt: TIME } } }]);
+  h.listeners.get("pi-cockpit:capabilities")({ displaySuffix: { version: 2 } });
+  h.listeners.get("pi-cockpit:capabilities")({ displaySuffix: { version: 1 } });
+  h.listeners.get("pi-cockpit:display-suffix:request")();
+  assert.deepEqual(h.events.filter(([name]: any) => name === "pi-cockpit:metadata:set"), metadataBefore, "suffix negotiation republished or changed metadata");
   assert.equal(h.hooks.get("context")({ messages: [] }, h.ctx).messages[0].content, contextBefore, "suffix negotiation changed the immutable snapshot");
   assert.equal(lastText(await request(h, { detach: true })), "Detached.");
   assert.deepEqual(h.calls.at(-1), ["effort", "activity", "detach", "demo", "--owner", OWNER, "--json"], "suffix negotiation changed snapshot identity");
@@ -198,9 +198,9 @@ test("factory negotiation is synchronous and suffix changes preserve the complet
 test("ownership loss clears suffix and thrown optional emissions preserve heartbeat and detach", async () => {
   const loss = await harness([success(), refusal("not-owner")]);
   await request(loss, { effort: "demo" });
-  loss.listeners.get("remote-pi:capabilities")({ displaySuffix: { version: 1 } });
+  loss.listeners.get("pi-cockpit:capabilities")({ displaySuffix: { version: 1 } });
   await loss.hooks.get("turn_end")({}, loss.ctx);
-  assert.deepEqual(loss.events.slice(-2), [["remote-pi:metadata:set", { namespace: "awf", value: null }], ["remote-pi:display-suffix:set", { value: null }]]);
+  assert.deepEqual(loss.events.slice(-2), [["pi-cockpit:metadata:set", { namespace: "awf", value: null }], ["pi-cockpit:display-suffix:set", { value: null }]]);
   assert.equal(loss.hooks.get("context")({ messages: [] }, loss.ctx), undefined);
 
   const broken = await harness([success(), success("heartbeat"), { schemaVersion: 2, condition: "detached" }], { emitThrows: true });
@@ -224,24 +224,24 @@ test("remote Pi display suffix capability, replay, lifecycle clears, and failure
   const invalidOwnerRecorder = createExtensionRecorder({ exec: async () => ({ code: 0, stdout: "", stderr: "", killed: false }) });
   assert.throws(() => registerEffort(invalidOwnerRecorder.api as any, { uuid: () => "bad", packageVersion: "0.84.2", fileMutationQueue: async (_path, work) => work() }), /lowercase UUIDv4/);
   const h = await harness([success(), { schemaVersion: 2, condition: "detached" }, success("attached", OWNER, "other"), { schemaVersion: 2, condition: "detached" }]);
-  assert.deepEqual(h.events, [["remote-pi:capabilities:request", undefined]]);
-  assert.equal(typeof h.listeners.get("remote-pi:capabilities"), "function"); assert.equal(typeof h.listeners.get("remote-pi:display-suffix:request"), "function");
+  assert.deepEqual(h.events, [["pi-cockpit:capabilities:request", undefined]]);
+  assert.equal(typeof h.listeners.get("pi-cockpit:capabilities"), "function"); assert.equal(typeof h.listeners.get("pi-cockpit:display-suffix:request"), "function");
   await request(h, { effort: "demo" });
   const snapshot = h.hooks.get("context")({ messages: [] }, h.ctx).messages[0].content;
-  h.listeners.get("remote-pi:capabilities")({ metadata: { version: 99 }, unrelated: true, displaySuffix: { version: 1 } });
-  assert.deepEqual(h.events.at(-1), ["remote-pi:display-suffix:set", { value: "demo" }]);
-  h.listeners.get("remote-pi:display-suffix:request")(); assert.deepEqual(h.events.at(-1), ["remote-pi:display-suffix:set", { value: "demo" }]);
-  for (const caps of [null, [], { displaySuffix: [] }, { displaySuffix: { version: 1, extra: true } }, {}, { displaySuffix: null }, { displaySuffix: { version: 2 } }]) { h.listeners.get("remote-pi:capabilities")(caps); assert.deepEqual(h.events.at(-1), ["remote-pi:display-suffix:set", { value: null }]); }
+  h.listeners.get("pi-cockpit:capabilities")({ metadata: { version: 99 }, unrelated: true, displaySuffix: { version: 1 } });
+  assert.deepEqual(h.events.at(-1), ["pi-cockpit:display-suffix:set", { value: "demo" }]);
+  h.listeners.get("pi-cockpit:display-suffix:request")(); assert.deepEqual(h.events.at(-1), ["pi-cockpit:display-suffix:set", { value: "demo" }]);
+  for (const caps of [null, [], { displaySuffix: [] }, { displaySuffix: { version: 1, extra: true } }, {}, { displaySuffix: null }, { displaySuffix: { version: 2 } }]) { h.listeners.get("pi-cockpit:capabilities")(caps); assert.deepEqual(h.events.at(-1), ["pi-cockpit:display-suffix:set", { value: null }]); }
   assert.equal(h.hooks.get("context")({ messages: [] }, h.ctx).messages[0].content, snapshot);
-  h.listeners.get("remote-pi:capabilities")({ displaySuffix: { version: 1 } });
+  h.listeners.get("pi-cockpit:capabilities")({ displaySuffix: { version: 1 } });
   await request(h, { effort: "other" });
-  assert.deepEqual(h.events.filter(([name]: any) => name === "remote-pi:display-suffix:set").slice(-3), [["remote-pi:display-suffix:set", { value: "demo" }], ["remote-pi:display-suffix:set", { value: null }], ["remote-pi:display-suffix:set", { value: "other" }]]);
-  await request(h, { detach: true }); assert.deepEqual(h.events.at(-1), ["remote-pi:display-suffix:set", { value: null }]);
-  h.hooks.get("session_start")({}); assert.deepEqual(h.events.slice(-3), [["remote-pi:metadata:set", { namespace: "awf", value: null }], ["remote-pi:display-suffix:set", { value: null }], ["remote-pi:capabilities:request", undefined]]);
-  await h.hooks.get("session_shutdown")({}, h.ctx); assert.deepEqual(h.events.at(-1), ["remote-pi:display-suffix:set", { value: null }]);
+  assert.deepEqual(h.events.filter(([name]: any) => name === "pi-cockpit:display-suffix:set").slice(-3), [["pi-cockpit:display-suffix:set", { value: "demo" }], ["pi-cockpit:display-suffix:set", { value: null }], ["pi-cockpit:display-suffix:set", { value: "other" }]]);
+  await request(h, { detach: true }); assert.deepEqual(h.events.at(-1), ["pi-cockpit:display-suffix:set", { value: null }]);
+  h.hooks.get("session_start")({}); assert.deepEqual(h.events.slice(-3), [["pi-cockpit:metadata:set", { namespace: "awf", value: null }], ["pi-cockpit:display-suffix:set", { value: null }], ["pi-cockpit:capabilities:request", undefined]]);
+  await h.hooks.get("session_shutdown")({}, h.ctx); assert.deepEqual(h.events.at(-1), ["pi-cockpit:display-suffix:set", { value: null }]);
   const missingDetach = await harness([success(), refusal("missing")]); await request(missingDetach, { effort: "demo" }); assert.equal(lastText(await request(missingDetach, { detach: true })), "Detached.");
   const takeover = await harness([success("taken-over")]); assert.equal(lastText(await request(takeover, { effort: "demo" })), "Attached to demo.");
-  const noCurrent = await harness(); noCurrent.listeners.get("remote-pi:display-suffix:request")(); assert.deepEqual(noCurrent.events.at(-1), ["remote-pi:display-suffix:set", { value: null }]);
+  const noCurrent = await harness(); noCurrent.listeners.get("pi-cockpit:display-suffix:request")(); assert.deepEqual(noCurrent.events.at(-1), ["pi-cockpit:display-suffix:set", { value: null }]);
   const broken = await harness([success()], { emitThrows: true, directory: async () => { throw new Error("stat") } }); await request(broken, { effort: "demo" }); assert.equal(broken.hooks.get("context")({ messages: [] }, broken.ctx).messages[0].content.includes("managedWorktree"), false);
 });
 

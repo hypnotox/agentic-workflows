@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-adopt-the-pi-cockpit-effort-integration-contract: Adopt the Pi Cockpit Effort Integration Contract](adopt-the-pi-cockpit-effort-integration-contract.md) (Proposed)
+- [ADR-adopt-the-pi-cockpit-effort-integration-contract: Adopt the Pi Cockpit Effort Integration Contract](adopt-the-pi-cockpit-effort-integration-contract.md) (Implementing)
 
 ## History
 

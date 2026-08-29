@@ -74,16 +74,16 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	// The optional presentation boundary is awf-owned and independent of metadata.
 	effort := extensions[".pi/extensions/awf-effort/index.ts"]
 	for _, required := range []string{
-		"remote-pi:capabilities:request",
-		"remote-pi:capabilities",
-		"remote-pi:display-suffix:set",
-		"remote-pi:display-suffix:request",
+		"pi-cockpit:capabilities:request",
+		"pi-cockpit:capabilities",
+		"pi-cockpit:display-suffix:set",
+		"pi-cockpit:display-suffix:request",
 		"displaySuffix",
 		"value: string | null",
 		`suffixSupported && current ? current.slug : null`,
 		`pi.on?.("session_start", () => { clear(); requestCapabilities(); })`,
-		`pi.events?.on?.("remote-pi:display-suffix:request", () => publishSuffix())`,
-		`pi.events?.on?.("remote-pi:capabilities", (caps: RemotePiCapabilitiesReplyPayload) => { suffixSupported = supportsDisplaySuffix(caps); publishSuffix(); })`,
+		`pi.events?.on?.("pi-cockpit:display-suffix:request", () => publishSuffix())`,
+		`pi.events?.on?.("pi-cockpit:capabilities", (caps: PiCockpitCapabilitiesReplyPayload) => { suffixSupported = supportsDisplaySuffix(caps); publishSuffix(); })`,
 		`namespace: "awf", value: snapshot ?`,
 	} {
 		if !strings.Contains(effort, required) {

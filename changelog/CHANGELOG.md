@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Generated Pi effort integration now uses `pi-cockpit:*` events and `PiCockpit*` structural types exclusively. There are no `remote-pi:*` aliases; adopters must upgrade awf and Pi Cockpit together.
+
 - Pi implementation profiles no longer accept `allowCommits`; every implementation child is commit-disabled and selected-HEAD verification fails closed when either snapshot is unavailable or HEAD changes.
 
 - Split the fast commit gate from terminal full verification and end Windows release support.
