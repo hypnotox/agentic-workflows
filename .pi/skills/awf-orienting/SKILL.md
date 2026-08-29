@@ -27,9 +27,9 @@ This is a support skill: single-pass and advisory, never a chain gate or prerequ
 ## Grounding ladder
 
 <!-- awf:template-source templates/partials/orientation-ladder.md -->
-Ground guide-first, in order: the agent guide, then the document-map docs relevant to the touched area, then its domain docs under `docs/domains`. Current-state documentation is what binds. Consult the recent history of the touched paths (`git log --oneline -20 <path>`) only when current state leaves what you are seeing unexplained.
+Ground guide-first: read the agent guide and document-map material relevant to the work, then source and tests. Consult recent history of touched paths (`git log --oneline -20 <path>`) only when current documentation leaves the fact unexplained.
 
-For managed context calls, provide one or more explicit paths (or a staged/range file selection) and omit `--show` and `--full` detail flags on the initial query: directories provide tier-0 orientation, while exact, staged, and range-selected files also carry tier-1 direct relationships. Request only the named facets the active lens requires, and never prescribe `--full`.
+When discovery or a structural question exists, use CodeGraph for source discovery, architecture, callers, dependencies, and impact analysis. Keep an exact-known-file read or genuinely trivial lookup inline. After candidate paths are known, run `./awf resolve topic <paths>` and read each applicable authority with `./awf read topic <domain>/<topic>[:<claim>]`; use `./awf read adr <identity>` when ADR lifecycle, progress, rationale, or linked plans matter.
 
 <!-- awf:template-source templates/skills/orienting/SKILL.md.tmpl -->
 When a needed fact's location is unknown and inline search would pollute the parent context, invoke `awf-exploring` and dispatch one or more exploration subagents as fitting: each carries exactly one information need with a chosen breadth and report detail, independent needs may run in parallel, and every child is report-only. Keep an exact-known-file read or genuinely trivial lookup inline.
@@ -37,11 +37,9 @@ When a needed fact's location is unknown and inline search would pollute the par
 <!-- awf:template-source templates/skills/orienting/SKILL.md.tmpl#context-command -->
 <!-- awf:edit context-command: default; create .awf/skills/parts/orienting/context-command.md to override -->
 <!-- awf:template-source templates/skills/orienting/SKILL.md.tmpl -->
-## Managed context
+## Navigation and authority
 
-Once candidate files are identified, run `./awf context <paths>` to resolve their owning domains and the applicable current-state claims; read the topics and any Accepted pending changes it surfaces, and the ADRs behind a claim only when the rationale matters. Apply the shared managed-context discipline above to this call.
-<!-- awf:template-source templates/partials/context-spill.md -->
-On an exact two-line `AWF_CONTEXT_SPILL_V1` notice, consume the packet per `docs/debugging.md#context-spill-recovery`; treat any other output as the context packet itself.
+When discovery or a structural question exists, use CodeGraph to locate candidate source and inspect architecture, callers, dependencies, or impact. Once candidate paths are known, run `./awf resolve topic <paths>`, then `./awf read topic <domain>/<topic>[:<claim>]` for applicable authority and `./awf read adr <identity>` when ADR lifecycle, progress, rationale, or linked plans matter.
 
 <!-- awf:template-source templates/skills/orienting/SKILL.md.tmpl#resume-revalidation -->
 <!-- awf:edit resume-revalidation: default; create .awf/skills/parts/orienting/resume-revalidation.md to override -->

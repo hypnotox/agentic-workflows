@@ -108,3 +108,5 @@ Rendered workflow guidance continues to obey the existing publication-safe unset
 - 2026-08-29: Proposed
 - 2026-08-29: Implementing; content-sha256: 68fb048cda021ff4357e14881e57ed88efb830246eb4935a78d29a7fd66a9b5b
 - 2026-08-29: Applied; operations: add `tooling/authority-queries:authority-read-projections`, add `tooling/authority-queries:path-topic-resolution`, add `tooling/authority-queries:unowned-path-census`, add `tooling/authority-queries:authority-query-read-only`, add `tooling/authority-queries:authority-query-full-profile-only`, add `tooling/cli:init-describe-read-only`, add `invariants/current-state-authority:production-packages-domain-owned`
+
+- 2026-08-29: Applied; operations: add `tooling/authority-queries:codegraph-navigation-boundary`, update `rendering/workflow-skill-templates:implementer-context-grounding`, update `rendering/workflow-skill-templates:implementer-role-contract`, update `rendering/workflow-skill-templates:explorer-and-grounding-role-contracts`, update `rendering/workflow-skill-templates:orienting-single-home`, update `rendering/workflow-skill-templates:closed-workflow-profiles`

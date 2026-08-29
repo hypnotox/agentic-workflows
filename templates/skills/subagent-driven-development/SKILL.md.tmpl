@@ -35,8 +35,7 @@ Invoke when a plan phase benefits from delegated implementation. A plan may mix 
 <!-- awf:include clean-integration -->
 <!-- awf:include semantic-owner-assurance -->
 <!-- awf:include implementation-autonomy -->
-Extract the complete phase: goal, ordered tasks, exact paths, semantic boundary and ownership, external/internal representations and their translation point, allowed dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, validation expectations, dependencies, prior phase commits, checks, closing subject, and the phase's batch of the ADR's declared State changes operations (V2). The owner runs `./awf context <the phase's exact paths>` before editing.
-<!-- awf:include context-spill -->
+Extract the complete phase: goal, ordered tasks, exact paths, semantic boundary and ownership, external/internal representations and their translation point, allowed dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, validation expectations, dependencies, prior phase commits, checks, closing subject, and the phase's batch of the ADR's declared State changes operations (V2). The owner uses CodeGraph when discovery or a structural question exists before editing.{{if ne .profile "core"}} The owner runs `./awf resolve topic <the phase's exact paths>` and reads applicable topics with `./awf read topic`.{{end}}
 The owner preserves the settled durable design or reports invalidating source facts; does not replan, broaden the task, or perform unrelated cleanup.
 <!-- awf:end -->
 <!-- awf:section dispatch-conventions -->

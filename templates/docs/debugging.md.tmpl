@@ -9,9 +9,9 @@ Use the failing command output, `git status --short`, and `git diff` to identify
 <!-- awf:section recipes stub -->
 ## Recipes
 
-### Context spill recovery
+### Current-state authority
 
-When `awf context` output exceeds 8,192 bytes, it securely spills outside the repository and returns exactly a two-line `AWF_CONTEXT_SPILL_V1` notice. On that exact notice, read the file named on its second line and verify its byte length equals the `bytes=<decimal>` descriptor before using it. Best-effort delete that file after use, whether use succeeds or fails. Treat any other output as the context packet itself; do not interpret a near-match as a spill notice.
+{{if ne .profile "core"}}Use CodeGraph for source discovery and structural questions. Then run `./awf resolve topic <affected-path>` and `./awf read topic <domain>/<topic>[:<claim>]`; use `./awf read adr <identity>` for ADR lifecycle, progress, and linked plans.{{else}}Read the relevant project documentation, source, tests, and history directly.{{end}}
 
 {{if ne .profile "core"}}### Upgrade recovery and triage
 

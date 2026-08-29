@@ -67,9 +67,9 @@ Backing: test
 
 ### `invariant: implementer-context-grounding`
 
-Full context-calling skills and the grounding-checker carry the shared spill pointer and use `./awf context` where their governance procedure requires it. Core orientation and grounding instead use AGENTS.md, project docs, source, tests, and history without context authority.
+Full guidance uses CodeGraph when source discovery or a structural question exists, then uses focused `./awf resolve topic`, `./awf read topic`, and `./awf read adr` commands for normative authority. Core remains coherent with project documentation, source, tests, and history where those commands are unavailable; exact-known-file and genuinely trivial lookups stay inline.
 Origin: ADR-0155
-Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-0243, ADR-0255, ADR-0271, ADR-0278
+Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-0243, ADR-0255, ADR-0271, ADR-0278, ADR-delegate-relevance-discovery-to-codegraph
 Backing: test
 
 ### `invariant: repository-awf-invocation`
@@ -220,9 +220,9 @@ Backing: test
 
 ### `invariant: implementer-role-contract`
 
-The rendered implementer agent body states one commit-disabled implementation-child authority, that the dispatched task is the complete scope, that the agent guide's invariants and commands bind while its skill catalog and chain routing do not, that focused checks must not be weakened, that no interactive channel exists so escalation is a returned receipt, and that children never stage, commit, run fast gates, or perform terminal exhaustive verification while the parent owns those procedures. Its closed completed or stopped receipt identifies assigned scope, canonical checkout, start and end HEAD and worktree state, changed paths, exact focused commands and actual results, whether each result ran after the last mutation to every overlapping path, completed and remaining work, deviations, separately routed blockers, and applicable generated-output or fixture evidence. It applies the shared clean-integration rule inside the dispatched boundary. The parent may add a necessary omitted path inside the authority-guided boundary instead of stopping for path omission alone; an implementation child never modifies an unassigned path and reports the need for parent resolution. Only an explicitly final-state focused result is reusable; the parent reruns non-final results. Completed means the assigned implementation and focused feedback finished, not that a commit or terminal verification exists; stopped reserves persistent verification failure or a narrow authority, outcome, scope, ambiguity, or safety boundary while retaining the shared inventory and closed two-outcome contract. The subagent-driven-development and executing-plans skills name that agent in every dispatch branch, and their parent-facing imperatives for raising concerns, preserving the plan's settled design, running the context command, and inventorying batch returns each carry an explicit subject. The body renders coherently with unset data and carries no runtime tool-name token.
+The rendered implementer agent body states one commit-disabled implementation-child authority, that the dispatched task is the complete scope, that the agent guide's invariants and commands bind while its skill catalog and chain routing do not, that focused checks must not be weakened, that no interactive channel exists so escalation is a returned receipt, and that children never stage, commit, run fast gates, or perform terminal exhaustive verification while the parent owns those procedures. Its closed completed or stopped receipt identifies assigned scope, canonical checkout, start and end HEAD and worktree state, changed paths, exact focused commands and actual results, whether each result ran after the last mutation to every overlapping path, completed and remaining work, deviations, separately routed blockers, and applicable generated-output or fixture evidence. It applies the shared clean-integration rule inside the dispatched boundary. The parent may add a necessary omitted path inside the authority-guided boundary instead of stopping for path omission alone; an implementation child never modifies an unassigned path and reports the need for parent resolution. Only an explicitly final-state focused result is reusable; the parent reruns non-final results. Completed means the assigned implementation and focused feedback finished, not that a commit or terminal verification exists; stopped reserves persistent verification failure or a narrow authority, outcome, scope, ambiguity, or safety boundary while retaining the shared inventory and closed two-outcome contract. The subagent-driven-development and executing-plans skills name that agent in every dispatch branch, and their parent-facing imperatives for raising concerns, preserving the plan's settled design, running focused authority reads when Full supports them, and inventorying batch returns each carry an explicit subject. The body renders coherently with unset data and carries no runtime tool-name token.
 Origin: ADR-0177
-Revised-by: ADR-0179, ADR-0232, ADR-0240, ADR-0248, ADR-0287, ADR-0288, ADR-0317
+Revised-by: ADR-0179, ADR-0232, ADR-0240, ADR-0248, ADR-0287, ADR-0288, ADR-0317, ADR-delegate-relevance-discovery-to-codegraph
 Backing: test
 
 ### `invariant: maintainable-code-review-lenses`
@@ -234,17 +234,17 @@ Backing: test
 
 ### `invariant: explorer-and-grounding-role-contracts`
 
-The explorer remains the report-only owner of one bounded repository information need. The unchanged grounding-checker remains report-only and verifies factual premises, unstated assumptions, altitude, convention fit, and confidence from its brief. The reusable grounding support skill owns guide-first managed context, self-contained brief construction, target-native checker dispatch, and mechanical/reasoned/user-decision finding classification from any invoking workflow; it is advisory, single-pass, effort-noncreating, and never a chain prerequisite. Brainstorming refers to grounding conditionally but does not own or directly dispatch the checker. Generic rendered bodies contain no runtime-specific tool name.
+The explorer remains the report-only owner of one bounded repository information need. The unchanged grounding-checker remains report-only and verifies factual premises, unstated assumptions, altitude, convention fit, and confidence from its brief. The reusable grounding support skill owns guide-first orientation, focused authority reads in Full, self-contained brief construction, target-native checker dispatch, and mechanical/reasoned/user-decision finding classification from any invoking workflow; it is advisory, single-pass, effort-noncreating, and never a chain prerequisite. Brainstorming refers to grounding conditionally but does not own or directly dispatch the checker. Generic rendered bodies contain no runtime-specific tool name.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
 Origin: ADR-0179
-Revised-by: ADR-0187, ADR-0243
+Revised-by: ADR-0187, ADR-0243, ADR-delegate-relevance-discovery-to-codegraph
 Backing: test
 
 ### `invariant: orienting-single-home`
 
-The orienting support skill is selected for fresh work, effort resume, handoff takeover, or a widened working set, not exact-known-file inspection. It is the single orientation home: Core uses AGENTS.md, project docs, source, tests, and history; Full additionally uses managed context and current-state authority.
+The orienting support skill is selected for fresh work, effort resume, handoff takeover, or a widened working set, not exact-known-file inspection. It is the single orientation home: discovery and structural questions use CodeGraph, exact-known-file and genuinely trivial lookup stay inline, Core uses AGENTS.md, project docs, source, tests, and history, and Full adds focused current-state authority reads.
 Origin: ADR-0187
-Revised-by: ADR-0274, ADR-0278
+Revised-by: ADR-0274, ADR-0278, ADR-delegate-relevance-discovery-to-codegraph
 Backing: test
 
 ### `invariant: semantic-rendering-review`
@@ -262,7 +262,7 @@ Backing: test
 
 ### `invariant: closed-workflow-profiles`
 
-Core and Full are closed governance footprints of one workflow. Core includes the complete operational workflow without Full-only governance references; Full adds ADR, plan, current-state, context, and audit capabilities. Both footprints use the same correctness, autonomy, maintainability, protected-contract, clean-integration, and implementation review-quality bar.
+Core and Full are closed governance footprints of one workflow. Core includes the complete operational workflow without unavailable focused-authority commands; Full adds ADR, plan, current-state authority reads, and audit capabilities. Both footprints use the same correctness, autonomy, maintainability, protected-contract, clean-integration, and implementation review-quality bar.
 Origin: ADR-0278
-Revised-by: ADR-0292
+Revised-by: ADR-0292, ADR-delegate-relevance-discovery-to-codegraph
 Backing: test

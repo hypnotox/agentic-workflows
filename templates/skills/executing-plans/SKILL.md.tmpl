@@ -36,8 +36,7 @@ Invoke for an accepted plan with an `inline` phase. Read every phase's declared 
 <!-- awf:include clean-integration -->
 <!-- awf:include semantic-owner-assurance -->
 <!-- awf:include implementation-autonomy -->
-You run `./awf context <the phase's exact paths>` before editing.
-<!-- awf:include context-spill -->
+When discovery or a structural question exists, use CodeGraph before editing.{{if ne .profile "core"}} Run `./awf resolve topic <the phase's exact paths>` and read applicable topics with `./awf read topic`.{{end}}
 **Rule.** For an `inline` phase, the parent owns every ordered task, integration, staged check, every commit, fast gate, terminal exhaustive verification, report-only phase review, focused settlement commit, and checkpoint.
 
 **Flexible helper detail.** A batch may dispatch explicitly partitioned sequential commit-disabled helpers only. Each helper is the `implementer` agent in commit-disabled mode, and its rendered contract governs path confinement, green obligation, escalation, and return shape. Each brief explicitly identifies the parent-supplied approved boundary. When an effort exists, the brief carries its slug and exact owned memory path as read-only context; helpers never edit shared memory.

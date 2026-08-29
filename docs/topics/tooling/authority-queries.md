@@ -40,3 +40,9 @@ Backing: test
 Focused authority queries require the Full governance profile.
 Origin: ADR-delegate-relevance-discovery-to-codegraph
 Backing: test
+
+### `invariant: codegraph-navigation-boundary`
+
+CodeGraph is the documented owner of structural source discovery, architecture, callers, dependencies, and impact analysis; Git selects changed paths. Full workflow guidance uses `awf resolve topic`, `awf read topic`, and `awf read adr` only for focused normative authority, without a parallel awf navigation fallback.
+Origin: ADR-delegate-relevance-discovery-to-codegraph
+Backing: test

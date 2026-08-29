@@ -2,8 +2,6 @@ package project
 
 import (
 	"io/fs"
-	"os"
-	"path/filepath"
 	"sort"
 	"strings"
 	"testing"
@@ -929,142 +927,30 @@ func TestMaintainableCodeSubagentContract(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:implementer-context-grounding (TestManagedContextCallersChooseProjection)
-func TestManagedContextCallersChooseProjection(t *testing.T) {
-	policies := map[string]string{
-		"adr-lifecycle":               "--show pending",
-		"brainstorming":               "",
-		"bugfix":                      "",
-		"debugging":                   "",
-		"executing-plans":             "",
-		"grounding":                   "",
-		"orienting":                   "",
-		"refactor-coupling-audit":     "",
-		"reviewing-adr":               "--show references",
-		"reviewing-impl":              "--show invariants --show all-rules --show evidence --show pending",
-		"reviewing-plan":              "--show invariants --show all-rules --show evidence --show pending",
-		"subagent-driven-development": "",
-		"tdd":                         "",
-		"writing-plans":               "",
-	}
-	clarifiedOrientationCallers := map[string]bool{
-		"bugfix":                  true,
-		"debugging":               true,
-		"refactor-coupling-audit": true,
-		"tdd":                     true,
-		"writing-plans":           true,
-	}
-	const clarifiedOrientation = "Start by querying the explicit paths named above without `--show` or `--full` detail flags"
-	spillBytes, err := fs.ReadFile(templates.FS, "partials/context-spill.md")
-	if err != nil {
-		t.Fatalf("read context spill partial: %v", err)
-	}
-	spillContract := strings.TrimSpace(string(spillBytes))
-	seen := map[string]bool{}
+// invariant: rendering/workflow-skill-templates:implementer-context-grounding (TestCodeGraphNavigationGuidance)
+// invariant: tooling/authority-queries:codegraph-navigation-boundary (TestCodeGraphNavigationGuidance)
+func TestCodeGraphNavigationGuidance(t *testing.T) {
 	for name := range catalog.Standard.Skills {
 		templateID := "skills/" + name + "/SKILL.md.tmpl"
 		source, err := fs.ReadFile(templates.FS, templateID)
-		if err != nil {
-			t.Fatalf("read %s: %v", templateID, err)
-		}
+		if err != nil { t.Fatalf("read %s: %v", templateID, err) }
 		expanded, err := render.ExpandIncludes(string(source), templates.FS)
-		if err != nil {
-			t.Fatalf("expand %s: %v", templateID, err)
-		}
-		if clarifiedOrientationCallers[name] && !strings.Contains(expanded, clarifiedOrientation) {
-			t.Errorf("%s lacks clarified explicit-path orientation", templateID)
-		}
-		callCount := 0
-		for lineNumber, line := range strings.Split(expanded, "\n") {
-			if !strings.Contains(line, "awf context") && !strings.Contains(line, "./x context") {
-				continue
-			}
-			callCount++
-			seen[name] = true
-			policy, ok := policies[name]
-			if !ok {
-				t.Errorf("%s:%d has an unclassified context invocation: %s", templateID, lineNumber+1, line)
-				continue
-			}
-			if strings.Contains(line, "--full") || strings.Contains(line, "--json") {
-				t.Errorf("%s:%d prescribes a retired context form: %s", templateID, lineNumber+1, line)
-			}
-			commandName := "awf context"
-			if strings.Contains(line, "./x context") {
-				commandName = "./x context"
-			}
-			commandTail := strings.SplitN(line, commandName, 2)[1]
-			commandTail = strings.SplitN(commandTail, "`", 2)[0]
-			if !strings.Contains(commandTail, "path>") && !strings.Contains(commandTail, "paths>") && !strings.Contains(commandTail, "$(") {
-				t.Errorf("%s:%d context invocation must select explicit paths or Git-selected files: %s", templateID, lineNumber+1, line)
-			}
-			if policy == "" {
-				if strings.Contains(line, "--show") {
-					t.Errorf("%s:%d orientation invocation must omit detail facets: %s", templateID, lineNumber+1, line)
-				}
-			} else if !strings.Contains(line, "awf context "+policy) {
-				t.Errorf("%s:%d invocation lacks policy %q: %s", templateID, lineNumber+1, policy, line)
-			}
-			if strings.Contains(name, "reviewing-") && strings.Contains(line, "paste the output of") {
-				t.Errorf("%s:%d review dispatch must instruct the reviewer-run command, not paste output: %s", templateID, lineNumber+1, line)
-			}
-		}
-		if got := strings.Count(expanded, spillContract); got != callCount {
-			t.Errorf("%s expands the context spill contract %d times for %d call sites", templateID, got, callCount)
+		if err != nil { t.Fatalf("expand %s: %v", templateID, err) }
+		for _, forbidden := range []string{"awf context", "AWF_CONTEXT_SPILL_V1", "context-spill", "--show", "--full"} {
+			if strings.Contains(expanded, forbidden) { t.Errorf("%s retains retired navigation %q", templateID, forbidden) }
 		}
 	}
-	for name := range policies {
-		if !seen[name] {
-			t.Errorf("managed context template %s has no context invocation", name)
+	for _, templateID := range []string{"partials/orientation-ladder.md", "partials/context-orientation.md"} {
+		body, err := fs.ReadFile(templates.FS, templateID)
+		if err != nil { t.Fatal(err) }
+		for _, want := range []string{"CodeGraph", "exact-known-file", "genuinely trivial", "./awf resolve topic", "./awf read topic"} {
+			if !strings.Contains(string(body), want) { t.Errorf("%s missing %q", templateID, want) }
 		}
 	}
-	// The grounding-checker agent body carries the same pointer sentence the
-	// skills do (ADR-0197 widened the claim to the agent body).
-	agentSource, err := fs.ReadFile(templates.FS, "agents/grounding-checker.md.tmpl")
-	if err != nil {
-		t.Fatalf("read grounding-checker template: %v", err)
-	}
-	agentExpanded, err := render.ExpandIncludes(string(agentSource), templates.FS)
-	if err != nil {
-		t.Fatalf("expand grounding-checker template: %v", err)
-	}
-	if !strings.Contains(agentExpanded, spillContract) {
-		t.Errorf("grounding-checker agent body lacks the spill pointer:\n%s", agentExpanded)
-	}
-	// The pointer's destination must exist: debugging is the contract's single
-	// rendered home, so every context caller has a recovery destination.
-	docSource, err := fs.ReadFile(templates.FS, "docs/debugging.md.tmpl")
-	if err != nil {
-		t.Fatalf("read debugging template: %v", err)
-	}
-	docExpanded, err := render.ExpandIncludes(string(docSource), templates.FS)
-	if err != nil {
-		t.Fatalf("expand debugging template: %v", err)
-	}
-	for _, want := range []string{
-		"### Context spill recovery",
-		"byte length equals",
-		"`bytes=<decimal>` descriptor",
-		"Best-effort delete that file after use",
-	} {
-		if !strings.Contains(docExpanded, want) {
-			t.Errorf("debugging template lacks the spill contract clause %q", want)
-		}
-	}
-	// This repository overrides debugging recipes, so inspect its rendered owner too.
-	repoDoc, err := os.ReadFile(filepath.Clean(filepath.Join("..", "..", "docs", "debugging.md")))
-	if err != nil {
-		t.Fatalf("read repository working-with-awf doc: %v", err)
-	}
-	for _, want := range []string{
-		"### Context spill recovery",
-		"byte length equals",
-		"`bytes=<decimal>` descriptor",
-		"Best-effort delete that file after use",
-	} {
-		if !strings.Contains(string(repoDoc), want) {
-			t.Errorf("repository debugging doc lacks the spill contract clause %q", want)
-		}
+	for _, templateID := range []string{"skills/reviewing-adr/SKILL.md.tmpl", "skills/adr-lifecycle/SKILL.md.tmpl"} {
+		body, err := fs.ReadFile(templates.FS, templateID)
+		if err != nil { t.Fatal(err) }
+		if !strings.Contains(string(body), "./awf read adr") { t.Errorf("%s does not use focused ADR reads", templateID) }
 	}
 }
 

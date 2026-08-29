@@ -17,6 +17,7 @@ check` detects drift.
 - A workflow from clarification through implementation, review, and retrospective
 - ADRs for load-bearing decisions and plans when sequencing or coordination helps
 - Fresh-context agents for exploration, grounding, implementation, and review
+- CodeGraph for structural source discovery, architecture, callers, dependencies, and impact analysis; Git for changed-path selection
 - Generated agent guides, skills, documentation, and optional Git hook payloads
 - Current-state topics that separate live project authority from historical decisions
 - Backed invariants that connect documented claims to tests or explicit verification

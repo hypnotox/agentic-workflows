@@ -309,7 +309,7 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		assertOrderedPhrases(t, brainstorming, "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
 		adrReview := read(t, path("reviewing-adr"))
 		assertContainsAll(t, target+" autonomous ADR hand-off", adrReview,
-			"After the review settles", "run `./awf context --show references", "ordinary `"+evalPrefix+"-reviewing-plan`", "If no linked Proposed plan exists yet", "proceed directly to implementation")
+			"After the review settles", "run `./awf read adr <identity>`", "ordinary `"+evalPrefix+"-reviewing-plan`", "If no linked Proposed plan exists yet", "proceed directly to implementation")
 		if strings.Contains(adrReview, "Stop for approval") || strings.Contains(adrReview, "settled ADR is the mandatory approval check-in") {
 			t.Errorf("%s ADR review retains a settled-ADR approval stop", target)
 		}
@@ -405,7 +405,7 @@ func TestGroundingSupportOwnership(t *testing.T) {
 		"Use subagent_grounding whenever the rendered grounding support contract calls for repository-premise checks",
 		"include the complete grounding brief in task")
 	assertContainsAll(t, "Pi grounding skill", piGrounding,
-		"guide-first", "AWF_CONTEXT_SPILL_V1", "Call `subagent_grounding` exactly once", "brief in `task`", "omit the `model` field")
+		"guide-first", "CodeGraph", "Call `subagent_grounding` exactly once", "brief in `task`", "omit the `model` field")
 	assertContainsAll(t, "Pi exploration skill", piExploring,
 		"Call `subagent_explore` for each child", "required task, breadth, and detail", "fan them out as sibling calls")
 	assertContainsAll(t, "Pi coupling audit exploration routing", piCouplingAudit,
@@ -427,7 +427,7 @@ func TestGroundingSupportOwnership(t *testing.T) {
 			}
 		}
 	}
-	assertContainsAll(t, "Claude grounding", claudeGrounding, "grounding-checker", "guide-first", "AWF_CONTEXT_SPILL_V1")
+	assertContainsAll(t, "Claude grounding", claudeGrounding, "grounding-checker", "guide-first", "CodeGraph")
 }
 
 type durableDesignFacts struct {

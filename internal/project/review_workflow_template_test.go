@@ -42,7 +42,7 @@ func TestLinkedPlanReviewFreshness(t *testing.T) {
 			t.Errorf("ordinary ADR review missing %q", want)
 		}
 	}
-	assertOrderedPhrases(t, adr, "review converges", "After the review settles, run `./awf context --show references <explicit-ADR-path>`", "Invoke ordinary `example-reviewing-plan` separately for every linked plan")
+	assertOrderedPhrases(t, adr, "review converges", "After the review settles, run `./awf read adr <identity>`", "Invoke ordinary `example-reviewing-plan` separately for every linked plan")
 	if _, ok := catalog.Standard.Skills["reviewing-plan-"+"resync"]; ok {
 		t.Fatal("retired plan review skill remains in the live catalog")
 	}
