@@ -123,3 +123,5 @@ Rendered workflow guidance continues to obey the existing publication-safe unset
 - 2026-08-29: Applied; operations: update `rendering/sync-and-drift:managed-output-attribution`, update `code-design/dependency-composition:repository-layer-direction`, update `code-design/state-ownership:project-derived-state-ownership`
 
 - 2026-08-29: Reapplied; operations: add `invariants/current-state-authority:uncovered-lists-unowned`
+
+- 2026-08-29: Reapplied; operations: add `invariants/current-state-authority:uncovered-lists-unowned`

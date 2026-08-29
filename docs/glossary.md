@@ -26,12 +26,9 @@
 | composition root | The outermost boundary that selects volatile mechanisms and explicitly constructs their consumers. It is not a service locator, dependency bag, or owner of consumer policy. |
 | config reference | The always-on generated document listing every config key, var, sidecar field, and data key with its description, default, availability, and live state. |
 | configspec | The compile-time adopter-facing authority with one entry per adopter-settable config key, sidecar field, and data key; var entries derive from catalog descriptors. |
-| context relationship | A `State`, `Touches`, or `Proofs` marker association between a selected file or directory and a qualified claim. File relationships come from their own markers; directory relationships union included descendants. |
-| context state | The assembled value consumed by a context query: layout, config, current state, tree, lock, output declarations, and eligible coverage universe. |
-| context tier | The request-sensitive `awf context` projection: bare directories receive tier-0 census, grouping, provenance, and topics; bare exact or Git-selected files also receive tier-1 direct relationships. |
 | continuity notice | A routine checkpoint's informational one-line summary of the completed phase and immediate next action; it does not stop autonomous continuation. |
 | contract suite | A backend-agnostic test that pins a seam entrypoint's answers rather than its implementation. Cancellation, error-identity, and isolation suites are separate cross-cutting suites. |
-| current-state topic | A domain-owned document whose metadata and authored current-state part define claims read by `awf context`, `awf check`, and `awf topic`. Its claims, not ADRs, are current authority. |
+| current-state topic | A domain-owned document whose metadata and authored part define claims read by `awf read topic`, `awf resolve topic`, and `awf check`. Its claims, not ADRs, are current authority. |
 | decision index | The generated decisions index listing in-flight ADRs by number, title, and status and terminal ADRs as compact history. It does not infer currentness or render supersession chains. |
 | deletion-as-acknowledgement | The var three-state model: set is configured, present-but-empty is the seeded to-do, and absent is a deliberate permanent decline. |
 | domain paths | A domain's `paths:`-declared anchored-glob file territory, which bounds topic ownership, context, and coverage. |

@@ -9,6 +9,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // invariant: tooling/authority-queries:authority-read-projections (TestReadTopicCommandMatchesLegacyProjection)
@@ -77,8 +78,10 @@ func TestResolveTopicUncoveredCommand(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, configPath, string(configBody)+"contextIgnore: [\"ignored/**\"]\n")
-	testsupport.WriteFile(t, filepath.Join(root, "unowned", "one.txt"), "one\n")
-	testsupport.WriteFile(t, filepath.Join(root, "unowned", "two.txt"), "two\n")
+	testsupport.WriteFile(t, filepath.Join(root, "untracked", "one.txt"), "one\n")
+	testsupport.WriteFile(t, filepath.Join(root, "untracked", "two.txt"), "two\n")
+	testsupport.WriteFile(t, filepath.Join(root, "tracked", "one.txt"), "tracked\n")
+	gitfixture.Add(t, gitfixture.At(root), "tracked/one.txt")
 	testsupport.WriteFile(t, filepath.Join(root, "ignored", "still-reported.txt"), "ignored only by context coverage\n")
 	testsupport.WriteFile(t, filepath.Join(root, "prior"), "generated\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "efforts", "resident", "memory.md"), "resident\n")
@@ -88,10 +91,10 @@ func TestResolveTopicUncoveredCommand(t *testing.T) {
 	if code := runFrom(root, []string{"awf", "resolve", "topic", "--uncovered"}, &out, &stderr); code != 0 {
 		t.Fatalf("uncovered exit=%d stderr=%q", code, stderr.String())
 	}
-	if got := out.String(); !strings.Contains(got, "unowned/") || !strings.Contains(got, "ignored/") || strings.Contains(got, "nested/") || strings.Contains(got, "prior") || strings.Contains(got, ".awf/efforts") {
+	if got := out.String(); !strings.Contains(got, "untracked/") || !strings.Contains(got, "tracked/") || !strings.Contains(got, "ignored/") || strings.Contains(got, "nested/") || strings.Contains(got, "prior") || strings.Contains(got, ".awf/efforts") {
 		t.Fatalf("uncovered output = %s", got)
 	}
-	for _, args := range [][]string{{"awf", "resolve", "topic"}, {"awf", "resolve", "topic", "--uncovered", "unowned"}} {
+	for _, args := range [][]string{{"awf", "resolve", "topic"}, {"awf", "resolve", "topic", "--uncovered", "untracked"}} {
 		out.Reset()
 		stderr.Reset()
 		if code := runFrom(root, args, &out, &stderr); code != 2 || !strings.Contains(stderr.String(), "usage: awf resolve topic") {

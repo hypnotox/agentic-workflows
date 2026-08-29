@@ -99,7 +99,7 @@ Backing: test
 
 ### `invariant: uncovered-lists-unowned`
 
-The current-state coverage report lists as unowned only working-tree paths that are tracked, not generated or lock-listed, matched by no configured domain glob, collapsed to the topmost ancestor directory that has no owned descendant in scope. Owned and generated paths never appear; `contextIgnore` does not affect the census.
+The current-state coverage report lists present working-tree paths, tracked or untracked, that match no configured domain glob and are not recorded as managed outputs in the lock. It collapses each result to the topmost ancestor directory with no owned descendant in scope; owned and lock-listed paths never appear, and `contextIgnore` does not affect the census.
 Origin: ADR-delegate-relevance-discovery-to-codegraph
 Backing: test
 

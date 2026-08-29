@@ -1,67 +1,38 @@
 package currentstate_test
 
 import (
+	"io/fs"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// legacyAuthorityIdents are the identifiers of the deleted ADR-derived authority
-// engines: the anchor-supersession/coverage model, the ADR-projected indexes,
-// and the invariant-declaration scanner. ADR-0133/0135 make canonical topic
-// claims the sole active authority, so none of these may reappear in shipped Go
-// or in an embedded runtime template. Each is a CamelCase Go identifier, so a
-// whole-word match never trips ordinary prose.
+// legacyAuthorityIdents are identifiers of the deleted ADR-derived authority
+// engines. Canonical topic claims are the sole active authority, so none may
+// reappear in shipped Go or an embedded runtime template.
 var legacyAuthorityIdents = []string{
 	"SupersessionRef", "AnnotatedAnchors", "Chains", "Retirers",
 	"StateCovered", "PartiallySuperseded", "DeclaringADRs",
 	"RenderActiveMD", "RenderDomainIndex",
 }
 
-// legacyContextFields are the old ContextResult expansion fields: the
-// ADR-derived governing/related/background context that ADR-0134's topic-centric
-// context replaced. They are scoped to the context producer rather than banned
-// tree-wide, because Related collides with the live adr.ADR.Related frontmatter
-// field and Background/Plans are ordinary words elsewhere; that file is the one
-// place the legacy result lived, so their absence there proves the expansion is
-// gone without a false positive. ADR-0195 carved the producer out of
-// internal/project into internal/contextq; the suffix follows it.
-var legacyContextFields = []string{"Governing", "Related", "Background", "Pitfalls", "Plans"}
-
-// migrationApprovalPath is retired cutover authority. No production file may
-// name it now that permanent locks and the generic journal are the only live
-// upgrade authority.
 const migrationApprovalPath = "current-state-migration.yaml"
-
-// bridgeImportPath is the deleted cross-schema bridge package; no production file
-// may import it (its inventory, readiness, snapshot, and approval parsers went
-// with it, ADR-0136).
 const bridgeImportPath = `"github.com/hypnotox/agentic-workflows/internal/bridge"`
 
-// contextGoSuffix identifies the rewritten context producer among the walked
-// files without depending on the test's working directory.
-const contextGoSuffix = "internal/contextq/context.go"
-
-// bannedWholeWords returns which banned identifiers occur in body as whole words.
-// The pure matcher is unit-tested directly so the tree scan cannot pass vacuously.
 func bannedWholeWords(body string, banned []string) []string {
 	var hit []string
-	for _, w := range banned {
-		if regexp.MustCompile(`\b` + regexp.QuoteMeta(w) + `\b`).MatchString(body) {
-			hit = append(hit, w)
+	for _, word := range banned {
+		if regexp.MustCompile(`\b` + regexp.QuoteMeta(word) + `\b`).MatchString(body) {
+			hit = append(hit, word)
 		}
 	}
 	return hit
 }
 
-// productionGoSources walks the shipped Go tree (internal/ and cmd/, no tests)
-// and hands each file's slash path and contents to fn, returning the count. It
-// deliberately never descends docs/decisions, docs/plans, or the changelog: a
-// historical ADR that discusses the retired supersession model in its prose stays
-// legal, because it is history, not shipped authority.
 func productionGoSources(t *testing.T, fn func(path, body string)) int {
 	t.Helper()
 	seen := 0
@@ -76,11 +47,62 @@ func productionGoSources(t *testing.T, fn func(path, body string)) int {
 	return seen
 }
 
-// TestLegacyAuthorityAbsent is the deterministic denylist that keeps the deleted
-// ADR-derived authority from creeping back after the current-state cutover
-// (ADR-0133/0134/0135). It scans shipped Go and runtime templates for the retired
-// identifiers, confines the legacy context fields to the file they were removed
-// from, and forbids both the deleted bridge import and migration approval path.
-// The companion behavioral assertion that the
-// retired decision output is no longer planned lives in internal/project, where
-// the output plan is reachable without an import cycle.
+// TestLegacyAuthorityAbsent keeps retired ADR authority, bridge imports, and
+// migration approval authority out of shipped code and runtime templates.
+func TestLegacyAuthorityAbsent(t *testing.T) {
+	goSeen := productionGoSources(t, func(path, body string) {
+		for _, word := range bannedWholeWords(body, legacyAuthorityIdents) {
+			t.Errorf("%s reintroduces retired authority identifier %q", path, word)
+		}
+		if strings.Contains(body, bridgeImportPath) {
+			t.Errorf("%s imports the deleted internal/bridge package", path)
+		}
+		if strings.Contains(body, migrationApprovalPath) {
+			t.Errorf("%s names the retired migration approval file", path)
+		}
+	})
+	if goSeen < 60 {
+		t.Fatalf("inspected only %d production Go file(s); scan is not reaching the tree", goSeen)
+	}
+
+	templateSeen := 0
+	err := fs.WalkDir(templates.FS, ".", func(path string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			return nil
+		}
+		body, err := fs.ReadFile(templates.FS, path)
+		if err != nil {
+			return err
+		}
+		templateSeen++
+		for _, word := range bannedWholeWords(string(body), legacyAuthorityIdents) {
+			t.Errorf("template %s reintroduces retired authority identifier %q", path, word)
+		}
+		return nil
+	})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if templateSeen < 40 {
+		t.Fatalf("inspected only %d embedded template file(s); scan is not reaching the FS", templateSeen)
+	}
+}
+
+func TestLegacyAuthorityScannerFires(t *testing.T) {
+	if got := bannedWholeWords("x := adr.SupersessionRef{}\ncorpus.Chains()", legacyAuthorityIdents); len(got) != 2 {
+		t.Errorf("planted tokens = %v, want SupersessionRef and Chains", got)
+	}
+	for _, clean := range []string{"the retirers list", "unRelated code", "chainsaw", "// background material"} {
+		if got := bannedWholeWords(clean, legacyAuthorityIdents); len(got) != 0 {
+			t.Errorf("%q wrongly flagged %v", clean, got)
+		}
+	}
+	for _, root := range []string{filepath.Join("..", "..", "internal"), filepath.Join("..", "..", "cmd")} {
+		if strings.Contains(root, "decisions") || strings.Contains(root, "plans") {
+			t.Errorf("scan root %q would sweep historical ADRs or plans", root)
+		}
+	}
+}

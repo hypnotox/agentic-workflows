@@ -15,9 +15,6 @@ data:
     - term: presentation ownership
       meaning: "The package owning a result model also owns its human rendering; a command binary owns argument parsing, renderer selection, and exit mapping."
       domains: [code-design]
-    - term: context state
-      meaning: "The assembled value consumed by a context query: layout, config, current state, tree, lock, output declarations, and eligible coverage universe."
-      domains: [tooling]
     - term: Roots anchoring value
       meaning: "The construction input that combines tracked and resident output roots and resolves anchored output paths."
       domains: [rendering]
@@ -43,7 +40,7 @@ data:
       meaning: "An ADR's operation declaration, with each operation frozen once an Applied event references it: `None.` or add, update, and remove entries naming qualified claim ids. Each batch travels with its claim mutations."
       domains: [adr-system]
     - term: current-state topic
-      meaning: "A domain-owned document whose metadata and authored current-state part define claims read by `awf context`, `awf check`, and `awf topic`. Its claims, not ADRs, are current authority."
+      meaning: "A domain-owned document whose metadata and authored part define claims read by `awf read topic`, `awf resolve topic`, and `awf check`. Its claims, not ADRs, are current authority."
       domains: [invariants]
     - term: source marker
       meaning: "An informational `awf:source` comment on generated documentation that points to reader-facing authorities without defining an edit boundary or dependency list."
@@ -51,12 +48,6 @@ data:
     - term: regeneration-derived document
       meaning: "A managed document recomputed from repository or catalog state rather than only its template and sidecar."
       domains: [rendering]
-    - term: context relationship
-      meaning: "A `State`, `Touches`, or `Proofs` marker association between a selected file or directory and a qualified claim. File relationships come from their own markers; directory relationships union included descendants."
-      domains: [tooling]
-    - term: context tier
-      meaning: "The request-sensitive `awf context` projection: bare directories receive tier-0 census, grouping, provenance, and topics; bare exact or Git-selected files also receive tier-1 direct relationships."
-      domains: [tooling]
     - term: adaptive maximum
       meaning: "An exploration breadth limit that starts with the cheapest targeted lookup, widens only on evidence, and reports exhaustion."
       domains: [rendering]
