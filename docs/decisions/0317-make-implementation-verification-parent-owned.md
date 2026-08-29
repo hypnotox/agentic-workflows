@@ -4,7 +4,7 @@ slug: make-implementation-verification-parent-owned
 status: Implementing
 date: 2026-08-29
 ---
-# ADR-make-implementation-verification-parent-owned: Make implementation verification parent-owned
+# ADR-0317: Make implementation verification parent-owned
 
 
 ## Context

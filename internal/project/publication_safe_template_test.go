@@ -233,7 +233,7 @@ func TestTelemetryDocumentationTemplatesPublicationSafe(t *testing.T) {
 	}{
 		{"docs/architecture.md.tmpl", "resident-data boundaries", ""},
 		{"docs/workflow.md.tmpl", "# Workflow", "generated Pi telemetry tools"},
-		{"docs/testing.md.tmpl", "minimum-runtime smoke tests", ""},
+		{"docs/testing.md.tmpl", "repository-specific authority", ""},
 		{"docs/releasing.md.tmpl", "generated runtime smoke", ""},
 	}
 	for _, tc := range cases {
@@ -246,5 +246,28 @@ func TestTelemetryDocumentationTemplatesPublicationSafe(t *testing.T) {
 				t.Errorf("empty-data render is not coherent:\n%s", out)
 			}
 		})
+	}
+}
+
+func TestTestingDocumentationTemplateExplainsFeedbackTiers(t *testing.T) {
+	out := renderGolden(t, "docs/testing.md.tmpl", map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{},
+		"data":   map[string]any{},
+		"skills": map[string]bool{},
+		"layout": testLayout(),
+	})
+	for _, want := range []string{
+		"Focused",
+		"Affected",
+		"Fast or normal gate",
+		"Full gate",
+		"representative warm and cold durations",
+		"cache state",
+		"external dependencies",
+	} {
+		if !strings.Contains(out, want) {
+			t.Errorf("testing documentation template missing %q:\n%s", want, out)
+		}
 	}
 }

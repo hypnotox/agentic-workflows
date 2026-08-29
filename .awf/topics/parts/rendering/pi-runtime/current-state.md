@@ -13,7 +13,7 @@ Backing: test
 
 The implementation profile serializes against itself and enforces one commit-disabled unchanged-HEAD policy against an optional invocation-owned verification checkout, defaulting to the project root. An explicit identity resolves relative to the project root after one leading `@` is removed, canonicalizes filesystem aliases, and must be an exact live checkout root whose Git common directory matches the project root. For a linked checkout, the absolute Git directory's `gitdir` backlink must canonically identify the selected checkout's non-symlink regular `.git` file; copied pointers, selected-entry symlinks, and other invalid identities refuse before dispatch without worktree enumeration or `git worktree list` parsing. Preparation resolves and caches the canonical live accessible parent-or-descendant checkout before dispatch, returns it as the implementation child CWD, and `beforeRun` and `afterRun` snapshot that same identity; omission retains root/root while role loading remains rooted. This alignment does not confine deliberately targeted paths or move the parent session. Any changed selected HEAD is a terminal policy failure whose recovery requires parent inventory and restoration of the recorded before-run HEAD before redispatch, never retry from the unauthorized advanced HEAD. Unavailable before-or-after snapshots fail closed with accurate checkout inspection and repair before retry.
 Origin: ADR-0148
-Revised-by: ADR-0260, ADR-0279, ADR-0309, ADR-make-implementation-verification-parent-owned
+Revised-by: ADR-0260, ADR-0279, ADR-0309, ADR-0317
 Backing: test
 
 ### `invariant: pi-session-handoff-workflow`

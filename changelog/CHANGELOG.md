@@ -16,6 +16,8 @@ query a single version or a range.
 
 ### Features
 
+- Generated testing guidance now distinguishes focused, affected, fast or normal, and full feedback, and tells adopters how to document lane ownership, environment constraints, and reproducible warm and cold durations.
+
 - Implementation and assurance routes now separate independently verifiable semantic owners, treat repeated same-concern findings across separable owners as an oversized boundary, and retain terminal cross-owner composition coverage without numeric thresholds or recursive review.
 
 - Parents now exclusively integrate, stage, check staged state, commit, run fast gates, and perform terminal exhaustive verification. Implementation children return structured focused-evidence receipts that parents inventory and reuse only while checkout, authority, and overlapping paths stay fresh.

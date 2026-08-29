@@ -4,7 +4,7 @@ slug: decompose-repeated-assurance-findings-by-semantic-owner
 status: Implementing
 date: 2026-08-29
 ---
-# ADR-decompose-repeated-assurance-findings-by-semantic-owner: Decompose repeated assurance findings by semantic owner
+# ADR-0318: Decompose repeated assurance findings by semantic owner
 
 
 ## Context

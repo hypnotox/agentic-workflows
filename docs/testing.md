@@ -2,7 +2,7 @@
 <!-- awf:template-source templates/docs/testing.md.tmpl -->
 # Testing
 
-A deterministic pre-commit gate runs the project's checks. The documented lanes include minimum-runtime smoke tests.
+This document is the repository-specific authority for test commands, feedback tiers, lane ownership, and expected runtime. Keep concrete setup and measurements here rather than relying on a shared convention that cannot reflect the repository's language, dependencies, or execution environment.
 
 <!-- awf:template-source templates/partials/durable-oracle.md -->
 Every behaviour-changing fix requires the strongest practical durable oracle. The normal and preferred path is an automated regression test observed failing for the right reason and then passing. When that path is impractical, state a concrete reason, preserve or improve verification strength, and retain the strongest safe, reproducible alternative. Never weaken expected behaviour. Never weaken verification strength. Fix the root cause rather than the symptom.
