@@ -26,6 +26,8 @@ query a single version or a range.
 
 ### Bug fixes
 
+- Rendered plan executors now treat phase settlement as a transition and state that persistence is not a stopping boundary, preventing routine phase completion from being mistaken for a user handoff.
+
 - Local branch and worktree creation now checks only commits introduced beyond the configured local integration branch instead of revalidating inherited history.
 
 - Rendered commit-policy hooks now run on macOS's system Bash while preserving fail-closed pushed-ref validation.

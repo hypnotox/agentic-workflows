@@ -79,7 +79,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 		assertAll("inline",
 			"**Rule.**", "**Flexible helper detail.**", "**Runtime detail.**", "**Required helper evidence.**", "**Required phase evidence.**", "**Freshness stop.**",
 			"mixed plan can hand subagent-driven phases", "Iterate phases, not tasks",
-			"continue the plan loop without returning control to the user", "select the next unfinished phase", "A phase-complete report is not a plan-complete stopping point",
+			"Treat phase settlement as a transition", "immediately continue the plan loop unless user attention is required", "Persistence is not a stopping boundary", "Select the next unfinished phase", "A phase-complete report is not a plan-complete stopping point",
 			"awf read plan <plan> <P[.T]>", "generated task scope notice", "phase-owner context only", "Advances and Completes outcomes",
 			"never gives a task helper commit, review, checkpoint, handoff, or outcome authority",
 			"projection changes neither phase ownership nor checkpoint boundaries",
@@ -94,7 +94,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			"complete revised phase", "recovery verification", "blind successor instruction")
 		assertAll("subagent",
 			"plan may mix modes", "hand inline phases", "known clean and green baseline",
-			"continue the plan loop without returning control to the user", "select the next unfinished phase", "A phase-complete report is not a plan-complete stopping point",
+			"Treat phase settlement as a transition", "immediately continue the plan loop unless user attention is required", "Persistence is not a stopping boundary", "Select the next unfinished phase", "A phase-complete report is not a plan-complete stopping point",
 			"awf read plan <plan> <P>", "generated scope notice, Phase close, and Advances/Completes outcomes are phase-owner context only",
 			"never transfer commit, review, checkpoint, handoff, helper, or outcome authority", "projection changes neither ownership nor checkpoint boundaries",
 			"commit-disabled implementation child alone", "parent-supplied approved boundary", "complete phase",
@@ -136,7 +136,7 @@ func TestPhaseTransactionOwnershipAcrossWorkflowSurfaces(t *testing.T) {
 			body := surfaces[name]
 			review := strings.Index(body, "report-only phase review")
 			checkpoint := strings.Index(body, "**Routine checkpoint.**")
-			continuation := strings.Index(body, "continue the plan loop without returning control to the user")
+			continuation := strings.Index(body, "Treat phase settlement as a transition")
 			terminal := strings.Index(body, "After all settled phases")
 			if review < 0 || checkpoint < review {
 				t.Errorf("%s/%s checkpoint is not after phase review settlement", variant, name)
