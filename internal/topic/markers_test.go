@@ -22,6 +22,37 @@ func markerIndexForTest(t *testing.T, root string, corpus Corpus, cfg *config.Cu
 	return markerIndexFromTreeFiles(treeFromDir(t, root).List(), corpus, cfg)
 }
 
+func TestByteLineSourceAcceptsExactMarkerBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		name    string
+		length  int
+		wantErr bool
+	}{
+		{name: "exact", length: maxMarkerLineBytes},
+		{name: "over", length: maxMarkerLineBytes + 1, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			visits := 0
+			_, err := byteLineSource([]byte(strings.Repeat("x", tc.length)))(func(line string) error {
+				visits++
+				if len(line) != tc.length {
+					t.Fatalf("line length = %d, want %d", len(line), tc.length)
+				}
+				return nil
+			})
+			if tc.wantErr {
+				if err == nil || visits != 0 {
+					t.Fatalf("over-bound read visits=%d error=%v", visits, err)
+				}
+				return
+			}
+			if err != nil || visits != 1 {
+				t.Fatalf("exact-bound read visits=%d error=%v", visits, err)
+			}
+		})
+	}
+}
+
 // invariant: invariants/topics-and-markers:invariants-marker-whitespace (TestBuildMarkerIndex)
 // invariant: invariants/topics-and-markers:invariants-multilang-scan (TestBuildMarkerIndex)
 // invariant: invariants/topics-and-markers:proof-only-marker-grammar (TestBuildMarkerIndex)

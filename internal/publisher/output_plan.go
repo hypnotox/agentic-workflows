@@ -107,9 +107,13 @@ func (r filesystemProjectReader) ReadLines(path string, maxLineBytes int, visit 
 	}
 	defer file.Close()
 	scanner := bufio.NewScanner(file)
-	scanner.Buffer(make([]byte, min(64*1024, maxLineBytes)), maxLineBytes)
+	scanner.Buffer(make([]byte, min(64*1024, maxLineBytes+1)), maxLineBytes+1)
 	for scanner.Scan() {
-		if err := visit(scanner.Text()); err != nil {
+		line := scanner.Text()
+		if len(line) > maxLineBytes {
+			return true, fmt.Errorf("scan lines %s: line exceeds %d bytes", path, maxLineBytes)
+		}
+		if err := visit(line); err != nil {
 			return true, err
 		}
 	}

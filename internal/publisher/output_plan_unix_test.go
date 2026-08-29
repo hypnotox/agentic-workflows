@@ -7,6 +7,7 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -29,6 +30,44 @@ func TestFilesystemProjectReaderReadLinesIsBounded(t *testing.T) {
 	}
 	if _, err := reader.ReadLines("source.go", 4, func(string) error { return nil }); err == nil {
 		t.Fatal("ReadLines accepted a line beyond its byte bound")
+	}
+}
+
+func TestFilesystemProjectReaderReadLinesAcceptsExactMarkerBoundary(t *testing.T) {
+	const limit = 4 << 20
+	root := testsupport.ShortTempDir(t)
+	path := filepath.Join(root, "source.go")
+	reader := filesystemProjectReader{root: root}
+	for _, tc := range []struct {
+		name    string
+		length  int
+		wantErr bool
+	}{
+		{name: "exact", length: limit},
+		{name: "over", length: limit + 1, wantErr: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			if err := os.WriteFile(path, append([]byte(strings.Repeat("x", tc.length)), '\n'), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			visits := 0
+			_, err := reader.ReadLines("source.go", limit, func(line string) error {
+				visits++
+				if len(line) != tc.length {
+					t.Fatalf("line length = %d, want %d", len(line), tc.length)
+				}
+				return nil
+			})
+			if tc.wantErr {
+				if err == nil || visits != 0 {
+					t.Fatalf("over-bound read visits=%d error=%v", visits, err)
+				}
+				return
+			}
+			if err != nil || visits != 1 {
+				t.Fatalf("exact-bound read visits=%d error=%v", visits, err)
+			}
+		})
 	}
 }
 
