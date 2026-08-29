@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-_No decisions are in flight._
+- [ADR-validate-only-local-reference-transaction-commit-deltas: Validate only local reference-transaction commit deltas](validate-only-local-reference-transaction-commit-deltas.md) (Proposed)
 
 ## History
 
