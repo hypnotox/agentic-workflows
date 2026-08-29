@@ -53,6 +53,9 @@ The current context exclusion list serves the removed navigation census and also
 - add `tooling/cli:init-describe-read-only`
 - add `invariants/current-state-authority:production-packages-domain-owned`
 - add `invariants/current-state-authority:domain-owned-coverage-no-ignore`
+- update `rendering/sync-and-drift:managed-output-attribution`
+- update `code-design/dependency-composition:repository-layer-direction`
+- update `code-design/state-ownership:project-derived-state-ownership`
 - remove `invariants/current-state-authority:uncovered-lists-unowned-unignored`
 - add `invariants/current-state-authority:uncovered-lists-unowned`
 - update `invariants/current-state-authority:accepted-authority-is-pending-only`
@@ -114,3 +117,5 @@ Rendered workflow guidance continues to obey the existing publication-safe unset
 - 2026-08-29: Applied; operations: remove `tooling/context-and-topic:context-adr-operation-projection`, remove `tooling/context-and-topic:adr-linked-plan-references`, remove `tooling/context-and-topic:context-applicability-navigation`, remove `tooling/context-and-topic:context-default-excludes-history`, remove `tooling/context-and-topic:context-concise-projection`, remove `tooling/context-and-topic:context-full-authority-packet`, remove `tooling/context-and-topic:context-known-artifact-navigation`, remove `tooling/context-and-topic:context-path-attribution`, remove `tooling/context-and-topic:context-path-classification`, remove `tooling/context-and-topic:context-query-boundary`, remove `tooling/context-and-topic:context-read-only`, remove `tooling/context-and-topic:context-static-fallback`, remove `tooling/context-and-topic:context-summary-projection`, remove `tooling/context-and-topic:context-terminal-output-cap`, remove `tooling/context-and-topic:context-spill-observability`, remove `tooling/context-and-topic:describe-read-only`, remove `tooling/context-and-topic:production-packages-domain-owned`, remove `tooling/context-and-topic:uncovered-collapses-directories`, remove `tooling/context-and-topic:context-full-profile-only`, update `invariants/current-state-authority:accepted-authority-is-pending-only`, update `invariants/current-state-authority:accepted-does-not-override-current`, update `invariants/current-state-authority:current-state-sole-active-authority`, update `invariants/current-state-authority:historical-rationale-is-explicit`, remove `invariants/current-state-authority:uncovered-lists-unowned-unignored`, add `invariants/current-state-authority:uncovered-lists-unowned`, update `adr-system/adr-lifecycle:corpus-owns-status-literals`, update `tooling/cli:explicit-output-bypasses`, update `tooling/cli:check-severity-by-protected-property`
 
 - 2026-08-29: Reapplied; operations: add `invariants/current-state-authority:production-packages-domain-owned`
+
+- 2026-08-29: Amended; content-sha256: 759e6658d9797823a9d8d9bf5bdb24d9464000b586691659ccc3785e387719f9
