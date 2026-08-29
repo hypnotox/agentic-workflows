@@ -1,14 +1,11 @@
 package topic
 
 import (
-	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"runtime"
 	"strings"
 	"testing"
-	"weak"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -82,6 +79,16 @@ func TestLoadCorpusFromTreeValidWithoutCurrentState(t *testing.T) {
 	}
 	if len(c.All()) != 1 || c.DomainPaths["alpha"] != nil || len(c.Markers.All()) != 0 {
 		t.Fatalf("corpus: %#v paths=%#v markers=%#v", c.All(), c.DomainPaths, c.Markers.All())
+	}
+}
+
+func TestLoadCorpusFromTreeSkipsResidentMarkerSources(t *testing.T) {
+	tree := treeFrom(t, map[string]string{
+		".awf/effort-archive/old_test.go": "// invariant: unknown/topic:claim (TestOld)\nfunc TestOld() {}\n",
+	})
+	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"**/*_test.go\"]\n      marker: //\n  testGlobs: [\"**/*_test.go\"]\n")
+	if _, err := LoadCorpusFromTree(tree, cfg, oneImplementedADR()); err != nil {
+		t.Fatalf("resident marker source entered immutable-tree scan: %v", err)
 	}
 }
 
@@ -343,28 +350,29 @@ func (r readerForLoadCorpusTest) ReadFile(name string) ([]byte, bool, error) {
 	return data, ok, nil
 }
 
-const markerReadPayloadSize = 1 << 20
-
-type markerReadPayload struct{ data [markerReadPayloadSize]byte }
-
 type streamingMarkerReader struct {
-	paths    []string
-	payloads []weak.Pointer[markerReadPayload]
-	reads    int
+	paths                   []string
+	materialized, passes    int
+	linesPerPass, lineBytes int
 }
 
 func (r *streamingMarkerReader) Paths(string) ([]string, error) { return r.paths, nil }
 func (r *streamingMarkerReader) ReadFile(string) ([]byte, bool, error) {
-	if r.reads >= 2 {
-		runtime.GC()
-		if r.payloads[0].Value() != nil {
-			return nil, false, errors.New("prior marker payload remains retained")
+	r.materialized++
+	return nil, false, os.ErrPermission
+}
+func (r *streamingMarkerReader) ReadLines(_ string, maxLineBytes int, visit func(string) error) (bool, error) {
+	r.passes++
+	line := strings.Repeat("x", r.lineBytes)
+	if len(line) > maxLineBytes {
+		return true, os.ErrInvalid
+	}
+	for range r.linesPerPass {
+		if err := visit(line); err != nil {
+			return true, err
 		}
 	}
-	payload := new(markerReadPayload)
-	r.payloads = append(r.payloads, weak.Make(payload))
-	r.reads++
-	return payload.data[:], true, nil
+	return true, nil
 }
 
 func TestLoadCorpusFromReaderPropagatesReadFailure(t *testing.T) {
@@ -374,14 +382,19 @@ func TestLoadCorpusFromReaderPropagatesReadFailure(t *testing.T) {
 	}
 }
 
-func TestLoadCorpusFromReaderStreamsMarkerSources(t *testing.T) {
-	reader := &streamingMarkerReader{paths: []string{"first.go", "second.go", "third.go"}}
+func TestLoadCorpusFromReaderStreamsLargeLogicalMarkerSources(t *testing.T) {
+	reader := &streamingMarkerReader{
+		paths: []string{"first.go", "second.go", "third.go"},
+		// The logical corpus is 192 MiB, but the reader retains one shared line.
+		linesPerPass: 64 << 10,
+		lineBytes:    1 << 10,
+	}
 	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: //\n")
 	if _, err := LoadCorpusFromReader(reader, cfg, oneImplementedADR()); err != nil {
 		t.Fatal(err)
 	}
-	if reader.reads != len(reader.paths) {
-		t.Fatalf("marker reads = %d, want %d", reader.reads, len(reader.paths))
+	if reader.materialized != 0 || reader.passes != len(reader.paths) {
+		t.Fatalf("materialized reads = %d, line passes = %d, want 0 and %d", reader.materialized, reader.passes, len(reader.paths))
 	}
 }
 

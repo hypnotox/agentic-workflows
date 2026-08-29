@@ -12,6 +12,26 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
+func TestFilesystemProjectReaderReadLinesIsBounded(t *testing.T) {
+	root := testsupport.ShortTempDir(t)
+	path := filepath.Join(root, "source.go")
+	if err := os.WriteFile(path, []byte("first\nsecond\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	reader := filesystemProjectReader{root: root}
+	var lines []string
+	found, err := reader.ReadLines("source.go", 64, func(line string) error {
+		lines = append(lines, line)
+		return nil
+	})
+	if err != nil || !found || !slices.Equal(lines, []string{"first", "second"}) {
+		t.Fatalf("ReadLines = found %t, lines %#v, error %v", found, lines, err)
+	}
+	if _, err := reader.ReadLines("source.go", 4, func(string) error { return nil }); err == nil {
+		t.Fatal("ReadLines accepted a line beyond its byte bound")
+	}
+}
+
 func TestFilesystemProjectReaderExcludesUnsupportedEntries(t *testing.T) {
 	root := testsupport.ShortTempDir(t)
 	if err := os.WriteFile(filepath.Join(root, "regular.md"), []byte("regular\n"), 0o644); err != nil {
