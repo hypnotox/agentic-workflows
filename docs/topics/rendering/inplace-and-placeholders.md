@@ -5,7 +5,7 @@
 
 In-place sections, authoring comments, part placeholders, and var and data hygiene.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `internal/vocabularycheck/**`, `templates/**`. Topic selectors: `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`. Both domain and topic selectors must match. Run `awf read topic rendering/inplace-and-placeholders --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`. Both domain and topic selectors must match. Run `awf read topic rendering/inplace-and-placeholders --coverage` for current applicable and owned paths and marker sites.
 
 In-place editable sections and their readback, authoring-comment stripping, convention-part placeholders, and var and data hygiene findings.
 

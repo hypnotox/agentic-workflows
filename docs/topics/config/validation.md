@@ -3,9 +3,9 @@
 <!-- awf:template-source templates/topics/topic.md.tmpl -->
 # Validation
 
-Config-tree validation rules: names, globs, targets, tags, anchoring.
+Config-tree validation rules: names, globs, targets, and anchoring.
 
-**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`, `internal/vocabularycheck/**`. Topic selectors: `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`, `internal/vocabularycheck/**`. Both domain and topic selectors must match. Run `awf read topic config/validation --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`. Topic selectors: `internal/config/**`, `internal/configspec/**`, `internal/pathglob/**`. Both domain and topic selectors must match. Run `awf read topic config/validation --coverage` for current applicable and owned paths and marker sites.
 
 Config-tree validation rules: names, path globs, targets, and anchoring.
 

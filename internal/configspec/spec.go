@@ -191,28 +191,28 @@ var keys = []Entry{
 	},
 	{
 		Path: "currentState.sources", Type: "list of {globs, marker, close} mappings", Default: "none",
-		Description:  "Source families scanned for qualified current-state relevance, advisory, and invariant proof markers during topic validation.",
-		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
+		Description:  "A current-state source family is scanned for named invariant proof markers during topic validation.",
+		Availability: "Consumed by current-state topic validation and the staged check.",
 	},
 	{
 		Path: "currentState.sources[].globs", Type: "string list", Default: "none",
-		Description:  "Non-empty, duplicate-free anchored path globs matched against slash-separated repository-relative paths for one current-state marker source.",
+		Description:  "Non-empty, duplicate-free anchored path globs matched against slash-separated repository-relative paths for one current-state proof-marker source.",
 		Availability: "Within each `currentState.sources` entry during topic validation.",
 	},
 	{
 		Path: "currentState.sources[].marker", Type: "string", Default: "none",
-		Description:  "Non-empty literal opening comment token that prefixes a qualified current-state marker line.",
+		Description:  "Non-empty literal opening comment token that prefixes a named current-state invariant proof marker.",
 		Availability: "Within each `currentState.sources` entry during topic validation.",
 	},
 	{
 		Path: "currentState.sources[].close", Type: "string", Default: "none: no close token stripped",
-		Description:  "Optional non-empty literal closing comment token stripped from a matched current-state marker line.",
+		Description:  "Optional non-empty literal closing comment token stripped from a matched current-state proof marker.",
 		Availability: "Within each `currentState.sources` entry during topic validation.",
 	},
 	{
 		Path: "currentState.testGlobs", Type: "string list", Default: "none",
 		Description:  "Duplicate-free anchored path globs identifying proof-eligible test files for current-state invariant claims.",
-		Availability: "Consumed by current-state topic validation, coverage, context, and the staged check.",
+		Availability: "Consumed by current-state topic validation and the staged check.",
 	},
 	{
 		Path: "audit.allowedScopes", Type: "list of scope entries (bare string, or {name, meaning})", Default: "accept any scope",

@@ -10,6 +10,7 @@ func source(path, front, body string) SourceFile {
 }
 
 // invariant: rendering/doc-outputs:pitfall-corpus-validated (TestCorpusContract)
+// invariant: config/configuration:no-active-tag-system (TestCorpusContract)
 func TestCorpusContract(t *testing.T) {
 	valid := source(SourceDir+"/alpha.md", "title: Alpha\ndomains: [rendering]\nrelated: [1]\n", "body\n")
 	corpus, err := Load([]SourceFile{valid})
@@ -43,6 +44,7 @@ func TestCorpusContract(t *testing.T) {
 		{"title-number", source(SourceDir+"/a.md", "title: 12\n", "body\n"), "string scalar"},
 		{"title-bool", source(SourceDir+"/a.md", "title: true\n", "body\n"), "string scalar"},
 		{"unknown", source(SourceDir+"/a.md", "title: A\nunknown: x\n", "body\n"), "field unknown"},
+		{"retired-tags", source(SourceDir+"/a.md", "title: A\ntags: [legacy]\n", "body\n"), "field tags"},
 		{"duplicate-key", source(SourceDir+"/a.md", "title: A\ntitle: B\n", "body\n"), "duplicate pitfall metadata key"},
 		{"missing-title", source(SourceDir+"/a.md", "domains: [x]\n", "body\n"), "required title"},
 		{"empty-title", source(SourceDir+"/a.md", "title: '  '\n", "body\n"), "title is empty"},

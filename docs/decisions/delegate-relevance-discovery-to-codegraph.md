@@ -137,3 +137,4 @@ Rendered workflow guidance continues to obey the existing publication-safe unset
 - 2026-08-29: Reapplied; operations: add `invariants/current-state-authority:uncovered-lists-unowned`
 
 - 2026-08-29: Amended; content-sha256: fdf3be3686c9640549c28cee22d7dbe7fdccccbf888d9ad75c6d2b439787b576
+- 2026-08-29: Applied; operations: update `code-design/dependency-composition:repository-extraction-owners`, update `tooling/audit-and-snapshots:managed-history-decode-horizon`

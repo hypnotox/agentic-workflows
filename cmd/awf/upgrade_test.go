@@ -18,6 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
@@ -450,6 +451,114 @@ func TestRunUpgradeRendersSuccessfulFinalJournalMutation(t *testing.T) {
 	if !strings.Contains(stdout.String(), "status: completed") {
 		t.Fatalf("upgrade output = %q", stdout.String())
 	}
+}
+
+func TestSchema47RelevanceMigrationRecoversAndConverges(t *testing.T) {
+	root := scaffoldProject(t)
+	configPath := config.ConfigPath(root)
+	legacyConfig, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	legacyConfig = append(legacyConfig, []byte("tags: {legacy: retained-only-for-migration}\ncontextIgnore: [docs/**]\n")...)
+	if err := os.WriteFile(configPath, legacyConfig, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	pitfallPath := filepath.Join(root, filepath.FromSlash(pitfall.SourceDir+"/legacy-relevance.md"))
+	legacyPitfall := []byte("---\ntitle: Legacy relevance\ntags: [legacy]\n---\nbody\n")
+	testsupport.WriteFile(t, pitfallPath, string(legacyPitfall))
+
+	lock, err := manifest.Load(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock.SchemaVersion = migrate.LiveSchemaFloor
+	if err := lock.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+
+	migration, err := upgradeMigration(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if len(migration.Mutations) != 2 || len(migration.Planned) != 1 {
+		t.Fatalf("migration = %#v", migration)
+	}
+	operations := make([]upgrade.Operation, 0, len(migration.Mutations)+1)
+	for _, mutation := range migration.Mutations {
+		prior, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(mutation.Path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		info, err := os.Stat(filepath.Join(root, filepath.FromSlash(mutation.Path)))
+		if err != nil {
+			t.Fatal(err)
+		}
+		operations = append(operations, upgrade.Operation{Path: mutation.Path, Prior: upgrade.Image{Present: true, Mode: uint32(info.Mode().Perm()), Content: prior}, Replacement: upgrade.Image{Present: true, Mode: uint32(mutation.Mode.Perm()), Content: mutation.Content}})
+	}
+	lockBytes, err := os.ReadFile(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lockInfo, err := os.Stat(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	finalLock := lock.Clone()
+	finalLock.SchemaVersion = migrate.Current()
+	finalBytes, err := finalLock.Marshal()
+	if err != nil {
+		t.Fatal(err)
+	}
+	operations = append(operations, upgrade.Operation{Path: upgrade.LockRel(), Prior: upgrade.Image{Present: true, Mode: uint32(lockInfo.Mode().Perm()), Content: lockBytes}, Replacement: upgrade.Image{Present: true, Mode: 0o644, Content: finalBytes}})
+	journal := upgrade.Journal{Version: upgrade.JournalVersion, Phase: "applying", FinalLockSHA256: fmt.Sprintf("%x", sha256.Sum256(finalBytes)), Operations: operations}
+	journalBytes, err := json.MarshalIndent(journal, "", "  ")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(upgradeJournalPath(root), append(journalBytes, '\n'), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	// The interrupted transaction applied one migration image but not its lock.
+	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(migration.Mutations[0].Path)), migration.Mutations[0].Content, migration.Mutations[0].Mode); err != nil {
+		t.Fatal(err)
+	}
+	if err := runRecover(testContext(t), root, io.Discard); err != nil {
+		t.Fatalf("recover interrupted relevance migration: %v", err)
+	}
+	if journalPresence(t, root) {
+		t.Fatal("journal remained after relevance migration recovery")
+	}
+	if restored, err := os.ReadFile(configPath); err != nil || !bytes.Equal(restored, legacyConfig) {
+		t.Fatalf("recovery config = %q, err=%v", restored, err)
+	}
+
+	if err := runUpgrade(testContext(t), root, io.Discard); err != nil {
+		t.Fatalf("upgrade relevance migration: %v", err)
+	}
+	migratedConfig, err := os.ReadFile(configPath)
+	if err != nil || bytes.Contains(migratedConfig, []byte("tags:")) || bytes.Contains(migratedConfig, []byte("contextIgnore:")) {
+		t.Fatalf("migrated config = %q, err=%v", migratedConfig, err)
+	}
+	if _, err := config.Load(filepath.Join(root, ".awf")); err != nil {
+		t.Fatalf("strict migrated config decode: %v", err)
+	}
+	migratedPitfall, err := os.ReadFile(pitfallPath)
+	if err != nil || bytes.Contains(migratedPitfall, []byte("tags:")) {
+		t.Fatalf("migrated pitfall = %q, err=%v", migratedPitfall, err)
+	}
+	if _, err := pitfall.Load([]pitfall.SourceFile{{Path: pitfall.SourceDir + "/legacy-relevance.md", Regular: true, Bytes: migratedPitfall}}); err != nil {
+		t.Fatalf("strict migrated pitfall decode: %v", err)
+	}
+	lock, err = manifest.Load(config.LockPath(root))
+	if err != nil || lock.SchemaVersion != migrate.Current() {
+		t.Fatalf("migrated lock schema = %d, err=%v", lock.SchemaVersion, err)
+	}
+	converged := snapshotUpgradeFixture(t, root)
+	if err := runUpgrade(testContext(t), root, io.Discard); err != nil {
+		t.Fatalf("converged upgrade: %v", err)
+	}
+	assertUpgradeFixtureUnchanged(t, root, converged)
 }
 
 func TestRunUpgradeRetiredLayoutDoesNotDecodeMalformedConfig(t *testing.T) {

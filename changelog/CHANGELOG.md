@@ -10,7 +10,7 @@ query a single version or a range.
 
 ### Breaking changes
 
-- Replace `awf context` with focused `awf read topic`, `awf read adr`, and `awf resolve topic` authority queries; CodeGraph now owns structural source navigation and Git owns changed-path selection.
+- Replace `awf context` with focused `awf read topic`, `awf read adr`, and `awf resolve topic` authority queries; CodeGraph now owns structural source navigation and Git owns changed-path selection. Remove live config and pitfall `tags`, `contextIgnore`, and `state:` or `touches-state:` markers; only `invariant:` remains as a proof-only marker boundary.
 
 - Pi implementation profiles no longer accept `allowCommits`; every implementation child is commit-disabled and selected-HEAD verification fails closed when either snapshot is unavailable or HEAD changes.
 
