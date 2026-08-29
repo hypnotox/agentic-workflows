@@ -82,3 +82,5 @@ feat(rendering): split assurance by semantic owner
 ## Notes
 
 Apply the plan-flexibility rule above when recording deviations. Delegated owners report material cross-owner revisions rather than editing the plan; the parent supplies the report to phase review and reconciles required plan changes with findings in one focused post-review settlement commit before checkpointing or later execution. Record implementation findings and any material route deviations here.
+
+- Phase 1 review settlement: both unchanged-HEAD failure branches now direct retry with the selected `verificationCheckout`; implementer and phase-transaction proofs pin every receipt field and selective-freshness predicate; independent cheap-operation batching moved from the inline-only route to the shared plan-flexibility route. The shared move is a material route correction required by the plan-route authority identified during review; it changes no protected boundary.

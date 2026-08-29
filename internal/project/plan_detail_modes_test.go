@@ -146,7 +146,9 @@ var planTaskDetailContractClauses = []string{
 var planFlexibilityClauses = []string{
 	"The protected-contract rule in the workflow document governs what a plan may not change.",
 	"The plan records the best known route at authoring time, not a binding implementation choreography.",
-	"The parent may merge, split, reorder, add, remove, or replace recorded route detail while the protected contract holds.",
+	"The parent may merge, split, reorder, add, remove, or replace recorded route detail while the protected contract holds",
+	"may batch independent cheap operations only when they safely share context",
+	"Batching never transfers transaction authority or weakens path confinement.",
 	"A path omitted from the plan is not alone a reason to stop, and a stale listed path need not be touched.",
 	"Reapproval is required only when the protected contract would change or an unresolved material decision appears.",
 	"Reconcile a Proposed plan only when another phase or reviewer could rely on stale material instructions.",
@@ -234,12 +236,14 @@ func TestPlanFlexibilityContract(t *testing.T) {
 		{"doctrine pointer removed", planFlexibilityClauses[0], "The plan alone defines what may not change."},
 		{"route made binding", planFlexibilityClauses[1], "The plan is binding implementation choreography."},
 		{"route revision forbidden", planFlexibilityClauses[2], "The parent must preserve every recorded route detail."},
-		{"path omission stops", planFlexibilityClauses[3], "A path omitted from the plan requires a stop."},
-		{"route change requires approval", planFlexibilityClauses[4], "Every route change requires reapproval."},
-		{"all cross-owner edits recorded", planFlexibilityClauses[5], "Reconcile a Proposed plan after every edit."},
-		{"all edits recorded", planFlexibilityClauses[6], "Every local edit requires a deviation record."},
-		{"delegated reconciliation removed", planFlexibilityClauses[7], "A delegated owner leaves material cross-owner revisions unreported."},
-		{"helper confinement removed", planFlexibilityClauses[8], "Route flexibility grants helpers scope and outcome authority."},
+		{"batching widened", planFlexibilityClauses[3], "may batch any operation regardless of context"},
+		{"batching transfers authority", planFlexibilityClauses[4], "Batching transfers transaction authority and weakens path confinement."},
+		{"path omission stops", planFlexibilityClauses[5], "A path omitted from the plan requires a stop."},
+		{"route change requires approval", planFlexibilityClauses[6], "Every route change requires reapproval."},
+		{"all cross-owner edits recorded", planFlexibilityClauses[7], "Reconcile a Proposed plan after every edit."},
+		{"all edits recorded", planFlexibilityClauses[8], "Every local edit requires a deviation record."},
+		{"delegated reconciliation removed", planFlexibilityClauses[9], "A delegated owner leaves material cross-owner revisions unreported."},
+		{"helper confinement removed", planFlexibilityClauses[10], "Route flexibility grants helpers scope and outcome authority."},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
 			mutated := strings.Replace(partial, mutation.from, mutation.to, 1)
