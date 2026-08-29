@@ -296,6 +296,8 @@ func TestImplementerAgent(t *testing.T) {
 		"actual result",
 		"ran after the last mutation to every overlapping path",
 		"Only a focused command explicitly reported as final-state is reusable",
+		"`final-state: true` or `final-state: false`",
+		"reruns any non-final or unverifiable result",
 		"completed and remaining work",
 		"separately routed blockers",
 		"generated-output or fixture evidence",
