@@ -95,11 +95,11 @@ func TestRunTopicHistoricalOnlyHumanText(t *testing.T) {
 	ctx := testContext(t)
 	root := topicCmdFixture(t)
 	claimID := "schedule/contracts:removed"
-	if err := runTopic(ctx, root, claimID, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
+	if err := runReadTopic(ctx, root, claimID, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("default removed-claim query = %v", err)
 	}
 	var out bytes.Buffer
-	if err := runTopic(ctx, root, claimID, true, true, true, &out); err != nil {
+	if err := runReadTopic(ctx, root, claimID, true, true, true, &out); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"identity: claim " + claimID, "historical-only: no active claim", "origin: legacy baseline not retained in active authority", "removed-by: ADR-0004 | Implemented | Remove legacy claim"} {
@@ -118,7 +118,7 @@ func TestRunTopicHumanTextAndFlags(t *testing.T) {
 	ctx := testContext(t)
 	root := topicCmdFixture(t)
 	var defaults bytes.Buffer
-	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, &defaults); err != nil {
+	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, false, &defaults); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"identity: topic schedule/contracts", "title: Scheduling", "identity: schedule/contracts:deterministic-order", "backing: test"} {
@@ -138,7 +138,7 @@ func TestRunTopicHumanTextAndFlags(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
-			if err := runTopic(ctx, root, "schedule/contracts", tc.history, tc.references, tc.coverage, &out); err != nil {
+			if err := runReadTopic(ctx, root, "schedule/contracts", tc.history, tc.references, tc.coverage, &out); err != nil {
 				t.Fatal(err)
 			}
 			if !strings.Contains(out.String(), tc.want) {
@@ -147,7 +147,7 @@ func TestRunTopicHumanTextAndFlags(t *testing.T) {
 		})
 	}
 	var claim bytes.Buffer
-	if err := runTopic(ctx, root, "schedule/contracts:stable-output", false, false, false, &claim); err != nil || !strings.Contains(claim.String(), "identity: claim schedule/contracts:stable-output") || strings.Contains(claim.String(), "deterministic-order") {
+	if err := runReadTopic(ctx, root, "schedule/contracts:stable-output", false, false, false, &claim); err != nil || !strings.Contains(claim.String(), "identity: claim schedule/contracts:stable-output") || strings.Contains(claim.String(), "deterministic-order") {
 		t.Fatalf("claim output: %v\n%s", err, claim.String())
 	}
 }
@@ -279,11 +279,11 @@ func TestPrintTopicOptionalHumanFields(t *testing.T) {
 func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	if err := runTopic(ctx, t.TempDir(), "bad", false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "expected <domain>/<topic>") {
+	if err := runReadTopic(ctx, t.TempDir(), "bad", false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "expected <domain>/<topic>") {
 		t.Fatalf("syntax error = %v", err)
 	}
 	var out bytes.Buffer
-	if err := runTopic(ctx, t.TempDir(), "schedule/contracts", false, false, false, &out); err != nil {
+	if err := runReadTopic(ctx, t.TempDir(), "schedule/contracts", false, false, false, &out); err != nil {
 		t.Fatalf("static = %v", err)
 	}
 	const staticGolden = "topic: static not inside an awf project\n\nreference:\n  description: Query active current-state topics and claims. Use history for direct ADR history, references for direct claim IDs, and coverage for scope and marker sites.\n"
@@ -294,11 +294,11 @@ func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf"), []byte("file"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, io.Discard); err == nil {
+	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, false, io.Discard); err == nil {
 		t.Fatal("stat fault accepted")
 	}
 	root = gateFixture(t, "99.0.0", migrate.Current())
-	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, io.Discard); err == nil {
+	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, false, io.Discard); err == nil {
 		t.Fatal("version gate accepted ahead lock")
 	}
 	root = t.TempDir()
@@ -307,36 +307,40 @@ func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	if err := lock.Save(filepath.Join(root, ".awf/awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	if err := runTopic(ctx, root, "schedule/contracts", false, false, false, io.Discard); err == nil {
+	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, false, io.Discard); err == nil {
 		t.Fatal("open error hidden")
 	}
 	root = topicCmdFixture(t)
-	if err := runTopic(ctx, root, "schedule/missing", true, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
+	if err := runReadTopic(ctx, root, "schedule/missing", true, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("missing topic = %v", err)
 	}
 }
 
-func TestTopicJSONIsRejectedBySpecAndDriver(t *testing.T) {
-	spec, ok := clispec.Lookup("topic")
+func TestReadTopicJSONIsRejectedBySpecAndDriver(t *testing.T) {
+	read, ok := clispec.Lookup("read")
 	if !ok {
-		t.Fatal("topic spec missing")
+		t.Fatal("read spec missing")
+	}
+	spec, ok := read.Child("topic")
+	if !ok {
+		t.Fatal("read topic spec missing")
 	}
 	if _, err := parseArgs(spec, []string{"schedule/contracts", "--json"}); err == nil || err.Error() != `awf topic: unknown flag "--json"` {
-		t.Fatalf("topic parser error = %v", err)
+		t.Fatalf("read topic parser error = %v", err)
 	}
 	if strings.Contains(strings.Join(spec.BoolFlags, " "), "--json") || strings.Contains(strings.Join(spec.ValueFlags, " "), "--json") {
-		t.Fatal("topic spec exposes --json")
+		t.Fatal("read topic spec exposes --json")
 	}
 	var help, stdout, stderr bytes.Buffer
-	if code := run([]string{"awf", "topic", "--help"}, &help, &stderr); code != 0 || stderr.Len() != 0 || strings.Contains(help.String(), "--json") {
-		t.Fatalf("topic help exit=%d stdout=%q stderr=%q", code, help.String(), stderr.String())
+	if code := run([]string{"awf", "read", "topic", "--help"}, &help, &stderr); code != 0 || stderr.Len() != 0 || strings.Contains(help.String(), "--json") {
+		t.Fatalf("read topic help exit=%d stdout=%q stderr=%q", code, help.String(), stderr.String())
 	}
-	if code := run([]string{"awf", "topic", "schedule/contracts", "--json"}, &stdout, &stderr); code != 2 || stdout.Len() != 0 || stderr.String() != "condition: awf: awf topic: unknown flag \"--json\"\n" {
-		t.Fatalf("topic --json exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	if code := run([]string{"awf", "read", "topic", "schedule/contracts", "--json"}, &stdout, &stderr); code != 2 || stdout.Len() != 0 || !strings.Contains(stderr.String(), `unknown flag "--json"`) {
+		t.Fatalf("read topic --json exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 }
 
-func TestRunTopicDispatchAndReadOnly(t *testing.T) {
+func TestRunReadTopicDispatchAndReadOnly(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	for _, tc := range []struct {
@@ -344,10 +348,10 @@ func TestRunTopicDispatchAndReadOnly(t *testing.T) {
 		code int
 		want string
 	}{
-		{[]string{"awf", "topic"}, 2, "unexpected arguments"},
-		{[]string{"awf", "topic", "bad"}, 2, "invalid topic selector"},
-		{[]string{"awf", "topic", "schedule/contracts", "extra"}, 2, "unexpected arguments"},
-		{[]string{"awf", "topic", "schedule/contracts", "--unknown"}, 2, "unknown flag"},
+		{[]string{"awf", "read", "topic"}, 2, "unexpected arguments"},
+		{[]string{"awf", "read", "topic", "bad"}, 2, "invalid topic selector"},
+		{[]string{"awf", "read", "topic", "schedule/contracts", "extra"}, 2, "unexpected arguments"},
+		{[]string{"awf", "read", "topic", "schedule/contracts", "--unknown"}, 2, "unknown flag"},
 	} {
 		var out, errOut bytes.Buffer
 		if code := run(tc.args, &out, &errOut); code != tc.code || !strings.Contains(errOut.String(), tc.want) {
@@ -355,12 +359,12 @@ func TestRunTopicDispatchAndReadOnly(t *testing.T) {
 		}
 	}
 	var help, errOut bytes.Buffer
-	if code := run([]string{"awf", "topic", "--help"}, &help, &errOut); code != 0 || !strings.Contains(help.String(), "command: awf topic") {
+	if code := run([]string{"awf", "read", "topic", "--help"}, &help, &errOut); code != 0 || !strings.Contains(help.String(), "command: awf read topic") {
 		t.Fatalf("help = %d %s %s", code, help.String(), errOut.String())
 	}
 	root := t.TempDir()
 	var static bytes.Buffer
-	if code := runFrom(root, []string{"awf", "topic", "schedule/contracts", "--coverage"}, &static, &errOut); code != 0 || !strings.Contains(static.String(), "static") {
+	if code := runFrom(root, []string{"awf", "read", "topic", "schedule/contracts", "--coverage"}, &static, &errOut); code != 0 || !strings.Contains(static.String(), "static") {
 		t.Fatalf("dispatch = %d %s %s", code, static.String(), errOut.String())
 	}
 
@@ -370,7 +374,7 @@ func TestRunTopicDispatchAndReadOnly(t *testing.T) {
 	beforeTree, beforeIndex := digestFiles(t, root), gitfixture.NativeWriteTree(t, fixture)
 	for _, args := range [][]string{{"schedule/contracts"}, {"schedule/contracts:stable-output"}, {"schedule/contracts", "--history", "--references", "--coverage"}} {
 		var out bytes.Buffer
-		if err := runTopic(ctx, root, args[0], strings.Contains(strings.Join(args, " "), "--history"), strings.Contains(strings.Join(args, " "), "--references"), strings.Contains(strings.Join(args, " "), "--coverage"), &out); err != nil {
+		if err := runReadTopic(ctx, root, args[0], strings.Contains(strings.Join(args, " "), "--history"), strings.Contains(strings.Join(args, " "), "--references"), strings.Contains(strings.Join(args, " "), "--coverage"), &out); err != nil {
 			t.Fatal(err)
 		}
 	}

@@ -5,7 +5,7 @@
 
 How topic inputs, claims, and their relevance and proof markers are parsed and resolved, and how coverage evaluation selects its checks.
 
-**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/invariants/**`, `internal/topic/**`. Topic selectors: `internal/topic/**`. Both domain and topic selectors must match. Run `awf topic invariants/topics-and-markers --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/invariants/**`, `internal/topic/**`. Topic selectors: `internal/topic/**`. Both domain and topic selectors must match. Run `awf read topic invariants/topics-and-markers --coverage` for current applicable and owned paths and marker sites.
 
 The topic package parses topic metadata and claim inputs, builds the claim corpus, and resolves relevance, touches, and proof markers. The claims below capture the current topic and marker contracts.
 
@@ -137,9 +137,9 @@ Backing: test
 
 ### `invariant: rendered-applicability-selectors-only`
 
-A rendered topic document's applicability paragraph carries only declarations: a global topic states repository-wide applicability and, when present, its bounded ownership selectors and owning-domain selectors; a scoped topic states its owning-domain and topic selectors. It states the applicable both-must-match ownership rule and a drilldown to `awf topic <id> --coverage`, never embeds current applicable or owned paths or marker sites, and degrades empty selector lists to coherent prose.
+A rendered topic document's applicability paragraph carries only declarations: a global topic states repository-wide applicability and, when present, its bounded ownership selectors and owning-domain selectors; a scoped topic states its owning-domain and topic selectors. It states the applicable both-must-match ownership rule and a drilldown to `awf read topic <id> --coverage`, never embeds current applicable or owned paths or marker sites, and degrades empty selector lists to coherent prose.
 Origin: ADR-0147
-Revised-by: ADR-0257
+Revised-by: ADR-0257, ADR-delegate-relevance-discovery-to-codegraph
 Backing: test
 
 ### `invariant: proof-marker-names-its-unit`

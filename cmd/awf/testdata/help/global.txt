@@ -15,7 +15,6 @@ help:
       adr | ADR lifecycle operations
       list | Show the catalog and configured domain inventory
       config | Describe config keys and vars (live state inside a project)
-      topic | Query current claims, history, references, and applicability
       new | Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall, doc}
       remove | Remove a configured domain
       upgrade | Migrate the .awf/ config tree or recover an interrupted upgrade

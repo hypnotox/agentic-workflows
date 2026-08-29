@@ -5,7 +5,7 @@
 
 How current-state claims are loaded, checked, and transitioned as the sole active authority.
 
-**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/invariants/**`, `internal/topic/**`. Topic selectors: `internal/currentstate/**`, `internal/invariants/**`. Both domain and topic selectors must match. Run `awf topic invariants/current-state-authority --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/invariants/**`, `internal/topic/**`. Topic selectors: `internal/currentstate/**`, `internal/invariants/**`. Both domain and topic selectors must match. Run `awf read topic invariants/current-state-authority --coverage` for current applicable and owned paths and marker sites.
 
 The currentstate package is the active authority engine: it loads topic claims and ADRs from a tree, checks their static and transition consistency, and reports invariant obligations. The claims below capture the current authority contracts.
 
@@ -51,7 +51,7 @@ Focused authority reads and invariant enforcement consume current-state topic cl
 Origin: ADR-0133
 Revised-by: ADR-delegate-relevance-discovery-to-codegraph
 Backing: unbacked
-Verify: In a fixture with claim provenance, one topic-declared invariant, and one ADR-only legacy invariant, awf read topic emits the active claim but no historical ADR, the invariant checker treats only the topic declaration as an active obligation, and awf topic <claim-id> --history emits the provenance ADR.
+Verify: In a fixture with claim provenance, one topic-declared invariant, and one ADR-only legacy invariant, awf read topic emits the active claim but no historical ADR, the invariant checker treats only the topic declaration as an active obligation, and awf read topic <claim-id> --history emits the provenance ADR.
 ### `invariant: currentstate-handshake-findings-unranked`
 
 A current-state claim-handshake finding carries no rank: every provenance and transition finding the current-state checker produces is blocking, and the check path reports each by message with no severity field. The ranked coverage and fan-out findings the project report also carries are a separate concern and keep their ranks.

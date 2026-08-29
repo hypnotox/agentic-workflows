@@ -192,9 +192,6 @@ func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]ha
 		"config": func(c *cmdCtx) handlerResult {
 			return handlerFailure(runConfig(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
 		},
-		"topic": func(c *cmdCtx) handlerResult {
-			return handlerFailure(runTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.stdout))
-		},
 		"new": func(c *cmdCtx) handlerResult {
 			// For a recognized child, sub is the kind and positionals are the child's
 			// args; for an absent or unrecognized child, the typed token (if any) is

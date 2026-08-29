@@ -125,3 +125,7 @@ Rendered workflow guidance continues to obey the existing publication-safe unset
 - 2026-08-29: Reapplied; operations: add `invariants/current-state-authority:uncovered-lists-unowned`
 
 - 2026-08-29: Reapplied; operations: add `invariants/current-state-authority:uncovered-lists-unowned`
+
+- 2026-08-29: Applied; operations: update `invariants/topics-and-markers:rendered-applicability-selectors-only`
+
+- 2026-08-29: Reapplied; operations: update `invariants/current-state-authority:current-state-sole-active-authority`

@@ -5,7 +5,7 @@
 
 How awf selects, owns, and wires volatile dependencies without speculative abstraction.
 
-**Applicability:** Global topic: applies repository-wide. It declares no bounded ownership selectors. Run `awf topic code-design/dependency-composition --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Global topic: applies repository-wide. It declares no bounded ownership selectors. Run `awf read topic code-design/dependency-composition --coverage` for current applicable and owned paths and marker sites.
 
 This topic governs dependencies introduced by new work and seams deliberately converted under its authority. Existing direct mechanism calls and package-global seams remain bounded future candidates until a concrete consumer brings them into scope; this authority does not require a wholesale conversion.
 

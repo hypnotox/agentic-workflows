@@ -9,10 +9,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
-func runReadTopic(ctx context.Context, root, selector string, history, references, coverage bool, stdout io.Writer) error {
-	return runTopic(ctx, root, selector, history, references, coverage, stdout)
-}
-
 func runReadADR(ctx context.Context, root, identity string, stdout io.Writer) error {
 	state, _, repo, err := openProjectOperation(ctx, root)
 	if err != nil {

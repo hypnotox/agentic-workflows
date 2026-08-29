@@ -12,19 +12,23 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
-// invariant: tooling/authority-queries:authority-read-projections (TestReadTopicCommandMatchesLegacyProjection)
-// invariant: tooling/authority-queries:authority-query-read-only (TestReadTopicCommandMatchesLegacyProjection)
-func TestReadTopicCommandMatchesLegacyProjection(t *testing.T) {
+// invariant: tooling/authority-queries:authority-read-projections (TestReadTopicCommandProjectionAndLegacyRejection)
+// invariant: tooling/authority-queries:authority-query-read-only (TestReadTopicCommandProjectionAndLegacyRejection)
+func TestReadTopicCommandProjectionAndLegacyRejection(t *testing.T) {
 	root := topicCmdFixture(t)
-	var legacy, read, stderr bytes.Buffer
-	if code := runFrom(root, []string{"awf", "topic", "schedule/contracts", "--history", "--references", "--coverage"}, &legacy, &stderr); code != 0 {
-		t.Fatalf("legacy exit=%d stderr=%q", code, stderr.String())
-	}
-	if code := runFrom(root, []string{"awf", "read", "topic", "schedule/contracts", "--history", "--references", "--coverage"}, &read, &stderr); code != 0 {
+	var out, stderr bytes.Buffer
+	if code := runFrom(root, []string{"awf", "read", "topic", "schedule/contracts", "--history", "--references", "--coverage"}, &out, &stderr); code != 0 {
 		t.Fatalf("read exit=%d stderr=%q", code, stderr.String())
 	}
-	if read.String() != legacy.String() {
-		t.Fatalf("read topic changed projection:\n%s\nwant:\n%s", read.String(), legacy.String())
+	for _, want := range []string{"identity: topic schedule/contracts", "revised-by: ADR-0003", "outgoing: schedule/related:direct", "marker: internal/schedule_test.go:2"} {
+		if !strings.Contains(out.String(), want) {
+			t.Errorf("read topic output missing %q:\n%s", want, out.String())
+		}
+	}
+	out.Reset()
+	stderr.Reset()
+	if code := runFrom(root, []string{"awf", "topic", "schedule/contracts"}, &out, &stderr); code != 2 || out.Len() != 0 || !strings.Contains(stderr.String(), `unknown command "topic"`) {
+		t.Fatalf("legacy route exit=%d stdout=%q stderr=%q", code, out.String(), stderr.String())
 	}
 }
 
@@ -91,8 +95,16 @@ func TestResolveTopicUncoveredCommand(t *testing.T) {
 	if code := runFrom(root, []string{"awf", "resolve", "topic", "--uncovered"}, &out, &stderr); code != 0 {
 		t.Fatalf("uncovered exit=%d stderr=%q", code, stderr.String())
 	}
-	if got := out.String(); !strings.Contains(got, "untracked/") || !strings.Contains(got, "tracked/") || !strings.Contains(got, "ignored/") || strings.Contains(got, "nested/") || strings.Contains(got, "prior") || strings.Contains(got, ".awf/efforts") {
-		t.Fatalf("uncovered output = %s", got)
+	got := out.String()
+	for _, entry := range []string{"tracked/", "untracked/", "ignored/"} {
+		if strings.Count(got, "\n    "+entry+"\n") != 1 {
+			t.Errorf("uncovered output does not contain exactly one collapsed %q entry:\n%s", entry, got)
+		}
+	}
+	for _, absent := range []string{"tracked/one.txt", "untracked/one.txt", "untracked/two.txt", "ignored/still-reported.txt", "nested/", "prior", ".awf/efforts"} {
+		if strings.Contains(got, absent) {
+			t.Errorf("uncovered output contains excluded or uncollapsed %q:\n%s", absent, got)
+		}
 	}
 	for _, args := range [][]string{{"awf", "resolve", "topic"}, {"awf", "resolve", "topic", "--uncovered", "untracked"}} {
 		out.Reset()

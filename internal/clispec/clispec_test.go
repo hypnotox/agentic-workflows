@@ -442,12 +442,8 @@ func TestLookup(t *testing.T) {
 	if _, ok := newCmd.Child("nope"); ok {
 		t.Error("new.Child(nope) should miss")
 	}
-	topic, ok := Lookup("topic")
-	if !ok || topic.MinPos != 1 || topic.MaxPos != 1 || topic.Gating != GatedInHandler {
-		t.Fatalf("topic spec = %#v, found %v", topic, ok)
-	}
-	if got := strings.Join(topic.BoolFlags, ","); got != "--history,--references,--coverage" {
-		t.Errorf("topic flags = %q", got)
+	if topic, ok := Lookup("topic"); ok {
+		t.Fatalf("legacy topic spec remains: %#v", topic)
 	}
 	effort, ok := Lookup("effort")
 	if !ok || len(effort.Children) != 8 {
@@ -497,7 +493,7 @@ func TestLookup(t *testing.T) {
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"render", "check", "read", "resolve", "audit", "effort", "adr", "list", "config", "topic", "new", "remove"}
+	want := []string{"render", "check", "read", "resolve", "audit", "effort", "adr", "list", "config", "new", "remove"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

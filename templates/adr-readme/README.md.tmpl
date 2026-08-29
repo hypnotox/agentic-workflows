@@ -189,8 +189,8 @@ Replace that placeholder, revise the summary and prose, add reviewed claims, the
 zero-claim shell renders but does not satisfy scoped coverage. Rendering writes the topic document
 and sorted domain topic index through the ordinary lock, drift, collision, and prune lifecycle.
 
-Query a topic with `awf topic <domain>/<topic>` or one claim with
-`awf topic <domain>/<topic>:<claim>`. Defaults return active state without provenance or reference
+Query a topic with `awf read topic <domain>/<topic>` or one claim with
+`awf read topic <domain>/<topic>:<claim>`. Defaults return active state without provenance or reference
 edges; `--history`, `--references`, and `--coverage` independently add direct detail. Queries are
 read-only and never traverse references transitively. A removed identity resolves only with
 `--history`, which reports ordered provenance and no active claim. A valid legacy-baseline removal

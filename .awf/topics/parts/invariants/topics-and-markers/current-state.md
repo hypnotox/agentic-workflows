@@ -128,9 +128,9 @@ Backing: test
 
 ### `invariant: rendered-applicability-selectors-only`
 
-A rendered topic document's applicability paragraph carries only declarations: a global topic states repository-wide applicability and, when present, its bounded ownership selectors and owning-domain selectors; a scoped topic states its owning-domain and topic selectors. It states the applicable both-must-match ownership rule and a drilldown to `awf topic <id> --coverage`, never embeds current applicable or owned paths or marker sites, and degrades empty selector lists to coherent prose.
+A rendered topic document's applicability paragraph carries only declarations: a global topic states repository-wide applicability and, when present, its bounded ownership selectors and owning-domain selectors; a scoped topic states its owning-domain and topic selectors. It states the applicable both-must-match ownership rule and a drilldown to `awf read topic <id> --coverage`, never embeds current applicable or owned paths or marker sites, and degrades empty selector lists to coherent prose.
 Origin: ADR-0147
-Revised-by: ADR-0257
+Revised-by: ADR-0257, ADR-delegate-relevance-discovery-to-codegraph
 Backing: test
 
 ### `invariant: proof-marker-names-its-unit`

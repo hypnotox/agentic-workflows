@@ -302,11 +302,6 @@ var Commands = []Command{
 		Help: Help{Usage: []string{"awf config [<key-or-var>]"}, Description: "Print the configuration reference: every config key, var, sidecar field, and", Details: []string{"data key with descriptions, defaults, and availability. Inside an awf project", "the output adds live state (current values and which catalog artifacts consume", "each var). Outside one, a static catalog-wide reference prints.", "With an argument, print just that entry (a config key path like", "audit.allowedScopes, a var name like gateCmd, a sidecar field like", "sidecar.dataDefaults, or a data key name)."}, Positionals: []HelpItem{{Name: "<key-or-var>", Description: "config key, var, sidecar field, or data key"}}},
 	},
 	{
-		Name: "topic", Summary: "Query current claims, history, references, and applicability", FullOnly: true,
-		BoolFlags: []string{"--history", "--references", "--coverage"}, MinPos: 1, MaxPos: 1, Gating: GatedInHandler,
-		Help: Help{Usage: []string{"awf topic <domain>/<topic>[:<claim>] [flags]"}, Description: "Query one current-state topic or claim, active by default. Default output includes", Details: []string{"title and summary for a topic plus claim types, prose, and backing state. Detail", "flags are independent and direct-only. A removed claim identity resolves only", "with --history and returns operation history without an active tombstone. Outside", "an awf project, a static command reference prints without version gating."}, Positionals: []HelpItem{{Name: "<domain>/<topic>[:<claim>]", Description: "current-state topic or claim identifier"}}, Options: []HelpItem{{Name: "--history", Description: "add direct Origin, Revised-by, and Removed-by ADR details"}, {Name: "--references", Description: "add sorted direct incoming and outgoing claim IDs"}, {Name: "--coverage", Description: "add separate domain/topic scopes, current matches, and marker sites"}}},
-	},
-	{
 		Name: "new", Summary: "Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall, doc}",
 		MaxPos: -1, Gating: GatedInHandler,
 		Help: Help{

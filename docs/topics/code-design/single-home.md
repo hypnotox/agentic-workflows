@@ -5,7 +5,7 @@
 
 One implementation per shared concern, and the coverage-gate posture that protects it.
 
-**Applicability:** Global topic: applies repository-wide. It declares no bounded ownership selectors. Run `awf topic code-design/single-home --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Global topic: applies repository-wide. It declares no bounded ownership selectors. Run `awf read topic code-design/single-home --coverage` for current applicable and owned paths and marker sites.
 
 This topic governs concerns introduced by new work and forks deliberately converted under its authority. Existing parallel implementations remain bounded future candidates until a conversion brings them into scope; this authority does not require a wholesale sweep.
 

@@ -77,7 +77,7 @@ func TestApplicabilitySummarySelectorsOnly(t *testing.T) {
 	if !strings.Contains(model.Applicability, "Owning domain selectors: `x/pkg/**`.") ||
 		!strings.Contains(model.Applicability, "Topic selectors: `x/**`.") ||
 		!strings.Contains(model.Applicability, "Both domain and topic selectors must match.") ||
-		!strings.Contains(model.Applicability, "Run `awf topic d/z --coverage` for current applicable and owned paths and marker sites.") {
+		!strings.Contains(model.Applicability, "Run `awf read topic d/z --coverage` for current applicable and owned paths and marker sites.") {
 		t.Fatalf("selectors-only form missing: %s", model.Applicability)
 	}
 	if strings.Contains(model.Applicability, "Current matched paths") || strings.Contains(model.Applicability, "Marker sites") || strings.Contains(model.Applicability, "x/pkg/a.go") {
@@ -88,7 +88,7 @@ func TestApplicabilitySummarySelectorsOnly(t *testing.T) {
 		!strings.Contains(global.Applicability, "Bounded ownership selectors: `x/owned/**`.") ||
 		!strings.Contains(global.Applicability, "Owning domain selectors: `x/**`.") ||
 		!strings.Contains(global.Applicability, "Both ownership and owning-domain selectors must match.") ||
-		!strings.Contains(global.Applicability, "Run `awf topic d/g --coverage`") {
+		!strings.Contains(global.Applicability, "Run `awf read topic d/g --coverage`") {
 		t.Fatalf("combined global variant = %s", global.Applicability)
 	}
 	globalOnly := BuildTopicModel(Topic{ID: TopicID{"d", "global-only"}, Metadata: Metadata{Title: "Global only", Summary: "G.", Applies: "global"}}, []string{"x/**"}, MarkerIndex{}, nil)

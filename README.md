@@ -137,7 +137,6 @@ Punctuation findings are advisory Warnings with zero exit.
 | `awf adr <subcommand>` | ADR lifecycle operations |
 | `awf list [<kind>]` | Show the catalog and configured domain inventory |
 | `awf config [<key-or-var>]` | Describe config keys and vars (live state inside a project) |
-| `awf topic <domain>/<topic>[:<claim>] [flags]` | Query current claims, history, references, and applicability |
 | `awf new <kind> <args>` | Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall, doc} |
 | `awf remove domain <name>` | Remove a configured domain |
 | `awf upgrade [--recover]` | Migrate the .awf/ config tree or recover an interrupted upgrade |
