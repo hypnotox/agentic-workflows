@@ -205,7 +205,7 @@ func checkStagedProject(state *ProjectState, ctx context.Context) (CurrentStateR
 	return currentstatecoord.CheckStaged(state.Root(), testRepo(state), ctx)
 }
 func checkStagedDriftProject(state *ProjectState, ctx context.Context) ([]manifest.Drift, error) {
-	prep, err := PrepareStagedContextState(ctx, state.Root())
+	prep, err := PrepareStagedOutputState(ctx, state.Root())
 	if err != nil {
 		return nil, err
 	}

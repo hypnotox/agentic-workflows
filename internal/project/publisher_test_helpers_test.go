@@ -76,7 +76,7 @@ func generateConfigReference(p renderInputs, _ []RenderedFile, _ map[string]bool
 	return nil, false, nil
 }
 func CheckStagedDriftRoot(ctx context.Context, root string) ([]manifest.Drift, error) {
-	prep, err := PrepareStagedContextState(ctx, root)
+	prep, err := PrepareStagedOutputState(ctx, root)
 	if err != nil {
 		return nil, err
 	}

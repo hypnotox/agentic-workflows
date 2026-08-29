@@ -15,7 +15,6 @@ help:
       adr | ADR lifecycle operations
       list | Show the catalog and configured domain inventory
       config | Describe config keys and vars (live state inside a project)
-      context | Orient by request with compact current-state impact reports
       topic | Query current claims, history, references, and applicability
       new | Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall, doc}
       remove | Remove a configured domain

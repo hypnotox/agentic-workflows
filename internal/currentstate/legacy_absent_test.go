@@ -1,14 +1,12 @@
 package currentstate_test
 
 import (
-	"io/fs"
 	"path/filepath"
 	"regexp"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
-	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // legacyAuthorityIdents are the identifiers of the deleted ADR-derived authority
@@ -86,77 +84,3 @@ func productionGoSources(t *testing.T, fn func(path, body string)) int {
 // The companion behavioral assertion that the
 // retired decision output is no longer planned lives in internal/project, where
 // the output plan is reachable without an import cycle.
-func TestLegacyAuthorityAbsent(t *testing.T) {
-	sawContext := false
-	goSeen := productionGoSources(t, func(path, body string) {
-		for _, w := range bannedWholeWords(body, legacyAuthorityIdents) {
-			t.Errorf("%s reintroduces the retired authority identifier %q; current-state authority reads topic claims, not the ADR supersession model (ADR-0133)", path, w)
-		}
-		if strings.Contains(body, bridgeImportPath) {
-			t.Errorf("%s imports the deleted internal/bridge package; the final binary carries no cross-schema inventory, readiness, or approval parser (ADR-0136)", path)
-		}
-		if strings.HasSuffix(path, contextGoSuffix) {
-			sawContext = true
-			for _, w := range bannedWholeWords(body, legacyContextFields) {
-				t.Errorf("context.go carries the retired ADR-derived context field %q; ADR-0134 context selects topic claims, not tag/relation/pitfall/plan expansion", w)
-			}
-		}
-		if strings.Contains(body, migrationApprovalPath) {
-			t.Errorf("%s names the retired migration approval file; permanent locks and the generic journal are the only live upgrade authority (ADR-0136)", path)
-		}
-	})
-	if goSeen < 60 {
-		t.Fatalf("inspected only %d production Go file(s) under internal/ and cmd/; the scan is not reaching the tree", goSeen)
-	}
-	if !sawContext {
-		t.Fatal(contextGoSuffix + " was not scanned - has the context producer moved?")
-	}
-	tmplSeen := 0
-	err := fs.WalkDir(templates.FS, ".", func(path string, d fs.DirEntry, err error) error {
-		if err != nil {
-			return err
-		}
-		if d.IsDir() {
-			return nil
-		}
-		b, rerr := fs.ReadFile(templates.FS, path)
-		if rerr != nil {
-			return rerr
-		}
-		tmplSeen++
-		for _, w := range bannedWholeWords(string(b), legacyAuthorityIdents) {
-			t.Errorf("template %s reintroduces the retired authority identifier %q (ADR-0133)", path, w)
-		}
-		return nil
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if tmplSeen < 40 {
-		t.Fatalf("inspected only %d embedded template file(s); the scan is not reaching the FS", tmplSeen)
-	}
-}
-
-// TestLegacyAuthorityScannerFires proves the pure matcher the tree scan relies on
-// actually catches a planted token and does not fire on ordinary prose, so
-// TestLegacyAuthorityAbsent cannot pass vacuously.
-func TestLegacyAuthorityScannerFires(t *testing.T) {
-	if got := bannedWholeWords("x := adr.SupersessionRef{}\ncorpus.Chains()", legacyAuthorityIdents); len(got) != 2 {
-		t.Errorf("planted tokens = %v, want SupersessionRef and Chains", got)
-	}
-	// Whole-word matching does not fire on a substring or a differently-cased
-	// word: the live adr.ADR.Related field and lowercase prose stay legal.
-	all := append(append([]string{}, legacyAuthorityIdents...), legacyContextFields...)
-	for _, clean := range []string{"the retirers list", "unRelated code", "chainsaw", "// background material"} {
-		if got := bannedWholeWords(clean, all); len(got) != 0 {
-			t.Errorf("%q wrongly flagged %v", clean, got)
-		}
-	}
-	// A historical ADR path is never a scan root: the retired model is discussed
-	// in docs/decisions prose, which stays legal because it is history.
-	for _, root := range []string{filepath.Join("..", "..", "internal"), filepath.Join("..", "..", "cmd")} {
-		if strings.Contains(root, "decisions") || strings.Contains(root, "plans") {
-			t.Errorf("scan root %q would sweep historical ADRs or plans", root)
-		}
-	}
-}

@@ -1,4 +1,4 @@
-package topic
+package currentstate
 
 import (
 	"os"
@@ -99,9 +99,8 @@ func unownedPackages(domainPaths map[string][]string, files []string) []string {
 // TestProductionPackagesAreDomainOwned proves the claim: every production
 // package under internal/ and cmd/ is matched by at least one domain's paths,
 // so a package omitted from domain ownership fails here rather than degrading
-// silently to unowned (context coverage is advisory and exits zero over an
-// unowned package).
-// invariant: tooling/context-and-topic:production-packages-domain-owned (TestProductionPackagesAreDomainOwned)
+// silently to unowned.
+// invariant: invariants/current-state-authority:production-packages-domain-owned (TestProductionPackagesAreDomainOwned)
 func TestProductionPackagesAreDomainOwned(t *testing.T) {
 	root := repoRootForOwnership(t)
 	cfg, err := config.Load(filepath.Join(root, config.DirName))

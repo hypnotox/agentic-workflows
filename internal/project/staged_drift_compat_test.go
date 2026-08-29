@@ -14,7 +14,7 @@ import (
 
 // CheckStagedDrift preserves legacy test fixtures while production consumers
 // use the owner-classified semantic result directly.
-func CheckStagedDrift(prep *ContextPreparation, plan outputplan.Plan) ([]manifest.Drift, error) {
+func CheckStagedDrift(prep *OutputPreparation, plan outputplan.Plan) ([]manifest.Drift, error) {
 	result, err := CheckStagedDriftResult(prep, plan)
 	if err != nil {
 		return nil, err

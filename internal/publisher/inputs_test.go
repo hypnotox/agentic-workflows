@@ -323,13 +323,10 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 			}}},
 		}},
 	}}
-	focused := ContextPreparation{adrs: prepared.adrs, topics: prepared.topics, plans: prepared.plans, declarations: prepared.Plan().Declarations()}
 
 	beforeADRs, beforePitfalls, beforeTopics := prepared.ADRs(), prepared.Pitfalls(), prepared.Topics()
 	beforeSkills, beforePlans, beforePlan := prepared.EffectiveSkills(), prepared.Plans(), prepared.Plan()
 	beforeVocabulary := prepared.Vocabulary()
-	beforeFocusedADRs, beforeFocusedTopics := focused.ADRs(), focused.Topics()
-	beforeFocusedPlans, beforeFocusedDeclarations := focused.Plans(), focused.Declarations()
 
 	projectedADRs := prepared.ADRs().All()
 	projectedADRs[0].Domains[0] = "mutated"
@@ -369,30 +366,6 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 	projectedPlans[0].Phases[0].Tasks[0].Fields.Paths[0].Value = "mutated"
 	projectedPlans[0].Phases[0].Tasks[0].Fields.Applying[0].ADR = "mutated"
 	projectedPlans[0].Phases[0].Tasks[0].Fields.Context[0].ADR = "mutated"
-
-	focusedADRs := focused.ADRs().All()
-	focusedADRs[0].Sections["Decision"] = "mutated"
-	focusedADRs[0].History[0].Operations[0].ID = "mutated"
-	focusedTopics := focused.Topics()
-	focusedTopics.DomainPaths["rendering"][0] = "mutated"
-	focusedTopics.All()[0].Claims[0].RevisedBy = append(focusedTopics.All()[0].Claims[0].RevisedBy, "mutated")
-	focusedPlans := focused.Plans()
-	focusedPlans[0].Source[0] = 'X'
-	focusedPlans[0].Phases[0].Tasks[0].Fields.Paths[0].Value = "mutated"
-	focusedDeclarations := focused.Declarations()
-	if len(focusedDeclarations) == 0 {
-		t.Fatal("focused preparation has no declarations to test")
-	}
-	focusedDeclarations[0] = focusedDeclarations[len(focusedDeclarations)-1]
-	for _, values := range [][]string{focusedDeclarations[0].Declarers()} {
-		if len(values) > 0 {
-			values[0] = "mutated"
-		}
-	}
-	inputs := focusedDeclarations[0].Inputs()
-	if len(inputs) > 0 {
-		inputs[0] = inputs[len(inputs)-1]
-	}
 
 	projectedVocabulary := prepared.Vocabulary()
 	projectedVocabulary.Authored[0].Domains[0] = "mutated"
@@ -442,17 +415,13 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 	}
 
 	for name, values := range map[string][2]any{
-		"ADRs":                 {prepared.ADRs(), beforeADRs},
-		"Pitfalls":             {prepared.Pitfalls(), beforePitfalls},
-		"Topics":               {prepared.Topics(), beforeTopics},
-		"EffectiveSkills":      {prepared.EffectiveSkills(), beforeSkills},
-		"Plans":                {prepared.Plans(), beforePlans},
-		"Plan":                 {prepared.Plan(), beforePlan},
-		"Vocabulary":           {prepared.Vocabulary(), beforeVocabulary},
-		"Context ADRs":         {focused.ADRs(), beforeFocusedADRs},
-		"Context Topics":       {focused.Topics(), beforeFocusedTopics},
-		"Context Plans":        {focused.Plans(), beforeFocusedPlans},
-		"Context Declarations": {focused.Declarations(), beforeFocusedDeclarations},
+		"ADRs":            {prepared.ADRs(), beforeADRs},
+		"Pitfalls":        {prepared.Pitfalls(), beforePitfalls},
+		"Topics":          {prepared.Topics(), beforeTopics},
+		"EffectiveSkills": {prepared.EffectiveSkills(), beforeSkills},
+		"Plans":           {prepared.Plans(), beforePlans},
+		"Plan":            {prepared.Plan(), beforePlan},
+		"Vocabulary":      {prepared.Vocabulary(), beforeVocabulary},
 	} {
 		if !reflect.DeepEqual(values[0], values[1]) {
 			t.Errorf("mutating the %s projection changed a second projection or Publisher-owned state", name)

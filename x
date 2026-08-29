@@ -42,10 +42,10 @@ run_deadcode_gate() {
   go tool deadcode -json ./... | go run ./cmd/deadcodecheck
 }
 
-go_shard_0='changelog cmd/awf cmd/deadcodecheck cmd/repoaudit internal/audit internal/checkresult internal/commitpolicy internal/configspec internal/contextq internal/currentstatecoord internal/frontmatter internal/initop internal/memorycite internal/pitfall internal/presentation internal/prosegate internal/render internal/snapshot internal/testsupport/fsfixture internal/upgrade tools/pi-extension-test/lockrun'
-go_shard_1='cmd/mutants cmd/testperformance internal/catalog internal/clispec internal/config internal/contextdelivery internal/contextspill internal/domainop internal/execution internal/generatedcheck internal/initspec internal/migrate internal/pitfallcheck internal/project internal/repositorycheck internal/testperformance internal/testsupport/gitfixture internal/vocabularycheck'
-go_shard_2='cmd/contextspilllog cmd/pincheck cmd/versioncheck internal/changelog internal/commitgateop internal/configcheck internal/contextinput internal/coverage internal/effort internal/filepublication internal/git internal/localdocop internal/outputplan internal/plan internal/projectlicense internal/publisher internal/referencecheck internal/resident internal/testsupport internal/topic internal/worktree'
-go_shard_3='cmd/covercheck cmd/releasecheck cmd/testselection internal/adr internal/checkop internal/commitmsg internal/configop internal/contextop internal/currentstate internal/effortop internal/evals internal/filesystem internal/glossary internal/manifest internal/pathglob internal/plancheck internal/projectstate internal/refs internal/severity internal/testselection internal/testsupport/cmd/testtmpclean internal/topicop templates'
+go_shard_0='changelog cmd/awf cmd/deadcodecheck cmd/repoaudit internal/audit internal/checkresult internal/commitpolicy internal/configspec internal/currentstatecoord internal/frontmatter internal/initop internal/memorycite internal/pitfall internal/presentation internal/prosegate internal/render internal/snapshot internal/testsupport/fsfixture internal/upgrade tools/pi-extension-test/lockrun'
+go_shard_1='cmd/mutants cmd/testperformance internal/catalog internal/clispec internal/config internal/domainop internal/execution internal/generatedcheck internal/initspec internal/migrate internal/pitfallcheck internal/project internal/repositorycheck internal/testperformance internal/testsupport/gitfixture internal/vocabularycheck'
+go_shard_2='cmd/pincheck cmd/versioncheck internal/changelog internal/commitgateop internal/configcheck internal/coverage internal/effort internal/filepublication internal/git internal/localdocop internal/outputplan internal/plan internal/projectlicense internal/publisher internal/referencecheck internal/resident internal/testsupport internal/topic internal/worktree'
+go_shard_3='cmd/covercheck cmd/releasecheck cmd/testselection internal/adr internal/checkop internal/commitmsg internal/configop internal/currentstate internal/effortop internal/evals internal/filesystem internal/glossary internal/manifest internal/pathglob internal/plancheck internal/projectstate internal/refs internal/severity internal/testselection internal/testsupport/cmd/testtmpclean internal/topicop templates'
 
 go_shard_index() {
   local package="$1"
@@ -599,25 +599,6 @@ case "$cmd" in
     ;;
   check)
     ./awf check "$@"
-    if ! go run ./cmd/contextspilllog --check-log --root "$PWD"; then
-      echo "check: warning: context spill advisory inspection failed; resolve or promote the issue before removing the log" >&2
-    fi
-    ;;
-  context)
-    capture="$(mktemp)"
-    cleanup_paths+=("$capture")
-    if ./awf context "$@" >"$capture"; then
-      status=0
-    else
-      status=$?
-    fi
-    cat "$capture"
-    if [ "$status" -eq 0 ]; then
-      if ! go run ./cmd/contextspilllog --root "$PWD" --notice-file "$capture" -- ./x context "$@"; then
-        echo "context: warning: spill delivered but local observability logging failed" >&2
-      fi
-    fi
-    exit "$status"
     ;;
   pi-test)
     action="${1:-run}"
@@ -659,7 +640,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [full] [timings] [--range <base> <head>]|lint|fmt|test|test-affected [--staged|--range <base>..<head>]|test-performance <validate|report> [--machine] [record]|clean-test-tmp [--all]|deadcode|render|check|context|pi-test <run>|build|install|mutants|covercheck-mutants [--select-staged|--select-range <base> <head>]|audit-local>" >&2
+    echo "usage: ./x <gate [full] [timings] [--range <base> <head>]|lint|fmt|test|test-affected [--staged|--range <base>..<head>]|test-performance <validate|report> [--machine] [record]|clean-test-tmp [--all]|deadcode|render|check|pi-test <run>|build|install|mutants|covercheck-mutants [--select-staged|--select-range <base> <head>]|audit-local>" >&2
     exit 2
     ;;
 esac

@@ -59,25 +59,6 @@ func TestReadPlanSpec(t *testing.T) {
 	}
 }
 
-func TestContextHumanOnlyFacetSpec(t *testing.T) {
-	context, ok := Lookup("context")
-	if !ok {
-		t.Fatal("missing context")
-	}
-	if strings.Contains(strings.Join(context.BoolFlags, " "), "--json") || !strings.Contains(strings.Join(context.ValueFlags, " "), "--show") || !strings.Contains(strings.Join(context.Repeatable, " "), "--show") {
-		t.Fatalf("context spec=%#v", context)
-	}
-	for _, text := range []string{"tier 0", "tier-1", "relationships", "invariants", "all-rules", "all eight facets", "Only artifacts", "8,192", "caller", "JSON is not supported"} {
-		if !strings.Contains(helpText(context), text) {
-			t.Errorf("help missing %q", text)
-		}
-	}
-}
-
-// Every command and child carries non-empty identifying metadata, and top-level
-// names are unique.
-// invariant: tooling/cli:cli-creation-and-inventory (TestConfigurationSurfaceGrammar)
-// invariant: tooling/cli:pitfall-scaffold (TestConfigurationSurfaceGrammar)
 func TestConfigurationSurfaceGrammar(t *testing.T) {
 	for _, retired := range []string{"enable", "disable", "target"} {
 		if _, ok := Lookup(retired); ok {
@@ -516,7 +497,7 @@ func TestLookup(t *testing.T) {
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"render", "check", "read", "resolve", "audit", "effort", "adr", "list", "config", "context", "topic", "new", "remove"}
+	want := []string{"render", "check", "read", "resolve", "audit", "effort", "adr", "list", "config", "topic", "new", "remove"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

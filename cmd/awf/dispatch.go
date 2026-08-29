@@ -192,9 +192,6 @@ func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]ha
 		"config": func(c *cmdCtx) handlerResult {
 			return handlerFailure(runConfig(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
 		},
-		"context": func(c *cmdCtx) handlerResult {
-			return handlerFailure(runContext(c.ctx, c.root, c.inv.positionals, c.inv.bools["--staged"], c.inv.values["--range"], c.inv.bools["--uncovered"], c.inv.bools["--full"], c.inv.multi["--show"], c.stdout))
-		},
 		"topic": func(c *cmdCtx) handlerResult {
 			return handlerFailure(runTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.stdout))
 		},

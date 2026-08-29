@@ -13,7 +13,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/contextinput"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -406,32 +405,6 @@ func syncReportProject(state *ProjectState) ([]Backup, []string, error) {
 	cfg := testConfig(state)
 	result, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).SyncLeased(context.Background(), nil)
 	return result.Backups(), result.Pruned(), err
-}
-func contextStateProject(state *ProjectState, ctx context.Context) (contextinput.Input, error) {
-	repo, _, err := awfgit.OpenContaining(state.Root())
-	if err != nil {
-		return contextinput.Input{}, err
-	}
-	prep, err := currentstatecoord.PrepareWorkingContext(state.OutputState(), repo, ctx)
-	if err != nil {
-		return contextinput.Input{}, err
-	}
-	prepared, err := New(prep.State, prep.Config, prep.Reader, project.Version).Prepare()
-	if err != nil {
-		return contextinput.Input{}, err
-	}
-	return currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations()), nil
-}
-func StagedContextState(ctx context.Context, root string) (contextinput.Input, error) {
-	prep, err := currentstatecoord.PrepareStagedContext(ctx, root)
-	if err != nil {
-		return contextinput.Input{}, err
-	}
-	prepared, err := New(prep.State, prep.Config, prep.Reader, project.Version).Prepare()
-	if err != nil {
-		return contextinput.Input{}, err
-	}
-	return currentstatecoord.CompleteContext(prep, prepared.ADRs(), prepared.Topics(), prepared.Plans(), prepared.Plan().Declarations()), nil
 }
 func plannedOutputsProject(state *ProjectState) ([]string, error) {
 	plan, err := New(lowerForConfig(state.OutputState(), testConfig(state)), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Plan()

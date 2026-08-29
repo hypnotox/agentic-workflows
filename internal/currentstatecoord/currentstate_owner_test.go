@@ -10,11 +10,8 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
-	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -27,63 +24,6 @@ func ownerTree(t *testing.T, files ...snapshot.File) *snapshot.Tree {
 		t.Fatal(err)
 	}
 	return tree
-}
-
-func contextState(root string) *projectstate.ProjectState {
-	return projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, ""), false, config.Facts{}, catalog.Standard, catalog.Standard, nil)
-}
-
-func TestContextPreparationUsesSnapshotConfigForOperationState(t *testing.T) {
-	root := t.TempDir()
-	callerConfig := &config.Config{Profile: catalog.ProfileFull}
-	callerFacts, err := config.NewFacts(callerConfig)
-	if err != nil {
-		t.Fatal(err)
-	}
-	caller := projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, "resident"), true, callerFacts, catalog.Standard, catalog.Standard, nil)
-	selectedConfig := &config.Config{Profile: catalog.ProfileCore}
-	prep, err := newContextPreparation(caller, selectedConfig, ownerTree(t), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if prep.State.Config().Profile != catalog.ProfileCore {
-		t.Fatalf("operation state profile = %q, want selected snapshot core", prep.State.Config().Profile)
-	}
-	fullOnlyChecked := false
-	for name, spec := range catalog.Standard.Skills {
-		if spec.FullOnly {
-			fullOnlyChecked = true
-			if _, found := prep.State.Catalog().Skills[name]; found {
-				t.Fatalf("operation state retained full-only caller skill %q", name)
-			}
-			break
-		}
-	}
-	if !fullOnlyChecked {
-		t.Fatal("standard catalog has no full-only skill to falsify caller selection")
-	}
-	if prep.State.Roots() != caller.Roots() || prep.State.Nested() != caller.Nested() || !reflect.DeepEqual(prep.State.Targets(), caller.Targets()) {
-		t.Fatalf("operation state changed stable caller facts: %#v", prep.State)
-	}
-	invalidConfig := &config.Config{Profile: catalog.ProfileFull, Vars: map[string]any{"unsupported": make(chan int)}}
-	if _, err := newContextPreparation(caller, invalidConfig, ownerTree(t), nil); err == nil || !strings.Contains(err.Error(), "snapshot config facts") {
-		t.Fatalf("invalid selected snapshot facts error = %v", err)
-	}
-}
-
-func TestContextPreparationLockIsDefensive(t *testing.T) {
-	root := t.TempDir()
-	lock := &manifest.Lock{Files: map[string]manifest.Entry{"generated": {}}}
-	prep, err := newContextPreparation(contextState(root), &config.Config{Profile: catalog.ProfileFull}, ownerTree(t), lock)
-	if err != nil {
-		t.Fatal(err)
-	}
-	first := prep.Lock()
-	first.Files["mutated"] = manifest.Entry{}
-	fresh := prep.Lock()
-	if _, ok := fresh.Files["mutated"]; ok {
-		t.Fatalf("context preparation lock aliases caller: %#v", fresh)
-	}
 }
 
 func writeContextFile(t *testing.T, root, path, contents string) {
@@ -109,267 +49,36 @@ func TestWorkingCurrentStateRequiresConfigInSelectedTree(t *testing.T) {
 	}
 }
 
-func TestPrepareWorkingContextSelectedUniverseErrors(t *testing.T) {
-	ctx := context.Background()
-	if _, err := PrepareWorkingContext(nil, nil, ctx); err == nil || !strings.Contains(err.Error(), "missing project state") {
-		t.Fatalf("nil state error = %v", err)
-	}
-
-	outside := t.TempDir()
-	if _, err := PrepareWorkingContext(contextState(outside), nil, ctx); err == nil || !strings.Contains(err.Error(), "working snapshot has no .awf/config.yaml") {
-		t.Fatalf("outside repository filesystem fallback error = %v", err)
-	}
-	writeContextFile(t, outside, ".awf/config.yaml", "prefix: x\nprofile: full\nintegrationBranch: main\n")
-	canceled, cancel := context.WithCancel(ctx)
-	cancel()
-	if _, err := PrepareWorkingContext(contextState(outside), nil, canceled); !errors.Is(err, context.Canceled) {
-		t.Fatalf("filesystem fallback cancellation error = %v", err)
-	}
-
-	for _, tc := range []struct {
-		name, config, lock, want string
-	}{
-		{name: "missing config", want: "working snapshot has no .awf/config.yaml"},
-		{name: "malformed lock", config: "prefix: x\nprofile: core\nintegrationBranch: main\n", lock: "not: [valid", want: "parse snapshot lock"},
-		{name: "malformed config", config: "not: [valid", want: "yaml:"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			fixture := gitfixture.InitRepo(t)
-			if tc.config != "" {
-				writeContextFile(t, fixture.Root(), ".awf/config.yaml", tc.config)
-			}
-			if tc.lock != "" {
-				writeContextFile(t, fixture.Root(), ".awf/awf.lock", tc.lock)
-			} else if tc.config != "" {
-				writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
-			}
-			repo, err := awfgit.Open(fixture.Root())
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := PrepareWorkingContext(contextState(fixture.Root()), repo, ctx); err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("PrepareWorkingContext() error = %v, want %q", err, tc.want)
-			}
-		})
-	}
-
-	fixture := gitfixture.InitRepo(t)
-	if err := os.Mkdir(filepath.Join(fixture.Root(), ".awf"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink("elsewhere", filepath.Join(fixture.Root(), ".awf", "config.yaml")); err != nil {
-		t.Fatal(err)
-	}
-	writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
-	repo, err := awfgit.Open(fixture.Root())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := PrepareWorkingContext(contextState(fixture.Root()), repo, ctx); err == nil || !strings.Contains(err.Error(), "not a scannable file") {
-		t.Fatalf("unscannable config error = %v", err)
-	}
-}
-
-func TestPrepareFocusedWorkingContextValidationAndSelectedUniverseErrors(t *testing.T) {
-	ctx := context.Background()
-	if _, err := PrepareFocusedWorkingContext(nil, nil, ctx, nil); err == nil || !strings.Contains(err.Error(), "missing project state") {
-		t.Fatalf("nil state error = %v", err)
-	}
-	root := t.TempDir()
-	if _, err := PrepareFocusedWorkingContext(contextState(root), nil, ctx, nil); !errors.Is(err, awfgit.ErrNotARepository) {
-		t.Fatalf("nil repo error = %v", err)
-	}
-	for _, tc := range []struct {
-		name, config, lock, want string
-	}{
-		{name: "missing config", want: "working snapshot has no .awf/config.yaml"},
-		{name: "malformed lock", config: "prefix: x\nprofile: core\nintegrationBranch: main\n", lock: "not: [valid", want: "parse snapshot lock"},
-		{name: "malformed config", config: "not: [valid", want: "yaml:"},
-		{name: "marker second selection", config: "prefix: x\nprofile: core\nintegrationBranch: main\ncurrentState:\n  sources:\n    - globs: ['**']\n      marker: '//'\n", lock: "not: [valid", want: "parse snapshot lock"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			fixture := gitfixture.InitRepo(t)
-			if tc.config != "" {
-				writeContextFile(t, fixture.Root(), ".awf/config.yaml", tc.config)
-			}
-			if tc.lock != "" {
-				writeContextFile(t, fixture.Root(), ".awf/awf.lock", tc.lock)
-			} else if tc.config != "" {
-				writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
-			}
-			repo, err := awfgit.Open(fixture.Root())
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, ctx, []string{"requested.txt"}); err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("PrepareFocusedWorkingContext() error = %v, want %q", err, tc.want)
-			}
-		})
-	}
-	fixture := gitfixture.InitRepo(t)
-	writeContextFile(t, fixture.Root(), ".awf/config.yaml", "prefix: x\nprofile: core\nintegrationBranch: main\n")
-	writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
-	repo, err := awfgit.Open(fixture.Root())
-	if err != nil {
-		t.Fatal(err)
-	}
-	canceled, cancel := context.WithCancel(ctx)
-	cancel()
-	if _, err := PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, canceled, nil); !errors.Is(err, context.Canceled) {
-		t.Fatalf("canceled inventory error = %v", err)
-	}
-}
-
-type cancelAfterChecks struct {
-	context.Context
-	remaining int
-}
-
-func (c *cancelAfterChecks) Err() error {
-	c.remaining--
-	if c.remaining <= 0 {
-		return context.Canceled
-	}
-	return nil
-}
-
-type countedChecks struct {
-	context.Context
-	calls int
-}
-
-func (c *countedChecks) Err() error {
-	c.calls++
-	return c.Context.Err()
-}
-
-type actionAtCheck struct {
-	context.Context
-	remaining int
-	action    func() error
-	actionErr error
-}
-
-func (c *actionAtCheck) Err() error {
-	c.remaining--
-	if c.remaining == 0 {
-		c.actionErr = c.action()
-	}
-	return c.Context.Err()
-}
-
-func TestPrepareFocusedWorkingContextCancelsDuringSelectedRead(t *testing.T) {
-	for _, tc := range []struct {
-		name, marker string
-		offset       int
-	}{
-		{name: "initial config and lock", offset: 1},
-		{name: "delta", marker: "marker.go", offset: 3},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			fixture := gitfixture.InitRepo(t)
-			writeContextFile(t, fixture.Root(), ".awf/config.yaml", "prefix: x\nprofile: core\nintegrationBranch: main\n")
-			writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
-			if tc.marker != "" {
-				writeContextFile(t, fixture.Root(), tc.marker, "payload\n")
-			}
-			repo, err := awfgit.Open(fixture.Root())
-			if err != nil {
-				t.Fatal(err)
-			}
-			probe := &countedChecks{Context: context.Background()}
-			if _, err := repo.WorkingEntries(probe); err != nil {
-				t.Fatal(err)
-			}
-			ctx := &cancelAfterChecks{Context: context.Background(), remaining: probe.calls + tc.offset}
-			if _, err := PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, ctx, []string{tc.marker}); !errors.Is(err, context.Canceled) {
-				t.Fatalf("focused selected-read cancellation error = %v", err)
-			}
-		})
-	}
-}
-
-func TestSnapshotReaderSeparatesSelectedBytesFromInventoryPresence(t *testing.T) {
-	tree := ownerTree(t, snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("config")})
-	inventory, err := snapshot.NewInventory([]snapshot.Entry{
-		{Path: ".awf/config.yaml", Mode: snapshot.Regular},
-		{Path: ".awf/unread.yaml", Mode: snapshot.Regular},
-		{Path: "link", Mode: snapshot.Symlink},
-	})
-	if err != nil {
-		t.Fatal(err)
-	}
-	reader := snapshotReader{tree: tree, inventory: inventory}
-	if data, found, err := reader.ReadFile(".awf/config.yaml"); err != nil || !found || string(data) != "config" {
+func TestSnapshotReaderProjectsScannableIndexFilesDefensively(t *testing.T) {
+	tree := ownerTree(t,
+		snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("config")},
+		snapshot.File{Path: ".awf/unread.yaml", Mode: snapshot.Regular, Bytes: []byte("value")},
+		snapshot.File{Path: "link", Mode: snapshot.Symlink, Bytes: []byte("elsewhere")},
+	)
+	reader := snapshotReader{tree: tree}
+	data, found, err := reader.ReadFile(".awf/config.yaml")
+	if err != nil || !found || string(data) != "config" {
 		t.Fatalf("selected read = %q, %t, %v", data, found, err)
 	}
-	if data, found, err := reader.ReadFile(".awf/unread.yaml"); err != nil || found || data != nil {
-		t.Fatalf("unread semantic source = %q, %t, %v, want absent bytes", data, found, err)
+	data[0] = 'X'
+	again, _, _ := reader.ReadFile(".awf/config.yaml")
+	if again[0] == 'X' {
+		t.Fatal("snapshot reader aliases selected tree bytes")
 	}
 	if !reader.PathExists(".awf/unread.yaml") {
-		t.Fatal("inventory-backed regular path reported absent")
+		t.Fatal("regular index path reported absent")
 	}
 	if reader.PathExists("link") {
 		t.Fatal("symlink reported as declaration input")
 	}
-}
-
-func TestPrepareFocusedWorkingContextFreezesInitialConfigAndLock(t *testing.T) {
-	const configBody = "prefix: x\nprofile: full\nintegrationBranch: main\ncurrentState:\n  sources:\n    - globs: ['*.go']\n      marker: '// invariant:'\n"
-	const lockBody = `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`
-	for _, tc := range []struct {
-		name   string
-		offset int
-		mutate func(string) error
-	}{
-		{name: "selected file vanishes", offset: 3, mutate: func(root string) error { return os.Remove(filepath.Join(root, ".awf", "awf.lock")) }},
-		{name: "lock changes", offset: 3, mutate: func(root string) error {
-			return os.WriteFile(filepath.Join(root, ".awf", "awf.lock"), []byte(`{"awfVersion":"9.9.9","schemaVersion":46,"files":{"prior":{}}}`), 0o644)
-		}},
-		{name: "config changes", offset: 4, mutate: func(root string) error {
-			return os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: changed\nprofile: core\nintegrationBranch: other\n"), 0o644)
-		}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			fixture := gitfixture.InitRepo(t)
-			writeContextFile(t, fixture.Root(), ".awf/config.yaml", configBody)
-			writeContextFile(t, fixture.Root(), ".awf/awf.lock", lockBody)
-			writeContextFile(t, fixture.Root(), "marker.go", "// invariant: example\n")
-			repo, err := awfgit.Open(fixture.Root())
-			if err != nil {
-				t.Fatal(err)
-			}
-			probe := &countedChecks{Context: context.Background()}
-			if _, err := repo.WorkingEntries(probe); err != nil {
-				t.Fatal(err)
-			}
-			ctx := &actionAtCheck{Context: context.Background(), remaining: probe.calls + tc.offset, action: func() error { return tc.mutate(fixture.Root()) }}
-			prep, err := PrepareFocusedWorkingContext(contextState(fixture.Root()), repo, ctx, nil)
-			if ctx.actionErr != nil {
-				t.Fatalf("mutation: %v", ctx.actionErr)
-			}
-			if err != nil {
-				t.Fatalf("PrepareFocusedWorkingContext() error = %v, want frozen initial config and lock", err)
-			}
-			if prep.Config.Prefix != "x" || prep.Config.Profile != catalog.ProfileFull || prep.Config.IntegrationBranch != "main" {
-				t.Fatalf("prepared config = %#v, want initial parsed facts", prep.Config)
-			}
-			if got := prep.Lock(); got == nil || got.AWFVersion != "0.39.2" || got.SchemaVersion != 46 {
-				t.Fatalf("prepared lock = %#v, want initial lock", got)
-			}
-			if file, ok := prep.Tree().Lookup(".awf/config.yaml"); !ok || string(file.Bytes) != configBody {
-				t.Fatalf("prepared config bytes = %q, %t, want initial bytes", file.Bytes, ok)
-			}
-			if file, ok := prep.Tree().Lookup(".awf/awf.lock"); !ok || string(file.Bytes) != lockBody {
-				t.Fatalf("prepared lock bytes = %q, %t, want initial bytes", file.Bytes, ok)
-			}
-		})
+	if paths, err := reader.Paths(".awf/"); err != nil || !reflect.DeepEqual(paths, []string{".awf/config.yaml", ".awf/unread.yaml"}) {
+		t.Fatalf("snapshot paths = %v, %v", paths, err)
 	}
 }
 
-func TestPrepareStagedContextSelectedUniverseErrors(t *testing.T) {
+func TestPrepareStagedOutputSelectedUniverseErrors(t *testing.T) {
 	ctx := context.Background()
-	if _, err := PrepareStagedContext(ctx, t.TempDir()); !errors.Is(err, awfgit.ErrNotARepository) {
+	if _, err := PrepareStagedOutput(ctx, t.TempDir()); !errors.Is(err, awfgit.ErrNotARepository) {
 		t.Fatalf("outside repository error = %v", err)
 	}
 
@@ -395,8 +104,8 @@ func TestPrepareStagedContextSelectedUniverseErrors(t *testing.T) {
 			if tc.unmerged {
 				gitfixture.StageUnmerged(t, fixture, "conflict")
 			}
-			if _, err := PrepareStagedContext(ctx, fixture.Root()); err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("PrepareStagedContext() error = %v, want %q", err, tc.want)
+			if _, err := PrepareStagedOutput(ctx, fixture.Root()); err == nil || !strings.Contains(err.Error(), tc.want) {
+				t.Fatalf("PrepareStagedOutput() error = %v, want %q", err, tc.want)
 			}
 		})
 	}
@@ -411,7 +120,7 @@ func TestPrepareStagedContextSelectedUniverseErrors(t *testing.T) {
 	}
 	writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
 	gitfixture.Add(t, fixture, ".awf/config.yaml", ".awf/awf.lock")
-	if _, err := PrepareStagedContext(ctx, fixture.Root()); err == nil || !strings.Contains(err.Error(), "not a scannable file") {
+	if _, err := PrepareStagedOutput(ctx, fixture.Root()); err == nil || !strings.Contains(err.Error(), "not a scannable file") {
 		t.Fatalf("unscannable config error = %v", err)
 	}
 }

@@ -116,8 +116,9 @@ Backing: test
 
 ### `invariant: corpus-owns-status-literals`
 
-No non-test production file outside internal/adr compares an ADR status against a string literal or tests it with a status prefix, except awf context's enumerated Tier-2 exclusion.
+No non-test production file outside internal/adr compares an ADR status against a string literal or tests it with a status prefix.
 Origin: ADR-0130
+Revised-by: ADR-delegate-relevance-discovery-to-codegraph
 Backing: test
 
 ### `invariant: corpus-parsed-once`

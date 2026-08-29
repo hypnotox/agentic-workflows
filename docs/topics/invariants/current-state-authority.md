@@ -15,8 +15,7 @@ The currentstate package is the active authority engine: it loads topic claims a
 
 Every ordinary production package path is owned by a configured domain and applicable current-state topic, with the focused resolver exposing absence without enforcing it.
 Origin: ADR-delegate-relevance-discovery-to-codegraph
-Backing: unbacked
-Verify: TestProductionPackagesAreDomainOwned verifies domain ownership while the existing topic scope remains the proof site.
+Backing: test
 
 ### `invariant: abandoned-remove-pair-attributed`
 
@@ -29,12 +28,14 @@ Backing: test
 
 An Accepted ADR appears as a pending implementation instruction and never replaces a current claim before its state-impact transaction completes.
 Origin: ADR-0133
+Revised-by: ADR-delegate-relevance-discovery-to-codegraph
 Backing: unbacked
-Verify: In a fixture with a conflicting current claim and an Accepted ADR, awf context keeps the claim under current authority and places the ADR only under pending changes.
+Verify: In a fixture with a conflicting current claim and an Accepted ADR, focused authority reads keep the claim under current authority and place the ADR only under pending changes.
 ### `invariant: accepted-does-not-override-current`
 
-Accepted operations appear only as bounded pending instructions and do not replace current claim output.
+Accepted operations appear only as bounded pending instructions in focused authority reads and do not replace current claim output.
 Origin: ADR-0135
+Revised-by: ADR-delegate-relevance-discovery-to-codegraph
 Backing: unbacked
 Verify: A fixture with an Accepted update conflicting with its current claim keeps both clearly separated with the claim remaining current.
 ### `invariant: merge-transition-ordered-aggregate`
@@ -46,10 +47,11 @@ Backing: test
 
 ### `invariant: current-state-sole-active-authority`
 
-Normal context retrieval and invariant enforcement consume current-state topic claims, not Implemented historical ADR prose.
+Focused authority reads and invariant enforcement consume current-state topic claims, not Implemented historical ADR prose.
 Origin: ADR-0133
+Revised-by: ADR-delegate-relevance-discovery-to-codegraph
 Backing: unbacked
-Verify: In a fixture with claim provenance, one topic-declared invariant, and one ADR-only legacy invariant, awf context emits the active claim but no historical ADR, the invariant checker treats only the topic declaration as an active obligation, and awf topic <claim-id> --history emits the provenance ADR.
+Verify: In a fixture with claim provenance, one topic-declared invariant, and one ADR-only legacy invariant, awf read topic emits the active claim but no historical ADR, the invariant checker treats only the topic declaration as an active obligation, and awf topic <claim-id> --history emits the provenance ADR.
 ### `invariant: currentstate-handshake-findings-unranked`
 
 A current-state claim-handshake finding carries no rank: every provenance and transition finding the current-state checker produces is blocking, and the check path reports each by message with no severity field. The ranked coverage and fan-out findings the project report also carries are a separate concern and keep their ranks.
@@ -58,10 +60,11 @@ Backing: test
 
 ### `invariant: historical-rationale-is-explicit`
 
-Historical rationale stays reachable from active claim provenance without appearing in normal path-context output.
+Historical rationale stays reachable from active claim provenance without appearing in normal focused authority output.
 Origin: ADR-0133
+Revised-by: ADR-delegate-relevance-discovery-to-codegraph
 Backing: unbacked
-Verify: Over the same fixture, normal context omits Implemented provenance while awf topic <claim-id> --history follows it.
+Verify: Over the same fixture, normal focused authority output omits Implemented provenance while awf read topic <claim-id> --history follows it.
 ### `invariant: implemented-impact-bidirectional`
 
 Every applied governed state operation has its required current, removed, or dominated-history result, and every active claim Origin or revision has the inverse applied ADR operation; Remaining, Canceled, and dominated operations provide no authority.
@@ -103,10 +106,10 @@ An applied remove is an absorbing tombstone: the qualified id is currently absen
 Origin: ADR-0191
 Backing: test
 
-### `invariant: uncovered-lists-unowned-unignored`
+### `invariant: uncovered-lists-unowned`
 
-The current-state coverage report lists as unowned only working-tree paths that are tracked, not generated or lock-listed, not context-ignored, and matched by no configured domain glob, collapsed to the topmost ancestor directory that has no owned descendant in scope. Owned, generated, and ignored paths never appear.
-Origin: ADR-0110
+The current-state coverage report lists as unowned only working-tree paths that are tracked, not generated or lock-listed, matched by no configured domain glob, collapsed to the topmost ancestor directory that has no owned descendant in scope. Owned, generated, and ignored paths never appear.
+Origin: ADR-delegate-relevance-discovery-to-codegraph
 Backing: test
 
 ### `invariant: update-requires-substance`

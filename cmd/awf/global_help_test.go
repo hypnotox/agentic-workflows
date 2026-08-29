@@ -68,7 +68,6 @@ func TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures(t *testing.T) 
 		"adr":       "TestRunADRNumberThroughTheDriver",
 		"list":      "TestRunListPrintsSkills",
 		"config":    "TestRunConfigDispatch",
-		"context":   "TestRunContextModesShareDeliveryIncludingOversize",
 		"topic":     "TestRunTopicHumanTextAndFlags",
 		"new":       "TestRunNewDispatch",
 		"remove":    "TestRunNewDomainLifecycle",

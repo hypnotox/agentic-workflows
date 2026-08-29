@@ -331,8 +331,7 @@ func selectsStagedDrift(top clispec.Command, sub string) bool {
 }
 
 func selectsStagedProjectUniverse(top clispec.Command, sub string, inv invocation) bool {
-	return top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged ")) ||
-		top.Name == "context" && inv.bools["--staged"]
+	return top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged "))
 }
 
 func requireCommandCapability(ctx context.Context, root string, top clispec.Command, sub string, inv invocation) error {

@@ -22,7 +22,14 @@ unset $(git -C "$repo_root" rev-parse --local-env-vars)
 git -C "$repo_root" worktree add --quiet --detach "$tmp" "$head"
 git -C "$tmp" read-tree "$index_tree"
 git -C "$tmp" --work-tree="$tmp" checkout-index -a -f
-while IFS= read -r -d '' path; do rm -f -- "$tmp/$path"; done <"$deleted"
+while IFS= read -r -d '' path; do
+  rm -f -- "$tmp/$path"
+  parent=$(dirname -- "$path")
+  while [ "$parent" != . ]; do
+    rmdir -- "$tmp/$parent" 2>/dev/null || break
+    parent=$(dirname -- "$parent")
+  done
+done <"$deleted"
 git -C "$tmp" add -A
 git -C "$tmp" -c core.hooksPath=/dev/null -c user.name=awf-hook -c user.email=awf-hook@localhost commit -q -m staged-candidate
 candidate=$(git -C "$tmp" rev-parse HEAD)

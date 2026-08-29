@@ -220,7 +220,6 @@ func commandRoutes() map[string]commandRoute {
 		{"adr number", "adr", "runADR", []string{"github.com/hypnotox/agentic-workflows/internal/currentstatecoord.NumberPendingADRsLeased"}, false},
 		{"list", "list", "runList", []string{"github.com/hypnotox/agentic-workflows/internal/project.BuildListDocument"}, false},
 		{"config", "config", "runConfig", []string{"github.com/hypnotox/agentic-workflows/internal/configop.Run"}, false},
-		{"context", "context", "runContextWithDelivery", []string{"github.com/hypnotox/agentic-workflows/internal/contextop.Run"}, false},
 		{"topic", "topic", "runTopic", []string{"github.com/hypnotox/agentic-workflows/internal/topicop.Run"}, false},
 		{"new adr", "new", "newADR", []string{"github.com/hypnotox/agentic-workflows/internal/project.NewADRLeased"}, false},
 		{"new plan", "new", "newPlan", []string{"github.com/hypnotox/agentic-workflows/internal/project.NewPlanLeased"}, false},
@@ -821,8 +820,8 @@ func semanticOwnerPackages() map[string]bool {
 	const module = "github.com/hypnotox/agentic-workflows/internal/"
 	owners := map[string]bool{}
 	for _, name := range []string{
-		"audit", "changelog", "checkop", "commitgateop", "configop", "contextop", "contextq",
-		"currentstatecoord", "domainop", "effort", "effortop", "initop", "localdocop",
+		"audit", "changelog", "checkop", "commitgateop", "configop", "currentstatecoord",
+		"domainop", "effort", "effortop", "initop", "localdocop",
 		"project", "publisher", "repositorycheck", "resident", "topicop", "upgrade", "worktree",
 	} {
 		owners[module+name] = true

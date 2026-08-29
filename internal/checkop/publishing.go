@@ -30,7 +30,7 @@ func projectSemantics(prepared publisher.Preparation) project.OperationSemantics
 }
 
 func stagedDriftResult(ctx context.Context, root string) (checkresult.Result, error) {
-	prep, err := project.PrepareStagedContextState(ctx, root)
+	prep, err := project.PrepareStagedOutputState(ctx, root)
 	if err != nil {
 		return checkresult.Result{}, err
 	}

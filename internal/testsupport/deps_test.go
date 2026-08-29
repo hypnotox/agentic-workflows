@@ -238,10 +238,10 @@ func TestRepositoryLayerDirection(t *testing.T) {
 		{name: "mechanism to domain", path: "internal/filepublication/publication.go", source: "package filepublication\nimport \"github.com/hypnotox/agentic-workflows/internal/adr\"", violations: 1},
 		{name: "snapshot to git", path: "internal/snapshot/tree.go", source: "package snapshot\nimport \"github.com/hypnotox/agentic-workflows/internal/git\""},
 		{name: "filesystem to publication", path: "internal/filesystem/handle.go", source: "package filesystem\nimport \"github.com/hypnotox/agentic-workflows/internal/filepublication\""},
-		{name: "project to context query", path: "internal/project/project.go", source: "package project\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq\"", violations: 1},
+		{name: "project to deleted context query", path: "internal/project/project.go", source: "package project\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq\"", violations: 1},
 		{name: "lower state to project", path: "internal/projectstate/state.go", source: "package projectstate\nimport \"github.com/hypnotox/agentic-workflows/internal/project\"", violations: 1},
 		{name: "lower state to publisher", path: "internal/projectstate/state.go", source: "package projectstate\nimport \"github.com/hypnotox/agentic-workflows/internal/publisher\"", violations: 1},
-		{name: "unrelated context query consumer", path: "internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq\""},
+		{name: "unrelated consumer", path: "internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq\""},
 		{name: "malformed protected source", path: "internal/git/repo.go", source: "not go", wantErr: true},
 		{name: "malformed unrelated source", path: "internal/tool/tool.go", source: "not go"},
 	}
@@ -307,7 +307,7 @@ func currentStateCoordinatorImportViolations(path string, source any) ([]string,
 		if lowerOwner && importsPackage(importPath, repositoryModule+"/internal/currentstatecoord") {
 			violations = append(violations, fmt.Sprintf("%s lower owner imports current-state coordination %q", slashPath, importPath))
 		}
-		if coordinator && (importsPackage(importPath, repositoryModule+"/cmd/awf") || importsPackage(importPath, repositoryModule+"/internal/contextq")) {
+		if coordinator && (importsPackage(importPath, repositoryModule+"/cmd/awf")) {
 			violations = append(violations, fmt.Sprintf("%s current-state coordination imports forbidden consumer %q", slashPath, importPath))
 		}
 	}
@@ -324,7 +324,6 @@ func TestCurrentStateCoordinatorDirection(t *testing.T) {
 	}{
 		{name: "lower owner", path: "internal/currentstate/parse/parse.go", source: "package parse\nimport \"github.com/hypnotox/agentic-workflows/internal/currentstatecoord\"", violations: 1},
 		{name: "lower owner to coordinator descendant", path: "internal/snapshot/sub/tree.go", source: "package sub\nimport \"github.com/hypnotox/agentic-workflows/internal/currentstatecoord/private\"", violations: 1},
-		{name: "coordinator to context query descendant", path: "internal/currentstatecoord/sub/op.go", source: "package sub\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq/private\"", violations: 1},
 		{name: "coordinator to command", path: "internal/currentstatecoord/op.go", source: "package currentstatecoord\nimport \"github.com/hypnotox/agentic-workflows/cmd/awf\"", violations: 1},
 		{name: "allowed lower mechanism", path: "internal/snapshot/sub/tree.go", source: "package sub\nimport \"github.com/hypnotox/agentic-workflows/internal/git\""},
 		{name: "allowed command consumer", path: "cmd/awf/check.go", source: "package main\nimport \"github.com/hypnotox/agentic-workflows/internal/currentstatecoord\""},

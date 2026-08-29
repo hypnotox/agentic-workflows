@@ -13,6 +13,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -216,11 +217,15 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 		t.Fatal(err)
 	}
 	gitfixture.Stage(t, repo, map[string]string{".awf/awf.lock": string(lockBytes)})
-	working, err := contextStateProject(p, testContext(t))
+	working, err := testPublisher(renderInputsForTest(p)).Plan()
 	if err != nil {
 		t.Fatal(err)
 	}
-	staged, err := StagedContextState(testContext(t), root)
+	stagedOutput, err := currentstatecoord.PrepareStagedOutput(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	staged, err := New(stagedOutput.State, stagedOutput.Config, stagedOutput.Reader, Version).Plan()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -233,8 +238,8 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 		}
 		return out
 	}
-	workingDeclarations := working.Snapshot().Declarations
-	stagedDeclarations := staged.Snapshot().Declarations
+	workingDeclarations := working.Declarations()
+	stagedDeclarations := staged.Declarations()
 	if !slices.EqualFunc(pitfallDeclarations(workingDeclarations), pitfallDeclarations(stagedDeclarations), func(a, b outputplan.Declaration) bool {
 		return a.Path() == b.Path() && a.TemplateID() == b.TemplateID() && slices.Equal(a.Declarers(), b.Declarers()) && slices.Equal(a.Inputs(), b.Inputs())
 	}) {

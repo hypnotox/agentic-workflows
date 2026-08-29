@@ -38,7 +38,7 @@ func (p renderInputs) catalog() *catalog.Catalog { return p.selected }
 func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
 func fullProfile(p renderInputs) bool                { return p.cfg == nil || p.cfg.Profile != catalog.ProfileCore }
 
-func deriveContextSemantics(p renderInputs) (adr.Corpus, topic.Corpus, error) {
+func deriveAuthoritySemantics(p renderInputs) (adr.Corpus, topic.Corpus, error) {
 	corpus := adr.Corpus{}
 	topics := topic.Corpus{}
 	if !fullProfile(p) {
@@ -56,7 +56,7 @@ func deriveContextSemantics(p renderInputs) (adr.Corpus, topic.Corpus, error) {
 }
 
 func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
-	corpus, topics, err := deriveContextSemantics(p)
+	corpus, topics, err := deriveAuthoritySemantics(p)
 	if err != nil {
 		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
@@ -100,30 +100,6 @@ func derivePlans(p renderInputs) ([]plan.Plan, error) {
 // Publisher is the sole output-plan construction and rendering coordinator.
 type Publisher struct{ inputs renderInputs }
 
-// ContextPreparation is Publisher's focused semantic and declaration projection
-// for ordinary context. It intentionally has no rendered output nodes or check
-// projections.
-type ContextPreparation struct {
-	adrs         adr.Corpus
-	topics       topic.Corpus
-	plans        []plan.Plan
-	declarations []outputplan.Declaration
-}
-
-// ADRs returns a defensive ADR corpus.
-func (p ContextPreparation) ADRs() adr.Corpus { return p.adrs.Clone() }
-
-// Topics returns a defensive topic corpus.
-func (p ContextPreparation) Topics() topic.Corpus { return p.topics.Clone() }
-
-// Plans returns a defensive parsed-plan projection.
-func (p ContextPreparation) Plans() []plan.Plan { return clonePlans(p.plans) }
-
-// Declarations returns defensive output declarations without an output plan.
-func (p ContextPreparation) Declarations() []outputplan.Declaration {
-	return slices.Clone(p.declarations)
-}
-
 // Preparation is one Publisher-owned derivation and its direct semantic
 // projections for residual consumers.
 type Preparation struct {
@@ -148,24 +124,6 @@ func New(state *projectstate.ProjectState, cfg *config.Config, read ProjectTreeR
 	// fresh projection of the state's immutable loaded facts.
 	privateConfig := cfg.OperationTree().Bind(state.Facts())
 	return &Publisher{inputs: newRenderInputs(state, privateConfig, read, version)}
-}
-
-// PrepareContext derives only the semantic and declaration facts ordinary context
-// needs. It deliberately does not construct rendered nodes or check projections.
-func (p *Publisher) PrepareContext() (ContextPreparation, error) {
-	adrs, topics, err := deriveContextSemantics(p.inputs)
-	if err != nil {
-		return ContextPreparation{}, err
-	}
-	plans, err := derivePlans(p.inputs)
-	if err != nil {
-		return ContextPreparation{}, err
-	}
-	declarations, err := buildOutputDeclarations(p.inputs.cfg, projectCatalog(p.inputs), p.inputs.targets(), projectTreeReader(p.inputs), adrs)
-	if err != nil {
-		return ContextPreparation{}, err
-	}
-	return ContextPreparation{adrs: adrs, topics: topics, plans: clonePlans(plans), declarations: freezeDeclarations(declarations)}, nil
 }
 
 // Prepare derives one operation universe and constructs exactly one immutable plan.

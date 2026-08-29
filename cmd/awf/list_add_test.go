@@ -219,7 +219,6 @@ func TestRunArgValidation(t *testing.T) {
 	}{
 		{"unknown flag", []string{"awf", "check", "--bogus"}, "unknown flag"},
 		{"unexpected positional", []string{"awf", "render", "extra"}, "unexpected arguments"},
-		{"value flag without value", []string{"awf", "context", "--range"}, "needs a value"},
 	}
 	for _, c := range cases {
 		t.Run(c.name, func(t *testing.T) {
