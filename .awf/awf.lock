@@ -560,8 +560,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:d6475aaeadbbed6f56bfc85c4716b8636fea0d5922661201890334a6429b4f85",
-      "configHash": "sha256:448dcb9348fbc899096500d08bb4093ba647b67d19bdac826b38d75c5cfb254c",
-      "outputHash": "sha256:ff9959574c8042ebd8025ac3f6b3ba70ee61e9bf56710aec575a7c67756685a5"
+      "configHash": "sha256:96b85aab5f7fc805ba7c1c8914a271003a4005555be72f33b23464657d477641",
+      "outputHash": "sha256:59da441fae23c64928059f034046cd2caa94579d0ae1cf184a2b4dfed523be37"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -700,6 +700,12 @@
       "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
       "configHash": "sha256:8e560ec0b04da764f87cabee30bfbe96b7c64c5168e0b4405b4a9f0a0f65701b",
       "outputHash": "sha256:0965dd3f20a548e0d79b6f82c55bf5f45ecd7e21c8b2fc1ad68a293a982ae476"
+    },
+    "docs/pitfalls/keep-ssh-alive-through-long-pre-push-gates.md": {
+      "templateId": "pitfalls/entry.md.tmpl",
+      "templateHash": "sha256:23ea7baa4f2cd0e3a7319448093f2612ca5a7beab8cb0bfc631015eef99be786",
+      "configHash": "sha256:54f7af7a3481ce1c5dd7be9c40a6b34cfff83c8c09de42afcea3c9516bc1fa0f",
+      "outputHash": "sha256:cf64c7396fb77df219dea14335fe7a2c72aeecbb33ff357d721b6f8614e8b0ef"
     },
     "docs/pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md": {
       "templateId": "pitfalls/entry.md.tmpl",

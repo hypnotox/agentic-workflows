@@ -37,6 +37,7 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md) | tooling | static\-linting |  |
 | [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md) | tooling | gofmt\-doccomment |  |
 | [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md) | rendering | target\-seam\, verification\-discipline |  |
+| [Keep SSH alive through long pre\-push gates](pitfalls/keep-ssh-alive-through-long-pre-push-gates.md) | tooling | git\-hooks\, release\-pipeline |  |
 | [Link ADRs by their on\-disk filename\, never by constructing one from the title](pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md) | adr\-system | cross\-references\, link\-resolution |  |
 | [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md) | tooling\, adr\-system | commit\-gate\, worktree\-isolation | ADR-0202 |
 | [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md) | tooling | coverage\-gate |  |
@@ -112,6 +113,7 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [Check the Open boundary before ignoring an assembly error](pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md)
 - [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md)
 - [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md)
+- [Keep SSH alive through long pre\-push gates](pitfalls/keep-ssh-alive-through-long-pre-push-gates.md)
 - [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md)
 - [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md)
 - [Pin the Go toolchain when preview compilers break lint](pitfalls/pin-the-go-toolchain-when-preview-compilers-break-lint.md)
