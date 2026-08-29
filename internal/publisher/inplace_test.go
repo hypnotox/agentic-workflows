@@ -18,7 +18,24 @@ func readBackInPlaceBody(output, name string, declared []string, style render.Co
 	if len(expectedHeading) != 0 {
 		heading = expectedHeading[0]
 	}
-	return readBackInPlaceBodyWithExpectations(output, name, declared, style, heading, nil)
+	return newInPlaceBoundary(name, declared, style, heading, nil).readBody(output)
+}
+
+func readBackInPlaceBodyWithExpectations(output, name string, declared []string, style render.CommentStyle, expectedHeading string, expectedSymbols map[string]string) (string, bool) {
+	return newInPlaceBoundary(name, declared, style, expectedHeading, expectedSymbols).readBody(output)
+}
+
+func TestInPlaceBoundaryReadBody(t *testing.T) {
+	boundary := newInPlaceBoundary("body", []string{"body", "next"}, render.HTMLComment, "## Owned", map[string]string{"next": "<!-- awf:template-source templates/example.md#next -->"})
+	output := "<!-- awf:edit-in-place body: x -->\n## Owned\nfirst\n\n<!-- awf:edit unregistered: body content -->\nlast\n\n<!-- awf:template-source templates/example.md#next -->\n<!-- awf:edit next: default -->\nowned tail\n"
+	got, found := boundary.readBody(output)
+	want := "first\n\n<!-- awf:edit unregistered: body content -->\nlast"
+	if !found || got != want {
+		t.Fatalf("boundary body = %q, found %v; want %q, true", got, found, want)
+	}
+	if _, found := boundary.readBody("no registered body pointer\n"); found {
+		t.Fatal("missing registered pointer was found")
+	}
 }
 
 // readBackInPlaceBody extracts the interior between an in-place section's pointer

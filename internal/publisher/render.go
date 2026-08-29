@@ -205,7 +205,7 @@ func planSections(p renderInputs, kind, artifact string, declared []string, sec 
 			// A located region (its pointer present) is used verbatim even when
 			// empty; only an unlocated region falls back to the template default
 			// in Assemble (ADR-0100 in-place-readback).
-			sp.InPlaceBody, sp.InPlaceFound = readBackInPlaceBodyWithExpectations(out, s, declared, style, headings[s], templateSourceSectionMarkers(segs, templateSourceRoot(p)))
+			sp.InPlaceBody, sp.InPlaceFound = newInPlaceBoundary(s, declared, style, headings[s], templateSourceSectionMarkers(segs, templateSourceRoot(p))).readBody(out)
 			plan[s] = sp
 			continue
 		}
@@ -237,64 +237,6 @@ func planSections(p renderInputs, kind, artifact string, declared []string, sec 
 		plan[s] = sp
 	}
 	return plan, nil
-}
-
-// readBackInPlaceBodyWithExpectations extracts the current body of the in-place section `name`
-// from the existing rendered `output`. The region runs from just after `name`'s
-// awf:edit-in-place pointer line to the first later line that is the pointer of
-// any *other* registered (declared) section - matched by that section's expected
-// pointer prefix in the target's comment style, never a generic pointer shape, so
-// a pointer-shaped line for a non-registered name in adopter text cannot truncate
-// it - or end-of-file when none follows. Leading/trailing blank lines (awf-owned
-// framing) are trimmed; the interior, including internal blank lines, is returned
-// verbatim. Returns ("", false) when `name`'s own pointer is absent (first render
-// or a deleted anchor), so the caller falls back to the template default.
-func readBackInPlaceBodyWithExpectations(output, name string, declared []string, style render.CommentStyle, expectedHeading string, expectedSymbols map[string]string) (string, bool) {
-	lines := strings.Split(output, "\n")
-	ownPrefixes := render.PointerLinePrefixes(name, style)
-	start := -1
-	for i, ln := range lines {
-		if hasAnyPrefix(strings.TrimSpace(ln), ownPrefixes) {
-			start = i
-			break
-		}
-	}
-	if start < 0 {
-		return "", false
-	}
-	var boundaryPrefixes []string
-	for _, d := range declared {
-		if d != name {
-			boundaryPrefixes = append(boundaryPrefixes, render.PointerLinePrefixes(d, style)...)
-		}
-	}
-	end := len(lines)
-	for i := start + 1; i < len(lines); i++ {
-		if hasAnyPrefix(strings.TrimSpace(lines[i]), boundaryPrefixes) {
-			end = i
-			// Only the exact renderer-owned symbol for this registered next
-			// section is framing. Lookalikes remain adopter body content.
-			if i > start+1 {
-				for _, d := range declared {
-					if d != name && hasAnyPrefix(strings.TrimSpace(lines[i]), render.PointerLinePrefixes(d, style)) && strings.TrimSpace(lines[i-1]) == expectedSymbols[d] {
-						end = i - 1
-						break
-					}
-				}
-			}
-			break
-		}
-	}
-	body := lines[start+1 : end]
-	if expectedHeading != "" && len(body) > 0 {
-		// A structural slot is awf-owned. Any ATX heading occupying it is tamper,
-		// regardless of level; a body heading is preserved only when that slot is
-		// genuinely absent.
-		if body[0] == expectedHeading || atxHeadingLine(strings.TrimSpace(body[0])) {
-			body = body[1:]
-		}
-	}
-	return trimBlankFraming(body), true
 }
 
 func templateSourceSectionMarkers(segs []render.Segment, root string) map[string]string {
@@ -354,42 +296,11 @@ func templateSourceConfigHash(hash, root string) string {
 	return manifest.Hash([]byte(hash + "\x00templateSourceRoot=" + root))
 }
 
-func atxHeadingLine(s string) bool {
-	i := 0
-	for i < len(s) && s[i] == '#' {
-		i++
-	}
-	return i > 0 && i <= 6 && i < len(s) && (s[i] == ' ' || s[i] == '\t')
-}
-
-// trimBlankFraming drops leading and trailing blank (whitespace-only) lines - the
-// awf-owned framing - and returns the interior lines joined verbatim.
-func trimBlankFraming(lines []string) string {
-	lo, hi := 0, len(lines)
-	for lo < hi && strings.TrimSpace(lines[lo]) == "" {
-		lo++
-	}
-	for hi > lo && strings.TrimSpace(lines[hi-1]) == "" {
-		hi--
-	}
-	return strings.Join(lines[lo:hi], "\n")
-}
-
 // anyInPlace reports whether a section plan contains an in-place-editable section -
 // the property that makes a rendered file regeneration-checked (ADR-0100).
 func anyInPlace(plan map[string]render.SectionPlan) bool {
 	for _, sp := range plan {
 		if sp.InPlace {
-			return true
-		}
-	}
-	return false
-}
-
-// hasAnyPrefix reports whether s begins with any of the given prefixes.
-func hasAnyPrefix(s string, prefixes []string) bool {
-	for _, p := range prefixes {
-		if strings.HasPrefix(s, p) {
 			return true
 		}
 	}
