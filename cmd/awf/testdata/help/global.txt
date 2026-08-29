@@ -8,7 +8,8 @@ help:
       init | Scaffold .awf/ and render the selected governance footprint
       render | Re-render after a template or config change
       check | Verify the repository and staged universes
-      read | Read an executable projection from a parsed artifact
+      read | Read a focused current-state authority projection
+      resolve | Resolve lexical paths to current-state authority
       audit | Report workflow-conformance findings over a commit range (advisory)
       effort | Manage slugged repository-local efforts
       adr | ADR lifecycle operations
@@ -39,6 +40,11 @@ help:
     read:
       commands:
         plan | Read one exact plan phase or task projection
+        topic | Read one topic or claim authority projection
+        adr | Read lifecycle and operation progress for one ADR
+    resolve:
+      commands:
+        topic | Resolve topic authority for paths or the whole repository
     effort:
       commands:
         new | Create an effort with a managed worktree by default

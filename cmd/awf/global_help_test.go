@@ -62,6 +62,7 @@ func TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures(t *testing.T) 
 		"render":    "TestEmptyInitChecksOnUnbornHead",
 		"check":     "TestRunCheckCleanThenDirty",
 		"read":      "TestReadPlanCommand",
+		"resolve":   "TestRunResolveTopicUsage",
 		"audit":     "TestRunAuditDispatch",
 		"effort":    "TestEffortPublicTextProtocol",
 		"adr":       "TestRunADRNumberThroughTheDriver",

@@ -154,10 +154,28 @@ func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]ha
 			return handlerReport(result)
 		},
 		"read": func(c *cmdCtx) handlerResult {
-			if c.sub != "plan" { // coverage-ignore: clispec admits only the declared plan child before dispatch
-				return handlerFailure(&usageErr{"usage: awf read plan <plan> <P[.T]>"})
+			switch c.sub {
+			case "plan":
+				if err := gate(c.ctx, c.root); err != nil {
+					return handlerFailure(err)
+				}
+				return handlerFailure(runReadPlan(c.ctx, c.root, c.inv.positionals, c.stdout))
+			case "topic":
+				return handlerFailure(runReadTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.stdout))
+			case "adr":
+				if err := gate(c.ctx, c.root); err != nil {
+					return handlerFailure(err)
+				}
+				return handlerFailure(runReadADR(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
+			default:
+				return handlerFailure(&usageErr{"usage: awf read <plan|topic|adr>"})
 			}
-			return handlerFailure(runReadPlan(c.ctx, c.root, c.inv.positionals, c.stdout))
+		},
+		"resolve": func(c *cmdCtx) handlerResult {
+			if c.sub != "topic" {
+				return handlerFailure(&usageErr{"usage: awf resolve topic <path>..."})
+			}
+			return handlerFailure(runResolveTopic(c.ctx, c.root, c.inv.positionals, c.inv.bools["--uncovered"], c.stdout))
 		},
 		"audit": func(c *cmdCtx) handlerResult {
 			return handlerReport(runAudit(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))

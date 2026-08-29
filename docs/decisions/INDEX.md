@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-delegate-relevance-discovery-to-codegraph: Delegate relevance discovery to CodeGraph](delegate-relevance-discovery-to-codegraph.md) (Proposed)
+- [ADR-delegate-relevance-discovery-to-codegraph: Delegate relevance discovery to CodeGraph](delegate-relevance-discovery-to-codegraph.md) (Implementing)
 
 ## History
 

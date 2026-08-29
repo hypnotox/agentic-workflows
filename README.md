@@ -129,7 +129,8 @@ Punctuation findings are advisory Warnings with zero exit.
 | `awf init [flags]` | Scaffold .awf/ and render the selected governance footprint |
 | `awf render` | Re-render after a template or config change |
 | `awf check` | Verify the repository and staged universes |
-| `awf read <subcommand>` | Read an executable projection from a parsed artifact |
+| `awf read <subcommand>` | Read a focused current-state authority projection |
+| `awf resolve topic <path>...` | Resolve lexical paths to current-state authority |
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over a commit range (advisory) |
 | `awf effort <subcommand>` | Manage slugged repository-local efforts |
 | `awf adr <subcommand>` | ADR lifecycle operations |

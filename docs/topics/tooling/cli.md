@@ -11,6 +11,12 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 ## Claims
 
+### `invariant: init-describe-read-only`
+
+`awf init --describe` is a read-only descriptor query and remains available without project mutation.
+Origin: ADR-delegate-relevance-discovery-to-codegraph
+Backing: test
+
 ### `invariant: cli-creation-and-inventory`
 
 The CLI lists fixed catalog inventory and never selects individual catalog membership. Full creates authored ADRs, plans, topics, and domains; both governance footprints retain pitfalls and additive local documents, while the selected footprint controls rendered membership. Every selected-checkout creation takes its transaction lease before authority or destination planning, exclusively creates authored inputs through the confined filesystem boundary, and reports a complete result or every committed effect with recovery guidance.

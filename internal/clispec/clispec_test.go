@@ -516,7 +516,7 @@ func TestLookup(t *testing.T) {
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"render", "check", "read", "audit", "effort", "adr", "list", "config", "context", "topic", "new", "remove"}
+	want := []string{"render", "check", "read", "resolve", "audit", "effort", "adr", "list", "config", "context", "topic", "new", "remove"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

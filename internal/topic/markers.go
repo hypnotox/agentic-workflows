@@ -275,6 +275,25 @@ func identRune(r rune) bool {
 
 // topicMatchesPath answers repository-wide applicability. A global topic is
 // authoritative everywhere, including outside the bounded paths it may own.
+// PathAuthority returns deterministic owning domains and applicable topics for a lexical repository path. Global topics are applicable outside bounded domain ownership but do not create a domain owner.
+func PathAuthority(c Corpus, path string) ([]string, []string) {
+	domains := []string{}
+	for domain, selectors := range c.DomainPaths {
+		if pathglob.MatchAny(selectors, path) {
+			domains = append(domains, domain)
+		}
+	}
+	slices.Sort(domains)
+	topics := []string{}
+	for _, candidate := range c.All() {
+		if topicMatchesPath(candidate, c.DomainPaths[candidate.ID.Domain], path) {
+			topics = append(topics, candidate.ID.String())
+		}
+	}
+	slices.Sort(topics)
+	return domains, topics
+}
+
 func topicMatchesPath(t Topic, domainPaths []string, path string) bool {
 	if t.Metadata.Applies == "global" {
 		return true

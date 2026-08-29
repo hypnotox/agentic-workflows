@@ -2,6 +2,13 @@ The currentstate package is the active authority engine: it loads topic claims a
 
 ## Claims
 
+### `invariant: production-packages-domain-owned`
+
+Every ordinary production package path is owned by a configured domain and applicable current-state topic, with the focused resolver exposing absence without enforcing it.
+Origin: ADR-delegate-relevance-discovery-to-codegraph
+Backing: unbacked
+Verify: TestProductionPackagesAreDomainOwned verifies domain ownership while the existing topic scope remains the proof site.
+
 ### `invariant: abandoned-remove-pair-attributed`
 
 An applied V2 remove continues to attribute claim absence after its ADR becomes Abandoned, while a remaining operation canceled by abandonment never attributes absence; snapshot-pair validation proves the Applied event and actual removal together.
