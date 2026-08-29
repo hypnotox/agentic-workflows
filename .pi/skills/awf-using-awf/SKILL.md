@@ -10,7 +10,7 @@ description: "Load when beginning a generated-tree edit, render, drift repair, o
 <!-- awf:template-source templates/skills/using-awf/SKILL.md.tmpl -->
 # awf-using-awf
 
-`.awf/` is the source. Never hand-edit rendered outputs, except a declared local document's body between its `awf:edit-in-place` and `awf:end` markers; awf owns every other byte.
+`.awf/` is the source. Never hand-edit rendered outputs, except a declared local document's body after its `awf:edit-in-place` pointer through end-of-file; awf owns every other byte.
 
 Edit source or that narrow local body, render, check, then stage the source, rendered outputs, and `.awf/awf.lock` together; then run the gate. Removing a local declaration or uninstalling saves a present document as a sibling `.awf-bak` recovery file. A drift finding carries its own repair hint: follow it rather than guessing at the generated output.
 

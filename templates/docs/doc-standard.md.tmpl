@@ -46,8 +46,8 @@ Declare repository-specific documentation that no standard document owns in
 The command creates and reports `docs/<name>.md`; without `--title`, it derives the title from the final
 kebab-case name segment (`api-v2` becomes `Api V2`). Each item has only a lowercase kebab-case path below `docs`, a
 title, and a one-line description; `decisions`, `plans`, `domains`, `topics`, and `pitfalls` are
-reserved. Render creates `docs/<name>.md`. Edit only its body between `awf:edit-in-place` and
-`awf:end`; awf owns the heading and shell. Run `./awf render` and `./awf check` after changing a
+reserved. Render creates `docs/<name>.md`. Edit only its body after the `awf:edit-in-place` pointer
+through end-of-file; awf owns the heading and shell. Run `./awf render` and `./awf check` after changing a
 declaration or body. Removing a declaration, or running `./awf uninstall`, saves a present local
 document beside itself as `.awf-bak` (with a numbered suffix if needed) before removal.
 
