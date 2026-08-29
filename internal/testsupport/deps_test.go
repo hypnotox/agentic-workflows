@@ -88,8 +88,7 @@ func repositoryLayerImportViolations(path string, source any) ([]string, error) 
 			break
 		}
 	}
-	project := dir == "internal/project" || strings.HasPrefix(dir, "internal/project/")
-	if !mechanism && !project {
+	if !mechanism {
 		return nil, nil
 	}
 
@@ -103,12 +102,6 @@ func repositoryLayerImportViolations(path string, source any) ([]string, error) 
 		importPath, err := strconv.Unquote(imp.Path.Value)
 		if err != nil {
 			return nil, fmt.Errorf("%s: unquote import %s: %w", path, imp.Path.Value, err)
-		}
-		if project && importsPackage(importPath, repositoryModule+"/internal/contextq") {
-			violations = append(violations, fmt.Sprintf("%s reverses the existing contextq-to-project dependency with import %q", slashPath, importPath))
-		}
-		if !mechanism {
-			continue
 		}
 		for _, forbidden := range higherLayerImports {
 			if importsPackage(importPath, forbidden) {
@@ -238,10 +231,8 @@ func TestRepositoryLayerDirection(t *testing.T) {
 		{name: "mechanism to domain", path: "internal/filepublication/publication.go", source: "package filepublication\nimport \"github.com/hypnotox/agentic-workflows/internal/adr\"", violations: 1},
 		{name: "snapshot to git", path: "internal/snapshot/tree.go", source: "package snapshot\nimport \"github.com/hypnotox/agentic-workflows/internal/git\""},
 		{name: "filesystem to publication", path: "internal/filesystem/handle.go", source: "package filesystem\nimport \"github.com/hypnotox/agentic-workflows/internal/filepublication\""},
-		{name: "project to deleted context query", path: "internal/project/project.go", source: "package project\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq\"", violations: 1},
 		{name: "lower state to project", path: "internal/projectstate/state.go", source: "package projectstate\nimport \"github.com/hypnotox/agentic-workflows/internal/project\"", violations: 1},
 		{name: "lower state to publisher", path: "internal/projectstate/state.go", source: "package projectstate\nimport \"github.com/hypnotox/agentic-workflows/internal/publisher\"", violations: 1},
-		{name: "unrelated consumer", path: "internal/tool/tool.go", source: "package tool\nimport \"github.com/hypnotox/agentic-workflows/internal/contextq\""},
 		{name: "malformed protected source", path: "internal/git/repo.go", source: "not go", wantErr: true},
 		{name: "malformed unrelated source", path: "internal/tool/tool.go", source: "not go"},
 	}

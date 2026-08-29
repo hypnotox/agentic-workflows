@@ -119,3 +119,7 @@ Rendered workflow guidance continues to obey the existing publication-safe unset
 - 2026-08-29: Reapplied; operations: add `invariants/current-state-authority:production-packages-domain-owned`
 
 - 2026-08-29: Amended; content-sha256: 759e6658d9797823a9d8d9bf5bdb24d9464000b586691659ccc3785e387719f9
+
+- 2026-08-29: Applied; operations: update `rendering/sync-and-drift:managed-output-attribution`, update `code-design/dependency-composition:repository-layer-direction`, update `code-design/state-ownership:project-derived-state-ownership`
+
+- 2026-08-29: Reapplied; operations: add `invariants/current-state-authority:uncovered-lists-unowned`

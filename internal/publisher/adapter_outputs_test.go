@@ -20,25 +20,25 @@ func TestGeneratedAdapterRuntimeOwnership(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, extension := range []string{".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-effort/index.ts"} {
-		if !slices.Contains(prepared.Plan().Paths(), extension) {
-			t.Fatalf("generated extension %q is absent from output plan", extension)
+	want := []string{
+		".pi/extensions/awf-effort/client.ts",
+		".pi/extensions/awf-effort/index.ts",
+		".pi/extensions/awf-subagents/index.ts",
+		".pi/extensions/awf-subagents/model-routing.ts",
+	}
+	var extensions []string
+	for _, output := range prepared.Plan().Outputs() {
+		if filepath.ToSlash(filepath.Dir(output.Path())) != ".pi/extensions/awf-effort" && filepath.ToSlash(filepath.Dir(output.Path())) != ".pi/extensions/awf-subagents" {
+			continue
 		}
-		domains, topics := topic.PathAuthority(prepared.Topics(), extension)
+		extensions = append(extensions, output.Path())
+		domains, topics := topic.PathAuthority(prepared.Topics(), output.Path())
 		if !slices.Contains(domains, "rendering") || !slices.Contains(topics, "rendering/adapter-outputs") {
-			t.Fatalf("extension ownership = domains %v topics %v", domains, topics)
+			t.Errorf("extension %q ownership = domains %v topics %v", output.Path(), domains, topics)
 		}
 	}
-}
-
-// invariant: rendering/sync-and-drift:managed-output-attribution (TestManagedOutputAttribution)
-func TestManagedOutputAttribution(t *testing.T) {
-	// Output declarations are built before render and classify planned outputs.
-	state, err := project.Open(testContext(t), filepath.Clean(filepath.Join("..", "..")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := New(state.OutputState(), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Prepare(); err != nil {
-		t.Fatal(err)
+	slices.Sort(extensions)
+	if !slices.Equal(extensions, want) {
+		t.Fatalf("generated extension outputs = %v, want %v", extensions, want)
 	}
 }

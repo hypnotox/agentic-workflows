@@ -219,8 +219,3 @@ func TestGlobalTopicPathOwnership(t *testing.T) {
 		t.Fatalf("claimless global fan-out = %#v, want %#v", got, want)
 	}
 }
-
-// invariant: invariants/topics-and-markers:coverage-evaluation-selects-checks (TestCoverageEvaluationSelectsChecks)
-func TestCoverageEvaluationSelectsChecks(t *testing.T) {
-	// Coverage selection behavior remains exercised by this package's coverage suite.
-}

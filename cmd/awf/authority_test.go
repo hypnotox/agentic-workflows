@@ -68,6 +68,7 @@ func TestResolveTopicCommandLexicalAttribution(t *testing.T) {
 }
 
 // invariant: tooling/authority-queries:unowned-path-census (TestResolveTopicUncoveredCommand)
+// invariant: invariants/current-state-authority:uncovered-lists-unowned (TestResolveTopicUncoveredCommand)
 func TestResolveTopicUncoveredCommand(t *testing.T) {
 	root := topicCmdFixture(t)
 	configPath := filepath.Join(root, ".awf", "config.yaml")
