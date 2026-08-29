@@ -347,8 +347,21 @@ func TestLoadCorpusFromReaderPropagatesReadFailure(t *testing.T) {
 	}
 }
 
+func TestLoadCorpusFromReaderReadsOnlySemanticInputs(t *testing.T) {
+	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: //\n")
+	for _, path := range []string{"large.out", ".awf/effort-archive/large.go"} {
+		t.Run(path, func(t *testing.T) {
+			reader := readerForLoadCorpusTest{paths: []string{path}, readErr: os.ErrPermission}
+			if _, err := LoadCorpusFromReader(reader, cfg, oneImplementedADR()); err != nil {
+				t.Fatalf("LoadCorpusFromReader read non-input %q: %v", path, err)
+			}
+		})
+	}
+}
+
 func TestLoadCorpusFromReaderRejectsDuplicateSelectedPaths(t *testing.T) {
-	reader := readerForLoadCorpusTest{paths: []string{"same", "same"}, files: map[string][]byte{"same": []byte("x")}}
+	const path = ".awf/topics/metadata/alpha/one.yaml"
+	reader := readerForLoadCorpusTest{paths: []string{path, path}, files: map[string][]byte{path: []byte("x")}}
 	if _, err := LoadCorpusFromReader(reader, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"), oneImplementedADR()); err == nil {
 		t.Fatal("duplicate selected paths were accepted")
 	}

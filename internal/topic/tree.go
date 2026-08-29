@@ -8,6 +8,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"gopkg.in/yaml.v3"
 )
@@ -32,8 +33,15 @@ func LoadCorpusFromReader(read TreeReader, cfg *config.Config, adrs adr.Corpus) 
 	if err != nil {
 		return Corpus{}, err
 	}
+	domainSidecars := make(map[string]bool, len(cfg.Domains))
+	for _, domain := range cfg.Domains {
+		domainSidecars[config.DirName+"/domains/"+domain+".yaml"] = true
+	}
 	files := make([]snapshot.File, 0, len(paths))
 	for _, path := range paths {
+		if !corpusInputPath(path, cfg.CurrentState, domainSidecars) {
+			continue
+		}
 		data, found, err := read.ReadFile(path)
 		if err != nil {
 			return Corpus{}, err
@@ -47,6 +55,18 @@ func LoadCorpusFromReader(read TreeReader, cfg *config.Config, adrs adr.Corpus) 
 		return Corpus{}, err
 	}
 	return LoadCorpusFromTree(tree, cfg, adrs)
+}
+
+func corpusInputPath(path string, current *config.CurrentStateConfig, domainSidecars map[string]bool) bool {
+	if resident.IsResidentPath(path) {
+		return false
+	}
+	const nestedConfigSuffix = "/" + config.DirName + "/config.yaml"
+	return domainSidecars[path] ||
+		strings.HasSuffix(path, nestedConfigSuffix) ||
+		(strings.HasPrefix(path, treeMetadataPrefix) && strings.HasSuffix(path, ".yaml")) ||
+		(strings.HasPrefix(path, treePartsPrefix) && strings.HasSuffix(path, treePartSuffix)) ||
+		(current != nil && len(matchingSources(current, path)) != 0)
 }
 
 // LoadCorpusFromTree parses the complete current-state topic corpus from an
