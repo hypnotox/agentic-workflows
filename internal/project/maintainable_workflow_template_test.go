@@ -933,24 +933,41 @@ func TestCodeGraphNavigationGuidance(t *testing.T) {
 	for name := range catalog.Standard.Skills {
 		templateID := "skills/" + name + "/SKILL.md.tmpl"
 		source, err := fs.ReadFile(templates.FS, templateID)
-		if err != nil { t.Fatalf("read %s: %v", templateID, err) }
+		if err != nil {
+			t.Fatalf("read %s: %v", templateID, err)
+		}
 		expanded, err := render.ExpandIncludes(string(source), templates.FS)
-		if err != nil { t.Fatalf("expand %s: %v", templateID, err) }
-		for _, forbidden := range []string{"awf context", "AWF_CONTEXT_SPILL_V1", "context-spill", "--show", "--full"} {
-			if strings.Contains(expanded, forbidden) { t.Errorf("%s retains retired navigation %q", templateID, forbidden) }
+		if err != nil {
+			t.Fatalf("expand %s: %v", templateID, err)
+		}
+		for _, forbidden := range []string{"awf context", "./awf topic ", "AWF_CONTEXT_SPILL_V1", "context-spill", "--show", "--full"} {
+			if strings.Contains(expanded, forbidden) {
+				t.Errorf("%s retains retired navigation %q", templateID, forbidden)
+			}
 		}
 	}
 	for _, templateID := range []string{"partials/orientation-ladder.md", "partials/context-orientation.md"} {
 		body, err := fs.ReadFile(templates.FS, templateID)
-		if err != nil { t.Fatal(err) }
+		if err != nil {
+			t.Fatal(err)
+		}
 		for _, want := range []string{"CodeGraph", "exact-known-file", "genuinely trivial", "./awf resolve topic", "./awf read topic"} {
-			if !strings.Contains(string(body), want) { t.Errorf("%s missing %q", templateID, want) }
+			if !strings.Contains(string(body), want) {
+				t.Errorf("%s missing %q", templateID, want)
+			}
 		}
 	}
 	for _, templateID := range []string{"skills/reviewing-adr/SKILL.md.tmpl", "skills/adr-lifecycle/SKILL.md.tmpl"} {
 		body, err := fs.ReadFile(templates.FS, templateID)
-		if err != nil { t.Fatal(err) }
-		if !strings.Contains(string(body), "./awf read adr") { t.Errorf("%s does not use focused ADR reads", templateID) }
+		if err != nil {
+			t.Fatal(err)
+		}
+		if !strings.Contains(string(body), "./awf read adr") {
+			t.Errorf("%s does not use focused ADR reads", templateID)
+		}
+		if templateID == "skills/reviewing-adr/SKILL.md.tmpl" && !strings.Contains(string(body), "./awf read topic") {
+			t.Errorf("%s does not use focused topic reads", templateID)
+		}
 	}
 }
 
