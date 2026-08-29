@@ -277,7 +277,7 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 	}
 	results = append(results, repositorycheck.Slot{Result: generated, IncludeInformationInDrift: true})
 	references, err := referenceResult(p, *op, eff)
-	if err != nil { // coverage-ignore: pitfall preparation read the tag inputs
+	if err != nil { // coverage-ignore: ReferenceChecker constructs fixed valid evidence from prepared output and skill identities
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results = append(results, repositorycheck.Slot{Result: references})
