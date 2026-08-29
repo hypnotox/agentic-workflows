@@ -68,7 +68,8 @@ transaction-ownership commitment.
    The child no-commit and no-gate rules are enforced through the rendered implementer and dispatch
    contracts with deterministic contract tests, not described as shell-command or intervening-history
    interception. Other runtimes retain the same parent-owned semantic contract through their rendered
-   roles and skills.
+   roles and skills. Every affected template renders coherently with empty variables under
+   missingkey-zero behavior and emits no unresolved-value token, backed by deterministic tests.
 
 ## State changes
 
