@@ -6,7 +6,10 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"math/big"
 	"reflect"
+	"sort"
+	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -311,25 +314,107 @@ func EditSidecar(src []byte, edit SidecarEdit) ([]byte, bool, bool, error) {
 	return out, true, true, nil
 }
 func valueNode(v any) (*yaml.Node, error) {
-	b, err := yaml.Marshal(v)
-	if err != nil {
-		return nil, err
+	switch value := v.(type) {
+	case nil:
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!null", Value: "null"}, nil
+	case string:
+		return strScalar(value), nil
+	case bool:
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: "!!bool", Value: strconv.FormatBool(value)}, nil
+	case json.Number:
+		tag := "!!int"
+		if strings.ContainsAny(string(value), ".eE") {
+			tag = "!!float"
+		}
+		return &yaml.Node{Kind: yaml.ScalarNode, Tag: tag, Value: string(value)}, nil
+	case []any:
+		node := &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq"}
+		for _, item := range value {
+			child, err := valueNode(item)
+			if err != nil {
+				return nil, err
+			}
+			node.Content = append(node.Content, child)
+		}
+		return node, nil
+	case map[string]any:
+		node := &yaml.Node{Kind: yaml.MappingNode, Tag: "!!map"}
+		keys := make([]string, 0, len(value))
+		for key := range value {
+			keys = append(keys, key)
+		}
+		sort.Strings(keys)
+		for _, key := range keys {
+			child, err := valueNode(value[key])
+			if err != nil {
+				return nil, err
+			}
+			node.Content = append(node.Content, strScalar(key), child)
+		}
+		return node, nil
+	default:
+		b, err := yaml.Marshal(v)
+		if err != nil {
+			return nil, err
+		}
+		var d yaml.Node
+		if err := yaml.Unmarshal(b, &d); err != nil {
+			return nil, err
+		}
+		if len(d.Content) == 0 {
+			return nil, fmt.Errorf("config: empty value")
+		}
+		return d.Content[0], nil
 	}
-	var d yaml.Node
-	if err := yaml.Unmarshal(b, &d); err != nil {
-		return nil, err
-	}
-	if len(d.Content) == 0 {
-		return nil, fmt.Errorf("config: empty value")
-	}
-	return d.Content[0], nil
 }
-func nodeValue(n *yaml.Node) any { var v any; _ = n.Decode(&v); return v }
+
+type structuralScalar struct {
+	Tag   string
+	Value string
+}
+
+func nodeValue(n *yaml.Node) any {
+	if n == nil {
+		return nil
+	}
+	switch n.Kind {
+	case yaml.AliasNode:
+		return nodeValue(n.Alias)
+	case yaml.ScalarNode:
+		tag, value := n.ShortTag(), n.Value
+		if tag == "!!int" {
+			normalized := strings.ReplaceAll(value, "_", "")
+			if integer, ok := new(big.Int).SetString(normalized, 0); ok {
+				value = integer.String()
+			}
+		}
+		return structuralScalar{Tag: tag, Value: value}
+	case yaml.SequenceNode:
+		values := make([]any, len(n.Content))
+		for i, child := range n.Content {
+			values[i] = nodeValue(child)
+		}
+		return values
+	case yaml.MappingNode:
+		values := make(map[structuralScalar]any, len(n.Content)/2)
+		for i := 0; i+1 < len(n.Content); i += 2 {
+			key, ok := nodeValue(n.Content[i]).(structuralScalar)
+			if !ok {
+				return structuralScalar{Tag: "!!invalid", Value: "mapping-key"}
+			}
+			values[key] = nodeValue(n.Content[i+1])
+		}
+		return values
+	default:
+		return structuralScalar{Tag: "!!invalid", Value: strconv.Itoa(int(n.Kind))}
+	}
+}
 
 // DecodeJSONValue decodes exactly one JSON value. JSON's decoder rejects trailing documents.
 func DecodeJSONValue(s string) (any, error) {
 	var v any
 	dec := json.NewDecoder(strings.NewReader(s))
+	dec.UseNumber()
 	if err := dec.Decode(&v); err != nil {
 		return nil, err
 	}

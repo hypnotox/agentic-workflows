@@ -178,8 +178,26 @@ func TestSidecarListRemovalRemovesEveryStructuralDuplicate(t *testing.T) {
 	}
 }
 
+// invariant: config/configuration:sidecar-authoring-roundtrip (TestSidecarJSONNumbersRetainExactValueAndStructuralIdentity)
+func TestSidecarJSONNumbersRetainExactValueAndStructuralIdentity(t *testing.T) {
+	const exact = `9007199254740993`
+	value, err := DecodeJSONValue(exact)
+	if err != nil {
+		t.Fatal(err)
+	}
+	out, present, changed, err := EditSidecar(nil, SidecarEdit{Field: "data.number", Mode: "value", Value: value})
+	if err != nil || !present || !changed || string(out) != "data:\n  number: 9007199254740993\n" {
+		t.Fatalf("exact JSON number = %q present=%v changed=%v err=%v", out, present, changed, err)
+	}
+	list := []byte("items:\n  - 9007199254740993\n")
+	out, present, changed, err = EditSidecar(list, SidecarEdit{Field: "items", Mode: "add", Value: value})
+	if err != nil || !present || changed || string(out) != string(list) {
+		t.Fatalf("exact JSON number identity = %q present=%v changed=%v err=%v", out, present, changed, err)
+	}
+}
+
 func TestDecodeJSONValueExactlyOne(t *testing.T) {
-	for _, input := range []string{`{"x":[1]}`, `true`, `null`, `"text"`, `1`} {
+	for _, input := range []string{`{"x":[1]}`, `true`, `null`, `"text"`, `1`, `9007199254740993`} {
 		if _, err := DecodeJSONValue(input); err != nil {
 			t.Fatalf("valid JSON %q: %v", input, err)
 		}
