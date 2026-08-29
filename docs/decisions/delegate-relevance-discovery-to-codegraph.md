@@ -55,6 +55,7 @@ The current context exclusion list serves the removed navigation census and also
 - add `invariants/current-state-authority:domain-owned-coverage-no-ignore`
 - update `rendering/sync-and-drift:managed-output-attribution`
 - update `code-design/dependency-composition:repository-layer-direction`
+- update `code-design/dependency-composition:repository-extraction-owners`
 - update `code-design/state-ownership:project-derived-state-ownership`
 - remove `invariants/current-state-authority:uncovered-lists-unowned-unignored`
 - add `invariants/current-state-authority:uncovered-lists-unowned`
@@ -84,6 +85,7 @@ The current context exclusion list serves the removed navigation census and also
 - update `tooling/cli:explicit-output-bypasses`
 - update `tooling/cli:check-severity-by-protected-property`
 - update `tooling/upgrade-runtime:upgraded-runtime-has-one-authority-engine`
+- update `tooling/audit-and-snapshots:managed-history-decode-horizon`
 
 ## Consequences
 
@@ -133,3 +135,5 @@ Rendered workflow guidance continues to obey the existing publication-safe unset
 - 2026-08-29: Applied; operations: remove `config/configuration:tag-coverage-note`, remove `config/configuration:tag-frequency-note`, remove `config/configuration:tag-vocabulary-governed`, remove `config/validation:tag-not-domain-name`, remove `invariants/topics-and-markers:relevance-markers-only-narrow`, remove `invariants/topics-and-markers:touches-marker-advisory`, add `config/configuration:no-active-tag-system`, add `invariants/current-state-authority:domain-owned-coverage-no-ignore`, add `invariants/topics-and-markers:proof-only-marker-grammar`, update `rendering/doc-outputs:pitfall-corpus-validated`, update `invariants/topics-and-markers:claim-id-qualified`, update `invariants/topics-and-markers:invariant-marker-close-token`, update `invariants/topics-and-markers:invariants-three-state`, update `tooling/upgrade-runtime:upgraded-runtime-has-one-authority-engine`
 
 - 2026-08-29: Reapplied; operations: add `invariants/current-state-authority:uncovered-lists-unowned`
+
+- 2026-08-29: Amended; content-sha256: fdf3be3686c9640549c28cee22d7dbe7fdccccbf888d9ad75c6d2b439787b576
