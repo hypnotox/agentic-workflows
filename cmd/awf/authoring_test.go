@@ -187,6 +187,34 @@ func TestSidecarAuthoringCLIRejectsModesCapabilitiesAndInvalidCandidateWithoutMu
 	}
 }
 
+// invariant: tooling/cli:semantic-artifact-authoring (TestPartAuthoringCLIRendersPartialReportOnce)
+func TestPartAuthoringCLIRendersPartialReportOnce(t *testing.T) {
+	root := scaffoldProject(t)
+	part := catalog.Standard.Skills["tdd"].Sections[0]
+	output := filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")
+	if err := os.Remove(output); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Mkdir(output, 0o755); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout, stderr bytes.Buffer
+	code := runAuthoringAt(root, strings.NewReader("unused"), []string{"awf", "edit", "skill", "tdd", part, "--content", "committed body"}, &stdout, &stderr)
+	if code != 1 {
+		t.Fatalf("partial authoring exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	if !strings.Contains(stdout.String(), "status: artifact part partially committed") || !strings.Contains(stdout.String(), "source effect: created") {
+		t.Fatalf("partial report = %q", stdout.String())
+	}
+	// handlerReport recognizes the producedReportError returned after the
+	// successful report render, so the driver preserves its failing exit without
+	// emitting a second diagnostic.
+	if stderr.Len() != 0 {
+		t.Fatalf("produced partial report was also diagnosed: %q", stderr.String())
+	}
+}
+
 func TestLocalDocumentBodyCLIEditAndReset(t *testing.T) {
 	root := syncedGitProject(t, minimalYAML+"localDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	path := "docs/runbooks/incident.md"

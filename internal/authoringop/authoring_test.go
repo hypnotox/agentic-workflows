@@ -1,6 +1,7 @@
 package authoringop
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -11,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
@@ -51,6 +53,98 @@ func bytesAt(t *testing.T, root, rel string) []byte {
 		t.Fatal(err)
 	}
 	return bytes
+}
+
+func TestRunRejectsNilLoaderAndUnknownMode(t *testing.T) {
+	if _, err := Run(context.Background(), t.TempDir(), Request{Mode: Edit}, nil, nil); err == nil || err.Error() != "authoring operation requires a project loader" {
+		t.Fatalf("nil loader error = %v", err)
+	}
+
+	root, loader := transactionFixture(t, false)
+	if _, err := Run(context.Background(), root, Request{Mode: Mode("unknown")}, loader, nil); err == nil || err.Error() != `unknown authoring mode "unknown"` {
+		t.Fatalf("unknown mode error = %v", err)
+	}
+}
+
+func TestRunRejectsInvalidLeaseContractWithoutMutation(t *testing.T) {
+	root, loader := transactionFixture(t, false)
+	section := catalog.Standard.Skills["tdd"].Sections[0]
+	output := ".claude/skills/example-tdd/SKILL.md"
+	beforeOutput := bytesAt(t, root, output)
+	beforeLock := bytesAt(t, root, ".awf/awf.lock")
+
+	released := false
+	cases := []struct {
+		name    string
+		acquire LeaseAcquirer
+	}{
+		{
+			name: "nil lease",
+			acquire: func(context.Context, string) (*filesystem.Lease, func() error, error) {
+				return nil, func() error { released = true; return nil }, nil
+			},
+		},
+		{
+			name: "noncovering lease",
+			acquire: func(ctx context.Context, _ string) (*filesystem.Lease, func() error, error) {
+				lease, err := loader.AcquireProjectLease(ctx, t.TempDir())
+				if err != nil {
+					return nil, nil, err
+				}
+				return lease, func() error { released = true; return lease.Release() }, nil
+			},
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			released = false
+			outcome, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "tdd", Part: section, Content: []byte("body")}, loader, tc.acquire)
+			if err == nil || err.Error() != "authoring operation requires a covering project lease" || outcome.Source != "" || outcome.SourcePath != "" || len(outcome.CreatedParents) != 0 || len(outcome.Residue) != 0 || outcome.Publisher.HasCommittedEffects() {
+				t.Fatalf("lease contract outcome=%#v error=%v", outcome, err)
+			}
+			if !released {
+				t.Fatal("invalid lease contract did not release the supplied lease")
+			}
+			if !bytes.Equal(beforeOutput, bytesAt(t, root, output)) || !bytes.Equal(beforeLock, bytesAt(t, root, ".awf/awf.lock")) {
+				t.Fatal("invalid lease contract mutated output or lock")
+			}
+		})
+	}
+}
+
+func TestMissingRenderedLocalDocumentRefusesWithoutMutation(t *testing.T) {
+	root, loader := transactionFixture(t, true)
+	path := "docs/runbooks/incident.md"
+	if err := os.Remove(filepath.Join(root, filepath.FromSlash(path))); err != nil {
+		t.Fatal(err)
+	}
+	beforeOutput := bytesAt(t, root, ".claude/skills/example-tdd/SKILL.md")
+	beforeLock := bytesAt(t, root, ".awf/awf.lock")
+
+	outcome, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "doc", Name: "runbooks/incident", Part: "body", Content: []byte("body")}, loader, nil)
+	if err == nil || err.Error() != "configured local document output docs/runbooks/incident.md is absent; run awf render first" || outcome.Source != SourceNone {
+		t.Fatalf("missing local output outcome=%#v error=%v", outcome, err)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(path))); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("missing local output was recreated: %v", statErr)
+	}
+	if !bytes.Equal(beforeOutput, bytesAt(t, root, ".claude/skills/example-tdd/SKILL.md")) || !bytes.Equal(beforeLock, bytesAt(t, root, ".awf/awf.lock")) {
+		t.Fatal("missing local output mutated output or lock")
+	}
+}
+
+func TestPartialErrorEmptyRecoveryUsesDefaultText(t *testing.T) {
+	document, err := (&PartialError{Outcome: Outcome{Kind: "skill", Name: "tdd", Part: "guide", SourcePath: ".awf/skills/parts/tdd/guide.md", Source: SourceCreated}, Cause: errors.New("cause")}).Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rendered bytes.Buffer
+	if err := presentation.Render(&rendered, document); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(rendered.String(), "remove reported residue first, repair the reported cause, then rerun awf render") {
+		t.Fatalf("default partial recovery = %q", rendered.String())
+	}
 }
 
 // invariant: rendering/sync-and-drift:authoring-sync-transaction (TestPartAuthoringValidatesBeforeSourceAndSynchronizesCommittedAuthority)

@@ -19,6 +19,10 @@ type TreeReader interface {
 	Paths(prefix string) ([]string, error)
 }
 
+type markerLineReader interface {
+	ReadLines(path string, maxLineBytes int, visit func(string) error) (bool, error)
+}
+
 const (
 	treeMetadataRoot   = config.DirName + "/topics/metadata"
 	treeMetadataPrefix = treeMetadataRoot + "/"
@@ -184,14 +188,21 @@ func markerIndexFromReader(read TreeReader, paths []string, corpus Corpus, cfg *
 			if len(sources) == 0 {
 				continue
 			}
-			data, found, err := read.ReadFile(path)
+			var err error
+			if lineReader, ok := read.(markerLineReader); ok {
+				lines := func(visit func(string) error) (bool, error) {
+					return lineReader.ReadLines(path, maxMarkerLineBytes, visit)
+				}
+				err = scanMarkerLines(idx, path, lines, sources, corpus, cfg)
+			} else {
+				var data []byte
+				var found bool
+				data, found, err = read.ReadFile(path)
+				if err == nil && found {
+					err = scanMarkerBytes(idx, path, data, sources, corpus, cfg)
+				}
+			}
 			if err != nil {
-				return MarkerIndex{}, err
-			}
-			if !found {
-				continue
-			}
-			if err := scanMarkerBytes(idx, path, data, sources, corpus, cfg); err != nil {
 				return MarkerIndex{}, fmt.Errorf("scan current-state markers: %w", err)
 			}
 		}
@@ -211,7 +222,7 @@ func markerIndexFromTreeFiles(files []snapshot.File, corpus Corpus, cfg *config.
 	if cfg != nil {
 		nested := nestedProjectRoots(files)
 		for _, f := range files {
-			if belowAnyRoot(f.Path, nested) {
+			if resident.IsResidentPath(f.Path) || belowAnyRoot(f.Path, nested) {
 				continue
 			}
 			sources := matchingSources(cfg, f.Path)

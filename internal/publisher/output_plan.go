@@ -1,6 +1,7 @@
 package publisher
 
 import (
+	"bufio"
 	"errors"
 	"fmt"
 	"io/fs"
@@ -94,6 +95,28 @@ func (r filesystemProjectReader) ReadFile(path string) ([]byte, bool, error) {
 		return nil, false, err
 	}
 	return slices.Clone(b), true, nil
+}
+
+func (r filesystemProjectReader) ReadLines(path string, maxLineBytes int, visit func(string) error) (bool, error) {
+	file, err := os.Open(filepath.Join(r.root, filepath.FromSlash(path)))
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	defer file.Close()
+	scanner := bufio.NewScanner(file)
+	scanner.Buffer(make([]byte, min(64*1024, maxLineBytes)), maxLineBytes)
+	for scanner.Scan() {
+		if err := visit(scanner.Text()); err != nil {
+			return true, err
+		}
+	}
+	if err := scanner.Err(); err != nil {
+		return true, fmt.Errorf("scan lines %s: %w", path, err)
+	}
+	return true, nil
 }
 func (r filesystemProjectReader) Entries(prefix string) ([]generatedcheck.TreeEntry, error) {
 	var out []generatedcheck.TreeEntry

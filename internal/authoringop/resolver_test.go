@@ -64,6 +64,36 @@ func TestResolveSidecarUsesSemanticCapabilitiesAndOwnedLayouts(t *testing.T) {
 	}
 }
 
+func TestResolveTargetsRejectMissingAuthoringAuthority(t *testing.T) {
+	state, cfg := resolverFixture(t)
+	for _, tc := range []struct {
+		name  string
+		state *project.ProjectState
+		cfg   *config.Config
+	}{
+		{name: "nil state", cfg: cfg},
+		{name: "missing state", state: &project.ProjectState{}, cfg: cfg},
+		{name: "nil config", state: state},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			for _, resolve := range []func(*project.ProjectState, *config.Config) error{
+				func(state *project.ProjectState, cfg *config.Config) error {
+					_, err := project.ResolveSidecarTarget(state, cfg, "skill", "tdd", "data.custom")
+					return err
+				},
+				func(state *project.ProjectState, cfg *config.Config) error {
+					_, err := project.ResolveAuthoringTarget(state, cfg, "skill", "tdd", "identity")
+					return err
+				},
+			} {
+				if err := resolve(tc.state, tc.cfg); err == nil || err.Error() != "project: missing authoring authority" {
+					t.Errorf("error = %v", err)
+				}
+			}
+		})
+	}
+}
+
 func TestResolvePartUsesKindCatalogConfigurationAndLayouts(t *testing.T) {
 	state, cfg := resolverFixture(t)
 	cases := []struct {

@@ -1,6 +1,7 @@
 package topic
 
 import (
+	"bytes"
 	"fmt"
 	"regexp"
 	"slices"
@@ -73,12 +74,42 @@ func matchingSources(cfg *config.CurrentStateConfig, rel string) []config.Curren
 	return sources
 }
 
-// scanMarkerBytes scans one source file's bytes for the marker families that
-// select it, resolving each valid marker into a site on idx. It is the byte-fed
-// scan core shared by the filesystem walker and the snapshot loader.
+const maxMarkerLineBytes = 4 << 20
+
+type markerLineSource func(func(string) error) (bool, error)
+
+// scanMarkerBytes adapts already-materialized snapshot bytes to the bounded
+// line scanner without copying the complete source into a string and line slice.
 func scanMarkerBytes(idx MarkerIndex, rel string, b []byte, sources []config.CurrentStateSource, corpus Corpus, cfg *config.CurrentStateConfig) error {
-	lines := strings.Split(string(b), "\n")
-	for n, line := range lines {
+	return scanMarkerLines(idx, rel, byteLineSource(b), sources, corpus, cfg)
+}
+
+func byteLineSource(b []byte) markerLineSource {
+	return func(visit func(string) error) (bool, error) {
+		for start := 0; start <= len(b); {
+			end := start + bytes.IndexByte(b[start:], '\n')
+			if end < start {
+				end = len(b)
+			}
+			if end-start > maxMarkerLineBytes {
+				return true, fmt.Errorf("marker source line exceeds %d bytes", maxMarkerLineBytes)
+			}
+			if err := visit(string(b[start:end])); err != nil {
+				return true, err
+			}
+			if end == len(b) {
+				break
+			}
+			start = end + 1
+		}
+		return true, nil
+	}
+}
+
+func scanMarkerLines(idx MarkerIndex, rel string, lines markerLineSource, sources []config.CurrentStateSource, corpus Corpus, cfg *config.CurrentStateConfig) error {
+	lineNumber := 0
+	_, err := lines(func(line string) error {
+		lineNumber++
 		trimmed := strings.TrimSpace(line)
 		for _, src := range sources {
 			if !strings.HasPrefix(trimmed, src.Marker) {
@@ -88,29 +119,31 @@ func scanMarkerBytes(idx MarkerIndex, rel string, b []byte, sources []config.Cur
 			payload, ok := markerPayload(trimmed, src)
 			if !ok {
 				if markerCandidate(raw) {
-					return fmt.Errorf("%s:%d: current-state marker is missing closing token %q", rel, n+1, src.Close)
+					return fmt.Errorf("%s:%d: current-state marker is missing closing token %q", rel, lineNumber, src.Close)
 				}
 				continue
 			}
 			if !markerCandidate(payload) {
 				continue
 			}
-			site, name, err := resolveMarker(rel, n+1, payload, corpus, cfg)
+			site, name, err := resolveMarker(rel, lineNumber, payload, corpus, cfg)
 			if err != nil {
 				return err
 			}
-			// Verified here, at the point the site resolves, rather than after
-			// the loop: deferring would report every resolve error in the file
-			// ahead of every occurrence error, and the scan must keep reporting
-			// the first failure in line order (ADR-0199 item 3).
-			if site.Kind == ProofMarker && !proofNameOccurs(lines, name, src.Marker) {
-				return fmt.Errorf("%s:%d: proof marker for %s names %q, which does not occur in this file; the test was deleted, renamed, or moved", rel, n+1, site.ClaimID, name)
+			// Verify at the resolving marker to preserve first-failure line order.
+			occurs, err := proofNameOccurs(lines, name, src.Marker)
+			if err != nil {
+				return err
+			}
+			if site.Kind == ProofMarker && !occurs {
+				return fmt.Errorf("%s:%d: proof marker for %s names %q, which does not occur in this file; the test was deleted, renamed, or moved", rel, lineNumber, site.ClaimID, name)
 			}
 			idx.sites[site.ClaimID] = append(idx.sites[site.ClaimID], site)
 			break
 		}
-	}
-	return nil
+		return nil
+	})
+	return err
 }
 
 // finalizeMarkerIndex validates each claim's backing contract against the
@@ -198,10 +231,11 @@ func resolveMarker(path string, line int, payload string, corpus Corpus, cfg *co
 // form excludes only lines opening with that exact token. Both are accepted
 // false negatives: narrowing them needs per-language comment parsing, which the
 // check refuses (ADR-0199 item 9).
-func proofNameOccurs(lines []string, name, marker string) bool {
-	for _, line := range lines {
-		if strings.HasPrefix(strings.TrimSpace(line), marker) {
-			continue
+func proofNameOccurs(lines markerLineSource, name, marker string) (bool, error) {
+	found := false
+	_, err := lines(func(line string) error {
+		if found || strings.HasPrefix(strings.TrimSpace(line), marker) {
+			return nil
 		}
 		// Padding removes the bounds cases from the flanking test: a match can
 		// never sit at either end of the padded line.
@@ -216,12 +250,14 @@ func proofNameOccurs(lines []string, name, marker string) bool {
 			// same name can occur twice on one line, once as part of a longer
 			// identifier and once on its own, as in a wrapper calling the test.
 			if !identBefore(padded[:start]) && !identAt(padded[start+len(name):]) {
-				return true
+				found = true
+				break
 			}
 			off = start + 1
 		}
-	}
-	return false
+		return nil
+	})
+	return found, err
 }
 
 // identBefore and identAt decode a whole rune rather than testing a byte, so an

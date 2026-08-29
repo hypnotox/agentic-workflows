@@ -20,7 +20,7 @@ query a single version or a range.
 
 ### Bug fixes
 
-- Render now reads only semantic current-state inputs and excludes resident effort trees, preventing ignored archives from multiplying into gigabytes of memory.
+- Render now retains only current-state authority, streams bounded marker-source lines, and excludes resident effort trees, preventing project inputs from multiplying into gigabytes of memory.
 
 - Historical audit now forward-ports schema-46 `tags` and `contextIgnore` config fields in memory, preserving current-state transition and merge auditing across the relevance-metadata migration.
 

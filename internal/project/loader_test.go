@@ -44,6 +44,27 @@ func TestNewLoaderRejectsMissingDependencies(t *testing.T) {
 	}
 }
 
+func TestLoaderWithConfigLoaderRejectsMissingCandidate(t *testing.T) {
+	loader := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root })
+	for _, tc := range []struct {
+		name   string
+		loader *Loader
+		load   LoadConfigTree
+	}{
+		{name: "nil receiver", load: config.Load},
+		{name: "nil candidate", loader: loader},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			defer func() {
+				if got := recover(); got != "project Loader: missing candidate config loader" {
+					t.Fatalf("panic = %v", got)
+				}
+			}()
+			tc.loader.WithConfigLoader(tc.load)
+		})
+	}
+}
+
 func TestLoaderOpenReturnsLoadError(t *testing.T) {
 	root := t.TempDir()
 	sentinel := errors.New("load sentinel")
