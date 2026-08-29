@@ -12,12 +12,12 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/glossary"
+	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
-	"github.com/hypnotox/agentic-workflows/internal/vocabularycheck"
 )
 
 type renderInputs struct {
@@ -112,7 +112,7 @@ type Preparation struct {
 	plans      []plan.Plan
 	plansError error
 	generated  generatedcheck.AdditionalInput
-	vocabulary vocabularycheck.Input
+	glossary   glossarycheck.Input
 }
 
 // New composes a Publisher from immutable loaded facts and an explicit operation tree reader.
@@ -137,7 +137,7 @@ func (p *Publisher) Prepare() (Preparation, error) {
 	if err != nil {
 		return Preparation{}, err
 	}
-	vocabulary, err := vocabularySemantics(p.inputs, pitfalls)
+	glossary, err := glossarySemantics(p.inputs)
 	if err != nil { // coverage-ignore: output-plan construction already validated the same glossary input
 		return Preparation{}, err
 	}
@@ -145,7 +145,7 @@ func (p *Publisher) Prepare() (Preparation, error) {
 	if err != nil {
 		return Preparation{}, err
 	}
-	return Preparation{publisher: p, plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr, generated: generated, vocabulary: vocabulary}, nil
+	return Preparation{publisher: p, plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr, generated: generated, glossary: glossary}, nil
 }
 
 // Plan derives exactly one immutable plan for this operation.
@@ -180,32 +180,29 @@ func (p Preparation) GeneratedOutput() generatedcheck.AdditionalInput {
 	return cloneGeneratedOutput(p.generated)
 }
 
-// Vocabulary returns a defensive prepared vocabulary projection.
-func (p Preparation) Vocabulary() vocabularycheck.Input { return cloneVocabularyInput(p.vocabulary) }
+// Glossary returns a defensive prepared glossary projection.
+func (p Preparation) Glossary() glossarycheck.Input { return cloneGlossaryInput(p.glossary) }
 
-func vocabularySemantics(p renderInputs, pitfalls pitfall.Corpus) (vocabularycheck.Input, error) {
+func glossarySemantics(p renderInputs) (glossarycheck.Input, error) {
 	sc, err := p.cfg.Sidecar("docs", "glossary")
 	if err != nil { // coverage-ignore: project loading already validated the selected sidecar
-		return vocabularycheck.Input{}, err
+		return glossarycheck.Input{}, err
 	}
 	authored, err := glossary.Records(sc.Data["terms"])
 	if err != nil { // coverage-ignore: output-plan glossary transform already validated authored records
-		return vocabularycheck.Input{}, err
+		return glossarycheck.Input{}, err
 	}
 	merged, err := glossary.Merge(withDefaultData(sc, projectCatalog(p).Docs["glossary"].Data, glossary.SpecializedListDataKeys("docs", "glossary")...))
 	if err != nil { // coverage-ignore: output-plan glossary transform already validated the merged records
-		return vocabularycheck.Input{}, err
+		return glossarycheck.Input{}, err
 	}
-	enabled := fullProfile(p)
-	return vocabularycheck.Input{GlossaryEnabled: enabled, Authored: authored, Merged: merged, Domains: slices.Clone(p.cfg.Domains), Tags: maps.Clone(p.cfg.Tags), Pitfalls: clonePitfallCorpus(pitfalls)}, nil
+	return glossarycheck.Input{Enabled: fullProfile(p), Authored: authored, Merged: merged, Domains: slices.Clone(p.cfg.Domains)}, nil
 }
-func cloneVocabularyInput(in vocabularycheck.Input) vocabularycheck.Input {
+func cloneGlossaryInput(in glossarycheck.Input) glossarycheck.Input {
 	out := in
 	out.Authored = slices.Clone(in.Authored)
 	out.Merged = slices.Clone(in.Merged)
 	out.Domains = slices.Clone(in.Domains)
-	out.Tags = maps.Clone(in.Tags)
-	out.Pitfalls = clonePitfallCorpus(in.Pitfalls)
 	for i := range out.Authored {
 		out.Authored[i].Domains = slices.Clone(out.Authored[i].Domains)
 	}
@@ -230,7 +227,6 @@ func clonePitfallCorpus(corpus pitfall.Corpus) pitfall.Corpus {
 	entries := corpus.All()
 	for i := range entries {
 		entries[i].Domains = slices.Clone(entries[i].Domains)
-		entries[i].Tags = slices.Clone(entries[i].Tags)
 		entries[i].Related = slices.Clone(entries[i].Related)
 		entries[i].Source = slices.Clone(entries[i].Source)
 	}

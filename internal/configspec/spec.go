@@ -78,7 +78,6 @@ func DataKeys() []DataKey { return dataKeys }
 // VarEntries derives the var descriptions from the catalog's config-var
 // descriptors (empty or "var" Target - the init-routing descriptors are not
 // vars: keys), description text verbatim, availability clause attached here.
-// touches-state: config/configspec-and-reference:configspec-var-derivation - var entries derived from catalog descriptors; proof in spec_test.go
 func VarEntries() []VarEntry {
 	var out []VarEntry
 	for _, d := range catalog.Standard.Vars {
@@ -149,16 +148,6 @@ var keys = []Entry{
 		Path: "domains", Type: "string list", Default: "none",
 		Description:  "Freeform domain keys. Each renders a generated `docs/domains/<name>.md` doc (a compact topic list plus your `current-state` convention part) and can declare a file territory via the domain sidecar's `paths:`.",
 		Availability: "Always.",
-	},
-	{
-		Path: "tags", Type: "key → value map", Default: "none",
-		Description:  "A governed vocabulary of cross-cutting keyword tags, each mapping a tag name to a one-line meaning. Authored pitfall `tags:` are validated against it: with a non-empty vocabulary, a used tag that is not a declared member is failing drift, as is a member with an empty meaning. Parsed legacy ADR tags remain historical metadata outside current membership validation. An empty or absent vocabulary disables the check (pitfall tags are then free-form). Declaring a member no pitfall uses is allowed.",
-		Availability: "Always; the membership check is inert until the vocabulary is non-empty.",
-	},
-	{
-		Path: "contextIgnore", Type: "string list", Default: "none",
-		Description:  "Anchored doublestar globs for tracked paths that context and coverage should exclude (config source, docs, top-level non-code files). Matching paths are ineligible for directory expansion and coverage, including staged queries, alongside awf's own generated outputs. An empty or absent list adds no exclusion.",
-		Availability: "Always; consulted by working and staged context path expansion and coverage.",
 	},
 	{
 		Path: "commitPolicy.grandfatheredThrough", Type: "lowercase full object ID", Default: "none: required when commitPolicy is present",

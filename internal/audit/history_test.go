@@ -30,9 +30,9 @@ func TestAuditLockHistoricalHorizonAndRouting(t *testing.T) {
 		wantErr error
 	}{
 		{name: "lower horizon", lock: `{"awfVersion":"0.1.0","schemaVersion":3,"adrFormatV1From":1,"adrFormatV2From":2,"adrFormatV3From":3,"legacyAdrGaps":[],"files":{}}`},
-		{name: "upper horizon", lock: `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`},
+		{name: "upper horizon", lock: `{"awfVersion":"0.39.2","schemaVersion":47,"files":{}}`},
 		{name: "below horizon", lock: `{"awfVersion":"0.1.0","schemaVersion":2,"files":{}}`, wantErr: ErrHistoricalHorizon},
-		{name: "above horizon", lock: `{"awfVersion":"0.39.2","schemaVersion":47,"files":{}}`, wantErr: ErrHistoricalHorizon},
+		{name: "above horizon", lock: `{"awfVersion":"0.39.2","schemaVersion":48,"files":{}}`, wantErr: ErrHistoricalHorizon},
 		{name: "malformed JSON", lock: `{`, wantErr: nil},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -5,8 +5,6 @@
 
 **Domains:** rendering, invariants
 
-**Tags:** test-support, verification-discipline
-
 **Related ADRs:** ADR-0245
 
 A test that backs a current-state claim about generated prose asserts substrings, and a

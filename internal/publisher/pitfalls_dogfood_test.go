@@ -408,7 +408,7 @@ func pitfallSemanticHomeFindings(sources map[string][]byte) []string {
 			findings = append(findings, declaration+" homes = "+strings.Join(paths, ", "))
 		}
 	}
-	wantConsumers := map[string]bool{"internal/project": true, "internal/publisher": true, "internal/pitfallcheck": true, "internal/vocabularycheck": true}
+	wantConsumers := map[string]bool{"internal/project": true, "internal/publisher": true, "internal/pitfallcheck": true, "internal/migrate": true}
 	for consumer := range consumers {
 		if !wantConsumers[consumer] {
 			findings = append(findings, "unexpected pitfall consumer "+consumer)

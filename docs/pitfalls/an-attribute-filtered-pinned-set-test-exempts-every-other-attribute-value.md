@@ -5,8 +5,6 @@
 
 **Domains:** tooling
 
-**Tags:** pinned-set-tests, invariant-backing
-
 A pinned-list test that selects its population by an attribute (`if d.Kind == "string"`)
 pins only that slice: anything added under a different attribute value bypasses the pin
 entirely while the invariant it backs claims the whole set is closed. The first

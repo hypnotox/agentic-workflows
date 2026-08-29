@@ -13,9 +13,10 @@ func CurrentSchemaChange() Change {
 }
 
 // Changes is the fact collector passed through the supported migration seam.
-// The schema-46 floor entry is a no-op; the next supported migration will add
-// the first concrete collection operation with its semantic fact.
-type Changes struct{}
+type Changes struct{ items []Change }
 
-// Items returns the facts collected by the current supported migration chain.
-func (*Changes) Items() []Change { return nil }
+// Add records one ordered migration fact.
+func (c *Changes) Add(text string) { c.items = append(c.items, Change{Text: text}) }
+
+// Items returns a defensive copy of the facts collected by the migration chain.
+func (c *Changes) Items() []Change { return append([]Change(nil), c.items...) }

@@ -13,13 +13,13 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/glossary"
+	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
-	"github.com/hypnotox/agentic-workflows/internal/vocabularycheck"
 )
 
 func TestNewRejectsMissingCompositionDependencies(t *testing.T) {
@@ -297,7 +297,7 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 	}
 
 	records := []adr.ADR{{
-		Number: "0001", Slug: "immutable", Domains: []string{"rendering"}, Tags: []string{"tag"},
+		Number: "0001", Slug: "immutable", Domains: []string{"rendering"}, Tags: []string{"legacy"},
 		Related: []int{2}, Sections: map[string]string{"Decision": "before"},
 		Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "rendering/immutable:stable", Slug: "stable"}},
 		History:    []adr.HistoryEvent{{Date: "2026-08-21", Status: "Implemented", Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "rendering/immutable:stable"}}}},
@@ -307,13 +307,13 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 		t.Fatal(err)
 	}
 	prepared.pitfalls = pitfall.New([]pitfall.Entry{{
-		Slug: "immutable", Domains: []string{"rendering"}, Tags: []string{"tag"}, Related: []int{1}, Source: []byte("source"),
+		Slug: "immutable", Domains: []string{"rendering"}, Related: []int{1}, Source: []byte("source"),
 	}})
-	prepared.vocabulary = vocabularycheck.Input{
-		GlossaryEnabled: true,
-		Authored:        []glossary.Record{{Term: "authored", Meaning: "meaning", Domains: []string{"rendering"}}},
-		Merged:          []glossary.Record{{Term: "merged", Meaning: "meaning", Domains: []string{"rendering"}}},
-		Domains:         []string{"rendering"}, Tags: map[string]string{"tag": "meaning"}, Pitfalls: prepared.pitfalls,
+	prepared.glossary = glossarycheck.Input{
+		Enabled:  true,
+		Authored: []glossary.Record{{Term: "authored", Meaning: "meaning", Domains: []string{"rendering"}}},
+		Merged:   []glossary.Record{{Term: "merged", Meaning: "meaning", Domains: []string{"rendering"}}},
+		Domains:  []string{"rendering"},
 	}
 	prepared.plans = []plan.Plan{{
 		ADRs: []plan.ADRLink{{Number: 1}}, Source: []byte("source"), DoD: []plan.DoDItem{{Slug: "done"}},
@@ -326,7 +326,7 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 
 	beforeADRs, beforePitfalls, beforeTopics := prepared.ADRs(), prepared.Pitfalls(), prepared.Topics()
 	beforeSkills, beforePlans, beforePlan := prepared.EffectiveSkills(), prepared.Plans(), prepared.Plan()
-	beforeVocabulary := prepared.Vocabulary()
+	beforeGlossary := prepared.Glossary()
 
 	projectedADRs := prepared.ADRs().All()
 	projectedADRs[0].Domains[0] = "mutated"
@@ -339,7 +339,6 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 
 	projectedPitfalls := prepared.Pitfalls().All()
 	projectedPitfalls[0].Domains[0] = "mutated"
-	projectedPitfalls[0].Tags[0] = "mutated"
 	projectedPitfalls[0].Related[0] = 99
 	projectedPitfalls[0].Source[0] = 'X'
 
@@ -367,12 +366,10 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 	projectedPlans[0].Phases[0].Tasks[0].Fields.Applying[0].ADR = "mutated"
 	projectedPlans[0].Phases[0].Tasks[0].Fields.Context[0].ADR = "mutated"
 
-	projectedVocabulary := prepared.Vocabulary()
-	projectedVocabulary.Authored[0].Domains[0] = "mutated"
-	projectedVocabulary.Merged[0].Domains[0] = "mutated"
-	projectedVocabulary.Domains[0] = "mutated"
-	projectedVocabulary.Tags["tag"] = "mutated"
-	projectedVocabulary.Pitfalls.All()[0].Tags[0] = "mutated"
+	projectedGlossary := prepared.Glossary()
+	projectedGlossary.Authored[0].Domains[0] = "mutated"
+	projectedGlossary.Merged[0].Domains[0] = "mutated"
+	projectedGlossary.Domains[0] = "mutated"
 
 	// outputplan has no exported mutable fields. Every slice-valued query is a
 	// defensive copy, so mutate each outward slice and each nested slice query.
@@ -421,7 +418,7 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 		"EffectiveSkills": {prepared.EffectiveSkills(), beforeSkills},
 		"Plans":           {prepared.Plans(), beforePlans},
 		"Plan":            {prepared.Plan(), beforePlan},
-		"Vocabulary":      {prepared.Vocabulary(), beforeVocabulary},
+		"Glossary":        {prepared.Glossary(), beforeGlossary},
 	} {
 		if !reflect.DeepEqual(values[0], values[1]) {
 			t.Errorf("mutating the %s projection changed a second projection or Publisher-owned state", name)

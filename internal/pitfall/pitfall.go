@@ -20,7 +20,7 @@ var slugRE = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
 type Entry struct {
 	Slug, SourcePath, Title string
-	Domains, Tags           []string
+	Domains                 []string
 	Related                 []int
 	Body                    string
 	Source                  []byte
@@ -71,7 +71,6 @@ type SourceFile struct {
 type metadata struct {
 	Title   *string
 	Domains presentNode
-	Tags    presentNode
 	Related presentNode
 }
 
@@ -100,8 +99,6 @@ func (m *metadata) UnmarshalYAML(node *yaml.Node) error {
 			m.Title = &title
 		case "domains":
 			m.Domains = presentNode{present: true, node: *value}
-		case "tags":
-			m.Tags = presentNode{present: true, node: *value}
 		case "related":
 			m.Related = presentNode{present: true, node: *value}
 		default:
@@ -183,18 +180,11 @@ func Parse(f SourceFile) (Entry, error) {
 	if err != nil {
 		return Entry{}, err
 	}
-	tags, err := decodeOptionalStringList(f.Path, "tags", m.Tags)
-	if err != nil {
-		return Entry{}, err
-	}
 	related, err := decodeOptionalIntegerList(f.Path, "related", m.Related)
 	if err != nil {
 		return Entry{}, err
 	}
 	if err := validateStrings(f.Path, "domains", domains); err != nil {
-		return Entry{}, err
-	}
-	if err := validateStrings(f.Path, "tags", tags); err != nil {
 		return Entry{}, err
 	}
 	seenRelated := map[int]bool{}
@@ -207,7 +197,7 @@ func Parse(f SourceFile) (Entry, error) {
 		}
 		seenRelated[n] = true
 	}
-	return Entry{Slug: slug, SourcePath: f.Path, Title: title, Domains: domains, Tags: tags, Related: related, Body: string(body), Source: slices.Clone(f.Bytes)}, nil
+	return Entry{Slug: slug, SourcePath: f.Path, Title: title, Domains: domains, Related: related, Body: string(body), Source: slices.Clone(f.Bytes)}, nil
 }
 
 func optionalSequence(source, field string, value presentNode) ([]*yaml.Node, error) {
@@ -314,9 +304,8 @@ func Serialize(e Entry) ([]byte, error) {
 	m := struct {
 		Title   string   `yaml:"title"`
 		Domains []string `yaml:"domains,omitempty,flow"`
-		Tags    []string `yaml:"tags,omitempty,flow"`
 		Related []int    `yaml:"related,omitempty,flow"`
-	}{e.Title, e.Domains, e.Tags, e.Related}
+	}{e.Title, e.Domains, e.Related}
 	y, err := yaml.Marshal(m)
 	if err != nil { // coverage-ignore: the closed metadata struct contains only scalar slices and yaml.Marshal cannot reject it
 		return nil, err

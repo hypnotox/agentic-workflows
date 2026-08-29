@@ -1,7 +1,6 @@
 ---
 title: "`adr.ADR.Title` already carries the `ADR-NNNN: ` prefix"
 domains: ["adr-system"]
-tags: ["adr-parsing", "context-query"]
 ---
 `adr.ParseDir` reads `Title` verbatim from the `# ADR-NNNN: ...` heading, so it includes the
 `ADR-NNNN: ` prefix while `Number` carries the digits separately. A new consumer that prints

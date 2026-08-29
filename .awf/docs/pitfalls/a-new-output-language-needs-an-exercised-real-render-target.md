@@ -1,7 +1,6 @@
 ---
 title: "A new output language needs an exercised real render target"
 domains: ["rendering"]
-tags: ["editable-sections", "provenance-markers", "command-runner"]
 ---
 ADR-0101 fixed the shell runner gaps that Markdown-only tests missed: provenance comments are
 syntax-aware and executable targets retain their mode. The residual hazard begins when a

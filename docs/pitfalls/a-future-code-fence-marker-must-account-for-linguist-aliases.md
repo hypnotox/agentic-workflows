@@ -5,8 +5,6 @@
 
 **Domains:** adr-system
 
-**Tags:** plan-taxonomy, commit-gate
-
 **Related ADRs:** ADR-0111
 
 ADR-0111 settled the existing ```commit marker: `commit` remains a GitHub Linguist alias with

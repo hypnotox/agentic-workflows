@@ -929,7 +929,7 @@ func staleAuthorizationSyntax(err error) (*commitmsg.SyntaxError, error) {
 // values: they describe immutable evidence, not live project support.
 const (
 	historicalSchemaFloor   = 3
-	historicalSchemaHorizon = 46
+	historicalSchemaHorizon = 47
 )
 
 // ErrHistoricalHorizon marks authority outside audit's evidence-only decoder.

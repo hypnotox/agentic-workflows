@@ -16,6 +16,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/configcheck"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
@@ -26,7 +27,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
-	"github.com/hypnotox/agentic-workflows/internal/vocabularycheck"
 )
 
 // CheckAdvisories separates ranked warnings from unranked information without
@@ -38,33 +38,31 @@ type CheckAdvisories struct {
 
 // AdvisoryNotes returns the compatibility projection of the non-failing notes
 // produced by one operation-scoped plan parse.
-func advisoryNotes(p renderInputs, plans []plan.Plan, plansErr error, op *OutputPlan, vocabulary vocabularycheck.Input) ([]string, error) {
+func advisoryNotes(p renderInputs, plans []plan.Plan, plansErr error, op *OutputPlan, glossary glossarycheck.Input) ([]string, error) {
 	if plansErr != nil {
 		return nil, plansErr
 	}
-	vocabularyResults, err := vocabularycheck.Evaluate(vocabulary)
-	if err != nil { // coverage-ignore: prepared vocabulary checks are infallible
+	glossaryResults, err := glossarycheck.Evaluate(glossary)
+	if err != nil { // coverage-ignore: prepared glossary checks are infallible
 		return nil, err
 	}
-	advisories := advisoryNotesWithState(p, plans, op, vocabularyResults)
+	advisories := advisoryNotesWithState(p, plans, op, glossaryResults)
 	return append(slices.Clone(advisories.Warnings), advisories.Information...), nil
 }
 
 // advisoryNotesWithState classifies the non-failing render advisories from
 // operation-owned state, its already parsed plans, and its one prepared output
 // plan.
-func advisoryNotesWithState(p renderInputs, plans []plan.Plan, op *OutputPlan, vocabularyResults vocabularycheck.Results) CheckAdvisories {
+func advisoryNotesWithState(p renderInputs, plans []plan.Plan, op *OutputPlan, glossaryResult checkresult.Result) CheckAdvisories {
 	files := planWriteFiles(op)
 	all := advisoryCompatibilityFiles(op)
 	information := append(unsetVarNotes(p, files), stubNotes(all)...)
 	information = append(information, markerNotes(all)...)
 	information = append(information, planCommitScopeNotes(p, plans)...)
 	var warnings []string
-	for _, result := range []checkresult.Result{vocabularyResults.Tags, vocabularyResults.Glossary} {
-		for _, finding := range result.Findings() {
-			if finding.Rank == severity.Warn {
-				warnings = append(warnings, finding.Evidence.Detail)
-			}
+	for _, finding := range glossaryResult.Findings() {
+		if finding.Rank == severity.Warn {
+			warnings = append(warnings, finding.Evidence.Detail)
 		}
 	}
 	return CheckAdvisories{Warnings: warnings, Information: information}
@@ -129,7 +127,6 @@ func unsetVarNotes(p renderInputs, files []RenderedFile) []string {
 // per output path: artifacts sharing a template id, including domain docs,
 // each report independently, and a multi-target project prints one line
 // per target path by design (ADR-0070).
-// touches-state: rendering/doc-outputs:stub-notes-path-keyed - per-output-path stub note; proof in notes_test.go
 func stubNotes(files []RenderedFile) []string {
 	var notes []string
 	for _, f := range files {
@@ -206,11 +203,11 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 	if err != nil {
 		return CheckReport{}, err
 	}
-	vocabularyResults, err := vocabularycheck.Evaluate(semantics.Vocabulary)
-	if err != nil { // coverage-ignore: Publisher preparation supplied validated vocabulary semantics
+	glossaryResults, err := glossarycheck.Evaluate(semantics.Glossary)
+	if err != nil { // coverage-ignore: Publisher preparation supplied validated glossary semantics
 		return CheckReport{}, err
 	}
-	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, eff, plans, semantics.GeneratedOutput, op, vocabularyResults)
+	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, eff, plans, semantics.GeneratedOutput, op, glossaryResults)
 	if err != nil {
 		return CheckReport{}, err
 	}
@@ -223,7 +220,7 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 			return CheckReport{}, err
 		}
 	}
-	advisories, err := advisoryResultsWithState(p, plans, op, vocabularyResults)
+	advisories, err := advisoryResultsWithState(p, plans, op, glossaryResults)
 	if err != nil { // coverage-ignore: Publisher preparation validated advisory inputs and the output plan is immutable
 		return CheckReport{}, err
 	}
@@ -249,7 +246,7 @@ const (
 	propertyPlanDetail      checkresult.Property = "plan-detail-quality"
 )
 
-func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, eff map[string]bool, plans []plan.Plan, generatedInput generatedcheck.AdditionalInput, op *OutputPlan, vocabularyResults vocabularycheck.Results) (repositorycheck.Slot, []repositorycheck.Slot, checkresult.Result, error) {
+func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, eff map[string]bool, plans []plan.Plan, generatedInput generatedcheck.AdditionalInput, op *OutputPlan, glossaryResult checkresult.Result) (repositorycheck.Slot, []repositorycheck.Slot, checkresult.Result, error) {
 	var indexPaths generatedcheck.IndexPaths
 	if repo != nil {
 		indexPaths = repo.IndexPaths
@@ -292,13 +289,11 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results = append(results, repositorycheck.Slot{Result: pitfallsResult})
-	for _, result := range []checkresult.Result{vocabularyResults.Glossary, vocabularyResults.Tags} {
-		withoutWarnings, _, err := repositorycheck.SplitWarnings(result)
-		if err != nil { // coverage-ignore: splitting VocabularyChecker's validated immutable result cannot invalidate evidence
-			return repositorycheck.Slot{}, nil, checkresult.Result{}, err
-		}
-		results = append(results, repositorycheck.Slot{Result: withoutWarnings})
+	withoutWarnings, _, err := repositorycheck.SplitWarnings(glossaryResult)
+	if err != nil { // coverage-ignore: splitting GlossaryChecker's validated immutable result cannot invalidate evidence
+		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
+	results = append(results, repositorycheck.Slot{Result: withoutWarnings})
 	if fullProfile(p) {
 		related, err := adrRelatedResult(corpus)
 		if err != nil { // coverage-ignore: the immutable ADR corpus is already validated
@@ -373,8 +368,8 @@ func planArtifactResults(plans []plan.Plan, corpus adr.Corpus) checkresult.Resul
 	}
 	return result
 }
-func advisoryResultsWithState(p renderInputs, plans []plan.Plan, op *OutputPlan, vocabularyResults vocabularycheck.Results) (checkresult.Result, error) {
-	advisories := advisoryNotesWithState(p, plans, op, vocabularyResults)
+func advisoryResultsWithState(p renderInputs, plans []plan.Plan, op *OutputPlan, glossaryResult checkresult.Result) (checkresult.Result, error) {
+	advisories := advisoryNotesWithState(p, plans, op, glossaryResult)
 	var findings []checkresult.Finding
 	for _, note := range advisories.Warnings {
 		findings = append(findings, checkresult.Finding{Rank: severity.Warn, Property: propertyHeuristic, Evidence: checkresult.Evidence{Kind: "advisory", Detail: note}})

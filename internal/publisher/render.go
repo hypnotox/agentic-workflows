@@ -531,7 +531,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 		sources: func(n string) []string {
 			switch n {
 			case "glossary":
-				return []string{".awf/docs/glossary.yaml", "derived:awf-standard-vocabulary"}
+				return []string{".awf/docs/glossary.yaml", "derived:awf-standard-glossary"}
 			case "pitfalls":
 				return []string{".awf/docs/pitfalls/*.md"}
 			}

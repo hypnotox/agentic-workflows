@@ -1,7 +1,6 @@
 ---
 title: "A milestone-time check must not double as an every-commit test"
 domains: ["tooling"]
-tags: ["release-pipeline", "changelog"]
 ---
 `cmd/releasecheck` (ADR-0078) holds a condition that is *supposed* to be false mid-cycle: the
 exact changelog pin only has to be true at tag time, and a normal in-cycle repo carries a

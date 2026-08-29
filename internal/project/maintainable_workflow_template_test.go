@@ -757,7 +757,7 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 		rejects []string
 	}
 	patternToolbox := []string{
-		"Patterns are a non-exhaustive vocabulary",
+		"Patterns are a non-exhaustive glossary",
 		"Strategy can select among genuinely varying policies",
 		"Adapter can isolate an incompatible representation",
 		"Facade can present a focused entry point",

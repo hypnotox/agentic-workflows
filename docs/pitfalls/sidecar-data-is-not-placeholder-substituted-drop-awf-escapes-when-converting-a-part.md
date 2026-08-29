@@ -5,8 +5,6 @@
 
 **Domains:** rendering
 
-**Tags:** placeholder-degradation, sidecar-fields
-
 **Related ADRs:** ADR-0089, ADR-0099
 
 A raw convention part is run through awf's `{{=awf:...}}` sandbox substitution before Go templating

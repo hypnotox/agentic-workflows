@@ -5,8 +5,6 @@
 
 **Domains:** tooling
 
-**Tags:** coverage-gate
-
 A fixture that corrupts state up front (a directory where a sidecar file belongs, an
 unreadable file) to pin a *late* stage's error propagation silently changes meaning when a
 new earlier stage starts reading the same state: the error now surfaces there, the late

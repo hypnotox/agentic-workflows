@@ -32,7 +32,6 @@ func ScaffoldConfigForProfile(prefix string, vars map[string]string, scopes []st
 
 	// Collect referenced var names from every selected catalog template family - not only
 	// the core ones - so an opt-in target added later renders without <no value>.
-	// touches-state: rendering/project-output-plan:scaffold-seeds-all-vars - seeds every referenced var; proof in scaffold_test.go
 	varSet := map[string]bool{}
 	for _, kind := range []string{"skills", "agents", "docs"} {
 		d, _ := descriptorByPlural(kind)

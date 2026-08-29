@@ -371,7 +371,6 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			return backups, changes, pruned, effects, infoErr
 		}
 		if !prior[f.Path()] && infoErr == nil {
-			// touches-state: rendering/sync-and-drift:sync-backs-up-foreign - foreign-file backup on sync; proof in publication_sync_test.go
 			bak, err := backupFileConfined(outputPath, filesystem)
 			if err != nil {
 				_ = info.Release()

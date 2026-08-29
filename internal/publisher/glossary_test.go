@@ -124,7 +124,7 @@ func TestGlossaryDegradesWhenBothLayersEmpty(t *testing.T) {
 			if strings.Contains(out, "| Term | Meaning |") {
 				t.Errorf("zero-row table must not render:\n%s", out)
 			}
-			if !strings.Contains(out, "<!-- "+bannerText+" -->\n<!-- awf:source .awf/docs/glossary.yaml derived:awf-standard-vocabulary -->\n") || strings.Contains(out, "<no value>") {
+			if !strings.Contains(out, "<!-- "+bannerText+" -->\n<!-- awf:source .awf/docs/glossary.yaml derived:awf-standard-glossary -->\n") || strings.Contains(out, "<no value>") {
 				t.Errorf("glossary marker must follow the banner with null data safely:\n%s", out)
 			}
 		})
@@ -218,7 +218,7 @@ func TestGlossaryStandardTermsPortable(t *testing.T) {
 	}
 }
 
-// The rendered glossary merges the shipped vocabulary with the project's own
+// The rendered glossary merges the shipped glossary with the project's own
 // terms into one sorted table, and a project term overrides a shipped term of
 // the same case-insensitive name. A project authoring no terms at all still
 // receives the shipped rows rather than the empty-state pointer, which is the
@@ -235,12 +235,12 @@ func TestGlossaryMergesStandardVocabulary(t *testing.T) {
 		}
 		for _, want := range []string{"finish archives the complete resident", "when a material decision is unresolved"} {
 			if !strings.Contains(out, want) {
-				t.Errorf("shipped vocabulary missing current workflow meaning %q:\n%s", want, out)
+				t.Errorf("shipped glossary missing current workflow meaning %q:\n%s", want, out)
 			}
 		}
 		for _, stale := range []string{"deleted at finish", "always stops, however clear"} {
 			if strings.Contains(out, stale) {
-				t.Errorf("shipped vocabulary retains obsolete meaning %q:\n%s", stale, out)
+				t.Errorf("shipped glossary retains obsolete meaning %q:\n%s", stale, out)
 			}
 		}
 	})
@@ -286,7 +286,7 @@ func TestGlossaryMergesStandardVocabulary(t *testing.T) {
 		}}}
 		if _, err := glossaryTransform(sc); err == nil || !strings.Contains(err.Error(), "standard vocabulary is malformed") ||
 			!strings.Contains(err.Error(), "case-insensitive duplicates") {
-			t.Fatalf("want a standard-vocabulary duplicate error, got %v", err)
+			t.Fatalf("want a standard vocabulary duplicate error, got %v", err)
 		}
 	})
 }

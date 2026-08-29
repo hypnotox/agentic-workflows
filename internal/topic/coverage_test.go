@@ -5,7 +5,6 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
@@ -189,9 +188,6 @@ func TestGlobalTopicPathOwnership(t *testing.T) {
 	}
 	if got := TopicsForPath(corpus, "outside/elsewhere.go"); len(got) != 1 || got[0].ID != owner.ID {
 		t.Fatalf("global applicability outside ownership = %#v", got)
-	}
-	if _, _, err := resolveMarker("outside/elsewhere.go", 1, "state: core/global-owner:claim", corpus, &config.CurrentStateConfig{}); err != nil {
-		t.Fatalf("global marker outside ownership: %v", err)
 	}
 	gotCoverage := EvaluateCoverage(corpus, paths, CoveragePolicy{Coverage: true})
 	wantCoverage := []CoverageFinding{

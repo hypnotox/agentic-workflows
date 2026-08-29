@@ -98,9 +98,9 @@ func UncoveredPaths(root string, repo *awfgit.Repo, ctx context.Context) (presen
 	return presentation.Detail{Fields: []presentation.Field{query}, Sections: []presentation.Section{section}}, nil
 }
 
-// authorityCensusPaths selects the whole-repository query population. It is
-// deliberately independent of contextIgnore, while retaining the independent
-// generated-output, resident, and nested-adopter exclusions.
+// authorityCensusPaths selects the whole-repository query population. It has
+// no configurable exclusion surface and retains the independent generated-output,
+// resident, and nested-adopter exclusions.
 func authorityCensusPaths(files []snapshot.File, generated map[string]bool) []string {
 	nested := []string{}
 	for _, file := range files {

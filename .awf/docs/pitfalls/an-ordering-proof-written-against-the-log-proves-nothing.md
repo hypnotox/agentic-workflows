@@ -1,7 +1,6 @@
 ---
 title: "An ordering proof written against the log proves nothing"
 domains: ["tooling", "invariants"]
-tags: ["invariant-backing", "coverage-gate"]
 related: [175]
 ---
 A claim that names an ordering, such as "the final lock replacement is the commit point", is

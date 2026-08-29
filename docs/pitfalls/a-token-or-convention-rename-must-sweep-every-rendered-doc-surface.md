@@ -5,8 +5,6 @@
 
 **Domains:** invariants, rendering
 
-**Tags:** cross-references, render-completeness
-
 Renaming a token or changing a convention breaks in more places than the authoring
 template. When `inv:`→`invariant:` landed, the doc-currency lens flagged stale `inv:`
 spellings three separate times (plan review, verify pass, resync) because the reword

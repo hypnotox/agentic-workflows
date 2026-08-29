@@ -24,49 +24,29 @@ func markerIndexForTest(t *testing.T, root string, corpus Corpus, cfg *config.Cu
 
 // invariant: invariants/topics-and-markers:invariants-marker-whitespace (TestBuildMarkerIndex)
 // invariant: invariants/topics-and-markers:invariants-multilang-scan (TestBuildMarkerIndex)
-// invariant: invariants/topics-and-markers:touches-marker-advisory (TestBuildMarkerIndex)
+// invariant: invariants/topics-and-markers:proof-only-marker-grammar (TestBuildMarkerIndex)
 func TestBuildMarkerIndex(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteFile(t, filepath.Join(root, "internal/a.go"), "// an ordinary comment\n// state machine transition\n// invariant checking helper\n// touches-stateful code\n // state: alpha/contracts:rule\n// touches-state: alpha/contracts:stable - reviewed here\n")
-	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n")
-	testsupport.WriteFile(t, filepath.Join(root, "web/x.html"), "<!-- ordinary comment without close\n<!-- state machine comment without close\n<!-- state: alpha/contracts:rule -->\n")
-	testsupport.WriteFile(t, filepath.Join(root, "README.md"), "unmatched\n")
-	testsupport.WriteFile(t, filepath.Join(root, ".git/ignored.go"), "// state: alpha/contracts:missing\n")
-	c := markerCorpus(TestBacking)
-	c.all[0].Metadata.Applies = "global"
-	c.all[0].Metadata.Paths = nil
-	c.byTopic["alpha/contracts"] = &c.all[0]
-	idx, err := markerIndexForTest(t, root, c, markerConfig())
+	testsupport.WriteFile(t, filepath.Join(root, "internal/a.go"), "// state: alpha/contracts:rule\n// touches-state: alpha/contracts:stable - inert\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), " // invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n")
+	testsupport.WriteFile(t, filepath.Join(root, "web/x.html"), "<!-- state: alpha/contracts:rule\n")
+	idx, err := markerIndexForTest(t, root, markerCorpus(TestBacking), markerConfig())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(idx.All()) != 4 || len(idx.ForClaim("alpha/contracts:rule")) != 2 || idx.ForClaim("none") != nil {
-		t.Fatalf("sites %#v", idx.All())
-	}
-	if got := idx.All()[0]; got.Line != 5 || got.Path == "" {
-		t.Fatalf("first site = %#v", got)
+	sites := idx.All()
+	if len(sites) != 1 || sites[0].Kind != ProofMarker || sites[0].ClaimID != "alpha/contracts:stable" {
+		t.Fatalf("sites %#v", sites)
 	}
 }
+
 func TestMarkerIndexFromTreeSkipsNestedAdoptedProject(t *testing.T) {
 	root := t.TempDir()
-	for _, path := range []string{
-		"internal/adopter/.awf/config.yaml",
-		"internal/adopter/ignored.go",
-	} {
-		body := "ignored\n"
-		if strings.HasSuffix(path, ".go") {
-			body = "// state: alpha/contracts:missing\n"
-		}
-		testsupport.WriteFile(t, filepath.Join(root, path), body)
-	}
-	// Hidden directories remain eligible unless they belong to a nested adopted project.
-	testsupport.WriteFile(t, filepath.Join(root, "internal/.cache/kept.go"), "// state: alpha/contracts:rule\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/adopter/.awf/config.yaml"), "prefix: nested\n")
+	testsupport.WriteFile(t, filepath.Join(root, "internal/adopter/ignored_test.go"), "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n")
 	idx, err := markerIndexForTest(t, root, markerCorpus(Unbacked), markerConfig())
-	if err != nil {
-		t.Fatal(err)
-	}
-	if got := idx.ForClaim("alpha/contracts:rule"); len(got) != 1 || got[0].Path != "internal/.cache/kept.go" {
-		t.Fatalf("sites %#v", idx.All())
+	if err != nil || len(idx.All()) != 0 {
+		t.Fatalf("sites %#v err=%v", idx.All(), err)
 	}
 }
 
@@ -81,14 +61,12 @@ func TestBuildMarkerIndexRejected(t *testing.T) {
 		mutate     func(*config.CurrentStateConfig)
 		want       string
 	}{
-		"malformed":       {TestBacking, "internal/a.go", "// state: nope\n// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n", nil, "malformed current-state marker"},
-		"unknown":         {TestBacking, "internal/a.go", "// state: alpha/contracts:missing\n// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n", nil, "unknown claim ID"},
-		"out of scope":    {TestBacking, "web/out.html", "<!-- state: alpha/contracts:rule -->\n", nil, "outside effective topic scope"},
+		"malformed proof": {TestBacking, "internal/a_test.go", "// invariant: nope\n", nil, "malformed current-state marker"},
+		"unknown proof":   {TestBacking, "internal/a_test.go", "// invariant: alpha/contracts:missing (TestMissing)\nfunc TestMissing() {}\n", nil, "unknown claim ID"},
 		"proof test glob": {TestBacking, "internal/a.go", "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n", nil, "proof marker is outside currentState.testGlobs"},
 		"proof rule":      {TestBacking, "internal/a_test.go", "// invariant: alpha/contracts:rule (TestRule)\nfunc TestRule() {}\n", nil, "proof marker targets non-test-backed invariant"},
 		"proof unbacked":  {Unbacked, "internal/a_test.go", "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n", nil, "proof marker targets non-test-backed invariant"},
-		"touches empty":   {TestBacking, "internal/a.go", "// touches-state: alpha/contracts:rule - \n// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n", nil, "malformed current-state marker"},
-		"missing close":   {TestBacking, "web/out.html", "<!-- state: alpha/contracts:rule\n", nil, "missing closing token"},
+		"missing close":   {TestBacking, "web/out.html", "<!-- invariant: alpha/contracts:stable (TestStable)\nTestStable\n", func(c *config.CurrentStateConfig) { c.TestGlobs = append(c.TestGlobs, "web/**") }, "missing closing token"},
 	}
 	for name, tc := range cases {
 		t.Run(name, func(t *testing.T) {
@@ -126,25 +104,18 @@ func TestBuildMarkerIndexBackingObligations(t *testing.T) {
 		t.Fatalf("unbacked no marker: %#v %v", idx, err)
 	}
 }
-func TestSortSitesKindTie(t *testing.T) {
-	sites := []MarkerSite{{Path: "x", Line: 1, Kind: TouchesMarker}, {Path: "x", Line: 1, Kind: StateMarker}}
-	sortSites(sites)
-	if sites[0].Kind != StateMarker {
-		t.Fatalf("%#v", sites)
-	}
-}
 
 // invariant: invariants/topics-and-markers:invariant-marker-close-token (TestMarkerPayloadClosingToken)
 // invariant: invariants/topics-and-markers:invariants-marker-literal (TestMarkerPayloadClosingToken)
 func TestMarkerPayloadClosingToken(t *testing.T) {
 	src := config.CurrentStateSource{Marker: "/*", Close: "*/"}
-	if got, ok := markerPayload("/* state: alpha/contracts:rule */", src); !ok || got != "state: alpha/contracts:rule" {
+	if got, ok := markerPayload("/* invariant: alpha/contracts:stable (TestStable) */", src); !ok || got != "invariant: alpha/contracts:stable (TestStable)" {
 		t.Fatalf("%q %v", got, ok)
 	}
-	if _, ok := markerPayload("// state: x", src); ok {
+	if _, ok := markerPayload("// invariant: x", src); ok {
 		t.Fatal("wrong opener")
 	}
-	if _, ok := markerPayload("/* state: x", src); ok {
+	if _, ok := markerPayload("/* invariant: x", src); ok {
 		t.Fatal("missing close")
 	}
 }
@@ -192,9 +163,9 @@ func TestBuildMarkerIndexRequiresAProofName(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, filepath.Join(root, "internal/a.go"), "// state: alpha/contracts:rule (TestThing)\n")
 	testsupport.WriteFile(t, filepath.Join(root, "internal/a_test.go"), "// invariant: alpha/contracts:stable (TestStable)\nfunc TestStable() {}\n")
-	_, err := markerIndexForTest(t, root, markerCorpus(TestBacking), markerConfig())
-	if err == nil || !strings.Contains(err.Error(), "malformed current-state marker") {
-		t.Fatalf("named state marker: err = %v, want malformed current-state marker", err)
+	idx, err := markerIndexForTest(t, root, markerCorpus(TestBacking), markerConfig())
+	if err != nil || len(idx.All()) != 1 {
+		t.Fatalf("named state comment was not inert: sites=%#v err=%v", idx.All(), err)
 	}
 }
 

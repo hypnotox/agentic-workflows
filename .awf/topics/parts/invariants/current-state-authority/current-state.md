@@ -22,6 +22,7 @@ Origin: ADR-0133
 Revised-by: ADR-delegate-relevance-discovery-to-codegraph
 Backing: unbacked
 Verify: In a fixture with a conflicting current claim and an Accepted ADR, focused authority reads keep the claim under current authority and place the ADR only under pending changes.
+
 ### `invariant: accepted-does-not-override-current`
 
 Accepted operations appear only as bounded pending instructions in focused authority reads and do not replace current claim output.
@@ -29,6 +30,7 @@ Origin: ADR-0135
 Revised-by: ADR-delegate-relevance-discovery-to-codegraph
 Backing: unbacked
 Verify: A fixture with an Accepted update conflicting with its current claim keeps both clearly separated with the claim remaining current.
+
 ### `invariant: merge-transition-ordered-aggregate`
 
 Application and re-application batches remain in ascending ADR-identity and intra-ADR history order, while operation positions inside one Applied or Reapplied event are unordered membership and create no chronology. An authored transition preserves the prior Status history as an exact prefix, accepts any appended events that replay as a legal ordered lifecycle, and may append any number of batches across distinct claim IDs, but one claim may be the target of only one operation occurrence so every authored occurrence has an observable before and after. Recorded merge provenance alone permits the pair to fold a claim's operations into a legal ordered chain of at most one leading add, any number of updates, at most one remove, and after the remove any number of dominated updates. Repeated updates from one ADR contribute that updater once and require a material endpoint; repeated adds by their originating ADR fold into the chain's first absent-to-present net add; a canceling update endpoint is refused. Aggregate validation checks the observable ordered net effect without inventing intermediate claim bytes because per-occurrence materiality was proven by the authored transactions. A newly introduced ADR in an older intrinsic format is provisional at the staged boundary that lacks merge-parent and message evidence; every other derivable transition check remains blocking, and definitive admission requires exact incoming-parent qualification at commit-msg.
@@ -43,6 +45,7 @@ Origin: ADR-0133
 Revised-by: ADR-delegate-relevance-discovery-to-codegraph
 Backing: unbacked
 Verify: In a fixture with claim provenance, one topic-declared invariant, and one ADR-only legacy invariant, awf read topic emits the active claim but no historical ADR, the invariant checker treats only the topic declaration as an active obligation, and awf read topic <claim-id> --history emits the provenance ADR.
+
 ### `invariant: currentstate-handshake-findings-unranked`
 
 A current-state claim-handshake finding carries no rank: every provenance and transition finding the current-state checker produces is blocking, and the check path reports each by message with no severity field. The ranked coverage and fan-out findings the project report also carries are a separate concern and keep their ranks.
@@ -56,6 +59,7 @@ Origin: ADR-0133
 Revised-by: ADR-delegate-relevance-discovery-to-codegraph
 Backing: unbacked
 Verify: Over the same fixture, normal focused authority output omits Implemented provenance while awf read topic <claim-id> --history follows it.
+
 ### `invariant: implemented-impact-bidirectional`
 
 Every applied governed state operation has its required current, removed, or dominated-history result, and every active claim Origin or revision has the inverse applied ADR operation; Remaining, Canceled, and dominated operations provide no authority.
@@ -99,7 +103,7 @@ Backing: test
 
 ### `invariant: uncovered-lists-unowned`
 
-The current-state coverage report lists present working-tree paths, tracked or untracked, that match no configured domain glob and are not recorded as managed outputs in the lock. It collapses each result to the topmost ancestor directory with no owned descendant in scope; owned and lock-listed paths never appear, and `contextIgnore` does not affect the census.
+The current-state coverage report lists present working-tree paths, tracked or untracked, that match no configured domain glob and are not recorded as managed outputs in the lock. It collapses each result to the topmost ancestor directory with no owned descendant in scope; owned and lock-listed paths never appear, and no configurable exclusion can hide a census result.
 Origin: ADR-delegate-relevance-discovery-to-codegraph
 Backing: test
 
@@ -110,3 +114,9 @@ Origin: ADR-0135
 Revised-by: ADR-0182, ADR-0191, ADR-0212
 Backing: unbacked
 Verify: Staged fixtures with Origin edits, revision deletion, duplication, or reordering, whitespace-only, provenance-only, first substantive update, and repeated substantive correction accept only the prefix-preserving materially changed cases with one canonical ADR entry.
+
+### `invariant: domain-owned-coverage-no-ignore`
+
+Every ordinary eligible domain-owned path participates in topic coverage without a configurable exclusion escape hatch; generated outputs and nested adopters retain their independent exclusions.
+Origin: ADR-delegate-relevance-discovery-to-codegraph
+Backing: test

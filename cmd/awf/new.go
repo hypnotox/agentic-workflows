@@ -19,7 +19,6 @@ const localDocumentKind = "doc"
 
 // runNew scaffolds one of the surviving authored artifacts: an ADR, plan,
 // current-state topic, domain, or pitfall. Each arm owns its kind-specific arguments.
-// touches-state: tooling/cli:adr-new-version-gated - new-command version gate site; proof in gate_test.go
 func runNew(ctx context.Context, root, kind string, args []string, stdout io.Writer) error {
 	switch {
 	case kind == "adr":

@@ -116,21 +116,21 @@ func TestQueryIndependentDetailsAndCombination(t *testing.T) {
 	if got := combined.References[0].Incoming; len(got) != 0 {
 		t.Fatalf("query traversed references: %v", got)
 	}
-	if a := combined.Coverage.Applicability; a.DeclaredGlobal || !reflect.DeepEqual(a.TopicPaths, []string{"internal/**"}) || len(a.ApplicablePaths) != 2 || len(a.OwnedPaths) != 2 || len(a.MarkerSites) != 2 {
+	if a := combined.Coverage.Applicability; a.DeclaredGlobal || !reflect.DeepEqual(a.TopicPaths, []string{"internal/**"}) || len(a.ApplicablePaths) != 2 || len(a.OwnedPaths) != 2 || len(a.MarkerSites) != 0 {
 		t.Fatalf("coverage = %#v", combined.Coverage)
 	}
 	claim, err := Query(corpus, adrs, "alpha/contracts:stable", QueryOptions{Coverage: true}, currentPaths)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a := claim.Coverage.Applicability; a.DeclaredGlobal || !reflect.DeepEqual(a.TopicPaths, []string{"internal/**"}) || len(a.MarkerSites) != 1 || a.MarkerSites[0].ClaimID != "alpha/contracts:stable" {
+	if a := claim.Coverage.Applicability; a.DeclaredGlobal || !reflect.DeepEqual(a.TopicPaths, []string{"internal/**"}) || len(a.MarkerSites) != 0 {
 		t.Fatalf("claim coverage included sibling markers or lost topic scope = %#v", claim.Coverage)
 	}
 	global, err := Query(corpus, adrs, "beta/global", QueryOptions{Coverage: true, References: true}, currentPaths)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if a := global.Coverage.Applicability; !a.DeclaredGlobal || len(a.TopicPaths) != 0 || a.MarkerSites[0].Path != "pkg/global.go" {
+	if a := global.Coverage.Applicability; !a.DeclaredGlobal || len(a.TopicPaths) != 0 || len(a.MarkerSites) != 0 {
 		t.Fatalf("global coverage = %#v", global.Coverage)
 	}
 	if got := global.References[0].Incoming; !reflect.DeepEqual(got, []string{"alpha/contracts:order"}) {

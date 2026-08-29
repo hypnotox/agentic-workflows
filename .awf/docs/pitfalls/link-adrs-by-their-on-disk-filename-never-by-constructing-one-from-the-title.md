@@ -1,7 +1,6 @@
 ---
 title: "Link ADRs by their on-disk filename, never by constructing one from the title"
 domains: ["adr-system"]
-tags: ["cross-references", "link-resolution"]
 ---
 An ADR's kebab filename is derived from its title at `awf new adr` time, but retellings
 drift ("convention-parts-raw-not-templated" vs the actual "convention-parts-are-raw-input");

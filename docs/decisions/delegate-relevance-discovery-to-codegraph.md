@@ -129,3 +129,7 @@ Rendered workflow guidance continues to obey the existing publication-safe unset
 - 2026-08-29: Applied; operations: update `invariants/topics-and-markers:rendered-applicability-selectors-only`
 
 - 2026-08-29: Reapplied; operations: update `invariants/current-state-authority:current-state-sole-active-authority`
+
+- 2026-08-29: Applied; operations: remove `config/configuration:tag-coverage-note`, remove `config/configuration:tag-frequency-note`, remove `config/configuration:tag-vocabulary-governed`, remove `config/validation:tag-not-domain-name`, remove `invariants/topics-and-markers:relevance-markers-only-narrow`, remove `invariants/topics-and-markers:touches-marker-advisory`, add `config/configuration:no-active-tag-system`, add `invariants/current-state-authority:domain-owned-coverage-no-ignore`, add `invariants/topics-and-markers:proof-only-marker-grammar`, update `rendering/doc-outputs:pitfall-corpus-validated`, update `invariants/topics-and-markers:claim-id-qualified`, update `invariants/topics-and-markers:invariant-marker-close-token`, update `invariants/topics-and-markers:invariants-three-state`, update `tooling/upgrade-runtime:upgraded-runtime-has-one-authority-engine`
+
+- 2026-08-29: Reapplied; operations: add `invariants/current-state-authority:uncovered-lists-unowned`

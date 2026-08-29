@@ -5,8 +5,6 @@
 
 **Domains:** rendering, tooling
 
-**Tags:** plan-artifact, verification-discipline
-
 An implementation-review settlement was told to reconcile one mutable plan but edited an
 older, similarly themed Implemented plan instead. The change both misplaced the new Notes
 entry and regressed the historical plan to Proposed; render and the full gate stayed green

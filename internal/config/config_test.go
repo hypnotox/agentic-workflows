@@ -45,6 +45,15 @@ func TestConfigRejectsSelectionKeys(t *testing.T) {
 	}
 }
 
+// invariant: config/configuration:no-active-tag-system (TestRetiredRelevanceConfigFieldsRejected)
+func TestRetiredRelevanceConfigFieldsRejected(t *testing.T) {
+	for _, field := range []string{"tags: {}", "contextIgnore: []"} {
+		if _, err := Parse(".awf", []byte("prefix: awf\nprofile: full\nintegrationBranch: main\n"+field+"\n")); err == nil {
+			t.Fatalf("strict config decoding accepted retired field %q", field)
+		}
+	}
+}
+
 // rule: config/configuration:config-expresses-repo-facts-only (TestLoadParsesRepositoryFacts)
 func TestLoadParsesRepositoryFacts(t *testing.T) {
 	dir := writeConfig(t, "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\ndomains: [rendering]\n")
@@ -126,7 +135,7 @@ func TestCoreProfileRejectsFullGovernanceSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const want = "the `profile: core` governance footprint must not retain domains, tags, contextIgnore, or currentState governance sources"
+	const want = "the `profile: core` governance footprint must not retain domains or currentState governance sources"
 	if err := cfg.Validate(); err == nil || err.Error() != want {
 		t.Fatalf("core governance-source validation = %v, want %q", err, want)
 	}
@@ -910,30 +919,26 @@ func TestConfigSerializationFunnelOwnsEncoding(t *testing.T) {
 func TestFactsDeepCopiesConfigurationAndDropsLoadingRepresentation(t *testing.T) {
 	count := 2
 	cfg := &Config{
-		Vars:          map[string]any{"nested": map[string]any{"slice": []any{"value"}}},
-		Domains:       []string{"domain"},
-		Tags:          map[string]string{"tag": "meaning"},
-		ContextIgnore: []string{"**/ignored"},
-		CurrentState:  &CurrentStateConfig{Sources: []CurrentStateSource{{Globs: []string{"**/*.go"}}}, TestGlobs: []string{"**/*_test.go"}},
-		Audit:         &AuditConfig{AllowedScopes: []ScopeSpec{{Name: "code"}}},
-		Bootstrap:     &BootstrapConfig{Enabled: true},
-		ProseGate:     &ProseGateConfig{Exemptions: []ProseExemption{{Path: "x", Count: &count}}},
-		MemoryCite:    &MemoryCiteConfig{Exemptions: []MemoryExemption{{Path: "y", Count: &count}}},
-		CommitPolicy:  &CommitPolicyConfig{AllowedIdentities: []CommitPolicyIdentity{{Name: "n", Email: "e"}}, AllowedSigners: []CommitPolicySigner{{Principal: "p", Key: "k"}}},
-		Render:        &RenderConfig{TemplateSourceRoot: "templates"},
-		LocalDocs:     LocalDocs{{Name: "runbook", Title: "Runbook", Description: "desc"}},
-		root:          ".awf",
-		raw:           []byte("raw"),
-		read:          memoryTreeReader{},
-		filesystem:    true,
+		Vars:         map[string]any{"nested": map[string]any{"slice": []any{"value"}}},
+		Domains:      []string{"domain"},
+		CurrentState: &CurrentStateConfig{Sources: []CurrentStateSource{{Globs: []string{"**/*.go"}}}, TestGlobs: []string{"**/*_test.go"}},
+		Audit:        &AuditConfig{AllowedScopes: []ScopeSpec{{Name: "code"}}},
+		Bootstrap:    &BootstrapConfig{Enabled: true},
+		ProseGate:    &ProseGateConfig{Exemptions: []ProseExemption{{Path: "x", Count: &count}}},
+		MemoryCite:   &MemoryCiteConfig{Exemptions: []MemoryExemption{{Path: "y", Count: &count}}},
+		CommitPolicy: &CommitPolicyConfig{AllowedIdentities: []CommitPolicyIdentity{{Name: "n", Email: "e"}}, AllowedSigners: []CommitPolicySigner{{Principal: "p", Key: "k"}}},
+		Render:       &RenderConfig{TemplateSourceRoot: "templates"},
+		LocalDocs:    LocalDocs{{Name: "runbook", Title: "Runbook", Description: "desc"}},
+		root:         ".awf",
+		raw:          []byte("raw"),
+		read:         memoryTreeReader{},
+		filesystem:   true,
 	}
 	facts, err := NewFacts(cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
 	cfg.Domains[0] = "changed"
-	cfg.Tags["tag"] = "changed"
-	cfg.ContextIgnore[0] = "changed"
 	cfg.CurrentState.Sources[0].Globs[0] = "changed"
 	cfg.CurrentState.TestGlobs[0] = "changed"
 	cfg.Audit.AllowedScopes[0].Name = "changed"
@@ -947,11 +952,10 @@ func TestFactsDeepCopiesConfigurationAndDropsLoadingRepresentation(t *testing.T)
 	cfg.LocalDocs[0].Name = "changed"
 	cfg.Vars["nested"].(map[string]any)["slice"].([]any)[0] = "changed"
 	got := facts.Config()
-	if got.Domains[0] != "domain" || got.Tags["tag"] != "meaning" || got.ContextIgnore[0] != "**/ignored" || got.CurrentState.Sources[0].Globs[0] != "**/*.go" || got.CurrentState.TestGlobs[0] != "**/*_test.go" || got.Audit.AllowedScopes[0].Name != "code" || !got.Bootstrap.Enabled || *got.ProseGate.Exemptions[0].Count != 2 || got.MemoryCite.Exemptions[0].Path != "y" || *got.MemoryCite.Exemptions[0].Count != 2 || got.CommitPolicy.AllowedIdentities[0].Name != "n" || got.CommitPolicy.AllowedSigners[0].Principal != "p" || got.Render.TemplateSourceRoot != "templates" || got.LocalDocs[0].Name != "runbook" || got.Vars["nested"].(map[string]any)["slice"].([]any)[0] != "value" {
+	if got.Domains[0] != "domain" || got.CurrentState.Sources[0].Globs[0] != "**/*.go" || got.CurrentState.TestGlobs[0] != "**/*_test.go" || got.Audit.AllowedScopes[0].Name != "code" || !got.Bootstrap.Enabled || *got.ProseGate.Exemptions[0].Count != 2 || got.MemoryCite.Exemptions[0].Path != "y" || *got.MemoryCite.Exemptions[0].Count != 2 || got.CommitPolicy.AllowedIdentities[0].Name != "n" || got.CommitPolicy.AllowedSigners[0].Principal != "p" || got.Render.TemplateSourceRoot != "templates" || got.LocalDocs[0].Name != "runbook" || got.Vars["nested"].(map[string]any)["slice"].([]any)[0] != "value" {
 		t.Fatalf("facts retained a mutable config alias: %#v", got)
 	}
 	got.Domains[0] = "returned mutation"
-	got.Tags["tag"] = "returned mutation"
 	got.CurrentState.TestGlobs[0] = "returned mutation"
 	got.Audit.AllowedScopes[0].Name = "returned mutation"
 	got.Bootstrap.Enabled = false
@@ -963,7 +967,7 @@ func TestFactsDeepCopiesConfigurationAndDropsLoadingRepresentation(t *testing.T)
 	got.LocalDocs[0].Name = "returned mutation"
 	got.Vars["nested"].(map[string]any)["slice"].([]any)[0] = "returned mutation"
 	again := facts.Config()
-	if again.Domains[0] != "domain" || again.Tags["tag"] != "meaning" || again.CurrentState.TestGlobs[0] != "**/*_test.go" || again.Audit.AllowedScopes[0].Name != "code" || !again.Bootstrap.Enabled || *again.ProseGate.Exemptions[0].Count != 2 || again.MemoryCite.Exemptions[0].Path != "y" || again.CommitPolicy.AllowedIdentities[0].Name != "n" || again.CommitPolicy.AllowedSigners[0].Principal != "p" || again.Render.TemplateSourceRoot != "templates" || again.LocalDocs[0].Name != "runbook" || again.Vars["nested"].(map[string]any)["slice"].([]any)[0] != "value" {
+	if again.Domains[0] != "domain" || again.CurrentState.TestGlobs[0] != "**/*_test.go" || again.Audit.AllowedScopes[0].Name != "code" || !again.Bootstrap.Enabled || *again.ProseGate.Exemptions[0].Count != 2 || again.MemoryCite.Exemptions[0].Path != "y" || again.CommitPolicy.AllowedIdentities[0].Name != "n" || again.CommitPolicy.AllowedSigners[0].Principal != "p" || again.Render.TemplateSourceRoot != "templates" || again.LocalDocs[0].Name != "runbook" || again.Vars["nested"].(map[string]any)["slice"].([]any)[0] != "value" {
 		t.Fatal("Facts.Config returned a nested alias")
 	}
 	if got.root != "" || got.raw != nil || got.read != nil || got.filesystem {

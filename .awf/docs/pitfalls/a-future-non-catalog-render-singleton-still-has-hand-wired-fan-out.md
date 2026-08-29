@@ -1,7 +1,6 @@
 ---
 title: "A future non-catalog render singleton still has hand-wired fan-out"
 domains: ["rendering"]
-tags: ["render-completeness", "closed-config-tree", "template-embed"]
 ---
 The bootstrap, hooks, and runner are now wired and covered, but their architecture remains
 unlike the table-driven catalog fan-out. A new config-tree singleton rendered by a dedicated

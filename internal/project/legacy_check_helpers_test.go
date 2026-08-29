@@ -1,20 +1,17 @@
 package project
 
 import (
-	"maps"
-	"slices"
-
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/glossary"
+	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/pitfallcheck"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/plancheck"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
-	"github.com/hypnotox/agentic-workflows/internal/vocabularycheck"
 )
 
 const glossarySidecarPath = glossary.SidecarPath
@@ -38,45 +35,29 @@ func checkPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus) (
 }
 
 func checkGlossary(p renderInputs) ([]manifest.Drift, error) {
-	input, err := vocabularyInputForTest(p, pitfall.Corpus{})
+	input, err := glossaryInputForTest(p)
 	if err != nil {
 		return nil, err
 	}
-	input.Tags = nil
-	results, err := vocabularycheck.Evaluate(input)
-	return resultDriftForTest(results.Glossary), err
-}
-
-func checkTagVocabulary(p renderInputs, pitfalls pitfall.Corpus) ([]manifest.Drift, error) {
-	input := vocabularycheck.Input{Domains: slices.Clone(p.cfg.Domains), Tags: maps.Clone(p.cfg.Tags), Pitfalls: pitfalls}
-	results, err := vocabularycheck.Evaluate(input)
-	return resultDriftForTest(results.Tags), err
-}
-
-func tagHealthNotes(p renderInputs, pitfalls pitfall.Corpus) ([]string, error) {
-	input := vocabularycheck.Input{Domains: slices.Clone(p.cfg.Domains), Tags: maps.Clone(p.cfg.Tags), Pitfalls: pitfalls}
-	results, err := vocabularycheck.Evaluate(input)
-	return warningDetailsForTest(results.Tags), err
+	result, err := glossarycheck.Evaluate(input)
+	return resultDriftForTest(result), err
 }
 
 func glossaryTersenessNotes(p renderInputs) ([]string, error) {
-	input, err := vocabularyInputForTest(p, pitfall.Corpus{})
+	input, err := glossaryInputForTest(p)
 	if err != nil {
 		return nil, err
 	}
-	input.Tags = nil
-	results, err := vocabularycheck.Evaluate(input)
-	return warningDetailsForTest(results.Glossary), err
+	result, err := glossarycheck.Evaluate(input)
+	return warningDetailsForTest(result), err
 }
 
-func vocabularyInputForTest(p renderInputs, pitfalls pitfall.Corpus) (vocabularycheck.Input, error) {
+func glossaryInputForTest(p renderInputs) (glossarycheck.Input, error) {
 	prepared, err := testPublisher(p).Prepare()
 	if err != nil {
-		return vocabularycheck.Input{}, err
+		return glossarycheck.Input{}, err
 	}
-	input := prepared.Vocabulary()
-	input.Pitfalls = pitfalls
-	return input, nil
+	return prepared.Glossary(), nil
 }
 
 func mergedGlossaryRecords(sc config.Sidecar) ([]glossaryRecord, error) { return glossary.Merge(sc) }

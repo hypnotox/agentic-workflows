@@ -5,8 +5,6 @@
 
 **Domains:** rendering
 
-**Tags:** editable-sections, provenance-markers, command-runner
-
 ADR-0101 fixed the shell runner gaps that Markdown-only tests missed: provenance comments are
 syntax-aware and executable targets retain their mode. The residual hazard begins when a
 rendering primitive gains another output language. Render a real target in that language and

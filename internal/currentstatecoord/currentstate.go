@@ -17,7 +17,6 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/plancheck"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
@@ -113,7 +112,7 @@ func CheckWorking(root string, repo *awfgit.Repo, ctx context.Context) (CurrentS
 	report := CurrentStateReport{
 		Static: currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All()),
 	}
-	report.Coverage = topic.EvaluateCoverage(ws.Loaded.Topics, eligiblePaths(ws.Tree, ws.Lock, ws.Cfg.ContextIgnore), coveragePolicy(ws.Cfg.CurrentState))
+	report.Coverage = topic.EvaluateCoverage(ws.Loaded.Topics, eligiblePaths(ws.Tree, ws.Lock), coveragePolicy(ws.Cfg.CurrentState))
 	return classifyCurrentState(report)
 }
 
@@ -183,7 +182,7 @@ func CheckStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentSt
 		Static:      currentstate.CheckPair(before.Universe(), after.Universe(), mode),
 		Provisional: currentstate.OlderIntroductions(before.Universe(), after.Universe(), adr.CurrentFormat()),
 	}
-	report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock, afterCfg.ContextIgnore), coveragePolicy(afterCfg.CurrentState))
+	report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock), coveragePolicy(afterCfg.CurrentState))
 	beforePlans, beforePlanDrift, err := plansFromTree(beforeTree, config.DocsDir)
 	if err != nil {
 		return CurrentStateReport{}, fmt.Errorf("load selected before-plan comparison evidence: %w", err)
@@ -494,7 +493,11 @@ func configFromTree(root string, tree *snapshot.Tree, lock *manifest.Lock) (*con
 	if lock == nil {
 		return nil, false, fmt.Errorf("partial .awf authority: .awf/config.yaml requires .awf/awf.lock; restore it or delete .awf deliberately to re-adopt")
 	}
-	cfg, err := config.ParseTree(config.RootDir(root), cfgFile.Bytes, configSnapshotReader{tree: tree})
+	configBytes, err := migrate.ConfigBytesForGeneration(lock.SchemaVersion, cfgFile.Bytes)
+	if err != nil {
+		return nil, false, err
+	}
+	cfg, err := config.ParseTree(config.RootDir(root), configBytes, configSnapshotReader{tree: tree})
 	if err != nil {
 		return nil, false, err
 	}
@@ -529,13 +532,10 @@ func coveragePolicy(_ *config.CurrentStateConfig) topic.CoveragePolicy {
 	return topic.CoveragePolicy{Coverage: true, Fanout: true}
 }
 
-// eligiblePaths returns the snapshot files that are neither a generated output (a
-// lock entry) nor matched by one of the contextIgnore globs. Symlinks,
-// deletions, ignored, and nested-adopter paths are already excluded by the
-// snapshot Tree. It takes the contextIgnore list explicitly so each caller
-// filters its own universe by that universe's own config rather than the
-// working config.
-func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) []string {
+// eligiblePaths returns ordinary snapshot files that are not generated outputs.
+// Symlinks, deletions, ignored files, and nested adopters retain their independent
+// exclusions.
+func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock) []string {
 	generated := map[string]bool{}
 	if lock != nil {
 		for path := range lock.Files {
@@ -565,7 +565,7 @@ func eligiblePaths(tree *snapshot.Tree, lock *manifest.Lock, ignores []string) [
 				break
 			}
 		}
-		if insideNested || generated[f.Path] || pathglob.MatchAny(ignores, f.Path) {
+		if insideNested || generated[f.Path] {
 			continue
 		}
 		out = append(out, f.Path)

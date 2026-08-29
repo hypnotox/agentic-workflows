@@ -81,7 +81,7 @@ func TestResolveTopicUncoveredCommand(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	testsupport.WriteFile(t, configPath, string(configBody)+"contextIgnore: [\"ignored/**\"]\n")
+	testsupport.WriteFile(t, configPath, string(configBody))
 	testsupport.WriteFile(t, filepath.Join(root, "untracked", "one.txt"), "one\n")
 	testsupport.WriteFile(t, filepath.Join(root, "untracked", "two.txt"), "two\n")
 	testsupport.WriteFile(t, filepath.Join(root, "tracked", "one.txt"), "tracked\n")

@@ -29,7 +29,6 @@ func normalizeSemver(s string) (string, bool) { return manifest.NormalizeSemver(
 // pre-upgrade state. The version sub-check is skipped (never errors) on an absent,
 // unparseable, empty, or non-normalizable version, mirroring Generation's no-lock
 // tolerance.
-// touches-state: tooling/cli:version-compat-gate - binary-vs-config version gate; proof in gate_test.go
 func gate(ctx context.Context, root string) error {
 	_, err := migrate.CheckLive(root)
 	if err != nil {

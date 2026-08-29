@@ -45,7 +45,6 @@ type Inputs struct {
 // ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
 // (ADR-0025). It reads live worktree state from native Git porcelain so the
 // audit uses Git's own repository, global, and system ignore semantics.
-// touches-state: tooling/audit-and-snapshots:audit-uncommitted-changes - uncommitted-changes live-state rule; proof in audit_test.go
 func ruleUncommittedChanges(ctx context.Context, repo *awfgit.Repo) ([]Finding, error) {
 	tracked, untracked, err := repo.ChangeCounts(ctx)
 	if err != nil {
@@ -177,7 +176,6 @@ func (e *rangeEvaluator) findings() []Finding {
 // command (ADR-0036), and by the plan-time planned-subject check
 // (CheckPlannedSubject, ADR-0111) - so none re-implements the regex, the type/scope
 // allow-lists, or the subject-length limit. Merge commits are exempt.
-// touches-state: tooling/audit-and-snapshots:commit-gate-shared-rule - shared conventional-commit rule consumed by check staged commit; proof in commitgate_test.go
 func CheckConventionalCommit(c awfgit.Commit, s Settings) []Finding {
 	return checkConventionalCommit(c, s, severity.Error)
 }

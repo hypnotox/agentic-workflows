@@ -121,7 +121,6 @@ func PointerLinePrefixes(name string, style CommentStyle) []string {
 // output (unlike structural markers) and bounds the read-back region without
 // tripping the residual-marker guards (ADR-0100). Only the comment delimiters
 // vary by style; the token and phrasing are constant.
-// touches-state: rendering/render-engine:section-edit-pointer - awf:edit provenance pointer emission; proof in render_test.go
 func editPointer(name string, stub bool, headed bool, p SectionPlan, style CommentStyle) string {
 	switch {
 	case p.InPlace && headed:
@@ -159,8 +158,6 @@ type TemplateSource struct{ Root string }
 
 // AssembleSourceWithTemplateSource applies section assembly and emits source
 // transitions when template provenance is enabled.
-// touches-state: rendering/render-engine:no-section-marker-leak - structural directives remain excluded while template-source markers are renderer-owned; proof in render_test.go
-// touches-state: rendering/render-engine:template-source-symbol - root, include, return, and structural-section marker emission; proof in render_test.go and project/template_source_marker_test.go
 func AssembleSourceWithTemplateSource(segs []Segment, plan map[string]SectionPlan, style CommentStyle, provenance TemplateSource) (SourceText, map[string]string) {
 	var out SourceText
 	if len(segs) > 0 {
@@ -334,7 +331,6 @@ func ExtractStructuralHeadings(output string, tokens map[string][2]string) (map[
 // sentinels) under missingkey=zero, then restores each raw part body verbatim - so
 // a convention part is never parsed or executed as a template. name labels parse
 // and execute errors with the target rather than a hardcoded literal.
-// touches-state: rendering/render-engine:parts-raw-except-authoring-comments - part bodies restored verbatim post-strip, never templated; proof in render_test.go
 func Execute(assembled string, data map[string]any, parts map[string]string, name string) (string, error) {
 	return execute(assembled, data, parts, name, nil)
 }

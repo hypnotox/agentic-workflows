@@ -5,8 +5,6 @@
 
 **Domains:** config
 
-**Tags:** schema-migration, adr-parsing
-
 **Related ADRs:** ADR-0120
 
 The generation-10 retirement-tokens migration and the `adr-retired-key` check edit or

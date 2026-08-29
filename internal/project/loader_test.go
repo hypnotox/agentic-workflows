@@ -208,18 +208,17 @@ func TestLoaderRejectsUnsupportedConfigFactData(t *testing.T) {
 
 func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: [tooling]\ntags: {tag: meaning}\nvars: {nested: {items: [original]}}\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: [tooling]\nvars: {nested: {items: [original]}}\n")
 	p, err := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root }).Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	p.Config().Domains[0] = "mutated"
-	p.Config().Tags["tag"] = "mutated"
 	p.Config().Vars["nested"].(map[string]any)["items"].([]any)[0] = "mutated"
 	p.Targets()[0].Capabilities = append(p.Targets()[0].Capabilities, CapabilitySubagentTools)
 	p.catalog().Skills["tdd"] = catalog.SkillSpec{Sections: []string{"mutated"}}
 	got := p.Config()
-	if got.Domains[0] != "tooling" || got.Tags["tag"] != "meaning" || got.Vars["nested"].(map[string]any)["items"].([]any)[0] != "original" {
+	if got.Domains[0] != "tooling" || got.Vars["nested"].(map[string]any)["items"].([]any)[0] != "original" {
 		t.Fatalf("state retained a Loader input alias: %#v", got)
 	}
 	returnedTargets := p.Targets()

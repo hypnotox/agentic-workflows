@@ -5,8 +5,6 @@
 
 **Domains:** adr-system
 
-**Tags:** adr-parsing, context-query
-
 `adr.ParseDir` reads `Title` verbatim from the `# ADR-NNNN: ...` heading, so it includes the
 `ADR-NNNN: ` prefix while `Number` carries the digits separately. A new consumer that prints
 both, as `awf context`'s `ADRRef` did in its first draft (2026-07-11), double-prints the

@@ -1,7 +1,6 @@
 ---
 title: "A faked collaborator makes both the fixtures and the assertion vocabulary unfalsifiable"
 domains: ["rendering", "tooling"]
-tags: ["test-support", "verification-discipline"]
 related: [244]
 ---
 Where a test fakes or fixtures a collaborator, the proof inherits the fake's model of that

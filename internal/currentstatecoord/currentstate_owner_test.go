@@ -155,6 +155,7 @@ func TestCoordinatorPlansFromSelectedTree(t *testing.T) {
 	}
 }
 
+// invariant: invariants/current-state-authority:domain-owned-coverage-no-ignore (TestCoordinatorSnapshotReaderAndEligiblePaths)
 func TestCoordinatorSnapshotReaderAndEligiblePaths(t *testing.T) {
 	tree := ownerTree(t,
 		snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\n")},
@@ -186,7 +187,7 @@ func TestCoordinatorSnapshotReaderAndEligiblePaths(t *testing.T) {
 		t.Fatalf("snapshot config paths = %v, want %v", got, want)
 	}
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{"generated.go": {}}}
-	if got, want := eligiblePaths(tree, lock, []string{"ignored.go"}), []string{".awf/config.yaml", ".awf/dir/value.yaml", "kept.go"}; !reflect.DeepEqual(got, want) {
+	if got, want := eligiblePaths(tree, lock), []string{".awf/config.yaml", ".awf/dir/value.yaml", "ignored.go", "kept.go"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("eligible paths = %v, want %v", got, want)
 	}
 }

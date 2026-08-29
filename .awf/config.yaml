@@ -30,69 +30,10 @@ currentState:
     - globs:
         - '**/*.go'
       marker: //
-    - globs:
-        - '.awf/**/parts/**/*.md'
-        - 'templates/**'
-      marker: '<!-- awf:comment'
-      close: '-->'
   testGlobs:
     - '**/*_test.go'
 prefix: awf
 profile: full
-tags:
-  adr-parsing: ADR frontmatter and section parsing
-  catalog-derived-tests: Guards derived from the compile-time catalog
-  changelog: The changelog and release-notes pipeline
-  cli-dispatch: CLI command dispatch and kind routing
-  closed-config-tree: The closed-config-tree drift model
-  command-runner: The ./x project runner and the rendered ./awf wrapper
-  commit-gate: The deterministic commit-message gate
-  context-query: The awf context read-only query command
-  convention-parts: Convention-part section overrides
-  coverage-gate: The raw-identity coverage ratchet, ignore-accountability policy, and targeted mutation blocker
-  cross-references: Inter-doc and ADR link references
-  editable-sections: The awf:edit editable-section markers
-  git-hooks: The git-hook payloads and their wiring
-  gofmt-doccomment: gofmt doc-comment formatting quirks
-  invariant-backing: Invariant declaration and proof-marker backing
-  kind-descriptor: The unified per-kind descriptor
-  link-resolution: Dead-link and reference resolution checks
-  multi-target: Multi-target adapter rendering
-  pinned-set-tests: Exact pinned-set test brittleness
-  placeholder-degradation: Publication-safe placeholder degradation
-  plan-artifact: The plan artifact structure and linking
-  plan-taxonomy: Plan section and granularity conventions
-  provenance-markers: In-file provenance markers on rendered output
-  release-pipeline: The release and GoReleaser pipeline
-  render-completeness: Render fan-out completeness guards
-  repo-open: Tolerant git repository opening
-  schema-migration: Config schema-generation migrations
-  sidecar-fields: Sidecar data and section fields
-  static-linting: golangci-lint static linting
-  target-seam: The tool-agnostic target seam
-  template-embed: go:embed template-embedding quirks
-  template-overlay: The template overlay render engine
-  template-residue: Template-source residue bans
-  test-support: The shared test-support package
-  verification-discipline: Verify-by-reading-back test discipline
-  version-authority: The single binary-version authority
-  worktree-isolation: Git worktree and index isolation
-contextIgnore:
-  - .awf/**
-  - docs/**
-  - .github/**
-  - .githooks/**
-  - changelog/**
-  - LICENSE
-  - go.mod
-  - go.sum
-  - README.md
-  - codecov.yml
-  - .gitignore
-  - .golangci.yml
-  - .golangci-advisory.yml
-  - .goreleaser.yaml
-  - .gremlins.yaml
 vars:
   activeMdRegenCmd: ./x render
   checkCmd: ./x check

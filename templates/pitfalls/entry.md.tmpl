@@ -2,8 +2,6 @@
 
 {{ with .data.pitfall.Domains }}**Domains:** {{ $.data.pitfall.DomainsText }}
 
-{{ end }}{{ with .data.pitfall.Tags }}**Tags:** {{ $.data.pitfall.TagsText }}
-
 {{ end }}{{ with .data.pitfall.Related }}**Related ADRs:** {{ range $i, $n := . }}{{ if $i }}, {{ end }}ADR-{{ printf "%04d" $n }}{{ end }}
 
 {{ end }}{{ .data.pitfall.Body }}

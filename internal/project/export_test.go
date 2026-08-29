@@ -235,7 +235,7 @@ func checkReportProject(state *ProjectState, ctx context.Context) (CheckReport, 
 	if err != nil {
 		return CheckReport{}, err
 	}
-	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Vocabulary: prepared.Vocabulary()}
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
 	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx, prepared.Plan(), semantics)
 }
 func configReferenceProject(state *ProjectState) (publisher.ConfigReference, error) {
@@ -256,7 +256,7 @@ func advisoryNotesProject(state *ProjectState) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Vocabulary: prepared.Vocabulary()}
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
 	return AdvisoryNotes(state, testConfig(state), prepared.Plan(), semantics)
 }
 

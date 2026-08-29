@@ -351,7 +351,6 @@ func WriteFileAtomic(path string, data []byte) error { return WriteFileAtomicMod
 
 // WriteFileAtomicMode is WriteFileAtomic with an explicit final mode, used when
 // a restored file's recorded permissions must survive the replacement.
-// touches-state: config/migrations-and-locks:lock-atomic-save - atomic temp-file+rename write site; proof in manifest_test.go
 func WriteFileAtomicMode(path string, data []byte, mode os.FileMode) error {
 	dir := filepath.Dir(path)
 	tmp, err := os.CreateTemp(dir, ".awf-atomic-*")

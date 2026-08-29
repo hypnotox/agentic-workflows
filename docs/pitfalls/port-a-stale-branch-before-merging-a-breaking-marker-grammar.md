@@ -5,8 +5,6 @@
 
 **Domains:** invariants, adr-system, tooling
 
-**Tags:** invariant-backing, worktree-isolation, git-hooks
-
 **Related ADRs:** ADR-0205, ADR-0206
 
 Before merging a checker that cannot read the old marker grammar, land compatibility parsing

@@ -1,7 +1,6 @@
 ---
 title: "gofmt rewrites double backticks in doc comments into curly quotes"
 domains: ["tooling"]
-tags: ["gofmt-doccomment"]
 ---
 Go's doc-comment normalization (gofmt since Go 1.19) treats a literal double-backtick pair in
 a doc comment as the old quoting convention and rewrites it to a left curly quote (U+201C);

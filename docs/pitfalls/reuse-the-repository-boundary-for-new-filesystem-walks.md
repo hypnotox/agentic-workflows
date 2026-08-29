@@ -5,8 +5,6 @@
 
 **Domains:** tooling
 
-**Tags:** repo-open
-
 New tests should use `testsupport.WalkRepoFiles`; production code should use the Git-derived
 selected file set or implement the same nested-checkout pruning. A plain recursive walk can
 include nested repositories through either `.git` directories or `gitdir:` pointer files.

@@ -36,6 +36,7 @@ var Version = strings.TrimSuffix(versionFile, "\n")
 // here (and a matching const bump) fails the gate (ADR-0049 Decision 4).
 var minVersionBySchema = map[int]string{
 	46: "0.39.0",
+	47: "0.40.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a

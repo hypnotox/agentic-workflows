@@ -10,7 +10,9 @@ import (
 	"io/fs"
 	"os"
 	"path/filepath"
+	"slices"
 	"sort"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
@@ -43,6 +45,32 @@ func (t *ProposedTree) Read(path string) ([]byte, os.FileMode, error) {
 		return append([]byte(nil), mutation.Content...), mutation.Mode.Perm(), nil
 	}
 	return t.files.ReadWithMode(path)
+}
+
+// Paths returns the proposed regular-file population below subtree.
+func (t *ProposedTree) Paths(subtree string) ([]string, error) {
+	paths := []string{}
+	err := t.files.Walk(subtree, func(path string, info fs.FileInfo) (bool, error) {
+		if info.Mode().IsRegular() {
+			paths = append(paths, path)
+		}
+		return info.IsDir(), nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	for path, mutation := range t.mutations {
+		if path == subtree || !strings.HasPrefix(path, subtree+"/") {
+			continue
+		}
+		if mutation.Remove {
+			paths = slices.DeleteFunc(paths, func(candidate string) bool { return candidate == path })
+		} else if !slices.Contains(paths, path) {
+			paths = append(paths, path)
+		}
+	}
+	slices.Sort(paths)
+	return paths, nil
 }
 
 func (t *ProposedTree) overlay(planned []FileMutation) error {
@@ -81,7 +109,10 @@ const LiveSchemaFloor = 46
 
 // registry intentionally begins at the floor. The no-op floor entry is the one
 // explicit seam where a later supported schema migration is appended.
-var registry = []Migration{{To: LiveSchemaFloor, Name: "supported-schema-46"}}
+var registry = []Migration{
+	{To: LiveSchemaFloor, Name: "supported-schema-46"},
+	{To: 47, Name: retireRelevanceMetadataName, Build: retireRelevanceMetadata},
+}
 
 func Current() int                { return registry[len(registry)-1].To }
 func LiveSchemaRange() (int, int) { return LiveSchemaFloor, Current() }

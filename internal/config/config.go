@@ -28,7 +28,6 @@ const DocsDir = "docs"
 
 // SectionOverride is a sidecar's per-section override. Body replacement is by
 // convention part only; the field set is deliberately just Drop.
-// touches-state: config/configuration:no-replacewith - SectionOverride field set omits replaceWith; proof in config_test.go
 type SectionOverride struct {
 	Drop bool `yaml:"drop"`
 }
@@ -57,8 +56,6 @@ type factsData struct {
 	IntegrationBranch string
 	Vars              map[string]any
 	Domains           []string
-	Tags              map[string]string
-	ContextIgnore     []string
 	CurrentState      *CurrentStateConfig
 	Audit             *AuditConfig
 	Bootstrap         *BootstrapConfig
@@ -83,7 +80,7 @@ func NewFacts(cfg *Config) (Facts, error) {
 	copy.Vars = vars
 	return Facts{data: factsData{
 		Prefix: copy.Prefix, Profile: copy.Profile, IntegrationBranch: copy.IntegrationBranch,
-		Vars: copy.Vars, Domains: copy.Domains, Tags: copy.Tags, ContextIgnore: copy.ContextIgnore,
+		Vars: copy.Vars, Domains: copy.Domains,
 		CurrentState: copy.CurrentState, Audit: copy.Audit, Bootstrap: copy.Bootstrap,
 		ProseGate: copy.ProseGate, MemoryCite: copy.MemoryCite, CommitPolicy: copy.CommitPolicy,
 		Render: copy.Render, LocalDocs: copy.LocalDocs,
@@ -130,7 +127,7 @@ func cloneDataValue(value any) (any, error) {
 func (f Facts) Config() *Config {
 	copy := cloneConfig(Config{
 		Prefix: f.data.Prefix, Profile: f.data.Profile, IntegrationBranch: f.data.IntegrationBranch,
-		Vars: f.data.Vars, Domains: f.data.Domains, Tags: f.data.Tags, ContextIgnore: f.data.ContextIgnore,
+		Vars: f.data.Vars, Domains: f.data.Domains,
 		CurrentState: f.data.CurrentState, Audit: f.data.Audit, Bootstrap: f.data.Bootstrap,
 		ProseGate: f.data.ProseGate, MemoryCite: f.data.MemoryCite, CommitPolicy: f.data.CommitPolicy,
 		Render: f.data.Render, LocalDocs: f.data.LocalDocs,
@@ -180,8 +177,6 @@ type Config struct {
 	IntegrationBranch string              `yaml:"integrationBranch"`
 	Vars              map[string]any      `yaml:"vars"`
 	Domains           []string            `yaml:"domains"`
-	Tags              map[string]string   `yaml:"tags"`
-	ContextIgnore     []string            `yaml:"contextIgnore"`
 	CurrentState      *CurrentStateConfig `yaml:"currentState"`
 	Audit             *AuditConfig        `yaml:"audit"`
 	Bootstrap         *BootstrapConfig    `yaml:"bootstrap"`
@@ -845,8 +840,8 @@ func (c *Config) Validate() error {
 	if err := validateIntegrationBranch(c.IntegrationBranch); err != nil {
 		return err
 	}
-	if c.Profile == catalog.ProfileCore && (len(c.Domains) > 0 || len(c.Tags) > 0 || len(c.ContextIgnore) > 0 || c.CurrentState != nil) {
-		return errors.New("the `profile: core` governance footprint must not retain domains, tags, contextIgnore, or currentState governance sources")
+	if c.Profile == catalog.ProfileCore && (len(c.Domains) > 0 || c.CurrentState != nil) {
+		return errors.New("the `profile: core` governance footprint must not retain domains or currentState governance sources")
 	}
 	for _, d := range c.Domains {
 		if err := ValidateDomainName(d); err != nil {
@@ -962,7 +957,6 @@ func ValidateArtifactName(kind, name string) error {
 
 // TemplateSourceRoot is a slash-separated, normalized repository-relative
 // directory. It intentionally rejects a present empty value and dot segments.
-// touches-state: config/configuration:template-source-root - optional repository template-root shape validation; proof in config_test.go
 func validateTemplateSourceRoot(root string) error {
 	if root == "" {
 		return errors.New("render.templateSourceRoot must not be empty when present")

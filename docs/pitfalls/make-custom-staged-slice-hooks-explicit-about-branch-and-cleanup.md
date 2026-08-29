@@ -5,8 +5,6 @@
 
 **Domains:** tooling, adr-system
 
-**Tags:** commit-gate, worktree-isolation
-
 **Related ADRs:** ADR-0202
 
 A custom staged-slice hook must name its temporary branch, resolve the invoking checkout's

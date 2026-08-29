@@ -233,7 +233,7 @@ func TestPrintTopicPropagatesEveryHumanWriteFailure(t *testing.T) {
 		Claims:     []topic.QueryClaim{{ID: "schedule/contracts:stable", Type: topic.Invariant, Prose: "Stable.", Backing: topic.Unbacked, Verify: "Inspect."}},
 		History:    []topic.ClaimHistory{{ClaimID: "schedule/contracts:stable", Origin: &topic.ADRHistory{Number: "0001", Status: "Implemented", Title: "Origin"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Status: "Implemented", Title: "Revision"}}}},
 		References: []topic.ClaimReferences{{ClaimID: "schedule/contracts:stable", Incoming: []string{}, Outgoing: []string{"schedule/other:claim"}}},
-		Coverage:   &topic.QueryCoverage{Applicability: topic.TopicApplicability{DomainPaths: []string{"internal/**"}, TopicPaths: []string{"internal/schedule*"}, ApplicablePaths: []string{"internal/schedule.go"}, OwnedPaths: []string{"internal/schedule.go"}, MarkerSites: []topic.MarkerSite{{Path: "internal/schedule.go", Line: 2, Kind: topic.TouchesMarker, ClaimID: "schedule/contracts:stable", Note: "entry"}}}},
+		Coverage:   &topic.QueryCoverage{Applicability: topic.TopicApplicability{DomainPaths: []string{"internal/**"}, TopicPaths: []string{"internal/schedule*"}, ApplicablePaths: []string{"internal/schedule.go"}, OwnedPaths: []string{"internal/schedule.go"}, MarkerSites: []topic.MarkerSite{}}},
 	}
 	for _, result := range []topic.QueryResult{base, func() topic.QueryResult {
 		global := base
@@ -261,15 +261,13 @@ func TestPrintTopicOptionalHumanFields(t *testing.T) {
 		Kind: "claim", ID: "schedule/global:stable", Claims: []topic.QueryClaim{{
 			ID: "schedule/global:stable", Type: topic.Invariant, Prose: "Stable.", Backing: topic.Unbacked, Verify: "Inspect output.",
 		}},
-		Coverage: &topic.QueryCoverage{Applicability: topic.TopicApplicability{DeclaredGlobal: true, DomainPaths: []string{}, TopicPaths: []string{}, ApplicablePaths: []string{}, OwnedPaths: []string{}, MarkerSites: []topic.MarkerSite{{
-			Path: "internal/schedule.go", Line: 2, Kind: topic.TouchesMarker, ClaimID: "schedule/global:stable", Note: "entry point",
-		}}}},
+		Coverage: &topic.QueryCoverage{Applicability: topic.TopicApplicability{DeclaredGlobal: true, DomainPaths: []string{}, TopicPaths: []string{}, ApplicablePaths: []string{}, OwnedPaths: []string{}, MarkerSites: []topic.MarkerSite{}}},
 	}
 	var out bytes.Buffer
 	if err := printTopicDetail(&out, result.Detail()); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"verify: Inspect output.", "declared: global", "entry point"} {
+	for _, want := range []string{"verify: Inspect output.", "declared: global"} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("optional human output missing %q:\n%s", want, out.String())
 		}

@@ -14,8 +14,8 @@ import (
 // symlink modes preserved. Symlinks are not followed; their target is retained
 // as inert bytes. Deleted, ignored, and nested-repository paths are excluded
 // by the handle's WorkingPaths. It is the complete selected filesystem
-// universe; generated, contextIgnore, and other eligibility filters are applied
-// by downstream consumers, not here.
+// universe; generated-output and other consumer-specific eligibility filters
+// are applied by downstream consumers, not here.
 func WorkingTree(ctx context.Context, repo *git.Repo) (*Tree, error) {
 	paths, err := repo.WorkingPaths(ctx)
 	if err != nil {

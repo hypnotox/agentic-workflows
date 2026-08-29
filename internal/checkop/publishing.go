@@ -25,7 +25,7 @@ func projectSemantics(prepared publisher.Preparation) project.OperationSemantics
 	return project.OperationSemantics{
 		ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
 		EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(),
-		Vocabulary: prepared.Vocabulary(),
+		Glossary: prepared.Glossary(),
 	}
 }
 

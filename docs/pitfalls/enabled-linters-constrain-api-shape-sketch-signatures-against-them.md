@@ -5,8 +5,6 @@
 
 **Domains:** tooling
 
-**Tags:** static-linting
-
 An ADR- or plan-sketched Go signature can be unimplementable as written: the `nilnil` linter
 forbids returning a nil pointer beside a nil error, so a "missing → `(nil, nil)`" empty-state
 API must carry a `found bool` (or a sentinel error) instead; discovered mid-execution on

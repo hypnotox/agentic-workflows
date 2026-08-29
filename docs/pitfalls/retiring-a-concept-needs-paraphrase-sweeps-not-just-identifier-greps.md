@@ -5,8 +5,6 @@
 
 **Domains:** rendering, adr-system
 
-**Tags:** render-completeness, template-residue
-
 **Related ADRs:** ADR-0191
 
 Grepping for a retired concept's identifier misses the prose that teaches the concept

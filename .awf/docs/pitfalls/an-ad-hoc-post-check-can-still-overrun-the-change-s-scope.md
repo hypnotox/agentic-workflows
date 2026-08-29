@@ -1,7 +1,6 @@
 ---
 title: "An ad hoc post-check can still overrun the change's scope"
 domains: ["tooling"]
-tags: ["verification-discipline", "plan-taxonomy"]
 related: [115]
 ---
 Material plan post-checks now name their population, exclusions, lifecycle snapshot, and

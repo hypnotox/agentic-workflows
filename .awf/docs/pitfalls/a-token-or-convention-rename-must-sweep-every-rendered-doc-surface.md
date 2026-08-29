@@ -1,7 +1,6 @@
 ---
 title: "A token or convention rename must sweep every rendered doc surface"
 domains: ["invariants", "rendering"]
-tags: ["cross-references", "render-completeness"]
 ---
 Renaming a token or changing a convention breaks in more places than the authoring
 template. When `inv:`→`invariant:` landed, the doc-currency lens flagged stale `inv:`

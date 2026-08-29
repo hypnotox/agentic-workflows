@@ -5,8 +5,6 @@
 
 **Domains:** tooling, invariants
 
-**Tags:** invariant-backing, coverage-gate
-
 **Related ADRs:** ADR-0175
 
 A claim that names an ordering, such as "the final lock replacement is the commit point", is

@@ -1,7 +1,6 @@
 ---
 title: "Raw-byte ADR surgery must bound every scan to the frontmatter window"
 domains: ["config"]
-tags: ["schema-migration", "adr-parsing"]
 related: [120]
 ---
 The generation-10 retirement-tokens migration and the `adr-retired-key` check edit or

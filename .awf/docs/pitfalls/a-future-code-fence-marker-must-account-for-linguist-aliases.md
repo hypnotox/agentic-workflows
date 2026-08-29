@@ -1,7 +1,6 @@
 ---
 title: "A future code-fence marker must account for Linguist aliases"
 domains: ["adr-system"]
-tags: ["plan-taxonomy", "commit-gate"]
 related: [111]
 ---
 ADR-0111 settled the existing ```commit marker: `commit` remains a GitHub Linguist alias with

@@ -84,8 +84,6 @@ profile: full
 integrationBranch: main
 domains:
   - alpha
-contextIgnore:
-  - internal/skip.go
 `
 
 // csYAML is csNoPolicyYAML plus the currentState block.
@@ -126,7 +124,7 @@ func csRepo(t *testing.T, cfg string, files map[string]string) *ProjectState {
 
 // TestCheckCurrentState runs the working-tree check end to end: a covered path
 // yields nothing, an owned-but-unscoped path yields one uncovered finding, and a
-// generated (lock-listed) path and a contextIgnore path are both excluded. A
+// generated (lock-listed) paths remain independently excluded. A
 // permanent lock validation supplies authority.
 func TestCheckCurrentState(t *testing.T) {
 	p := csRepo(t, csYAML, map[string]string{
@@ -153,13 +151,13 @@ func TestCheckCurrentState(t *testing.T) {
 		t.Fatalf("CheckCurrentState: %v", err)
 	}
 	findings := currentStateFindings(report)
-	if len(findings) != 1 || !strings.Contains(findings[0], "internal/bar.go") {
-		t.Fatalf("findings = %#v; want exactly the internal/bar.go uncovered finding", findings)
+	if len(findings) != 2 || !strings.Contains(strings.Join(findings, "\n"), "internal/bar.go") || !strings.Contains(strings.Join(findings, "\n"), "internal/skip.go") {
+		t.Fatalf("findings = %#v; want bar and skip uncovered findings", findings)
 	}
-	for _, excluded := range []string{"internal/foo/x.go", "internal/gen.go", "internal/skip.go"} {
+	for _, excluded := range []string{"internal/foo/x.go", "internal/gen.go"} {
 		for _, f := range findings {
 			if strings.Contains(f, excluded) {
-				t.Errorf("%s should not be reported (covered, generated, or ignored)", excluded)
+				t.Errorf("%s should not be reported (covered or generated)", excluded)
 			}
 		}
 	}

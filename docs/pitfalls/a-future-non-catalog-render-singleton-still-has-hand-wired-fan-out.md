@@ -5,8 +5,6 @@
 
 **Domains:** rendering
 
-**Tags:** render-completeness, closed-config-tree, template-embed
-
 The bootstrap, hooks, and runner are now wired and covered, but their architecture remains
 unlike the table-driven catalog fan-out. A new config-tree singleton rendered by a dedicated
 `RenderAll` block must still be added by hand to the template embed, render block, closed-tree

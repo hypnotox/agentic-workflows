@@ -1,7 +1,6 @@
 ---
 title: "Moving a check earlier in the pipeline steals a later stage's error-branch coverage"
 domains: ["tooling"]
-tags: ["coverage-gate"]
 ---
 A fixture that corrupts state up front (a directory where a sidecar file belongs, an
 unreadable file) to pin a *late* stage's error propagation silently changes meaning when a
