@@ -8,7 +8,7 @@ import (
 // over the rendered set (INDEX.md/domain docs are irrelevant to these fixtures).
 func deadSkillRefs(t *testing.T, files map[string]string) []string {
 	t.Helper()
-	p, err := Open(testContext(t), scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n", files))
+	p, err := Open(testContext(t), scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", files))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +29,7 @@ func deadSkillRefs(t *testing.T, files map[string]string) []string {
 // A managed rendered artifact referencing a known skill outside the effective
 // set fails check; enabling the skill clears it.
 func TestCatalogSkillReferenceIsNeverDead(t *testing.T) {
-	part := map[string]string{"parts/agents-doc/workflow.md": "Use `example-tdd` for test-first work.\n"}
+	part := map[string]string{"parts/agents-doc/workflow.md": "Use `example-debugging` for test-first work.\n"}
 	if got := deadSkillRefs(t, part); len(got) != 0 {
 		t.Fatalf("full catalog reference was flagged dead: %v", got)
 	}
@@ -40,7 +40,7 @@ func TestCatalogSkillReferenceIsNeverDead(t *testing.T) {
 // invariant: rendering/doc-outputs:skill-ref-unknown-ignored (TestSkillRefScannerIgnoresUnknownAndFenced)
 func TestSkillRefScannerIgnoresUnknownAndFenced(t *testing.T) {
 	got := deadSkillRefs(t, map[string]string{
-		"parts/agents-doc/workflow.md": "This is example-specific prose about example-bootstrap.sh.\n\n```\nexample-tdd\n```\n",
+		"parts/agents-doc/workflow.md": "This is example-specific prose about example-bootstrap.sh.\n\n```\nexample-debugging\n```\n",
 	})
 	if len(got) != 0 {
 		t.Fatalf("expected no findings, got %v", got)
@@ -57,11 +57,11 @@ func TestSkillRefScannerIgnoresRetiredUnknownToken(t *testing.T) {
 }
 
 // Whole-token matching is boundary-anchored on the left too: a prefix embedded
-// in a larger word (nonexample-tdd) is not a reference.
+// in a larger word (nonexample-debugging) is not a reference.
 func TestSkillRefScannerRequiresLeftBoundary(t *testing.T) {
 	got := deadSkillRefs(t,
 		map[string]string{
-			"parts/agents-doc/workflow.md": "Prose about nonexample-tdd tooling.\n",
+			"parts/agents-doc/workflow.md": "Prose about nonexample-debugging tooling.\n",
 		})
 	if len(got) != 0 {
 		t.Fatalf("expected no findings for an embedded prefix, got %v", got)

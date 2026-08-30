@@ -8,11 +8,11 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-const pitfallsCheckCfg = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
+const pitfallsCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
 
 // An empty unconditional pitfall corpus yields no project-level drift.
 func TestCheckPitfallsEmpty(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

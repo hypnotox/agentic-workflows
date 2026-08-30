@@ -52,7 +52,6 @@ type Facts struct{ data factsData }
 
 type factsData struct {
 	Prefix            string
-	Profile           catalog.Profile
 	IntegrationBranch string
 	Vars              map[string]any
 	Domains           []string
@@ -79,7 +78,7 @@ func NewFacts(cfg *Config) (Facts, error) {
 	}
 	copy.Vars = vars
 	return Facts{data: factsData{
-		Prefix: copy.Prefix, Profile: copy.Profile, IntegrationBranch: copy.IntegrationBranch,
+		Prefix: copy.Prefix, IntegrationBranch: copy.IntegrationBranch,
 		Vars: copy.Vars, Domains: copy.Domains,
 		CurrentState: copy.CurrentState, Audit: copy.Audit, Bootstrap: copy.Bootstrap,
 		ProseGate: copy.ProseGate, MemoryCite: copy.MemoryCite, CommitPolicy: copy.CommitPolicy,
@@ -126,7 +125,7 @@ func cloneDataValue(value any) (any, error) {
 // Config returns a defensive copy of the loaded configuration facts.
 func (f Facts) Config() *Config {
 	copy := cloneConfig(Config{
-		Prefix: f.data.Prefix, Profile: f.data.Profile, IntegrationBranch: f.data.IntegrationBranch,
+		Prefix: f.data.Prefix, IntegrationBranch: f.data.IntegrationBranch,
 		Vars: f.data.Vars, Domains: f.data.Domains,
 		CurrentState: f.data.CurrentState, Audit: f.data.Audit, Bootstrap: f.data.Bootstrap,
 		ProseGate: f.data.ProseGate, MemoryCite: f.data.MemoryCite, CommitPolicy: f.data.CommitPolicy,
@@ -167,8 +166,7 @@ func (t OperationTree) Bind(f Facts) *Config {
 
 // Config is the skeleton config.yaml: repository facts and render shaping.
 type Config struct {
-	Prefix  string          `yaml:"prefix"`
-	Profile catalog.Profile `yaml:"profile"`
+	Prefix string `yaml:"prefix"`
 	// IntegrationBranch names the branch effort work integrates into. It is
 	// required-explicit and carries no in-code default (the Prefix precedent,
 	// not the DocsDir one): the schema migration writes `integrationBranch:
@@ -831,9 +829,6 @@ func (c *Config) PartPath(kind, artifact, section string) string {
 }
 
 func (c *Config) Validate() error {
-	if _, err := catalog.ParseProfile(string(c.Profile)); err != nil {
-		return err
-	}
 	if c.Prefix == "" {
 		return errors.New("prefix must not be empty")
 	}
@@ -842,9 +837,6 @@ func (c *Config) Validate() error {
 	}
 	if err := validateIntegrationBranch(c.IntegrationBranch); err != nil {
 		return err
-	}
-	if c.Profile == catalog.ProfileCore && (len(c.Domains) > 0 || c.CurrentState != nil) {
-		return errors.New("the `profile: core` governance footprint must not retain domains or currentState governance sources")
 	}
 	for _, d := range c.Domains {
 		if err := ValidateDomainName(d); err != nil {

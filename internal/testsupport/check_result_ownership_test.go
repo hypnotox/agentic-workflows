@@ -37,8 +37,7 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 		"checkWithTrackingState": {
 			"Additional": 1, "Findings": 1, "LoadOptional": 1, "Locked": 1,
 			"New": 1, "ReadFile": 1, "ResolveOutput": 1, "SplitWarnings": 1,
-			"Tracking": 1, "adrRelatedResult": 1, "append": 7, "fullProfile": 1,
-			"isNested": 2, "len": 1, "lockPath": 1, "pendingADRResult": 1,
+			"Tracking": 1, "append": 5, "isNested": 2, "len": 1, "lockPath": 1,
 			"pitfallResult": 1, "referenceResult": 1, "residentRoots": 1, "root": 1,
 			"trackingFindings": 2, "trackingInformation": 2,
 		},
@@ -94,7 +93,7 @@ func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
 	ownerPackages := map[string]bool{
 		"internal/configcheck": true, "internal/generatedcheck": true,
 		"internal/memorycite": true, "internal/pitfallcheck": true,
-		"internal/prosegate": true,
+		"internal/prosegate":      true,
 		"internal/referencecheck": true, "internal/glossarycheck": true,
 	}
 	aggregatorImports := map[string]bool{}

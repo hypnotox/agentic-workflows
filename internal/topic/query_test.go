@@ -15,7 +15,6 @@ func loadedQueryFixture(t *testing.T) Corpus {
 	t.Helper()
 	root, _ := corpusFixture(t)
 	cfg, err := config.Parse(filepath.Join(root, ".awf"), []byte(`prefix: test
-profile: full
 integrationBranch: main
 domains: [alpha, beta]
 currentState:

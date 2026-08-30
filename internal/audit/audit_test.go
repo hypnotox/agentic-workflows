@@ -408,7 +408,7 @@ func staleAuditRepo(t *testing.T, schema int) (gitfixture.Fixture, string) {
 	lock := `{"awfVersion":"v0.18.0","schemaVersion":` + strconv.Itoa(schema) + `,"files":{}}`
 	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
 		".awf/awf.lock":    lock,
-		".awf/config.yaml": "prefix: test\nprofile: full\nintegrationBranch: master\ntargets: [claude]\n",
+		".awf/config.yaml": "prefix: test\nintegrationBranch: master\ntargets: [claude]\n",
 	})
 	return repo, base
 }

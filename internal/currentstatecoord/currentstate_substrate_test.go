@@ -27,7 +27,7 @@ func TestCurrentStateLiveAuthorityRefusals(t *testing.T) {
 	if _, found, err := optionalLockFromTree(belowFloor); !found || err == nil {
 		t.Fatalf("below-floor live lock = found %v, err %v", found, err)
 	}
-	partial, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\n")}})
+	partial, err := snapshot.NewTree([]snapshot.File{{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: main\n")}})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -45,7 +45,7 @@ func TestCurrentStateLiveAuthorityRefusals(t *testing.T) {
 
 func TestLoadTreeCurrentStatePropagatesAuthorityParseFailure(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
-		{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nprofile: full\nintegrationBranch: main\ndomains: [tooling]\n")},
+		{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: main\ndomains: [tooling]\n")},
 		{Path: "docs/decisions/bad.md", Mode: snapshot.Regular, Bytes: []byte("not an ADR\n")},
 	})
 	if err != nil {

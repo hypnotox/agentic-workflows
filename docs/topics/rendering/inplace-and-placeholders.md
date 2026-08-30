@@ -14,7 +14,8 @@ In-place editable sections and their readback, authoring-comment stripping, conv
 ### `invariant: absent-var-acknowledged`
 
 An absent vars key never produces an unset-var completeness note, while a present key with an empty or null value does.
-Backing: test
+Backing: unbacked
+Verify: Compare otherwise identical fixtures with a referenced var absent, empty, and null; confirm check emits completeness information only for the present empty and null forms.
 
 ### `invariant: authoring-comment-inplace-inert`
 
@@ -74,9 +75,11 @@ Backing: test
 ### `invariant: unused-data-drift`
 
 A sidecar data key with no matching .data reference in its artifact's assembled sources, unioned across all enabled targets, is reported by awf check as unranked Information keyed to the sidecar file and does not change exit status.
-Backing: test
+Backing: unbacked
+Verify: Add one unused data key to a retained skill sidecar, run awf check, and confirm one informational unused-data finding names that sidecar while the command remains successful.
 
 ### `invariant: unused-var-drift`
 
 A non-empty vars key referenced by no assembled template source and by no gate- or check-command placeholder in any consumed convention part is reported by awf check as unranked Information with successful exit; empty-valued vars keys never are.
-Backing: test
+Backing: unbacked
+Verify: Configure one non-empty unused standard var and one empty unused var, run awf check, and confirm only the non-empty key produces informational unused-var evidence while the command remains successful.

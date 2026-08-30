@@ -1,7 +1,6 @@
 package publisher
 
 import (
-	"bytes"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -11,7 +10,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -52,7 +50,7 @@ func TestTemplateSourceRootCurrentValue(t *testing.T) {
 }
 
 func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -131,7 +129,7 @@ func TestConfigReferencePresentationRejectsInvalidRows(t *testing.T) {
 // A minimal project still renders coherent prose - no empty table skeletons,
 // no unresolved tokens (the publication-safe degradation for generated docs).
 func TestConfigReferenceEmptyStateDegrades(t *testing.T) {
-	root, _ := syncedProject(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", nil)
+	root, _ := syncedProject(t, "prefix: example\nintegrationBranch: main\n", nil)
 	b, err := os.ReadFile(filepath.Join(root, "docs/config-reference.md"))
 	if err != nil {
 		t.Fatal(err)
@@ -215,7 +213,7 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 		}
 	}
 
-	absent := "prefix: example\nprofile: full\nintegrationBranch: main\n"
+	absent := "prefix: example\nintegrationBranch: main\n"
 	assertValues(t, absent, map[string]string{
 		"commitPolicy.grandfatheredThrough": "(none)",
 		"commitPolicy.allowedIdentities":    "(none)",
@@ -258,80 +256,6 @@ func TestConfigReferenceDerivedLiveValues(t *testing.T) {
 		"commitPolicy.requireSignedCommits": "true",
 		"commitPolicy.allowedSigners":       "1 signers",
 	})
-}
-
-func TestConfigReferenceListLayerStates(t *testing.T) {
-	base := "prefix: example\nprofile: full\nintegrationBranch: main\n"
-	for _, tc := range []struct {
-		name, sidecar, want string
-	}{
-		{"catalog default", "", "catalog default"},
-		{"explicit true is presence only", "dataDefaults:\n  testSurfaces: true\n", "catalog default; dataDefaults explicitly true"},
-		{"layered project entries", "data:\n  testSurfaces:\n    - {name: Local, kind: unit, location: here}\n", "catalog default + project entries"},
-		{"suppressed default", "dataDefaults:\n  testSurfaces: false\ndata:\n  testSurfaces: []\n", "explicitly suppressed default; project entries only"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			files := map[string]string(nil)
-			if tc.sidecar != "" {
-				files = map[string]string{"skills/tdd.yaml": tc.sidecar}
-			}
-			_, p := syncedProject(t, base, files)
-			model, err := configReferenceProject(p)
-			if err != nil {
-				t.Fatal(err)
-			}
-			found := false
-			for _, row := range model.DataKeys {
-				if row.Artifact == "skill tdd" && row.Key == "testSurfaces" {
-					found = true
-					if !strings.Contains(row.State, tc.want) {
-						t.Errorf("typed state = %q, want %q", row.State, tc.want)
-					}
-				}
-			}
-			if !found {
-				t.Fatal("tdd data row missing")
-			}
-		})
-	}
-
-	_, glossaryProject := syncedProject(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
-		"docs/glossary.yaml": "data:\n  terms:\n    - {term: Local, meaning: ProjectState-specific term.}\n",
-	})
-	glossaryModel, err := configReferenceProject(glossaryProject)
-	if err != nil {
-		t.Fatal(err)
-	}
-	foundSpecialized := false
-	for _, row := range glossaryModel.DataKeys {
-		if row.Artifact == "doc glossary" && row.Key == "terms" {
-			foundSpecialized = true
-			if !strings.Contains(row.State, "project-only/specialized") {
-				t.Errorf("specialized glossary state = %q", row.State)
-			}
-		}
-	}
-	if !foundSpecialized {
-		t.Fatal("specialized glossary data row missing")
-	}
-
-	ref, err := StaticConfigReference()
-	if err != nil {
-		t.Fatal(err)
-	}
-	document, err := ConfigReferencePresentation("sidecar.data", &ref, "config reference")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var out bytes.Buffer
-	if err := presentation.Render(&out, document); err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{"catalog-backed list", "null or a non-list value is invalid", "Project-only and specialized"} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("shared CLI row missing %q:\n%s", want, out.String())
-		}
-	}
 }
 
 // invariant: config/configspec-and-reference:config-reference-regen-drift (TestConfigReferenceRegenDrift)

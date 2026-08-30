@@ -23,13 +23,13 @@ func New(root string, roots resident.Roots, nested bool, cfg *config.Config, sel
 	if err != nil {
 		return nil, err
 	}
-	return &ProjectState{root, roots, nested, facts, catalog.NewProfileView(selected, catalog.ProfileFull), catalog.NewProfileView(complete, catalog.ProfileFull), cloneTargets(targets)}, nil
+	return &ProjectState{root, roots, nested, facts, catalog.NewView(selected), catalog.NewView(complete), cloneTargets(targets)}, nil
 }
 
 // NewDerivedWithFacts constructs an already-derived universe while preserving
 // its immutable loaded configuration facts.
 func NewDerivedWithFacts(root string, roots resident.Roots, nested bool, facts config.Facts, selected, complete *catalog.Catalog, targets []Target) *ProjectState {
-	return &ProjectState{invokingRoot: root, roots: roots, nested: nested, facts: facts, selectedCat: catalog.NewProfileView(selected, catalog.ProfileFull), completeCat: catalog.NewProfileView(complete, catalog.ProfileFull), targets: cloneTargets(targets)}
+	return &ProjectState{invokingRoot: root, roots: roots, nested: nested, facts: facts, selectedCat: catalog.NewView(selected), completeCat: catalog.NewView(complete), targets: cloneTargets(targets)}
 }
 
 // Root returns the invoking checkout root.

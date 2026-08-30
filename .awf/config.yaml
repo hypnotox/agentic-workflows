@@ -31,14 +31,9 @@ currentState:
   testGlobs:
     - '**/*_test.go'
 prefix: awf
-profile: full
 vars:
-  activeMdRegenCmd: ./x render
   checkCmd: ./x check
-  commitGateCmd: ./awf check staged commit
   gateCmd: ./x gate
-  gateCmdFull: ./x gate full
-  invariantTestPath: ./internal/...
   testCmd: go test ./...
 bootstrap:
   enabled: false

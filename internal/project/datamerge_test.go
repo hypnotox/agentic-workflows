@@ -18,20 +18,20 @@ func TestCatalogDataChangesConfigHash(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, f := range files {
-			if f.TemplateID == "skills/tdd/SKILL.md.tmpl" {
+			if f.TemplateID == "skills/debugging/SKILL.md.tmpl" {
 				return f.ConfigHash
 			}
 		}
-		t.Fatal("tdd render not found")
+		t.Fatal("debugging render not found")
 		return ""
 	}
 	before := hashOf()
 	selected := p.catalog()
-	spec := selected.Skills["tdd"]
+	spec := selected.Skills["debugging"]
 	spec.Data = map[string]any{"testSurfaces": []any{
 		map[string]any{"name": "Changed", "kind": "unit", "location": "here"},
 	}}
-	selected.Skills["tdd"] = spec
+	selected.Skills["debugging"] = spec
 	p = testStateWith(p, p.Root(), p.roots(), p.nested(), selected, p.completeCatalog(), p.Targets())
 	after := hashOf()
 	if before == after {

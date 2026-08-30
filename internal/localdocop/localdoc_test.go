@@ -18,7 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-const fixtureConfig = "prefix: example\nprofile: full\nintegrationBranch: master\nvars: {testCmd: go test ./..., gateCmd: make gate}\n"
+const fixtureConfig = "prefix: example\nintegrationBranch: master\nvars: {testCmd: go test ./..., gateCmd: make gate}\n"
 
 func operationLoader() *project.Loader {
 	return project.NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot)

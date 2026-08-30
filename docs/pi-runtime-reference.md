@@ -6,13 +6,7 @@ This standard reference applies only to adopters using the Pi target. It is the 
 adopter-facing owner of Pi runtime and subagent protocol. For daily render and check usage, see
 [Working with awf](working-with-awf.md); generic workflow policy remains in [Workflow](workflow.md).
 
-Pi loads generated project-extension code only after project trust. The retained awf effort integration requires Pi 0.84.2 or a later compatible build and the active-tool and real-path file-mutation queue APIs it uses. The profile adapter has no Pi package-version floor: it requires a successful `pi-tools` protocol-v2 handshake and final profile registration. It registers exactly six tools in Full and four in Core. Both governance footprints expose
-`subagent_grounding`, whose required `task` carries the workflow's premise and altitude check;
-`subagent_explore`, which requires `{task, breadth, detail}` with breadth `targeted`, `bounded`, or
-`broad` and independently selected detail `paths`, `summary`, or `analysis`; `subagent_review_code`,
-which takes a required review `task`; and `subagent_implement`, which takes required `task` plus
-optional `verificationCheckout`. Full additionally exposes
-`subagent_review_adr` and `subagent_review_plan`, each with a required review `task`. Omission verifies the project-root checkout.
+Pi loads generated project-extension code only after project trust. The retained awf effort integration requires Pi 0.84.2 or a later compatible build and the active-tool and real-path file-mutation queue APIs it uses. The profile adapter has no Pi package-version floor: it requires a successful `pi-tools` protocol-v2 handshake and final profile registration. It registers four tools: `subagent_grounding` for premise checks; `subagent_explore` for read-only exploration with required `{task, breadth, detail}`; `subagent_review_code` for one combined report-only review; and `subagent_implement` for commit-disabled implementation with required `task` plus optional `verificationCheckout`. Exploration breadth is `targeted`, `bounded`, or `broad`, and detail is `paths`, `summary`, or `analysis`. Omitting `verificationCheckout` verifies the project-root checkout.
 An explicit value resolves relative to the project root after one leading `@` is removed, must be
 an exact live checkout root for the same Git common directory, and must be the parent checkout or a canonical accessible descendant. It is the implementation child's base CWD and the before-and-after commit-policy snapshot identity. Omission keeps both at the project root. This alignment does not bind deliberately targeted mutation paths or move the parent Pi session.
 Every closed schema also accepts optional canonical `model` as
@@ -48,7 +42,7 @@ or insufficient output, the parent may make a new fresh-context call to correct 
 detail, or widen breadth. Give each child one independent information need and fan out sibling calls,
 selecting breadth, detail, and model tier per child. A fan-out may combine a large analysis child with
 small targeted paths or summary children. Refinement that depends on a prior result remains
-sequential. Grounding, exploration, and review follow awf's no-mutation profile policy.
+sequential. Premise checking, exploration, and review are report-only.
 Implementation must run alone in its parent tool batch and remains sequential and commit-disabled. When a task explicitly operates in a supplied managed
 worktree, the caller sets `verificationCheckout` to that path and keeps actual mutation paths
 explicit; root work omits the field. In Pi, model omission uses the configured role default and an
@@ -59,9 +53,7 @@ successful capability handshake and final awf profile registration establish com
 incompatible, late, or rejected negotiation reports an actionable prerequisite error and activates
 no awf fallback. `pi-tools` owns general scheduling, execution, confinement, progress presentation,
 context usage, and handoff mechanics. Awf renders the workflow-specific profile adapter and retained
-effort integration. Brainstorming uses grounding, while brainstorming, debugging, and coupling
-audits share the exploring skill when its conjunctive dispatch condition holds. Missing or modified
-awf adapter files are `awf check` drift; run `./awf render` to repair them.
+effort integration. Repository-context guidance selects orientation, exploration, or premise challenge as needed. Missing or modified awf adapter files are `awf check` drift; run `./awf render` to repair them.
 
 ## Session replacement
 

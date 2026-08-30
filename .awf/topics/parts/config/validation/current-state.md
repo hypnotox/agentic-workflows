@@ -19,8 +19,9 @@ Backing: test
 
 ### `invariant: hooks-commands-resolvable`
 
-Config validation for sync and check fails when `vars.gateCmd` is unset because the always-rendered hook payloads run the project gate; the error names the exact var to set. The always-rendered runner supplies every awf-verb fallback, so checkCmd and commitGateCmd carry no separate validation arm.
-Backing: test
+Config validation for render and check fails when `vars.gateCmd` is unset because the always-rendered pre-push payload runs the project gate; the error names the exact var to set. The always-rendered wrapper supplies awf-command fallbacks, so checkCmd carries no separate validation arm.
+Backing: unbacked
+Verify: Remove vars.gateCmd from a valid fixture and confirm render and check both refuse before writing with an error naming vars.gateCmd, while an empty checkCmd remains valid through the wrapper fallback.
 
 ### `invariant: pathglob-anchored`
 

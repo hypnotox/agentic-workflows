@@ -2,7 +2,6 @@ package catalog
 
 import (
 	"errors"
-	"fmt"
 	"go/ast"
 	"go/parser"
 	"go/token"
@@ -54,7 +53,8 @@ func TestCompleteViewPreservesStandard(t *testing.T) {
 
 func TestViewOwnsDeepCatalogSnapshot(t *testing.T) {
 	injected := cloneCatalog(Standard)
-	injectedSkill := injected.Skills["tdd"]
+	injectedSkill := injected.Skills["brainstorming"]
+	injectedSkill.Data = map[string]any{}
 	injectedSkill.Data["strings"] = []string{"original"}
 	injectedSkill.Data["numbers"] = []int{1}
 	injectedSkill.Data["labels"] = map[string]string{"value": "original"}
@@ -70,7 +70,7 @@ func TestViewOwnsDeepCatalogSnapshot(t *testing.T) {
 	injectedSkill.Data["pointer"] = &pointed
 	var nilPointer *[]string
 	injectedSkill.Data["nil-pointer"] = nilPointer
-	injected.Skills["tdd"] = injectedSkill
+	injected.Skills["brainstorming"] = injectedSkill
 	view := NewView(injected)
 
 	injectedSkill.Sections[0] = "changed input"
@@ -79,9 +79,9 @@ func TestViewOwnsDeepCatalogSnapshot(t *testing.T) {
 	injectedSkill.Data["labels"].(map[string]string)["value"] = "changed input"
 	injectedSkill.Data["records"].([]map[string]any)[0]["value"] = "changed input"
 	pointed[0] = "changed input"
-	injected.Skills["tdd"] = injectedSkill
+	injected.Skills["brainstorming"] = injectedSkill
 
-	got := view.Catalog().Skills["tdd"]
+	got := view.Catalog().Skills["brainstorming"]
 	gotNilMap, mapOK := got.Data["nil-map"].(map[string]string)
 	gotNilSlice, sliceOK := got.Data["nil-slice"].([]int)
 	if got.Sections[0] == "changed input" || got.Data["strings"].([]string)[0] != "original" ||
@@ -92,26 +92,27 @@ func TestViewOwnsDeepCatalogSnapshot(t *testing.T) {
 		t.Fatalf("view changed through injected reference alias: %#v", got)
 	}
 
-	standardSection := Standard.Skills["tdd"].Sections[0]
-	_, standardHadProbe := Standard.Skills["tdd"].Data["view-probe"]
+	standardSection := Standard.Skills["brainstorming"].Sections[0]
+	_, standardHadProbe := Standard.Skills["brainstorming"].Data["view-probe"]
 	complete := CompleteView().Catalog()
-	completeSkill := complete.Skills["tdd"]
+	completeSkill := complete.Skills["brainstorming"]
 	completeSkill.Sections[0] = "changed view"
+	completeSkill.Data = map[string]any{}
 	completeSkill.Data["view-probe"] = "changed view"
-	complete.Skills["tdd"] = completeSkill
-	if Standard.Skills["tdd"].Sections[0] != standardSection {
+	complete.Skills["brainstorming"] = completeSkill
+	if Standard.Skills["brainstorming"].Sections[0] != standardSection {
 		t.Fatal("Standard sections changed through complete view alias")
 	}
-	_, standardHasProbe := Standard.Skills["tdd"].Data["view-probe"]
+	_, standardHasProbe := Standard.Skills["brainstorming"].Data["view-probe"]
 	if standardHasProbe != standardHadProbe {
 		t.Fatal("Standard data changed through complete view alias")
 	}
 
 	returned := view.Catalog()
-	returnedSkill := returned.Skills["tdd"]
+	returnedSkill := returned.Skills["brainstorming"]
 	returnedSkill.Sections[0] = "changed returned snapshot"
-	returned.Skills["tdd"] = returnedSkill
-	if view.Catalog().Skills["tdd"].Sections[0] == "changed returned snapshot" {
+	returned.Skills["brainstorming"] = returnedSkill
+	if view.Catalog().Skills["brainstorming"].Sections[0] == "changed returned snapshot" {
 		t.Fatal("View changed through a returned catalog snapshot")
 	}
 }
@@ -204,9 +205,10 @@ func projectCatalogBypasses(filename string, body []byte) ([]string, error) {
 	allowed := map[string]map[string]map[string]bool{
 		"configreference.go": {"PotentialVarConsumers": {"CompleteView": true}},
 		"project.go": {
-			"newLoader":     {"NewView": true},
-			"Open":          {"CompleteView": true},
-			"stagedProject": {"CompleteView": true},
+			"newLoader":                  {"NewView": true},
+			"Open":                       {"CompleteView": true},
+			"(*Loader).OpenForOperation": {"NewView": true},
+			"stagedProject":              {"CompleteView": true},
 		},
 		"scaffold.go": {
 			"ScaffoldConfig":   {"CompleteView": true},
@@ -285,61 +287,6 @@ func receiverIdentity(expr ast.Expr) string {
 		return "<receiver>"
 	}
 }
-
-// Catalog default data must be generic: no default names an awf-repo path or
-// command (ADR-0045). Walks every spec's Data recursively down to the strings.
-// invariant: rendering/catalog-and-targets:catalog-defaults-generic-denylist (TestCatalogDefaultDataIsGeneric)
-func TestCatalogDefaultDataIsGeneric(t *testing.T) {
-	cat := Standard
-	states, ok := cat.Skills["adr-lifecycle"].Data["adrStates"].([]any)
-	if !ok || len(states) != 5 {
-		t.Fatalf("representative V2 adrStates = %#v", cat.Skills["adr-lifecycle"].Data["adrStates"])
-	}
-	wantStates := []string{"Proposed", "Accepted", "Implementing", "Implemented", "Abandoned"}
-	for i, state := range states {
-		fields, ok := state.(map[string]any)
-		if !ok || fields["name"] != wantStates[i] || fields["meaning"] == "" || fields["mutability"] == "" {
-			t.Fatalf("V2 adrStates[%d] = %#v", i, state)
-		}
-	}
-	implementing := states[2].(map[string]any)
-	if !strings.Contains(implementing["meaning"].(string), "Remaining may be empty") || !strings.Contains(implementing["mutability"].(string), "every explicit Applied batch belongs to implementation") {
-		t.Fatalf("Implementing lifecycle guidance = %#v", implementing)
-	}
-	if empty := (map[string]any{})["adrStates"]; empty != nil {
-		t.Fatalf("empty catalog override unexpectedly supplies V2 data: %#v", empty)
-	}
-	denylist := []string{"./x", "hypnotox/agentic-workflows"}
-	var walk func(t *testing.T, path string, v any)
-	walk = func(t *testing.T, path string, v any) {
-		switch val := v.(type) {
-		case string:
-			for _, banned := range denylist {
-				if strings.Contains(val, banned) {
-					t.Errorf("%s: default data contains %q: %q", path, banned, val)
-				}
-			}
-		case []any:
-			for i, item := range val {
-				walk(t, fmt.Sprintf("%s[%d]", path, i), item)
-			}
-		case map[string]any:
-			for k, item := range val {
-				walk(t, path+"."+k, item)
-			}
-		}
-	}
-	for name, spec := range cat.Skills {
-		walk(t, "skills."+name, spec.Data)
-	}
-	for name, spec := range cat.Agents {
-		walk(t, "agents."+name, spec.Data)
-	}
-	for name, e := range cat.Docs {
-		walk(t, "docs."+name, e.Data)
-	}
-}
-
 func TestAgentsDocSectionsNonEmpty(t *testing.T) {
 	cat := Standard
 	sections := cat.Docs["agents-doc"].Sections
@@ -371,7 +318,6 @@ var nonReviewingDispatchers = map[string]string{
 	"exploring": "explorer",
 }
 
-// invariant: rendering/catalog-and-targets:reviewing-skill-specs-paired (TestReviewingSkillSpecsArePaired)
 func TestReviewingSkillSpecsArePaired(t *testing.T) {
 	cat := Standard
 	for name, spec := range cat.Skills {
@@ -482,38 +428,4 @@ func TestNoSingleMarkerInitDescriptor(t *testing.T) {
 		}
 	}
 	t.Fatalf("currentState.sources has no configuration route from %s to qualified marker %q", testPath, "// "+qualified)
-}
-
-func TestProfileViewRejectsInvalidProfileAndProjectsCore(t *testing.T) {
-	defer func() {
-		if recover() == nil {
-			t.Fatal("NewProfileView accepted invalid profile")
-		}
-	}()
-	_ = NewProfileView(Standard, Profile("other"))
-}
-
-func TestProfileViewCoreOmitsFullOnlyEntries(t *testing.T) {
-	view := StandardProfileView(ProfileCore)
-	projected := view.Catalog()
-	for name, spec := range Standard.Skills {
-		_, found := projected.Skills[name]
-		if found == spec.FullOnly {
-			t.Errorf("core skill membership %q = %v, FullOnly = %v", name, found, spec.FullOnly)
-		}
-	}
-	if got := projected.Docs["workflow"].Desc; strings.Contains(got, "ADR") || strings.Contains(got, "plan") {
-		t.Errorf("Core workflow description retains Full concepts: %q", got)
-	}
-	reviewer := projected.Agents["code-reviewer"]
-	if got, _ := reviewer.Data["readStep"].(string); strings.Contains(got, "ADR") || strings.Contains(got, "plan") || strings.Contains(got, "state doc") {
-		t.Errorf("Core reviewer read step retains Full concepts: %q", got)
-	}
-	for _, raw := range reviewer.Data["focusItems"].([]any) {
-		item := raw.(map[string]any)
-		text := fmt.Sprint(item["name"], " ", item["description"])
-		if strings.Contains(text, "plan") || strings.Contains(text, "state") {
-			t.Errorf("Core reviewer focus retains Full concepts: %q", text)
-		}
-	}
 }

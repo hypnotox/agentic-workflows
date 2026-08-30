@@ -447,7 +447,7 @@ func TestLocalDocPruneFaultsKeepRecoveryAndLock(t *testing.T) {
 }
 func localDocPruneFault(t *testing.T, name string, wrap func(syncFilesystem, error) syncFilesystem, wantBackup bool) {
 	t.Helper()
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	state, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

@@ -53,17 +53,17 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	_ = syncProject(p)
 	// Hand-delete the rendered file before the pruning sync: the report must
 	// not claim a removal the prune did not perform.
-	if err := os.Remove(filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")); err != nil {
+	if err := os.Remove(filepath.Join(root, ".claude/skills/example-debugging/SKILL.md")); err != nil {
 		t.Fatal(err)
 	}
-	noTDD := strings.Replace(sampleYAML, "  - tdd\n", "", 1)
+	noTDD := strings.Replace(sampleYAML, "  - debugging\n", "", 1)
 	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
 	p2, _ := Open(testContext(t), root)
 	_, _, pruned, err := syncReportProject(p2)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.Contains(pruned, ".claude/skills/example-tdd/SKILL.md") {
+	if slices.Contains(pruned, ".claude/skills/example-debugging/SKILL.md") {
 		t.Errorf("already-gone file must not be reported pruned: %v", pruned)
 	}
 }
@@ -267,7 +267,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	// Output moved + template hash moved → upstream churn.
 	mutate("AGENTS.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.TemplateHash = "x" })
 	// Output moved + config hash moved → the project's own inputs.
-	mutate(".claude/skills/example-tdd/SKILL.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.ConfigHash = "x" })
+	mutate(".claude/skills/example-debugging/SKILL.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.ConfigHash = "x" })
 	// Both hashes moved.
 	mutate("CLAUDE.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.TemplateHash = "x"; e.ConfigHash = "x" })
 	// Output moved, real hashes unmoved → a non-hashed input.
@@ -279,7 +279,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	if err := lock.Save(lockPath(p.Root())); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"AGENTS.md", ".claude/skills/example-tdd/SKILL.md", "CLAUDE.md", ".awf/efforts/.gitignore", "docs/decisions/INDEX.md", "docs/workflow.md"} {
+	for _, path := range []string{"AGENTS.md", ".claude/skills/example-debugging/SKILL.md", "CLAUDE.md", ".awf/efforts/.gitignore", "docs/decisions/INDEX.md", "docs/workflow.md"} {
 		if err := os.WriteFile(filepath.Join(root, path), []byte("stale output\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -291,7 +291,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	}
 	want := []Change{
 		{Path: ".awf/efforts/.gitignore", Cause: "internal"},
-		{Path: ".claude/skills/example-tdd/SKILL.md", Cause: "config"},
+		{Path: ".claude/skills/example-debugging/SKILL.md", Cause: "config"},
 		{Path: "AGENTS.md", Cause: "template"},
 		{Path: "CLAUDE.md", Cause: "template+config"},
 		{Path: "docs/decisions/INDEX.md", Cause: "regenerated"},

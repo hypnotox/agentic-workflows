@@ -65,13 +65,25 @@ func TestOwnerResultBoundaryRefusesIncompleteEvidence(t *testing.T) {
 	}
 }
 
+// invariant: rendering/doc-outputs:stub-notes-path-keyed (TestStubNotesKeyByOutputPath)
+func TestStubNotesKeyByOutputPath(t *testing.T) {
+	files := []RenderedFile{
+		{Path: ".claude/skills/example/SKILL.md", TemplateID: "skills/example/SKILL.md.tmpl", stubDefaults: []string{"body"}},
+		{Path: ".pi/skills/example/SKILL.md", TemplateID: "skills/example/SKILL.md.tmpl", stubDefaults: []string{"body"}},
+	}
+	got := stubNotes(files)
+	if len(got) != 2 || !strings.Contains(got[0], files[0].Path) || !strings.Contains(got[1], files[1].Path) {
+		t.Fatalf("stub notes = %v, want one path-keyed note per rendered output", got)
+	}
+}
+
 // The construction-identity claim is backed by TestPublishingConsumerPlanIdentity;
 // this behavior fixture separately pins the complete generated tracking set.
 // invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckReportBuildsOneOutputPlan)
 func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	fixture := gitfixture.InitRepo(t)
 	root := fixture.Root()
-	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [config]\n"))
+	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [config]\n"))
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/parts/config-reference/intro.md"), "<!-- awf:stub -->\nConfig intro.\n<!-- awf:section bogus -->\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -143,7 +155,7 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 
 	nestedFixture := gitfixture.InitRepo(t)
 	nestedRoot := filepath.Join(nestedFixture.Root(), "nested")
-	testsupport.WriteAwfConfig(t, nestedRoot, withTestGateCmd("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
+	testsupport.WriteAwfConfig(t, nestedRoot, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
 	nestedProject, err := Open(testContext(t), nestedRoot)
 	if err != nil {
 		t.Fatal(err)

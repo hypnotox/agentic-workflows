@@ -33,7 +33,7 @@ Backing: test
 
 ### `invariant: init-noninteractive-default`
 
-awf init with non-terminal stdin and no --set or --answers seeds every selected-governance-footprint var empty, writes no invariants config, and writes the default `profile: core` selection.
+awf init with non-terminal stdin and no --set or --answers seeds every standard-footprint var empty and writes no invariants or profile selection.
 Backing: test
 
 ### `invariant: init-prompts-enabled-vars`
@@ -44,9 +44,4 @@ Backing: test
 ### `invariant: init-unborn-head-supported`
 
 Working-state assembly uses an empty committed baseline only when HEAD is specifically unborn, allowing init and check to consume eligible working files while every other repository, reference, and object error remains a failure.
-Backing: test
-
-### `invariant: init-profile-default-core`
-
-Fresh initialization writes profile: core by default and accepts an explicit profile: full answer.
 Backing: test

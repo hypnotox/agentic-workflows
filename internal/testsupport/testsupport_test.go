@@ -29,7 +29,7 @@ func TestWriteAwfConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != "prefix: example\nprofile: full\nintegrationBranch: main\n" {
+	if string(got) != "prefix: example\nintegrationBranch: main\n" {
 		t.Errorf("WriteAwfConfig content = %q", got)
 	}
 }

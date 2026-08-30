@@ -11,7 +11,7 @@ import (
 )
 
 func TestDataDefaultsConfigurationChangesConfigHash(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -35,7 +35,7 @@ func TestDataDefaultsConfigurationChangesConfigHash(t *testing.T) {
 }
 
 func TestCommitPolicyConsumerConfigHash(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -100,7 +100,7 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 }
 
 func TestIntegrationBranchConsumerConfigHash(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -141,7 +141,7 @@ func TestIntegrationBranchConsumerConfigHash(t *testing.T) {
 
 // invariant: config/configuration:template-source-root (TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash)
 func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -195,7 +195,7 @@ func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) 
 }
 
 func TestRetiredTelemetryTemplateValuesDoNotAffectConfigHash(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -210,26 +210,5 @@ func TestRetiredTelemetryTemplateValuesDoNotAffectConfigHash(t *testing.T) {
 	}
 	if before != after {
 		t.Fatalf("retired telemetry data changed config hash: %q != %q", before, after)
-	}
-}
-
-// invariant: rendering/sync-and-drift:profile-config-hash (TestProfileChangesConfigHash)
-func TestProfileChangesConfigHash(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: core\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	core, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{}, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	testConfig(p).Profile = "full"
-	full, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{}, nil, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if core == full {
-		t.Fatalf("profile did not participate in config hash: %q", core)
 	}
 }

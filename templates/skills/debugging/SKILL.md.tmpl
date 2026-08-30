@@ -1,82 +1,16 @@
 ---
 name: {{ .prefix }}-debugging
-description: >
-  Use when investigating a bug or unexpected behaviour in {{ .prefix }},
-  before proposing a fix. Validates a falsifiable hypothesis against the
-  real system before touching code. Self-contained; encodes
-  {{ .prefix }}-specific debugging surfaces.
+description: Investigate unexpected behavior to a confirmed root cause before implementation.
 ---
 
-<!-- awf:include gate-cadence -->
+# {{ .prefix }} debugging
 
-# {{ .prefix }}-debugging
+Use when the cause of wrong behavior is not already known. State the observed and expected behavior with evidence, form a specific falsifiable hypothesis, and test it against the real system. Refute or refine hypotheses until the root cause—not merely its symptom—is established.
 
-Self-contained systematic debugging for {{ .prefix }}. The discipline below encodes the project-specific surfaces that a generic debugging skill would not. The meta-pattern is fixed: form a falsifiable hypothesis, validate it against the real system, loop until the root cause (not the symptom) is confirmed, then establish durable evidence before touching any fix.
+<!-- awf:section oracle-and-handoff -->
+## Oracle and handoff
 
-<!-- awf:include durable-oracle -->
+Before mutating a fix, establish the strongest practical durable regression oracle against unfixed behavior. The only earlier mutation allowed is adding that oracle. Prefer a deterministic automated red-then-green test; when impractical, record why and use the strongest reproducible alternative. Do not alter expected output to accommodate a defect.
 
-<!-- awf:section symptom-list -->
-<!-- awf:end -->
-
-## When to invoke
-
-Any time behaviour is wrong and the cause is not yet known. Skip only for a one-line fix whose cause is obvious and whose strongest practical durable oracle is already established {{ if .skills.bugfix }}(invoke `{{ .prefix }}-bugfix` directly in that case){{ else }}(apply it directly under the durable-oracle rule in that case){{ end }}. If the bug reveals a load-bearing design gap rather than a straightforward defect, escalate to {{ if .skills.brainstorming }}`{{ .prefix }}-brainstorming`{{ else }}a design discussion before changing behaviour{{ end }} after confirming the root cause.
-
-## Procedure
-
-1. **State the bug concretely.** What is the observed behaviour? What was expected? Cite the failing test output, the error message, or the user report verbatim. Do not restate the bug abstractly until you have evidence.
-
-2. **Form one falsifiable hypothesis.** Name the specific component, file, query, flag, or environment variable you believe is responsible. A hypothesis that cannot be refuted by a concrete check is not yet a hypothesis.
-
-<!-- awf:section debugging-surfaces -->
-3. **Enumerate observable surfaces and validate the hypothesis.** Invoke `{{ .prefix }}-exploring` with one falsifiable evidence need, breadth, and detail only if both the evidence location is unknown and inline search would pollute the parent context; keep exact-known-file and genuinely trivial checks inline. Pick the cheapest oracle that can confirm or refute it. Examples of surfaces to consider: application logs, database state, HTTP endpoints, generated artifacts, pipeline stage outputs, and the test assertion output itself. Inspect the surface that the hypothesis predicts will be wrong. Update the hypothesis if the evidence refutes it and loop.
-
-<!-- awf:end -->
-
-<!-- awf:section test-isolation -->
-4. **Evaluate continuity when the investigation becomes a change.** Investigation remains effort-free unless durable continuity materially helps. When it does, invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}` before establishing fix evidence or mutating files. If an effort exists, validate its fixed identity and exact `.awf/efforts/<slug>/memory.md`, preserve one writer, and give exploring children that context read-only; otherwise omit effort and memory fields. {{if eq .profile "core"}}Project documentation, source, tests, and repository history remain authoritative{{else}}Repository sources and current-state documentation remain authoritative{{end}}, and standalone memory is forbidden.
-
-
-5. **Establish the strongest practical durable oracle.** Once the defective surface is located, exercise the selected evidence against the unfixed behaviour before touching the fix. Use the preferred automated red-then-green path for an ordinary deterministic defect; otherwise record the concrete impracticality reason and strongest reproducible alternative. {{ if .skills.tdd }}Invoke `{{ .prefix }}-tdd` for the project's durable verification discipline.{{ else }}Apply the durable-oracle rule above directly.{{ end }} First inspect the suspect source and verification paths.{{if ne .profile "core"}} Use CodeGraph for discovery or structural questions, then run `./awf resolve topic <the suspect paths>` and read applicable topics.{{end}}
-
-<!-- awf:end -->
-
-6. **Fix the root cause, not the symptom.** Do not stop when the error disappears; confirm the underlying cause is addressed. Then run the narrowest relevant durable verification and follow the shared gate cadence below.
-
-7. **Hand off.** When the root cause is confirmed and the durable oracle is established, {{ if .skills.bugfix }}invoke `{{ .prefix }}-bugfix` for the fix + commit + review discipline{{ else }}apply the fix under the durable-oracle rule and the project's review discipline{{ end }}. If investigation reveals a design gap rather than a defect, {{ if .skills.brainstorming }}invoke `{{ .prefix }}-brainstorming`{{ else }}start a design discussion before changing behaviour{{ end }} instead.
-
-<!-- awf:section oracle-invariant -->
-## Oracle invariant
-
-The durable-oracle rule above defines correctness. A fix that adjusts expected output to match wrong behaviour instead of correcting the root cause is itself a regression. Never modify expected outputs unless the specification has genuinely changed.
-
-<!-- awf:end -->
-
-<!-- awf:section devdb-note -->
-## Dev environment note
-
-Development data stores are disposable. Do not attempt to preserve or restore dev state when investigating; rebuild from a known-good baseline if the environment becomes inconsistent.
-
-<!-- awf:end -->
-
-## Notes
-
-- Environment problems (infrastructure down, containers missing, dependencies unavailable) are not bugs to work around: stop and report to the user.
-{{ if .layout.docs.debugging }}Full debugging recipes and surface-specific commands are in `{{ .layout.docs.debugging }}`.
-{{ end }}
-<!-- awf:section red-flags -->
-## Red flags
-
-These thoughts mean stop. You're rationalizing:
-
-| Rationalization | Reality |
-|---|---|
-| "I can see the bug, let me just fix it." | No hypothesis, no fix. Name a falsifiable cause and check it against the real system first. |
-| "The error's gone, so it's fixed." | Symptom ≠ root cause. Confirm the underlying cause is addressed, not just silenced. |
-| "The expected value looks wrong. I'll update it." | The oracle defines correctness. Change an expected value only when the spec genuinely changed. |
-| "It's just a flaky environment, retry." | Infrastructure down is not a bug to code around. Stop and report it. |
-<!-- awf:end -->
-
-<!-- awf:section memory-checkpoint -->
-<!-- awf:include checkpoint-routine -->
+Once root cause and oracle are established, route the fix to `{{ .prefix }}-implementing`. If investigation reveals an unresolved material design choice, route it to brainstorming instead. TDD and bugfix investigation are part of this procedure, not separate gates.
 <!-- awf:end -->

@@ -342,7 +342,7 @@ func TestVerifyCommitPolicyAtReturnsTypedRootAndConfigRefusals(t *testing.T) {
 }
 
 func TestCommitPolicyManifestProjection(t *testing.T) {
-	const base = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\n"
+	const base = "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n"
 	root := scaffold(t, base)
 	syncAndLoad := func() *manifest.Lock {
 		t.Helper()

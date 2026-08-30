@@ -24,7 +24,7 @@ func operationLock(t *testing.T, root string) string {
 	if err := (&manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 46, Files: map[string]manifest.Entry{"prior": {}}}).Save(path); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: test\nprofile: full\nintegrationBranch: main\n"), 0o644); err != nil {
+	if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: test\nintegrationBranch: main\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	return path

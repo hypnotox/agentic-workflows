@@ -41,7 +41,7 @@ func hookFiles(t *testing.T, configYAML string) map[string]RenderedFile {
 // invariant: rendering/singletons-and-payloads:hook-payloads-rendered (TestHookPayloadsRendered)
 func TestHookPayloadsRendered(t *testing.T) {
 	want := []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit", "reference-transaction"}
-	got := hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	got := hookFiles(t, "prefix: example\nintegrationBranch: main\n")
 	for _, name := range want {
 		if _, ok := got[name]; !ok {
 			t.Errorf("expected .awf/hooks/%s.sh to render when enabled", name)
@@ -59,7 +59,7 @@ func TestHookPayloadsFallbackSafe(t *testing.T) {
 	for _, tc := range []struct {
 		name, config, awf string
 	}{
-		{"runner always rendered", "prefix: example\nprofile: full\nintegrationBranch: main\n", "./awf"},
+		{"runner always rendered", "prefix: example\nintegrationBranch: main\n", "./awf"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			got := hookFiles(t, tc.config)
@@ -102,13 +102,11 @@ integrationBranch: main
 vars:
   checkCmd: ./x check
   gateCmd: ./x gate
-  gateCmdFull: ./x gate full
-  commitGateCmd: ./x commit-gate
 `)
 	want := map[string][]string{
 		"pre-commit":            {"./x check\n./x gate\n"},
-		"commit-msg":            {"./x commit-gate \"$1\"\n"},
-		"pre-push":              {`./x gate full "${ranges[@]+"${ranges[@]}"}"`},
+		"commit-msg":            {"./awf check staged commit \"$1\"\n"},
+		"pre-push":              {"./x gate"},
 		"pre-merge-commit":      {"./x check staged\n"},
 		"reference-transaction": {"  ./awf check commit-policy \"${targets[@]}\""},
 	}
@@ -122,16 +120,16 @@ vars:
 			t.Errorf("%s: pin-aware shim should be omitted when commands are set:\n%s", name, f.Content)
 		}
 	}
-	// pre-push falls back through the chain: gateCmd when gateCmdFull is unset.
-	chain := hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\n")
+	// pre-push falls back through the chain: gateCmd when the standard footprint has one gate command.
+	chain := hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\n")
 	if f := chain["pre-push"]; !strings.Contains(f.Content, "./x gate\n") {
 		t.Errorf("pre-push: want gateCmd fallback, got:\n%s", f.Content)
 	}
 }
 
 func TestIntegrationBranchReflagsPolicyConsumers(t *testing.T) {
-	main := hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
-	release := hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: release/next\n")
+	main := hookFiles(t, "prefix: example\nintegrationBranch: main\n")
+	release := hookFiles(t, "prefix: example\nintegrationBranch: release/next\n")
 	consumers := map[string]bool{"pre-push": true, "reference-transaction": true}
 	for name := range consumers {
 		if main[name].ConfigHash == release[name].ConfigHash || main[name].Content == release[name].Content {
@@ -156,7 +154,7 @@ func TestIntegrationBranchReflagsPolicyConsumers(t *testing.T) {
 // configured pre-push gate only after policy success.
 // invariant: rendering/singletons-and-payloads:commit-policy-hook-payloads (TestCommitPolicyHookPayloads)
 func TestCommitPolicyHookPayloads(t *testing.T) {
-	got := hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmdFull: ./x gate full\n")
+	got := hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\n")
 	transaction := got["reference-transaction"].Content
 	for _, want := range []string{
 		`[[ "${1:-}" == "prepared" ]] || exit 0`,
@@ -185,13 +183,13 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 		`integration_branch_hex='6d61696e'`,
 		`resolves to non-commit`,
 		`check commit-policy "${policy_targets[@]}"`,
-		"./x gate full",
+		"./x gate",
 	} {
 		if !strings.Contains(push, want) {
 			t.Errorf("pre-push missing %q:\n%s", want, push)
 		}
 	}
-	if policy, gate := strings.Index(push, `check commit-policy "${policy_targets[@]}"`), strings.Index(push, "./x gate full"); policy < 0 || gate < policy {
+	if policy, gate := strings.Index(push, `check commit-policy "${policy_targets[@]}"`), strings.Index(push, "./x gate"); policy < 0 || gate < policy {
 		t.Errorf("pre-push must run policy before gate:\n%s", push)
 	}
 	for name, payload := range map[string]string{"reference-transaction": transaction, "pre-push": push} {
@@ -255,7 +253,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	}
 	transactionPath := writeHook("reference-transaction", transaction)
 	malformedIntegrationPath := writeHook("reference-transaction-malformed-integration", strings.Replace(transaction, "integration_branch_hex='6d61696e'", "integration_branch_hex='6d61696e2e2e626164'", 1))
-	pushPath := writeHook("pre-push", hookFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmdFull: gate\n")["pre-push"].Content)
+	pushPath := writeHook("pre-push", hookFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: gate\n")["pre-push"].Content)
 	bashEnv := filepath.Join(root, "bash3-env")
 	if err := os.WriteFile(bashEnv, []byte("enable -n mapfile\n"), 0o600); err != nil {
 		t.Fatal(err)
@@ -394,18 +392,18 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	if output, err := run(pushPath, "refs/tags/outer-pushed "+outerTag+" refs/tags/outer-pushed "+base+"\nrefs/tags/pushed "+tag+" refs/tags/duplicate "+base+"\n"); err != nil {
 		t.Fatalf("tag push: %v: %s", err, output)
 	}
-	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:--range "+base+" "+outerTag+" --range "+base+" "+tag+"\n" {
+	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:\n" {
 		t.Fatalf("tag push argv/order = %q", got)
 	}
 	clearLog()
-	if output, err := run(pushPath, "(delete) "+zeroOID+" refs/heads/deleted "+head+"\n"); err != nil || readLog() != "gate:--range "+head+" "+head+"\n" {
+	if output, err := run(pushPath, "(delete) "+zeroOID+" refs/heads/deleted "+head+"\n"); err != nil || readLog() != "gate:\n" {
 		t.Fatalf("push deletion: err=%v output=%q log=%q", err, output, readLog())
 	}
 	clearLog()
 	blob := strings.TrimSpace(runHookGit(t, root, "hash-object", "-w", "--stdin"))
 	runHookGit(t, root, "tag", "-a", "annotated-blob", "-m", "blob", blob)
 	annotatedBlob := strings.TrimSpace(runHookGit(t, root, "rev-parse", "refs/tags/annotated-blob"))
-	if output, err := run(pushPath, "refs/tags/annotated-blob "+annotatedBlob+" refs/tags/annotated-blob "+base+"\n"); err != nil || !strings.Contains(output, "resolves to non-commit blob") || readLog() != "gate:--range "+base+" "+annotatedBlob+"\n" {
+	if output, err := run(pushPath, "refs/tags/annotated-blob "+annotatedBlob+" refs/tags/annotated-blob "+base+"\n"); err != nil || !strings.Contains(output, "resolves to non-commit blob") || readLog() != "gate:\n" {
 		t.Fatalf("non-commit tag: err=%v output=%q log=%q", err, output, readLog())
 	}
 	clearLog()
@@ -420,35 +418,35 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	if output, err := run(pushPath, "refs/heads/master "+head+" refs/heads/master "+base+"\n"); err != nil {
 		t.Fatalf("ordinary push: %v: %s", err, output)
 	}
-	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:--range "+base+" "+head+"\n" {
+	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:\n" {
 		t.Fatalf("ordinary push argv/order = %q", got)
 	}
 	clearLog()
 	if output, err := run(pushPath, "refs/heads/force "+side+" refs/heads/force "+head+"\n"); err != nil {
 		t.Fatalf("force push: %v: %s", err, output)
 	}
-	if got := readLog(); got != "policy:check commit-policy "+head+".."+side+"\ngate:--range "+head+" "+side+"\n" {
+	if got := readLog(); got != "policy:check commit-policy "+head+".."+side+"\ngate:\n" {
 		t.Fatalf("force push argv/order = %q", got)
 	}
 	clearLog()
 	if output, err := run(pushPath, "refs/heads/master "+head+" refs/heads/master "+base+"\nrefs/heads/other "+head+" refs/heads/other "+base+"\n"); err != nil {
 		t.Fatalf("multi-ref push: %v: %s", err, output)
 	}
-	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:--range "+base+" "+head+" --range "+base+" "+head+"\n" {
+	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:\n" {
 		t.Fatalf("multi-ref push argv/order = %q", got)
 	}
 	clearLog()
 	if output, err := run(pushPath, "refs/heads/new "+head+" refs/heads/new "+zeroOID+"\n"); err != nil {
 		t.Fatalf("new branch push: %v: %s", err, output)
 	}
-	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:--range invalid-base "+head+"\n" {
+	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:\n" {
 		t.Fatalf("new branch conservative argv/order = %q", got)
 	}
 	clearLog()
 	if output, err := run(pushPath, "refs/tags/new "+outerTag+" refs/tags/new "+zeroOID+"\n"); err != nil {
 		t.Fatalf("new annotated tag push: %v: %s", err, output)
 	}
-	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:--range invalid-base "+outerTag+"\n" {
+	if got := readLog(); got != "policy:check commit-policy "+base+".."+head+"\ngate:\n" {
 		t.Fatalf("new annotated tag argv/order = %q", got)
 	}
 	clearLog()
@@ -476,7 +474,7 @@ func TestCommitPolicyHookPayloads(t *testing.T) {
 	if output, err := run(pushPath, "(delete) "+zeroOID+" refs/heads/deleted "+head+"\n"); err != nil {
 		t.Fatalf("deletion-only push: %v: %s", err, output)
 	}
-	if got := readLog(); got != "gate:--range "+head+" "+head+"\n" {
+	if got := readLog(); got != "gate:\n" {
 		t.Fatalf("deletion-only exact-empty argv = %q", got)
 	}
 
@@ -539,7 +537,7 @@ func testCommitPolicyHooksNative(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(root, "awf"), []byte(wrapper), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: hook-test\nprofile: full\nintegrationBranch: master\nvars: {gateCmd: true}\n"), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("prefix: hook-test\nintegrationBranch: master\nvars: {gateCmd: true}\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
 			lock := "{\"awfVersion\":\"0.36.0\",\"schemaVersion\":" + strconv.Itoa(migrate.Current()) + ",\"files\":{\"prior\":{}}}\n"
@@ -556,14 +554,14 @@ func testCommitPolicyHooksNative(t *testing.T) {
 			if err := os.WriteFile(gate, []byte("#!/usr/bin/env bash\nprintf 'gate\\n' >>"+shellQuote(gateLog)+"\n"), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			config := "prefix: hook-test\nprofile: full\nintegrationBranch: master\nvars:\n  gateCmd: true\n  gateCmdFull: " + gate + "\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n    - name: Allowed\n      email: allowed@example.test\n  requireSignedCommits: true\n  allowedSigners:\n    - principal: allowed@example.test\n      key: " + publicKey + "\n"
+			config := "prefix: hook-test\nintegrationBranch: master\nvars:\n  gateCmd: " + gate + "\ncommitPolicy:\n  grandfatheredThrough: " + base + "\n  allowedIdentities:\n    - name: Allowed\n      email: allowed@example.test\n  requireSignedCommits: true\n  allowedSigners:\n    - principal: allowed@example.test\n      key: " + publicKey + "\n"
 			if err := os.MkdirAll(filepath.Join(root, ".awf", "hooks"), 0o755); err != nil {
 				t.Fatal(err)
 			}
 			if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte(config), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			files := hookFiles(t, "prefix: hook-test\nprofile: full\nintegrationBranch: master\nvars:\n  gateCmdFull: "+gate+"\n")
+			files := hookFiles(t, "prefix: hook-test\nintegrationBranch: master\nvars:\n  gateCmd: "+gate+"\n")
 			for _, name := range []string{"reference-transaction", "pre-push"} {
 				if err := os.WriteFile(filepath.Join(root, ".awf", "hooks", name+".sh"), []byte(files[name].Content), 0o755); err != nil {
 					t.Fatal(err)

@@ -102,4 +102,4 @@ done
 if [[ ${policy_targets[0]+present} ]]; then
   ./awf check commit-policy "${policy_targets[@]}"
 fi
-{{ with .vars.gateCmdFull }}{{ . }} "${ranges[@]+"${ranges[@]}"}"{{ else }}{{ with .vars.gateCmd }}{{ . }}{{ else }}{{ with .vars.checkCmd }}{{ . }}{{ else }}./awf check{{ end }}{{ end }}{{ end }}
+{{ with .vars.gateCmd }}{{ . }}{{ else }}{{ with .vars.checkCmd }}{{ . }}{{ else }}./awf check{{ end }}{{ end }}

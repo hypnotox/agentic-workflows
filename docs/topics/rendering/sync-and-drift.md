@@ -53,17 +53,12 @@ Backing: test
 
 ### `invariant: managed-output-attribution`
 
-A reader-injected declaration builder enumerates selected-governance-footprint managed writes before rendering, retaining sorted declarers and exact inputs; those declarations are the output plan's generated-path classification.
+A reader-injected declaration builder enumerates the standard footprint's managed writes before rendering, retaining sorted declarers and exact inputs; those declarations are the output plan's generated-path classification.
 Backing: test
 
 ### `invariant: ordinary-render-freshness`
 
 After an ordinary frozen output's template and config hashes match, awf check compares its current planned render bytes to the locked output hash before observing the worktree or staged bytes. A changed fresh render reports stale output, while an unchanged fresh render attributes only a differing observed output as hand-edited. Regenerated and in-place outputs retain their declared regeneration policy.
-Backing: test
-
-### `invariant: part-scopes-in-confighash`
-
-A raw convention-part body referencing a `{{=awf:commitScope...}}` placeholder folds the resolved scope data into its artifact's config hash, so editing `audit.allowedScopes` flags that artifact stale in `awf check` while a non-referencing part stays in sync.
 Backing: test
 
 ### `invariant: provenance-banner`
@@ -98,7 +93,7 @@ Backing: test
 
 ### `invariant: sync-always-writes-active-md`
 
-Full awf render writes the ADR status index at docs/decisions/INDEX.md, recording it when ADRs exist and otherwise rendering a placeholder; Core does not emit a managed ADR index.
+awf render writes the historical decision index at docs/decisions/INDEX.md, recording existing decisions and otherwise rendering a placeholder.
 Backing: test
 
 ### `invariant: sync-mutations-root-confined`
@@ -128,10 +123,5 @@ Backing: test
 
 ### `invariant: coverage-evaluation-unconditional`
 
-Full awf check evaluates current-state topic coverage and fan-out in working and staged paths regardless of a currentState block. Core does not load current-state authority or run those governance checks.
-Backing: test
-
-### `invariant: profile-config-hash`
-
-The selected governance footprint participates in configuration hashes through the retained `profile` value, while prior lock membership remains the sole pruning authority.
+awf check evaluates current-state topic coverage and fan-out in working and staged paths regardless of a currentState block.
 Backing: test

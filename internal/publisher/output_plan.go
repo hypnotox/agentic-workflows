@@ -443,72 +443,70 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		add(config.DocsDir+"/pitfalls/"+entry.Slug+".md", pitfallEntryTID, "pitfall:"+entry.Slug, declaredInputs)
 	}
-	if cfg.Profile != catalog.ProfileCore {
-		for _, d := range cfg.Domains {
-			sc, err := cfg.Sidecar("domains", d)
-			if err != nil {
-				return nil, err
-			}
-			authored := []OutputInput{{Path: ".awf/domains/" + d + ".yaml", Role: ArtifactAuthoredData}}
-			authored = append(authored, partInputs("domains", d, cat.DomainDoc.Sections, sc.Sections)...)
-			domainMetadata, err := read.Paths(".awf/topics/metadata/" + d + "/")
-			if err != nil {
-				return nil, err
-			}
-			for _, metadataPath := range domainMetadata {
-				if strings.HasSuffix(metadataPath, ".yaml") {
-					id := strings.TrimSuffix(strings.TrimPrefix(metadataPath, ".awf/topics/metadata/"), ".yaml")
-					authored = append(authored, OutputInput{Path: metadataPath, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
-				}
-			}
-			domainTID := mustDescriptor("domains").templateID(cat, d)
-			declaredInputs, err := markdownInputs(domainTID, authored...)
-			if err != nil { // coverage-ignore: the domain descriptor owns one validated embedded template identity
-				return nil, err
-			}
-			add(config.DocsDir+"/domains/"+d+".md", domainTID, "generated-domain", declaredInputs)
-		}
-		allMetadata, err := read.Paths(".awf/topics/metadata/")
+	for _, d := range cfg.Domains {
+		sc, err := cfg.Sidecar("domains", d)
 		if err != nil {
 			return nil, err
 		}
-		for _, p := range allMetadata {
-			if !strings.HasSuffix(p, ".yaml") {
-				continue
-			}
-			id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
-			declaredInputs, err := markdownInputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
-			if err != nil { // coverage-ignore: topicTID is a validated compile-time embedded identity
-				return nil, err
-			}
-			add(config.DocsDir+"/topics/"+id+".md", topicTID, "topic:"+id, declaredInputs)
+		authored := []OutputInput{{Path: ".awf/domains/" + d + ".yaml", Role: ArtifactAuthoredData}}
+		authored = append(authored, partInputs("domains", d, cat.DomainDoc.Sections, sc.Sections)...)
+		domainMetadata, err := read.Paths(".awf/topics/metadata/" + d + "/")
+		if err != nil {
+			return nil, err
 		}
-		for _, d := range cfg.Domains {
-			topicInputs := []OutputInput{}
-			indexMetadata, err := read.Paths(".awf/topics/metadata/" + d + "/")
-			if err != nil { // coverage-ignore: the same domain metadata enumeration succeeded earlier in this declaration pass
-				return nil, err
-			}
-			for _, p := range indexMetadata {
-				if strings.HasSuffix(p, ".yaml") {
-					id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
-					topicInputs = append(topicInputs, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
-				}
-			}
-			if len(topicInputs) > 0 {
-				declaredInputs, err := markdownInputs(topicIndexTID, topicInputs...)
-				if err != nil { // coverage-ignore: topicIndexTID is a validated compile-time embedded identity
-					return nil, err
-				}
-				add(config.DocsDir+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, declaredInputs)
+		for _, metadataPath := range domainMetadata {
+			if strings.HasSuffix(metadataPath, ".yaml") {
+				id := strings.TrimSuffix(strings.TrimPrefix(metadataPath, ".awf/topics/metadata/"), ".yaml")
+				authored = append(authored, OutputInput{Path: metadataPath, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
 			}
 		}
-		decisionInputs := []OutputInput{}
-		for _, record := range adrs.All() {
-			decisionInputs = append(decisionInputs, OutputInput{Path: config.DocsDir + "/decisions/" + record.Filename, Role: ArtifactDecisionRecord})
+		domainTID := mustDescriptor("domains").templateID(cat, d)
+		declaredInputs, err := markdownInputs(domainTID, authored...)
+		if err != nil { // coverage-ignore: the domain descriptor owns one validated embedded template identity
+			return nil, err
 		}
-		add(config.DocsDir+"/decisions/INDEX.md", "", "generated-index", inputs("", decisionInputs...))
+		add(config.DocsDir+"/domains/"+d+".md", domainTID, "generated-domain", declaredInputs)
 	}
+	allMetadata, err := read.Paths(".awf/topics/metadata/")
+	if err != nil {
+		return nil, err
+	}
+	for _, p := range allMetadata {
+		if !strings.HasSuffix(p, ".yaml") {
+			continue
+		}
+		id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
+		declaredInputs, err := markdownInputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
+		if err != nil { // coverage-ignore: topicTID is a validated compile-time embedded identity
+			return nil, err
+		}
+		add(config.DocsDir+"/topics/"+id+".md", topicTID, "topic:"+id, declaredInputs)
+	}
+	for _, d := range cfg.Domains {
+		topicInputs := []OutputInput{}
+		indexMetadata, err := read.Paths(".awf/topics/metadata/" + d + "/")
+		if err != nil { // coverage-ignore: the same domain metadata enumeration succeeded earlier in this declaration pass
+			return nil, err
+		}
+		for _, p := range indexMetadata {
+			if strings.HasSuffix(p, ".yaml") {
+				id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
+				topicInputs = append(topicInputs, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
+			}
+		}
+		if len(topicInputs) > 0 {
+			declaredInputs, err := markdownInputs(topicIndexTID, topicInputs...)
+			if err != nil { // coverage-ignore: topicIndexTID is a validated compile-time embedded identity
+				return nil, err
+			}
+			add(config.DocsDir+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, declaredInputs)
+		}
+	}
+	decisionInputs := []OutputInput{}
+	for _, record := range adrs.All() {
+		decisionInputs = append(decisionInputs, OutputInput{Path: config.DocsDir + "/decisions/" + record.Filename, Role: ArtifactDecisionRecord})
+	}
+	add(config.DocsDir+"/decisions/INDEX.md", "", "generated-index", inputs("", decisionInputs...))
 	for _, unit := range conditionalUnits() {
 		if !unit.enabled(cfg) {
 			continue
@@ -797,31 +795,26 @@ func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.
 			return nil, err
 		}
 	}
-	topicFiles := []RenderedFile{}
-	domains := []RenderedFile{}
-	if fullProfile(p) {
-		var topicDeps map[string][]string
-		topicFiles, topicDeps, err = generateTopicDocs(p, topics)
-		if err != nil {
+	topicFiles, topicDeps, err := generateTopicDocs(p, topics)
+	if err != nil {
+		return nil, err
+	}
+	for _, f := range topicFiles {
+		if err := add(f, f.Declarer, topicDeps[f.Path]...); err != nil {
 			return nil, err
 		}
-		for _, f := range topicFiles {
-			if err := add(f, f.Declarer, topicDeps[f.Path]...); err != nil {
-				return nil, err
-			}
-		}
-		index := generateIndexMD(p, corpus)
-		if err := add(index, "generated-index"); err != nil { // coverage-ignore: generated INDEX.md has a reserved unique path.
+	}
+	index := generateIndexMD(p, corpus)
+	if err := add(index, "generated-index"); err != nil { // coverage-ignore: generated INDEX.md has a reserved unique path.
+		return nil, err
+	}
+	domains, err := generateDomainDocs(p, topics, eff)
+	if err != nil { // coverage-ignore: renderTarget cannot fail here: .data.domain/.data.topics are always set and the domain template is compile-time embedded
+		return nil, err
+	}
+	for _, f := range domains {
+		if err := add(f, "generated-domain"); err != nil { // coverage-ignore: validated domain names produce distinct paths.
 			return nil, err
-		}
-		domains, err = generateDomainDocs(p, topics, eff)
-		if err != nil { // coverage-ignore: renderTarget cannot fail here: .data.domain/.data.topics are always set and the domain template is compile-time embedded
-			return nil, err
-		}
-		for _, f := range domains {
-			if err := add(f, "generated-domain"); err != nil { // coverage-ignore: validated domain names produce distinct paths.
-				return nil, err
-			}
 		}
 	}
 	inputs := slices.Concat(base, localDocs, pitfallLeaves, domains, topicFiles)

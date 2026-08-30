@@ -223,6 +223,7 @@ func collectStrings(t *testing.T, site string, v any, out *[]string) {
 // awf-the-product. An ordinary gate test, deliberately slug-free: ADR-0082
 // owns the principle and this is its enforcement catching up with the
 // catalog's move to Go (ADR-0060 postdates its scan scope).
+// invariant: rendering/catalog-and-targets:catalog-defaults-generic-denylist (TestCatalogDataResidue)
 func TestCatalogDataResidue(t *testing.T) {
 	cat := catalog.Standard
 	check := func(site string, strs []string) {

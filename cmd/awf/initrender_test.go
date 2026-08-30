@@ -134,12 +134,12 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	if strings.Contains(checkOut.String(), "dead-skill-reference") {
 		t.Errorf("curated init render has dead skill references:\n%s", checkOut.String())
 	}
-	if _, err := os.Stat(filepath.Join(root, "docs/decisions/template.md")); !os.IsNotExist(err) {
-		t.Fatalf("default Core init emitted Full-only ADR template: %v", err)
+	if _, err := os.Stat(filepath.Join(root, "docs/decisions/template.md")); err != nil {
+		t.Fatalf("default init omitted the standard decision template: %v", err)
 	}
 	cfg, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
-	if err != nil || !strings.Contains(string(cfg), "profile: core") {
-		t.Fatalf("default init profile = %q, %v", cfg, err)
+	if err != nil || strings.Contains(string(cfg), "profile:") {
+		t.Fatalf("default init retained profile configuration = %q, %v", cfg, err)
 	}
 }
 
@@ -192,7 +192,7 @@ func TestCheckUnsetVarNotesAreNonFailing(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("check must stay clean with unset vars, got: %v", err)
 	}
-	if !strings.Contains(out.String(), "advisory | skill tdd references unset vars: testCmd") {
+	if !strings.Contains(out.String(), "advisory | agents-doc references unset vars: testCmd") {
 		t.Errorf("missing unset-var note, got:\n%s", out.String())
 	}
 }
@@ -205,9 +205,9 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate, gateCmdFull: make gate full}\n")
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "tdd", "notes.md"),
-		"<!-- awf:stub -->\nstarter notes\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate}\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "brainstorming", "procedure.md"),
+		"<!-- awf:stub -->\nstarter procedure\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 		t.Fatalf("check must stay clean with unauthored stub content, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "advisory |") ||
-		!strings.Contains(out.String(), "has unauthored stub content: stub-marked parts: notes") {
+		!strings.Contains(out.String(), "has unauthored stub content: stub-marked parts: procedure") {
 		t.Errorf("missing stub note, got:\n%s", out.String())
 	}
 }
@@ -248,18 +248,6 @@ func TestCheckGlossaryTersenessNotesAreNonFailing(t *testing.T) {
 	}
 }
 
-func TestCheckSurfacesUnsetVarNoteRenderError(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n")
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "tdd.yaml"),
-		"data:\n  testSurfaces:\n    - {name: \"<no value>\", kind: k, location: l}\n")
-	if err := runCheck(ctx, root, io.Discard); err == nil {
-		t.Fatal("expected check to surface the render error from the notes pass")
-	}
-}
-
 func TestCheckFullySetArtifactEmitsNoUnsetVarNote(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -271,9 +259,9 @@ func TestCheckFullySetArtifactEmitsNoUnsetVarNote(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("check: %v", err)
 	}
-	// The fixture sets every var the tdd skill references; other artifacts
+	// The fixture sets every var the brainstorming skill references; other artifacts
 	// (agents-doc) legitimately reference more and may still note.
-	if strings.Contains(out.String(), "skill tdd references unset vars") {
+	if strings.Contains(out.String(), "skill brainstorming references unset vars") {
 		t.Errorf("unexpected unset-var note for the fully-set skill:\n%s", out.String())
 	}
 }
@@ -283,7 +271,7 @@ func TestRunInitSyncError(t *testing.T) {
 	// Config exists (skip scaffold); a squatting output dir makes the inner
 	// runSync fail, covering runInit's runSync error return.
 	root := scaffoldProject(t)
-	out := filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")
+	out := filepath.Join(root, ".claude", "skills", "example-brainstorming", "SKILL.md")
 	if err := os.RemoveAll(out); err != nil {
 		t.Fatal(err)
 	}

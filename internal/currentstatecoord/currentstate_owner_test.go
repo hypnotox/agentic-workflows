@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -88,7 +87,7 @@ func TestPrepareStagedOutputSelectedUniverseErrors(t *testing.T) {
 	}{
 		{name: "missing config", want: "no staged .awf/config.yaml"},
 		{name: "unmerged index", want: "index contains unmerged entries", unmerged: true},
-		{name: "malformed lock", config: "prefix: x\nprofile: core\nintegrationBranch: main\n", lock: "not: [valid", want: "parse snapshot lock"},
+		{name: "malformed lock", config: "prefix: x\nintegrationBranch: main\n", lock: "not: [valid", want: "parse snapshot lock"},
 		{name: "malformed config", config: "not: [valid", want: "yaml:"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -182,7 +181,7 @@ func TestCoordinatorSnapshotReaderAndEligiblePaths(t *testing.T) {
 
 func TestCoordinatorLockTransitionAndCoreConfig(t *testing.T) {
 	empty := ownerTree(t)
-	afterWithConfig := ownerTree(t, snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nprofile: core\nintegrationBranch: main\n")})
+	afterWithConfig := ownerTree(t, snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\n")})
 	if err := validateLockTransition(empty, empty, nil, &manifest.Lock{}); err == nil || !strings.Contains(err.Error(), "requires .awf/config.yaml") {
 		t.Fatalf("missing staged config error = %v", err)
 	}
@@ -194,7 +193,7 @@ func TestCoordinatorLockTransitionAndCoreConfig(t *testing.T) {
 		t.Fatalf("residual .awf HEAD error = %v", err)
 	}
 	withConfig := ownerTree(t,
-		snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nprofile: core\nintegrationBranch: main\n")},
+		snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\n")},
 		snapshot.File{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)},
 	)
 	if err := validateLockTransition(withConfig, withConfig, nil, &manifest.Lock{}); err == nil {
@@ -204,8 +203,8 @@ func TestCoordinatorLockTransitionAndCoreConfig(t *testing.T) {
 		t.Fatal("initialized version mutation accepted")
 	}
 	loaded, cfg, err := loadTreeCurrentState(".", withConfig, &manifest.Lock{AWFVersion: "0.39.2", SchemaVersion: 46})
-	if err != nil || cfg == nil || len(loaded.ADRs) != 0 || cfg.Profile != catalog.ProfileCore {
-		t.Fatalf("core config load = %#v, %#v, %v", loaded, cfg, err)
+	if err != nil || cfg == nil || len(loaded.ADRs) != 0 {
+		t.Fatalf("legacy config load = %#v, %#v, %v", loaded, cfg, err)
 	}
 }
 

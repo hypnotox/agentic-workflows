@@ -20,15 +20,7 @@ import (
 // ScaffoldConfig generates a .awf/config.yaml with every catalog template's
 // referenced vars, the self-pinning bootstrap, and the resolved commit scopes.
 func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]byte, error) {
-	return ScaffoldConfigForProfile(prefix, vars, scopes, catalog.ProfileCore)
-}
-
-// ScaffoldConfigForProfile generates fresh config for the selected governance footprint.
-func ScaffoldConfigForProfile(prefix string, vars map[string]string, scopes []string, profile catalog.Profile) ([]byte, error) {
-	if _, err := catalog.ParseProfile(string(profile)); err != nil {
-		return nil, err
-	}
-	cat := catalog.StandardProfileView(profile).Catalog()
+	cat := catalog.CompleteView().Catalog()
 
 	// Collect referenced var names from every selected catalog template family - not only
 	// the core ones - so an opt-in target added later renders without <no value>.
@@ -69,8 +61,7 @@ func ScaffoldConfigForProfile(prefix string, vars map[string]string, scopes []st
 		auditBlk = &config.SkeletonAudit{AllowedScopes: scopes}
 	}
 	out, err := config.MarshalSkeleton(config.Skeleton{
-		Prefix:  prefix,
-		Profile: profile,
+		Prefix: prefix,
 		// The default integration branch a fresh project starts on. It is
 		// written, never defaulted in code, so an adopter sees and can change
 		// the branch name the ADR scaffold and the pending-record block key

@@ -55,7 +55,7 @@ func syncAndReadAgents(t *testing.T, root string) string {
 
 // invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestCheckReportAgentGuideSizeAdvisoryManagedOnly)
 func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -88,15 +88,15 @@ func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:agentsdoc-parts (TestAgentsDocDocumentMapPartRetainsLocalDocs)
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestAgentsDocDocumentMapPartRetainsLocalDocs)
 func TestAgentsDocDocumentMapPartRetainsLocalDocs(t *testing.T) {
-	const cfg = "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/checks\n    title: Checks\n    description: Check local docs.\n"
+	const cfg = "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/checks\n    title: Checks\n    description: Check local docs.\n"
 	const row = "- **Checks:** [docs/runbooks/checks.md](docs/runbooks/checks.md), Check local docs."
 	for _, tc := range []struct {
 		name, sidecar, part, want, absent string
 	}{
-		{"default", "", "", "## Document map\n\n- **ADR index:", ""},
-		{"headingless part", "", "Custom catalog map content.\n", "## Document map\nCustom catalog map content.\n\n" + row, "**ADR index:"},
-		{"heading-bearing part", "", "## Document map\n\nCustom catalog map content.\n", "## Document map\n## Document map\n\nCustom catalog map content.\n\n" + row, "**ADR index:"},
-		{"dropped section", "sections:\n  document-map:\n    drop: true\n", "", "## Document map", "**ADR index:"},
+		{"default", "", "", "## Document map\n\n- **Decision records:", ""},
+		{"headingless part", "", "Custom catalog map content.\n", "## Document map\nCustom catalog map content.\n\n" + row, "**Decision records:"},
+		{"heading-bearing part", "", "## Document map\n\nCustom catalog map content.\n", "## Document map\n## Document map\n\nCustom catalog map content.\n\n" + row, "**Decision records:"},
+		{"dropped section", "sections:\n  document-map:\n    drop: true\n", "", "## Document map", "**Decision records:"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			files := map[string]string{}
@@ -122,9 +122,9 @@ func TestAgentsDocDocumentMapPartRetainsLocalDocs(t *testing.T) {
 		})
 	}
 	for _, tc := range []struct{ name, cfg, sidecar string }{
-		{"omitted local docs", "prefix: example\nprofile: full\nintegrationBranch: main\n", ""},
-		{"empty local docs", "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs: []\n", ""},
-		{"dropped empty local docs", "prefix: example\nprofile: full\nintegrationBranch: main\n", "sections:\n  document-map:\n    drop: true\n"},
+		{"omitted local docs", "prefix: example\nintegrationBranch: main\n", ""},
+		{"empty local docs", "prefix: example\nintegrationBranch: main\nlocalDocs: []\n", ""},
+		{"dropped empty local docs", "prefix: example\nintegrationBranch: main\n", "sections:\n  document-map:\n    drop: true\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			files := map[string]string{}
@@ -144,10 +144,10 @@ func TestAgentsDocDocumentMapPartRetainsLocalDocs(t *testing.T) {
 
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestAgentsDocDefaultEmptyLocalDocsByteInertia)
 func TestAgentsDocDefaultEmptyLocalDocsByteInertia(t *testing.T) {
-	const suffix = "<!-- awf:edit document-map: default; create .awf/parts/agents-doc/document-map.md to override -->\n## Document map\n\n- **ADR index:**"
+	const suffix = "<!-- awf:edit document-map: default; create .awf/parts/agents-doc/document-map.md to override -->\n## Document map\n\n- **Decision records:**"
 	for _, cfg := range []string{
-		"prefix: example\nprofile: full\nintegrationBranch: main\n",
-		"prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs: []\n",
+		"prefix: example\nintegrationBranch: main\n",
+		"prefix: example\nintegrationBranch: main\nlocalDocs: []\n",
 	} {
 		got := syncAndReadAgents(t, scaffoldFiles(t, cfg, nil))
 		if !strings.Contains(got, suffix) {
@@ -165,7 +165,7 @@ func TestLocalDocGuideSize(t *testing.T) {
 	for i := range 100 {
 		fmt.Fprintf(&entries, "  - name: runbooks/doc-%03d\n    title: Local document %03d\n    description: %s\n", i, i, strings.Repeat("x", 100))
 	}
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n"+entries.String())
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n"+entries.String())
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -195,7 +195,7 @@ func TestLocalDocGuideSize(t *testing.T) {
 
 // invariant: rendering/guide-and-doc-templates:agentsdoc-parts (TestAgentsDocPartsOverride)
 func TestAgentsDocPartsOverride(t *testing.T) {
-	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n"
+	cfg := "prefix: example\nintegrationBranch: main\n"
 
 	// Absent → the generic, adopter-neutral default renders publication-safe with
 	// empty invariants/docMap.
@@ -222,7 +222,7 @@ func TestAgentsDocPartsOverride(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestMaintainableCodeDesignPartOverride)
 func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 	const uniqueBody = "The local decision posture owns this change."
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"parts/maintainable-code-design/decision-posture.md": uniqueBody + "\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -250,46 +250,6 @@ func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 	}
 }
 
-func TestConventionPartPrecedence(t *testing.T) {
-	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n" + debuggingVars + ""
-	const part = "skills/parts/debugging/debugging-surfaces.md"
-
-	// (1) A convention part present replaces the section body.
-	root := scaffoldFiles(t, cfg, map[string]string{part: "CONVENTION PART BODY\n"})
-	out := syncAndReadDebugging(t, root)
-	if !strings.Contains(out, "CONVENTION PART BODY") {
-		t.Errorf("convention part not rendered:\n%s", out)
-	}
-	if strings.Contains(out, "Enumerate observable surfaces") {
-		t.Errorf("template default should be replaced by the convention part:\n%s", out)
-	}
-
-	// (2) A sidecar drop beats the convention part.
-	root = scaffoldFiles(t, cfg, map[string]string{
-		part:                    "CONVENTION PART BODY\n",
-		"skills/debugging.yaml": "sections:\n  debugging-surfaces:\n    drop: true\n",
-	})
-	out = syncAndReadDebugging(t, root)
-	if strings.Contains(out, "CONVENTION PART BODY") {
-		t.Errorf("drop should beat the convention part:\n%s", out)
-	}
-}
-
-// invariant: rendering/render-engine:sidecar-optional (TestSidecarAbsentRendersDefault)
-func TestSidecarAbsentRendersDefault(t *testing.T) {
-	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n" + debuggingVars + ""
-	root := scaffold(t, cfg) // no sidecar, no parts
-	out := syncAndReadDebugging(t, root)
-	if strings.Contains(out, "<no value>") {
-		t.Errorf("absent sidecar must render the template default with no <no value>:\n%s", out)
-	}
-	if !strings.Contains(out, "Enumerate observable surfaces") {
-		t.Errorf("expected the template default body:\n%s", out)
-	}
-}
-
-// A local skill must exist with valid frontmatter at EVERY enabled target's path
-// (ADR-0037): one present, the other absent, is a fail at the missing target.
 func TestTopicPartUsesRawPublicationSafeAssembly(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root)

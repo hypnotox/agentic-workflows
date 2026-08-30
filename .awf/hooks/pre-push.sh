@@ -103,4 +103,4 @@ done
 if [[ ${policy_targets[0]+present} ]]; then
   ./awf check commit-policy "${policy_targets[@]}"
 fi
-./x gate full "${ranges[@]+"${ranges[@]}"}"
+./x gate

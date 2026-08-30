@@ -81,7 +81,6 @@ func TestInitExplicitAnswersWin(t *testing.T) {
 // seeds every var empty and writes no invariants config - byte-identical to the
 // pre-feature seed-empty output.
 // invariant: tooling/init-and-enablement:init-noninteractive-default (TestInitNonInteractiveDefault)
-// invariant: tooling/init-and-enablement:init-profile-default-core (TestInitNonInteractiveDefault)
 func TestInitNonInteractiveDefault(t *testing.T) {
 	root := t.TempDir()
 	var out, errb bytes.Buffer
@@ -95,8 +94,8 @@ func TestInitNonInteractiveDefault(t *testing.T) {
 	if strings.Contains(cfg, "invariants:") {
 		t.Errorf("silent init should not write an invariants config:\n%s", cfg)
 	}
-	if !strings.Contains(cfg, "profile: core") {
-		t.Errorf("silent init did not select Core by default:\n%s", cfg)
+	if strings.Contains(cfg, "profile:") {
+		t.Errorf("silent init retained the retired profile key:\n%s", cfg)
 	}
 }
 
@@ -156,7 +155,7 @@ func TestInitInteractivePromptWiring(t *testing.T) {
 	// gateCmd reads the first value; every later prompt hits EOF and takes its
 	// empty default, so the invariants marker/globs stay unset.
 	var out, errb bytes.Buffer
-	if code := newRunner(func() (string, error) { return root, nil }, strings.NewReader("core\nmake gate\n"), func() bool { return true }).run([]string{"awf", "init"}, &out, &errb); code != 0 {
+	if code := newRunner(func() (string, error) { return root, nil }, strings.NewReader("make gate\n"), func() bool { return true }).run([]string{"awf", "init"}, &out, &errb); code != 0 {
 		t.Fatalf("interactive init: exit %d (%s)", code, errb.String())
 	}
 	cfg := readInitConfig(t, root)
@@ -204,25 +203,6 @@ func TestInitExistingConfigSkipsPrompts(t *testing.T) {
 // depends on whether the test's stdin is a terminal; it must not panic).
 func TestStdinIsInteractive(t *testing.T) {
 	t.Logf("stdinIsInteractive() = %v", stdinIsInteractive(os.Stdin)())
-}
-
-// A commitScopes answer lands in audit.allowedScopes, never in vars; the
-// silent default writes no audit block (ADR-0051).
-func TestInitCommitScopesAnswer(t *testing.T) {
-	root := t.TempDir()
-	var out, errb bytes.Buffer
-	if code := runFrom(root, []string{"awf", "init", "--set", "commitScopes=adr, awf"}, &out, &errb); code != 0 {
-		t.Fatalf("init --set commitScopes: exit %d (%s)", code, errb.String())
-	}
-	cfg := readInitConfig(t, root)
-	for _, want := range []string{"audit:", "allowedScopes:", "- adr", "- awf"} {
-		if !strings.Contains(cfg, want) {
-			t.Errorf("config missing %q:\n%s", want, cfg)
-		}
-	}
-	if strings.Contains(cfg, "commitScopes:") {
-		t.Errorf("commitScopes must not be seeded as a var:\n%s", cfg)
-	}
 }
 
 // After the chained sync succeeds, init presents render-completeness notes
@@ -429,12 +409,11 @@ func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
 		t.Errorf("init --force lost its scaffold identity or backup report:\n%s", out.String())
 	}
 	for _, want := range []string{
-		"skill tdd references unset vars",
 		"docs/architecture.md has unauthored stub content",
 		"step 5: commit .awf/ and the rendered files together",
 	} {
 		if !strings.Contains(out.String(), want) {
-			t.Errorf("init --force Core report missing %q:\n%s", want, out.String())
+			t.Errorf("init --force report missing %q:\n%s", want, out.String())
 		}
 	}
 	// Regression: init delegates its backup to the chained sync (one BackupFile path,
@@ -577,30 +556,5 @@ func TestInitCollisionProbeRefusesBeforePrompts(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, ".awf")); !os.IsNotExist(err) {
 		t.Errorf(".awf/ should not exist after a probe refusal (err=%v)", err)
-	}
-}
-
-// A trim answer can enable a non-core artifact the curated-core probe set does
-// not cover: the probe passes, and the accurate post-answer check still
-// refuses and rolls the scaffolded config back. (The leaves-only trim derives
-// zero agents under ADR-0081, so the selection is closure-valid.)
-func TestInitPostAnswerCollisionAfterProbePasses(t *testing.T) {
-	root := t.TempDir()
-	skillPath := filepath.Join(root, ".claude", "skills", filepath.Base(root)+"-tdd", "SKILL.md")
-	if err := os.MkdirAll(filepath.Dir(skillPath), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(skillPath, []byte("mine\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var out, errb bytes.Buffer
-	if code := runFrom(root, []string{"awf", "init", "--set", "skills=tdd"}, &out, &errb); code == 0 {
-		t.Fatal("expected init to refuse on the post-answer collision")
-	}
-	if !strings.Contains(errb.String(), "refusing to overwrite") {
-		t.Fatalf("stderr = %q", errb.String())
-	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !os.IsNotExist(err) {
-		t.Error("scaffolded config should have been rolled back")
 	}
 }

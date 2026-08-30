@@ -14,7 +14,7 @@ import (
 // render may bring it back.
 // invariant: rendering/singletons-and-payloads:memory-gitignore-always-on (TestResidentGitignoresAlwaysOn)
 func TestResidentGitignoresAlwaysOn(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

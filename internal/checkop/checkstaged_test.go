@@ -17,7 +17,6 @@ import (
 )
 
 const checkYAML = `prefix: example
-profile: full
 integrationBranch: main
 vars: {testCmd: go test ./..., gateCmd: make gate}
 `

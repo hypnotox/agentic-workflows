@@ -481,7 +481,7 @@ func TestSchema47RelevanceMigrationRecoversAndConverges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(migration.Mutations) != 2 || len(migration.Planned) != 2 {
+	if len(migration.Mutations) != 2 || len(migration.Planned) != 3 {
 		t.Fatalf("migration = %#v", migration)
 	}
 	operations := make([]upgrade.Operation, 0, len(migration.Mutations)+1)

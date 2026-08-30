@@ -19,20 +19,6 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-// ProfileDescriptor is the init-facing required repository fact. It is kept
-// separate from catalog Vars because profile selects the catalog view rather
-// than supplying a rendered template value.
-var ProfileDescriptor = catalog.VarDescriptor{
-	Key: "profile", Kind: "enum", Target: "profile",
-	Description: "Governance footprint: Core includes the operational workflow; Full adds ADR, plan, current-state authority, and audit capabilities at the same quality bar.",
-	Default:     "core", Options: []string{"core", "full"},
-}
-
-// InitDescriptors returns the required profile fact followed by catalog vars.
-func InitDescriptors(vars []catalog.VarDescriptor) []catalog.VarDescriptor {
-	return append([]catalog.VarDescriptor{ProfileDescriptor}, vars...)
-}
-
 // Describe marshals the descriptor set as JSON ({"descriptors": [...]}) for
 // `awf init --describe`. An empty Target is normalized to "var".
 func Describe(descs []catalog.VarDescriptor) ([]byte, error) {
@@ -144,24 +130,6 @@ func Resolve(descs []catalog.VarDescriptor, answers map[string]string, in io.Rea
 		}
 	}
 	return vars, splitNames(scopesRaw), nil
-}
-
-// ResolveInit resolves the required profile fact separately from rendered vars.
-func ResolveInit(vars []catalog.VarDescriptor, answers map[string]string, in io.Reader, out io.Writer, interactive bool, needed func() (map[string]bool, error)) (map[string]string, []string, catalog.Profile, error) {
-	resolved, scopes, err := Resolve(InitDescriptors(vars), answers, in, out, interactive, needed)
-	if err != nil {
-		return nil, nil, "", err
-	}
-	value := resolved[ProfileDescriptor.Key]
-	delete(resolved, ProfileDescriptor.Key)
-	if value == "" {
-		value = ProfileDescriptor.Default
-	}
-	profile, err := catalog.ParseProfile(value)
-	if err != nil { // coverage-ignore: Resolve validated the ProfileDescriptor closed enum before this defensive conversion
-		return nil, nil, "", err
-	}
-	return resolved, scopes, profile, nil
 }
 
 // writePrompt is the sole interactive init write. It validates and buffers the

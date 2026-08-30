@@ -64,6 +64,15 @@ func mustEvalConfig(t *testing.T, state *project.ProjectState) *config.Config {
 	return cfg
 }
 
+func read(t *testing.T, path string) string {
+	t.Helper()
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
+	}
+	return string(body)
+}
+
 // loadCatalog loads the embedded catalog or fails the test.
 func loadCatalog(t *testing.T) *catalog.Catalog {
 	t.Helper()

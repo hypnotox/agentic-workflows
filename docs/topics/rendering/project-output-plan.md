@@ -30,7 +30,7 @@ Backing: test
 
 ### `invariant: output-plan-complete`
 
-The deterministic output plan contains every selected catalog artifact, applicable bridge files, generated documentation, reservations, configured local-document outputs, and the three resident-root markers. Full additionally plans governance outputs; Core omits them while retained historical ADR and plan leaves are not managed outputs.
+The deterministic output plan contains every standard catalog artifact, applicable bridge file, generated document, reservation, configured local-document output, and the three resident-root markers. Historical decision and plan leaves remain outside managed output ownership.
 Backing: test
 
 ### `invariant: inert-sidecar-field-rejected`
@@ -90,9 +90,4 @@ sections from one bounded descriptor consumed by output declarations and render 
 payloads and the runner are unconditional members, while bootstrap is the only member whose
 enablement is conditional. Unit-specific data construction, policy, encoding, and lifecycle behavior
 remain at their owning render seams.
-Backing: test
-
-### `invariant: profile-projected-render`
-
-One configuration-selected catalog view governs every planned output and generated producer; Full is exactly Core plus the governance layer.
 Backing: test

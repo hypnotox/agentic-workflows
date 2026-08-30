@@ -16,7 +16,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
@@ -245,12 +244,6 @@ func (r runner) run(args []string, stdout, stderr io.Writer) int {
 		cancel()
 		return dispatchFailure(stdout, stderr, err)
 	}
-	if cmd.FullOnly || top.FullOnly {
-		if err := requireCommandCapability(guardCtx, cwd, top, sub, inv); err != nil {
-			cancel()
-			return dispatchFailure(stdout, stderr, err)
-		}
-	}
 	cancel()
 	// The driver gates every Gated command before its handler; config/context/topic/new
 	// self-gate in-handler after their static-fallback / name-validation checks.
@@ -332,40 +325,6 @@ func selectsStagedDrift(top clispec.Command, sub string) bool {
 
 func selectsStagedProjectUniverse(top clispec.Command, sub string, inv invocation) bool {
 	return top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged "))
-}
-
-func requireCommandCapability(ctx context.Context, root string, top clispec.Command, sub string, inv invocation) error {
-	var cfg *config.Config
-	var err error
-	if selectsStagedProjectUniverse(top, sub, inv) {
-		tree, treeErr := stagedTree(ctx, root)
-		if treeErr != nil {
-			return treeErr
-		}
-		file, ok := tree.Lookup(config.DirName + "/config.yaml")
-		if !ok {
-			return nil
-		}
-		cfg, err = config.Parse(config.RootDir(root), file.Bytes)
-	} else {
-		cfg, err = config.Load(config.RootDir(root))
-		if errors.Is(err, os.ErrNotExist) {
-			present, presentErr := migrate.ProjectPresent(root)
-			if presentErr != nil {
-				return presentErr
-			}
-			if !present {
-				return nil
-			}
-		}
-	}
-	if err != nil {
-		return err
-	}
-	if err := cfg.Validate(); err != nil {
-		return err
-	}
-	return project.RequireCapability(cfg.Profile, strings.TrimSpace(top.Name+" "+sub), true)
 }
 
 func validateCurrentAuthority(found, currentConfig, currentLock bool) error {

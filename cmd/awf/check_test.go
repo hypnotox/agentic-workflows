@@ -18,7 +18,6 @@ import (
 )
 
 const checkYAML = `prefix: example
-profile: full
 integrationBranch: main
 vars: {testCmd: go test ./..., gateCmd: make gate}
 `
@@ -56,7 +55,7 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	}
 
 	// Hand-edit the rendered skill.
-	skill := filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")
+	skill := filepath.Join(root, ".claude/skills/example-brainstorming/SKILL.md")
 	if err := os.WriteFile(skill, []byte("tampered\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -238,7 +237,7 @@ func TestRunCheckAheadNotice(t *testing.T) {
 // switches coverage on: ADR-0192 made coverage and fan-out evaluate whether or
 // not the config declares the block.
 func coverageYAML() string {
-	return "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\ndomains: [alpha]\n" +
+	return "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\ndomains: [alpha]\n" +
 		"currentState:\n"
 }
 

@@ -22,8 +22,6 @@ currentState:
 bootstrap:
   enabled: true
 `, map[string]string{
-		"skills/tdd.yaml":                           "data:\n  testSurfaces:\n    - name: Unit\n      kind: isolated\n      location: internal\n",
-		"skills/parts/tdd/notes.md":                 "Fixture-specific TDD notes.\n",
 		"domains/alpha.yaml":                        "paths: [\"internal/**\"]\n",
 		"domains/parts/alpha/current-state.md":      "Fixture domain guidance.\n",
 		"topics/metadata/alpha/model.yaml":          "title: Model\nsummary: Fixture model rules.\npaths: [\"internal/**\"]\n",

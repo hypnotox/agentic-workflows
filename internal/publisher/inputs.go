@@ -34,19 +34,13 @@ func (p renderInputs) targets() []Target         { return p.state.Targets() }
 func (p renderInputs) catalog() *catalog.Catalog { return p.selected }
 
 func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
-func fullProfile(p renderInputs) bool                { return p.cfg == nil || p.cfg.Profile != catalog.ProfileCore }
 
 func deriveAuthoritySemantics(p renderInputs) (adr.Corpus, topic.Corpus, error) {
-	corpus := adr.Corpus{}
-	topics := topic.Corpus{}
-	if !fullProfile(p) {
-		return corpus, topics, nil
-	}
 	corpus, err := adr.LoadCorpusFromTree(p.read, path.Join(config.DocsDir, "decisions"))
 	if err != nil {
 		return adr.Corpus{}, topic.Corpus{}, err
 	}
-	topics, err = topic.LoadCorpusFromReader(p.read, p.cfg)
+	topics, err := topic.LoadCorpusFromReader(p.read, p.cfg)
 	if err != nil {
 		return adr.Corpus{}, topic.Corpus{}, err
 	}
@@ -159,7 +153,7 @@ func glossarySemantics(p renderInputs) (glossarycheck.Input, error) {
 	if err != nil { // coverage-ignore: output-plan glossary transform already validated the merged records
 		return glossarycheck.Input{}, err
 	}
-	return glossarycheck.Input{Enabled: fullProfile(p), Authored: authored, Merged: merged, Domains: slices.Clone(p.cfg.Domains)}, nil
+	return glossarycheck.Input{Enabled: true, Authored: authored, Merged: merged, Domains: slices.Clone(p.cfg.Domains)}, nil
 }
 func cloneGlossaryInput(in glossarycheck.Input) glossarycheck.Input {
 	out := in

@@ -259,14 +259,6 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results = append(results, repositorycheck.Slot{Result: withoutWarnings})
-	if fullProfile(p) {
-		related, err := adrRelatedResult(corpus)
-		if err != nil { // coverage-ignore: the immutable ADR corpus is already validated
-			return repositorycheck.Slot{}, nil, checkresult.Result{}, err
-		}
-		results = append(results, repositorycheck.Slot{Result: related})
-		results = append(results, repositorycheck.Slot{Result: pendingADRResult(p, repo, ctx, corpus)})
-	}
 	return repositorycheck.Slot{Result: trackingFindings(tracking)}, results, trackingInformation(tracking), nil
 }
 

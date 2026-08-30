@@ -78,10 +78,7 @@ func TestVarDescriptorParity(t *testing.T) {
 // this list is a successor-ADR act: a descriptor exists only for a value the
 // rendered artifacts or the tooling execute or enforce, never to tune prose
 // wording.
-var functionalVarKeys = []string{
-	"gateCmd", "gateCmdFull", "checkCmd", "commitGateCmd", "testCmd", "commitScopes", "activeMdRegenCmd",
-	"invariantTestPath",
-}
+var functionalVarKeys = []string{"gateCmd", "checkCmd", "testCmd"}
 
 // TestVarDescriptorSetPinned asserts the catalog's value-carrying descriptors
 // are exactly the pinned functional set, so a prose or selection knob cannot

@@ -62,7 +62,7 @@ func TestBuildOutputDeclarationsPropagatesCatalogSidecarReadFault(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{"tdd": {}}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
+	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{"implementing": {}}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
 	if _, err := buildOutputDeclarations(cfg, cat, []Target{{Name: "test"}}, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), "read fault") {
 		t.Fatalf("declaration read error = %v", err)
 	}

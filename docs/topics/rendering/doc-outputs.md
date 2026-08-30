@@ -64,7 +64,8 @@ Backing: test
 ### `invariant: glossary-terseness-advisory`
 
 check reports one Warning per glossary term whose meaning exceeds the terseness threshold, naming the sidecar path, the term, and its length, with successful exit. The evaluated set is the merged one, so the shipped standard vocabulary is bound by the threshold alongside the project's authored terms.
-Backing: test
+Backing: unbacked
+Verify: Render a fixture whose project term and shipped term exceed the threshold, then confirm awf check reports one warning for each term with path and length while exiting successfully.
 
 ### `invariant: skill-ref-unknown-ignored`
 
@@ -94,7 +95,7 @@ Backing: test
 
 ### `invariant: layout-docs-profile-projection`
 
-Layout and document-map derivation expose only documents emitted by the selected governance footprint.
+Layout and document-map derivation expose exactly the documents emitted by the one standard footprint.
 Backing: test
 
 ### `invariant: pi-runtime-reference-output`

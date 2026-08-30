@@ -1029,8 +1029,8 @@ func TestThinCompositionInitVariantProofRejectsDuplicateDescribeOperation(t *tes
 	if err != nil {
 		t.Fatal(err)
 	}
-	const call = `out, err := initspec.Describe(initspec.InitDescriptors(catalog.Standard.Vars))`
-	mutated := strings.Replace(string(source), call, `_ , _ = initspec.Describe(initspec.InitDescriptors(catalog.Standard.Vars))
+	const call = `out, err := initspec.Describe(catalog.Standard.Vars)`
+	mutated := strings.Replace(string(source), call, `_ , _ = initspec.Describe(catalog.Standard.Vars)
 		`+call, 1)
 	if mutated == string(source) {
 		t.Fatal("init describe mutation was not applied")
@@ -1057,8 +1057,8 @@ func TestThinCompositionInitVariantProofRejectsLocalDescriptorPolicy(t *testing.
 		t.Fatal("init local descriptor-policy import mutation was not applied")
 	}
 	mutated := strings.Replace(withImport,
-		`out, err := initspec.Describe(initspec.InitDescriptors(catalog.Standard.Vars))`,
-		`out, err := json.Marshal(initspec.InitDescriptors(catalog.Standard.Vars))`, 1)
+		`out, err := initspec.Describe(catalog.Standard.Vars)`,
+		`out, err := json.Marshal(catalog.Standard.Vars)`, 1)
 	if mutated == withImport {
 		t.Fatal("init local descriptor-policy call mutation was not applied")
 	}

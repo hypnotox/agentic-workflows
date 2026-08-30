@@ -106,7 +106,6 @@ func currentValueResolvers(p renderInputs) map[string]func() string {
 	}
 	res := audit.Resolve(scopes)
 	return map[string]func() string{
-		"profile":           func() string { return "`" + string(p.cfg.Profile) + "`" },
 		"prefix":            func() string { return "`" + p.cfg.Prefix + "`" },
 		"integrationBranch": func() string { return "`" + p.cfg.IntegrationBranch + "`" },
 		"render.templateSourceRoot": func() string {
@@ -269,29 +268,9 @@ func configReferenceRows(p renderInputs, files []RenderedFile) (ConfigReference,
 		return ConfigReference{}, err
 	}
 	for _, e := range configspec.Keys() {
-		if !fullProfile(p) && fullOnlyConfigKey(e.Path) {
-			continue
-		}
 		row := ConfigKeyRow{
 			Path: e.Path, Type: e.Type, Default: e.Default,
 			Description: e.Description, Availability: e.Availability,
-		}
-		if !fullProfile(p) {
-			switch e.Path {
-			case "profile":
-				row.Description = "Selects the Core governance footprint, which includes the operational workflow at the shared correctness, autonomy, maintainability, and review-quality bar."
-			case "integrationBranch":
-				row.Description = "The branch effort work integrates into. It must be non-empty and free of whitespace and must not start with `-`; slashes are legal, so `release/1.0` is accepted."
-			case "localDocs":
-				row.Description = "Additive repository-local documents. Each name is a lowercase kebab-case path below docs without .md; awf-managed names are reserved. Title and description are nonblank one-line metadata."
-			case "audit.allowedScopes":
-				row.Description = "The project's Conventional Commits scope taxonomy: the single home for commit scopes. Absent means accept any scope; entries are enforced by `awf check staged commit` and quoted by rendered guidance."
-				row.Availability = "Read by `awf check staged commit` and every rendered artifact quoting the scope list."
-			case "sidecar.data":
-				row.Availability = "Keys must be referenced by the artifact's template. An unreferenced key is unranked Information and exits zero; rejected on the config-reference sidecar because its tables are generated."
-			case "sidecar.sections":
-				row.Availability = "Section names must be catalog-declared for the artifact; unknown names refuse at open."
-			}
 		}
 		if strings.HasPrefix(e.Path, "sidecar.") {
 			ref.SidecarFields = append(ref.SidecarFields, row)
@@ -311,9 +290,6 @@ func configReferenceRows(p renderInputs, files []RenderedFile) (ConfigReference,
 		return ConfigReference{}, err
 	}
 	for _, v := range configspec.VarEntries() {
-		if !fullProfile(p) && (v.Key == "activeMdRegenCmd" || v.Key == "invariantTestPath") {
-			continue
-		}
 		consumers := "No catalog artifact references it."
 		if c := rendered[v.Key]; len(c) > 0 {
 			consumers = "Consumed by: " + strings.Join(c, ", ") + "."
@@ -383,11 +359,6 @@ func configReferenceData(p renderInputs, files []RenderedFile) (map[string]any, 
 
 // dataKeyRowsTyped filters described data keys to catalog artifacts and the
 // always-on agents-doc.
-func fullOnlyConfigKey(path string) bool {
-	return path == "domains" || path == "sidecar.paths" ||
-		strings.HasPrefix(path, "currentState.") || strings.HasPrefix(path, "memoryCite.")
-}
-
 func dataKeyRowsTyped(p renderInputs) ([]DataKeyRow, error) {
 	var rows []DataKeyRow
 	for _, d := range configspec.DataKeys() {
@@ -444,9 +415,6 @@ func dataKeyRowsTyped(p renderInputs) ([]DataKeyRow, error) {
 			state = " (catalog default)"
 		}
 		description := d.Description
-		if !fullProfile(p) && d.Kind == "docs" && d.Artifact == "glossary" && d.Key == "terms" {
-			description = "The glossary's terms as an ordered list of `{term, meaning}` records; the table renders always sorted (case-insensitive, pipes escaped), and an empty term or meaning, an interior newline, an unknown record key, or a case-insensitive duplicate term fails the render naming the offending term. A term here overrides the standard glossary awf ships of the same case-insensitive name. Unset, the doc renders the standard glossary alone."
-		}
 		if d.Kind == "agents" && d.Key == "focusItems" {
 			var names []string
 			if items, ok := defaultValue.([]any); ok {

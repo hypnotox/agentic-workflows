@@ -113,6 +113,7 @@ var registry = []Migration{
 	{To: LiveSchemaFloor, Name: "supported-schema-46"},
 	{To: 47, Name: retireRelevanceMetadataName, Build: retireRelevanceMetadata},
 	{To: 48, Name: retireClaimProvenanceMetadataName, Build: retireClaimProvenanceMetadata},
+	{To: workflowConfigGeneration, Name: retireWorkflowConfigName, Build: retireWorkflowConfig},
 }
 
 func Current() int                { return registry[len(registry)-1].To }

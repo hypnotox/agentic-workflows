@@ -11,7 +11,7 @@ import (
 // is corrected, not only set at creation (ADR-0100 Decision 8).
 // invariant: rendering/singletons-and-payloads:shebang-rendered-executable (TestShebangRenderedExecutable)
 func TestShebangRenderedExecutable(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: []\nvars:\n  gateCmd: make gate\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\ndomains: []\nvars:\n  gateCmd: make gate\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

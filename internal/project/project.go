@@ -37,6 +37,7 @@ var minVersionBySchema = map[int]string{
 	46: "0.39.0",
 	47: "0.40.0",
 	48: "0.43.0",
+	49: "0.43.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
@@ -294,11 +295,7 @@ func (l *Loader) OpenForOperation(ctx context.Context, root string) (*ProjectSta
 		return nil, nil, err
 	}
 	completeCat := l.view.Catalog()
-	selected := catalog.NewProfileView(completeCat, cfg.Profile)
-	cat := selected.Catalog()
-	if err := catalog.ValidateWorkflowProfiles(cat); err != nil {
-		return nil, nil, err
-	}
+	cat := catalog.NewView(completeCat).Catalog()
 	targets, err := resolveTargets(KnownTargets())
 	if err != nil {
 		return nil, nil, err
@@ -318,8 +315,6 @@ func (l *Loader) OpenForOperation(ctx context.Context, root string) (*ProjectSta
 
 // catalog returns this project's one private selected-catalog snapshot.
 func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
-
-func fullProfile(p renderInputs) bool { return p.cfg == nil || p.cfg.Profile != catalog.ProfileCore }
 
 func lockPath(root string) string {
 	return config.LockPath(root)

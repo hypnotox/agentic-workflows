@@ -3,7 +3,6 @@ package main
 import (
 	"io"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -20,9 +19,6 @@ func gitProjectFiles(t *testing.T, configYAML string, files map[string]string) s
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	if !strings.Contains(configYAML, "profile:") {
-		configYAML = strings.Replace(configYAML, "prefix:", "profile: full\nprefix:", 1)
-	}
 	testsupport.WriteAwfConfig(t, dir, configYAML)
 	for rel, body := range files {
 		testsupport.WriteFile(t, filepath.Join(dir, filepath.FromSlash(rel)), body)

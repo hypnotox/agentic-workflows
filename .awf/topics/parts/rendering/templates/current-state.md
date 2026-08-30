@@ -29,11 +29,6 @@ Backing: test
 A non-interactive `awf init` with no answers renders artifacts that contain no empty inline code spans, no tables lacking body rows, and no list-introduction sentence followed by nothing, so every artifact degrades to coherent prose.
 Backing: test
 
-### `invariant: golden-test-completeness`
-
-Every standard catalog skill has a per-artifact Test<Skill>Template function and every catalog agent a Test<Agent>Agent function in the project package's test source, verified by a source scan.
-Backing: test
-
 ### `invariant: template-source-residue`
 
 Every file in the embedded templates tree is free of concrete ADR citations (the token ADR- followed by four digits) and free of the repo-identity literals hypnotox and agentic-workflows, except in an explicit exemption list whose each entry fails when its named file no longer carries the literal.

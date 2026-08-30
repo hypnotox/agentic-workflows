@@ -92,24 +92,15 @@ func VarEntries() []VarEntry {
 // varAvailability holds the configspec-owned availability clause per config
 // var; the parity test pins its key set to the config-var descriptors.
 var varAvailability = map[string]string{
-	"gateCmd":           "Consumed while a rendered artifact's template references it, by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel), and by divergent effort-integration guidance.",
-	"gateCmdFull":       "Terminal exhaustive verification command, consumed while a rendered artifact's template references it.",
-	"checkCmd":          "Consumed while a rendered artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.",
-	"commitGateCmd":     "Consumed by the always-rendered commit-msg hook payload.",
-	"testCmd":           "Consumed while a rendered artifact's template references it.",
-	"activeMdRegenCmd":  "Consumed while a rendered artifact's template references it (the decision-index regeneration steps in the chain skills).",
-	"invariantTestPath": "Consumed while a rendered artifact's template references it (the invariant-backing guidance in the decision docs and skills).",
+	"gateCmd":  "Consumed while a rendered artifact's template references it, by the `{{=awf:gateCmd}}` placeholder in convention parts (including the rendered pre-push hook payload's part channel), and by divergent effort-integration guidance.",
+	"checkCmd": "Consumed while a rendered artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.",
+	"testCmd":  "Consumed while a rendered artifact's template references it.",
 }
 
 // keys is the hand-authored description table for config.yaml and sidecar
 // keys; the reflection parity test keeps it bidirectionally matched to the
 // config structs.
 var keys = []Entry{
-	{
-		Path: "profile", Type: "enum: core or full", Default: "core for fresh init; existing repositories migrate to full",
-		Description:  "Selects one closed governance footprint. Core includes the operational workflow. Full adds decision records, plans, current-state authority, and governance audit. The footprints use the same correctness, autonomy, maintainability, and review-quality bar.",
-		Availability: "Always; required and visible.",
-	},
 	{
 		Path: "prefix", Type: "string", Default: "none: required, set at init",
 		Description:  "The name prefix for rendered skills: a skill renders to `<prefix>-<name>` (directory and frontmatter name), and rendered prose references skills by that prefixed name. Must be non-empty, without path separators.",
@@ -300,25 +291,6 @@ var keys = []Entry{
 // parity test derives the expected set from the catalog and the embedded
 // templates (include-expanded), so an undescribed key cannot ship.
 var dataKeys = []DataKey{
-	{Kind: "skills", Artifact: "brainstorming", Key: "errorBoundaries", Description: "The error-handling boundaries the design-sections step walks (list); unset, the section keeps its generic boundary prose."},
-	{Kind: "skills", Artifact: "brainstorming", Key: "loadBearingExamples", Description: "Project-specific examples of load-bearing decisions for the definitions section (list); unset, the generic examples render."},
-	{Kind: "skills", Artifact: "tdd", Key: "testSurfaces", Description: "The project's test surfaces (list of {name, kind, location}) the skill routes new tests to; the default names generic unit/integration/e2e surfaces."},
-	{Kind: "skills", Artifact: "adr-lifecycle", Key: "adrStates", Description: "The decision-record lifecycle states (list of {name, meaning, mutability}) the skill's state table renders; the default is the five-state current-state-v2 lifecycle."},
-	{Kind: "skills", Artifact: "proposing-adr", Key: "adrSections", Description: "The required decision-record section names, in order (list); the default is Context through Alternatives Considered."},
-	{Kind: "skills", Artifact: "proposing-adr", Key: "adrTriggers", Description: "The project's load-bearing triggers that warrant a decision record (list); the default names the generic boundary/dependency/format/workflow triggers."},
-	{Kind: "agents", Artifact: "adr-reviewer", Key: "focusItems", Description: "The reviewer's project-focus lens items (list of {name, description}); the defaults cover decision clarity, consequences honesty, and claim-topic cohesion."},
-	{Kind: "agents", Artifact: "adr-reviewer", Key: "reviewSubject", Description: "The one-word subject label the review spine addresses (default: the decision record)."},
-	{Kind: "agents", Artifact: "adr-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction: what to read in full before applying lenses."},
-	{Kind: "agents", Artifact: "adr-reviewer", Key: "digestLabel", Description: "The label heading the reviewer's returned digest."},
-	{Kind: "agents", Artifact: "adr-reviewer", Key: "digestSummary", Description: "The digest's summary skeleton: the bullet template the reviewer fills per review."},
-	{Kind: "agents", Artifact: "code-reviewer", Key: "correctnessTraps", Description: "The correctness traps the reviewer checks first (list of {description}); the default names error paths and boundary conditions."},
-	{Kind: "agents", Artifact: "code-reviewer", Key: "focusItems", Description: "The reviewer's project-focus lens items (list of {name, description}); the defaults cover plan adherence, test coverage, verification-instrument falsifiability, and check-authority taxonomy."},
-	{Kind: "agents", Artifact: "code-reviewer", Key: "docCurrencyItems", Description: "The doc-currency checks the reviewer applies (list of {check}); the default checks same-commit updates of every doc stating the old behaviour."},
-	{Kind: "agents", Artifact: "code-reviewer", Key: "reviewSubject", Description: "The one-word subject label the review spine addresses (default: the diff)."},
-	{Kind: "agents", Artifact: "code-reviewer", Key: "readStep", Description: "The reviewer's opening read instruction: what to read in full before applying lenses."},
-	{Kind: "agents", Artifact: "code-reviewer", Key: "digestLabel", Description: "The label heading the reviewer's returned digest."},
-	{Kind: "agents", Artifact: "code-reviewer", Key: "digestSummary", Description: "The digest's summary skeleton: the bullet template the reviewer fills per review."},
-	{Kind: "agents", Artifact: "implementer", Key: "prohibitedShortcuts", Description: "The bolt-on shortcuts the implementer must never take (list of {description}); the default names speculative abstraction and misplaced responsibility. Unset, the body omits the list and the rest of the contract renders unchanged."},
 	{Kind: "docs", Artifact: "glossary", Key: "terms", Description: "The glossary's terms as an ordered list of `{term, meaning, domains}` records; the table renders always sorted (case-insensitive, pipes escaped), and an empty term or meaning, an interior newline, an unknown record key, or a case-insensitive duplicate term fails the render naming the offending term. `domains` (optional) must resolve to configured domains. A term here overrides the standard vocabulary awf ships of the same case-insensitive name, which is how you replace or retire one. Unset, the doc renders the standard vocabulary alone; the pointer telling you where to add terms renders only when neither layer supplies a term. A meaning longer than the terseness guideline raises a non-failing advisory rather than failing the render."},
 	{Kind: "docs", Artifact: "agents-doc", Key: "commands", Fields: []string{"cmd", "desc"}, Description: "Extra command entries for the agent guide's Commands section (list of {cmd, desc}-shaped mappings rendered as lines); unset, only the built-in command list renders."},
 	{Kind: "docs", Artifact: "agents-doc", Key: "docMap", Fields: []string{"path", "desc"}, Description: "Extra document-map entries for the agent guide (list rendered after the managed docs); unset, only the managed docs render."},

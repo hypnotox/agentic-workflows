@@ -50,7 +50,7 @@ func PrepareStagedOutput(ctx context.Context, root string) (*OutputPreparation, 
 		return nil, fmt.Errorf("no staged %s/config.yaml", config.DirName)
 	}
 	complete := catalog.CompleteView().Catalog()
-	selected := catalog.NewProfileView(complete, cfg.Profile).Catalog()
+	selected := catalog.NewView(complete).Catalog()
 	facts, err := config.NewFacts(cfg)
 	if err != nil {
 		return nil, err

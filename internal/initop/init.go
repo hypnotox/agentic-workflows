@@ -128,18 +128,17 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 
 	var vars map[string]string
 	var scopes []string
-	profile := catalog.ProfileCore
 	ignoredAnswers := configExists && len(input.Answers) > 0
 	if !configExists {
 		var err error
-		vars, scopes, profile, err = initspec.ResolveInit(catalog.Standard.Vars, input.Answers, input.PromptInput, input.PromptOutput, input.Interactive, project.NeededVars)
+		vars, scopes, err = initspec.Resolve(catalog.Standard.Vars, input.Answers, input.PromptInput, input.PromptOutput, input.Interactive, project.NeededVars)
 		if err != nil {
 			return initspec.Outcome{}, err
 		}
 	}
 
 	if !configExists {
-		contents, err := project.ScaffoldConfigForProfile(filepath.Base(root), vars, scopes, profile)
+		contents, err := project.ScaffoldConfig(filepath.Base(root), vars, scopes)
 		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
 			return initspec.Outcome{}, err
 		}

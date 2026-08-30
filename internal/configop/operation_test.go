@@ -109,7 +109,7 @@ func TestRunLivePublisherFailure(t *testing.T) {
 	ctx := testContext(t)
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
-	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills", "parts", "tdd", "surfaces.md"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".awf", "skills", "parts", "using-awf", "generated-documents.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := Run(ctx, root, "", testLoader, func(context.Context, string) error { return nil }); err == nil {

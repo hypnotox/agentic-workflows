@@ -18,7 +18,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-const topicProjectConfig = "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n"
+const topicProjectConfig = "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n"
 
 func TestGenerateTopicDocsPropagatesProjectTreeEnumerationFailure(t *testing.T) {
 	calls := 0
@@ -449,7 +449,7 @@ func queryV1ADR(t *testing.T, number, title, operation string) string {
 }
 
 func TestQueryTopicLoadErrors(t *testing.T) {
-	badADRRoot := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: []\n", nil)
+	badADRRoot := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: []\n", nil)
 	testsupport.WriteFile(t, filepath.Join(badADRRoot, "docs/decisions/0001-bad.md"), "---\nstatus: [\n---\n")
 	p, err := Open(testContext(t), badADRRoot)
 	if err != nil {
@@ -459,7 +459,7 @@ func TestQueryTopicLoadErrors(t *testing.T) {
 		t.Fatal("QueryTopic accepted malformed ADR corpus")
 	}
 
-	badTopicRoot := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: [schedule]\n", map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
+	badTopicRoot := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: [schedule]\n", map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
 	writeADR(t, badTopicRoot, "0001-scheduling.md", testsupport.ADR("Implemented", testsupport.WithDomains("schedule")))
 	testsupport.WriteFile(t, filepath.Join(badTopicRoot, ".awf/topics/metadata/schedule/contracts.yaml"), "title: Contracts\n")
 	p, err = Open(testContext(t), badTopicRoot)

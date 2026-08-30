@@ -56,12 +56,6 @@ func WriteFile(t testing.TB, path, content string) {
 // suites starts from.
 func WriteAwfConfig(t testing.TB, root, yamlContent string) {
 	t.Helper()
-	// Current-schema fixtures exercise the historical Full behavior unless a test
-	// explicitly selects Core. Historical migration fixtures omit
-	// integrationBranch and remain byte-exact.
-	if strings.Contains(yamlContent, "integrationBranch:") && !strings.Contains(yamlContent, "profile:") {
-		yamlContent = strings.Replace(yamlContent, "integrationBranch:", "profile: full\nintegrationBranch:", 1)
-	}
 	WriteFile(t, filepath.Join(root, ".awf", "config.yaml"), yamlContent)
 }
 

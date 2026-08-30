@@ -101,7 +101,7 @@ func TestLoaderOpenRejectsNilLoadedConfig(t *testing.T) {
 
 func TestLoaderOpenValidatesBeforeResolvingResidentRoot(t *testing.T) {
 	loader := NewLoaderWithoutRepository(func(string) (*config.Config, error) {
-		return &config.Config{Profile: catalog.ProfileFull}, nil
+		return &config.Config{}, nil
 	}, catalog.Standard, func(context.Context, string) string {
 		t.Fatal("resident resolver called before config validation")
 		return ""
@@ -111,29 +111,13 @@ func TestLoaderOpenValidatesBeforeResolvingResidentRoot(t *testing.T) {
 		t.Fatalf("error = %v", err)
 	}
 }
-
-func TestLoaderOpenValidatesInjectedStandardWorkflowProfiles(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\n")
-	injectedValue := *catalog.Standard
-	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
-	broken := injectedValue.Skills["tdd"]
-	broken.Profile.Purpose = ""
-	injectedValue.Skills["tdd"] = broken
-	loader := NewLoaderWithoutRepository(config.Load, &injectedValue, ResolveResidentRoot(func(_ context.Context, root string) string { return root }))
-	_, err := loader.Open(testContext(t), root)
-	if err == nil || !strings.Contains(err.Error(), "incomplete workflow metadata") {
-		t.Fatalf("error = %v, want the injected catalog's incomplete workflow metadata", err)
-	}
-}
-
 func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 	root := gitfixture.InitRepo(t).Root()
 	external := t.TempDir()
 	if err := os.Symlink(external, filepath.Join(root, ".awf")); err != nil {
 		t.Fatal(err)
 	}
-	testsupport.WriteFile(t, filepath.Join(external, "config.yaml"), "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	testsupport.WriteFile(t, filepath.Join(external, "config.yaml"), "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -145,7 +129,7 @@ func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 
 func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
 	injected := *catalog.Standard
 	injected.Skills = maps.Clone(catalog.Standard.Skills)
 	loader := NewLoaderWithoutRepository(config.Load, &injected, func(_ context.Context, root string) string { return root })
@@ -160,10 +144,10 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	firstSkill := p.catalog().Skills["tdd"]
+	firstSkill := p.catalog().Skills["debugging"]
 	firstSkill.Sections[0] = "changed first project"
-	p.catalog().Skills["tdd"] = firstSkill
-	if projectCatalog(renderInputsForTest(second)).Skills["tdd"].Sections[0] == "changed first project" {
+	p.catalog().Skills["debugging"] = firstSkill
+	if projectCatalog(renderInputsForTest(second)).Skills["debugging"].Sections[0] == "changed first project" {
 		t.Fatal("Loader-opened projects share a mutable catalog snapshot")
 	}
 }
@@ -195,7 +179,7 @@ func TestProjectStateDefensivelyOwnsTargetSnapshots(t *testing.T) {
 
 func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
 	injectedValue := *catalog.Standard
 	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
 	injectedValue.Agents = maps.Clone(catalog.Standard.Agents)
@@ -219,7 +203,7 @@ func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {
 func TestLoaderRejectsUnsupportedConfigFactData(t *testing.T) {
 	type unsupported struct{ values []string }
 	loader := NewLoaderWithoutRepository(func(string) (*config.Config, error) {
-		return &config.Config{Prefix: "example", Profile: catalog.ProfileFull, IntegrationBranch: "main", Vars: map[string]any{"bad": unsupported{values: []string{"mutable"}}}}, nil
+		return &config.Config{Prefix: "example", IntegrationBranch: "main", Vars: map[string]any{"bad": unsupported{values: []string{"mutable"}}}}, nil
 	}, catalog.Standard, func(_ context.Context, root string) string { return root })
 	_, err := loader.Open(testContext(t), t.TempDir())
 	if err == nil || !strings.Contains(err.Error(), "unsupported semantic data type") {
@@ -229,7 +213,7 @@ func TestLoaderRejectsUnsupportedConfigFactData(t *testing.T) {
 
 func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: [tooling]\nvars: {nested: {items: [original]}}\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\ndomains: [tooling]\nvars: {nested: {items: [original]}}\n")
 	p, err := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root }).Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -237,7 +221,7 @@ func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	p.Config().Domains[0] = "mutated"
 	p.Config().Vars["nested"].(map[string]any)["items"].([]any)[0] = "mutated"
 	p.Targets()[0].Capabilities = append(p.Targets()[0].Capabilities, CapabilitySubagentTools)
-	p.catalog().Skills["tdd"] = catalog.SkillSpec{Sections: []string{"mutated"}}
+	p.catalog().Skills["debugging"] = catalog.SkillSpec{Sections: []string{"mutated"}}
 	got := p.Config()
 	if got.Domains[0] != "tooling" || got.Vars["nested"].(map[string]any)["items"].([]any)[0] != "original" {
 		t.Fatalf("state retained a Loader input alias: %#v", got)
@@ -249,15 +233,15 @@ func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 		t.Fatal("resolved target accessor returned an alias")
 	}
 	returnedCatalog := p.catalog()
-	first := returnedCatalog.Skills["tdd"]
+	first := returnedCatalog.Skills["debugging"]
 	first.Sections[0] = "returned mutation"
-	returnedCatalog.Skills["tdd"] = first
-	if p.catalog().Skills["tdd"].Sections[0] == "returned mutation" {
+	returnedCatalog.Skills["debugging"] = first
+	if p.catalog().Skills["debugging"].Sections[0] == "returned mutation" {
 		t.Fatal("catalog accessor returned an alias")
 	}
 	complete := p.completeCatalog()
-	complete.Skills["tdd"] = catalog.SkillSpec{Sections: []string{"complete mutation"}}
-	if p.completeCatalog().Skills["tdd"].Sections[0] == "complete mutation" {
+	complete.Skills["debugging"] = catalog.SkillSpec{Sections: []string{"complete mutation"}}
+	if p.completeCatalog().Skills["debugging"].Sections[0] == "complete mutation" {
 		t.Fatal("complete catalog accessor returned an alias")
 	}
 	if p.Root() != root || p.roots().Tracked != root || p.nested() || p.Config().Source() != nil {

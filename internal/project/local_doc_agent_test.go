@@ -14,7 +14,7 @@ import (
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocAgentGuideProjection)
 // invariant: rendering/guide-and-doc-templates:document-map-lists-mandatory-docs (TestLocalDocAgentGuideProjection)
 func TestLocalDocAgentGuideProjection(t *testing.T) {
-	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\nlocalDocs:\n  - name: runbooks/zulu\n    title: Zulu runbook\n    description: Last local document.\n  - name: runbooks/alpha\n    title: Alpha runbook\n    description: First local document.\n"
+	cfg := "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nlocalDocs:\n  - name: runbooks/zulu\n    title: Zulu runbook\n    description: Last local document.\n  - name: runbooks/alpha\n    title: Alpha runbook\n    description: First local document.\n"
 	root := scaffold(t, cfg)
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -119,8 +119,8 @@ func TestLocalDocAgentGuideProjection(t *testing.T) {
 	if configHashOf(t, root2, "AGENTS.md") != configHashOf(t, root3, "AGENTS.md") {
 		t.Fatal("YAML localDocs order changed guide hash")
 	}
-	root4 := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\n")
-	root5 := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\nlocalDocs: []\n")
+	root4 := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n")
+	root5 := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nlocalDocs: []\n")
 	if configHashOf(t, root4, "AGENTS.md") != configHashOf(t, root5, "AGENTS.md") {
 		t.Fatal("empty localDocs changed guide hash")
 	}
@@ -128,7 +128,7 @@ func TestLocalDocAgentGuideProjection(t *testing.T) {
 
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocReferenceChecksBody)
 func TestLocalDocReferenceChecksBody(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\nlocalDocs:\n  - name: runbooks/checks\n    title: Checks\n    description: Check references.\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nlocalDocs:\n  - name: runbooks/checks\n    title: Checks\n    description: Check references.\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -141,7 +141,7 @@ func TestLocalDocReferenceChecksBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b = []byte(strings.Replace(string(b), "<!-- awf:edit-in-place body -->\n\n", "<!-- awf:edit-in-place body -->\n\n[missing](absent.md) example-tdd\n", 1))
+	b = []byte(strings.Replace(string(b), "<!-- awf:edit-in-place body -->\n\n", "<!-- awf:edit-in-place body -->\n\n[missing](absent.md) example-debugging\n", 1))
 	if err := os.WriteFile(path, b, 0o644); err != nil {
 		t.Fatal(err)
 	}

@@ -24,7 +24,7 @@ func TestRunSyncSyncError(t *testing.T) {
 	ctx := testContext(t)
 	// A directory squatting on a rendered output path makes p.SyncReport() fail.
 	root := scaffoldProject(t)
-	out := filepath.Join(root, ".claude", "skills", "example-tdd", "SKILL.md")
+	out := filepath.Join(root, ".claude", "skills", "example-brainstorming", "SKILL.md")
 	if err := os.RemoveAll(out); err != nil {
 		t.Fatal(err)
 	}
@@ -66,9 +66,9 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	}
 	for _, want := range []string{
 		"added .claude/agents/implementer.md",
-		"added .claude/skills/example-tdd/SKILL.md",
+		"added .claude/skills/example-brainstorming/SKILL.md",
 		"added .pi/agents/implementer.md",
-		"added .pi/skills/example-tdd/SKILL.md",
+		"added .pi/skills/example-brainstorming/SKILL.md",
 		"added docs/architecture.md",
 		"added docs/pitfalls.md",
 		"awf now generates docs/decisions/INDEX.md",

@@ -11,19 +11,19 @@ awf-managed docs orient and link; they do not restate. Each fact lives in the si
 
 - **Terse.** Managed docs are read repeatedly; every word is a recurring cost. Use the shortest phrasing that stays precise.
 - **Glossary entries are terser still.** One sentence stating what the thing is; a second only when a contrast or boundary is load-bearing. Do not restate what the term's own words already say. An over-long entry raises a non-failing advisory.
-- **Linter-rules out of prose.** State a tooling-enforced rule once{{if ne .profile "core"}} and cite the ADR that owns it{{end}}; do not narrate the mechanism. The agent meets the check regardless.
-- **Reference, don't restate.** {{if eq .profile "core"}}Link the owning document{{else}}Link an ADR by id{{end}} for rationale instead of reproducing it: one source of truth per fact.
+- **Linter-rules out of prose.** State a tooling-enforced rule once and cite the ADR that owns it; do not narrate the mechanism. The agent meets the check regardless.
+- **Reference, don't restate.** Link an ADR by id for rationale instead of reproducing it: one source of truth per fact.
 - **No editorializing or dating.** Write the rule, not its history or a judgement of it.
 - **Prefer count-free prose.** Name a changing set or its selection rule instead of stating its current count. When an exact count is essential, state the query that produces it and reverify it whenever the source population changes.
 - **Punctuation restraint.** Prefer ordinary punctuation and sentence structure. In every tracked text file, an en dash is prohibited and each blank-line-delimited paragraph may contain at most two em dashes. Both the single-codepoint and three-period forms of ellipsis are permitted, as are all curly quotes. Use a path-and-codepoint exemption only for a quotation, frozen record, or text that discusses a guarded character.
 - **Present-tense, authoritative voice.** Describe what is; use the imperative for instructions.
 - **Tool-agnostic, action-first.** Rendered skill and agent prose names the action an agent takes, not the tool one runtime exposes to take it: "dispatch a fresh-context subagent", not a runtime's tool name. Project-specific identifiers (skill names, command names) are not runtime tools and stay. Keep action-first tool-agnostic prose by default. An awf-owned capability-selected integration may name its native tool, as Pi rendering names `subagent_explore`; this exception does not permit arbitrary runtime tool names.
-- **Reference catalog docs directly.** {{if eq .profile "core"}}Every selected catalog document renders, so authored prose may link an emitted catalog doc{{else}}Every catalog document renders unconditionally, so authored prose may link any catalog doc{{end}}; the dead-reference gate still rejects an unknown target.
+- **Reference catalog docs directly.** Every catalog document renders unconditionally, so authored prose may link any catalog doc; the dead-reference gate still rejects an unknown target.
 - **Local-doc boundary.** When a repository-specific fact has no standard document owner, declare a `localDocs` item and author only its rendered `awf:edit-in-place` body. awf owns the shell and heading.
 - **Adjust `.layout.*` values for link relativity.** `.layout.*` paths are root-relative; a markdown link target resolves file-relative to the citing doc's own directory. Citing a sibling under the documentation root needs only its bare filename (e.g. `doc-standard.md`), not the full `.layout.*` value; using the full value from a file already under the documentation root doubles the path.
-{{if ne .profile "core"}}- **One subject per topic.** A current-state topic collects the claims a reader looks up together because they govern one mechanism. Judge a candidate claim by whether it answers the same question the topic's existing claims answer, not by how many claims the topic already holds; splitting one broad claim into two precise ones is hygiene, not growth. Split a topic when it has acquired a second subject, and name the new topic for that subject.{{end}}
+- **One subject per topic.** A current-state topic collects the claims a reader looks up together because they govern one mechanism. Judge a candidate claim by whether it answers the same question the topic's existing claims answer, not by how many claims the topic already holds; splitting one broad claim into two precise ones is hygiene, not growth. Split a topic when it has acquired a second subject, and name the new topic for that subject.
 
-{{if ne .profile "core"}}## Generated-source and convention-part ownership
+## Generated-source and convention-part ownership
 
 The generated-by banner says that awf owns the
 rendered file; it is not an editing instruction. An `awf:edit` pointer identifies the
@@ -94,7 +94,7 @@ than falling back to the default. Inside an include partial, comment text must
 avoid the `awf:include`/`awf:section`/`awf:end` substrings, and comment text is ordinary
 prose to every other check that reads the source (a punctuation gate included, where one
 is on).
-{{end}}
+
 <!-- awf:end -->
 
 <!-- awf:section structure -->

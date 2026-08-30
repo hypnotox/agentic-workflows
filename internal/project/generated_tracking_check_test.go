@@ -19,7 +19,7 @@ import (
 func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
-	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
+	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -122,7 +122,7 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 // invariant: rendering/sync-and-drift:generated-artifacts-tracked (TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion)
 func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 	t.Run("no Git", func(t *testing.T) {
-		root := scaffold(t, withTestGateCmd("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
+		root := scaffold(t, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
 		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
@@ -155,7 +155,7 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 	t.Run("nested resident output", func(t *testing.T) {
 		fixture := gitfixture.InitRepo(t)
 		root := filepath.Join(fixture.Root(), "nested")
-		testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
+		testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
 		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)

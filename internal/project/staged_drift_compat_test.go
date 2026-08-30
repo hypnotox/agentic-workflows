@@ -38,12 +38,12 @@ func TestCheckStagedRefusesHistoricalWorkflowTelemetry(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: example\nprofile: full\nintegrationBranch: main\nworkflowTelemetry:\n  retention: {}\n",
+		".awf/config.yaml": "prefix: example\nintegrationBranch: main\nworkflowTelemetry:\n  retention: {}\n",
 		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":19,"files":{}}`,
 	})
 	gitfixture.Commit(t, repo, "generation 19", nil)
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: example\nprofile: full\nintegrationBranch: main\n",
+		".awf/config.yaml": "prefix: example\nintegrationBranch: main\n",
 		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":20,"files":{}}`,
 	})
 	p := openStaged(t, dir)
@@ -58,9 +58,9 @@ func TestCheckStagedRefusesHistoricalMalformedOrDuplicateConfigAndCurrentInvalid
 	for _, tc := range []struct {
 		name, headConfig, headLock, stagedConfig, stagedLock string
 	}{
-		{"historical malformed", "prefix: [\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\nprofile: full\nintegrationBranch: main\n", `{"schemaVersion":20,"files":{}}`},
-		{"historical duplicate", "prefix: example\nprofile: full\nintegrationBranch: main\nworkflowTelemetry: {}\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\nprofile: full\nintegrationBranch: main\n", `{"schemaVersion":20,"files":{}}`},
-		{"current invalid", "prefix: example\nprofile: full\nintegrationBranch: main\n", currentLock, "prefix: example\nprofile: full\nintegrationBranch: main\nunknown: true\n", currentLock},
+		{"historical malformed", "prefix: [\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\nintegrationBranch: main\n", `{"schemaVersion":20,"files":{}}`},
+		{"historical duplicate", "prefix: example\nintegrationBranch: main\nworkflowTelemetry: {}\nworkflowTelemetry: {}\n", `{"schemaVersion":19,"files":{}}`, "prefix: example\nintegrationBranch: main\n", `{"schemaVersion":20,"files":{}}`},
+		{"current invalid", "prefix: example\nintegrationBranch: main\n", currentLock, "prefix: example\nintegrationBranch: main\nunknown: true\n", currentLock},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			repo := gitfixture.InitRepo(t)

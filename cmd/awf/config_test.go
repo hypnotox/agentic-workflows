@@ -31,7 +31,7 @@ func TestRunConfigStaticFallback(t *testing.T) {
 		"audit.allowedScopes | list of scope entries",
 		"gateCmd | Command that runs the fast pre-commit gate",
 		"Catalog consumers:",
-		"testSurfaces",
+		"terms",
 	} {
 		if !strings.Contains(got, want) {
 			t.Errorf("static reference missing %q", want)
@@ -73,7 +73,7 @@ func TestRunConfigLiveAndSingleKey(t *testing.T) {
 	for key, want := range map[string]string{
 		"audit.allowedScopes": "accept any (default)",
 		"gateCmd":             "set (`make gate`)",
-		"testSurfaces":        "skill tdd | testSurfaces",
+		"terms":               "doc glossary | terms",
 	} {
 		out.Reset()
 		if err := runConfig(ctx, root, key, &out); err != nil {
@@ -140,7 +140,7 @@ func TestRunConfigOpenError(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "profile: full\nprefix: \"\"\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: \"\"\n")
 	if err := runConfig(ctx, root, "", io.Discard); err == nil ||
 		!strings.Contains(err.Error(), "prefix") {
 		t.Errorf("expected the open-time validation error, got %v", err)
@@ -158,7 +158,7 @@ func TestRunConfigRenderFault(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A directory where a part file may sit makes the part read fail non-ErrNotExist.
-	if err := os.MkdirAll(filepath.Join(root, ".awf/skills/parts/tdd/surfaces.md"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".awf/skills/parts/brainstorming/procedure.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := runConfig(ctx, root, "", io.Discard); err == nil {

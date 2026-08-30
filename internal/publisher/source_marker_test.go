@@ -14,7 +14,7 @@ import (
 // inputs: markers are informational and never alter machine dependencies.
 // invariant: rendering/doc-outputs:opaque-doc-source-guidance (TestSourceMarkerFamilyMatrix)
 func TestSourceMarkerFamilyMatrix(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n", map[string]string{
 		"domains/rendering.yaml":       "paths: ['internal/**']\n",
 		"docs/glossary.yaml":           "data:\n  standardTerms:\n  terms:\n",
 		"docs/pitfalls/fixture.md":     pitfallSource("Fixture pitfall", "domains: [rendering]\n", "first body\n"),
@@ -82,10 +82,10 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 		"docs/working-with-awf.md",
 		"docs/decisions/README.md",
 		"docs/decisions/template.md",
-		".claude/skills/example-tdd/SKILL.md",
-		".pi/skills/example-tdd/SKILL.md",
-		".claude/agents/code-reviewer.md",
-		".pi/agents/code-reviewer.md",
+		".claude/skills/example-implementing/SKILL.md",
+		".pi/skills/example-implementing/SKILL.md",
+		".claude/agents/reviewer.md",
+		".pi/agents/reviewer.md",
 		".pi/extensions/awf-subagents/index.ts",
 		".awf/hooks/pre-commit.sh",
 	} {

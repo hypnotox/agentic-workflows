@@ -34,7 +34,7 @@ func transactionFixture(t *testing.T, local bool) (string, *project.Loader) {
 	if local {
 		localConfig = "localDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n"
 	}
-	writeFile(t, filepath.Join(root, ".awf/config.yaml"), "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate}\n"+localConfig)
+	writeFile(t, filepath.Join(root, ".awf/config.yaml"), "prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate}\n"+localConfig)
 	loader := project.NewLoaderWithoutRepository(config.Load, catalog.Standard, func(context.Context, string) string { return root })
 	state, cfg, err := loader.OpenForOperation(context.Background(), root)
 	if err != nil {
@@ -68,8 +68,8 @@ func TestRunRejectsNilLoaderAndUnknownMode(t *testing.T) {
 
 func TestRunRejectsInvalidLeaseContractWithoutMutation(t *testing.T) {
 	root, loader := transactionFixture(t, false)
-	section := catalog.Standard.Skills["tdd"].Sections[0]
-	output := ".claude/skills/example-tdd/SKILL.md"
+	section := catalog.Standard.Skills["using-awf"].Sections[0]
+	output := ".claude/skills/example-using-awf/SKILL.md"
 	beforeOutput := bytesAt(t, root, output)
 	beforeLock := bytesAt(t, root, ".awf/awf.lock")
 
@@ -98,7 +98,7 @@ func TestRunRejectsInvalidLeaseContractWithoutMutation(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			released = false
-			outcome, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "tdd", Part: section, Content: []byte("body")}, loader, tc.acquire)
+			outcome, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "using-awf", Part: section, Content: []byte("body")}, loader, tc.acquire)
 			if err == nil || err.Error() != "authoring operation requires a covering project lease" || outcome.Source != "" || outcome.SourcePath != "" || len(outcome.CreatedParents) != 0 || len(outcome.Residue) != 0 || outcome.Publisher.HasCommittedEffects() {
 				t.Fatalf("lease contract outcome=%#v error=%v", outcome, err)
 			}
@@ -118,7 +118,7 @@ func TestMissingRenderedLocalDocumentRefusesWithoutMutation(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, filepath.FromSlash(path))); err != nil {
 		t.Fatal(err)
 	}
-	beforeOutput := bytesAt(t, root, ".claude/skills/example-tdd/SKILL.md")
+	beforeOutput := bytesAt(t, root, ".claude/skills/example-using-awf/SKILL.md")
 	beforeLock := bytesAt(t, root, ".awf/awf.lock")
 
 	outcome, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "doc", Name: "runbooks/incident", Part: "body", Content: []byte("body")}, loader, nil)
@@ -128,13 +128,13 @@ func TestMissingRenderedLocalDocumentRefusesWithoutMutation(t *testing.T) {
 	if _, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(path))); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("missing local output was recreated: %v", statErr)
 	}
-	if !bytes.Equal(beforeOutput, bytesAt(t, root, ".claude/skills/example-tdd/SKILL.md")) || !bytes.Equal(beforeLock, bytesAt(t, root, ".awf/awf.lock")) {
+	if !bytes.Equal(beforeOutput, bytesAt(t, root, ".claude/skills/example-using-awf/SKILL.md")) || !bytes.Equal(beforeLock, bytesAt(t, root, ".awf/awf.lock")) {
 		t.Fatal("missing local output mutated output or lock")
 	}
 }
 
 func TestPartialErrorEmptyRecoveryUsesDefaultText(t *testing.T) {
-	document, err := (&PartialError{Outcome: Outcome{Kind: "skill", Name: "tdd", Part: "guide", SourcePath: ".awf/skills/parts/tdd/guide.md", Source: SourceCreated}, Cause: errors.New("cause")}).Document()
+	document, err := (&PartialError{Outcome: Outcome{Kind: "skill", Name: "using-awf", Part: "generated-documents", SourcePath: ".awf/skills/parts/using-awf/generated-documents.md", Source: SourceCreated}, Cause: errors.New("cause")}).Document()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -150,9 +150,9 @@ func TestPartialErrorEmptyRecoveryUsesDefaultText(t *testing.T) {
 // invariant: rendering/sync-and-drift:authoring-sync-transaction (TestPartAuthoringValidatesBeforeSourceAndSynchronizesCommittedAuthority)
 func TestPartAuthoringValidatesBeforeSourceAndSynchronizesCommittedAuthority(t *testing.T) {
 	root, loader := transactionFixture(t, false)
-	section := catalog.Standard.Skills["tdd"].Sections[0]
-	request := Request{Mode: Edit, Kind: "skill", Name: "tdd", Part: section, Content: []byte("authored body\n")}
-	outputPath := ".claude/skills/example-tdd/SKILL.md"
+	section := catalog.Standard.Skills["using-awf"].Sections[0]
+	request := Request{Mode: Edit, Kind: "skill", Name: "using-awf", Part: section, Content: []byte("authored body\n")}
+	outputPath := ".claude/skills/example-using-awf/SKILL.md"
 	outputBefore := bytesAt(t, root, outputPath)
 	lockBefore := bytesAt(t, root, ".awf/awf.lock")
 	outcome, err := Run(context.Background(), root, request, loader, nil)
@@ -173,7 +173,7 @@ func TestPartAuthoringValidatesBeforeSourceAndSynchronizesCommittedAuthority(t *
 	}
 
 	// Explicit empty content remains an authored override rather than reset.
-	outcome, err = Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "tdd", Part: section, Content: []byte{}}, loader, nil)
+	outcome, err = Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "using-awf", Part: section, Content: []byte{}}, loader, nil)
 	if err != nil || outcome.Source != SourceReplaced {
 		t.Fatalf("empty edit outcome=%#v err=%v", outcome, err)
 	}
@@ -181,7 +181,7 @@ func TestPartAuthoringValidatesBeforeSourceAndSynchronizesCommittedAuthority(t *
 		t.Fatalf("empty override = %q", got)
 	}
 
-	outcome, err = Run(context.Background(), root, Request{Mode: Reset, Kind: "skill", Name: "tdd", Part: section}, loader, nil)
+	outcome, err = Run(context.Background(), root, Request{Mode: Reset, Kind: "skill", Name: "using-awf", Part: section}, loader, nil)
 	if err != nil || outcome.Source != SourceRemoved {
 		t.Fatalf("reset outcome=%#v err=%v", outcome, err)
 	}
@@ -193,15 +193,15 @@ func TestPartAuthoringValidatesBeforeSourceAndSynchronizesCommittedAuthority(t *
 // invariant: tooling/cli:semantic-artifact-authoring (TestInvalidCandidateLeavesSourceOutputAndLockUnchanged)
 func TestInvalidCandidateLeavesSourceOutputAndLockUnchanged(t *testing.T) {
 	root, loader := transactionFixture(t, false)
-	section := catalog.Standard.Skills["tdd"].Sections[0]
-	output := ".claude/skills/example-tdd/SKILL.md"
+	section := catalog.Standard.Skills["using-awf"].Sections[0]
+	output := ".claude/skills/example-using-awf/SKILL.md"
 	beforeOutput := bytesAt(t, root, output)
 	beforeLock := bytesAt(t, root, ".awf/awf.lock")
-	_, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "tdd", Part: section, Content: []byte("{{=awf:notDeclared}}\n")}, loader, nil)
+	_, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "using-awf", Part: section, Content: []byte("{{=awf:notDeclared}}\n")}, loader, nil)
 	if err == nil || !strings.Contains(err.Error(), "candidate") {
 		t.Fatalf("invalid candidate error = %v", err)
 	}
-	part := filepath.Join(root, ".awf/skills/parts/tdd", section+".md")
+	part := filepath.Join(root, ".awf/skills/parts/using-awf", section+".md")
 	if _, statErr := os.Stat(part); !errors.Is(statErr, os.ErrNotExist) {
 		t.Fatalf("invalid candidate changed source: %v", statErr)
 	}
@@ -283,8 +283,8 @@ func TestPostRunCommittedPlainFaultNormalizesToPartial(t *testing.T) {
 	}
 
 	root, loader := transactionFixture(t, false)
-	section := catalog.Standard.Skills["tdd"].Sections[0]
-	committedOutcome, runErr := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "tdd", Part: section, Content: []byte("body")}, loader, nil)
+	section := catalog.Standard.Skills["using-awf"].Sections[0]
+	committedOutcome, runErr := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "using-awf", Part: section, Content: []byte("body")}, loader, nil)
 	if runErr != nil || !committedOutcome.Publisher.HasCommittedEffects() {
 		t.Fatalf("publisher fixture outcome = %#v, %v", committedOutcome, runErr)
 	}
@@ -296,7 +296,7 @@ func TestPostRunCommittedPlainFaultNormalizesToPartial(t *testing.T) {
 // invariant: rendering/sync-and-drift:authoring-sync-transaction (TestCandidateOverlayServesProjectAndConfigReaderContracts)
 func TestCandidateOverlayServesProjectAndConfigReaderContracts(t *testing.T) {
 	root := t.TempDir()
-	path := ".awf/skills/parts/tdd/guide.md"
+	path := ".awf/skills/parts/using-awf/generated-documents.md"
 	writeFile(t, filepath.Join(root, filepath.FromSlash(path)), "base")
 	overlay := candidateOverlay{base: publisher.NewFilesystemReader(root), path: path, bytes: []byte("candidate"), present: true}
 	projectBytes, projectFound, err := overlay.ReadFile(path)
@@ -304,7 +304,7 @@ func TestCandidateOverlayServesProjectAndConfigReaderContracts(t *testing.T) {
 		t.Fatalf("project tree candidate = %q, %v, %v", projectBytes, projectFound, err)
 	}
 	projectBytes[0] = 'X'
-	configBytes, configFound := (configOverlay{tree: overlay}).ReadFile("skills/parts/tdd/guide.md")
+	configBytes, configFound := (configOverlay{tree: overlay}).ReadFile("skills/parts/using-awf/generated-documents.md")
 	if !configFound || string(configBytes) != "candidate" {
 		t.Fatalf("config tree candidate = %q, %v", configBytes, configFound)
 	}
@@ -313,7 +313,7 @@ func TestCandidateOverlayServesProjectAndConfigReaderContracts(t *testing.T) {
 		t.Fatalf("project tree paths = %#v", projectPaths)
 	}
 	configPaths := (configOverlay{tree: overlay}).Paths("skills")
-	if len(configPaths) != 1 || configPaths[0] != "skills/parts/tdd/guide.md" {
+	if len(configPaths) != 1 || configPaths[0] != "skills/parts/using-awf/generated-documents.md" {
 		t.Fatalf("config tree paths = %#v", configPaths)
 	}
 	removed := overlay
@@ -321,7 +321,7 @@ func TestCandidateOverlayServesProjectAndConfigReaderContracts(t *testing.T) {
 	if _, found, err := removed.ReadFile(path); err != nil || found {
 		t.Fatalf("project tree removal = found %v, error %v", found, err)
 	}
-	if _, found := (configOverlay{tree: removed}).ReadFile("skills/parts/tdd/guide.md"); found {
+	if _, found := (configOverlay{tree: removed}).ReadFile("skills/parts/using-awf/generated-documents.md"); found {
 		t.Fatal("config tree removal remained present")
 	}
 	if paths := mustOverlayPaths(t, removed, ".awf/skills"); len(paths) != 0 {
@@ -361,8 +361,8 @@ func TestRunAcquiresLeaseBeforeAuthorityRead(t *testing.T) {
 		return lease, lease.Release, nil
 	}
 	observeAuthority = true
-	section := catalog.Standard.Skills["tdd"].Sections[0]
-	if _, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "tdd", Part: section, Content: []byte("body")}, loader, acquire); err != nil {
+	section := catalog.Standard.Skills["using-awf"].Sections[0]
+	if _, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "using-awf", Part: section, Content: []byte("body")}, loader, acquire); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -371,8 +371,8 @@ func TestRunAcquiresLeaseBeforeAuthorityRead(t *testing.T) {
 // invariant: tooling/cli:semantic-artifact-authoring (TestPublisherFaultRetainsCommittedSourceAndRecovery)
 func TestPublisherFaultRetainsCommittedSourceAndRecovery(t *testing.T) {
 	root, loader := transactionFixture(t, false)
-	section := catalog.Standard.Skills["tdd"].Sections[0]
-	blockedOutput := filepath.Join(root, ".claude/skills/example-tdd/SKILL.md")
+	section := catalog.Standard.Skills["using-awf"].Sections[0]
+	blockedOutput := filepath.Join(root, ".claude/skills/example-using-awf/SKILL.md")
 	if err := os.Remove(blockedOutput); err != nil {
 		t.Fatal(err)
 	}
@@ -381,7 +381,7 @@ func TestPublisherFaultRetainsCommittedSourceAndRecovery(t *testing.T) {
 	}
 	writeFile(t, filepath.Join(blockedOutput, "blocker"), "preserved")
 
-	outcome, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "tdd", Part: section, Content: []byte("committed before publisher fault\n")}, loader, nil)
+	outcome, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "using-awf", Part: section, Content: []byte("committed before publisher fault\n")}, loader, nil)
 	partial, ok := AsPartial(err)
 	if !ok {
 		t.Fatalf("publisher fault = %v, want typed partial", err)
@@ -395,7 +395,7 @@ func TestPublisherFaultRetainsCommittedSourceAndRecovery(t *testing.T) {
 	if len(partial.Recovery) == 0 || !strings.Contains(partial.Recovery[len(partial.Recovery)-1], "repair the publisher fault") {
 		t.Fatalf("publisher recovery = %#v", partial.Recovery)
 	}
-	if got := string(bytesAt(t, root, ".claude/skills/example-tdd/SKILL.md/blocker")); got != "preserved" {
+	if got := string(bytesAt(t, root, ".claude/skills/example-using-awf/SKILL.md/blocker")); got != "preserved" {
 		t.Fatalf("publisher fault changed blocking entry = %q", got)
 	}
 }
@@ -403,7 +403,7 @@ func TestPublisherFaultRetainsCommittedSourceAndRecovery(t *testing.T) {
 // invariant: rendering/sync-and-drift:authoring-sync-transaction (TestLeaseReleaseFaultRetainsEffectsAndCause)
 func TestLeaseReleaseFaultRetainsEffectsAndCause(t *testing.T) {
 	root, loader := transactionFixture(t, false)
-	section := catalog.Standard.Skills["tdd"].Sections[0]
+	section := catalog.Standard.Skills["using-awf"].Sections[0]
 	releaseFault := errors.New("release sentinel")
 	acquire := func(ctx context.Context, root string) (*filesystem.Lease, func() error, error) {
 		lease, err := loader.AcquireProjectLease(ctx, root)
@@ -412,7 +412,7 @@ func TestLeaseReleaseFaultRetainsEffectsAndCause(t *testing.T) {
 		}
 		return lease, func() error { return errors.Join(lease.Release(), releaseFault) }, nil
 	}
-	outcome, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "tdd", Part: section, Content: []byte("body")}, loader, acquire)
+	outcome, err := Run(context.Background(), root, Request{Mode: Edit, Kind: "skill", Name: "using-awf", Part: section, Content: []byte("body")}, loader, acquire)
 	var partial *PartialError
 	if !errors.As(err, &partial) || !errors.Is(err, releaseFault) {
 		t.Fatalf("release error = %v", err)

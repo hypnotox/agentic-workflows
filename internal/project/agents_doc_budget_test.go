@@ -112,7 +112,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 		{name: "over", bytes: 12*1024 + 1, want: true},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\naudit:\n  allowedScopes:\n    - name: awf\n", map[string]string{"parts/agents-doc/identity.md": "x"})
+			root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\naudit:\n  allowedScopes:\n    - name: awf\n", map[string]string{"parts/agents-doc/identity.md": "x"})
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)

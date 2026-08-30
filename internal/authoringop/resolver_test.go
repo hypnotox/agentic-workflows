@@ -14,7 +14,7 @@ import (
 func resolverFixture(t *testing.T) (*project.ProjectState, *config.Config) {
 	t.Helper()
 	root := t.TempDir()
-	writeFile(t, filepath.Join(root, ".awf/config.yaml"), "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [tooling]\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	writeFile(t, filepath.Join(root, ".awf/config.yaml"), "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [tooling]\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	loader := project.NewLoaderWithoutRepository(config.Load, catalog.Standard, func(context.Context, string) string { return root })
 	state, cfg, err := loader.OpenForOperation(context.Background(), root)
 	if err != nil {
@@ -29,7 +29,7 @@ func TestResolveSidecarUsesSemanticCapabilitiesAndOwnedLayouts(t *testing.T) {
 	cases := []struct {
 		kind, name, field, path string
 	}{
-		{"skill", "tdd", "data.custom", ".awf/skills/tdd.yaml"},
+		{"skill", "using-awf", "data.custom", ".awf/skills/using-awf.yaml"},
 		{"agent", "implementer", "dataDefaults.tools", ".awf/agents/implementer.yaml"},
 		{"doc", "architecture", "data.custom", ".awf/docs/architecture.yaml"},
 		{"doc", "working-with-awf", "data.custom", ".awf/working-with-awf.yaml"},
@@ -47,15 +47,15 @@ func TestResolveSidecarUsesSemanticCapabilitiesAndOwnedLayouts(t *testing.T) {
 			}
 		})
 	}
-	section := catalog.Standard.Skills["tdd"].Sections[0]
+	section := catalog.Standard.Skills["using-awf"].Sections[0]
 	for _, tc := range []struct{ kind, name, field string }{
 		{"bogus", "x", "data.key"},
 		{"skill", "absent", "data.key"},
 		{"domain", "absent", "paths"},
 		{"domain", "tooling", "data.key"},
-		{"skill", "tdd", "data"},
-		{"skill", "tdd", "sections.absent.drop"},
-		{"skill", "tdd", "sections." + section},
+		{"skill", "using-awf", "data"},
+		{"skill", "using-awf", "sections.absent.drop"},
+		{"skill", "using-awf", "sections." + section},
 		{"doc", "runbooks/incident", "data.key"},
 	} {
 		if _, err := ResolveSidecar(state, cfg, tc.kind, tc.name, tc.field); err == nil {
@@ -78,11 +78,11 @@ func TestResolveTargetsRejectMissingAuthoringAuthority(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, resolve := range []func(*project.ProjectState, *config.Config) error{
 				func(state *project.ProjectState, cfg *config.Config) error {
-					_, err := project.ResolveSidecarTarget(state, cfg, "skill", "tdd", "data.custom")
+					_, err := project.ResolveSidecarTarget(state, cfg, "skill", "using-awf", "data.custom")
 					return err
 				},
 				func(state *project.ProjectState, cfg *config.Config) error {
-					_, err := project.ResolveAuthoringTarget(state, cfg, "skill", "tdd", "identity")
+					_, err := project.ResolveAuthoringTarget(state, cfg, "skill", "using-awf", "identity")
 					return err
 				},
 			} {
@@ -100,7 +100,7 @@ func TestResolvePartUsesKindCatalogConfigurationAndLayouts(t *testing.T) {
 		kind, name, part string
 		local            bool
 	}{
-		{"skill", "tdd", catalog.Standard.Skills["tdd"].Sections[0], false},
+		{"skill", "using-awf", catalog.Standard.Skills["using-awf"].Sections[0], false},
 		{"agent", "implementer", catalog.Standard.Agents["implementer"].Sections[0], false},
 		{"doc", "architecture", catalog.Standard.Docs["architecture"].Sections[0], false},
 		{"domain", "tooling", catalog.Standard.DomainDoc.Sections[0], false},

@@ -23,8 +23,24 @@ func orphanedByPath(drift []manifest.Drift) map[string]string {
 const unclaimedDetail = "unclaimed file or directory: not part of the .awf config tree; delete it or move it out"
 const bakDetail = "stale awf-bak backup: review and delete"
 
+func checkDrift(t *testing.T, root string) []manifest.Drift {
+	t.Helper()
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	drift, err := checkProject(p, testContext(t))
+	if err != nil {
+		t.Fatal(err)
+	}
+	return drift
+}
+
 func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{"current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n", "current-state-upgrade.journal": "{}\n"})
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{"current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n", "current-state-upgrade.journal": "{}\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -48,37 +64,37 @@ func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:closed-config-tree (TestSweepFlagsUnclaimedEntries)
 func TestSweepFlagsUnclaimedEntries(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
-		"notes.md":                        "stray\n",
-		"local/context-spills.log":        "repository-private state stays outside configuration\n",
-		"scratch/a.txt":                   "stray\n",
-		"scratch/b/c.txt":                 "stray\n",
-		"skills/readme.txt":               "stray\n",
-		"skills/parts/tdd/stray.txt":      "stray\n",
-		"skills/parts/tdd/bogus.md":       "undeclared section\n",
-		"efforts/anything.md":             "session scratch - exempt\n",
-		"efforts/deep/file.awf-bak":       "exempt too\n",
-		"config.yaml.awf-bak.2":           "numbered backup\n",
-		"hooks/pre-commit.sh.awf-bak":     "backup beside a claimed unit\n",
-		"skills/unknown.yaml":             "data: {}\n", // unknown catalog artifact
-		"skills/parts/orphan-target/x.md": "stray\n",    // unknown catalog artifact
-		"parts/bogus-kind/x.md":           "unknown singleton\n",
-		"parts/workflow/bogus.md":         "undeclared singleton section\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
+		"notes.md":                         "stray\n",
+		"local/context-spills.log":         "repository-private state stays outside configuration\n",
+		"scratch/a.txt":                    "stray\n",
+		"scratch/b/c.txt":                  "stray\n",
+		"skills/readme.txt":                "stray\n",
+		"skills/parts/debugging/stray.txt": "stray\n",
+		"skills/parts/debugging/bogus.md":  "undeclared section\n",
+		"efforts/anything.md":              "session scratch - exempt\n",
+		"efforts/deep/file.awf-bak":        "exempt too\n",
+		"config.yaml.awf-bak.2":            "numbered backup\n",
+		"hooks/pre-commit.sh.awf-bak":      "backup beside a claimed unit\n",
+		"skills/unknown.yaml":              "data: {}\n", // unknown catalog artifact
+		"skills/parts/orphan-target/x.md":  "stray\n",    // unknown catalog artifact
+		"parts/bogus-kind/x.md":            "unknown singleton\n",
+		"parts/workflow/bogus.md":          "undeclared singleton section\n",
 	})
 	// hooks enabled so .awf/hooks/*.sh are claimed render units; gateCmd and
 	// the runner keep the enabled hooks command-wiring valid (ADR-0156).
-	testsupport.WriteFile(t, configPath(root), "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n")
+	testsupport.WriteFile(t, configPath(root), "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n")
 	drift := checkDrift(t, root)
 	got := orphanedByPath(drift)
 
 	want := map[string]string{
-		".awf/notes.md":                   unclaimedDetail,
-		".awf/local":                      unclaimedDetail,
-		".awf/scratch":                    unclaimedDetail,
-		".awf/skills/readme.txt":          unclaimedDetail,
-		".awf/skills/parts/tdd/stray.txt": unclaimedDetail,
-		".awf/skills/parts/tdd/bogus.md":  "convention part for a section not in the target's declared set",
-		".awf/skills/unknown.yaml":        "sidecar for an artifact not in the catalog",
+		".awf/notes.md":                         unclaimedDetail,
+		".awf/local":                            unclaimedDetail,
+		".awf/scratch":                          unclaimedDetail,
+		".awf/skills/readme.txt":                unclaimedDetail,
+		".awf/skills/parts/debugging/stray.txt": unclaimedDetail,
+		".awf/skills/parts/debugging/bogus.md":  "convention part for a section not in the target's declared set",
+		".awf/skills/unknown.yaml":              "sidecar for an artifact not in the catalog",
 		// invariant: rendering/sync-and-drift:awf-bak-flagged (.awf/config.yaml.awf-bak.2)
 		".awf/config.yaml.awf-bak.2":       bakDetail,
 		".awf/hooks/pre-commit.sh.awf-bak": bakDetail,
@@ -101,7 +117,7 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 // Sweep never recurses into an owned resident root: every descendant is dynamic
 // local authority, including one shaped like a nested adopter or a stale backup.
 func TestSweepExemptsResidentRoots(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"efforts/e/memory.md":                                "scratch\n",
 		"efforts/e/deep/file.awf-bak":                        "scratch\n",
 		"efforts/e/sessions/s":                               "resident\n",
@@ -121,7 +137,7 @@ func TestSweepExemptsResidentRoots(t *testing.T) {
 // claimed - a future declaredSections change to catalog.Standard would
 // otherwise silently flag every local artifact's parts.
 func TestSweepBaselineClean(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: make gate\nbootstrap:\n  enabled: true\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\nbootstrap:\n  enabled: true\n", nil)
 	if got := orphanedByPath(checkDrift(t, root)); len(got) != 0 {
 		t.Fatalf("a hygienic tree with all render units enabled must sweep clean, got %#v", got)
 	}

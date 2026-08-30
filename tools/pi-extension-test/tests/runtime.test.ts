@@ -118,15 +118,14 @@ test("pinned Pi runtime discovers awf skills and delivers protocol-v2 routing wi
   assert.deepEqual(loader.getExtensions().errors, []);
   const discovered = loader.getSkills();
   assert.deepEqual(discovered.diagnostics, []);
-  assert.ok(discovered.skills.some((skill: any) => skill.name === "awf-grounding"));
+  assert.ok(discovered.skills.some((skill: any) => skill.name === "awf-repository-context"));
   assert.equal(registeredBatch.registrationId, "awf:subagent-profiles:v2");
   assert.equal(registeredBatch.suppressDefault, true);
   assert.deepEqual(registrationReceipt, { state: "pending" });
   assert.equal(toolsInstalled, false);
   assert.equal(finalRegistration, undefined);
   assert.deepEqual(registeredBatch.profiles.map((profile: any) => profile.toolName), [
-    "subagent_grounding", "subagent_explore", "subagent_review_adr", "subagent_review_plan",
-    "subagent_review_code", "subagent_implement",
+    "subagent_grounding", "subagent_explore", "subagent_review_code", "subagent_implement",
   ]);
 
   const loadedExtensions = loader.getExtensions().extensions;
@@ -154,7 +153,7 @@ test("pinned Pi runtime discovers awf skills and delivers protocol-v2 routing wi
   assert.equal(`${selected.provider}/${selected.id}`, "runtime/model");
   const prepared = await grounding.prepare(profileContext);
   assert.equal(prepared.cwd, cwd);
-  assert.match(prepared.systemPrompt, /governed grounding-check subagent/);
+  assert.match(prepared.systemPrompt, /report-only premise checker/);
   const profileState = await grounding.beforeRun(profileContext);
   const postRun = await grounding.afterRun({
     state: "completed", report: "grounded",

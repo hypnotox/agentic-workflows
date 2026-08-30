@@ -29,12 +29,12 @@ You are a developer on {{ with .prefix }}`{{ . }}`{{ else }}this project{{ end }
 <!-- Authoring: see agents-md-standard.md for one terse cross-cutting imperative per rule. -->
 Hard rules every change must respect:
 
-{{ if ne .profile "core" }}- **Append-only ADRs.** Preserve decision history; change current-state claims forward. See `{{ .layout.adrDir }}/` and `{{ .layout.indexMd }}`.
-{{ end }}- **Docs travel with the change.** Update reality and its documentation together.
+- **Append-only decisions.** Preserve decision history; change current-state claims forward. See `{{ .layout.adrDir }}/`.
+- **Docs travel with the change.** Update reality and its documentation together.
 - **Stage and gate each commit.** Stage the complete transaction; run `./awf check staged` and {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
 {{- range .data.invariants }}
 {{- if eq .kind "scopes" }}
-- **Conventional Commits{{ with $.commitScopes }}, scopes {{ . }}{{ end }}.** One concern per commit; stage explicitly, no `git add -A`{{ with $.commitScopes }}; the allowed-scope list lives in `audit.allowedScopes`{{ end }}.
+- **Conventional Commits.** One concern per commit; stage explicitly, no `git add -A`.
 {{- else if eq .kind "gated-commands" }}
 - **Binary-version gate.** Use a current binary for gated commands; see the command reference.{{ with .ref }} ({{ . }}){{ end }}
 {{- else }}
@@ -46,7 +46,7 @@ Hard rules every change must respect:
 <!-- awf:section workflow -->
 ## Workflow
 
-Treat exposed native-skill descriptions as routing metadata. Before loading a skill, identify the next concrete action. Load only a skill that governs that action; a possible later edit, render, documentation update, review, or commit does not justify loading its skill now. Load multiple bodies only when each independently governs that same next action before another routing decision can occur. Before any mutation, load the native skill that governs that action. Change size, including a minimal change, never excuses this routing step. The workflow governs a change's protected contract, not its execution route. Obtain an explicitly approved proportionate outline through brainstorming when a material decision is unresolved, not because a change touches production code. Apply the clean-integration operative rule proportionally; `{{ .layout.maintainableCodeDesign }}` remains its canonical doctrine owner. Preserve the approved design boundary; see `{{ .layout.maintainableCodeDesign }}`. {{ if ne .profile "core" }}Route settled content by authority lifetime: durable choices belong in ADRs, active rules in current-state topics, directives in plans, and transient context in effort memory. {{ end }}Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} See [{{ . }}]({{ . }}) for workflow procedure.{{ end }}
+Treat exposed native-skill descriptions as routing metadata. Before loading a skill, identify the next concrete action. Load only a skill that governs that action; a possible later edit, render, documentation update, review, or commit does not justify loading its skill now. Load multiple bodies only when each independently governs that same next action before another routing decision can occur. Before any mutation, load the native skill that governs that action. Change size, including a minimal change, never excuses this routing step. The workflow governs a change's protected contract, not its execution route. Obtain an explicitly approved proportionate outline through brainstorming when a material decision is unresolved, not because a change touches production code. Apply the clean-integration operative rule proportionally; `{{ .layout.maintainableCodeDesign }}` remains its canonical doctrine owner. Preserve the approved design boundary; see `{{ .layout.maintainableCodeDesign }}`. Route settled content by authority lifetime: durable choices belong in decision records, active rules in current-state topics, operational plans in effort scratch, and transient context in effort memory. Conventional Commits; one concern per commit.{{ with .layout.workflowRef }} See [{{ . }}]({{ . }}) for workflow procedure.{{ end }}
 <!-- awf:end -->
 
 <!-- awf:section working-memory -->
@@ -75,9 +75,8 @@ Evaluate continuity independently; when durable continuity materially helps, use
 <!-- awf:section document-map -->
 ## Document map
 
-{{ if ne .profile "core" }}- **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}), architecture decisions and lifecycle.
-- **Decision index:** [{{ .layout.indexMd }}]({{ .layout.indexMd }}), generated status index.
-{{ end }}{{ range .mandatoryDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
+- **Decision records:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}), durable project decisions and authoring guidance.
+{{ range .mandatoryDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }}, {{ . }}{{ end }}
 {{ end -}}

@@ -34,12 +34,7 @@ Backing: test
 
 ### `invariant: requires-skills-exact`
 
-Every standard skill has an empty `RequiresSkills`; workflow-profile neighbors are advisory only. Artifact requirements, including reviewing agents' structural `RequiresSkills`, remain exact catalog declarations rather than workflow edges.
-Backing: test
-
-### `invariant: reviewing-skill-specs-paired`
-
-Every catalog skill whose name begins with reviewing- carries a non-empty requiresAgent naming the reviewer agent it dispatches.
+Every standard skill and agent has empty `RequiresSkills`; conditional capability selection never becomes a structural workflow edge.
 Backing: test
 
 ### `invariant: skill-section-parity`
@@ -54,12 +49,12 @@ Backing: test
 
 ### `invariant: target-dialect-render`
 
-Each built-in target renders every skill and agent in the selected catalog view exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. A target-owned skill with a catalog predicate uses the same declaration path and is emitted only when its target and selected view include it.
+Each built-in target renders every standard skill and agent exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. A target-owned derived skill uses the same declaration path and is emitted only for its owning target.
 Backing: test
 
 ### `invariant: unified-doc-model`
 
-Every selected doc and singleton projection derives from the one selected catalog document collection rather than a separate hand-maintained list. Its singleton kinds equal exactly the selected entries declaring output paths, and each such entry renders under the documentation root at its declared path.
+Every doc and singleton projection derives from the one standard catalog document collection rather than a separate hand-maintained list. Its singleton kinds equal exactly the entries declaring output paths, and each such entry renders under the documentation root at its declared path.
 Backing: test
 
 ### `invariant: var-descriptor-parity`
@@ -69,10 +64,5 @@ Backing: test
 
 ### `invariant: var-descriptor-set-pinned`
 
-The catalog's value-carrying string var descriptor keys are exactly the pinned functional set (gateCmd, gateCmdFull, checkCmd, commitGateCmd, testCmd, commitScopes, activeMdRegenCmd, invariantTestPath); no multiselect descriptor controls catalog rendering.
-Backing: test
-
-### `invariant: profile-dependency-closure`
-
-The complete catalog projects closed Core and Full views; every selected artifact dependency resolves within its selected view.
+The catalog's value-carrying string var descriptor keys are exactly the pinned functional set (`gateCmd`, `checkCmd`, and `testCmd`); no selector or multiselect descriptor controls catalog rendering.
 Backing: test

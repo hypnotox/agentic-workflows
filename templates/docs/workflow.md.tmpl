@@ -21,7 +21,7 @@ You own the project's long-term health, not just the task in front of you: defec
 <!-- awf:section chain -->
 ## The chain
 
-{{if ne .profile "core"}}**Rule.** Evaluate brainstorming, continuity/effort, grounding, durable-decision, operational-planning, and implementation-review triggers independently at intake. Re-evaluate only affected triggers when material facts change and activate newly warranted support before further mutation; prior valid work remains valid. No line count, artifact type, or another mechanism firing selects a trigger.
+**Rule.** Evaluate brainstorming, continuity/effort, grounding, durable-decision, operational-planning, and implementation-review triggers independently at intake. Re-evaluate only affected triggers when material facts change and activate newly warranted support before further mutation; prior valid work remains valid. No line count, artifact type, or another mechanism firing selects a trigger.
 
 **Required evidence.** Repository authority, documentation currency, verification, and commit obligations apply to every change regardless of which triggers fire.
 
@@ -56,11 +56,8 @@ When sequencing, coordination, or resumability materially helps, the parent may 
 - Independent fresh-context children may run concurrently where supported, but they are report-only with respect to that shared memory; refinement stays sequential, a lower-cost child model is selected deliberately when supported, and shared-checkout implementation stays alone. Governance footprints add no depth controls, rigor modes, routers, classifiers, or runtime policy knobs.
 
 
-For the detailed criteria of when a decision is load-bearing enough to warrant an ADR (and the ADR format itself), see [`{{ .layout.adrReadme }}`](decisions/README.md).
-{{else}}Core uses independent judgment-based triggers for brainstorming, continuity, grounding, and implementation review. Brainstorming presents a proportionate outline and obtains explicit approval when a material decision is unresolved, not because a change touches production code. After approval, implement directly or through a scoped delegate, test the result, and request independent implementation review whenever assurance has value. Re-evaluate affected triggers when material facts change; route a changed boundary back through brainstorming and diagnose blockers before reporting them.
-
-`effort-workflow` owns continuity from creation through integration, cleanup, retrospective, and finish. Repository authority comes from the agent guide, project documentation, source, tests, and history. Conventional Commits, documentation currency, verification, and one coherent commit apply to every change.
-{{end}}<!-- awf:end -->
+For decision-record criteria and format, see [`{{ .layout.adrReadme }}`](decisions/README.md).
+<!-- awf:end -->
 
 <!-- awf:section working-memory -->
 ## Working memory
@@ -96,7 +93,7 @@ For the detailed criteria of when a decision is load-bearing enough to warrant a
 
 - Memories use closed YAML frontmatter with `effort`, `phase`, `next`, and `updated`.
 
-- Resume from `phase` and `next` only after revalidating them against the repository sources{{if ne .profile "core"}} and current-state documentation{{end}}, which remain authoritative over checkpoint prose; the rendered orienting skill's resume-revalidation section is the procedural home of that check.
+- Resume from `phase` and `next` only after revalidating them against the repository sources and current-state documentation, which remain authoritative over checkpoint prose; the rendered orienting skill's resume-revalidation section is the procedural home of that check.
 
 - One effort has one user-managed writer; reviewers, explorers, grounding children, and helpers never edit its memory.
 
@@ -117,9 +114,7 @@ For the detailed criteria of when a decision is load-bearing enough to warrant a
 
 - Brainstorming retains the single mandatory pre-artifact outline approval check-in, stopping for explicit approval and persisting it only when an effort exists.
 
-{{if ne .profile "core"}}- Settled decision review continues autonomously to the independently selected implementation path.
-
-{{end}}- At a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work. Continue autonomously or through a target-native successor when one is available. Handoff is prohibited while required late-creation memory initialization remains incomplete.
+- At a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work. Continue autonomously or through a target-native successor when one is available. Handoff is prohibited while required late-creation memory initialization remains incomplete.
 
 - Reorient from repository authority before substantive successor work. Append a log only for an actual fresh boundary; continuation, cancellation, or failure that leaves the current session active appends none. Target-specific skill guidance owns any executable replacement protocol.
 
@@ -151,11 +146,11 @@ A routine implementation checkpoint occurs only at a safe resumable transaction 
 ### Finish and prohibitions
 
 
-- Never commit the file or cite a concrete owned-memory path in a durable {{if ne .profile "core"}}decision record{{else}}project record{{end}} or commit message; the bare efforts directory and angle-bracket placeholder form remain legal.
+- Never commit the file or cite a concrete owned-memory path in a durable decision record or commit message; the bare efforts directory and angle-bracket placeholder form remain legal.
 
 - Optional `activity.json` is advisory and may make older binaries unable to read the effort, but never gates unrelated show, list, or finish commands.
 
-- After implementation assurance settles or is explicitly skipped, `effort-workflow` integrates a managed-worktree effort, activates review after any divergent merge, {{if ne .profile "core"}}completes deferred artifact transitions, {{end}}removes path, registration, and branch, invokes retrospective, and runs `./awf effort finish <slug>` last.
+- After implementation assurance settles or is explicitly skipped, `effort-workflow` integrates a managed-worktree effort, activates review after any divergent merge, removes path, registration, and branch, invokes retrospective, and runs `./awf effort finish <slug>` last.
 
 <!-- awf:end -->
 
@@ -168,7 +163,7 @@ Use Conventional Commits, one concern per commit. Stage files explicitly rather 
 <!-- awf:section doc-currency -->
 ## Documentation currency
 
-Documentation travels with the change that makes it true. When you change behaviour, update the affected docs (this file, the agent guide, {{if ne .profile "core"}}ADRs, and {{end}}any reference tables) in the same commit.
+Documentation travels with the change that makes it true. When you change behaviour, update the affected docs, current-state claims, decision records, and reference tables in the same commit.
 <!-- awf:end -->
 
 <!-- awf:section composing-the-gate -->
@@ -181,7 +176,7 @@ The gate is one command{{ with .vars.gateCmd }} (`{{ . }}`){{ end }} that must b
 
 - **As the project grows:** add what your stack makes cheap: a build step, a coverage threshold, type checking, formatting verification. Each addition must be deterministic: same tree in, same verdict out.
 
-- **Keep it fast.** The per-commit gate should run in seconds{{ with .vars.gateCmdFull }}; move anything slower (end-to-end suites, broad integration runs) to the fuller tier (`{{ . }}`) that runs before merging or releasing rather than on every commit{{ end }}.
+- **Keep it fast.** The local feedback loop should run in seconds; broader assurance belongs in CI or release verification rather than every local commit.
 
 A script or task-runner alias makes the gate one word to run and one place to grow. To preserve long gate output, use a direct log redirect and capture the command status separately. Run `project-gate >gate.log 2>&1; gate_status=$?` before inspecting the log, then finish with `exit "$gate_status"`; do not rely on a status-losing pipeline. Substitute the project's actual gate command for `project-gate`.
 <!-- awf:end -->
@@ -189,7 +184,7 @@ A script or task-runner alias makes the gate one word to run and one place to gr
 <!-- awf:section local-hooks -->
 ## Local git hooks
 
-awf always renders five inert payload scripts under `.awf/hooks/`: `pre-commit.sh` (rendered-file drift check, then the gate), `commit-msg.sh` (the definitive commit-message{{if ne .profile "core"}} and stale-ADR merge{{end}} gate), `pre-merge-commit.sh` (the staged check available before Git exposes final message and parent evidence), `reference-transaction.sh` (a local ref-update provenance check when commit policy is configured), and `pre-push.sh` (the provenance check followed by the fullest configured gate tier). awf never installs or activates Git hooks; the payloads are tracked and kept current by `awf render` like every rendered file, and do nothing until you invoke them from hook wiring you own:
+awf always renders five inert payload scripts under `.awf/hooks/`: `pre-commit.sh` (rendered-file drift check, then the gate), `commit-msg.sh` (the definitive commit-message gate), `pre-merge-commit.sh` (the staged check), `reference-transaction.sh` (a local ref-update provenance check when commit policy is configured), and `pre-push.sh` (the provenance check followed by the configured gate). awf never installs or activates Git hooks; the payloads are tracked and kept current by `awf render` like every rendered file, and do nothing until you invoke them from hook wiring you own:
 
 
 - a per-clone stub under `.git/hooks/`;
@@ -200,7 +195,7 @@ awf always renders five inert payload scripts under `.awf/hooks/`: `pre-commit.s
 
 A tracked stub should locate the invoking worktree, not assume the primary checkout or its current directory, then exec that worktree's payload. For example: `repo_root=$(git rev-parse --show-toplevel) || exit 1; exec bash "$repo_root/.awf/hooks/pre-push.sh" "$@"`. This form works whether `core.hooksPath` is absolute or relative and ensures linked worktrees resolve their own configuration. Before enabling a commit policy or wiring its two enforcement payloads, run `./awf check commit-policy <revision-or-range>...` over the intended history and correct its findings. Local hooks are only a client-side preflight: the remote's protected-branch and receiving policy are the final boundary.
 
-`awf check staged commit` is the deterministic, blocking commit-message gate: it validates Conventional Commits and rejects concrete effort-memory citations.{{if ne .profile "core"}} It also definitively qualifies any older-format ADR introduced by a real merge against the incoming parents and adjacent `AWF-Allow-Version` / nonempty `AWF-Allow-Reason` trailers. Malformed reserved trailers refuse. A refusal leaves the index and `MERGE_HEAD` intact: correct the message and run `git commit` to finish the existing merge. A proactive flow may use `git merge --no-commit --no-ff`; a true fast-forward has no authorization event. Never retrofit the ADR or create allowance state.{{end}} The `commit-msg.sh` payload runs the check with Git's message file; run `./awf check staged commit --help` for details.
+`awf check staged commit` is the deterministic, blocking commit-message gate: it validates Conventional Commits and rejects concrete effort-memory citations. The `commit-msg.sh` payload runs the check with Git's message file; run `./awf check staged commit --help` for details.
 
 **Your stub is the override point.** The rendered payloads are deliberately all-or-nothing; they take no convention parts. To deviate from a payload's policy (say, a docs-only fast path that skips the test gate), put the deviation in the stub you own instead of forking the payload: keep the payload canonical, have the stub carry the project-specific logic, and mark the divergence with a comment naming it a deliberate deviation from the rendered script. The payload then keeps updating through `awf render` while your deviation stays visible, reviewable, and yours.
 <!-- awf:end -->
@@ -208,6 +203,6 @@ A tracked stub should locate the invoking worktree, not assume the primary check
 <!-- awf:section ci -->
 ## Continuous integration
 
-Local hooks are per-clone and optional, so CI is the enforcement backstop: run `{{ with .vars.checkCmd }}{{ . }}{{ else }}./awf check{{ end }}` and the gate{{ with .vars.gateCmd }} (`{{ . }}`){{ end }} on every push{{ with .vars.gateCmdFull }}, and the fuller tier (`{{ . }}`) before merging{{ end }}. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
+Local hooks are per-clone and optional, so CI is the enforcement backstop: run `{{ with .vars.checkCmd }}{{ . }}{{ else }}./awf check{{ end }}` and the gate{{ with .vars.gateCmd }} (`{{ . }}`){{ end }} on every push. When the pinned bootstrap is enabled, CI obtains the exact awf version this repo was rendered with by capturing the path it prints (`"$(bash .awf/bootstrap.sh)" check`) instead of installing awf separately; the script verifies the download's SHA-256 before caching it.
 <!-- awf:end -->
 

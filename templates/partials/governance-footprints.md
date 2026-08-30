@@ -1,1 +1,1 @@
-Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, and audit capabilities.
+Awf renders one standard governance footprint. Projects apply its capabilities when relevant rather than selecting a profile or rigor mode.

@@ -13,7 +13,7 @@ Pi workflow contracts: awf profile policy, effort integration, native skills, an
 
 ### `invariant: pi-dedicated-grounding-dispatch`
 
-The generated Pi adapter and workflow skills dispatch reusable independent repository-premise checks through the dedicated grounding profile whenever the grounding support trigger fires, while general exploration and coupling audits use exploration. No non-Pi target's rendered output contains either Pi subagent tool name.
+The generated Pi adapter loads the rendered premise-checker role for independent repository-premise challenges through `subagent_grounding`, while read-only discovery uses the explorer role through `subagent_explore`. The repository-context skill owns selection between orientation, exploration, and premise challenge. Non-Pi targets contain no Pi subagent tool names.
 Backing: test
 
 ### `invariant: pi-extension-editor-quiet-strip`
@@ -24,7 +24,8 @@ Backing: test
 ### `invariant: pi-implementation-batch-exclusivity`
 
 The implementation profile declares one active call and fail-closed parent-batch exclusivity, so it cannot share a parent tool batch with siblings. Pi-tools owns enforcement of that declaration, cancellation, queueing, and execution confinement; awf retains the profile declaration and commit-policy hooks.
-Backing: test
+Backing: unbacked
+Verify: Inspect the generated implementation profile declaration and confirm its active-call cap is one and parent-batch exclusivity remains fail-closed under the Pi runtime.
 
 ### `invariant: pi-native-workflow-skills`
 
@@ -49,7 +50,7 @@ Backing: test
 
 ### `invariant: pi-structured-exploration-contract`
 
-The generated Full adapter atomically registers exactly six closed-schema profiles and Core registers exactly four, each with optional exact model routing. Every reviewer included by the selected governance footprint has a dedicated profile and tool with no kind argument: Full includes ADR, plan, and code review, while Core includes code review only. One shared review-profile factory owns their common preparation and policy, the shared `review` model-preference role governs every reviewer, and each review profile independently declares ten active calls. Implementation alone accepts optional `verificationCheckout`; preparation validates and caches one canonical accessible descendant checkout as both the child CWD and unchanged-HEAD identity, while omission retains root/root. This does not confine deliberately targeted paths or move the parent session. Exploration retains required task, breadth, and detail and declares ten active calls; grounding also declares ten, while implementation declares one and parent-batch exclusivity.
+The generated adapter atomically registers four closed-schema profiles with optional exact model routing: premise checking, exploration, combined report-only review, and commit-disabled implementation. The review profile has no artifact-kind argument and uses the shared `review` preference role. Implementation alone accepts optional `verificationCheckout`; preparation validates and caches one canonical accessible descendant checkout as both child CWD and unchanged-HEAD identity, while omission retains root/root. This does not confine deliberately targeted paths or move the parent session. Exploration requires task, breadth, and detail and declares ten active calls; premise checking and review also declare ten, while implementation declares one and parent-batch exclusivity.
 Backing: test
 
 ### `invariant: pi-subagent-model-preferences`
@@ -75,4 +76,5 @@ Backing: test
 ### `invariant: pi-role-contract-loader`
 
 Every dispatched profile loads its role contract from the rendered agent artifact through one shared loader that reads the file, strips frontmatter, prepends role-specific per-call authority, and fails with an actionable enable-and-render repair naming the role when the file is missing or its instruction body is empty. No dispatched role prose remains inline in the adapter.
-Backing: test
+Backing: unbacked
+Verify: Inspect the generated adapter for one shared loader, confirm each dispatched role path uses it, and simulate missing and body-empty agent artifacts to verify actionable role-specific refusal.

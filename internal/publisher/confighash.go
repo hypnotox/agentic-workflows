@@ -30,9 +30,8 @@ func consumedParts(p renderInputs, kind, artifact string, plan map[string]render
 func artifactConfigHash(p renderInputs, assembled string, sc config.Sidecar, partPaths []string, _ map[string]bool, targets ...Target) (string, error) {
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{
-		"prefix":  p.cfg.Prefix,
-		"profile": p.cfg.Profile,
-		"layout":  layout(p).templateMap(),
+		"prefix": p.cfg.Prefix,
+		"layout": layout(p).templateMap(),
 	}
 	if len(targets) != 0 {
 		// Identity is a declarer property of an output-plan node, not part of

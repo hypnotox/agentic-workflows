@@ -37,12 +37,12 @@ You develop `awf`, its CLI and standard, and own the task and the project's long
 <!-- Authoring: see agents-md-standard.md for one terse cross-cutting imperative per rule. -->
 Hard rules every change must respect:
 
-- **Append-only ADRs.** Preserve decision history; change current-state claims forward. See `docs/decisions/` and `docs/decisions/INDEX.md`.
+- **Append-only decisions.** Preserve decision history; change current-state claims forward. See `docs/decisions/`.
 - **Docs travel with the change.** Update reality and its documentation together.
 - **Stage and gate each commit.** Stage the complete transaction; run `./awf check staged` and `./x gate`. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
 - **Publication-safe templates.** Keep unset interpolation coherent and token-free. (ADR-0001, ADR-0045)
 - **`awf check` is the drift oracle.** After `.awf/` edits run `./x render && ./x check`; commit generated outputs with their sources.
-- **Conventional Commits, scopes `adr`, `adr-system`, `awf`, `code-design`, `config`, `invariants`, `rendering`, `tooling`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
+- **Conventional Commits.** One concern per commit; stage explicitly, no `git add -A`.
 - **Backed invariants.** Declare and prove current-state invariants; see the current-state contract. (ADR-0134)
 - **Punctuation restraint.** Prefer ordinary punctuation; punctuation findings are advisory Warnings with zero exit. En dashes remain prohibited and paragraphs use at most two em dashes. Ellipses and curly quotes are permitted; see the prose gate contract. (ADR-replace-plain-punctuation-ban-with-punctuation-restraint)
 - **No memory citation.** Never cite concrete effort memory paths in durable records. (ADR-0158, ADR-0175)
@@ -55,7 +55,7 @@ Hard rules every change must respect:
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl -->
 ## Workflow
 
-Treat exposed native-skill descriptions as routing metadata. Before loading a skill, identify the next concrete action. Load only a skill that governs that action; a possible later edit, render, documentation update, review, or commit does not justify loading its skill now. Load multiple bodies only when each independently governs that same next action before another routing decision can occur. Before any mutation, load the native skill that governs that action. Change size, including a minimal change, never excuses this routing step. The workflow governs a change's protected contract, not its execution route. Obtain an explicitly approved proportionate outline through brainstorming when a material decision is unresolved, not because a change touches production code. Apply the clean-integration operative rule proportionally; `docs/maintainable-code-design.md` remains its canonical doctrine owner. Preserve the approved design boundary; see `docs/maintainable-code-design.md`. Route settled content by authority lifetime: durable choices belong in ADRs, active rules in current-state topics, directives in plans, and transient context in effort memory. Conventional Commits; one concern per commit. See [docs/workflow.md](docs/workflow.md) for workflow procedure.
+Treat exposed native-skill descriptions as routing metadata. Before loading a skill, identify the next concrete action. Load only a skill that governs that action; a possible later edit, render, documentation update, review, or commit does not justify loading its skill now. Load multiple bodies only when each independently governs that same next action before another routing decision can occur. Before any mutation, load the native skill that governs that action. Change size, including a minimal change, never excuses this routing step. The workflow governs a change's protected contract, not its execution route. Obtain an explicitly approved proportionate outline through brainstorming when a material decision is unresolved, not because a change touches production code. Apply the clean-integration operative rule proportionally; `docs/maintainable-code-design.md` remains its canonical doctrine owner. Preserve the approved design boundary; see `docs/maintainable-code-design.md`. Route settled content by authority lifetime: durable choices belong in decision records, active rules in current-state topics, operational plans in effort scratch, and transient context in effort memory. Conventional Commits; one concern per commit. See [docs/workflow.md](docs/workflow.md) for workflow procedure.
 
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl#working-memory -->
 <!-- awf:edit working-memory: from .awf/parts/agents-doc/working-memory.md -->
@@ -86,14 +86,13 @@ For command flags and daily use, see [docs/working-with-awf.md](docs/working-wit
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl -->
 ## Document map
 
-- **ADR index:** [docs/decisions/README.md](docs/decisions/README.md), architecture decisions and lifecycle.
-- **Decision index:** [docs/decisions/INDEX.md](docs/decisions/INDEX.md), generated status index.
+- **Decision records:** [docs/decisions/README.md](docs/decisions/README.md), durable project decisions and authoring guidance.
 - **Authoring AGENTS.md:** [docs/agents-md-standard.md](docs/agents-md-standard.md), layout, content, and rules for the agent guide
 - **Configuration Reference:** [docs/config-reference.md](docs/config-reference.md), every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state
 - **Documentation Standard:** [docs/doc-standard.md](docs/doc-standard.md), how-to-write rules for all awf-managed prose
 - **Maintainable Code Design:** [docs/maintainable-code-design.md](docs/maintainable-code-design.md), decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design
 - **Pi Runtime Reference:** [docs/pi-runtime-reference.md](docs/pi-runtime-reference.md), Pi-only runtime, subagent, model-routing, and handoff protocol
-- **Workflow:** [docs/workflow.md](docs/workflow.md), principles, the brainstorm/ADR/plan chain, commit discipline
+- **Workflow:** [docs/workflow.md](docs/workflow.md), principles, conditional capabilities, continuity, review, and commit discipline
 - **Working with awf:** [docs/working-with-awf.md](docs/working-with-awf.md), day-to-day usage: commands, overrides, placeholders, and the sync/check loop
 - **Architecture:** [docs/architecture.md](docs/architecture.md), system shape, packages, key components, dependencies
 - **Debugging:** [docs/debugging.md](docs/debugging.md), recipes for common failure modes

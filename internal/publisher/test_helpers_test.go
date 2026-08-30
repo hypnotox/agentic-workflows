@@ -44,20 +44,17 @@ var (
 )
 
 const defaultFixtureBranch = "master"
-const pitfallsCfg = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"
+const pitfallsCfg = "prefix: example\nintegrationBranch: main\nvars: {}\n"
 const debuggingVars = `vars:
   debuggingDoc: ""
   gateCmd: ""
-  gateCmdFull: ""
   workflowDoc: ""
 `
 const sampleYAML = `prefix: example
-profile: full
 integrationBranch: main
 vars:
   testCmd: go test ./...
   gateCmd: make gate
-  gateCmdFull: make gate full
 `
 
 type snapshotTreeReader struct{ tree *snapshot.Tree }
@@ -199,19 +196,6 @@ func lowerForConfig(state *projectstate.ProjectState, cfg *config.Config) *proje
 func (p renderInputs) residentRoots() resident.Roots { return p.state.Roots() }
 
 func testContext(t *testing.T) context.Context { return testsupport.Context(t) }
-func withTestProfile(source string) string {
-	if strings.Contains(source, "profile:") {
-		return source
-	}
-	lines := strings.Split(strings.TrimSuffix(source, "\n"), "\n")
-	for i, line := range lines {
-		if strings.HasPrefix(line, "prefix:") {
-			lines = slices.Insert(lines, i+1, "profile: full")
-			break
-		}
-	}
-	return strings.Join(lines, "\n") + "\n"
-}
 func withTestGateCmd(source string) string {
 	if strings.Contains(source, "gateCmd:") {
 		return source
@@ -275,7 +259,7 @@ func initializedSampleProject(t *testing.T) (string, *ProjectState) {
 func scaffoldFiles(t *testing.T, source string, files map[string]string) string {
 	t.Helper()
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, withTestGateCmd(withTestProfile(source)))
+	testsupport.WriteAwfConfig(t, root, withTestGateCmd(source))
 	for path, body := range files {
 		testsupport.WriteFile(t, filepath.Join(root, ".awf", path), body)
 	}

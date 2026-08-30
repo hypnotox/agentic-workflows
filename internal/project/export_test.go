@@ -17,7 +17,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -25,8 +24,8 @@ import (
 
 var testConfigs sync.Map
 
-const crefYAML = "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n  gateCmdFull: make gate full\n"
-const domainCfg = "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: [rendering]\n"
+const crefYAML = "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n  gateCmdFull: make gate full\n"
+const domainCfg = "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n"
 
 func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *ProjectState) {
 	t.Helper()
@@ -42,7 +41,7 @@ func syncedProject(t *testing.T, configYAML string, files map[string]string) (st
 }
 
 func explorationFixtureConfig(string) string {
-	return "prefix: example\nprofile: full\nintegrationBranch: main\n"
+	return "prefix: example\nintegrationBranch: main\n"
 }
 func explorationRenderedByPath(t *testing.T, configYAML string) map[string]string {
 	t.Helper()
@@ -99,7 +98,7 @@ func writeProjectTopic(t *testing.T, root string) {
 }
 func topicProject(t *testing.T) string {
 	t.Helper()
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n", map[string]string{"domains/rendering.yaml": "paths: [\"internal/**\"]\n"})
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: ./x gate\ndomains: [rendering]\n", map[string]string{"domains/rendering.yaml": "paths: [\"internal/**\"]\n"})
 	writeADR(t, root, "0001-topic.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Topic"), testsupport.WithBody("## Decision\n\n1. Topic.\n")))
 	return root
 }
@@ -208,9 +207,6 @@ func checkStagedDriftProject(state *ProjectState, ctx context.Context) ([]manife
 	if err != nil {
 		return nil, err
 	}
-	base := state.OutputState()
-	selected := catalog.NewProfileView(base.CompleteCatalog(), prep.Config.Profile).Catalog()
-	prep.State = projectstate.NewDerivedWithFacts(prep.State.Root(), prep.State.Roots(), prep.State.Nested(), prep.State.Facts(), selected, base.CompleteCatalog(), prep.State.Targets())
 	plan, err := publisher.New(prep.State, prep.Config, prep.Reader, Version).Plan()
 	if err != nil {
 		return nil, err

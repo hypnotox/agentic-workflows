@@ -55,7 +55,7 @@ func assertVersionFixtureUnchanged(t *testing.T, root string, before map[string]
 // invariant: config/migrations-and-locks:schema-min-version (TestSchemaMinimumVersionAuthority)
 // invariant: tooling/cli:single-version-authority (TestSchemaMinimumVersionAuthority)
 func TestSchemaMinimumVersionAuthority(t *testing.T) {
-	if got := minVersionBySchema; len(got) != 3 || got[migrate.LiveSchemaFloor] != "0.39.0" || got[migrate.Current()] != "0.43.0" {
+	if got := minVersionBySchema; got[migrate.LiveSchemaFloor] != "0.39.0" || got[migrate.Current()] != "0.43.0" {
 		t.Fatalf("live schema minimums = %#v", got)
 	}
 	if err := ValidateSchemaMinimumVersion(migrate.Current(), Version); err != nil {

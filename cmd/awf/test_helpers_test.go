@@ -30,7 +30,6 @@ func runInit(ctx context.Context, root string, force, describe bool, sets []stri
 
 // minimalYAML is a valid tree-config for a scaffolded fixture project.
 const minimalYAML = `prefix: example
-profile: full
 integrationBranch: master
 vars: {testCmd: go test ./..., gateCmd: make gate}
 `

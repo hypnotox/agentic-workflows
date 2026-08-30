@@ -39,10 +39,10 @@ func TestOpenValidConfigSucceeds(t *testing.T) {
 }
 
 func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
-	// tdd in the catalog has sections [surfaces, notes]; "bogus" is not declared.
-	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n"
+	// debugging in the catalog has sections [surfaces, notes]; "bogus" is not declared.
+	cfg := "prefix: example\nintegrationBranch: main\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
-		"skills/tdd.yaml": "sections:\n  bogus:\n    drop: true\n",
+		"skills/debugging.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
 	_, err := Open(testContext(t), root)
 	if err == nil {
@@ -53,28 +53,28 @@ func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
 	}
 	// The label carries the artifact name for a named artifact (name != ""), so
 	// the message identifies which skill; assert it so that branch is pinned.
-	if !strings.Contains(err.Error(), `"tdd"`) {
-		t.Errorf("error should name the offending skill \"tdd\", got: %v", err)
+	if !strings.Contains(err.Error(), `"debugging"`) {
+		t.Errorf("error should name the offending skill \"debugging\", got: %v", err)
 	}
 }
 
 func TestOpenAllowsValidSectionOverride(t *testing.T) {
-	// "notes" is a declared section for tdd.
-	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n"
+	// "oracle-and-handoff" is a declared section for debugging.
+	cfg := "prefix: example\nintegrationBranch: main\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
-		"skills/tdd.yaml": "sections:\n  notes:\n    drop: true\n",
+		"skills/debugging.yaml": "sections:\n  oracle-and-handoff:\n    drop: true\n",
 	})
 	_, err := Open(testContext(t), root)
 	if err != nil {
-		t.Fatalf("valid section override 'notes' should succeed, got: %v", err)
+		t.Fatalf("valid section override 'oracle-and-handoff' should succeed, got: %v", err)
 	}
 }
 
 func TestOpenRejectsUnknownAgentSectionOverride(t *testing.T) {
-	// code-reviewer in the catalog has sections universal-lenses/project-focus/doc-currency.
-	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\n"
+	// reviewer in the catalog has sections universal-lenses/project-focus/doc-currency.
+	cfg := "prefix: example\nintegrationBranch: main\n"
 	root := scaffoldFiles(t, cfg, map[string]string{
-		"agents/code-reviewer.yaml": "sections:\n  bogus:\n    drop: true\n",
+		"agents/reviewer.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
 	_, err := Open(testContext(t), root)
 	if err == nil {

@@ -87,7 +87,7 @@ func TestDocsSectionParityMembershipUsesOutputShape(t *testing.T) {
 func TestSectionOrphanDetection(t *testing.T) {
 	valid := catalog.Standard.Docs["architecture"].Sections[0]
 	const orphan = "definitely-not-a-section"
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n"+sprintfVars(""), map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n"+sprintfVars(""), map[string]string{
 		"docs/parts/architecture/" + valid + ".md":  "## Valid\n\noverride body\n",
 		"docs/parts/architecture/" + orphan + ".md": "## Bogus\n\nstray\n",
 	})
@@ -138,44 +138,6 @@ func TestAgentsDocSectionParity(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:closed-workflow-profiles (TestClosedWorkflowProfiles)
-func TestClosedWorkflowProfiles(t *testing.T) {
-	core := catalog.StandardProfileView(catalog.ProfileCore).Catalog()
-	full := catalog.StandardProfileView(catalog.ProfileFull).Catalog()
-	if err := catalog.ValidateWorkflowProfiles(core); err != nil {
-		t.Fatalf("Core workflow closure: %v", err)
-	}
-	if err := catalog.ValidateWorkflowProfiles(full); err != nil {
-		t.Fatalf("Full workflow closure: %v", err)
-	}
-	for name, spec := range catalog.Standard.Skills {
-		_, inCore := core.Skills[name]
-		if inCore == spec.FullOnly {
-			t.Errorf("Core skill membership %q = %v, FullOnly = %v", name, inCore, spec.FullOnly)
-		}
-	}
-	for name, spec := range catalog.Standard.Agents {
-		_, inCore := core.Agents[name]
-		if inCore == spec.FullOnly {
-			t.Errorf("Core agent membership %q = %v, FullOnly = %v", name, inCore, spec.FullOnly)
-		}
-	}
-	for name, spec := range catalog.Standard.Docs {
-		_, inCore := core.Docs[name]
-		if inCore == spec.FullOnly {
-			t.Errorf("Core doc membership %q = %v, FullOnly = %v", name, inCore, spec.FullOnly)
-		}
-	}
-	if len(full.Skills) != len(catalog.Standard.Skills) || len(full.Agents) != len(catalog.Standard.Agents) || len(full.Docs) != len(catalog.Standard.Docs) {
-		t.Fatal("Full must retain the complete catalog")
-	}
-	for _, invalid := range []string{"", "governed", "minimal", "custom"} {
-		if _, err := catalog.ParseProfile(invalid); err == nil {
-			t.Errorf("ParseProfile(%q) succeeded", invalid)
-		}
-	}
-}
-
 // invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestMaintainableCodeDesignGuide)
 func TestMaintainableCodeDesignGuide(t *testing.T) {
 	entry, ok := catalog.Standard.Docs["maintainable-code-design"]
@@ -214,7 +176,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 		}
 	}
 
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)

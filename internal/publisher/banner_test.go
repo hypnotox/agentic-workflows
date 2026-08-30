@@ -205,7 +205,7 @@ func TestInjectBannerResidentGitignore(t *testing.T) {
 // INDEX.md's banner matches every other rendered artifact's canonical
 // bannerText.
 func TestIndexMdCarriesCanonicalBanner(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: []\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: []\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)

@@ -8,11 +8,11 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
-const glossaryCheckCfg = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
+const glossaryCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
 
 // A disabled glossary doc is never read, so it can yield no drift.
 func TestCheckGlossaryDisabled(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"))
+	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}

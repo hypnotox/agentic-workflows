@@ -111,10 +111,10 @@ func TestRepositoryAwfInvocation(t *testing.T) {
 	pi := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
 		"has no instruction body; run ./awf render.",
-		"Enable the matching ${spec.kind}-reviewer agent and run ./awf render.",
+		"Enable the reviewer agent and run ./awf render.",
 		"Enable the implementer agent and run ./awf render.",
 		"Enable the explorer agent and run ./awf render.",
-		"Enable the grounding-checker agent and run ./awf render.",
+		"Enable the premise-checker agent and run ./awf render.",
 	} {
 		if !strings.Contains(pi, want) {
 			t.Errorf("Pi runtime lacks repository wrapper repair %q", want)

@@ -20,14 +20,24 @@ const retireRelevanceMetadataName = "retire-relevance-metadata"
 // ConfigBytesForGeneration projects a supported pre-migration config into the
 // current schema for snapshot-pair validation. Upgrade remains the only writer.
 func ConfigBytesForGeneration(generation int, source []byte) ([]byte, error) {
-	if generation >= 47 {
-		return slices.Clone(source), nil
-	}
-	if generation != LiveSchemaFloor {
+	if generation < LiveSchemaFloor || generation > workflowConfigGeneration {
 		return nil, fmt.Errorf("schema %d has no supported config projection", generation)
 	}
-	updated, _, err := removeTopLevelYAMLKeys(source, "tags", "contextIgnore")
-	return updated, err
+	updated := slices.Clone(source)
+	var err error
+	if generation < 47 {
+		updated, _, err = removeTopLevelYAMLKeys(updated, "tags", "contextIgnore")
+		if err != nil {
+			return nil, err
+		}
+	}
+	if generation < 49 {
+		updated, _, err = retireWorkflowConfigBytes(updated)
+		if err != nil {
+			return nil, err
+		}
+	}
+	return updated, nil
 }
 
 func retireRelevanceMetadata(_ context.Context, tree *ProposedTree, changes *Changes) ([]FileMutation, error) {

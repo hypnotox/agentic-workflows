@@ -28,7 +28,7 @@ func TestAdvisoryCompatibilityAndReportErrorPaths(t *testing.T) {
 
 func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 	t.Run("pitfalls", func(t *testing.T) {
-		root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+		root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 			"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n",
 		})
 		p, err := Open(testContext(t), root)
@@ -49,7 +49,7 @@ func TestOutputPlanRejectsMalformedRetainedData(t *testing.T) {
 		{"glossary", "docs/glossary.yaml", "data:\n  terms: not-a-list\n", "must be a list"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{tc.path: tc.sidecar})
+			root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{tc.path: tc.sidecar})
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
@@ -62,7 +62,7 @@ func TestOutputPlanRejectsMalformedRetainedData(t *testing.T) {
 }
 
 func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -71,7 +71,7 @@ func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
 		t.Fatal(err)
 	}
 	reader := &flippingGlossaryReader{validReads: 2}
-	cfg, err := config.ParseTree(".awf", []byte("prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n"), reader)
+	cfg, err := config.ParseTree(".awf", []byte("prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n"), reader)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -86,8 +86,8 @@ func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
 }
 
 func TestListDocumentRetainedInventory(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: [rendering]\n", map[string]string{
-		"skills/tdd.yaml": "data:\n  testSurfaces: []\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n", map[string]string{
+		"skills/debugging.yaml": "data:\n  testSurfaces: []\n",
 	})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -123,11 +123,11 @@ func TestCheckStagedDriftRejectsInvalidStagedSidecars(t *testing.T) {
 	for _, tc := range []struct {
 		name, path, contents string
 	}{
-		{"catalog validation", ".awf/skills/tdd.yaml", "data: [\n"},
+		{"catalog validation", ".awf/skills/debugging.yaml", "data: [\n"},
 		{"output planning", ".awf/docs/glossary.yaml", "data:\n  terms: not-a-list\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 			repo := gitfixture.InitRepoAt(t, root)
 			gitfixture.AddAll(t, repo)
 			gitfixture.Commit(t, repo, "config", nil)

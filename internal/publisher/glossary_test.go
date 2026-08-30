@@ -10,7 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
 
-const glossaryCfg = "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n"
+const glossaryCfg = "prefix: example\nintegrationBranch: main\nvars: {}\n"
 
 // renderGlossary opens root and returns the rendered glossary doc's content.
 func renderGlossary(t *testing.T, root string) string {

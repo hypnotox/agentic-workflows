@@ -16,7 +16,7 @@ import (
 // awf wrapper (or nil when none is produced).
 func runnerFile(t *testing.T) *RenderedFile {
 	t.Helper()
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -117,7 +117,7 @@ func TestRunnerPublicationSafe(t *testing.T) {
 // A retired co-owned runner identity has no special prune behavior. Like an
 // ordinary managed output, it is removed without a backup and reported pruned.
 func TestPruneTreatsRetiredRunnerAsOrdinaryManagedOutput(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -164,7 +164,7 @@ func TestPruneTreatsRetiredRunnerAsOrdinaryManagedOutput(t *testing.T) {
 }
 
 func TestPruneRemovesManagedSymlinkWithoutTargetAccess(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -221,7 +221,7 @@ func TestRunnerNotASingletonKind(t *testing.T) {
 // `create ... to override` pointer invites) is claimed by the closed-tree sweep, so
 // override renders and `./awf check` does not flag `.awf/runner` as unclaimed.
 func TestRunnerPartOverrideClaimed(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -260,7 +260,7 @@ func TestRunnerPartOverrideClaimed(t *testing.T) {
 // A part path that reads as a directory surfaces as a render error rather
 // than a silent default.
 func TestRunnerPartReadError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)

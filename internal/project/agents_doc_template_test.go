@@ -3,11 +3,8 @@ package project
 import (
 	"os"
 	"path/filepath"
-	"slices"
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 )
 
 // invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestAgentsDocNativeSkillRouter)
@@ -90,7 +87,7 @@ func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestGuideOmitsLocalAndStandardSkillMetadata)
 func TestGuideOmitsLocalAndStandardSkillMetadata(t *testing.T) {
 	const localDescription = "Route ultraviolet nebula work through its native procedure."
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"skills/nebula-router.yaml": "data:\n  description: " + localDescription + "\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -109,13 +106,6 @@ func TestGuideOmitsLocalAndStandardSkillMetadata(t *testing.T) {
 		"Enabled skills:", "Trigger:", "Usually follows:", "Common follow-ups:", "fallback",
 		"example-brainstorming", "example-bugfix", "example-nebula-router", localDescription,
 		"(chain):", "(task):", "(support):",
-	}
-	for _, name := range []string{"brainstorming", "bugfix"} {
-		profile := catalog.Standard.Skills[name].Profile
-		banned = append(banned, profile.Purpose, profile.Trigger)
-		for _, neighbor := range append(slices.Clone(profile.UsuallyFollows), profile.CommonFollowUps...) {
-			banned = append(banned, "example-"+neighbor)
-		}
 	}
 	for _, residue := range banned {
 		if strings.Contains(string(body), residue) {

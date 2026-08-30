@@ -20,7 +20,7 @@ import (
 // body, syncs it, and returns the rendered docs/workflow.md content.
 func syncedWorkflowDoc(t *testing.T, body string) string {
 	t.Helper()
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n",
 		map[string]string{"parts/workflow/commit-discipline.md": body})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -40,7 +40,7 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocRendersAndPreservesBody)
 // invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocRendersAndPreservesBody)
 func TestLocalDocRendersAndPreservesBody(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident-response\n    title: Incident response\n    description: Handle incidents.\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident-response\n    title: Incident response\n    description: Handle incidents.\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -94,7 +94,7 @@ func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneUsesFirstFreeBackupSuffix)
 func TestLocalDocPruneUsesFirstFreeBackupSuffix(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -123,7 +123,7 @@ func TestLocalDocPruneUsesFirstFreeBackupSuffix(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneRejectsSymlinkAndKeepsLock)
 func TestLocalDocPruneRejectsSymlinkAndKeepsLock(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -150,7 +150,7 @@ func TestLocalDocPruneRejectsSymlinkAndKeepsLock(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneAbsentSourceNeedsNoBackup)
 func TestLocalDocPruneAbsentSourceNeedsNoBackup(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -173,14 +173,14 @@ func TestLocalDocPruneAbsentSourceNeedsNoBackup(t *testing.T) {
 }
 
 func TestLocalDocRejectsStandardOutputCollision(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: architecture\n    title: Architecture\n    description: Duplicate standard output.\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: architecture\n    title: Architecture\n    description: Duplicate standard output.\n")
 	if _, err := Open(testContext(t), root); err == nil || !strings.Contains(err.Error(), "collides with standard output") {
 		t.Fatalf("standard-output collision error = %v", err)
 	}
 }
 
 func TestCommitPolicyRenderDataProjection(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -245,7 +245,7 @@ func TestCommentOnlyPartRendersEmptySection(t *testing.T) {
 
 // A malformed whole-line opener in a part fails the render naming the part path.
 func TestMalformedAuthoringCommentFailsSync(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n",
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n",
 		map[string]string{"parts/workflow/commit-discipline.md": "<!-- awf:comment unclosed\n"})
 	p, err := Open(testContext(t), root)
 	if err != nil {
@@ -293,7 +293,7 @@ func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 		t.Fatalf("embedded comment-only include lacks qualified directive %q", directive)
 	}
 
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n", nil)
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", nil)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -311,7 +311,7 @@ func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
 }
 
 func TestRenderTargetTemplateSourceActivation(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nrender:\n  templateSourceRoot: templates\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nrender:\n  templateSourceRoot: templates\n")
 	const tid = "adr-readme/README.md.tmpl"
 	src, err := fs.ReadFile(templates.FS, tid)
 	if err != nil {

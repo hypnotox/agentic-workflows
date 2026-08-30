@@ -67,7 +67,7 @@ func TestRetireClaimProvenanceMigrationConfinesPathsAndPreservesMode(t *testing.
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(applied, []string{retireClaimProvenanceMetadataName}) || len(changes) != 1 || len(mutations) != 1 {
+	if !slices.Equal(applied, []string{retireClaimProvenanceMetadataName, retireWorkflowConfigName}) || len(changes) != 1 || len(mutations) != 1 {
 		t.Fatalf("applied=%v changes=%v mutations=%#v", applied, changes, mutations)
 	}
 	mutation := mutations[0]

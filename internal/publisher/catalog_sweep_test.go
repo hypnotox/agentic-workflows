@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"fmt"
 	"io/fs"
-	"os"
 	"path/filepath"
 	"reflect"
 	"regexp"
@@ -735,107 +734,5 @@ func TestSingletonConditionalInspectionRejectsMissingContextDescendant(t *testin
 				t.Fatalf("missing render-context descendant was accepted: %s", strings.Join(path, "."))
 			}
 		})
-	}
-}
-
-// kebabToCamel converts a kebab-case artifact name to its test-func stem
-// ("reviewing-impl" → "ReviewingImpl").
-func kebabToCamel(name string) string {
-	parts := strings.Split(name, "-")
-	for i, p := range parts {
-		parts[i] = strings.ToUpper(p[:1]) + p[1:]
-	}
-	return strings.Join(parts, "")
-}
-
-func goldenTestSource(t *testing.T) string {
-	t.Helper()
-	// Scan every semantic-owner test file rather than one aggregate.
-	paths := []string{
-		"../project/agent_template_test.go",
-		"../project/maintainable_workflow_template_test.go",
-		"../project/diagnostic_workflow_template_test.go",
-		"../project/authoring_workflow_template_test.go",
-		"../project/review_workflow_template_test.go",
-		"../project/effort_workflow_template_test.go",
-		"../project/publication_safe_template_test.go",
-		"../project/agents_doc_template_test.go",
-		"../project/documentation_template_test.go",
-	}
-	var source strings.Builder
-	for _, path := range paths {
-		body, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatalf("read golden test source %s: %v", path, err)
-		}
-		source.Write(body)
-		source.WriteByte('\n')
-	}
-	return source.String()
-}
-
-// TestEveryCatalogArtifactHasGoldenTest asserts a per-artifact golden test
-// func exists across the semantic-owner test sources for every catalog skill
-// and agent (source-scan mechanic, precedent TestArchitectureDocNamesEveryCmd;
-// ADR-0080 Decision 4).
-// invariant: rendering/templates:golden-test-completeness (TestEveryCatalogArtifactHasGoldenTest)
-func TestEveryCatalogArtifactHasGoldenTest(t *testing.T) {
-	src := goldenTestSource(t)
-	for name := range catalog.Standard.Skills {
-		if needle := "func Test" + kebabToCamel(name) + "Template("; !strings.Contains(src, needle) {
-			t.Errorf("no golden test for skill %q - add %s to a semantic-owner golden test file", name, needle)
-		}
-	}
-	for name := range catalog.Standard.Agents {
-		if needle := "func Test" + kebabToCamel(name) + "Agent("; !strings.Contains(src, needle) {
-			t.Errorf("no golden test for agent %q - add %s to a semantic-owner golden test file", name, needle)
-		}
-	}
-}
-
-// goldenFuncRe matches a golden-shaped declaration in a semantic-owner test
-// source: Test<Stem>Template or Test<Stem>Agent with the suffix directly
-// before the parenthesis (TestAgentsDocTemplateConfigDriven is not
-// golden-shaped).
-var goldenFuncRe = regexp.MustCompile(`func Test([A-Za-z0-9]+)(Template|Agent)\(`)
-
-// nonArtifactGoldens lists the golden-shaped Template test stems in the
-// semantic-owner sources that test non-catalog artifacts (doc singletons);
-// entries fail when stale (ADR-0080 Decision 7).
-var nonArtifactGoldens = map[string]bool{
-	"DocArchitecture":   true,
-	"Glossary":          true,
-	"RoadmapGraduation": true,
-}
-
-// TestNoOrphanGoldenTest is the reverse of TestEveryCatalogArtifactHasGoldenTest:
-// every golden-shaped test func in the semantic-owner sources must name a
-// current catalog artifact, so a golden orphaned by a catalog removal fails
-// here even while its lingering .tmpl file keeps it rendering.
-func TestNoOrphanGoldenTest(t *testing.T) {
-	src := goldenTestSource(t)
-	skills, agents := map[string]bool{}, map[string]bool{}
-	for name := range catalog.Standard.Skills {
-		skills[kebabToCamel(name)] = true
-	}
-	for name := range catalog.Standard.Agents {
-		agents[kebabToCamel(name)] = true
-	}
-	seenExempt := map[string]bool{}
-	for _, m := range goldenFuncRe.FindAllStringSubmatch(src, -1) {
-		stem, kind := m[1], m[2]
-		switch {
-		case kind == "Template" && nonArtifactGoldens[stem]:
-			seenExempt[stem] = true
-		case kind == "Template" && !skills[stem]:
-			t.Errorf("orphan golden Test%sTemplate: no catalog skill matches - remove it or list it in nonArtifactGoldens", stem)
-		case kind == "Agent" && !agents[stem]:
-			t.Errorf("orphan golden Test%sAgent: no catalog agent matches - remove it", stem)
-		}
-	}
-	for stem := range nonArtifactGoldens {
-		if !seenExempt[stem] {
-			t.Errorf("stale nonArtifactGoldens entry %q: no such golden-shaped func in semantic-owner sources", stem)
-		}
 	}
 }

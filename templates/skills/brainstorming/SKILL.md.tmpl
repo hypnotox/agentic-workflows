@@ -1,56 +1,18 @@
 ---
 name: {{ .prefix }}-brainstorming
-description: Use when a material decision is unresolved, such as an ambiguous outcome, competing durable approaches, or a boundary that must change.
+description: Resolve a material choice before implementation.
 ---
 
-<!-- awf:section preamble -->
-# {{ .prefix }}-brainstorming
+# {{ .prefix }} brainstorming
 
-Brainstorming is the sole workflow owner of concise implementation outlines and fuller material-choice design: it owns clarification, design exploration, proportionate presentation, conditional grounding invocation, and the explicit pre-artifact outline approval. It does not create an effort or require one merely to begin brainstorming.
-<!-- awf:end -->
-
-<!-- awf:section when-to-invoke -->
-## When to invoke
-
-Use when a material choice or clarification is unresolved and no explicit approval evidence is available. Proceed directly, whatever kind of file the change touches, when the intended outcome, solution shape, affected boundary, and verification are already clear.
-<!-- awf:end -->
+Use only when a material choice is unresolved: the requested outcome is ambiguous, viable approaches have meaningfully different durable consequences, or safety, compatibility, or scope is unsettled. Do not use it as a mutation gate for routine implementation detail.
 
 <!-- awf:section procedure -->
 ## Procedure
 
-1. **Evaluate continuity independently.** Evaluate it when brainstorming begins and whenever a continuity-relevant fact changes. When independent entry continuity evaluation fires, immediately invoke `{{ if index .skills "effort-workflow" }}{{ .prefix }}-effort-workflow{{ else }}the effort lifecycle owner{{ end }}`. Brainstorming may begin effort-free, but if it continues after its first settled material decision, invoke it to create or resume ownership before proceeding further. A single-decision brainstorm may remain effort-free only when no independent continuity need fires. Brainstorming itself never creates an effort.
-2. **Orient in the topic.** Invoke `{{ .prefix }}-orienting` when its repository-truth moments apply.
-3. **Clarify one question at a time.** Narrow the outcome without inventing requirements.
-4. **Present proportionate approaches.** Offer alternatives with trade-offs and a recommendation when a material choice exists; a straightforward choice may need only a concise comparison.
-5. **Evaluate repository-premise risk independently.** If correctness depends on broad or uncertain repository facts, hidden coupling, cross-domain effects, unfamiliar architecture, or high-consequence assumptions, invoke `{{ .prefix }}-grounding`. A localized design choice may skip grounding, while a clear broad-repository design may ground without further brainstorming. Resolve its mechanical, reasoned, or user-decision findings in this workflow; do not dispatch the grounding checker directly or loop grounding.
-<!-- awf:end -->
+1. Clarify the outcome, constraints, affected boundary, and verification needed.
+2. Compare proportionate viable options, including consequences and trade-offs; recommend one.
+3. Present the resulting outline and obtain explicit approval before work depending on the choice.
 
-<!-- awf:section example-clarifying-questions -->
-Ask focused questions one at a time and avoid inventing requirements. Prefer questions that expose the actual behavior, boundary, trade-off, or verification choice.
-<!-- awf:end -->
-
-<!-- awf:section design-sections -->
-Per `docs/maintainable-code-design.md`, settle the semantic model and ownership, representation boundaries, dependency direction, test seams, and preparatory-refactor decision in a proportionate simplicity contract: scope and exclusions, structural approach and dependencies, patterns or abstractions, and checks and testing strategy. An unresolved material choice receives a concise implementation outline even when straightforward; fuller material-choice design retains this same contract. Scale the presentation to the choice; a straightforward change may settle these in a few sentences rather than a fixed checklist. The final approved design becomes the implementation boundary and closes the approved decision set. Do not strengthen it with related commitments during later artifact authoring.
-<!-- awf:include clean-integration -->
-{{if ne .profile "core"}} Raise a useful additional decision as a suggestion outside the ADR until accepted, and express every accepted decision as the narrowest durable commitment that preserves its approved semantics.{{end}}
-<!-- awf:end -->
-
-<!-- awf:section no-spec-rule -->
-Do not create a separate specification.{{if ne .profile "core"}} Put a choice in an ADR only when it remains load-bearing after implementation or changes an active current-state claim. Write a plan only when sequencing, coordination, or resumability materially helps. Neither artifact follows automatically from brainstorming or from the other artifact.{{else}} Implement directly once the approved boundary and verification are clear.{{end}}
-<!-- awf:end -->
-
-<!-- awf:section terminal-step -->
-## Final approval
-
-Present the complete design or concise implementation outline after any grounding findings are resolved, explicitly request approval, and stop. If the user requests changes, revise and re-present without recursively grounding unless changed facts newly warrant it. Once approved, independently evaluate {{if ne .profile "core"}}the ADR, plan, {{end}}continuity, and implementation-review triggers; no later mechanism is automatic.
-
-<!-- awf:include checkpoint-approval -->
-<!-- awf:end -->
-
-<!-- awf:section definitions -->
-A load-bearing decision remains meaningful after implementation.{{ with .data.loadBearingExamples }} Examples:{{ range . }} {{ .item }};{{ end }}{{ end }}{{if ne .profile "core"}} A plan is warranted only when sequencing, coordination, or resumability materially helps.{{else}} Use the approved boundary directly for implementation.{{end}}{{ with .data.errorBoundaries }} Consider configured error boundaries:{{ range . }} {{ .name }};{{ end }}{{ end }}
-<!-- awf:end -->
-
-<!-- awf:section anti-patterns -->
-Do not use line count, artifact type, another mechanism firing, or a bundled "non-trivial" label as a trigger. Do not skip explicit final approval when brainstorming fires.
+Do not create an effort. If continuity is useful, the effort workflow decides that independently. Once approved, preserve the settled boundary; return here only for a newly unresolved material choice.
 <!-- awf:end -->

@@ -24,7 +24,7 @@ Everything else about how the change is carried out is the route: phase and task
 Precedence is decided per constraint, not per rule. A clause that bears only on how a change is carried out is subordinate to the protected contract, so one rule may be protected in its protected clauses and subordinate in its route clauses. A route detail binds only when a settled decision states that it is load-bearing.
 
 <!-- awf:template-source templates/partials/governance-footprints.md -->
-Core and Full select available governance artifacts. They do not select different standards of correctness, autonomy, maintainability, or review quality. Core includes the operational workflow. Full adds ADR, plan, current-state, and audit capabilities.
+Awf renders one standard governance footprint. Projects apply its capabilities when relevant rather than selecting a profile or rigor mode.
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ### Model selection
@@ -51,54 +51,29 @@ Decomposition preserves parent-owned focused evidence for each fresh unit, and t
 |---|---|
 | Brainstorming | A material choice or clarification needs resolution. |
 | Continuity/effort | Durable continuity materially helps. |
-| Grounding | Repository premises are broad or uncertain. |
-| ADR | A choice is load-bearing or active claims change. |
-| Plan | Sequencing, coordination, or resumability materially helps. |
-| Implementation review | Independent assurance has value. |
+| Repository context | Orientation, exploration, or premise challenge adds value. |
+| Decision record | A load-bearing choice should outlive implementation. |
+| Operational plan | Sequencing, coordination, or resumability materially helps. |
+| Review | Material risk or uncertainty warrants independent assurance. |
 
 ### Boundary and ordering
 
-
 - Use any native skill when its purpose fits.
-
-- Evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review need independently at intake, then re-evaluate only affected triggers when material facts change. A plan fires when sequencing, coordination, or resumability materially helps.
-
-- A plan records and operationalizes approved choices rather than inventing speculative structure, checks, or work.
-
-- Full ordinary plan review verifies every ADR from parsed plan-level `adrs:` links.
-
-- After a substantive ADR amendment, review the ADR first and then every deterministically linked Proposed plan; if implementation started, reassess completed affected phases and renew assurance where needed.
-
-- A plan correction that would contradict linked authority returns to ADR amendment and review first.
-
-- Implementation review fires when independent assurance has value and uncertainty resolves toward review.
-
-- Universal repository authority, documentation, verification, and commit obligations apply regardless of which mechanisms fire.
-
-- An unresolved material decision, not the act of mutating production code, is what brainstorming stops for; it alone presents a proportionate outline and obtains explicit approval, and a routine change whose protected contract is already settled proceeds without that stop.
-
-- Retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline each establish that boundary; delegated owners consume the parent-supplied boundary without another approval interaction.
-
-- The approval boundary precedes ADR and plan authoring, while effort, grounding, ADR, plan, and review triggers remain independent.
-
-- Core and Full are governance footprints of this one workflow, not different standards of correctness, autonomy, maintainability, or review quality; they add no depth controls, rigor modes, routers, classifiers, or runtime policy knobs.
+- Evaluate capabilities independently at intake, then re-evaluate only affected needs when material facts change.
+- Brainstorming stops only for an unresolved material decision. A routine change whose protected contract is settled proceeds without that stop.
+- Retained conversation, user-provenance effort decision-log evidence, or an approved effort-local plan can establish the boundary for implementation.
+- A decision record preserves a durable choice. An operational plan organizes implementation-time work and remains opaque effort scratch.
+- Review follows risk and uncertainty rather than artifact type or lifecycle state.
+- Repository authority, documentation, verification, and commit obligations apply regardless of which capabilities are used.
+- No line count, artifact type, bundled-work label, classifier, checklist, or profile selects the workflow.
 
 ### Ownership
 
-
-- `effort-workflow` alone owns autonomous continuity-triggered effort creation through checkpoints, integration, divergence handling, pending artifact closure, managed-topology removal, retrospective routing, and finish.
-
+- `effort-workflow` owns continuity-triggered effort creation through checkpoints, integration, divergence handling, safe topology removal, retrospective, and finish.
 - Work without continuity need carries no effort or memory.
-
-- Existing efforts resume under fixed identity only inside their outcome, with one user-managed writer and report-only children.
-
-- A distinct active effort is never silently reused: reason whether it is kept with a resumable checkpoint or discontinued after necessary context transfer, inspected safe cleanup or explicit intentional discard, and ordinary archival finish.
-
-- `reviewing-impl` owns assurance only and returns effort-backed work to `effort-workflow`; after assurance settles or is explicitly skipped, the effort-free execution parent owns any applicable deferred ADR/plan terminal closure.
-
-- Divergent integration activates review before topology removal.
-
-- No line count, artifact type, bundled work label, classifier, checklist, router, or new runtime mechanism selects the workflow.
+- Existing efforts resume under fixed identity only inside their outcome, with one user-managed writer and report-only readers.
+- A distinct active effort is never silently reused. Keep it resumable or transfer necessary context before inspected safe cleanup and archival finish.
+- The implementation parent owns integration, staging, commits, verification, and review judgment. Divergent integration activates review before topology removal.
 
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl#working-memory -->
@@ -158,8 +133,6 @@ Decomposition preserves parent-owned focused evidence for each fresh unit, and t
 
 - Brainstorming retains the single mandatory pre-artifact outline approval check-in, stopping for explicit approval and persisting it only when an effort exists.
 
-- Settled decision review continues autonomously to the independently selected implementation path.
-
 - At a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work. Continue autonomously or through a target-native successor when one is available. Handoff is prohibited while required late-creation memory initialization remains incomplete.
 
 - Reorient from repository authority before substantive successor work. Append a log only for an actual fresh boundary; continuation, cancellation, or failure that leaves the current session active appends none. Target-specific skill guidance owns any executable replacement protocol.
@@ -196,7 +169,7 @@ A routine implementation checkpoint occurs only at a safe resumable transaction 
 
 - Optional `activity.json` is advisory and may make older binaries unable to read the effort, but never gates unrelated show, list, or finish commands.
 
-- After implementation assurance settles or is explicitly skipped, `effort-workflow` integrates a managed-worktree effort, activates review after any divergent merge, completes deferred artifact transitions, removes path, registration, and branch, invokes retrospective, and runs `./awf effort finish <slug>` last.
+- After implementation assurance settles or is explicitly skipped, `effort-workflow` integrates a managed-worktree effort, activates review after any divergent merge, removes path, registration, and branch, invokes retrospective, and runs `./awf effort finish <slug>` last.
 
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl#commit-discipline -->
@@ -227,7 +200,7 @@ The code scopes mirror the domain vocabulary in `.awf/config.yaml`; see [the dom
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Documentation currency
 
-Documentation travels with the change that makes it true. When you change behaviour, update the affected docs (this file, the agent guide, ADRs, and any reference tables) in the same commit.
+Documentation travels with the change that makes it true. When you change behaviour, update the affected docs, current-state claims, decision records, and reference tables in the same commit.
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl#composing-the-gate -->
 <!-- awf:edit composing-the-gate: from .awf/parts/workflow/composing-the-gate.md -->

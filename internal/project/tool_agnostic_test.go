@@ -19,7 +19,6 @@ import (
 //
 // Also the tool-name half of the implementer contract's third sentence: the
 // scan covers every rendered agent body, the implementer's included.
-// invariant: rendering/workflow-skill-templates:implementer-role-contract (TestSkillProseToolAgnostic)
 func TestSkillProseToolAgnostic(t *testing.T) {
 	cat := catalog.Standard
 	forbidden := []*regexp.Regexp{

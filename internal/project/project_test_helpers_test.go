@@ -46,19 +46,7 @@ func scaffoldFiles(t *testing.T, configYAML string, files map[string]string) str
 	return scaffoldFilesRaw(t, withTestGateCmd(withTestProfile(configYAML)), files)
 }
 
-func withTestProfile(configYAML string) string {
-	if strings.Contains(configYAML, "profile:") {
-		return configYAML
-	}
-	lines := strings.Split(strings.TrimSuffix(configYAML, "\n"), "\n")
-	for i, line := range lines {
-		if strings.HasPrefix(line, "prefix:") {
-			lines = slices.Insert(lines, i+1, "profile: full")
-			break
-		}
-	}
-	return strings.Join(lines, "\n") + "\n"
-}
+func withTestProfile(configYAML string) string { return configYAML }
 
 func scaffoldFilesRaw(t *testing.T, configYAML string, files map[string]string) string {
 	t.Helper()
@@ -141,7 +129,6 @@ integrationBranch: master
 vars:
   testCmd: go test ./...
   gateCmd: make gate
-  gateCmdFull: make gate full
 `
 
 // lockFile is the relocated lock path under the tree.
@@ -155,10 +142,8 @@ func configPath(root string) string {
 }
 
 const sampleYAML = `prefix: example
-profile: full
 integrationBranch: main
 vars:
   testCmd: go test ./...
   gateCmd: make gate
-  gateCmdFull: make gate full
 `

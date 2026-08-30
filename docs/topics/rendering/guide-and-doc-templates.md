@@ -62,11 +62,6 @@ Backing: test
 Every shipped standard term carries exactly a string term and a string meaning, with no domains key, no ADR reference, and no meaning exceeding the terseness threshold, so the shipped layer is portable into any adopter tree.
 Backing: test
 
-### `invariant: guide-scopes-derived`
-
-The agent-guide template renders its commit-scope mention from the root commit-scopes render key rather than any hand-written scope list in the agents-doc data, and the mention degrades to generic Conventional Commits prose when no scopes are configured.
-Backing: test
-
 ### `invariant: no-doc-path-vars`
 
 No template under templates/ references any of the removed doc-path or project-specific vars (workflowDoc, debuggingDoc, pitfallsDoc, roadmapDoc, stateDocsPath, oracleStateDoc, autonomousAdrRef, hostGitAdrRef, keyInvariantAdrRef, noDivingAdrRef, perTaskReviewAdrRef); doc references are supplied through the layout instead.
@@ -74,13 +69,14 @@ Backing: test
 
 ### `invariant: guide-entry-point-routing`
 
-The rendered guide treats exposed native-skill descriptions as routing metadata and selects only bodies governing the next concrete action. Core routes the operational workflow without Full-only governance bodies; Full adds its selected governance bodies without changing the workflow's correctness, autonomy, maintainability, or review-quality bar. Empty and missing render data remains coherent, and selection stays advisory.
+The rendered guide treats exposed native-skill descriptions as routing metadata and selects only bodies governing the next concrete action. The one standard catalog keeps every conditional capability available without turning selection into a mutation gate. Empty and missing render data remains coherent, and selection stays advisory.
 Backing: test
 
 ### `invariant: working-memory-single-home`
 
-Working-memory protocol has one canonical capability-neutral workflow-document home in both governance footprints. The root guide carries only slim native-skill routing, while `effort-workflow` alone owns creation through finish and preserves the one-user-managed-writer boundary.
-Backing: test
+Working-memory protocol has one canonical capability-neutral workflow-document home. The root guide carries only slim native-skill routing, while `effort-workflow` alone owns creation through finish and preserves the one-user-managed-writer boundary.
+Backing: unbacked
+Verify: Inspect the workflow document, root guide, and effort-workflow skill; confirm the complete protocol occurs only in the workflow document, the guide stays at routing altitude, and effort-workflow alone owns lifecycle and the one-writer rule.
 
 ### `invariant: agent-guide-size-budgets`
 
@@ -89,5 +85,5 @@ Backing: test
 
 ### `invariant: maintainable-code-design-guide`
 
-Both governance footprints render `docs/maintainable-code-design.md` as a mandatory document-map singleton with its ordered convention-part sections. The guide is the canonical adopter-neutral maintainable-design doctrine and makes the simplest sufficient solution the default; the separate shared clean-integration rule applies that doctrine proportionally through workflow consumers without duplicating it. Full additionally supplies plan routing where useful for sequencing, coordination, or resumability without changing the maintainability bar.
+The standard footprint renders `docs/maintainable-code-design.md` as a mandatory document-map singleton with its ordered convention-part sections. The guide is the canonical adopter-neutral maintainable-design doctrine and makes the simplest sufficient solution the default; implementation and review guidance applies that doctrine proportionally without duplicating it. Planning remains conditionally available where useful for sequencing, coordination, or resumability without changing the maintainability bar.
 Backing: test

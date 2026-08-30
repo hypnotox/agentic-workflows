@@ -13,7 +13,7 @@ import (
 func corpusFixture(t *testing.T) (string, *config.Config) {
 	t.Helper()
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: test\nprofile: full\nintegrationBranch: main\ndomains: [alpha, beta]\n")
+	testsupport.WriteAwfConfig(t, root, "prefix: test\nintegrationBranch: main\ndomains: [alpha, beta]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/alpha.yaml"), "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/beta.yaml"), "paths: [\"pkg/**\"]\n")
 	cfg, err := config.Load(filepath.Join(root, ".awf"))
@@ -112,7 +112,7 @@ func TestRecordMetaRejectsDuplicateID(t *testing.T) {
 func TestLoadCorpusPropagatesMarkerFailure(t *testing.T) {
 	root, _ := corpusFixture(t)
 	writeTopic(t, root, "alpha", "x", "title: X\nsummary: X.\npaths: [\"internal/**\"]\n", "Intro.\n\n## Claims\n### `invariant: stable`\nStable.\nBacking: test\n")
-	cfg := parseCfg(t, "prefix: test\nprofile: full\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n")
+	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n")
 	if _, err := loadCorpusForTest(t, root, cfg); err == nil {
 		t.Fatal("marker failure was not propagated")
 	}

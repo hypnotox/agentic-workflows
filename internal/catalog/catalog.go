@@ -2,36 +2,15 @@
 package catalog
 
 import (
-	"fmt"
 	"maps"
 	"reflect"
 	"slices"
 )
 
-// WorkflowKind classifies a governed workflow body.
-type WorkflowKind string
-
-const (
-	WorkflowChain   WorkflowKind = "chain"
-	WorkflowTask    WorkflowKind = "task"
-	WorkflowSupport WorkflowKind = "support"
-)
-
-// WorkflowProfile describes how an enabled skill can be selected. Its
-// relationships are advisory metadata and never enablement edges.
-type WorkflowProfile struct {
-	Kind            WorkflowKind
-	Purpose         string
-	Trigger         string
-	UsuallyFollows  []string
-	CommonFollowUps []string
-}
-
 // TargetSpec declares the render sections of a target that has no further
 // per-target configuration (the domain doc). Data carries the artifact's
 // default render data; sidecars override it per top-level key (ADR-0045).
 type TargetSpec struct {
-	FullOnly bool     `yaml:"fullOnly"`
 	Sections []string `yaml:"sections"`
 	// RequiresSkills names the catalog skills this artifact's template references
 	// unconditionally - rendered into its output even when the referenced skill is
@@ -47,7 +26,6 @@ type TargetSpec struct {
 // Description is a normally rendered template fragment; the instruction body
 // comes from the section-rendered agent template.
 type AgentSpec struct {
-	FullOnly       bool
 	Name           string
 	Description    string
 	Sections       []string       `yaml:"sections"`
@@ -61,14 +39,12 @@ type AgentSpec struct {
 // Data carries the artifact's default render data; sidecars override it per
 // top-level key (ADR-0045).
 type SkillSpec struct {
-	FullOnly      bool     `yaml:"fullOnly"`
 	Sections      []string `yaml:"sections"`
 	RequiresDoc   string   `yaml:"requiresDoc"`
 	RequiresAgent string   `yaml:"requiresAgent"`
 	// RequiresSkills: see TargetSpec.RequiresSkills (ADR-0080).
-	RequiresSkills []string        `yaml:"requiresSkills"`
-	Data           map[string]any  `yaml:"data"`
-	Profile        WorkflowProfile `yaml:"profile"`
+	RequiresSkills []string       `yaml:"requiresSkills"`
+	Data           map[string]any `yaml:"data"`
 }
 
 // DocEntry is one entry in the unified doc collection. Every entry renders;
@@ -79,7 +55,6 @@ type SkillSpec struct {
 // the AGENTS.md document map lists via .layout.*; AgentsDoc flags the one
 // root-output special case. Title/Desc/Sections/Data are as before.
 type DocEntry struct {
-	FullOnly    bool
 	Title       string
 	Desc        string
 	Sections    []string
@@ -148,115 +123,20 @@ type Catalog struct {
 	Vars      []VarDescriptor      `yaml:"vars"`
 }
 
-// Profile selects one closed workflow footprint from the complete catalog.
-type Profile string
-
-const (
-	ProfileCore Profile = "core"
-	ProfileFull Profile = "full"
-)
-
-func ParseProfile(value string) (Profile, error) {
-	profile := Profile(value)
-	if profile != ProfileCore && profile != ProfileFull {
-		return "", fmt.Errorf("profile must be core or full, got %q", value)
-	}
-	return profile, nil
-}
-
-// View is the immutable selected catalog one composition root gives to a project.
+// View is the immutable catalog snapshot one composition root gives to a project.
 type View struct {
 	catalog *Catalog
-	profile Profile
 }
 
-// CompleteView returns one complete Full catalog snapshot.
-func CompleteView() View { return NewProfileView(Standard, ProfileFull) }
+// CompleteView returns the standard catalog snapshot.
+func CompleteView() View { return NewView(Standard) }
 
-// StandardProfileView projects a profile from the compile-time standard catalog.
-func StandardProfileView(profile Profile) View { return NewProfileView(Standard, profile) }
-
-// NewView preserves the injected-catalog seam as a Full view.
-func NewView(c *Catalog) View { return NewProfileView(c, ProfileFull) }
-
-// NewProfileView projects one closed profile from the complete catalog.
-func NewProfileView(c *Catalog, profile Profile) View {
+// NewView returns an immutable snapshot of c.
+func NewView(c *Catalog) View {
 	if c == nil {
 		panic("catalog view: missing catalog")
 	}
-	if _, err := ParseProfile(string(profile)); err != nil {
-		panic(err)
-	}
-	selected := cloneCatalog(c)
-	if profile == ProfileCore {
-		projectCore(selected)
-	}
-	return View{catalog: selected, profile: profile}
-}
-
-func projectCore(c *Catalog) {
-	for name, spec := range c.Skills {
-		if spec.FullOnly {
-			delete(c.Skills, name)
-		}
-	}
-	for name, spec := range c.Agents {
-		if spec.FullOnly {
-			delete(c.Agents, name)
-		}
-	}
-	for name, spec := range c.Docs {
-		if spec.FullOnly {
-			delete(c.Docs, name)
-		}
-	}
-	if c.DomainDoc.FullOnly {
-		c.DomainDoc = TargetSpec{}
-	}
-	if workflow, ok := c.Docs["workflow"]; ok {
-		workflow.Desc = "principles, the brainstorm -> implement/test -> review chain, continuity, and commit discipline"
-		c.Docs["workflow"] = workflow
-	}
-	if reviewer, ok := c.Agents["code-reviewer"]; ok {
-		reviewer.Data["focusItems"] = []any{
-			map[string]any{"name": "approved-boundary-adherence", "description": "the diff matches the approved scope and content; unexplained drift is a finding"},
-			map[string]any{"name": "test-coverage", "description": "behaviour changes carry tests in the same commit; no assertion is weakened to pass"},
-			map[string]any{"name": "verification-instrument-can-fail", "description": "every added or changed mechanical check has a negative case or temporary falsification proving the mutation landed before its passing verdict counts"},
-			map[string]any{"name": "check-purpose", "description": "every material check names the behavior or repository property it proves; flag choreography-only enforcement with no such obligation"},
-		}
-		reviewer.Data["readStep"] = "Read the diff in full (`git diff baseSha..headSha`) and every requirement or project document referenced by name in the brief."
-		c.Agents["code-reviewer"] = reviewer
-	}
-	for name, spec := range c.Skills {
-		spec.Profile.UsuallyFollows = selectedNames(spec.Profile.UsuallyFollows, c.Skills)
-		spec.Profile.CommonFollowUps = selectedNames(spec.Profile.CommonFollowUps, c.Skills)
-		spec.RequiresSkills = selectedNames(spec.RequiresSkills, c.Skills)
-		c.Skills[name] = spec
-	}
-	for name, spec := range c.Agents {
-		spec.RequiresSkills = selectedNames(spec.RequiresSkills, c.Skills)
-		c.Agents[name] = spec
-	}
-	// Governance record-model vocabulary belongs to Full. Operational terms stay.
-	if glossary, ok := c.Docs["glossary"]; ok {
-		if terms, ok := glossary.Data["standardTerms"].([]any); ok {
-			filtered := terms[:0]
-			for _, raw := range terms {
-				entry, _ := raw.(map[string]any)
-				term, _ := entry["term"].(string)
-				if slices.Contains([]string{"current-state topic", "claim", "invariant backing"}, term) {
-					continue
-				}
-				filtered = append(filtered, raw)
-			}
-			glossary.Data["standardTerms"] = filtered
-			c.Docs["glossary"] = glossary
-		}
-	}
-}
-
-func selectedNames(names []string, selected map[string]SkillSpec) []string {
-	return slices.DeleteFunc(slices.Clone(names), func(name string) bool { _, ok := selected[name]; return !ok })
+	return View{catalog: cloneCatalog(c)}
 }
 
 // Catalog returns a defensive snapshot of the view. Callers may retain or
@@ -278,8 +158,6 @@ func cloneCatalog(src *Catalog) *Catalog {
 		spec.Sections = slices.Clone(spec.Sections)
 		spec.RequiresSkills = slices.Clone(spec.RequiresSkills)
 		spec.Data = cloneData(spec.Data)
-		spec.Profile.UsuallyFollows = slices.Clone(spec.Profile.UsuallyFollows)
-		spec.Profile.CommonFollowUps = slices.Clone(spec.Profile.CommonFollowUps)
 		out.Skills[name] = spec
 	}
 	for name, spec := range out.Agents {

@@ -95,7 +95,7 @@ func TestSchema47MigrationAndFutureOrdering(t *testing.T) {
 	root := t.TempDir()
 	writeLock(t, root, LiveSchemaFloor)
 	applied, _, _, err := Build(context.Background(), root)
-	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName}) {
+	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName}) {
 		t.Fatalf("schema 46: applied=%v err=%v", applied, err)
 	}
 	original := registry
@@ -112,7 +112,7 @@ func TestSchema47MigrationAndFutureOrdering(t *testing.T) {
 	)
 	t.Cleanup(func() { registry = original })
 	applied, _, mutations, err := Build(context.Background(), root)
-	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, "first future", "second future"}) || !slices.Equal(calls, []string{"first", "second"}) {
+	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName, "first future", "second future"}) || !slices.Equal(calls, []string{"first", "second"}) {
 		t.Fatalf("future seam: applied=%v calls=%v err=%v", applied, calls, err)
 	}
 	if len(mutations) != 2 || mutations[0].Path != ".awf/future.yaml" || mutations[1].Path != ".awf/retired.yaml" || !mutations[1].Remove {
@@ -377,7 +377,7 @@ func TestRetireRelevanceMetadataMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName}) || len(changes) != 4 || len(mutations) != 3 {
+	if !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName}) || len(changes) != 4 || len(mutations) != 3 {
 		t.Fatalf("applied=%v changes=%v mutations=%v", applied, changes, mutations)
 	}
 	for _, mutation := range mutations {

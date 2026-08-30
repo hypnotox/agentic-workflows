@@ -10,17 +10,7 @@ policy; [Debugging](debugging.md) owns recovery and failure diagnosis; and the
 [configuration reference](config-reference.md) owns configuration and override semantics. Pi adopters use the [Pi runtime reference](pi-runtime-reference.md) for runtime and subagent protocol.
 <!-- awf:end -->
 
-{{if eq .profile "core"}}## Daily commands
-
-- `awf init`: scaffold `.awf/` and render the selected workflow into the current project.
-- `./awf render`: render the selected workflow from `.awf/` and update `.awf/awf.lock`.
-- `./awf check`: report generated-file drift and repository checks.
-- `./awf upgrade`: migrate configuration and re-render after an awf upgrade.
-
-Use `.awf/` sources and convention parts to customize the generated workflow, then render,
-check, and commit the managed outputs and lock together. Project documentation, source, tests,
-and repository history remain the authority for Core work.
-{{else}}<!-- awf:section commands -->
+<!-- awf:section commands -->
 ## Daily commands
 
 - `awf init`: scaffold `.awf/` and render the selected governance footprint into the current project.
@@ -82,4 +72,3 @@ bash .awf/upgrade.sh
 Then inspect the changed generated outputs, run `./awf check`, and commit the source, output, and
 lock updates together. For advanced upgrade recovery and triage, see [Debugging](debugging.md).
 <!-- awf:end -->
-{{- end}}

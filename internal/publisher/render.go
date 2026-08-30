@@ -82,8 +82,6 @@ type RenderedFile struct {
 func projectData(p renderInputs, sc config.Sidecar, eff map[string]bool) map[string]any {
 	return map[string]any{
 		"prefix":               p.cfg.Prefix,
-		"profile":              string(p.cfg.Profile),
-		"fullProfile":          fullProfile(p),
 		"vars":                 nonNil(p.cfg.Vars),
 		"data":                 nonNil(sc.Data),
 		"layout":               layout(p).templateMap(),

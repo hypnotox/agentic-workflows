@@ -22,10 +22,10 @@ import (
 // target-output-paths invariant is retired by ADR-0037 (retires_invariants); the
 // per-target rendering property is now backed by inv: multi-target-render.
 func TestClaudeTargetPaths(t *testing.T) {
-	if got := claudeTarget.SkillPath("awf", "tdd"); got != ".claude/skills/awf-tdd/SKILL.md" {
+	if got := claudeTarget.SkillPath("awf", "implementing"); got != ".claude/skills/awf-implementing/SKILL.md" {
 		t.Fatalf("SkillPath = %q", got)
 	}
-	if got := claudeTarget.AgentPath("code-reviewer"); got != ".claude/agents/code-reviewer.md" {
+	if got := claudeTarget.AgentPath("reviewer"); got != ".claude/agents/reviewer.md" {
 		t.Fatalf("AgentPath = %q", got)
 	}
 	if claudeTarget.BridgeFile != "CLAUDE.md" {
@@ -33,6 +33,7 @@ func TestClaudeTargetPaths(t *testing.T) {
 	}
 }
 
+// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestPiRuntimeTargetRender)
 // invariant: rendering/pi-workflows:pi-native-workflow-skills (TestPiRuntimeTargetRender)
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestPiRuntimeTargetRender)
 // invariant: rendering/pi-workflows:using-effort-skill (TestPiRuntimeTargetRender)
@@ -41,7 +42,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	if _, independentlySelectable := catalog.Standard.Skills["using-effort"]; independentlySelectable {
 		t.Fatal("using-effort companion became independently selectable")
 	}
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -128,6 +129,16 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	if !strings.Contains(index, `from "./model-routing.ts"`) {
 		t.Error("subagent entrypoint does not consume model-routing module")
 	}
+	for _, want := range []string{`.pi/agents/premise-checker.md`, `.pi/agents/explorer.md`, `toolName: "subagent_grounding"`, `toolName: "subagent_explore"`} {
+		if !strings.Contains(index, want) {
+			t.Errorf("Pi repository-context adapter missing %q", want)
+		}
+	}
+	for _, file := range files {
+		if strings.HasPrefix(file.Path, ".claude/") && (strings.Contains(file.Content, "subagent_grounding") || strings.Contains(file.Content, "subagent_explore")) {
+			t.Errorf("non-Pi output %s contains a Pi subagent tool name", file.Path)
+		}
+	}
 	if _, ok := extensions[".pi/extensions/awf-effort/index.ts"]; !ok {
 		t.Error("selected effort-workflow did not render awf-effort index")
 	}
@@ -135,13 +146,10 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 		t.Error("selected effort-workflow did not render awf-effort client")
 	}
 	usingEffort := ""
-	effortWorkflow := ""
 	for _, file := range files {
 		switch file.Path {
 		case ".pi/skills/example-using-effort/SKILL.md":
 			usingEffort = file.Content
-		case ".pi/skills/example-effort-workflow/SKILL.md":
-			effortWorkflow = file.Content
 		}
 	}
 	for _, want := range []string{"Use `using_effort` explicitly", "{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "use the supplied relative memory path `.awf/efforts/<slug>/memory.md`", "when present, managed-worktree path `.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock", "When attached, prefer `effort_memory_read` for pathless reads", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available", "After a persisted formal phase checkpoint", "a persisted approval checkpoint", "another safe resumable effort point", "current `[session context]` model-window and active-branch-compaction evidence", "No fixed threshold controls this choice", "invoke `handoff_session` alone with kickoff exactly `Continue with effort <slug>.`", "The kickoff identifies only the effort: it carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction.", "If relevant discussion predates late effort creation, handoff is prohibited until effort-workflow initializes the owned memory from retained evidence.", "reorient from repository authority and the owned memory", "governed primary checkout for integration, deferred lifecycle closure, worktree removal, and retrospective", "Handoff validates only canonical YAML effort identity", "it does not validate mutable metadata, parse state or activity, select an effort, or mutate memory", "actual boundary to `## Handoff log` before substantive work", "Continuation, cancellation, or failure that leaves the old session active appends none"} {
@@ -158,32 +166,6 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	lateHandoff := strings.Replace(usingEffort, handoffProhibition, "handoff may proceed before memory initialization", 1)
 	if strings.Contains(lateHandoff, handoffProhibition) {
 		t.Error("Pi handoff oracle accepted late-creation handoff before memory initialization")
-	}
-	// The Pi handoff projection owns the prohibition; the rendered Pi lifecycle
-	// skill owns the required initialization contents. Together they prove the
-	// complete late-memory contract without duplicating its lifecycle policy.
-	for _, want := range []string{
-		"current outcome in `## Brief`", "every already settled decision in `## Decision log` with required user-provenance and `Record:` evidence",
-		"relevant observations in `## Observations`", "current phase and next action", "reconfirmed, not reconstructed",
-		"Do not hand off until this initialization is complete",
-	} {
-		if !strings.Contains(effortWorkflow, want) {
-			t.Errorf("rendered Pi effort-workflow missing late-memory handoff contract %q", want)
-		}
-	}
-	for clause, mutation := range map[string]string{
-		"Brief":               strings.Replace(effortWorkflow, "current outcome in `## Brief`", "current outcome omitted", 1),
-		"decision provenance": strings.Replace(effortWorkflow, "every already settled decision in `## Decision log` with required user-provenance and `Record:` evidence", "decision evidence omitted", 1),
-		"observations":        strings.Replace(effortWorkflow, "relevant observations in `## Observations`", "observations omitted", 1),
-		"phase and next":      strings.Replace(effortWorkflow, "current phase and next action", "phase omitted", 1),
-		"reconfirmation":      strings.Replace(effortWorkflow, "reconfirmed, not reconstructed", "reconstructed", 1),
-	} {
-		if strings.Contains(mutation, map[string]string{
-			"Brief": "current outcome in `## Brief`", "decision provenance": "every already settled decision in `## Decision log` with required user-provenance and `Record:` evidence",
-			"observations": "relevant observations in `## Observations`", "phase and next": "current phase and next action", "reconfirmation": "reconfirmed, not reconstructed",
-		}[clause]) {
-			t.Errorf("Pi late-memory mutation did not remove %s", clause)
-		}
 	}
 	for _, unique := range []string{"## Pi session replacement", "invoke `handoff_session` alone", "`Continue with effort <slug>.`"} {
 		count := 0
@@ -202,7 +184,7 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 
 // invariant: rendering/pi-workflows:pi-effort-memory-tools (TestPiEffortMemoryToolContract)
 func TestPiEffortMemoryToolContract(t *testing.T) {
-	selected := explorationRenderedByPath(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	selected := explorationRenderedByPath(t, "prefix: example\nintegrationBranch: main\n")
 	index := selected[".pi/extensions/awf-effort/index.ts"]
 	client := selected[".pi/extensions/awf-effort/client.ts"]
 	guidance := selected[".pi/skills/example-using-effort/SKILL.md"]
@@ -340,7 +322,7 @@ func TestPiRealRuntimeSmoke(t *testing.T) {
 }
 
 func TestTargetOutputRenderError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -362,94 +344,6 @@ func TestTargetOutputRenderError(t *testing.T) {
 		t.Fatalf("RenderAll error = %v, want missing target-output template", err)
 	}
 }
-
-// invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestPiStructuredExplorationContractRender)
-func TestPiStructuredExplorationContractRender(t *testing.T) {
-	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
-	if got := strings.Count(body, `id: "awf-`); got != 5 {
-		t.Fatalf("Pi profile definitions = %d, want exactly 5", got)
-	}
-	if got := strings.Count(body, "toolName:"); got != 7 { // five profile specs plus the shared review factory input and output fields
-		t.Fatalf("Pi profile tool-name fields = %d, want 7", got)
-	}
-	profiles := []struct {
-		id, tool, parameters, concurrency string
-		exclusive                         bool
-	}{
-		{"awf-grounding", "subagent_grounding", `task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_GROUNDING_CONCURRENCY", false},
-		{"awf-explore", "subagent_explore", `task: Type.String({ minLength: 1 }), breadth: StringEnum(["targeted", "bounded", "broad"] as const), detail: StringEnum(["paths", "summary", "analysis"] as const), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_EXPLORATION_CONCURRENCY", false},
-		{"awf-review-adr", "subagent_review_adr", `task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_REVIEW_CONCURRENCY", false},
-		{"awf-review-code", "subagent_review_code", `task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_REVIEW_CONCURRENCY", false},
-		{"awf-implement", "subagent_implement", `task: Type.String({ minLength: 1 }), verificationCheckout: Type.Optional(Type.String()), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: 1", true},
-	}
-	for _, profile := range profiles {
-		t.Run(profile.id, func(t *testing.T) {
-			line := piProfileDefinitionLine(t, body, profile.id)
-			contract := line
-			if strings.HasPrefix(profile.id, "awf-review-") {
-				contract = piProfileDefinitionLine(t, body, "shared-review-factory")
-			}
-			if got := strings.Count(body, `toolName: "`+profile.tool+`"`); got != 1 {
-				t.Errorf("%s tool-name declarations = %d, want exactly 1", profile.id, got)
-			}
-			closedSchema := "parameters: Type.Object({ " + profile.parameters + " }, { additionalProperties: false })"
-			if !strings.Contains(contract, closedSchema) {
-				t.Errorf("%s public schema is not the exact closed required/optional field contract %q", profile.id, closedSchema)
-			}
-			if !strings.Contains(contract, profile.concurrency) {
-				t.Errorf("%s missing concurrency contract %q", profile.id, profile.concurrency)
-			}
-			if got := strings.Contains(contract, "exclusiveParentBatch: true"); got != profile.exclusive {
-				t.Errorf("%s exclusivity = %v, want %v", profile.id, got, profile.exclusive)
-			}
-		})
-	}
-	for _, want := range []string{"const MAX_GROUNDING_CONCURRENCY = 10", "const MAX_EXPLORATION_CONCURRENCY = 10", "const MAX_REVIEW_CONCURRENCY = 10", "PROTOCOL_VERSION = 2", "COMMIT_VERIFICATION_SCHEMA", "ROUTING_PROFILE_DATA_FIELDS", "Omit verificationCheckout for the project root"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("Pi subagent extension missing %q", want)
-		}
-	}
-	for _, want := range []string{"const reviewProfile =", "relative: spec.relative", "kind: ReviewKind"} {
-		if !strings.Contains(body, want) {
-			t.Errorf("Pi adapter missing shared review-profile factory element %q", want)
-		}
-	}
-	for _, forbidden := range []string{`toolName: "subagent_review"`, "kind: StringEnum(", "createLimiter", ".acquire(", "Exploration subagent was aborted while queued"} {
-		if strings.Contains(body, forbidden) {
-			t.Errorf("Pi adapter retained awf-owned scheduling mechanic %q", forbidden)
-		}
-	}
-	claude := explorationRenderedByPath(t, explorationFixtureConfig("claude"))
-	for path, content := range claude {
-		if strings.HasPrefix(path, ".claude/skills/") && (strings.Contains(content, "subagent_grounding") || strings.Contains(content, "subagent_explore")) {
-			t.Errorf("Claude target %s leaked Pi dispatch tools", path)
-		}
-	}
-	grounding := claude[".claude/skills/example-grounding/SKILL.md"]
-	if !strings.Contains(grounding, "`grounding-checker` agent") {
-		t.Fatal("Claude grounding dispatch lost its target-native agent")
-	}
-
-	core := renderPiExtensionFileForProfile(t, "awf-subagents/index.ts", catalog.ProfileCore)
-	if got := strings.Count(core, `id: "awf-`); got != 4 {
-		t.Fatalf("Core Pi profile definitions = %d, want exactly 4", got)
-	}
-	for _, tool := range []string{"subagent_grounding", "subagent_explore", "subagent_review_code", "subagent_implement"} {
-		if got := strings.Count(core, `toolName: "`+tool+`"`); got != 1 {
-			t.Errorf("Core %s tool-name declarations = %d, want exactly 1", tool, got)
-		}
-	}
-	for _, forbidden := range []string{`id: "awf-review-adr"`, `id: "awf-review-plan"`, `toolName: "subagent_review_adr"`, `toolName: "subagent_review_plan"`, `toolName: "subagent_review"`, "kind: StringEnum("} {
-		if strings.Contains(core, forbidden) {
-			t.Errorf("Core Pi adapter retained excluded review contract %q", forbidden)
-		}
-	}
-	codeReview := piProfileDefinitionLine(t, core, "awf-review-code")
-	if !strings.Contains(piProfileDefinitionLine(t, core, "shared-review-factory"), `parameters: Type.Object({ task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA) }, { additionalProperties: false })`) || !strings.Contains(codeReview, `toolName: "subagent_review_code"`) {
-		t.Error("Core code-review profile lost its task-only shared-factory contract")
-	}
-}
-
 func piProfileDefinitionLine(t *testing.T, body, id string) string {
 	t.Helper()
 	needle := `id: "` + id + `"`
@@ -522,7 +416,7 @@ func TestPiSubagentModelWizardRender(t *testing.T) {
 }
 
 func explorationFixtureConfig(target string) string {
-	return "prefix: example\nprofile: full\nintegrationBranch: main\n"
+	return "prefix: example\nintegrationBranch: main\n"
 }
 
 func explorationRenderedByPath(t *testing.T, config string) map[string]string {
@@ -542,142 +436,9 @@ func explorationRenderedByPath(t *testing.T, config string) map[string]string {
 	return got
 }
 
-// invariant: rendering/workflow-skill-templates:cross-runtime-exploration-dispatch (TestCrossRuntimeExplorationDispatch)
-// invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts (TestCrossRuntimeExplorationDispatch)
-func TestCrossRuntimeExplorationDispatch(t *testing.T) {
-	dirs := map[string]string{
-		"claude": ".claude/skills",
-		"pi":     ".pi/skills",
-	}
-	for _, target := range KnownTargets() {
-		t.Run(target, func(t *testing.T) {
-			files := explorationRenderedByPath(t, explorationFixtureConfig(target))
-			base := dirs[target] + "/example-"
-			skillBody := func(name string) string {
-				if target == "pi" {
-					return files[".pi/skills/example-"+name+"/SKILL.md"]
-				}
-				return files[base+name+"/SKILL.md"]
-			}
-			exploring := skillBody("exploring")
-			if exploring == "" {
-				t.Fatalf("missing rendered exploring skill for %s", target)
-			}
-			shared := []string{
-				"targeted < bounded < broad", "targeted locates one declaration", "bounded investigates within a named symbol", "broad searches across the project search universe",
-				"paths < summary < analysis", "file:line", "file:start-end", "minimal labels and no search narrative", "concise explanations", "evidence-grounded synthesis",
-				"adaptive maximum", "cheapest targeted lookup", "widen only when evidence requires", "never widen beyond the selected maximum", "boundary is exhausted, report that explicitly",
-				"tracked files plus non-ignored untracked working-tree files", "tracked generated and vendored files", "ignored files", ".git", "nested repositories", "external dependencies unless the task explicitly brings",
-				"not-found", "inconclusive", "unverified", "Not found within <breadth> boundary:", "successful execution", "one concise next refinement", "project search universe and searched surfaces", "Ground every material claim with file/line evidence",
-				"new fresh-context call", "correct the task", "change report detail", "widen breadth", "one information need", "relevant final findings",
-			}
-			for _, want := range shared {
-				if !strings.Contains(exploring, want) {
-					t.Errorf("%s exploring skill missing shared contract %q", target, want)
-				}
-			}
-			if target == "pi" {
-				for _, want := range []string{"subagent_explore", "required task, breadth, and detail", "at most ten exploration children", "queues the rest FIFO", "omit the `model` field to use configured role routing", "tier's exact `provider/model-id`"} {
-					if !strings.Contains(exploring, want) {
-						t.Errorf("Pi exploring skill missing %q", want)
-					}
-				}
-			} else {
-				for _, want := range []string{"target-native fresh-context exploration subagent", "`explorer` agent", "task", "breadth", "detail"} {
-					if !strings.Contains(exploring, want) {
-						t.Errorf("%s exploring skill missing %q", target, want)
-					}
-				}
-				for _, absent := range []string{"subagent_explore", "provider/model-id", "ten exploration children", "queues the rest FIFO"} {
-					if strings.Contains(exploring, absent) {
-						t.Errorf("%s exploring skill leaks Pi guidance %q", target, absent)
-					}
-				}
-				// The target-native grounding branch names its agent the same way.
-				if grounding := skillBody("grounding"); !strings.Contains(grounding, "`grounding-checker` agent") {
-					t.Errorf("%s grounding skill does not name the grounding-checker agent", target)
-				}
-			}
-			// Orienting owns exploration dispatch conditions; brainstorming
-			// reaches them only by invoking orienting.
-			for _, consumer := range []string{"orienting", "debugging", "refactor-coupling-audit"} {
-				body := skillBody(consumer)
-				for _, want := range []string{"location is unknown", "and inline search would pollute the parent context", "exact-known-file", "genuinely trivial"} {
-					if !strings.Contains(body, want) {
-						t.Errorf("%s/%s missing dispatch condition %q", target, consumer, want)
-					}
-				}
-			}
-			// The dispatch route names the target-prefixed exploring skill, and
-			// brainstorming's shrunk step routes to orienting rather than
-			// duplicating the conditions.
-			if orienting := skillBody("orienting"); !strings.Contains(orienting, "`example-exploring`") {
-				t.Errorf("%s orienting skill does not name the prefixed exploring skill", target)
-			}
-			if brainstorming := skillBody("brainstorming"); !strings.Contains(brainstorming, "`example-orienting`") {
-				t.Errorf("%s brainstorming skill does not invoke the prefixed orienting skill", target)
-			}
-		})
-	}
-}
-
-// invariant: rendering/workflow-skill-templates:bounded-exploration-reporting (TestBoundedExplorationReporting)
-func TestBoundedExplorationReporting(t *testing.T) {
-	files := explorationRenderedByPath(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
-	guidance := files[".pi/skills/example-exploring/SKILL.md"]
-	prompt := renderPiExtensionFile(t, "awf-subagents/index.ts")
-	explorer := renderAgentGolden(t, "explorer", map[string]any{
-		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
-	})
-	contracts := map[string]struct {
-		body  string
-		wants []string
-	}{
-		"rendered exploring guidance": {guidance, []string{
-			"one self-contained task per child", "fan them out as sibling calls", "breadth, detail, and tier independently per child", "large analysis child with small targeted paths or summary children", "at most ten exploration children", "queues the rest FIFO", "refinements that depend on an earlier result stay sequential",
-			"targeted < bounded < broad", "targeted locates one declaration, implementation, file, or exact fact", "bounded investigates within a named symbol, package, component, or subsystem", "broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
-			"adaptive maximum", "cheapest targeted lookup", "widen only when evidence requires it", "never widen beyond the selected maximum", "If the boundary is exhausted, report that explicitly",
-			"tracked files plus non-ignored untracked working-tree files under the current repository root", "tracked generated and vendored files", "ignored files", ".git", "nested repositories", "external dependencies unless the task explicitly brings one of those surfaces into scope",
-			"paths < summary < analysis", "paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative", "summary returns grounded locations plus concise explanations of what each contains and why it matters", "analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty",
-			"Ground every material claim with file/line evidence", "Not found within <breadth> boundary: <what was searched>", "successful execution", "one concise next refinement", "broad absence report must name the project search universe and searched surfaces", "Distinguish inconclusive and unverified outcomes from absence",
-			"new fresh-context call to correct the task, change report detail, or widen breadth",
-		}},
-		"Pi profile guidance": {prompt, []string{
-			"Selected breadth maximum:", "Selected report detail:", "concurrency: MAX_EXPLORATION_CONCURRENCY", "profileDataSchema",
-		}},
-		"explorer agent": {explorer, []string{
-			"independent information needs concurrently", "refinement of an earlier result stays sequential",
-			"Breadth is ordered targeted < bounded < broad", "targeted locates one declaration, implementation, file, or exact fact", "bounded investigates within a named symbol, package, component, or subsystem", "broad searches across the project search universe, including relevant source, tests, documentation, decisions, and workflow artifacts",
-			"adaptive maximum: start with the cheapest targeted lookup, widen only when evidence requires it, and never widen beyond the selected maximum", "If the boundary is exhausted, report that explicitly",
-			"tracked files plus non-ignored untracked working-tree files under the current repository root", "tracked generated and vendored files", "ignored files", ".git", "nested repositories", "external dependencies unless the task explicitly brings one of those surfaces into scope",
-			"paths < summary < analysis", "paths returns only relevant file:line or file:start-end locations with minimal labels and no search narrative", "summary returns grounded locations plus concise explanations of what each contains and why it matters", "analysis directly answers the task with an evidence-grounded synthesis of relationships, call flow, usage patterns, assumptions, and uncertainty",
-			"Ground every material claim with file:line evidence", "Not-found is successful execution and begins exactly: Not found within <breadth> boundary: <what was searched>", "broad absence report must name the project search universe and searched surfaces", "not-found result may suggest one concise next refinement", "inconclusive or unverified result is not an absence claim",
-			"new fresh-context call that corrects the task, changes report detail, or widens breadth",
-		}},
-	}
-	for label, contract := range contracts {
-		for _, want := range contract.wants {
-			if !strings.Contains(contract.body, want) {
-				t.Errorf("%s missing bounded-reporting clause %q", label, want)
-			}
-		}
-	}
-	fallback := renderSkillGolden(t, "exploring", map[string]any{
-		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{},
-	})
-	if strings.Contains(fallback, "subagent_explore") || !strings.Contains(fallback, "target-native fresh-context exploration subagent") {
-		t.Errorf("empty-capability exploring render has incoherent dispatch:\n%s", fallback)
-	}
-}
-
 func renderPiExtensionFile(t *testing.T, name string) string {
 	t.Helper()
-	return renderPiExtensionFileForProfile(t, name, catalog.ProfileFull)
-}
-
-func renderPiExtensionFileForProfile(t *testing.T, name string, profile catalog.Profile) string {
-	t.Helper()
-	root := scaffold(t, "prefix: example\nprofile: "+string(profile)+"\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -717,8 +478,8 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 	if err := projectstate.ValidateTarget(custom); err != nil {
 		t.Fatal(err)
 	}
-	if custom.SkillPath("example", "tdd") != ".custom/workflows/example-tdd/SKILL.md" ||
-		custom.AgentPath("code-reviewer") != ".custom/reviewers/code-reviewer.agent.md" {
+	if custom.SkillPath("example", "implementing") != ".custom/workflows/example-implementing/SKILL.md" ||
+		custom.AgentPath("reviewer") != ".custom/reviewers/reviewer.agent.md" {
 		t.Fatal("custom descriptor paths were not preserved")
 	}
 	if targetTemplateData(custom)["targetSubagentTools"] != true || targetTemplateData(custom)["targetSessionHandoff"] != true {
@@ -735,10 +496,10 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]AgentDialect{
-		".custom/workflows/example-tdd/SKILL.md":   MarkdownAgentDialect,
-		".custom/reviewers/code-reviewer.agent.md": MarkdownAgentDialect,
-		"CUSTOM.md":            MarkdownAgentDialect,
-		".custom/extension.ts": PlainAgentDialect,
+		".custom/workflows/example-implementing/SKILL.md": MarkdownAgentDialect,
+		".custom/reviewers/reviewer.agent.md":             MarkdownAgentDialect,
+		"CUSTOM.md":                                       MarkdownAgentDialect,
+		".custom/extension.ts":                            PlainAgentDialect,
 	}
 	counts := map[string]int{}
 	for _, file := range files {
@@ -879,107 +640,6 @@ const (
 	semanticInlineInstruction      = "For generated-prose changes, perform the focused meaning review at the produced-output boundaries and retain the inspected boundaries and result as completion evidence."
 )
 
-// invariant: rendering/workflow-skill-templates:semantic-rendering-review (TestSemanticRenderingReviewMultiTargetAuthority)
-func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := renderAll(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	byPath := map[string]string{}
-	counts := map[string]int{}
-	for _, file := range files {
-		byPath[file.Path] = file.Content
-		counts[file.Path]++
-	}
-	for _, target := range []string{".claude", ".pi"} {
-		for _, artifact := range []struct {
-			path        string
-			instruction string
-		}{
-			{target + "/agents/implementer.md", semanticImplementerInstruction},
-			{target + "/agents/code-reviewer.md", semanticCodeReviewInstruction},
-		} {
-			out := byPath[artifact.path]
-			if counts[artifact.path] != 1 || out == "" {
-				t.Fatalf("%s rendered %d times with %d bytes", artifact.path, counts[artifact.path], len(out))
-			}
-			if !strings.Contains(out, artifact.instruction) {
-				t.Errorf("%s missing exact semantic rendering instruction %q:\n%s", artifact.path, artifact.instruction, out)
-			}
-			for _, residue := range []string{"<no value>", "{{ ."} {
-				if strings.Contains(out, residue) {
-					t.Errorf("%s contains unresolved empty-data residue %q:\n%s", artifact.path, residue, out)
-				}
-			}
-			for _, forbidden := range []string{"synonym detection", "contradiction inference", "placeholder-intent inference", "universal output-language validator"} {
-				if strings.Contains(out, forbidden) {
-					t.Errorf("%s claims unsupported semantic validation %q:\n%s", artifact.path, forbidden, out)
-				}
-			}
-		}
-	}
-}
-
-// invariant: rendering/workflow-skill-templates:concrete-maintainability-review (TestConcreteMaintainabilityReviewTargetParity)
-func TestConcreteMaintainabilityReviewTargetParity(t *testing.T) {
-	for _, profile := range []catalog.Profile{catalog.ProfileCore, catalog.ProfileFull} {
-		t.Run(string(profile), func(t *testing.T) {
-			files := explorationRenderedByPath(t, "prefix: example\nprofile: "+string(profile)+"\nintegrationBranch: main\n")
-			for _, target := range []string{"pi", "claude"} {
-				t.Run(target, func(t *testing.T) {
-					for _, path := range []string{
-						"." + target + "/skills/example-reviewing-impl/SKILL.md",
-						"." + target + "/agents/code-reviewer.md",
-					} {
-						out := files[path]
-						for _, want := range []string{"semantic owner", "concrete maintainability risk", "non-admissible", "severity remains informational"} {
-							if !strings.Contains(out, want) {
-								t.Errorf("%s missing concrete-maintainability semantic %q", path, want)
-							}
-						}
-						if strings.Contains(out, "<no value>") {
-							t.Errorf("%s contains unresolved no-value token", path)
-						}
-					}
-				})
-			}
-		})
-	}
-}
-
-// invariant: rendering/workflow-skill-templates:clean-integration (TestCleanIntegrationTargetParity)
-// invariant: rendering/workflow-skill-templates:closed-workflow-profiles (TestCleanIntegrationTargetParity)
-func TestCleanIntegrationTargetParity(t *testing.T) {
-	for _, profile := range []catalog.Profile{catalog.ProfileCore, catalog.ProfileFull} {
-		t.Run(string(profile), func(t *testing.T) {
-			files := explorationRenderedByPath(t, "prefix: example\nprofile: "+string(profile)+"\nintegrationBranch: main\n")
-			for _, target := range []string{"pi", "claude"} {
-				t.Run(target, func(t *testing.T) {
-					skills := []string{"brainstorming", "executing-direct", "bugfix", "tdd", "reviewing-impl"}
-					agents := []string{"implementer", "code-reviewer"}
-					for _, skill := range skills {
-						path := "." + target + "/skills/example-" + skill + "/SKILL.md"
-						if out := files[path]; !strings.Contains(out, "current and target owner") || !strings.Contains(out, "residual debt") {
-							t.Errorf("%s missing applicable clean-integration semantics", path)
-						}
-					}
-					for _, agent := range agents {
-						path := "." + target + "/agents/" + agent + ".md"
-						if out := files[path]; !strings.Contains(out, "current and target owner") || !strings.Contains(out, "residual debt") {
-							t.Errorf("%s missing applicable clean-integration semantics", path)
-						}
-					}
-				})
-			}
-		})
-	}
-}
-
 func TestResolveTargetsRejectsUnknown(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\n  - nope\n")
 	if _, err := Open(testContext(t), root); err == nil {
@@ -1016,7 +676,7 @@ func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Corrupt a sidecar so the RenderAll inside PlannedOutputs fails.
-	corruptSidecar(t, root, "skills/tdd.yaml")
+	corruptSidecar(t, root, "skills/implementing.yaml")
 	if _, err := plannedOutputsProject(p); err == nil {
 		t.Fatal("expected PlannedOutputs to surface the RenderAll error")
 	}
@@ -1068,49 +728,6 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 	for _, piOnly := range []string{"verificationCheckout", "verification checkout", "Pi CWD"} {
 		if strings.Contains(implementer, piOnly) {
 			t.Errorf("generic implementer role gained Pi-only verification metadata %q", piOnly)
-		}
-	}
-}
-
-// invariant: rendering/pi-workflows:pi-role-contract-loader (TestPiRoleContractLoader)
-func TestPiRoleContractLoader(t *testing.T) {
-	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
-	for _, want := range []string{
-		"loadAgentContract", "source: ContractSource",
-		`adr: ".pi/agents/adr-reviewer.md"`, `code: ".pi/agents/code-reviewer.md"`,
-		`IMPLEMENTER_PATH = ".pi/agents/implementer.md"`, `EXPLORER_PATH = ".pi/agents/explorer.md"`, `GROUNDING_CHECKER_PATH = ".pi/agents/grounding-checker.md"`,
-		"relative: GROUNDING_CHECKER_PATH", "relative: EXPLORER_PATH", "relative: spec.relative", "relative: IMPLEMENTER_PATH",
-		"You are the governed grounding-check subagent. You are report-only: never edit or commit.",
-		"You are the governed exploration subagent. You are report-only: never edit or commit.",
-		"You are the governed ${spec.kind} reviewer. You are report-only: never edit or commit.",
-		"You are the governed implementation subagent.", "Commits are forbidden; do not change HEAD. You are a helper.",
-		"Enable the grounding-checker agent and run ./awf render.", "Enable the explorer agent and run ./awf render.",
-		"Enable the matching ${spec.kind}-reviewer agent and run ./awf render.", "Enable the implementer agent and run ./awf render.",
-		"Missing Pi ${source.noun} ${source.relative}. ${source.repair}",
-		"has no instruction body; run ./awf render.",
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("Pi extension missing loader element %q", want)
-		}
-	}
-	if got := strings.Count(body, "systemPrompt: await loadAgentContract(deps, root, source)"); got != 1 {
-		t.Errorf("shared role-contract loader calls = %d, want exactly 1 prepare-boundary call", got)
-	}
-	if got := strings.Count(body, "prepare: (c: any) => prepare(") + strings.Count(body, "prepare: async (c: any) => {"); got != 4 {
-		t.Errorf("profiles using the shared role prepare/loader boundary = %d, want 4", got)
-	}
-	// These durable role clauses belong only to rendered agent artifacts. Their
-	// absence here prevents a loader cutover from retaining a second prose owner.
-	for _, banned := range []string{
-		"You are a fresh-context exploration subagent. Read files and run evidence-producing commands only.",
-		"You are a fresh-context grounding-check subagent. Read and run evidence-producing commands",
-		"Independent, lens-diverse reviewer for ADRs",
-		"Independent, lens-diverse reviewer for plans",
-		"Independent reviewer for implementation diffs, separate from the implementer.",
-		"You are a fresh-context implementation subagent dispatched to carry out one scoped change.",
-	} {
-		if strings.Contains(body, banned) {
-			t.Errorf("rendered role prose is duplicated inline in the extension: %q", banned)
 		}
 	}
 }

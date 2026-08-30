@@ -11,7 +11,7 @@ import (
 // A dangling ADR related: number yields adr-related-link drift; a resolving one
 // yields none. Unconditional (no glossary configured here).
 func TestCheckADRRelatedLinks(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-a.md"),
 		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
 			testsupport.WithRelated(1, 42), testsupport.WithTitle("0001: A"),
@@ -34,7 +34,7 @@ func TestCheckADRRelatedLinks(t *testing.T) {
 // resolution scan at the first descent, or a missing break, each passes a test
 // that only checks the simple case.
 func TestCheckADRRelatedAscending(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\ndomains: []\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: []\n")
 	write := func(name, title string, related ...int) {
 		opts := []testsupport.ADROption{testsupport.WithDate("2026-07-13"),
 			testsupport.WithTitle(title), testsupport.WithBody("## Context\nx\n")}

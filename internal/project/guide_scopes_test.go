@@ -46,43 +46,6 @@ func TestGuideRoutesNativeSkillsWithoutCatalog(t *testing.T) {
 	}
 }
 
-// invariant: rendering/guide-and-doc-templates:guide-scopes-derived (TestGuideScopesDerived)
-func TestGuideScopesDerived(t *testing.T) {
-	invs := awfAgentsDocInvariants(t)
-
-	base := func(scopes string) map[string]any {
-		return map[string]any{
-			"prefix":        "awf",
-			"vars":          map[string]any{"gateCmd": "./x gate"},
-			"layout":        testLayout(),
-			"data":          map[string]any{"invariants": invs},
-			"commitScopes":  scopes,
-			"gatedCommands": gatedCommandsDisplay(),
-			"skills":        map[string]bool{},
-		}
-	}
-
-	// Scopes configured: the list and the allowed-scopes clause render.
-	pop := renderGuide(t, base("`config`, `rendering`"))
-	wantPop := "- **Conventional Commits, scopes `config`, `rendering`.** One concern per commit; " +
-		"stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`."
-	if got := conventionalCommitsBullet(t, pop); got != wantPop {
-		t.Errorf("populated scope bullet:\n got: %s\nwant: %s", got, wantPop)
-	}
-
-	// Accept-any (scopes unset): the whole scope apparatus collapses to generic
-	// prose - no scope list, no audit.allowedScopes clause, no dangling comma.
-	empty := renderGuide(t, base(""))
-	wantEmpty := "- **Conventional Commits.** One concern per commit; stage explicitly, no `git add -A`."
-	if got := conventionalCommitsBullet(t, empty); got != wantEmpty {
-		t.Errorf("accept-any scope bullet:\n got: %s\nwant: %s", got, wantEmpty)
-	}
-}
-
-// renderGuide renders the agents-doc template with the given data. Unlike
-// renderGolden it does not assert marker-freedom: awf's real invariant prose
-// legitimately quotes `awf:section` as content, which the leak check would flag.
-// It still guards against unresolved values and unrendered actions.
 func renderGuide(t *testing.T, data map[string]any) string {
 	t.Helper()
 	src, err := fs.ReadFile(templates.FS, "agents-doc/AGENTS.md.tmpl")

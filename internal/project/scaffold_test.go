@@ -35,7 +35,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 	t.Run("committed-cleanup-outcome", TestNewPitfallCommittedCleanupOutcomeIsActionableAndDoesNotAdvance)
 	t.Run("load-and-directory-errors", func(t *testing.T) {
 		t.Run("malformed corpus", func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 			dir := filepath.Join(root, ".awf/docs/pitfalls")
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				t.Fatal(err)
@@ -52,7 +52,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			}
 		})
 		t.Run("source directory is a file", func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 			dir := filepath.Join(root, ".awf/docs/pitfalls")
 			if err := os.MkdirAll(filepath.Dir(dir), 0o755); err != nil {
 				t.Fatal(err)
@@ -69,7 +69,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			}
 		})
 		t.Run("nested source and injected read or walk failures", func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 			dir := filepath.Join(root, ".awf/docs/pitfalls/nested")
 			if err := os.MkdirAll(dir, 0o755); err != nil {
 				t.Fatal(err)
@@ -105,7 +105,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			}
 		})
 		t.Run("mkdir failure", func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
@@ -120,7 +120,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 		})
 	})
 	t.Run("refusals-and-suffix-gap", func(t *testing.T) {
-		root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
+		root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 		dir := filepath.Join(root, ".awf/docs/pitfalls")
 		if err := os.MkdirAll(dir, 0o755); err != nil {
 			t.Fatal(err)
@@ -154,7 +154,7 @@ func TestNewPitfallPublicationFailureLeavesDestinationAbsent(t *testing.T) {
 	if _, err := newPitfallProject(testStateAt(filepath.Join(t.TempDir(), "missing")), "Unopened"); err == nil {
 		t.Fatal("missing project root opened for pitfall scaffold")
 	}
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -175,7 +175,7 @@ func TestNewPitfallPublicationFailureLeavesDestinationAbsent(t *testing.T) {
 }
 
 func TestNewPitfallCommittedCleanupOutcomeIsActionableAndDoesNotAdvance(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -286,7 +286,7 @@ func TestNewPitfallRootConfinement(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
@@ -309,7 +309,7 @@ func TestNewPitfallRootConfinement(t *testing.T) {
 
 // invariant: tooling/cli:pitfall-scaffold (TestNewPitfallScaffoldContract)
 func TestNewPitfallScaffoldContract(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -350,7 +350,7 @@ func TestNewPitfallScaffoldContract(t *testing.T) {
 
 // invariant: tooling/cli:pitfall-scaffold (TestNewPitfallExclusiveRaceRefusesThenRetryReallocates)
 func TestNewPitfallExclusiveRaceRefusesThenRetryReallocates(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -475,18 +475,18 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	core := catalog.StandardProfileView(catalog.ProfileCore).Catalog()
+	standard := catalog.CompleteView().Catalog()
 	var paths []string
-	for name := range core.Skills {
+	for name := range standard.Skills {
 		paths = append(paths, "skills/"+name+"/SKILL.md.tmpl")
 	}
-	for name := range core.Agents {
+	for name := range standard.Agents {
 		paths = append(paths, "agents/"+name+".md.tmpl")
 	}
-	for _, e := range core.Docs {
+	for _, e := range standard.Docs {
 		paths = append(paths, e.TID)
 	}
-	for _, sg := range plainSingletons(core) {
+	for _, sg := range plainSingletons(standard) {
 		paths = append(paths, sg.tid)
 	}
 	for _, path := range paths {
@@ -501,13 +501,6 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 		}
 	}
 }
-
-func TestScaffoldConfigForProfileRejectsUnknownProfile(t *testing.T) {
-	if _, err := ScaffoldConfigForProfile("example", nil, nil, catalog.Profile("other")); err == nil {
-		t.Fatal("unknown profile accepted")
-	}
-}
-
 func TestInitProducesCleanSyncableProject(t *testing.T) {
 	b, err := ScaffoldConfig("testproject", map[string]string{"gateCmd": "make gate"}, nil)
 	if err != nil {
@@ -567,7 +560,7 @@ func TestNeededVarsCoversFullCatalog(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, name := range []string{"commitGateCmd", "gateCmd", "invariantTestPath"} {
+	for _, name := range []string{"gateCmd", "checkCmd", "testCmd"} {
 		if !vars[name] {
 			t.Errorf("needed vars missing %s", name)
 		}

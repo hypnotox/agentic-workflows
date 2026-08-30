@@ -304,7 +304,7 @@ func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
 }
 
 func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n"+debuggingVars+"", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n"+debuggingVars+"", map[string]string{
 		"skills/debugging.yaml":                        "data: {}\n",
 		"skills/parts/debugging/debugging-surfaces.md": "Observed part.\n",
 	})
@@ -324,7 +324,6 @@ func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 	want := normalizeOutputInputs([]OutputInput{
 		{Path: ".awf/config.yaml", Role: ArtifactConfig},
 		{Path: ".awf/skills/debugging.yaml", Role: ArtifactAuthoredData},
-		{Path: ".awf/skills/parts/debugging/debugging-surfaces.md", Role: ArtifactConventionPart},
 		{Path: "templates/skills/debugging/SKILL.md.tmpl", Role: ArtifactTemplate},
 	})
 	if !reflect.DeepEqual(plan.Nodes[idx].ConsumedInputs, want) {
@@ -348,8 +347,8 @@ func TestBuildOutputDeclarationsRejectsMalformedFullCatalogSidecars(t *testing.T
 	for _, tc := range []struct {
 		name, kind, artifact, config, sidecar string
 	}{
-		{"skill", "skills", "tdd", "", ".awf/skills/tdd.yaml"},
-		{"agent", "agents", "code-reviewer", "", ".awf/agents/code-reviewer.yaml"},
+		{"skill", "skills", "implementing", "", ".awf/skills/implementing.yaml"},
+		{"agent", "agents", "reviewer", "", ".awf/agents/reviewer.yaml"},
 		{"doc", "docs", "architecture", "", ".awf/docs/architecture.yaml"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -362,15 +361,15 @@ func TestBuildOutputDeclarationsRejectsMalformedFullCatalogSidecars(t *testing.T
 				t.Fatalf("test fixture did not corrupt %s sidecar", tc.name)
 			}
 			if _, err := buildOutputDeclarations(cfg, catalog.Standard, []Target{{Name: "test"}}, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), tc.sidecar[5:]) {
-				t.Fatalf("full-catalog malformed %s sidecar error = %v", tc.name, err)
+				t.Fatalf("standard-catalog malformed %s sidecar error = %v", tc.name, err)
 			}
 		})
 	}
 }
 
 func TestResolvedTargetOutputsFiltersRequiredSkills(t *testing.T) {
-	target := Target{SkillDir: ".target/skills", Outputs: []TargetOutput{{Path: "always"}, {Path: "conditional", RequiresSkill: "tdd"}, {SkillName: "workflow", RequiresSkill: "effort-workflow"}}}
-	outputs := resolvedTargetOutputs(target, "example", []string{"tdd"})
+	target := Target{SkillDir: ".target/skills", Outputs: []TargetOutput{{Path: "always"}, {Path: "conditional", RequiresSkill: "implementing"}, {SkillName: "workflow", RequiresSkill: "effort-workflow"}}}
+	outputs := resolvedTargetOutputs(target, "example", []string{"implementing"})
 	if len(outputs) != 2 || outputs[0].Path != "always" || outputs[1].Path != "conditional" {
 		t.Fatalf("filtered outputs = %#v", outputs)
 	}

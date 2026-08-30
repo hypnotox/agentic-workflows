@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
@@ -22,7 +21,7 @@ import (
 // invariant: rendering/project-output-plan:output-plan-complete (TestLocalDocsOutputPlan)
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocsOutputPlan)
 func TestLocalDocsOutputPlan(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/z\n    title: Z\n    description: Z document.\n  - name: runbooks/a\n    title: A\n    description: A document.\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/z\n    title: Z\n    description: Z document.\n  - name: runbooks/a\n    title: A\n    description: A document.\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -59,7 +58,7 @@ func TestLocalDocsOutputPlan(t *testing.T) {
 // invariant: rendering/project-output-plan:output-plan-complete (TestLocalDocDeclarationDeclaresExistingOutputInput)
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocDeclarationDeclaresExistingOutputInput)
 func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	const outPath = "docs/runbooks/incident.md"
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "runbooks", "incident.md"),
 		"# Incident\n\n<!-- awf:edit-in-place body -->\nauthored body\n")
@@ -93,7 +92,7 @@ func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
 }
 
 func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/x\n    title: X\n    description: X document.\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/x\n    title: X\n    description: X document.\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -110,7 +109,7 @@ func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 // filesystem directly, so an unreadable directory there used to be skipped and
 // the plan, and the drift oracle computed from it, silently narrowed.
 func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: [rendering]\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -153,7 +152,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		if err := projectstate.ValidateTarget(target); err == nil {
 			t.Fatalf("invalid target %#v was accepted", target)
 		}
-		root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+		root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 		p, err := Open(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
@@ -176,7 +175,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 
 // invariant: rendering/project-output-plan:bridge-render-identity (TestBridgeRenderIdentity)
 func TestBridgeRenderIdentity(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {}\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", map[string]string{
 		"target-bridge/.yaml": "data: {}\n",
 		"claude/.yaml":        "data: {}\n",
 	})
@@ -246,8 +245,8 @@ func TestBridgeRenderIdentity(t *testing.T) {
 		t.Errorf("custom bridge did not use its descriptor-owned Markdown template with empty vars:\n%s", got)
 	}
 	for _, path := range []string{
-		".custom/workflows/example-tdd/SKILL.md",
-		".custom/reviewers/code-reviewer.agent.md",
+		".custom/workflows/example-implementing/SKILL.md",
+		".custom/reviewers/reviewer.agent.md",
 		".custom/extension.ts",
 	} {
 		if _, ok := byPath[path]; !ok {
@@ -280,7 +279,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 // invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 // invariant: rendering/project-output-plan:shared-output-coalesced (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -443,7 +442,7 @@ func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
 		{"render pass", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+			root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 			p, err := Open(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
@@ -464,7 +463,7 @@ func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
 }
 
 func TestOutputPlanPropagatesConfigReferenceRenderFault(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\n", map[string]string{
+	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"parts/config-reference/intro.md": "<!-- awf:comment unclosed\n",
 	})
 	p, err := Open(testContext(t), root)
@@ -503,7 +502,7 @@ func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
 }
 
 func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -519,7 +518,7 @@ func TestOutputPlanPropagatesTopicGenerationEnumerationFault(t *testing.T) {
 	calls := 0
 	failure := errors.New("topic enumeration failed")
 	reader := failingPathsReader{memoryProjectReader: memoryProjectReader{}, failAt: 3, calls: &calls}
-	_, err := outputPlanWithPitfalls(newRenderInputs(state, &config.Config{Profile: catalog.ProfileFull}, reader, project.Version), mustCorpus(), pitfall.Corpus{}, topic.Corpus{}, map[string]bool{})
+	_, err := outputPlanWithPitfalls(newRenderInputs(state, &config.Config{}, reader, project.Version), mustCorpus(), pitfall.Corpus{}, topic.Corpus{}, map[string]bool{})
 	if err == nil || !strings.Contains(err.Error(), failure.Error()) && !strings.Contains(err.Error(), "enumeration fault") {
 		t.Fatalf("output plan error = %v", err)
 	}

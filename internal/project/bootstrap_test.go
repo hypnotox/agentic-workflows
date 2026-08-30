@@ -39,7 +39,7 @@ func bootstrapFile(t *testing.T, configYAML string) *RenderedFile {
 // invariant: rendering/companion-scripts:bootstrap-env-override (TestBootstrapEnvOverrideDefaultsToRenderingVersion)
 // invariant: tooling/cli:single-version-authority (TestBootstrapEnvOverrideDefaultsToRenderingVersion)
 func TestBootstrapEnvOverrideDefaultsToRenderingVersion(t *testing.T) {
-	rf := bootstrapFile(t, "prefix: example\nprofile: full\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
+	rf := bootstrapFile(t, "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
 		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
 	}
@@ -62,7 +62,7 @@ func TestBootstrapEnvOverrideDefaultsToRenderingVersion(t *testing.T) {
 
 // invariant: rendering/companion-scripts:bootstrap-checksum (TestBootstrapVerifiesBeforeInstall)
 func TestBootstrapVerifiesBeforeInstall(t *testing.T) {
-	rf := bootstrapFile(t, "prefix: example\nprofile: full\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
+	rf := bootstrapFile(t, "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
 		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
 	}
@@ -83,7 +83,7 @@ func TestBootstrapVerifiesBeforeInstall(t *testing.T) {
 
 // invariant: rendering/companion-scripts:bootstrap-stdout-path-only (TestBootstrapStdoutPathOnly)
 func TestBootstrapStdoutPathOnly(t *testing.T) {
-	rf := bootstrapFile(t, "prefix: example\nprofile: full\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
+	rf := bootstrapFile(t, "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
 		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
 	}
@@ -101,7 +101,7 @@ func TestBootstrapStdoutPathOnly(t *testing.T) {
 
 // invariant: rendering/companion-scripts:bootstrap-local-first (TestBootstrapLocalFirstResolution)
 func TestBootstrapLocalFirstResolution(t *testing.T) {
-	rf := bootstrapFile(t, "prefix: example\nprofile: full\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
+	rf := bootstrapFile(t, "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
 		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
 	}
@@ -127,7 +127,7 @@ func TestBootstrapLocalFirstResolution(t *testing.T) {
 }
 
 func TestBootstrapVersionProbeContract(t *testing.T) {
-	rf := bootstrapFile(t, "prefix: example\nprofile: full\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
+	rf := bootstrapFile(t, "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
 		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
 	}
@@ -194,7 +194,7 @@ func TestBootstrapVersionProbeContract(t *testing.T) {
 // for Windows/git-bash users: both unsupported-platform failures must name the
 // manual-install path (README → Install) on their stderr line.
 func TestBootstrapUnsupportedPlatformPointsAtManualInstall(t *testing.T) {
-	rf := bootstrapFile(t, "prefix: example\nprofile: full\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
+	rf := bootstrapFile(t, "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
 		t.Fatal("expected .awf/bootstrap.sh to render when enabled")
 	}
@@ -217,7 +217,7 @@ func TestBootstrapUnsupportedPlatformPointsAtManualInstall(t *testing.T) {
 }
 
 func TestBootstrapNotRenderedWhenDisabled(t *testing.T) {
-	for _, cfg := range []string{"prefix: example\nprofile: full\nintegrationBranch: main\n", "prefix: example\nprofile: full\nintegrationBranch: main\nbootstrap:\n  enabled: false\n"} {
+	for _, cfg := range []string{"prefix: example\nintegrationBranch: main\n", "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: false\n"} {
 		if rf := bootstrapFile(t, cfg); rf != nil {
 			t.Errorf("expected no bootstrap script when bootstrap off, got %q", rf.Path)
 		}
@@ -250,7 +250,7 @@ func upgradeFile(t *testing.T, configYAML string) *RenderedFile {
 
 // invariant: rendering/singletons-and-payloads:bootstrap-two-files (TestBootstrapSingletonRendersBothScripts)
 func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -275,7 +275,7 @@ func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
 
 // invariant: rendering/companion-scripts:upgrade-exec-final (TestUpgradeScriptExecFinal)
 func TestUpgradeScriptExecFinal(t *testing.T) {
-	rf := upgradeFile(t, "prefix: example\nprofile: full\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
+	rf := upgradeFile(t, "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
 		t.Fatal("expected .awf/upgrade.sh to render when enabled")
 	}
@@ -297,7 +297,7 @@ func TestUpgradeScriptExecFinal(t *testing.T) {
 
 // invariant: rendering/companion-scripts:upgrade-delegates-fetch (TestUpgradeScriptDelegatesFetch)
 func TestUpgradeScriptDelegatesFetch(t *testing.T) {
-	rf := upgradeFile(t, "prefix: example\nprofile: full\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
+	rf := upgradeFile(t, "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
 	if rf == nil {
 		t.Fatal("expected .awf/upgrade.sh to render when enabled")
 	}

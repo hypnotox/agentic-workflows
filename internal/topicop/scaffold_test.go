@@ -52,8 +52,8 @@ func TestCreateLeasedRefusesRootReplacementBetweenAuthorityLoadAndPublication(t 
 	root := t.TempDir()
 	relocated := root + ".opened"
 	t.Cleanup(func() { _ = os.RemoveAll(relocated) })
-	const oldConfig = "prefix: example\nprofile: full\nintegrationBranch: master\nvars: {testCmd: go test ./..., gateCmd: make gate}\ndomains: [rendering]\n"
-	const replacementConfig = "prefix: example\nprofile: full\nintegrationBranch: master\nvars: {testCmd: go test ./..., gateCmd: make gate}\ndomains: [payments]\n"
+	const oldConfig = "prefix: example\nintegrationBranch: master\nvars: {testCmd: go test ./..., gateCmd: make gate}\ndomains: [rendering]\n"
+	const replacementConfig = "prefix: example\nintegrationBranch: master\nvars: {testCmd: go test ./..., gateCmd: make gate}\ndomains: [payments]\n"
 	testsupport.WriteAwfConfig(t, root, oldConfig)
 	loader := project.NewLoaderWithoutRepository(func(awfDir string) (*config.Config, error) {
 		cfg, err := config.Load(awfDir)

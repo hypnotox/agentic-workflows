@@ -50,8 +50,3 @@ Backing: test
 
 Every finding rank awf reports remains exactly error or warn: one shared two-member rank backs the audit findings, the repo-local audit tool, and current-state topic coverage, and no serialized finding rank becomes warning. Readable report presentation uses `errors` and `warnings` for those ranks and may use `information` only for unranked notes.
 Backing: test
-
-### `invariant: audit-full-profile-only`
-
-Workflow-conformance audit is a declared Full-only command capability and refuses before handler execution under Core.
-Backing: test

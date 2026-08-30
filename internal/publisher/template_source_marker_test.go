@@ -93,19 +93,13 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 		}
 	}
 
-	skill := activeByPath[".pi/skills/awf-reviewing-impl/SKILL.md"].file
+	skill := activeByPath[".pi/skills/awf-reviewing/SKILL.md"].file
 	if skill == nil {
-		t.Fatal("reviewing-impl skill missing from producer matrix")
+		t.Fatal("reviewing skill missing from producer matrix")
 	}
-	include := "<!-- awf:template-source templates/partials/gate-cadence.md -->"
-	returned := "<!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl -->"
-	enter := strings.Index(skill.Content, include)
-	back := -1
-	if enter >= 0 {
-		back = strings.Index(skill.Content[enter+len(include):], returned)
-	}
-	if enter < 0 || back < 0 {
-		t.Fatalf("include enter/return sequence missing:\n%s", skill.Content)
+	rootMarker := "<!-- awf:template-source templates/skills/reviewing/SKILL.md.tmpl -->"
+	if !strings.Contains(skill.Content, rootMarker) {
+		t.Fatalf("reviewing skill lacks template-source marker:\n%s", skill.Content)
 	}
 	if yamlBlock, body, found := frontmatter.Split([]byte(skill.Content)); !found || strings.Contains(string(yamlBlock), "awf:template-source") || !strings.Contains(string(body), "awf:template-source") {
 		t.Fatalf("frontmatter marker placement invalid:\n%s", skill.Content)
@@ -123,8 +117,8 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	}
 	banner := "<!-- " + bannerText + " -->\n"
 	source := "<!-- awf:source .awf/topics/metadata/rendering/render-engine.yaml .awf/topics/parts/rendering/render-engine/current-state.md -->\n"
-	rootMarker := "<!-- awf:template-source templates/topics/topic.md.tmpl -->\n"
-	if !strings.Contains(topic.Content, banner+source+rootMarker) {
+	topicMarker := "<!-- awf:template-source templates/topics/topic.md.tmpl -->\n"
+	if !strings.Contains(topic.Content, banner+source+topicMarker) {
 		t.Fatalf("banner/source/root ordering invalid:\n%s", topic.Content)
 	}
 
