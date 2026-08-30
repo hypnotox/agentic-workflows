@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.44.0] - 2026-08-30
+
 ### Breaking changes
 
 - Replace machine-managed ADR and parsed-plan lifecycles with plain append-only decision records, current-state authority, and opaque effort-local operational plans. Awf now renders one standard footprint with a lean skill and agent catalog, risk-based review, and no profile or workflow-neighbor selection. Upgrade removes only default-equivalent retired skill and agent overrides and refuses customized retired content. New efforts always create a managed worktree; `--no-worktree` is removed while standalone worktree add remains available for repair.
