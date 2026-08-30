@@ -51,7 +51,7 @@ const preferenceNotices = new WeakSet<object>();
 const SUBAGENT_TOOL_NAMES = new Set(["subagent_grounding", "subagent_explore", "subagent_review_code", "subagent_implement"]);
 export const MAX_EXPLORATION_CONCURRENCY = 10;
 export const MAX_IMPLEMENTATION_CONCURRENCY = 4;
-interface GitSnapshot { available: boolean; head?: string; indexTree?: string; status?: string; }
+interface GitSnapshot { available: boolean; head?: string; indexState?: string; status?: string; }
 export interface ExtensionDependencies {
   readFile(path: string, encoding: "utf8"): Promise<string>;
   extensionFile: string;
@@ -102,10 +102,13 @@ function stripTerminalLineEnding(value: string): string {
 async function snapshot(pi: ExtensionAPI, cwd: string): Promise<GitSnapshot> {
   const head = await pi.exec("git", ["rev-parse", "HEAD"], { cwd });
   if (head.code !== 0) return { available: false };
-  const indexTree = await pi.exec("git", ["write-tree"], { cwd });
-  if (indexTree.code !== 0) return { available: false };
+  // --stage records every cached object and stage, while -v also exposes
+  // assume-unchanged and skip-worktree control flags. NUL framing keeps paths
+  // unambiguous without including mutable stat-cache bytes.
+  const indexState = await pi.exec("git", ["ls-files", "--stage", "-v", "-z"], { cwd });
+  if (indexState.code !== 0) return { available: false };
   const status = await pi.exec("git", ["status", "--short"], { cwd });
-  return { available: status.code === 0, head: head.stdout.trim(), indexTree: indexTree.stdout.trim(), status: status.stdout };
+  return { available: status.code === 0, head: head.stdout.trim(), indexState: indexState.stdout, status: status.stdout };
 }
 
 async function canonicalPath(deps: ExtensionDependencies, path: string, failureMessage: string): Promise<string> {
@@ -193,7 +196,7 @@ const ROUTING_PROFILE_DATA_FIELDS = {
 };
 const GIT_SNAPSHOT_SCHEMA = Type.Union([
   Type.Object({ available: Type.Literal(false) }, { additionalProperties: false }),
-  Type.Object({ available: Type.Literal(true), head: Type.String(), indexTree: Type.String(), status: Type.String() }, { additionalProperties: false }),
+  Type.Object({ available: Type.Literal(true), head: Type.String(), indexState: Type.String(), status: Type.String() }, { additionalProperties: false }),
 ]);
 const COMMIT_VERIFICATION_SCHEMA = StringEnum(["verified", "unavailable"] as const);
 
@@ -388,7 +391,7 @@ const SLOT_GUIDANCE: Array<{ key: PreferenceField; guidance: string }> = [
       const verificationCheckout = invocationCheckout.get(c);
       if (!verificationCheckout) throw new Error("pi-tools profile lifecycle called beforeRun without completing implementation prepare for the same invocation context.");
       return { ...routingFor(c), verificationCheckout, before: await snapshot(pi, verificationCheckout) };
-    }, prepare: async (c: any) => { const verificationCheckout = await resolveVerificationCheckout(pi, deps, root, c.args.verificationCheckout); invocationCheckout.set(c, verificationCheckout); return { ...(await prepare(c, IMPLEMENT_TOOLS, { relative: IMPLEMENTER_PATH, repair: "Enable the implementer agent and run ./awf render.", noun: "implementer", prepend: "You are the governed implementation subagent. Commits and staging are forbidden; do not change HEAD or the index. You are one helper in a possibly concurrent wave, so preserve sibling work." })), cwd: verificationCheckout }; }, afterRun: async (_outcome: ExecutionOutcome, state: any) => { const after = await snapshot(pi, state.verificationCheckout); const verified = state.before.available && after.available; const headChanged = verified && state.before.head !== after.head; const indexChanged = verified && state.before.indexTree !== after.indexTree; const failure = !verified ? `Implementation verification unavailable for ${state.verificationCheckout}; the selected HEAD or index could not be compared before and after the child run. Repair snapshot availability and inventory the checkout before retrying with verificationCheckout set to that checkout root.` : headChanged || indexChanged ? `Implementation changed protected Git state in verification checkout ${state.verificationCheckout} (HEAD ${state.before.head} -> ${after.head}; index ${state.before.indexTree} -> ${after.indexTree}); changes were not reverted. The parent must inventory the checkout and recover only the offending commit or staged paths with native Git while preserving sibling and unrelated edits before redispatch.` : undefined; return { ...(failure ? { failure } : {}), profileData: { ...state, after, commitVerification: verified ? "verified" : "unavailable" } }; } },
+    }, prepare: async (c: any) => { const verificationCheckout = await resolveVerificationCheckout(pi, deps, root, c.args.verificationCheckout); invocationCheckout.set(c, verificationCheckout); return { ...(await prepare(c, IMPLEMENT_TOOLS, { relative: IMPLEMENTER_PATH, repair: "Enable the implementer agent and run ./awf render.", noun: "implementer", prepend: "You are the governed implementation subagent. Commits and staging are forbidden; do not change HEAD or the index. You are one helper in a possibly concurrent wave, so preserve sibling work." })), cwd: verificationCheckout }; }, afterRun: async (_outcome: ExecutionOutcome, state: any) => { const after = await snapshot(pi, state.verificationCheckout); const verified = state.before.available && after.available; const headChanged = verified && state.before.head !== after.head; const indexChanged = verified && state.before.indexState !== after.indexState; const failure = !verified ? `Implementation verification unavailable for ${state.verificationCheckout}; the selected HEAD or index could not be compared before and after the child run. Repair snapshot availability and inventory the checkout before retrying with verificationCheckout set to that checkout root.` : headChanged || indexChanged ? `Implementation changed protected Git state in verification checkout ${state.verificationCheckout} (HEAD ${state.before.head} -> ${after.head}; index semantic state changed: ${indexChanged}); changes were not reverted. The parent must inventory the checkout and recover only the offending commit or index paths or flags with native Git while preserving sibling and unrelated edits before redispatch.` : undefined; return { ...(failure ? { failure } : {}), profileData: { ...state, after, commitVerification: verified ? "verified" : "unavailable" } }; } },
   ];
   const register = (capability: ProfileCapability) => {
     if (capability.correlationId !== undefined && capability.correlationId !== correlationId) return;

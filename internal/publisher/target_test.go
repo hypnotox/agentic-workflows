@@ -699,13 +699,13 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"concurrency: MAX_IMPLEMENTATION_CONCURRENCY",
 		"canonical disjoint write sets",
 		"const headChanged = verified && state.before.head !== after.head",
-		"const indexChanged = verified && state.before.indexTree !== after.indexTree",
+		"const indexChanged = verified && state.before.indexState !== after.indexState",
 		"const failure = !verified",
 		"commitVerification: verified ? \"verified\" : \"unavailable\"",
 		"commitVerification: COMMIT_VERIFICATION_SCHEMA",
-		`["write-tree"]`,
+		`["ls-files", "--stage", "-v", "-z"]`,
 		"Implementation changed protected Git state",
-		"recover only the offending commit or staged paths",
+		"recover only the offending commit or index paths or flags",
 		"preserving sibling and unrelated edits before redispatch",
 		"Implementation verification unavailable",
 		"resolveVerificationCheckout",
@@ -743,9 +743,27 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		}
 	}
 	skill := renderSkillGolden(t, "implementing", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
-	for _, want := range []string{"dependency-independent, canonical disjoint write sets", "ambiguous, overlapping, shared, global, generated, or current-state path", "Use at most four children", "let already-running siblings settle", "Preserve successful sibling and unrelated edits"} {
+	for _, want := range []string{
+		"work inline, dispatch one child, use sequential children, or run a bounded same-worktree parallel wave",
+		"dependency-independent, canonical disjoint write sets",
+		"ambiguous, overlapping, shared, global, generated, or current-state path",
+		"The parent alone owns effort memory, plans, shared/global/generated/current-state files, integration, index, commits, review, and final verification",
+		"Use at most four children",
+		"let already-running siblings settle",
+		"Preserve successful sibling and unrelated edits",
+		"inventory of changed paths, checks and results, deviations, residual debt, and unresolved blockers",
+	} {
 		if !strings.Contains(skill, want) {
 			t.Errorf("implementing skill concurrency contract missing %q", want)
+		}
+	}
+	for _, want := range []string{
+		"Do not stage, commit, amend, change HEAD, alter the index or topology",
+		"preserve sibling and unrelated work",
+		"changed files; exact commands and results; deviations and rationale; blockers; ending `git status --short`; and confirmation that HEAD and index are unchanged",
+	} {
+		if !strings.Contains(implementer, want) {
+			t.Errorf("implementer route-adaptive contract missing %q", want)
 		}
 	}
 	if strings.Contains(src, "exclusiveParentBatch") {
