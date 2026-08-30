@@ -66,7 +66,7 @@ func TestRetireWorkflowConfigMigrationPreservesModeAndDoesNotWrite(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(applied, []string{retireWorkflowConfigName}) || len(changes) != 2 || len(mutations) != 1 {
+	if !slices.Equal(applied, []string{retireWorkflowConfigName, retirePitfallRelationsName}) || len(changes) != 2 || len(mutations) != 1 {
 		t.Fatalf("applied=%v changes=%v mutations=%#v", applied, changes, mutations)
 	}
 	mutation := mutations[0]

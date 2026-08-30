@@ -5,8 +5,6 @@
 
 **Domains:** tooling, invariants
 
-**Related ADRs:** ADR-0175
-
 A claim that names an ordering, such as "the final lock replacement is the commit point", is
 not proven by asserting the order of the operation lines a transaction prints. The line is
 emitted at a fixed call site, so moving the write it describes leaves the printed order
@@ -20,3 +18,5 @@ require that state to hold its prior value until the step that is allowed to cha
 Then mutate the production order and watch the new test go red. A proof for a timing or
 ordering clause is not finished until you have seen it fail; this one was proposed during
 review, built as proposed, and only mutation revealed it was inert.
+
+Related decisions: [ADR-0175](../decisions/0175-unified-ephemeral-slug-based-efforts.md)

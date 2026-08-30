@@ -5,8 +5,6 @@
 
 **Domains:** rendering
 
-**Related ADRs:** ADR-0089, ADR-0099
-
 A raw convention part is run through awf's `{{=awf:...}}` sandbox substitution before Go templating
 (ADR-0057), so a part that *documents* a placeholder token backslash-escapes it (`\{{=awf:key}}`)
 to render the literal token. A sidecar-derived doc's `data` value is different: the transform hands
@@ -18,3 +16,5 @@ tokens straight into `data.pitfalls`, and the backslashes leaked into the render
 stayed clean (the output is exactly what the data says), so only diffing the rendered file against
 the deleted part exposed it. When converting a part-based doc to the sidecar model, strip the
 `\{{=awf:` escapes; verify by rendering and reading the output, not by trusting a clean check.
+
+Related decisions: [ADR-0089](../decisions/0089-data-driven-glossary-terms-rendered-sorted.md), [ADR-0099](../decisions/0099-structured-domain-tagged-pitfalls-surfaced-by-awf-context.md)

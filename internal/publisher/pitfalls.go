@@ -33,6 +33,10 @@ func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
 	if err != nil {
 		return pitfall.Corpus{}, err
 	}
+	decisionPaths, err := reader.Paths(config.DocsDir + "/decisions/")
+	if err != nil {
+		return pitfall.Corpus{}, err
+	}
 	files := make([]pitfall.SourceFile, 0, len(paths))
 	for _, source := range paths {
 		regular := true
@@ -50,7 +54,7 @@ func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
 		if !ok {
 			regular = false
 		}
-		b, err = migrate.PitfallBytesForGeneration(generation, b)
+		b, err = migrate.PitfallBytesForGenerationWithDecisionPaths(generation, source, b, decisionPaths)
 		if err != nil {
 			return pitfall.Corpus{}, fmt.Errorf("migrate pitfall source %s: %w", source, err)
 		}

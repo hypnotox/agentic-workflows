@@ -1,6 +1,6 @@
 {
-  "awfVersion": "0.43.0",
-  "schemaVersion": 49,
+  "awfVersion": "0.44.0",
+  "schemaVersion": 50,
   "files": {
     ".awf/effort-archive/.gitignore": {
       "templateId": "effort-archive/gitignore.tmpl",
@@ -404,8 +404,8 @@
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
       "templateHash": "sha256:955d685811459477f991e7658204281cfde41e1dab0529b754a1bba305935951",
-      "configHash": "sha256:df91954a1a40f9f16a40d67699fa250cc4e26c4795fdb76149a5edebc32f9058",
-      "outputHash": "sha256:dcd0019a5351106179270925c6d0fc4da84c2f1eee393353c69062e57ce86a1f"
+      "configHash": "sha256:97baf9524fc84c574f92df374c0f2c6a8cb0c87f88855b5eb7cc66b8dee36508",
+      "outputHash": "sha256:b855c6479a482d50a4c936c70b60bdca00badb9ac17382dc4a5fa60d31e91062"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -416,14 +416,14 @@
     "docs/pitfalls/a-faked-collaborator-makes-both-the-fixtures-and-the-assertion-vocabulary-unfalsifiable.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:06f747f8b1eabe385984614b2274b7b7853ee1cbe9bae702b9a8c7bba5256b4f",
-      "outputHash": "sha256:cd2ce1a1b45fbfac470a4646957b573599b8702ba8be197ff201492714df47b4"
+      "configHash": "sha256:3e6c3868919d4086cca6e8ad31c6c1b2cd0bd02c3fd74478fd1b0be7e8e76f2f",
+      "outputHash": "sha256:2ba4a0daa5dd3435c54420fbb1aebf95483a633186cab1939b208bc6684c26ec"
     },
     "docs/pitfalls/a-future-code-fence-marker-must-account-for-linguist-aliases.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:bc200389f96204590c1bcc9b35663d459618c85ba6977ca9d1147349dc295ec8",
-      "outputHash": "sha256:a4d5971da4aa8c5ece1a972526f3d168b275743947408c6f9c7d1ca1af3c19f9"
+      "configHash": "sha256:8d36342f1e5e6fd839ef2209d768aee9683fdc0cc674f15153d62df2d25d5557",
+      "outputHash": "sha256:6a3b018c11633ac4100bd55c8d95d849614b3d09b282d07006d1ca558c95a4a9"
     },
     "docs/pitfalls/a-future-non-catalog-render-singleton-still-has-hand-wired-fan-out.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -458,14 +458,14 @@
     "docs/pitfalls/a-prose-contract-test-proves-only-the-clauses-whose-literals-occur-for-one-reason.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:dd26dcde80fcedfbb74848a084c05927bd0a8b4b31c1aaa777694d3220424242",
-      "outputHash": "sha256:0b130b499d46cc854095d5a920229750d6b626ce890b5b8187c942fa067da267"
+      "configHash": "sha256:50217a66a214785f7113513cc0acb4e5c764661aa4742a73e28b5bf1b2a40c08",
+      "outputHash": "sha256:fecca9102ad9e25f7cb4a0ec8a6abe6cfc2f18008e61192cb5b6d95c99ee8d15"
     },
     "docs/pitfalls/a-scripted-sweep-over-adr-prose-can-silently-unmake-the-structure-it-edits.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:7eaff5ed441b9c3bea7020b3a9bdcff6442683740a30474879d78ed8d292c607",
-      "outputHash": "sha256:684f214d37142416a6fd51f7df6ca840238ab20d1f617dc90f5d10de7c80a3f9"
+      "configHash": "sha256:fb3127a6c6276219914ad9e2a74b196421e265753de8c4c235a4e140cd4bbb7a",
+      "outputHash": "sha256:94eb2bb3ef9c2c115fabcc79466c1732fac00bf9eaf58c640cfdb0a2715713e5"
     },
     "docs/pitfalls/a-staged-symlink-fixture-needs-a-real-blob-a-gitlink-does-not.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -500,8 +500,8 @@
     "docs/pitfalls/an-ad-hoc-post-check-can-still-overrun-the-change-s-scope.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:10702fbce3b789a80d22ab639c485a5d6fb44f30e02f26a79ccc4c4468024b6a",
-      "outputHash": "sha256:893046246b8c4fdb14a574ed7019c25185c57bd82fbf6de11f525520f85ba13f"
+      "configHash": "sha256:078256f706fafcc6160bf3f226b6ca11fc0c8fe6f8c8a607a3ad07b4038288c4",
+      "outputHash": "sha256:b11edc5420fb071f40e84083bb5f6d8155f22f73eaf2a4f9b35261cb6142156a"
     },
     "docs/pitfalls/an-attribute-filtered-pinned-set-test-exempts-every-other-attribute-value.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -518,8 +518,8 @@
     "docs/pitfalls/an-ordering-proof-written-against-the-log-proves-nothing.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:62df6daebf7ad0d061fd3e54872b8b58c005d7326f03a3177dfc56ff73612fda",
-      "outputHash": "sha256:3804a4cab4a2c1e1409c761c8fb4286025a19e653f7850ab8ed0d51fd57eaa27"
+      "configHash": "sha256:24eb846dd5068461acb572ee9a49b86efd347dbb99722ef8d5ba4a6442c56a3e",
+      "outputHash": "sha256:15d4765ac73097e0848ac4a96829a0478d343a604750b17e25adba44465c1820"
     },
     "docs/pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -548,8 +548,8 @@
     "docs/pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:745bf5b253fc88453150e45176e4f9d73ebc8f568b10e6beddfaf4c5e2693e7b",
-      "outputHash": "sha256:453a872a4fe63d1f17fe050b94b19d07858c21731ca38a1749a5029c59368a47"
+      "configHash": "sha256:6aef18b8d1833b348c57be506a0631ce6e2bcecdc05a66a841ecb87249f185cb",
+      "outputHash": "sha256:5bff27f8509cf8ec3c8c148d9f4a8e3b6f56fe7586cce67a6c12ddb668b43ac4"
     },
     "docs/pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -572,20 +572,20 @@
     "docs/pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:c1ed0b9fe9f8bc5e3e73d4f9bc716172a945739feacfab787ebc302c8598b4e6",
-      "outputHash": "sha256:7b5ca2863c37bcf740f06c253f38bf5ee1536a2298e3ebe6ebef60328c113e61"
+      "configHash": "sha256:d81ac5f863a9a4d175b3020210f85b8319b54a08006db3bcdc0a84b384bdb324",
+      "outputHash": "sha256:6ccb6006b8cc4392e7541d05b3fa06b77e4c83654ce90d3c920a130c7b76ee65"
     },
     "docs/pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:4bb1003206b6f3b020e5e7dd9fe076ab823f57ed94bea7fd00a07ca07e6d72e9",
-      "outputHash": "sha256:9b08e64cbc0b488538304423ff93b156f52aacbb3aa5283c817434e6ac30d604"
+      "configHash": "sha256:21433edf733168a769fc77ab733986c0f50ea31824177a1a26af905292075d68",
+      "outputHash": "sha256:21450db135e3bbbadc1ec2db77b9593590e0d80610d09a69fb1f6a803463fb7b"
     },
     "docs/pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:eadc7c5bfb5b837dd96cd7c60e3cc6b9dfe36c3c4aa8a9141d939437949f8a24",
-      "outputHash": "sha256:9391bcfcaf6944a6bc5814181021f920261378b633833a618f214d4287db3235"
+      "configHash": "sha256:fe7f2ad7e5d755a577d1d89f43cd27a716ee50d374cffa679227fbdb421ddc7a",
+      "outputHash": "sha256:5a5ecb3bf9c84862c83104bf2d006e055f7eab2707e5c54e53e438a51528539c"
     },
     "docs/pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -608,8 +608,8 @@
     "docs/pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:37cf8e70a01c9d0396550e3f36aa5cff1e63575bebebfd750c5223f0b97e826a",
-      "outputHash": "sha256:63f05c2b1fe5484b5d91ecbc352695803a00f7530137c9e894d4c517c7207a5c"
+      "configHash": "sha256:42ecd02502162411a90d90bd024a697d17a0c3003d32b1bf1f27dc31cd3bda3c",
+      "outputHash": "sha256:f95a3ae18455312bc2d13dc06251528430819961893b95bcadca90d848f17737"
     },
     "docs/pitfalls/reuse-the-repository-boundary-for-new-filesystem-walks.md": {
       "templateId": "pitfalls/entry.md.tmpl",
@@ -626,8 +626,8 @@
     "docs/pitfalls/sidecar-data-is-not-placeholder-substituted-drop-awf-escapes-when-converting-a-part.md": {
       "templateId": "pitfalls/entry.md.tmpl",
       "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:e1900287fd28f329093411d38d0cbb82dbc6ffea29e41ba97966efbf0a40f584",
-      "outputHash": "sha256:5cd4fa1abe581135b5315face20d1f869cd6051b7475b6f50786080f36746961"
+      "configHash": "sha256:901cee92a2590814b321aa32efde57f5f4042eb288868c868352f28f033cdaf6",
+      "outputHash": "sha256:328f4f90f03033eceb4a240a13bc24580d318a416b5a557259acfcd45c506a66"
     },
     "docs/pitfalls/use-absolute-generations-for-historical-migration-shapes.md": {
       "templateId": "pitfalls/entry.md.tmpl",

@@ -1,7 +1,6 @@
 ---
 title: "A scripted sweep over ADR prose can silently unmake the structure it edits"
 domains: ["adr-system"]
-related: [135]
 ---
 Editing ADR bodies across the corpus by script (the project-atomic cutover rewrote every
 legacy ADR into the v1 format this way) has failure modes that produce a file which still
@@ -21,3 +20,5 @@ Verify a sweep by its effect on structure, not by reading its diff. Two commands
 compare each ADR's Decision item list before and after (identical), and compare the
 whitespace-normalised prose from BOTH sides (identical). A one-sided strip reports every
 pre-existing construct as a change and buries the real finding in false positives.
+
+Related decisions: [ADR-0135](../decisions/0135-adr-lifecycle-and-checked-current-state-impacts.md)

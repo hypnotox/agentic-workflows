@@ -114,6 +114,7 @@ var registry = []Migration{
 	{To: 47, Name: retireRelevanceMetadataName, Build: retireRelevanceMetadata},
 	{To: 48, Name: retireClaimProvenanceMetadataName, Build: retireClaimProvenanceMetadata},
 	{To: workflowConfigGeneration, Name: retireWorkflowConfigName, Build: retireWorkflowConfig},
+	{To: pitfallRelationsGeneration, Name: retirePitfallRelationsName, Build: retirePitfallRelations},
 }
 
 func Current() int                { return registry[len(registry)-1].To }

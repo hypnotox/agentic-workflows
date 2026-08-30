@@ -1,7 +1,6 @@
 ---
 title: "Raw-byte ADR surgery must bound every scan to the frontmatter window"
 domains: ["config"]
-related: [120]
 ---
 The generation-10 retirement-tokens migration and the `adr-retired-key` check edit or
 refuse ADR frontmatter as raw bytes, by regex. Two window bugs bit in one session. First,
@@ -15,3 +14,5 @@ would have silently body-edited the target where the loud no-line failure was ow
 implementation review caught it. When touching frontmatter by regex, compute the window
 once and bound every scan to it - both edges carry regression tests in
 `internal/migrate/retirementtokens_test.go`.
+
+Related decisions: [ADR-0120](../decisions/0120-structured-machine-checked-adr-supersession.md)

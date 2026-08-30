@@ -20,7 +20,7 @@ const retireRelevanceMetadataName = "retire-relevance-metadata"
 // ConfigBytesForGeneration projects a supported pre-migration config into the
 // current schema for snapshot-pair validation. Upgrade remains the only writer.
 func ConfigBytesForGeneration(generation int, source []byte) ([]byte, error) {
-	if generation < LiveSchemaFloor || generation > workflowConfigGeneration {
+	if generation < LiveSchemaFloor || generation > pitfallRelationsGeneration {
 		return nil, fmt.Errorf("schema %d has no supported config projection", generation)
 	}
 	updated := slices.Clone(source)
@@ -85,19 +85,6 @@ func retireRelevanceMetadata(_ context.Context, tree *ProposedTree, changes *Cha
 	}
 	slices.SortFunc(mutations, func(a, b FileMutation) int { return strings.Compare(a.Path, b.Path) })
 	return mutations, nil
-}
-
-// PitfallBytesForGeneration projects one authored pitfall from a supported
-// pre-migration snapshot. Upgrade remains the only writer.
-func PitfallBytesForGeneration(generation int, source []byte) ([]byte, error) {
-	if generation >= 47 {
-		return slices.Clone(source), nil
-	}
-	if generation != LiveSchemaFloor {
-		return nil, fmt.Errorf("schema %d has no supported pitfall projection", generation)
-	}
-	updated, _, err := removePitfallTags(source)
-	return updated, err
 }
 
 func removePitfallTags(source []byte) ([]byte, bool, error) {

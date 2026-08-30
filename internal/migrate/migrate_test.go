@@ -95,7 +95,7 @@ func TestSchema47MigrationAndFutureOrdering(t *testing.T) {
 	root := t.TempDir()
 	writeLock(t, root, LiveSchemaFloor)
 	applied, _, _, err := Build(context.Background(), root)
-	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName}) {
+	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName, retirePitfallRelationsName}) {
 		t.Fatalf("schema 46: applied=%v err=%v", applied, err)
 	}
 	original := registry
@@ -112,7 +112,7 @@ func TestSchema47MigrationAndFutureOrdering(t *testing.T) {
 	)
 	t.Cleanup(func() { registry = original })
 	applied, _, mutations, err := Build(context.Background(), root)
-	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName, "first future", "second future"}) || !slices.Equal(calls, []string{"first", "second"}) {
+	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName, retirePitfallRelationsName, "first future", "second future"}) || !slices.Equal(calls, []string{"first", "second"}) {
 		t.Fatalf("future seam: applied=%v calls=%v err=%v", applied, calls, err)
 	}
 	if len(mutations) != 2 || mutations[0].Path != ".awf/future.yaml" || mutations[1].Path != ".awf/retired.yaml" || !mutations[1].Remove {
@@ -369,6 +369,7 @@ func TestRetireRelevanceMetadataMigration(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, config.ConfigPath(root), "# keep\nprefix: test\nprofile: full\nintegrationBranch: main\ntags: {one: meaning}\ncontextIgnore:\n  - docs/**\nvars: {kept: value}\n")
 	testsupport.WriteFile(t, filepath.Join(root, pitfall.SourceDir, "with-domain.md"), "---\ntitle: With domain\ndomains: [rendering]\ntags: [one]\nrelated: [1]\n---\nbody\n")
+	testsupport.WriteFile(t, filepath.Join(root, decisionDir, "0001-decision.md"), "# Historical decision\n")
 	testsupport.WriteFile(t, filepath.Join(root, pitfall.SourceDir, "without-domain.md"), "---\ntitle: Without domain\ntags:\n  - one\n---\nbody\n")
 	if err := (&manifest.Lock{AWFVersion: "0.39.2", SchemaVersion: LiveSchemaFloor, Files: map[string]manifest.Entry{}}).Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
@@ -377,7 +378,7 @@ func TestRetireRelevanceMetadataMigration(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName}) || len(changes) != 4 || len(mutations) != 3 {
+	if !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName, retirePitfallRelationsName}) || len(changes) != 5 || len(mutations) != 3 {
 		t.Fatalf("applied=%v changes=%v mutations=%v", applied, changes, mutations)
 	}
 	for _, mutation := range mutations {

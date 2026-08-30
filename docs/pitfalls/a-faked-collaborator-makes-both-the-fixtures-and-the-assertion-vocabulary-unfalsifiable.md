@@ -5,8 +5,6 @@
 
 **Domains:** rendering, tooling
 
-**Related ADRs:** ADR-0244
-
 Where a test fakes or fixtures a collaborator, the proof inherits the fake's model of that
 collaborator twice over: once in what the fixtures feed in, and once in the strings the
 assertions look for. When either drifts from the real collaborator, the test passes over a
@@ -30,3 +28,5 @@ asks whether the set is heterogeneous enough to exercise a branch; a perfectly p
 set that misreports the producer's shape is still blind. Prefer deriving fixtures from a
 recorded real reply, and temporarily perturb any assertion whose subject string the production
 path may never produce to prove that the focused test turns red.
+
+Related decisions: [ADR-0244](../decisions/0244-render-effort-memory-edits-like-pi.md)

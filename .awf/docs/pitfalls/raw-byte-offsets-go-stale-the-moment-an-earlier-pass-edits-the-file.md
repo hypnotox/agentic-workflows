@@ -1,7 +1,6 @@
 ---
 title: "Raw-byte offsets go stale the moment an earlier pass edits the file"
 domains: ["config"]
-related: [128]
 ---
 `ADR.DecisionStart`/`DecisionEnd` are byte offsets into the bytes that were *parsed*. A
 migration that rewrites the body in one pass and appends at `DecisionEnd` in a later pass
@@ -15,3 +14,5 @@ Track a per-file delta from every editing pass and add it to any later offset us
 way the same migration already tracked `removed` for stripped key lines. The tell is
 drift about *declarations going missing*, which points at a mangled section heading
 rather than at the tokens the error names.
+
+Related decisions: [ADR-0128](../decisions/0128-coverage-derived-adr-supersession.md)

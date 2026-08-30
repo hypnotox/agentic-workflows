@@ -1,7 +1,6 @@
 ---
 title: "A prose-contract test proves only the clauses whose literals occur for one reason"
 domains: ["rendering", "invariants"]
-related: [245]
 ---
 A test that backs a current-state claim about generated prose asserts substrings, and a
 substring is a proof only when the clause under test is the sole reason it appears. Three
@@ -26,3 +25,5 @@ context to bind it to its own sentence. Then degrade exactly the clause each new
 require the focused test to turn red. Absence assertions, bare vocabulary tokens, and literals
 trimmed for case or wrapping portability are all worth writing, but none of them backs a
 claim on its own.
+
+Related decisions: [ADR-0245](../decisions/0245-authority-guided-review-remediation.md)
