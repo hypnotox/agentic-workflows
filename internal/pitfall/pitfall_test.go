@@ -12,7 +12,7 @@ func source(path, front, body string) SourceFile {
 // invariant: rendering/doc-outputs:pitfall-corpus-validated (TestCorpusContract)
 // invariant: config/configuration:no-active-tag-system (TestCorpusContract)
 func TestCorpusContract(t *testing.T) {
-	valid := source(SourceDir+"/alpha.md", "title: Alpha\ndomains: [rendering]\nrelated: [1]\n", "body\n")
+	valid := source(SourceDir+"/alpha.md", "title: Alpha\ndomains: [rendering]\n", "body\n")
 	corpus, err := Load([]SourceFile{valid})
 	if err != nil || corpus.Len() != 1 {
 		t.Fatalf("load = %#v, %v", corpus.All(), err)
@@ -58,17 +58,7 @@ func TestCorpusContract(t *testing.T) {
 		{"numeric-domain", source(SourceDir+"/a.md", "title: A\ndomains: [12]\n", "body\n"), "string scalars"},
 		{"bool-domain", source(SourceDir+"/a.md", "title: A\ndomains: [true]\n", "body\n"), "string scalars"},
 		{"duplicate-domain", source(SourceDir+"/a.md", "title: A\ndomains: [x, x]\n", "body\n"), "duplicate domains"},
-		{"bad-related", source(SourceDir+"/a.md", "title: A\nrelated: [0]\n", "body\n"), "positive"},
-		{"empty-related-list", source(SourceDir+"/a.md", "title: A\nrelated: []\n", "body\n"), "nonempty list"},
-		{"null-related", source(SourceDir+"/a.md", "title: A\nrelated: null\n", "body\n"), "nonempty list"},
-		{"scalar-related", source(SourceDir+"/a.md", "title: A\nrelated: 1\n", "body\n"), "nonempty list"},
-		{"mapping-related", source(SourceDir+"/a.md", "title: A\nrelated: {adr: 1}\n", "body\n"), "nonempty list"},
-		{"string-related", source(SourceDir+"/a.md", "title: A\nrelated: ['1']\n", "body\n"), "integer scalars"},
-		{"bool-related", source(SourceDir+"/a.md", "title: A\nrelated: [true]\n", "body\n"), "integer scalars"},
-		{"float-related", source(SourceDir+"/a.md", "title: A\nrelated: [1.0]\n", "body\n"), "integer scalars"},
-		{"overflow-related", source(SourceDir+"/a.md", "title: A\nrelated: [999999999999999999999999999999999]\n", "body\n"), "integer scalars"},
-		{"invalid-tagged-integer", source(SourceDir+"/a.md", "title: A\nrelated: [!!int nope]\n", "body\n"), "integer scalars"},
-		{"duplicate-related", source(SourceDir+"/a.md", "title: A\nrelated: [1, 1]\n", "body\n"), "duplicate related"},
+		{"retired-related", source(SourceDir+"/a.md", "title: A\nrelated: [1]\n", "body\n"), "field related"},
 	}
 	for _, tc := range bad {
 		t.Run(tc.name, func(t *testing.T) {
@@ -132,7 +122,7 @@ func TestAllocationSerializationEscaping(t *testing.T) {
 			t.Fatalf("%q allocated", title)
 		}
 	}
-	e := Entry{Slug: "a", SourcePath: SourceDir + "/a.md", Title: "A [x] | `y` \\ z", Domains: []string{"d"}, Related: []int{2}, Body: "body"}
+	e := Entry{Slug: "a", SourcePath: SourceDir + "/a.md", Title: "A [x] | `y` \\ z", Domains: []string{"d"}, Body: "body"}
 	serialized, err := Serialize(e)
 	if err != nil {
 		t.Fatal(err)

@@ -1,11 +1,8 @@
 package project
 
 import (
-	"path/filepath"
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 const pitfallsCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
@@ -16,39 +13,28 @@ func TestCheckPitfallsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkPitfalls(renderInputsForTest(p), mustDeriveCorpus(t, p), mustPitfallCorpus(t, p))
+	drift, err := checkPitfalls(renderInputsForTest(p), mustPitfallCorpus(t, p))
 	if err != nil || drift != nil {
 		t.Errorf("empty pitfalls must yield no drift, got %v / %v", drift, err)
 	}
 }
 
-// An unknown domain yields pitfall-domain drift, a dangling related ADR yields
-// pitfall-adr-link drift, and an entry resolving both yields none.
-// invariant: rendering/doc-outputs:pitfall-domains-resolved (TestCheckPitfallsValidatesDomainsAndLinks)
-// invariant: rendering/doc-outputs:pitfall-adr-link-resolved (TestCheckPitfallsValidatesDomainsAndLinks)
-func TestCheckPitfallsValidatesDomainsAndLinks(t *testing.T) {
+// invariant: rendering/doc-outputs:pitfall-domains-resolved (TestCheckPitfallsValidatesDomains)
+func TestCheckPitfallsValidatesDomains(t *testing.T) {
 	root := scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
-		"docs/pitfalls/clean.md":      pitfallSource("Clean", "domains: [rendering]\nrelated: [1]\n"),
+		"docs/pitfalls/clean.md":      pitfallSource("Clean", "domains: [rendering]\n"),
 		"docs/pitfalls/bad-domain.md": pitfallSource("BadDomain", "domains: [bogus]\n"),
-		"docs/pitfalls/bad-link.md":   pitfallSource("BadLink", "related: [42]\n"),
 	})
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-real.md"),
-		testsupport.ADR("Accepted", testsupport.WithDate("2026-07-12"),
-			testsupport.WithTitle("0001: Real"), testsupport.WithBody("## Context\nx\n")))
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkPitfalls(renderInputsForTest(p), mustDeriveCorpus(t, p), mustPitfallCorpus(t, p))
+	drift, err := checkPitfalls(renderInputsForTest(p), mustPitfallCorpus(t, p))
 	if err != nil {
 		t.Fatalf("checkPitfalls: %v", err)
 	}
-	got := map[string]string{}
-	for _, d := range drift {
-		got[d.Kind] = d.Detail
-	}
-	if len(drift) != 2 || !strings.Contains(got["pitfall-domain"], "bogus") || !strings.Contains(got["pitfall-adr-link"], "0042") {
-		t.Fatalf("want pitfall-domain(bogus) + pitfall-adr-link(0042) drift, got %#v", drift)
+	if len(drift) != 1 || drift[0].Kind != "pitfall-domain" || !strings.Contains(drift[0].Detail, "bogus") {
+		t.Fatalf("want pitfall-domain(bogus) drift, got %#v", drift)
 	}
 }
 

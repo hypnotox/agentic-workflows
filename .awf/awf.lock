@@ -292,9 +292,9 @@
     },
     "docs/config-reference.md": {
       "templateId": "docs/config-reference.md.tmpl",
-      "templateHash": "sha256:d354c3b131ea2cc0286ad4919fff38c6c88a013cfef7b5fc607f38edf84803a8",
+      "templateHash": "sha256:3d0c92dd17aee1aceecfb2e0f9cfa36689e0fe0967b6ccff69e27fcfc7aa14b0",
       "configHash": "sha256:f4ac34828639aa085f3eb0370be4789e86d6517e89113cfe9c75378d12f2f51b",
-      "outputHash": "sha256:e5c7693d86818992dfdc6f4effdf42e7a97e859f46d08e5efe7fd07ba6b2a921",
+      "outputHash": "sha256:e377af4ebf31d3e8ce37e10cdda22830e0881ab716203e8ebd66de44c6b319b0",
       "regenChecked": true
     },
     "docs/debugging.md": {
@@ -403,242 +403,242 @@
     },
     "docs/pitfalls.md": {
       "templateId": "docs/pitfalls.md.tmpl",
-      "templateHash": "sha256:955d685811459477f991e7658204281cfde41e1dab0529b754a1bba305935951",
-      "configHash": "sha256:97baf9524fc84c574f92df374c0f2c6a8cb0c87f88855b5eb7cc66b8dee36508",
-      "outputHash": "sha256:b855c6479a482d50a4c936c70b60bdca00badb9ac17382dc4a5fa60d31e91062"
+      "templateHash": "sha256:217dd0f87978c1cf64db836501c896587fb8f7c1f9078b78c7071bb1cc1a08d8",
+      "configHash": "sha256:a7508e80c0f637fe6c3fe5b8ee7bf00973366964df38556062752fcdaa47aa9d",
+      "outputHash": "sha256:4fde25749c390ba9a8dd3a1549a1a7068af2a806eda62e95e09331ca2fc2a91c"
     },
     "docs/pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:b91f22b3975ef329377a456c5bd352c797a544e2ef0692c6216e1039b63f7b18",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:3d5cf1a68e776e518c6d80e16d3854ae390e742bd85194461bf7abba8010e7d7",
       "outputHash": "sha256:ceebe7ff8f08b835a67c4c9bca4f643dcdd7b1d3ab15cd9d895fdf066f532eb5"
     },
     "docs/pitfalls/a-faked-collaborator-makes-both-the-fixtures-and-the-assertion-vocabulary-unfalsifiable.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:3e6c3868919d4086cca6e8ad31c6c1b2cd0bd02c3fd74478fd1b0be7e8e76f2f",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:a121a0e2bed980b3de516e6a3eff0655f77684c6d8d75be5ee429714a3df5544",
       "outputHash": "sha256:2ba4a0daa5dd3435c54420fbb1aebf95483a633186cab1939b208bc6684c26ec"
     },
     "docs/pitfalls/a-future-code-fence-marker-must-account-for-linguist-aliases.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:8d36342f1e5e6fd839ef2209d768aee9683fdc0cc674f15153d62df2d25d5557",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:5a1cb5bb3ca2a131e92c080155a739908fe86fcae53af5433cd59f51ef3f4344",
       "outputHash": "sha256:6a3b018c11633ac4100bd55c8d95d849614b3d09b282d07006d1ca558c95a4a9"
     },
     "docs/pitfalls/a-future-non-catalog-render-singleton-still-has-hand-wired-fan-out.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:bfbd1296625ad30eaa8b124cfc4a8b7232bdc4bd3c8c9e7b548e33a2653166c8",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:5ef239ab0ea0eb0638af8ab923ce10f4e9d9633e0037b3f75cdb18f25afe4b49",
       "outputHash": "sha256:0080131704ec99d7554af89809234daff0109390a3876813108a916872680caf"
     },
     "docs/pitfalls/a-milestone-time-check-must-not-double-as-an-every-commit-test.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:f056f2b1454663b63d0d421e40314c6c29d36c01b18fb3dadd4d80a27f0871bb",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:b59141b68d7a561256dc8e981ceed8b7466b0d29f7c08bae50dc4408209dccff",
       "outputHash": "sha256:5f7c8a0de8375fad2bc891aae2f55dec6d4137f8c66386b4d9661a499c8b94c5"
     },
     "docs/pitfalls/a-new-output-language-needs-an-exercised-real-render-target.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:4f9b878dff170e6945e614936fe5833f04173ae16a56c8194e99ace6ba6a411b",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:6f84dc4fa595366020a824c2d76bed89c3f2664ecbfce031bd9afce2eb3f38c7",
       "outputHash": "sha256:67b0b413ebb8493c5664e792fd2e8dafea9db2d4dbe86425a4778116421db1a8"
     },
     "docs/pitfalls/a-plan-editing-a-catalog-template-or-default-under-enumerates-the-render-fan-out.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:98d96544f5e19842b20ceec783a158cd1a8516b4a156c6b7a4127ac836bbb131",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:a228ebcd0b31eaac0897ec87892455fd26ef1a7d5e2f16e0d5b0ccd0e7275eed",
       "outputHash": "sha256:ba1e32d7e1d22b657c935122216a8029ed7891cf5a22326461695a7c4a0dcad3"
     },
     "docs/pitfalls/a-proof-marker-does-not-prove-every-clause-in-its-invariant-claim.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:633d94a4864291e56172cd90adf7779d381929ea8545c323417b83958ec8d0e5",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:def237e917cc2817388d99791432f6f6250f89274bd7e98ee831e119a7120944",
       "outputHash": "sha256:eac8e0e57a2614eb095a6b9981474b964fb5dd5ffa78ce2d60d7f831f61567f5"
     },
     "docs/pitfalls/a-prose-contract-test-proves-only-the-clauses-whose-literals-occur-for-one-reason.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:50217a66a214785f7113513cc0acb4e5c764661aa4742a73e28b5bf1b2a40c08",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:670ad0da24c4918bfe961cd73110dde6274ce3e53aaccc455eb22e1032e44f01",
       "outputHash": "sha256:fecca9102ad9e25f7cb4a0ec8a6abe6cfc2f18008e61192cb5b6d95c99ee8d15"
     },
     "docs/pitfalls/a-scripted-sweep-over-adr-prose-can-silently-unmake-the-structure-it-edits.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:fb3127a6c6276219914ad9e2a74b196421e265753de8c4c235a4e140cd4bbb7a",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:d1a5e138a9057736e29d9efd2d8fec60cb70035967aea17df12d7a6388b96944",
       "outputHash": "sha256:94eb2bb3ef9c2c115fabcc79466c1732fac00bf9eaf58c640cfdb0a2715713e5"
     },
     "docs/pitfalls/a-staged-symlink-fixture-needs-a-real-blob-a-gitlink-does-not.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:ad99561cfd88e4b3f968706bf327de6f16dfbe2b9c29fb1aa1d7c99bc9f02b06",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:f0e5453ce9c3ce78405ca2fbd8da7b034e57a36337373058a01c4859284dfc7e",
       "outputHash": "sha256:d4a8926b6acd125459ff290984d88addc4e154a71af73c63f4f7713770be0ec3"
     },
     "docs/pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:86828f89dfa5a110125dedf8ae53f0a7276b946d13af629481df283c3fea72d3",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:7c736bd351c98ae386a338cc3b8256fd647d00ff9597cc566fbc02b315910c68",
       "outputHash": "sha256:03ad23a8321ea208b712263b1aa74c7427b59649916daed7a73675ca7e001fb0"
     },
     "docs/pitfalls/ad-hoc-compound-mutations-still-need-target-read-back.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:4689da44506f6deaf58d7b288fee4727dfc6aec06b85477c18c6a3c94e932dda",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:3a5ed19e2744d1fadc2f7d4e6a052fe4e8b4f12bc7a97e0b1bb717705e039550",
       "outputHash": "sha256:8c8cc40da76a912378c4763592146b2cfc403b5e86c23dda4185b76c4fb124ff"
     },
     "docs/pitfalls/adr-adr-title-already-carries-the-adr-nnnn-prefix.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:3723e36e01f2536a2c07029d08f4043e39e3a23c83bdd2401975d7e370c748e4",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:b8d4ca0385c25361113b4666cb5e9f6e4bc7a395ead9b9f728967090e9d1ce17",
       "outputHash": "sha256:7ca10760fd5e13249af913d56f0efe5469f058ab1412a7ae863a2e57c32298ce"
     },
     "docs/pitfalls/an-ad-hoc-empty-scan-still-needs-proof-that-the-probe-ran.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:96c65017d7f384ab3d77d8c6b773d81851dbe94ec1717ab6a1b78ec531473e69",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:34b834a5f381727f9e54efb209fe613e81d4495076d57e84e282c21bad15c426",
       "outputHash": "sha256:fe3553937e17dec64e4450bbc02edd0fd98e7d63648cc85c9b3e7fa3a10d1b36"
     },
     "docs/pitfalls/an-ad-hoc-post-check-can-still-overrun-the-change-s-scope.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:078256f706fafcc6160bf3f226b6ca11fc0c8fe6f8c8a607a3ad07b4038288c4",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:f6ceaa68ce6c743b4adfdd6874eaee26efd47bb3cb49d7e7b44f5e36db0fd6ca",
       "outputHash": "sha256:b11edc5420fb071f40e84083bb5f6d8155f22f73eaf2a4f9b35261cb6142156a"
     },
     "docs/pitfalls/an-attribute-filtered-pinned-set-test-exempts-every-other-attribute-value.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:b660e66780317ebdef478724c3a0733cd14cde4de2d38ecf2090af9f34f38aa2",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:afdeefd009a4fa7ba8ecf33b847a9d0a3bb45fdc24b1df0b338a656a6eaad3df",
       "outputHash": "sha256:3e9e9309aaa3e7be40ed055c8f758034f8dc01be55d5962904b4c902e7d7dcdf"
     },
     "docs/pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:38ddd497472ba7ad877ec6e69d0b153c00952559cbed8f9ae55ef9dbfea4e6be",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:6bb12de24140cf5f96b59a866c7f46a7ca1c1b55ee3c9c82c011dbb9fd2922cd",
       "outputHash": "sha256:59fabb79c3b9cda9de2fb95210a48cfaa18792651097e9d7351b2c30df04abf7"
     },
     "docs/pitfalls/an-ordering-proof-written-against-the-log-proves-nothing.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:24eb846dd5068461acb572ee9a49b86efd347dbb99722ef8d5ba4a6442c56a3e",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:d3c4629308bd23dd4d5eff9c002d969593b773352384488587f93b50d5b257fd",
       "outputHash": "sha256:15d4765ac73097e0848ac4a96829a0478d343a604750b17e25adba44465c1820"
     },
     "docs/pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:7cf04977642f67c2c1c55323372d62c12d84a779423c82d0d817ba9f38848cc6",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:f8d9c991cef5ba4e977e2545ac9402fd240e825c240db1057e05f875d7cd4cd8",
       "outputHash": "sha256:eb6781ea3e12ddab71f0884763fa6814570fa4964b17c93da55b5e71b9d7eee5"
     },
     "docs/pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:f0565ee31d56dca5e13fe13071079e2eb7620cecfde50edf45fa66d676f2d2cc",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:a0df03aa503d865d80ad661b3a86f00c7dc15d18deefb0e4a50bb86164868e1b",
       "outputHash": "sha256:336923a74a2e2eb9d9c0f7b912610f75f3878fedecdd5e8a1ba4e18d041735d9"
     },
     "docs/pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:64b34f5477b3586a0637dfd1294be8082e033cd88ad4b53a36d19f42a68645dd",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:2208a9111376a29152d539a0b40ed785f5be7695865931e7eb2316efc0bed0ce",
       "outputHash": "sha256:b67e01f632c6f5ea6ad7de6242422228a6f7f23cd1a79ac58dcaa89025fd4818"
     },
     "docs/pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:b5c41df58702e8239e2f3b6e8cb14294a9b9f8b6628d39d542c2c6172d293afa",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:c0dbabd1537a4d508b42107c596b54f2c67fc40463767ebda8cef1fb438f984a",
       "outputHash": "sha256:97ad685312497b9d702e33ae7d07e15a096ff251fd9d50882b48bf6117f75130"
     },
     "docs/pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:6aef18b8d1833b348c57be506a0631ce6e2bcecdc05a66a841ecb87249f185cb",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:25ee13b15f8a5e8d8483c405121b3e384185e9452e58002fbd9135cc85cb5f9a",
       "outputHash": "sha256:5bff27f8509cf8ec3c8c148d9f4a8e3b6f56fe7586cce67a6c12ddb668b43ac4"
     },
     "docs/pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:a3b151f82150f16d4df8c87df180f7323d338f574d335bccb0dda065757bedcf",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:c2872191c2c786b1f10ebbdeeb95673cc04d5984bb95bc9ff4086c4f9e9706b3",
       "outputHash": "sha256:fcc87fba77fcaf4c6f1dc6ce8d99358acc0dfdee7e59880c2d37f9249cb6d06f"
     },
     "docs/pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:bedf3f6224fb1ec9c5f2ce50345969ca590cbc292be60c5f22f68932d3eb1591",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:a2d487c522ca630107f9e3243e5f5272f43f0679a844d091c74ae3ff7de66af8",
       "outputHash": "sha256:434b0b68fc8b11dd110069187b62102616d1ad0465cc6c3e08c08fd98b2bc6d9"
     },
     "docs/pitfalls/pin-the-go-toolchain-when-preview-compilers-break-lint.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:6eb764e85b276259c716437a9066a911dd9c856f5300d3db28439c1248534fa8",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:e59bb70294535ddb47b1e0efe9b843f269dd5b1d696c6f5680211859db8ec3d4",
       "outputHash": "sha256:3e56caa25fa3c6544b5350b9013001eea8307056e4407f9fde794a6be6fe3173"
     },
     "docs/pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:d81ac5f863a9a4d175b3020210f85b8319b54a08006db3bcdc0a84b384bdb324",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:a3e8724283907fd0233aee1a2f4d612245531b7785fb12e013c70e4efca95cf0",
       "outputHash": "sha256:6ccb6006b8cc4392e7541d05b3fa06b77e4c83654ce90d3c920a130c7b76ee65"
     },
     "docs/pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:21433edf733168a769fc77ab733986c0f50ea31824177a1a26af905292075d68",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:329359bdc625817f6d603c76f8e08ae31f013fe6434fd6fd16c5c14eba8c42fc",
       "outputHash": "sha256:21450db135e3bbbadc1ec2db77b9593590e0d80610d09a69fb1f6a803463fb7b"
     },
     "docs/pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:fe7f2ad7e5d755a577d1d89f43cd27a716ee50d374cffa679227fbdb421ddc7a",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:9858678ba60f8a18e4da0f0be0f5a2f6aefa5f292300a5c28d3acb349ca3cbc1",
       "outputHash": "sha256:5a5ecb3bf9c84862c83104bf2d006e055f7eab2707e5c54e53e438a51528539c"
     },
     "docs/pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:c69115171df5902af6c5f79c06f9a28b2ce2319d568f38479a2f7be7ac16dae2",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:a1e1e39a55d1f6eb92a7a9918e475387847da6ff2adc88d60caba79214831e0c",
       "outputHash": "sha256:e0323246bfc4b52a0dbe56d6795e60e2e92c0260d917e403d48082173494dadf"
     },
     "docs/pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:c71e3c611df56024adf13830093585464536a67d7cef9c31da7b83b17e1e50a5",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:39a54d62d4b40cc2cd774c78856ea680f1217f05ab1fe5fcf7dfea67043e56c8",
       "outputHash": "sha256:1365d03c2d4c7ba58e7c74724a6f8a20c259c1613d2f7662b1e7191ad901af85"
     },
     "docs/pitfalls/resolve-review-ranges-from-git-rather-than-transcribing-shas.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:b783567f1eb57e188c8d27d655a2090a215d7c51e505b3960b6ed488e9892f63",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:fe0d6c9b545f7f2757ef8a1e480d31778644be20736f7fc4e8d5a1a6451d9973",
       "outputHash": "sha256:70b2d1544cd03a379be1f2ccae3a76514e9365520598d893cad1479282fb0b22"
     },
     "docs/pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:42ecd02502162411a90d90bd024a697d17a0c3003d32b1bf1f27dc31cd3bda3c",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:9979fa1977f4a88f14a43c7aba3fe690b733fdbe6661ec9f0aa09ace77c5ff6d",
       "outputHash": "sha256:f95a3ae18455312bc2d13dc06251528430819961893b95bcadca90d848f17737"
     },
     "docs/pitfalls/reuse-the-repository-boundary-for-new-filesystem-walks.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:4db582af787940a83260112694ffffc70a147de45fa033f9533dad2eb8a1155e",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:7a7b6449236b8341406b05652dde1a45f1520025769e1bca117fb06440e89bfc",
       "outputHash": "sha256:71494272d3f1302265cb00f1c89de44f4cb19529cc38c095f67f31875ce4f395"
     },
     "docs/pitfalls/scope-a-claim-to-the-command-s-actual-input.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:8fe4b31792b155b3d64b1c0cba9d7ec46343c09e53bd41e6efc8d2be112b0302",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:0483a0c120dafb5dc0072432e7abf50b2a1f2990603415c35fcb8257ce3461e6",
       "outputHash": "sha256:56563033a79fd4f8795fb77dc51b6587ce6d06f37dc1c39f2cf23c150337ee10"
     },
     "docs/pitfalls/sidecar-data-is-not-placeholder-substituted-drop-awf-escapes-when-converting-a-part.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:901cee92a2590814b321aa32efde57f5f4042eb288868c868352f28f033cdaf6",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:b1662892c83fb3b11069fdd00aa8a78abfeee34899f78e5d396299a360f190a3",
       "outputHash": "sha256:328f4f90f03033eceb4a240a13bc24580d318a416b5a557259acfcd45c506a66"
     },
     "docs/pitfalls/use-absolute-generations-for-historical-migration-shapes.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:a9fbe5a8ae07f9c8a4523cfd887b0b6daafa13eb47ff4d798527bfe31ad3e5ba",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:3356bd502fe4b7fc384fef2b64fcd2f706a97df9d7aa13e281d8a826b848de7e",
       "outputHash": "sha256:a387f6e8c6a24df4ba1bd057e96333127e0e529b23863f83c5f8302ba6ed4618"
     },
     "docs/pitfalls/when-retiring-a-config-key-handle-historical-writers.md": {
       "templateId": "pitfalls/entry.md.tmpl",
-      "templateHash": "sha256:866af88d13d35c3a309b358fc3bfdc6557d902348c9f0d88804db8219ad58dc5",
-      "configHash": "sha256:aff1ef998023582625b476ef2b4ebc0360e84ac9ee41a65c91de298504eccf72",
+      "templateHash": "sha256:d17ff4639e37b876b25efd24d9d150edd9618be58b9130367985e17cd61a3cf1",
+      "configHash": "sha256:6e3afb2f276a8be3f062be52619c49f1f8669193bde998012402bd441d1fc182",
       "outputHash": "sha256:1d06d180614c8cc843b7a6a0817fd3194acad8e9ef2d5ba6cd2189c1da94eb44"
     },
     "docs/releasing.md": {
@@ -813,8 +813,8 @@
     "docs/topics/rendering/doc-outputs.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:62d8dd466bfaebaf5625a41aca380bd323b1d043a1f21575d74d59de4b0ea6b9",
-      "outputHash": "sha256:75ddd33ebbdd09e1a48f30e8517f1586de82b99d626ac42cedd4d9142f8e423f"
+      "configHash": "sha256:7284ac3e9786f0c504f5ff88dc21acabdad56bceef3d0aab124c4b78ec880912",
+      "outputHash": "sha256:aaca44905b0f2689cfe7962470b91105e983786f5456dd305aafb6de2373ca83"
     },
     "docs/topics/rendering/guide-and-doc-templates.md": {
       "templateId": "topics/topic.md.tmpl",

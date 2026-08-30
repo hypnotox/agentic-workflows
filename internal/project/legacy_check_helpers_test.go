@@ -1,7 +1,6 @@
 package project
 
 import (
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/glossary"
@@ -17,8 +16,8 @@ const glossaryMeaningMax = glossary.MeaningMax
 
 type glossaryRecord = glossary.Record
 
-func checkPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus) ([]manifest.Drift, error) {
-	result, err := pitfallcheck.Check(p.cfg.Domains, pitfalls, corpus)
+func checkPitfalls(p renderInputs, pitfalls pitfall.Corpus) ([]manifest.Drift, error) {
+	result, err := pitfallcheck.Check(p.cfg.Domains, pitfalls)
 	return resultDriftForTest(result), err
 }
 

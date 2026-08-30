@@ -1,10 +1,9 @@
-// Package pitfallcheck owns pitfall domain and ADR-link validity policy.
+// Package pitfallcheck owns pitfall domain validity policy.
 package pitfallcheck
 
 import (
 	"fmt"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
@@ -13,8 +12,8 @@ import (
 // PropertyCorrectness is the protected property for pitfall findings.
 const PropertyCorrectness checkresult.Property = "correctness"
 
-// Check evaluates a prepared pitfall corpus against immutable domain and ADR facts.
-func Check(domains []string, corpus pitfall.Corpus, adrs adr.Corpus) (checkresult.Result, error) {
+// Check evaluates a prepared pitfall corpus against immutable domain facts.
+func Check(domains []string, corpus pitfall.Corpus) (checkresult.Result, error) {
 	known := map[string]bool{}
 	for _, d := range domains {
 		known[d] = true
@@ -24,11 +23,6 @@ func Check(domains []string, corpus pitfall.Corpus, adrs adr.Corpus) (checkresul
 		for _, d := range e.Domains {
 			if !known[d] {
 				findings = append(findings, finding(e.SourcePath, "pitfall-domain", fmt.Sprintf("%s (%q): unknown domain %q", e.Slug, e.Title, d)))
-			}
-		}
-		for _, n := range e.Related {
-			if !adrs.Has(fmt.Sprintf("%04d", n)) {
-				findings = append(findings, finding(e.SourcePath, "pitfall-adr-link", fmt.Sprintf("%s (%q): ADR-%04d", e.Slug, e.Title, n)))
 			}
 		}
 	}

@@ -264,7 +264,7 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 		t.Fatal(err)
 	}
 	prepared.pitfalls = pitfall.New([]pitfall.Entry{{
-		Slug: "immutable", Domains: []string{"rendering"}, Related: []int{1}, Source: []byte("source"),
+		Slug: "immutable", Domains: []string{"rendering"}, Source: []byte("source"),
 	}})
 	prepared.glossary = glossarycheck.Input{
 		Enabled:  true,
@@ -287,7 +287,6 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 
 	projectedPitfalls := prepared.Pitfalls().All()
 	projectedPitfalls[0].Domains[0] = "mutated"
-	projectedPitfalls[0].Related[0] = 99
 	projectedPitfalls[0].Source[0] = 'X'
 
 	projectedTopics := prepared.Topics()

@@ -184,7 +184,6 @@ func clonePitfallCorpus(corpus pitfall.Corpus) pitfall.Corpus {
 	entries := corpus.All()
 	for i := range entries {
 		entries[i].Domains = slices.Clone(entries[i].Domains)
-		entries[i].Related = slices.Clone(entries[i].Related)
 		entries[i].Source = slices.Clone(entries[i].Source)
 	}
 	return pitfall.New(entries)

@@ -36,14 +36,9 @@ Backing: test
 Every valid local-document declaration produces one separately configured output through normalized metadata, shared-shell render, lock membership, working-tree regeneration drift, Markdown-link and skill-reference scans, and agent-guide discovery. Its body remains in-place preserved, and this ordinary working-tree coverage does not add staged semantics.
 Backing: test
 
-### `invariant: pitfall-adr-link-resolved`
-
-check fails a pitfall entry whose related list names an ADR number with no matching file under docs/decisions/.
-Backing: test
-
 ### `invariant: pitfall-corpus-validated`
 
-The pitfall source loader accepts only direct regular lowercase-kebab `.md` leaves under `.awf/docs/pitfalls`, reserves `index`, strictly validates a required single-line title plus optional duplicate-free domains and related ADRs, rejects retired tag metadata, requires a nonblank body, and enforces corpus-wide title uniqueness for render and check.
+The pitfall source loader accepts only direct regular lowercase-kebab `.md` leaves under `.awf/docs/pitfalls`, reserves `index`, strictly validates a required single-line title plus optional duplicate-free domains, rejects retired tag and related metadata, requires a nonblank body, and enforces corpus-wide title uniqueness for render and check.
 Backing: test
 
 ### `invariant: pitfall-output-complete`

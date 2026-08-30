@@ -122,6 +122,6 @@ declined; the generic prose renders).
 ## Pitfall sources
 
 Pitfalls are direct regular `.awf/docs/pitfalls/<lowercase-kebab-slug>.md` files with strict
-frontmatter: required `title`, optional `domains` and positive `related` lists, then a
-nonblank Markdown body. The slug `index` is reserved. `.awf/docs/pitfalls.yaml` is optional and may
+frontmatter: required `title` and optional `domains`, then a nonblank Markdown body. The slug
+`index` is reserved. `.awf/docs/pitfalls.yaml` is optional and may
 contain only ordinary `prepend` or `append` section configuration; it is never an entry registry.

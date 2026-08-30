@@ -21,7 +21,6 @@ var slugRE = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 type Entry struct {
 	Slug, SourcePath, Title string
 	Domains                 []string
-	Related                 []int
 	Body                    string
 	Source                  []byte
 }
@@ -71,7 +70,6 @@ type SourceFile struct {
 type metadata struct {
 	Title   *string
 	Domains presentNode
-	Related presentNode
 }
 
 type presentNode struct {
@@ -99,8 +97,6 @@ func (m *metadata) UnmarshalYAML(node *yaml.Node) error {
 			m.Title = &title
 		case "domains":
 			m.Domains = presentNode{present: true, node: *value}
-		case "related":
-			m.Related = presentNode{present: true, node: *value}
 		default:
 			return fmt.Errorf("field %s not found in type pitfall.metadata", key)
 		}
@@ -180,24 +176,10 @@ func Parse(f SourceFile) (Entry, error) {
 	if err != nil {
 		return Entry{}, err
 	}
-	related, err := decodeOptionalIntegerList(f.Path, "related", m.Related)
-	if err != nil {
-		return Entry{}, err
-	}
 	if err := validateStrings(f.Path, "domains", domains); err != nil {
 		return Entry{}, err
 	}
-	seenRelated := map[int]bool{}
-	for _, n := range related {
-		if n <= 0 {
-			return Entry{}, fmt.Errorf("%s: related entries must be positive ADR numbers", f.Path)
-		}
-		if seenRelated[n] {
-			return Entry{}, fmt.Errorf("%s: duplicate related entry %d", f.Path, n)
-		}
-		seenRelated[n] = true
-	}
-	return Entry{Slug: slug, SourcePath: f.Path, Title: title, Domains: domains, Related: related, Body: string(body), Source: slices.Clone(f.Bytes)}, nil
+	return Entry{Slug: slug, SourcePath: f.Path, Title: title, Domains: domains, Body: string(body), Source: slices.Clone(f.Bytes)}, nil
 }
 
 func optionalSequence(source, field string, value presentNode) ([]*yaml.Node, error) {
@@ -221,25 +203,6 @@ func decodeOptionalStringList(source, field string, value presentNode) ([]string
 			return nil, fmt.Errorf("%s: %s entries must be string scalars", source, field)
 		}
 		values = append(values, node.Value)
-	}
-	return values, nil
-}
-
-func decodeOptionalIntegerList(source, field string, value presentNode) ([]int, error) {
-	nodes, err := optionalSequence(source, field, value)
-	if err != nil || nodes == nil {
-		return nil, err
-	}
-	values := make([]int, 0, len(nodes))
-	for _, node := range nodes {
-		if node.Kind != yaml.ScalarNode || node.Tag != "!!int" {
-			return nil, fmt.Errorf("%s: %s entries must be integer scalars", source, field)
-		}
-		var number int
-		if err := node.Decode(&number); err != nil {
-			return nil, fmt.Errorf("%s: %s entries must be integer scalars: %w", source, field, err)
-		}
-		values = append(values, number)
 	}
 	return values, nil
 }
@@ -304,8 +267,7 @@ func Serialize(e Entry) ([]byte, error) {
 	m := struct {
 		Title   string   `yaml:"title"`
 		Domains []string `yaml:"domains,omitempty,flow"`
-		Related []int    `yaml:"related,omitempty,flow"`
-	}{e.Title, e.Domains, e.Related}
+	}{e.Title, e.Domains}
 	y, err := yaml.Marshal(m)
 	if err != nil {
 		return nil, err

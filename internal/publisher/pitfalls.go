@@ -67,7 +67,6 @@ type pitfallIndexEntry struct {
 	Slug, Title, LinkTitle, TableTitle string
 	Domains                            []string
 	DomainsText                        string
-	Related                            []int
 }
 type pitfallDomainGroup struct {
 	Name, Heading string
@@ -83,7 +82,6 @@ type pitfallLeafModel struct {
 	Slug, Title, Heading, Source, Body string
 	Domains                            []string
 	DomainsText                        string
-	Related                            []int
 }
 
 func buildPitfallIndex(corpus pitfall.Corpus) pitfallIndexModel {
@@ -97,7 +95,7 @@ func buildPitfallIndex(corpus pitfall.Corpus) pitfallIndexModel {
 	model := pitfallIndexModel{}
 	groups := map[string][]pitfallIndexEntry{}
 	for _, e := range entries {
-		item := pitfallIndexEntry{Slug: e.Slug, Title: e.Title, LinkTitle: pitfall.EscapeLinkLabel(e.Title), TableTitle: pitfall.EscapeTableCell(e.Title), Domains: e.Domains, DomainsText: pitfall.EscapeTableCell(strings.Join(e.Domains, ", ")), Related: e.Related}
+		item := pitfallIndexEntry{Slug: e.Slug, Title: e.Title, LinkTitle: pitfall.EscapeLinkLabel(e.Title), TableTitle: pitfall.EscapeTableCell(e.Title), Domains: e.Domains, DomainsText: pitfall.EscapeTableCell(strings.Join(e.Domains, ", "))}
 		model.Entries = append(model.Entries, item)
 		if len(e.Domains) == 0 {
 			model.Unassigned = append(model.Unassigned, item)
@@ -129,7 +127,7 @@ func pitfallIndexSidecar(sc config.Sidecar, corpus pitfall.Corpus) config.Sideca
 }
 
 func pitfallLeafData(e pitfall.Entry) map[string]any {
-	return map[string]any{"pitfall": pitfallLeafModel{Slug: e.Slug, Title: e.Title, Heading: pitfall.EscapeHeading(e.Title), Source: e.SourcePath, Body: e.Body, Domains: e.Domains, DomainsText: strings.Join(e.Domains, ", "), Related: e.Related}}
+	return map[string]any{"pitfall": pitfallLeafModel{Slug: e.Slug, Title: e.Title, Heading: pitfall.EscapeHeading(e.Title), Source: e.SourcePath, Body: e.Body, Domains: e.Domains, DomainsText: strings.Join(e.Domains, ", ")}}
 }
 
 // pitfallSourcePaths returns stable provenance inputs for the complete corpus.

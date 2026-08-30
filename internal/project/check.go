@@ -249,7 +249,7 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results = append(results, repositorycheck.Slot{Result: references})
-	pitfallsResult, err := pitfallResult(p, corpus, pitfalls)
+	pitfallsResult, err := pitfallResult(p, pitfalls)
 	if err != nil {
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
@@ -297,8 +297,8 @@ func adrRelatedResult(corpus adr.Corpus) (checkresult.Result, error) {
 // Result adapters preserve owner-classified results for ordinary CheckReport
 // composition. Legacy helpers remain available to direct callers without
 // changing the normal composition boundary.
-func pitfallResult(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus) (checkresult.Result, error) {
-	return pitfallcheck.Check(p.cfg.Domains, pitfalls, corpus)
+func pitfallResult(p renderInputs, pitfalls pitfall.Corpus) (checkresult.Result, error) {
+	return pitfallcheck.Check(p.cfg.Domains, pitfalls)
 }
 func pendingADRResult(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus) checkresult.Result {
 	var findings []checkresult.Finding
