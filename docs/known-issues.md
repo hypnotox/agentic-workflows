@@ -63,3 +63,9 @@ Each issue below is reproducible from repository state and remains open until it
 **Reproduction.** Give the owner a valid global-only Git identity and no repository-local override, then integrate a divergent effort. The isolated native Git runner suppresses global and system configuration, so `git merge --no-ff --no-commit` fails with `Committer identity unknown` and reports the failure as a merge conflict.
 
 **Completion criteria.** Lifecycle Git mutations receive the validated effective owner identity, retain hostile-config isolation, distinguish identity setup failure from content conflict, and cover global-only identity, hostile inherited config, and a real merge conflict.
+
+## Repository hooks can run under an unsupported preview Go toolchain
+
+**Reproduction.** Install a preview Go compiler newer than the `go.mod` directive and run a wired commit hook without setting `GOTOOLCHAIN`. The hook invokes the gate under the preview compiler, where pinned golangci-lint analyzers can panic on valid source. Repeating the commit with a stable toolchain matching the module directive passes.
+
+**Completion criteria.** Repository entrypoints and hooks select the supported module toolchain or fail with a clear pre-analysis diagnostic, and a preview-host regression proves lint still runs without bypass.
