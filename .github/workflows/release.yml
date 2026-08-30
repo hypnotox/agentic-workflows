@@ -9,7 +9,7 @@ permissions:
 
 jobs:
   verify:
-    name: verify-exact-tag
+    name: prepare-exact-candidate
     runs-on: ubuntu-latest
     permissions:
       actions: read
@@ -19,28 +19,26 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
+          persist-credentials: false
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with:
           go-version-file: go.mod
+      - name: Assert native linux/amd64
+        run: |
+          printf 'native target: linux/amd64\n'
+          [ '${{ runner.os }}' = Linux ]
+          [ '${{ runner.arch }}' = X64 ]
+          [ "$(uname -s)" = Linux ]
+          [ "$(uname -m)" = x86_64 ]
+          [ "$(go env GOOS)" = linux ]
+          [ "$(go env GOARCH)" = amd64 ]
       - name: Verify checkout and tag identity
         run: |
           candidate='${{ github.sha }}'
           [ "$(git rev-parse HEAD)" = "$candidate" ]
           [ "$(git rev-parse "${GITHUB_REF_NAME}^{}")" = "$candidate" ]
-      - name: Verify bridge readiness and exact CI conclusion
-        env:
-          GITHUB_TOKEN: ${{ github.token }}
-        run: go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"
-      - name: Enable restricted rootless extraction
-        run: |
-          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0; fi
-          unshare --user --map-root-user true
-      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
-        with: {version: v2.17.0, args: check}
-      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
-        with: {version: v2.17.0, args: release --snapshot --clean}
-      - name: Verify exact snapshot archives
-        run: go run ./cmd/releasecheck --verify-archives dist
+      - name: Verify release authority
+        run: go run ./cmd/releasecheck
       - name: Verify tag matches project.Version
         run: |
           tag="${GITHUB_REF_NAME#v}"
@@ -62,8 +60,92 @@ jobs:
           git merge-base --is-ancestor HEAD origin/main
       - name: Prepare release notes from the curated changelog
         run: go run ./cmd/awf changelog --version "${GITHUB_REF_NAME#v}" > "${RUNNER_TEMP}/release-notes.md"
-  publish:
+      - name: Enable restricted rootless extraction
+        run: |
+          if [ -e /proc/sys/kernel/apparmor_restrict_unprivileged_userns ]; then sudo sysctl -w kernel.apparmor_restrict_unprivileged_userns=0; fi
+          unshare --user --map-root-user true
+      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with: {version: v2.17.0, args: check}
+      - name: Construct exact candidate without publication credentials
+        uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
+        with: {version: v2.17.0, args: 'release --clean --skip=publish --release-notes ${{ runner.temp }}/release-notes.md'}
+      - name: Verify exact candidate archives
+        run: go run ./cmd/releasecheck --verify-archives dist
+      - name: Upload candidate
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: release-candidate-${{ github.sha }}
+          path: |
+            dist/awf_*.tar.gz
+            dist/checksums.txt
+          if-no-files-found: error
+          retention-days: 1
+
+  native-linux-amd64:
+    name: native-linux-amd64
     needs: verify
+    runs-on: ubuntu-latest
+    env: {AWF_PI_TEST_SKIP_NVM: '1'}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with: {go-version-file: go.mod}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: {node-version-file: .nvmrc, cache: npm, cache-dependency-path: tools/pi-extension-test/package-lock.json}
+      - name: Assert native target linux/amd64
+        run: |
+          printf 'native target: linux/amd64\n'
+          [ '${{ runner.os }}' = Linux ]
+          [ '${{ runner.arch }}' = X64 ]
+          [ "$(uname -s)" = Linux ]
+          [ "$(uname -m)" = x86_64 ]
+          [ "$(go env GOOS)" = linux ]
+          [ "$(go env GOARCH)" = amd64 ]
+          [ "$(git rev-parse HEAD)" = '${{ github.sha }}' ]
+      - name: Complete source assurance
+        run: ./x test && ./x gate && ./x check && ./x render && git diff --exit-code && ./x pi-test run
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-candidate-${{ github.sha }}
+          path: dist
+      - name: Smoke exact candidate linux/amd64
+        run: tools/native-release-test/run.sh dist linux amd64 "${GITHUB_REF_NAME#v}"
+
+  native-darwin-arm64:
+    name: native-darwin-arm64
+    needs: verify
+    runs-on: macos-15
+    env: {AWF_PI_TEST_SKIP_NVM: '1'}
+    steps:
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with: {go-version-file: go.mod}
+      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+        with: {node-version-file: .nvmrc, cache: npm, cache-dependency-path: tools/pi-extension-test/package-lock.json}
+      - name: Assert native target darwin/arm64
+        run: |
+          printf 'native target: darwin/arm64\n'
+          [ '${{ runner.os }}' = macOS ]
+          [ '${{ runner.arch }}' = ARM64 ]
+          [ "$(uname -s)" = Darwin ]
+          [ "$(uname -m)" = arm64 ]
+          [ "$(go env GOOS)" = darwin ]
+          [ "$(go env GOARCH)" = arm64 ]
+          [ "$(git rev-parse HEAD)" = '${{ github.sha }}' ]
+      - name: Complete source assurance
+        run: ./x test && ./x gate && ./x check && ./x render && git diff --exit-code && ./x pi-test run
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
+        with:
+          name: release-candidate-${{ github.sha }}
+          path: dist
+      - name: Smoke exact candidate darwin/arm64
+        run: tools/native-release-test/run.sh dist darwin arm64 "${GITHUB_REF_NAME#v}"
+
+  publish:
+    name: publish-verified-candidate
+    needs: [native-linux-amd64, native-darwin-arm64]
     runs-on: ubuntu-latest
     permissions:
       contents: write
@@ -72,25 +154,24 @@ jobs:
         with:
           ref: ${{ github.sha }}
           fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
       - name: Repeat tag identity before publication
         run: |
           [ "$(git rev-parse HEAD)" = '${{ github.sha }}' ]
           [ "$(git rev-parse "${GITHUB_REF_NAME}^{}")" = '${{ github.sha }}' ]
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+      - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
-          go-version-file: go.mod
+          name: release-candidate-${{ github.sha }}
+          path: dist
       - name: Prepare release notes from the curated changelog
         run: go run ./cmd/awf changelog --version "${GITHUB_REF_NAME#v}" > "${RUNNER_TEMP}/release-notes.md"
-      - uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
-        with:
-          version: v2.17.0
-          args: release --clean --release-notes ${{ runner.temp }}/release-notes.md
+      - name: Publish the exact verified candidate archives
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      - name: Restore exact curated release notes
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-        run: gh release edit "$GITHUB_REF_NAME" --notes-file "${RUNNER_TEMP}/release-notes.md"
+        run: gh release create "$GITHUB_REF_NAME" dist/awf_*.tar.gz dist/checksums.txt --notes-file "${RUNNER_TEMP}/release-notes.md"
       - name: Verify published release notes
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

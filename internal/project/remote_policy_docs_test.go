@@ -48,10 +48,10 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 		"Local hooks are optional preflight.",
 		"wait for that commit's `CI / gate` check to succeed",
 		"live GitHub `release tags` ruleset requires successful `CI / gate`",
-		"live tag ruleset requires that same conclusion before accepting the tag",
-		"needs-bound credential-bearing GoReleaser job",
-		"Production snapshot construction and portability validation belong to the read-only release verification job.",
-		"Ordinary local Go tests use synthetic archive fixtures and never invoke GoReleaser.",
+		"live tag ruleset requires a successful `CI / gate` conclusion for the exact tag SHA before accepting the tag",
+		"credential-bearing publish job runs only after both native jobs succeed",
+		"Production candidate construction and archive validation belong to the read-only release preparation job",
+		"Ordinary local Go tests use synthetic archive fixtures and a locally built Linux/amd64 candidate without invoking GoReleaser.",
 	} {
 		if !strings.Contains(releasing, want) {
 			t.Errorf("self-hosted release guidance missing remote-policy contract %q", want)

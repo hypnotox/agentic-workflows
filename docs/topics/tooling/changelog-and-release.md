@@ -43,7 +43,7 @@ Backing: test
 
 ### `invariant: release-gate-on-tag`
 
-The release workflow verifies the successful exact-SHA `CI / gate` conclusion, checkout and tag identity, origin/main ancestry, the release version, curated notes, and production snapshot archive integrity before its needs-bound credential-bearing GoReleaser publish step. It does not repeat repository test or lint assurance.
+The release workflow verifies checkout and tag identity, origin/main ancestry, release version, curated notes, and archive integrity before constructing one credential-free production candidate. Linux/amd64 and Darwin/arm64 jobs each repeat complete source assurance and smoke their matching archive; only then may the credential-bearing publish job upload that same candidate. The live tag ruleset separately requires the exact-SHA `CI / gate` conclusion.
 Backing: test
 
 ### `invariant: release-platforms`
@@ -57,5 +57,5 @@ The live GitHub `release tags` ruleset requires the app-bound `CI / gate` conclu
 
 ### `invariant: release-notes-from-changelog`
 
-The GitHub Release body is sourced from the curated changelog: the release workflow extracts the tagged version's section via `awf changelog --version`, passes it to GoReleaser through `--release-notes` while commit-derived `use`, groups, and filters remain absent, and verifies the published body against that exact file. A commit subject cannot reach the release notes.
+The GitHub Release body is sourced from the curated changelog: the release workflow extracts the tagged version's section via `awf changelog --version`, passes that exact file to `gh release create` while uploading the already verified candidate, and verifies the published body against the same file. GoReleaser constructs the candidate without publishing, and a commit subject cannot reach the release notes.
 Backing: test

@@ -55,7 +55,7 @@ Backing: test
 
 ### `invariant: exact-revision-repository-acceptance`
 
-Repository wiring exposes one stable `CI / gate` conclusion for the exact revision. It aggregates exhaustive Linux behavior, build, lint, state and drift checks, strict Pi behavior, and targeted macOS safety. The release workflow verifies that exact conclusion before constructing and validating snapshot archives and before its credential-bearing publish job.
+Repository wiring exposes one stable `CI / gate` conclusion for the exact revision. Pull requests always run complete Linux Go behavior and select typed Pi, render, platform-sensitive, and release-archive lanes from one JSON v2 result; `main` runs complete Linux/amd64 and Darwin/arm64 source assurance. Release tags remain protected by that conclusion, while the release workflow constructs one credential-free candidate and publishes it only after Linux/amd64 and Darwin/arm64 native verification.
 Backing: test
 
 ### `rule: hosted-main-acceptance-settings`

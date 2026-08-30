@@ -23,7 +23,7 @@ For a nondeterministic race, stress or invariant evidence may be the strongest p
 ## Gate
 `./x gate` is the fast commit tier: version validation, one native build, blocking lint including govet, and workflow pin validation. Use focused tests while editing and `./x test-affected` for fail-closed behavioral feedback. It selects changed owners, production reverse dependents, test-only importers, and a small global smoke package set. Shared or uncertain inputs widen or refuse visibly.
 
-Hosted CI runs exhaustive Go behavior, the fast gate, current-state and drift checks, strict Pi behavior, and targeted macOS safety. The aggregate `CI / gate` job is the definitive repository verdict. Release-only snapshot and archive validation stays in the release workflow.
+Hosted pull-request CI always runs complete Linux Go behavior, then consumes one typed JSON v2 selection to run applicable Pi, render, platform-sensitive, and release-archive lanes without duplicating selection policy. Hosted `main` runs complete source assurance on native Linux/amd64 and Darwin/arm64 targets. The aggregate `CI / gate` job is the definitive repository verdict. Production candidate construction and native archive lifecycle smoke stay in the release workflow.
 
 | Command | Purpose |
 |---|---|
