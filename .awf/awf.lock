@@ -595,8 +595,8 @@
     "docs/releasing.md": {
       "templateId": "docs/releasing.md.tmpl",
       "templateHash": "sha256:0683f8ceca62d4c5c91ce1058d1e2970f4336aced06b298b7ea3ef8cc328d78c",
-      "configHash": "sha256:040a572a81d240082c3899a4180952b9318bb38619ad5f1c176141d4aac5da38",
-      "outputHash": "sha256:45cd2f6a871bec3efe7de9c1a1bbf2965cd3cbc7b6e74b2001196130ddf49144"
+      "configHash": "sha256:6e8ac324aed85f6e6db24cb1505520d550731da488546509b6ce2cffccf69863",
+      "outputHash": "sha256:2f2e2066e23ac4a356f3d695966489cf477f0e3510195633d3bfd85dfd040785"
     },
     "docs/research/index.md": {
       "templateId": "docs/local.md.tmpl",
@@ -854,8 +854,8 @@
     "docs/topics/tooling/changelog-and-release.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:351b5093e32b8de02c8883c03428237369662b160058d04e862e5cc1209fdf69",
-      "outputHash": "sha256:b3e41eba15b302ff0d1edea5509fe1676fc256e8b65faaeee6e3e36efa8c597e"
+      "configHash": "sha256:5d715facc6a1193d1ae2f0c15081dd17376ccf35e5bb1afb3dd18c8dce39b38f",
+      "outputHash": "sha256:e85fe1b09fcd7c50ba253e6997a896c8f49040de28609d07a632451de7cbb0f7"
     },
     "docs/topics/tooling/cli.md": {
       "templateId": "topics/topic.md.tmpl",

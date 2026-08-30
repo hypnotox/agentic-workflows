@@ -44,7 +44,7 @@ Backing: test
 
 ### `rule: hosted-release-protection`
 
-The live GitHub `release tags` ruleset still requires `CI / gate` and the retired `CI / release-config` status on the exact tagged revision. Repository owners must remove the retired status requirement before the simplified workflow can publish tags.
+The live GitHub `release tags` ruleset requires the app-bound `CI / gate` conclusion on the exact tagged revision and no retired release-configuration status.
 
 ### `invariant: release-notes-from-changelog`
 

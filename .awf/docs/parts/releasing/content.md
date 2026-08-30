@@ -22,7 +22,7 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
 
    A schema-coupled bump often already changed the version mid-cycle. It changes the version file and lock, not the changelog. During development the gate requires descending changelog entries with the newest at or below `project.Version`; releasecheck requires an exact newest-version match and an empty `[Unreleased]`. The canonical three-file release-prep transaction skips Go and Pi test suites locally while versioncheck and every static gate still run. The pushed commit's aggregate `CI / gate` conclusion supplies repository assurance before tagging.
 
-3. Push `main` and wait for that commit's `CI / gate` check to succeed. The live ruleset still requires the retired `CI / release-config` status, so a repository owner must update the remote requirement before this workflow can accept the push. Then tag and push the matching version:
+3. Push `main` and wait for that commit's `CI / gate` check to succeed. Then tag and push the matching version:
 
    ```
    git push origin main
@@ -33,7 +33,7 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
 
 4. Watch the `Release` workflow. On success, Releases contains four archives, `checksums.txt`, and curated changelog notes. Linux tarballs record portable `root:root` ownership, executable mode for `awf`, and regular-file modes for `LICENSE` and `README.md`, so they extract under a restricted rootless user namespace as well as an ordinary user.
 
-The live GitHub `release tags` ruleset still requires successful `CI / gate` and the retired `CI / release-config` status before tag creation or update; a repository owner must remove the retired requirement. The release workflow verifies `CI / gate`, checkout and tag identity, ancestry on `main`, `project.Version`, and curated notes, then constructs and validates one production-equivalent snapshot before its needs-bound credential-bearing GoReleaser job. It does not repeat repository tests or lint. GoReleaser builds linux and darwin archives for amd64/arm64, bundles `LICENSE` and `README.md`, writes `checksums.txt`, and uses curated notes through `--release-notes`. It refuses a dirty checkout, including untracked files; workflow artifacts therefore belong under `$RUNNER_TEMP` or a deliberately ignored path. Release notes use `"$RUNNER_TEMP/release-notes.md"`. Commit-derived GoReleaser notes are disabled (ADR-0096).
+The live GitHub `release tags` ruleset requires successful `CI / gate` before tag creation or update. The release workflow verifies `CI / gate`, checkout and tag identity, ancestry on `main`, `project.Version`, and curated notes, then constructs and validates one production-equivalent snapshot before its needs-bound credential-bearing GoReleaser job. It does not repeat repository tests or lint. GoReleaser builds linux and darwin archives for amd64/arm64, bundles `LICENSE` and `README.md`, writes `checksums.txt`, and uses curated notes through `--release-notes`. It refuses a dirty checkout, including untracked files; workflow artifacts therefore belong under `$RUNNER_TEMP` or a deliberately ignored path. Release notes use `"$RUNNER_TEMP/release-notes.md"`. Commit-derived GoReleaser notes are disabled (ADR-0096).
 
 ## Versioning
 
@@ -71,4 +71,4 @@ Adopter projects use permanent lock authority. A supported schema upgrade journa
 
 ### Exact revision acceptance
 
-Release verification reads the successful `CI / gate` conclusion for the exact tag SHA before publication. The live tag ruleset still requires the retired release-configuration status and must be updated by a repository owner. The workflow checks out and rechecks the tag SHA, constructs and validates snapshot archives with read-only credentials, and only then enables the credential-bearing publish job. Repository behavior remains owned by the exact-revision CI run. These controls constrain publication; they are not an independent authenticity system for artifacts and checksums distributed through the same channel.
+Release verification reads the successful `CI / gate` conclusion for the exact tag SHA before publication. The live tag ruleset requires that same conclusion before accepting the tag. The workflow checks out and rechecks the tag SHA, constructs and validates snapshot archives with read-only credentials, and only then enables the credential-bearing publish job. Repository behavior remains owned by the exact-revision CI run. These controls constrain publication; they are not an independent authenticity system for artifacts and checksums distributed through the same channel.
