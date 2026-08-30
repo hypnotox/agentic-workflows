@@ -632,7 +632,8 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 		{linux, "Exhaustive Go behavior", "./x test", "Linux behavior"},
 		{linux, "Build, blocking lint, version, and pins", "./x gate", "Linux gate"},
 		{linux, "Drift, current state, and repository scans", "./x check", "Linux repository check"},
-		{macos, "Filesystem, publication, Git, effort, and worktree safety", "go test -count=1 ./internal/filesystem ./internal/filepublication ./internal/git ./internal/effort ./internal/worktree", "macOS safety"},
+		{macos, "Filesystem, publication, Git, effort, and worktree safety", `temp_root="$(cd "$RUNNER_TEMP" && pwd -P)"
+env TMPDIR="$temp_root" GOTMPDIR="$temp_root" go test -count=1 ./internal/filesystem ./internal/filepublication ./internal/git ./internal/effort ./internal/worktree`, "macOS safety"},
 	} {
 		if !runEquals(required.job, required.step, required.run) {
 			problems = append(problems, required.name)
