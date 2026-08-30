@@ -118,9 +118,9 @@ func TestOrientingSkillContract(t *testing.T) {
 					t.Errorf("%s grounding-checker missing %q", target, want)
 				}
 			}
-			// The single home requires all three dependent skills to reference it.
+			// The single home requires both surviving dependent skills to reference it.
 			// Brainstorming evaluates continuity at entry, then invokes orientation.
-			for _, consumer := range []string{"brainstorming", "proposing-adr", "writing-plans"} {
+			for _, consumer := range []string{"brainstorming", "proposing-adr"} {
 				if ref := files[adapter.SkillPath("example", consumer)]; !strings.Contains(ref, "`example-orienting`") {
 					t.Errorf("%s %s does not reference the orienting skill", target, consumer)
 				}
@@ -262,7 +262,7 @@ func TestAdrLifecycleTemplate(t *testing.T) {
 		"direct implicit completion with its matching claim mutations",
 		"status-only terminal transaction after explicit application",
 		"V4 Decision items begin with a unique inline `decision: <lowercase-kebab-slug>` marker",
-		"canonical `#N` remains available only for frozen ADR navigation and is not plan-v2 reference syntax",
+		"canonical `#N` remains available only for frozen ADR navigation and is not current-authority or supersession syntax",
 	}
 	for _, phrase := range loadBearing {
 		if !strings.Contains(out, phrase) {

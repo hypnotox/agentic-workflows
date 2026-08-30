@@ -234,7 +234,7 @@ func checkReportProject(state *ProjectState, ctx context.Context) (CheckReport, 
 	if err != nil {
 		return CheckReport{}, err
 	}
-	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
 	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx, prepared.Plan(), semantics)
 }
 func configReferenceProject(state *ProjectState) (publisher.ConfigReference, error) {
@@ -255,7 +255,7 @@ func advisoryNotesProject(state *ProjectState) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
 	return AdvisoryNotes(state, testConfig(state), prepared.Plan(), semantics)
 }
 
@@ -296,13 +296,8 @@ func auditProject(state *ProjectState, ctx context.Context, base, head string) (
 		ADRDir:         docsDir + "/decisions",
 		DocsDir:        docsDir,
 		IndexMd:        docsDir + "/decisions/INDEX.md",
-		PlansDir:       docsDir + "/plans",
 	})
 }
-func readPlanProject(state *ProjectState, name, selector string) ([]byte, error) {
-	return currentstatecoord.ReadPlan(state.Root(), name, selector)
-}
-
 func setTestRoots(state *ProjectState, roots resident.Roots) *ProjectState {
 	return testStateWith(state, state.Root(), roots, state.nested(), state.catalog(), state.completeCatalog(), state.Targets())
 }

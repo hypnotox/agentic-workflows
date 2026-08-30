@@ -100,32 +100,19 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 				}
 			}
 
-			for _, name := range []string{"proposing-adr", "adr-lifecycle", "writing-plans", "reviewing-adr", "reviewing-plan", "refactor-coupling-audit", "executing-plans", "subagent-driven-development"} {
+			for _, name := range []string{"proposing-adr", "adr-lifecycle", "reviewing-adr", "refactor-coupling-audit"} {
 				assertContainsAll(t, target+" "+name, bodies[name], "may run without an effort", "otherwise omit effort and memory fields")
 			}
 
-			for _, name := range []string{"executing-direct", "executing-plans", "subagent-driven-development"} {
-				body := bodies[name]
-				assertContainsAll(t, target+" "+name,
-					body, "locally obvious, low-risk, directly verified", "effort-free", "effort-backed", "review")
-			}
+			body := bodies["executing-direct"]
+			assertContainsAll(t, target+" executing-direct",
+				body, "locally obvious, low-risk, directly verified", "effort-free", "effort-backed", "review")
 			direct := bodies["executing-direct"]
 			assertContainsAll(t, target+" direct independent triggers", direct,
 				"no independent need for brainstorming", "material choice or clarification", "sequencing, coordination, or resumability", "only when that independent need fires")
 			for _, obsolete := range []string{"only after brainstorming has settled", "becomes multi-step or interdependent"} {
 				if strings.Contains(direct, obsolete) {
 					t.Errorf("%s direct execution retains bundled trigger %q", target, obsolete)
-				}
-			}
-			for _, name := range []string{"executing-plans", "subagent-driven-development"} {
-				body := bodies[name]
-				assertContainsAll(t, target+" "+name+" autonomous phase progression", body,
-					"Treat phase settlement as a transition", "immediately continue the plan loop unless user attention is required", "Persistence is not a stopping boundary", "Select the next unfinished phase", "A phase-complete report is not a plan-complete stopping point")
-				assertOrderedPhrases(t, body, "**Routine checkpoint.**", "Treat phase settlement as a transition", "After all settled phases")
-				assertContainsAll(t, target+" "+name+" closure", body,
-					"assurance settles or is explicitly skipped", "effort-backed work returns", "effort-free work, the parent performs", "deferred ADR/plan terminal transaction", "adr-lifecycle", "gate and audit")
-				if strings.Contains(body, "Terminal review owns") {
-					t.Errorf("%s %s assigns artifact closure to review", target, name)
 				}
 			}
 			assertContainsAll(t, target+" orienting", bodies["orienting"],
@@ -147,9 +134,9 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 
 			workflow := read(t, filepath.Join(root, "docs", "workflow.md"))
 			assertContainsAll(t, target+" workflow", workflow,
-				"Evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review triggers independently at intake", "activate newly warranted support before further mutation", "each establish the approved boundary", "load-bearing", "sequencing, coordination, or resumability", "Each written artifact gets a fresh-context review", "line count", "artifact type")
+				"Evaluate brainstorming, continuity/effort, grounding, durable-decision, operational-planning, and implementation-review triggers independently at intake", "activate newly warranted support before further mutation", "each establish the approved boundary", "load-bearingness", "sequencing, coordination, or resumability", "Review is selected by material risk and uncertainty", "line count", "artifact type")
 			assertContainsAll(t, target+" workflow ownership", workflow,
-				"No line count, artifact type, or another mechanism firing selects a trigger", "The parent takes every complete phase", "through integration", "explicit staging, staged check, every commit, fast gates, and terminal exhaustive verification", "one independently green coherent implementation transaction", "A checkpoint never creates an effort", "routine implementation checkpoint occurs only after a phase's closing commit has received report-only review")
+				"No line count, artifact type, or another mechanism firing selects a trigger", "unparsed operational plan", "implementation route, integration, staging, commits, verification, review judgment, checkpoints, and outcomes", "A checkpoint never creates an effort", "safe resumable transaction boundary after required verification and any selected review have settled")
 			for name, body := range bodies {
 				for _, piOnly := range []string{"handoff_session", "[session context]", "Continue with effort <slug>."} {
 					if strings.Contains(body, piOnly) {
@@ -168,11 +155,11 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 	// its narrower diagnostic role without carrying those proof markers.
 	for _, profile := range []string{"core", "full"} {
 		t.Run("continuity-"+profile, func(t *testing.T) {
-			root := syncPlanFlexibilityProfile(t, profile)
+			root := syncStandardFootprint(t, profile)
 			for _, target := range []string{"pi", "claude"} {
 				t.Run(target, func(t *testing.T) {
-					brainstorming := read(t, planSkillPath(root, target, "brainstorming"))
-					effort := read(t, planSkillPath(root, target, "effort-workflow"))
+					brainstorming := read(t, targetSkillPath(root, target, "brainstorming"))
+					effort := read(t, targetSkillPath(root, target, "effort-workflow"))
 					workflow := read(t, filepath.Join(root, "docs", "workflow.md"))
 
 					assertContainsAll(t, target+" "+profile+" comprehensive brainstorming continuity", brainstorming,
@@ -235,11 +222,11 @@ func TestIndependentWorkflowEscalation(t *testing.T) {
 func TestBrainstormContinuityBoundary(t *testing.T) {
 	for _, profile := range []string{"core", "full"} {
 		t.Run(profile, func(t *testing.T) {
-			root := syncPlanFlexibilityProfile(t, profile)
+			root := syncStandardFootprint(t, profile)
 			for _, target := range []string{"pi", "claude"} {
 				t.Run(target, func(t *testing.T) {
-					brainstorming := read(t, planSkillPath(root, target, "brainstorming"))
-					effort := read(t, planSkillPath(root, target, "effort-workflow"))
+					brainstorming := read(t, targetSkillPath(root, target, "brainstorming"))
+					effort := read(t, targetSkillPath(root, target, "effort-workflow"))
 					workflow := read(t, filepath.Join(root, "docs", "workflow.md"))
 
 					assertContainsAll(t, target+" "+profile+" brainstorming continuity", brainstorming,
@@ -295,8 +282,8 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		// The conditional single-decision exception is part of the approval
 		// boundary, so prove it on both governance footprints and runtimes.
 		for _, profile := range []string{"core", "full"} {
-			profileRoot := syncPlanFlexibilityProfile(t, profile)
-			profileBrainstorming := read(t, planSkillPath(profileRoot, target, "brainstorming"))
+			profileRoot := syncStandardFootprint(t, profile)
+			profileBrainstorming := read(t, targetSkillPath(profileRoot, target, "brainstorming"))
 			const eligibility = "A single-decision brainstorm may remain effort-free only when no independent continuity need fires."
 			if !strings.Contains(profileBrainstorming, eligibility) {
 				t.Errorf("%s %s brainstorming lacks conditional single-decision eligibility", target, profile)
@@ -308,27 +295,15 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 		}
 		assertOrderedPhrases(t, brainstorming, "Present the complete design", "explicitly request approval", "stop", "clear later approval response")
 		adrReview := read(t, path("reviewing-adr"))
-		assertContainsAll(t, target+" autonomous ADR hand-off", adrReview,
-			"After the review settles", "run `./awf read adr <identity>`", "ordinary `"+evalPrefix+"-reviewing-plan`", "If no linked Proposed plan exists yet", "proceed directly to implementation")
 		if strings.Contains(adrReview, "Stop for approval") || strings.Contains(adrReview, "settled ADR is the mandatory approval check-in") {
 			t.Errorf("%s ADR review retains a settled-ADR approval stop", target)
 		}
-		for _, name := range []string{"proposing-adr", "writing-plans", "reviewing-plan", "executing-plans", "reviewing-impl"} {
+		for _, name := range []string{"proposing-adr", "reviewing-impl"} {
 			body := read(t, path(name))
 			if strings.Contains(body, "settled ADR is the mandatory approval check-in") || strings.Contains(body, "Stop for approval, then") {
 				t.Errorf("%s %s retains a downstream routine approval stop", target, name)
 			}
 		}
-		writingPlans := read(t, path("writing-plans"))
-		assertContainsAll(t, target+" plan-scope routing", writingPlans,
-			"Use repository authority to settle local file structure and phase shape inside the approved boundary",
-			"new material decision or would change the approved boundary", "invoke `"+evalPrefix+"-brainstorming`",
-			"do not ask the user directly from plan writing")
-		checkpoint := read(t, path("executing-plans"))
-		assertContainsAll(t, target+" checkpoint routing", checkpoint,
-			"Route a new material decision or changed approved boundary through the active workflow to brainstorming",
-			"Separately, report a correctness or safety concern, blocker, or failed required verification through the active workflow",
-			"remains unresolved after that workflow's required diagnosis and authority-guided remediation")
 		bugfix := read(t, path("bugfix"))
 		assertContainsAll(t, target+" bugfix larger-work routing", bugfix,
 			"For materially larger work, route the disposition through `"+evalPrefix+"-brainstorming`")
@@ -341,8 +316,6 @@ func TestMandatoryApprovalBoundaries(t *testing.T) {
 			"separately reporting a correctness or safety concern, blocker, or failed required verification through the active workflow",
 			"only when it remains unresolved after required diagnosis and authority-guided remediation")
 		directRoutes := map[string]string{
-			"writing-plans":  writingPlans,
-			"checkpoint":     checkpoint,
 			"bugfix":         bugfix,
 			"tdd":            tdd,
 			"workflow-guide": workflow,
@@ -452,11 +425,11 @@ func TestTwoDurableDesignsRequireApproval(t *testing.T) {
 	}
 	for _, profile := range []string{"core", "full"} {
 		t.Run(profile, func(t *testing.T) {
-			root := syncPlanFlexibilityProfile(t, profile)
+			root := syncStandardFootprint(t, profile)
 			for _, target := range []string{"pi", "claude"} {
 				t.Run(target, func(t *testing.T) {
-					execution := read(t, planSkillPath(root, target, "executing-direct"))
-					brainstorming := read(t, planSkillPath(root, target, "brainstorming"))
+					execution := read(t, targetSkillPath(root, target, "executing-direct"))
+					brainstorming := read(t, targetSkillPath(root, target, "brainstorming"))
 					if got := twoDurableDesignsTransition(execution, brainstorming, facts); got != want {
 						t.Fatalf("two durable designs: got %#v, want %#v", got, want)
 					}
@@ -539,23 +512,19 @@ func TestProductionCodeOutlineApproval(t *testing.T) {
 			assertContainsAll(t, target+" outline owner", brainstorming,
 				"description: Use when a material decision is unresolved", "concise implementation outline", "fuller material-choice design", "explicit approval")
 
-			for _, name := range []string{"executing-direct", "tdd", "bugfix", "executing-plans", "subagent-driven-development"} {
+			for _, name := range []string{"executing-direct", "tdd", "bugfix"} {
 				assertContainsAll(t, target+" "+name+" outline intake", read(t, path(name)),
 					"unresolved material decision, never by the act of mutating production code",
 					"Routine implementation detail creates no approval boundary, whatever kind of file it touches")
 			}
-			for _, name := range []string{"writing-plans", "proposing-adr"} {
+			for _, name := range []string{"proposing-adr"} {
 				assertContainsAll(t, target+" "+name+" artifact intake", read(t, path(name)),
 					"unresolved material decision", "Architecture summary")
 			}
 			implementer := read(t, filepath.Join(root, "."+target, "agents", "implementer.md"))
 			assertContainsAll(t, target+" delegated intake", implementer,
 				"parent-supplied protected contract", "never recreate the approval interaction", "stops without mutation to report to its parent when that contract is absent or must change")
-			assertContainsAll(t, target+" phase-owner approved-boundary dispatch", read(t, path("subagent-driven-development")),
-				"provide the complete phase, explicitly identify the parent-supplied approved boundary")
-			assertContainsAll(t, target+" helper approved-boundary dispatch", read(t, path("executing-plans")),
-				"Each brief explicitly identifies the parent-supplied approved boundary")
-			for _, name := range []string{"executing-direct", "tdd", "bugfix", "executing-plans", "subagent-driven-development", "proposing-adr"} {
+			for _, name := range []string{"executing-direct", "tdd", "bugfix", "proposing-adr"} {
 				body := read(t, path(name))
 				assertContainsAll(t, target+" "+name+" evidence", body,
 					"retained conversation", "Decision-log evidence", "explicit request to execute a named plan", "Architecture summary")

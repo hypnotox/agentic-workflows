@@ -24,7 +24,7 @@ func operationPreparation(state *project.ProjectState, cfg *config.Config) (publ
 func projectSemantics(prepared publisher.Preparation) project.OperationSemantics {
 	return project.OperationSemantics{
 		ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
-		EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(),
+		EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(),
 		Glossary: prepared.Glossary(),
 	}
 }

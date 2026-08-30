@@ -144,10 +144,6 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 			if err := syncProject(p); err != nil {
 				t.Fatal(err)
 			}
-			if tc.want {
-				testsupport.WriteFile(t, filepath.Join(root, "docs/plans/2026-07-14-scope.md"),
-					"---\ndate: 2026-07-14\nadrs: []\nstatus: Proposed\n---\n# Plan: Scope\n\n```commit\nfeat(nope): unknown scope\n```\n")
-			}
 			report, err := checkReportProject(p, testContext(t))
 			if err != nil {
 				t.Fatal(err)
@@ -169,7 +165,10 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 				if len(notes) != 1 || !strings.Contains(notes[0], "12289") || !strings.Contains(notes[0], "docs/agents-md-standard.md") {
 					t.Fatalf("overage note = %#v", notes)
 				}
-				ordinaryIndex := slices.IndexFunc(report.Notes, func(note string) bool { return strings.Contains(note, "disallowed scope") })
+				// The size advisory remains aggregate-only and follows ordinary
+				// advisories. Use the scaffold's stub-content advisory rather than
+				// the retired plan scope checker to preserve that ordering contract.
+				ordinaryIndex := slices.IndexFunc(report.Notes, func(note string) bool { return strings.Contains(note, "unauthored stub content") })
 				sizeIndex := slices.Index(report.Notes, notes[0])
 				if ordinaryIndex < 0 || sizeIndex < 0 || ordinaryIndex >= sizeIndex {
 					t.Fatalf("CheckReport notes do not place ordinary advisory before size advisory: %#v", report.Notes)

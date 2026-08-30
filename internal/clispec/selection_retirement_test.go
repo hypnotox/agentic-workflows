@@ -16,7 +16,7 @@ func TestSelectionRetirementCommandGrammar(t *testing.T) {
 	for _, child := range newCommand.Children {
 		kinds = append(kinds, child.Name)
 	}
-	want := []string{"plan", "topic", "domain", "doc", "pitfall"}
+	want := []string{"topic", "domain", "doc", "pitfall"}
 	if len(kinds) != len(want) {
 		t.Fatalf("new kinds = %v, want %v", kinds, want)
 	}

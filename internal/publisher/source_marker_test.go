@@ -20,7 +20,6 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 		"docs/pitfalls/fixture.md":     pitfallSource("Fixture pitfall", "domains: [rendering]\n", "first body\n"),
 		"docs/pitfalls/second-kind.md": pitfallSource("Second heterogeneous pitfall", "", "second body with different metadata\n"),
 	})
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "plans", "2026-08-07-fixture.md"), "---\nformat: plan-v2\ndate: 2026-08-07\nadrs: []\nstatus: Proposed\n---\n# Plan: Fixture\n")
 	writeProjectTopic(t, root, "opaque", "Opaque", "applies: global\n")
 	writeADR(t, root, "0001-fixture.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Fixture"), testsupport.WithBody("## Decision\n\n1. Fixture.\n")))
 	p, err := Open(testContext(t), root)
@@ -83,8 +82,6 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 		"docs/working-with-awf.md",
 		"docs/decisions/README.md",
 		"docs/decisions/template.md",
-		"docs/plans/README.md",
-		"docs/plans/template.md",
 		".claude/skills/example-tdd/SKILL.md",
 		".pi/skills/example-tdd/SKILL.md",
 		".claude/agents/code-reviewer.md",
@@ -103,7 +100,6 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 	}
 	for _, path := range []string{
 		"docs/decisions/0001-fixture.md",
-		"docs/plans/2026-08-07-fixture.md",
 	} {
 		if _, ok := byPath[path]; ok {
 			t.Errorf("authored artifact %s was rendered", path)

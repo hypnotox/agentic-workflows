@@ -15,58 +15,35 @@ You own the project's long-term health, not just the task in front of you: defec
 
 <!-- awf:include model-selection -->
 
-<!-- awf:include plan-flexibility -->
-
 <!-- awf:include semantic-owner-assurance -->
 <!-- awf:end -->
 
 <!-- awf:section chain -->
 ## The chain
 
-{{if ne .profile "core"}}**Rule.** Evaluate brainstorming, continuity/effort, grounding, ADR, plan, and implementation-review triggers independently at intake. Re-evaluate only affected triggers when material facts change and activate newly warranted support before further mutation; prior valid work remains valid. No line count, artifact type, or another mechanism firing selects a trigger.
+{{if ne .profile "core"}}**Rule.** Evaluate brainstorming, continuity/effort, grounding, durable-decision, operational-planning, and implementation-review triggers independently at intake. Re-evaluate only affected triggers when material facts change and activate newly warranted support before further mutation; prior valid work remains valid. No line count, artifact type, or another mechanism firing selects a trigger.
 
 **Required evidence.** Repository authority, documentation currency, verification, and commit obligations apply to every change regardless of which triggers fire.
 
-**Approval rule.** Brainstorming stops only for an unresolved material decision, not for the act of mutating production code. It presents the proportionate outline and obtains explicit approval. Retained conversation, user-provenance effort Decision-log evidence, or an explicit request to execute a named plan whose Architecture summary supplies the outline each establish the approved boundary. A delegated owner consumes that boundary without another approval interaction.
+**Approval rule.** Brainstorming stops only for an unresolved material decision, not for the act of mutating production code. It presents the proportionate outline and obtains explicit approval. Retained conversation, user-provenance effort Decision-log evidence, or an explicitly approved effort-local operational plan each establish the approved boundary. A delegated owner consumes that boundary without another approval interaction.
 
-**Flexible details.** A routine change proceeds autonomously while its protected contract holds, whatever kind of file it touches. The approval boundary precedes ADR and plan authoring; later artifact and implementation work continues inside it. Effort, grounding, ADR, plan, and review triggers remain independent.
+**Flexible details.** A routine change proceeds autonomously while its protected contract holds, whatever kind of file it touches. The approval boundary precedes durable decision authoring and implementation; later artifact and implementation work continues inside it. Effort, grounding, durable-decision, operational-planning, and review triggers remain independent.
 
 **Stop when.** Return through brainstorming when a new material decision appears or the approved boundary must change. Report an unresolved blocker or safety or correctness concern through the active workflow only after diagnosis.
 
-A plan phase is one independently green coherent implementation transaction and declares `inline`
-or `subagent-driven` ownership independently of every other phase. Heading-identified tasks are ordered steps,
-not commit, dispatch, review, or checkpoint boundaries. The parent takes every complete phase from a known clean green baseline through integration,
-explicit staging, staged check, every commit, fast gates, and terminal exhaustive verification. A
-subagent-driven phase uses one sequential commit-disabled implementation child for its complete
-assigned scope; the child runs only bounded focused checks and never stages, commits, or runs a gate.
-The parent owns every report-only review settlement. Additional commit-disabled helpers may execute
-only explicit path-disjoint batch subsets, never shared files or the closing commit. If a phase owner
-stops dirty, the parent inventories the checkout and explicitly
-completes inline, restores and restarts the complete phase, or transfers the complete revised phase
-with recovery context; it never issues a blind task-level continuation. Runtime phase enforcement
-is not promised. A plan-v2 task projection may include a generated scope notice, Phase close, and
-Advances/Completes outcomes, but these are phase-owner constraints only and never transfer commit,
-review, checkpoint, handoff, helper, or outcome authority.
+When sequencing, coordination, or resumability materially helps, the parent may keep an unparsed operational plan at the resolved effort resident's `scratch/plan.md`. The file is implementation-time context only: awf does not parse, scaffold, inventory, project, review, or separately archive it. It travels as opaque effort scratch bytes and disappears from active project state when the effort is archived. The parent remains responsible for implementation route, integration, staging, commits, verification, review judgment, checkpoints, and outcomes.
 
 - Brainstorming is warranted only for a material choice or clarification.
 
-- An **ADR** is warranted by *load-bearing-ness*: a design decision the project must remember; when warranted it is written **and reviewed to a settled state before planning begins**, because the plan is execution detail derived from the decision. **Planning** is warranted when sequencing, coordination, or resumability materially helps: multi-commit or interdependent steps are common examples when they meet that criterion.
+- A durable decision record is warranted by load-bearingness: a decision the project must remember after implementation. Operational planning is warranted only when sequencing, coordination, or resumability materially helps.
 
-- A plan records and operationalizes approved choices rather than inventing speculative structure, checks, or work.
+- An operational plan records and organizes approved choices rather than inventing speculative structure, checks, or work. It is not durable authority and has no lifecycle separate from its effort.
 
-- Many tasks need neither, and the ADR-to-plan relationship is many-to-many: one plan links zero or more ADRs through parsed plan-level `adrs:`, and one ADR may have several linked Proposed plans.
+- Many tasks need neither a durable decision record nor an operational plan.
 
-- Each written artifact gets a fresh-context review.
+- Review is selected by material risk and uncertainty, not by artifact type or lifecycle state.
 
-- Full ordinary plan review verifies every linked ADR.
-
-- A substantive ADR amendment or review correction invalidates every linked Proposed plan's prior review: settle ADR review first, then run ordinary plan review separately for each deterministic typed linked-plan reference.
-
-- Never select linked plans by modification time or session implication.
-
-- A plan correction that would contradict linked authority returns to ADR amendment and review first.
-
-- If implementation has started, inventory affected completed phases and renew assurance where the changed decision can affect landed work before progression.
+- If implementation has started and durable authority changes, inventory affected completed work and renew assurance where the change can affect landed behavior before progression.
 
 - Implementation review is optional only for locally obvious, low-risk, directly verified work and otherwise follows the approved risk trigger.
 
@@ -140,13 +117,13 @@ For the detailed criteria of when a decision is load-bearing enough to warrant a
 
 - Brainstorming retains the single mandatory pre-artifact outline approval check-in, stopping for explicit approval and persisting it only when an effort exists.
 
-{{if ne .profile "core"}}- Settled ADR review continues autonomously to linked-plan handling or the independently selected implementation path.
+{{if ne .profile "core"}}- Settled decision review continues autonomously to the independently selected implementation path.
 
 {{end}}- At a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work. Continue autonomously or through a target-native successor when one is available. Handoff is prohibited while required late-creation memory initialization remains incomplete.
 
 - Reorient from repository authority before substantive successor work. Append a log only for an actual fresh boundary; continuation, cancellation, or failure that leaves the current session active appends none. Target-specific skill guidance owns any executable replacement protocol.
 
-A routine implementation checkpoint occurs only after a phase's closing commit has received report-only review and all findings are settled; heading-identified tasks, executable projections, and helper returns are not checkpoint boundaries.
+A routine implementation checkpoint occurs only at a safe resumable transaction boundary after required verification and any selected review have settled; task headings and helper returns are not checkpoint boundaries.
 
 ### Memory format and logs
 
@@ -174,7 +151,7 @@ A routine implementation checkpoint occurs only after a phase's closing commit h
 ### Finish and prohibitions
 
 
-- Never commit the file or cite a concrete owned-memory path in a durable {{if ne .profile "core"}}ADR, plan,{{else}}project record{{end}} or commit message; the bare efforts directory and angle-bracket placeholder form remain legal.
+- Never commit the file or cite a concrete owned-memory path in a durable {{if ne .profile "core"}}decision record{{else}}project record{{end}} or commit message; the bare efforts directory and angle-bracket placeholder form remain legal.
 
 - Optional `activity.json` is advisory and may make older binaries unable to read the effort, but never gates unrelated show, list, or finish commands.
 

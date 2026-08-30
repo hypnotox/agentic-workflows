@@ -44,7 +44,7 @@ func TestConcreteMaintainabilityReviewScenarios(t *testing.T) {
 	}
 	for _, profile := range []string{"core", "full"} {
 		t.Run(profile, func(t *testing.T) {
-			root := syncPlanFlexibilityProfile(t, profile)
+			root := syncStandardFootprint(t, profile)
 			for _, target := range []string{"pi", "claude"} {
 				t.Run(target, func(t *testing.T) {
 					for consumer, body := range maintainabilityConsumerBodies(t, root, profile, target) {
@@ -79,18 +79,14 @@ func TestConcreteMaintainabilityReviewScenarios(t *testing.T) {
 func TestSemanticOwnerAssuranceScenarios(t *testing.T) {
 	for _, profile := range []string{"core", "full"} {
 		t.Run(profile, func(t *testing.T) {
-			root := syncPlanFlexibilityProfile(t, profile)
+			root := syncStandardFootprint(t, profile)
 			for _, target := range []string{"pi", "claude"} {
 				t.Run(target, func(t *testing.T) {
 					bodies := map[string]string{
 						"implementer":    read(t, filepath.Join(root, "."+target, "agents", "implementer.md")),
 						"code-reviewer":  read(t, filepath.Join(root, "."+target, "agents", "code-reviewer.md")),
-						"reviewing-impl": read(t, planSkillPath(root, target, "reviewing-impl")),
+						"reviewing-impl": read(t, targetSkillPath(root, target, "reviewing-impl")),
 						"workflow":       read(t, filepath.Join(root, "docs", "workflow.md")),
-					}
-					if profile == "full" {
-						bodies["executing-plans"] = read(t, planSkillPath(root, target, "executing-plans"))
-						bodies["subagent-driven-development"] = read(t, planSkillPath(root, target, "subagent-driven-development"))
 					}
 					for consumer, body := range bodies {
 						for _, residue := range []string{"<no value>", "<nil>"} {
@@ -187,15 +183,11 @@ func maintainabilityDisposition(body string, facts maintainabilityFacts, scenari
 	return "missing"
 }
 
-func maintainabilityConsumerBodies(t *testing.T, root, profile, target string) map[string]string {
+func maintainabilityConsumerBodies(t *testing.T, root, _, target string) map[string]string {
 	t.Helper()
 	bodies := map[string]string{
-		"reviewing-impl": read(t, planSkillPath(root, target, "reviewing-impl")),
+		"reviewing-impl": read(t, targetSkillPath(root, target, "reviewing-impl")),
 		"code-reviewer":  read(t, filepath.Join(root, "."+target, "agents", "code-reviewer.md")),
-	}
-	if profile == "full" {
-		bodies["reviewing-plan"] = read(t, planSkillPath(root, target, "reviewing-plan"))
-		bodies["plan-reviewer"] = read(t, filepath.Join(root, "."+target, "agents", "plan-reviewer.md"))
 	}
 	return bodies
 }

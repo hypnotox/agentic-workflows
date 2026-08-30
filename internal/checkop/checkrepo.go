@@ -69,32 +69,8 @@ func informationResult(notes []string) checkresult.Result {
 	return result
 }
 
-func presentCurrentStateReport(report currentstatecoord.CurrentStateReport, check string, planNotes planNoteSink, present checkResultPresenter) (repositorycheck.Presentation, error) {
-	current, err := present(report.CurrentResult, check, false)
-	if err != nil {
-		return repositorycheck.Presentation{}, err
-	}
-	out := current
-	withoutWarnings, warnings, err := repositorycheck.SplitWarnings(report.PlanArtifactResult)
-	if err != nil { // coverage-ignore: the current-state owner supplied a validated immutable result
-		return repositorycheck.Presentation{}, err
-	}
-	if hasCheckResults(withoutWarnings) {
-		projected, err := present(withoutWarnings, check, false)
-		if err != nil {
-			return repositorycheck.Presentation{}, err
-		}
-		out = out.Append(projected)
-	}
-	warnings = unseenPlanWarnings(warnings, planNotes)
-	if hasCheckResults(warnings) {
-		projected, err := present(warnings, "advisory", false)
-		if err != nil {
-			return repositorycheck.Presentation{}, err
-		}
-		out = out.Append(projected)
-	}
-	return out, nil
+func presentCurrentStateReport(report currentstatecoord.CurrentStateReport, check string, _ planNoteSink, present checkResultPresenter) (repositorycheck.Presentation, error) {
+	return present(report.CurrentResult, check, false)
 }
 
 type repoIndexPreparationError struct{ err error }
@@ -220,12 +196,6 @@ func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNot
 							}
 							inputs.presentation = inputs.presentation.Append(projected)
 							projected, err = deps.present(report.AggregateAdvisoryResult(), "advisory", false)
-							if err != nil {
-								return err
-							}
-							inputs.presentation = inputs.presentation.Append(projected)
-							planWarnings := unseenPlanWarnings(report.DeferredPlanWarningResult(), planNotes)
-							projected, err = deps.present(planWarnings, "advisory", false)
 							if err != nil {
 								return err
 							}

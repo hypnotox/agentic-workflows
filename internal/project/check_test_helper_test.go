@@ -2,14 +2,11 @@ package project
 
 import (
 	"context"
-	"path/filepath"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
-	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -59,15 +56,6 @@ func mustDeriveSkills(t *testing.T, p *ProjectState) map[string]bool {
 		t.Fatalf("derive operation state: %v", err)
 	}
 	return eff
-}
-
-func mustParsePlans(t *testing.T, p *ProjectState) []plan.Plan {
-	t.Helper()
-	plans, err := plan.ParseDir(filepath.Join(p.Root(), config.DocsDir, "plans"))
-	if err != nil {
-		t.Fatalf("parse plans: %v", err)
-	}
-	return plans
 }
 
 // pendingADRFixture is a valid Proposed pending current-state-v3 record: slug

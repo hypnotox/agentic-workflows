@@ -16,7 +16,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"golang.org/x/mod/semver"
@@ -358,16 +357,6 @@ func newADRLeased(root string, cfg *config.Config, repo *awfgit.Repo, ctx contex
 	} else {
 		path, err = adr.NewFileLeased(root, lease, files, decisions, title)
 	}
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, filepath.FromSlash(path)), nil
-}
-
-// newPlanLeased keeps plan naming at the plan owner while root-relative
-// template observation and publication use the selected-root capability.
-func newPlanLeased(root, title string, lease *filesystem.Lease, files *filesystem.Handle) (string, error) {
-	path, err := plan.NewFileLeased(root, lease, files, filepath.ToSlash(filepath.Join(config.DocsDir, "plans")), title)
 	if err != nil {
 		return "", err
 	}

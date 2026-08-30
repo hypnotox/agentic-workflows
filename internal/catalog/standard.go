@@ -7,37 +7,18 @@ package catalog
 // byte-identical (ADR-0060).
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
-		"brainstorming": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Clarify an outcome and settle an approved design.", Trigger: "Use when work needs a material choice or clarification.", CommonFollowUps: []string{"proposing-adr", "writing-plans", "executing-direct"}}, Sections: []string{
+		"brainstorming": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Clarify an outcome and settle an approved design.", Trigger: "Use when work needs a material choice or clarification.", CommonFollowUps: []string{"proposing-adr", "executing-direct"}}, Sections: []string{
 			"preamble", "when-to-invoke", "procedure", "example-clarifying-questions",
 			"design-sections", "no-spec-rule", "terminal-step", "definitions", "anti-patterns",
 		}},
 		"grounding": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Check broad or uncertain repository premises from any workflow.", Trigger: "Use when correctness depends on broad or uncertain repository facts.", CommonFollowUps: []string{"brainstorming", "debugging", "refactor-coupling-audit"}}, RequiresAgent: "grounding-checker", Sections: []string{
 			"invocation", "brief-construction-and-dispatch", "finding-classification", "boundaries", "notes",
 		}},
-		"writing-plans": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Turn an approved design into an executable plan.", Trigger: "Use when implementation needs a durable, reviewable plan.", UsuallyFollows: []string{"brainstorming", "proposing-adr"}, CommonFollowUps: []string{"reviewing-plan"}}, Sections: []string{
-			"positioning", "when-to-invoke", "conventions-path", "conventions-header",
-			"conventions-tasks", "conventions-no-placeholders", "gate-tier-note",
-			"conventions-test-first", "procedure-confirm-scope", "plan-template-ref",
-			"procedure-write-plan", "doc-currency-check", "self-review", "plan-commit-step",
-			"terminal-step", "plan-lifecycle", "linked-authority-freshness", "notes",
-		}},
 		"executing-direct": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a clear narrow change directly.", Trigger: "Use when outcome, boundary, and verification are clear and no independent design or plan need fires.", CommonFollowUps: []string{"reviewing-impl", "effort-workflow"}}},
-		"executing-plans": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement an accepted plan.", Trigger: "Use when a plan is ready for implementation.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "subagent-driven-development"}}, RequiresAgent: "implementer", Sections: []string{
-			"positioning", "when-to-invoke", "procedure-resolve-plan", "procedure-raise-concerns",
-			"procedure-per-task", "tdd-opt-in", "gate-tier-detail", "procedure-adr-final-commit",
-			"procedure-non-adr-final-commit", "terminal-step", "project-invariants", "notes-gate",
-			"notes-auto-commit", "notes-one-concern", "notes-docs-travel", "red-flags",
-		}},
-		"subagent-driven-development": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Implement a plan through reviewed phase owners.", Trigger: "Use when a plan phase benefits from delegated implementation ownership.", UsuallyFollows: []string{"writing-plans", "reviewing-plan"}, CommonFollowUps: []string{"reviewing-impl", "executing-plans"}}, RequiresAgent: "implementer", Sections: []string{
-			"positioning", "per-task-review-note", "when-to-invoke", "procedure-resolve-plan",
-			"procedure-raise-concerns", "procedure-extract-context", "dispatch-conventions",
-			"procedure-status-handling", "per-task-review", "final-task-adr-flip", "terminal-step",
-			"notes", "red-flags",
-		}},
-		"effort-workflow": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Own one awf effort from continuity evaluation through finish.", Trigger: "Use whenever durable continuity materially helps, or to resume or finish an effort."}},
-		"using-awf":       {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Maintain awf's generated tree from source through render, drift resolution, and upgrade.", Trigger: "Use when maintaining awf's generated tree: edit `.awf/` sources, render outputs, resolve drift, or upgrade awf."}, Sections: []string{"procedure"}},
-		"writing-docs":    {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Author project documentation at its owning surface.", Trigger: "Use when authoring project documentation: select the document that owns the fact and keep it current with the change."}, Sections: []string{"procedure"}},
-		"tdd": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Establish durable evidence before a fix or drive a feature from a failing test.", Trigger: "Use before implementing a bug fix, or a feature whose missing behavior is testable in isolation.", UsuallyFollows: []string{"bugfix", "debugging"}, CommonFollowUps: []string{"executing-direct", "executing-plans"}},
+		"effort-workflow":  {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Own one awf effort from continuity evaluation through finish.", Trigger: "Use whenever durable continuity materially helps, or to resume or finish an effort."}},
+		"using-awf":        {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Maintain awf's generated tree from source through render, drift resolution, and upgrade.", Trigger: "Use when maintaining awf's generated tree: edit `.awf/` sources, render outputs, resolve drift, or upgrade awf."}, Sections: []string{"procedure"}},
+		"writing-docs":     {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Author project documentation at its owning surface.", Trigger: "Use when authoring project documentation: select the document that owns the fact and keep it current with the change."}, Sections: []string{"procedure"}},
+		"tdd": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Establish durable evidence before a fix or drive a feature from a failing test.", Trigger: "Use before implementing a bug fix, or a feature whose missing behavior is testable in isolation.", UsuallyFollows: []string{"bugfix", "debugging"}, CommonFollowUps: []string{"executing-direct"}},
 			Sections: []string{"surfaces", "notes", "red-flags"},
 			Data: map[string]any{
 				"testSurfaces": []any{
@@ -54,10 +35,10 @@ var Standard = &Catalog{
 		"exploring": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Explore repository facts without polluting the main context.", Trigger: "Use for fresh-context repository exploration when inline search would pollute the parent context.", CommonFollowUps: []string{"brainstorming", "debugging", "refactor-coupling-audit"}}, RequiresAgent: "explorer", Sections: []string{
 			"when-to-invoke", "breadth", "detail", "dispatch", "results", "boundaries", "notes",
 		}},
-		"orienting": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Ground the session in repository truth before starting, resuming, or widening work.", Trigger: "Use when repository truth is needed while taking up a topic: before brainstorming fresh work, when resuming an effort, or when taking over a handoff.", CommonFollowUps: []string{"brainstorming", "debugging", "writing-plans", "executing-plans"}}, Sections: []string{
+		"orienting": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Ground the session in repository truth before starting, resuming, or widening work.", Trigger: "Use when repository truth is needed while taking up a topic: before brainstorming fresh work, when resuming an effort, or when taking over a handoff.", CommonFollowUps: []string{"brainstorming", "debugging", "executing-direct"}}, Sections: []string{
 			"when-to-invoke", "guide-ladder", "context-command", "resume-revalidation", "hand-off",
 		}},
-		"proposing-adr": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Author a decision record for a material design choice.", Trigger: "Use when a durable architectural or workflow decision is needed.", UsuallyFollows: []string{"brainstorming"}, CommonFollowUps: []string{"reviewing-adr", "writing-plans"}},
+		"proposing-adr": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Author a decision record for a material design choice.", Trigger: "Use when a durable architectural or workflow decision is needed.", UsuallyFollows: []string{"brainstorming"}, CommonFollowUps: []string{"reviewing-adr", "executing-direct"}},
 			Sections: []string{
 				"positioning", "when-to-invoke", "conventions", "procedure-number", "procedure-write",
 				"state-doc-update", "procedure-state-changes", "procedure-regen",
@@ -74,7 +55,7 @@ var Standard = &Catalog{
 				},
 			},
 		},
-		"adr-lifecycle": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Apply an ADR lifecycle transition correctly.", Trigger: "Use when transitioning an ADR between lifecycle states.", UsuallyFollows: []string{"proposing-adr", "reviewing-adr"}, CommonFollowUps: []string{"executing-plans", "writing-plans"}},
+		"adr-lifecycle": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Apply an ADR lifecycle transition correctly.", Trigger: "Use when transitioning an ADR between lifecycle states.", UsuallyFollows: []string{"proposing-adr", "reviewing-adr"}, CommonFollowUps: []string{"executing-direct"}},
 			Sections: []string{
 				"states", "transitions", "state-changes",
 				"procedure-status-edit", "procedure-claim-mutation", "state-doc-update",
@@ -91,23 +72,19 @@ var Standard = &Catalog{
 			},
 		},
 		"bugfix": {Profile: WorkflowProfile{Kind: WorkflowTask, Purpose: "Apply a fix with a known root cause.", Trigger: "Use when applying a fix whose root cause is already known.", UsuallyFollows: []string{"debugging"}, CommonFollowUps: []string{"reviewing-impl"}}, Sections: []string{"test-tiers", "pitfalls-check", "oracle-note", "memory-checkpoint"}},
-		"reviewing-plan": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an implementation plan.", Trigger: "Use when a written plan needs review before execution or linked authority changes.", UsuallyFollows: []string{"writing-plans", "reviewing-adr"}, CommonFollowUps: []string{"executing-plans"}}, RequiresAgent: "plan-reviewer", Sections: []string{
-			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
-			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "hand-off", "notes",
-		}},
-		"reviewing-adr": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an ADR.", Trigger: "Use when a proposed or amended ADR needs decision-quality review.", UsuallyFollows: []string{"proposing-adr"}, CommonFollowUps: []string{"reviewing-plan", "writing-plans"}}, RequiresAgent: "adr-reviewer", Sections: []string{
+		"reviewing-adr": {FullOnly: true, Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently review an ADR.", Trigger: "Use when a proposed or amended ADR needs decision-quality review.", UsuallyFollows: []string{"proposing-adr"}, CommonFollowUps: []string{"executing-direct"}}, RequiresAgent: "adr-reviewer", Sections: []string{
 			"when-fires", "procedure", "artifact-path-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "re-review-loop", "status-flip",
 			"hand-off-to-plan-review", "notes",
 		}},
-		"reviewing-impl": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently assure an implementation.", Trigger: "Use when independent review has assurance value for the implementation.", UsuallyFollows: []string{"executing-direct", "executing-plans", "subagent-driven-development"}, CommonFollowUps: []string{"effort-workflow"}}, RequiresAgent: "code-reviewer", Sections: []string{
+		"reviewing-impl": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Independently assure an implementation.", Trigger: "Use when independent review has assurance value for the implementation.", UsuallyFollows: []string{"executing-direct"}, CommonFollowUps: []string{"effort-workflow"}}, RequiresAgent: "code-reviewer", Sections: []string{
 			"when-fires", "sha-range-detection", "dispatch-subagent",
 			"classify-route-findings", "apply-fixes-commit", "run-audit", "re-review-loop", "hand-off", "notes",
 		}},
 		"retrospective": {Profile: WorkflowProfile{Kind: WorkflowChain, Purpose: "Capture durable lessons, verify managed topology is absent, and finish the effort last.", Trigger: "Use from effort-workflow after assurance settles or is explicitly skipped and managed topology is removed.", UsuallyFollows: []string{"effort-workflow"}}, Sections: []string{
 			"when-fires", "procedure", "recurrence-signal", "promotion-ladder", "control", "notes",
 		}},
-		"refactor-coupling-audit": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Scope dependency and test coupling before a refactor.", Trigger: "Use when scoping a refactor that moves files between packages or inverts dependencies.", CommonFollowUps: []string{"brainstorming", "proposing-adr", "writing-plans"}}, Sections: []string{
+		"refactor-coupling-audit": {Profile: WorkflowProfile{Kind: WorkflowSupport, Purpose: "Scope dependency and test coupling before a refactor.", Trigger: "Use when scoping a refactor that moves files between packages or inverts dependencies.", CommonFollowUps: []string{"brainstorming", "proposing-adr"}}, Sections: []string{
 			"when-to-invoke", "audit-shape-selection", "category-1-top-level-files",
 			"category-2-sibling-tests", "category-3-subpackages", "category-4-codegen",
 			"category-5-constructors", "category-6-init-visibility", "test-coupling-planning-rule",
@@ -133,27 +110,6 @@ var Standard = &Catalog{
 				"readStep":      "Read the ADR in full. Read every doc, ADR, or current-state topic it references by name.",
 				"digestLabel":   "ADR",
 				"digestSummary": "- Decision: <one line, the load-bearing item>\n- State changes: <the claim add/update/remove operations>\n- Trade-off: <one notable rejected alternative + why>",
-			},
-		},
-		"plan-reviewer": {
-			FullOnly:    true,
-			Name:        "plan-reviewer",
-			Description: "Independent, lens-diverse reviewer for plans under {{ .layout.plansDir }}/ in {{ .prefix }} projects.\nReturns structured findings per the shared review-discipline spine.",
-			Sections:    []string{"universal-lenses", "project-focus", "doc-currency"},
-			Data: map[string]any{
-				"focusItems": []any{
-					map[string]any{"name": "change-specific-executability", "description": "every phase declares independent inline or subagent-driven ownership, one coherent green transaction, and one closing subject; tasks are ordered steps with change-specific outcomes, authority, material boundaries, ordering dependencies only where they protect a named authority, outcome, scope, safety, compatibility, lifecycle, or verification property, focused evidence, and needed confinement. Latitude, batch kind, representative, and edge examples are optional aids; ambiguous populations retain exhaustive Paths and deterministic Post-check evidence; commit-capable owners may resolve authority-determined local detail while helpers remain path-confined and commit-disabled. Reject duplicated generic execution protocol, task-level boundaries, cross-phase definitions, dead-code exceptions, plan-wide mode inference, and placeholders."},
-					map[string]any{"name": "dependency-order", "description": "tasks are ordered so each builds only on already-completed work"},
-					map[string]any{"name": "snapshot-scoped-verification", "description": "execute material census and post-check commands against the exact intermediate snapshot declared by the plan; require the expected terminal set or lifecycle-authorized residual findings, and reject a premature zero requirement"},
-					map[string]any{"name": "check-authority-taxonomy", "description": "classify each material check as an authority, state, or choreography check; preserve authority checks, require state checks to be no stricter than the durable property they prove, and flag choreography-only enforcement with no named authority or state obligation"},
-				},
-				"docCurrencyItems": []any{
-					map[string]any{"check": "the plan schedules updates for every document its changes invalidate, in the same commits"},
-				},
-				"reviewSubject": "plan",
-				"readStep":      "Read the artifact in full. Read every doc, ADR, or state doc it references by name.",
-				"digestLabel":   "Plan",
-				"digestSummary": "- Goal: <one line from the plan header>\n- Shape: <phase count, commit count, files created/modified>\n- Headline tasks: <1-2 sentences naming the load-bearing tasks>",
 			},
 		},
 		"code-reviewer": {
@@ -249,8 +205,6 @@ var Standard = &Catalog{
 		}},
 		"adr-readme":               {FullOnly: true, Mandatory: true, Path: "decisions/README.md", TemplateKey: "adrReadme", TID: "adr-readme/README.md.tmpl", Sections: []string{"intro", "when", "naming", "frontmatter", "lifecycle", "state-changes", "index"}},
 		"adr-template":             {FullOnly: true, Mandatory: true, Path: "decisions/template.md", TemplateKey: "adrTemplate", TID: "adr-template/template.md.tmpl", Sections: []string{"frontmatter", "body"}},
-		"plans-readme":             {FullOnly: true, Mandatory: true, Path: "plans/README.md", TemplateKey: "plansReadme", TID: "plans-readme/README.md.tmpl", Sections: []string{"intro", "naming", "structure"}},
-		"plans-template":           {FullOnly: true, Mandatory: true, Path: "plans/template.md", TemplateKey: "plansTemplate", TID: "plans-template/template.md.tmpl", Sections: []string{"header", "phases", "verification", "notes"}},
 		"maintainable-code-design": {Mandatory: true, DocumentMap: true, Title: "Maintainable Code Design", Desc: "decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design", Path: "maintainable-code-design.md", TemplateKey: "maintainableCodeDesign", TID: "docs/maintainable-code-design.md.tmpl", Sections: []string{"decision-posture", "contextual-heuristics", "semantic-modeling", "readability", "boundaries-and-dependencies", "pattern-toolbox", "preparatory-refactoring", "failure-modes"}},
 		"workflow": {Mandatory: true, DocumentMap: true, Title: "Workflow", Desc: "principles, the brainstorm/ADR/plan chain, commit discipline", Path: "workflow.md", TemplateKey: "workflowRef", TID: "docs/workflow.md.tmpl", Sections: []string{
 			"principles", "chain", "working-memory", "commit-discipline", "doc-currency", "composing-the-gate", "local-hooks", "ci",

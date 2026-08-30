@@ -49,7 +49,7 @@ func checkProject(p *project.ProjectState, ctx context.Context) ([]manifest.Drif
 	}
 	semantics := project.OperationSemantics{
 		ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
-		EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(),
+		EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(),
 	}
 	report, err := project.BuildCheckReport(p, cfg, nil, ctx, prepared.Plan(), semantics)
 	return report.Drift, err
@@ -160,6 +160,18 @@ func cloneFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string
 // skillPath returns the rendered Claude SKILL.md path for existing focused evals.
 func skillPath(root, name string) string {
 	return filepath.Join(root, ".claude", "skills", evalPrefix+"-"+name, "SKILL.md")
+}
+
+// targetSkillPath returns a rendered skill path in the selected fixed target.
+func targetSkillPath(root, target, name string) string {
+	return filepath.Join(root, "."+target, "skills", evalPrefix+"-"+name, "SKILL.md")
+}
+
+// syncStandardFootprint provides the historical profile-eval call sites with
+// the one standard footprint now rendered for every project.
+func syncStandardFootprint(t *testing.T, _ string) string {
+	t.Helper()
+	return cloneFullCatalog(t, loadCatalog(t))
 }
 
 // agentPath returns the rendered Claude agent path for existing focused evals.

@@ -1,16 +1,13 @@
 package publisher
 
 import (
-	"context"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -107,150 +104,10 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Errorf("agent guide lost decision routing:\n%s", agentsGuide)
 	}
 
-	plansReadme, err := os.ReadFile(filepath.Join(root, "docs/plans/README.md"))
-	if err != nil {
-		t.Fatalf("plans-readme not rendered: %v", err)
-	}
-	if !strings.Contains(string(plansReadme), "Implementation Plans") || !strings.Contains(string(plansReadme), "change-specific execution record") {
-		t.Errorf("plans-readme not interpolated:\n%s", plansReadme)
-	}
-
-	// The plans-template singleton renders plan-v2: its intrinsic marker,
-	// narrative spine, heading-identified phase and task, Phase close commit
-	// fence, Definition of done, optional Notes, no retired sections or task
-	// checkboxes, stripped section-assembly markers, and no unresolved value.
-	// invariant: adr-system/plan-artifacts:plans-template-taxonomy (TestEndToEndGolden)
-	plansTemplate, err := os.ReadFile(filepath.Join(root, "docs/plans/template.md"))
-	if err != nil {
-		t.Fatalf("plans-template not rendered: %v", err)
-	}
-	assertPlanTemplateTaxonomy(t, string(plansTemplate))
-	parseDir := t.TempDir()
-	if err := os.WriteFile(filepath.Join(parseDir, "template.md"), plansTemplate, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	files, err := filesystem.Open(parseDir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	lease, err := filesystem.AcquireProjectLease(context.Background(), parseDir, parseDir)
-	if err != nil {
-		_ = files.Close()
-		t.Fatal(err)
-	}
-	if _, err := plan.NewFileLeased(parseDir, lease, files, ".", "Scaffold"); err != nil {
-		_ = lease.Release()
-		_ = files.Close()
-		t.Fatalf("scaffold from rendered template: %v", err)
-	}
-	if err := lease.Release(); err != nil {
-		_ = files.Close()
-		t.Fatal(err)
-	}
-	if err := files.Close(); err != nil {
-		t.Fatal(err)
-	}
-	parsed, err := plan.ParseDir(parseDir)
-	if err != nil || len(parsed) != 1 || strings.TrimSpace(parsed[0].Goal) == "" || strings.TrimSpace(parsed[0].ArchitectureSummary) == "" || !strings.Contains(parsed[0].DefinitionOfDone, "- ") {
-		t.Fatalf("rendered plan-v2 scaffold is not substantively parseable: plans=%#v err=%v", parsed, err)
-	}
-	for _, bad := range []string{"awf:section", "awf:end", "{{", "}}"} {
-		if strings.Contains(string(plansTemplate), bad) {
-			t.Errorf("plans-template leaked marker/token %q:\n%s", bad, plansTemplate)
-		}
-	}
-
 	// A fresh check on the synced tree is clean.
 	drift, err := checkProject(p, testContext(t))
 	if err != nil || len(drift) != 0 {
 		t.Errorf("expected clean check, got drift=%#v err=%v", drift, err)
-	}
-}
-
-func assertPlanTemplateTaxonomy(t *testing.T, text string) {
-	t.Helper()
-	for _, problem := range planTemplateTaxonomyProblems(text) {
-		t.Errorf("plans-template taxonomy: %s:\n%s", problem, text)
-	}
-}
-
-func planTemplateTaxonomyProblems(text string) []string {
-	var problems []string
-	previous := -1
-	for _, token := range []string{
-		"format: plan-v2", "date:", "adrs:", "status:", "# Plan:", "## Goal",
-		"## Architecture summary", "## Phase 1:", "**Execution mode: inline.**",
-		"### Task 1.1:", "### Phase close", "```commit", "## Definition of done", "## Notes",
-	} {
-		at := strings.Index(text, token)
-		if at < 0 {
-			problems = append(problems, "missing "+token)
-			continue
-		}
-		if at <= previous {
-			problems = append(problems, "out-of-order "+token)
-		}
-		previous = at
-	}
-	for _, retired := range []string{"## File structure", "## Verification", "- [ ] **Task"} {
-		if strings.Contains(text, retired) {
-			problems = append(problems, "retired plan-v1 declaration remains: "+retired)
-		}
-	}
-	const glossary = "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`"
-	if !strings.Contains(text, glossary) {
-		problems = append(problems, "missing exact task field glossary")
-	}
-	if !strings.Contains(text, "`Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`") {
-		problems = append(problems, "missing Decision-array omission contract")
-	}
-	for name, substance := range map[string]string{
-		"Goal":                 "State the outcome and, in one line, its non-goals.",
-		"Architecture summary": "State the execution structure and dependency direction without repeating ADR rationale.",
-		"Definition of done":   "- `dod: plan-outcome` State at least one concrete observable whole-plan end condition.",
-	} {
-		if !strings.Contains(text, substance) {
-			problems = append(problems, "missing nonempty "+name+" substance")
-		}
-	}
-	return problems
-}
-
-func TestPlanTemplateTaxonomyRejectsInversions(t *testing.T) {
-	text := renderGolden(t, "plans-template/template.md.tmpl", map[string]any{
-		"vars": map[string]any{}, "layout": testLayout(),
-	})
-	for _, mutation := range []struct {
-		name, from, to string
-	}{
-		{"frontmatter format", "format: plan-v2", "format: legacy"},
-		{"frontmatter date", "date:", "written:"},
-		{"frontmatter adrs", "adrs:", "decisions:"},
-		{"frontmatter status", "status:", "state:"},
-		{"title", "# Plan:", "# Procedure:"},
-		{"goal", "## Goal", "## Outcome"},
-		{"architecture", "## Architecture summary", "## Design"},
-		{"phase", "## Phase 1:", "## Batch 1:"},
-		{"execution mode", "**Execution mode: inline.**", "**Owner: inline.**"},
-		{"task", "### Task 1.1:", "### Step 1.1:"},
-		{"phase close", "### Phase close", "### Finish"},
-		{"commit fence", "```commit", "```text"},
-		{"definition", "## Definition of done", "## Verification"},
-		{"field glossary", "recognized fields are `Kind`, `Latitude`, `Question`, `Applying`, `Context`, `Paths`, `Representative`, `Edge`, and `Post-check`", "recognized fields are `Kind` and `Latitude`"},
-		{"decision array omission", "`Applying` and `Context` require nonempty JSON string arrays and are omitted rather than written as `[]`", "`Applying` and `Context` may be empty arrays"},
-		{"goal substance", "State the outcome and, in one line, its non-goals.", ""},
-		{"architecture substance", "State the execution structure and dependency direction without repeating ADR rationale.", ""},
-		{"definition bullet", "- `dod: plan-outcome` State at least one concrete observable whole-plan end condition.", ""},
-	} {
-		t.Run(mutation.name, func(t *testing.T) {
-			if !strings.Contains(text, mutation.from) {
-				t.Fatalf("mutation source %q is absent", mutation.from)
-			}
-			mutated := strings.Replace(text, mutation.from, mutation.to, 1)
-			if problems := planTemplateTaxonomyProblems(mutated); len(problems) == 0 {
-				t.Fatalf("taxonomy accepted semantic inversion %q", mutation.to)
-			}
-		})
 	}
 }
 
@@ -264,8 +121,6 @@ func TestSemanticRenderingReviewEmptyDataAndLiteralPlaceholder(t *testing.T) {
 		instruction string
 		fallback    string
 	}{
-		{"planning", "skills/writing-plans/SKILL.md.tmpl", semanticPlanningInstruction, "the project's gate"},
-		{"plan reviewer", "agents/plan-reviewer.md.tmpl", semanticPlanReviewInstruction, "Independent, lens-diverse reviewer for plans under `docs/plans/`."},
 		{"code reviewer", "agents/code-reviewer.md.tmpl", semanticCodeReviewInstruction, "Independent reviewer for implementation diffs, separate from the implementer."},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

@@ -610,7 +610,7 @@ func declaredPolicy(kind string, regen bool) OutputPolicy {
 	switch kind {
 	case "skills", "agents":
 		policy.ValidateFrontmatter, policy.ScanReferences, policy.ScanSkillReferences = true, true, true
-	case "docs", "agents-doc", "adr-readme", "plans-readme", "doc-standard", "agents-md-standard", "working-with-awf", "pi-runtime-reference", "workflow", "architecture", "development", "glossary", "pitfalls", "roadmap", "testing", "releasing", "domains", "topics":
+	case "docs", "agents-doc", "adr-readme", "doc-standard", "agents-md-standard", "working-with-awf", "pi-runtime-reference", "workflow", "architecture", "development", "glossary", "pitfalls", "roadmap", "testing", "releasing", "domains", "topics":
 		policy.ScanReferences, policy.ScanSkillReferences = true, true
 	}
 	return policy

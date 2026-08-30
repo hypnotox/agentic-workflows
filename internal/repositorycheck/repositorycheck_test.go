@@ -23,20 +23,14 @@ func finding(kind, path, detail string) checkresult.Finding {
 
 func TestComposePreservesExplicitSlotOrderAndCompatibilityProjections(t *testing.T) {
 	producer := result(t, []checkresult.Finding{finding("first", "one", "first error")}, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "unused", Path: "two", Detail: "producer information"}}})
-	planDiagnostic := result(t, []checkresult.Finding{finding("plan", "three", "plan error")}, nil)
-	artifact := result(t, []checkresult.Finding{finding("artifact", "four", "artifact error")}, nil)
 	advisories := result(t, []checkresult.Finding{{Rank: severity.Warn, Property: "heuristic", Evidence: checkresult.Evidence{Kind: "unrelated-spelling", Detail: "ordinary warning"}}}, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "also-unrelated", Detail: "ordinary information"}}})
 	tracking := result(t, nil, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "anything", Detail: "tracking information"}}})
-	deferred := result(t, []checkresult.Finding{{Rank: severity.Warn, Property: "plan-detail", Evidence: checkresult.Evidence{Kind: "not-a-routing-key", Detail: "deferred warning"}}}, nil)
 
 	report, err := Compose(Inputs{
-		Tracking:             Slot{},
-		ProducerResults:      []Slot{{Result: producer, IncludeInformationInDrift: true}},
-		PlanDiagnostics:      Slot{Result: planDiagnostic},
-		PlanArtifactErrors:   Slot{Result: artifact},
-		OrdinaryAdvisories:   Slot{Result: advisories},
-		TrackingInformation:  Slot{Result: tracking},
-		DeferredPlanWarnings: Slot{Result: deferred},
+		Tracking:            Slot{},
+		ProducerResults:     []Slot{{Result: producer, IncludeInformationInDrift: true}},
+		OrdinaryAdvisories:  Slot{Result: advisories},
+		TrackingInformation: Slot{Result: tracking},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -45,7 +39,7 @@ func TestComposePreservesExplicitSlotOrderAndCompatibilityProjections(t *testing
 	for _, drift := range report.Drift {
 		driftKinds = append(driftKinds, drift.Kind)
 	}
-	if want := []string{"first", "unused", "plan", "artifact"}; !slices.Equal(driftKinds, want) {
+	if want := []string{"first", "unused"}; !slices.Equal(driftKinds, want) {
 		t.Fatalf("drift order = %v, want %v", driftKinds, want)
 	}
 	if !slices.Equal(report.Warnings, []string{"ordinary warning"}) {
@@ -57,10 +51,8 @@ func TestComposePreservesExplicitSlotOrderAndCompatibilityProjections(t *testing
 	if !slices.Equal(report.TrackingInformation, []string{"tracking information"}) {
 		t.Fatalf("tracking information = %v", report.TrackingInformation)
 	}
-	if !slices.Equal(report.PlanWarnings, []string{"deferred warning"}) {
-		t.Fatalf("deferred plan warnings = %v", report.PlanWarnings)
-	}
-	if !slices.Equal(report.Notes, []string{"ordinary information", "ordinary warning"}) || !slices.Equal(report.TrackingNotes, []string{"tracking information"}) || !slices.Equal(report.PlanNotes, []string{"deferred warning"}) {
+
+	if !slices.Equal(report.Notes, []string{"ordinary information", "ordinary warning"}) || !slices.Equal(report.TrackingNotes, []string{"tracking information"}) {
 		t.Fatalf("compatibility notes = %#v", report)
 	}
 }
@@ -105,11 +97,9 @@ func TestPresentationUsesExplicitRanksAndPreservesEvidence(t *testing.T) {
 func TestComposeRejectsResultsInWrongExplicitSlots(t *testing.T) {
 	errorResult := result(t, []checkresult.Finding{finding("error", "path", "detail")}, nil)
 	warningResult := result(t, []checkresult.Finding{{Rank: severity.Warn, Property: "heuristic", Evidence: checkresult.Evidence{Kind: "warning", Detail: "detail"}}}, nil)
-	informationResult := result(t, nil, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "information", Detail: "detail"}}})
 	for _, input := range []Inputs{
 		{OrdinaryAdvisories: Slot{Result: errorResult}},
 		{TrackingInformation: Slot{Result: warningResult}},
-		{DeferredPlanWarnings: Slot{Result: informationResult}},
 	} {
 		if _, err := Compose(input); err == nil {
 			t.Fatalf("Compose accepted wrong explicit slot: %#v", input)
@@ -147,7 +137,5 @@ func TestSplitWarningsAndProducerEvidenceValidation(t *testing.T) {
 	if _, err := checkresult.New([]checkresult.Finding{{Rank: severity.Error, Property: "correctness", Evidence: checkresult.Evidence{Kind: "invalid"}}}, nil); err == nil {
 		t.Fatal("invalid producer evidence was accepted before aggregation")
 	}
-	if _, err := Compose(Inputs{DeferredPlanWarnings: Slot{Result: result(t, []checkresult.Finding{finding("error", "path", "wrong slot")}, nil)}}); err == nil {
-		t.Fatal("aggregator accepted an error in the deferred-warning slot")
-	}
+
 }

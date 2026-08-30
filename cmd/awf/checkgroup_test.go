@@ -76,13 +76,12 @@ func TestCheckStatePathsDispatchDistinctly(t *testing.T) {
 // invariant: tooling/quality-gates:gates-always-run (TestCheckScannersAlwaysRun)
 func TestCheckScannersAlwaysRun(t *testing.T) {
 	const prosePath = "docs/prose.md"
-	const memoryPath = "docs/plans/memory.md"
+	const memoryPath = "docs/decisions/0001-memory.md"
 	violations := map[string]string{
 		prosePath:  "an en dash \u2013 here\n",
-		memoryPath: cite() + "\n",
+		memoryPath: testsupport.ADR("Proposed", testsupport.WithBody("## Context\n\n"+cite()+"\n")),
 	}
-	root := syncedGitProject(t, checkYAML)
-	gitfixture.Stage(t, gitfixture.At(root), violations)
+	root := syncedGitProjectFiles(t, checkYAML, violations)
 	for _, tc := range []struct {
 		args  []string
 		paths []string
@@ -109,12 +108,11 @@ func TestCheckScannersAlwaysRun(t *testing.T) {
 	}
 
 	exemptYAML := checkYAML + "proseGate:\n  exemptions:\n    - path: " + prosePath + "\n      codepoint: U+2013\n      count: 1\nmemoryCite:\n  exemptions:\n    - path: " + memoryPath + "\n      count: 1\n"
-	exemptRoot := syncedGitProject(t, exemptYAML)
-	gitfixture.Stage(t, gitfixture.At(exemptRoot), violations)
+	exemptRoot := syncedGitProjectFiles(t, exemptYAML, violations)
 	for _, args := range [][]string{{"awf", "check", "repo"}, {"awf", "check", "repo", "prose"}, {"awf", "check", "repo", "memory"}} {
 		var out, errb bytes.Buffer
 		if code := runAt(t, exemptRoot, args, &out, &errb); code != 0 {
-			t.Fatalf("%v ignored its exemption list (exit %d): %s", args, code, errb.String())
+			t.Fatalf("%v ignored its exemption list (exit %d): %s%s", args, code, out.String(), errb.String())
 		}
 	}
 }

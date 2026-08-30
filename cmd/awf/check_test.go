@@ -91,7 +91,7 @@ func TestRunCheckRepoScannerErrors(t *testing.T) {
 	t.Run("memory", func(t *testing.T) {
 		root := syncedGitProject(t, checkYAML+"")
 		repo := gitfixture.At(root)
-		gitfixture.Stage(t, repo, map[string]string{"docs/plans/citation.txt": cite() + "\n"})
+		gitfixture.Stage(t, repo, map[string]string{"docs/decisions/citation.txt": cite() + "\n"})
 		if err := runCheckRepo(ctx, root, io.Discard); err == nil || !strings.Contains(err.Error(), "memoryCite.exemptions") {
 			t.Fatalf("aggregate did not surface memory failure: %v", err)
 		}

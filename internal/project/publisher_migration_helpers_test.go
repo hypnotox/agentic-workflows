@@ -16,7 +16,7 @@ func (l Layout) templateMap() map[string]any {
 	for key, value := range l.Docs {
 		docs[key] = value
 	}
-	out := map[string]any{"docsDir": l.DocsDir, "adrDir": l.ADRDir, "indexMd": l.IndexMd, "plansDir": l.PlansDir, "docs": docs, "domainsDir": l.DomainsDir}
+	out := map[string]any{"docsDir": l.DocsDir, "adrDir": l.ADRDir, "indexMd": l.IndexMd, "docs": docs, "domainsDir": l.DomainsDir}
 	for key, value := range l.Singletons {
 		out[key] = value
 	}

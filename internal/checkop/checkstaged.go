@@ -31,23 +31,6 @@ func productionCheckStagedDependencies() checkStagedDependencies {
 	}
 }
 
-func unseenPlanWarnings(result checkresult.Result, seen planNoteSink) checkresult.Result {
-	var findings []checkresult.Finding
-	for _, finding := range result.Findings() {
-		note := finding.Evidence.Detail
-		if _, exists := seen[note]; exists {
-			continue
-		}
-		seen[note] = struct{}{}
-		findings = append(findings, finding)
-	}
-	filtered, err := checkresult.New(findings, nil)
-	if err != nil { // coverage-ignore: callers supply only validated immutable Warning partitions
-		return checkresult.Result{}
-	}
-	return filtered
-}
-
 // collectCheckStaged runs the staged transition universe. The commit child is direct-only.
 func collectCheckStaged(ctx context.Context, root string, planNotes planNoteSink) (checkCollection, error) {
 	return collectCheckStagedWith(ctx, root, planNotes, productionCheckStagedDependencies())

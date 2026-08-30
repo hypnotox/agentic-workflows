@@ -259,7 +259,7 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 		"layout": testLayout(), "data": map[string]any{},
 		"skills": map[string]bool{},
 	}
-	for _, agent := range []string{"adr-reviewer", "plan-reviewer", "code-reviewer"} {
+	for _, agent := range []string{"adr-reviewer", "code-reviewer"} {
 		out := renderAgentGolden(t, agent, data)
 		for _, want := range []string{
 			"## Consensus adherence",
@@ -278,7 +278,7 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 			}
 		}
 	}
-	for _, skill := range []string{"reviewing-adr", "reviewing-plan", "reviewing-impl"} {
+	for _, skill := range []string{"reviewing-adr", "reviewing-impl"} {
 		out := renderSkillGolden(t, skill, data)
 		for _, want := range []string{"verbatim", "including whatever `Record:` blocks exist"} {
 			if !strings.Contains(out, want) {
@@ -293,7 +293,6 @@ func TestMemoryLogConsumerCoverage(t *testing.T) {
 		}
 	}
 	effortFreeOmission := map[string]string{
-		"reviewing-plan": "otherwise omit effort and memory fields",
 		"reviewing-impl": "absence of an effort omits those fields",
 	}
 	for skill, want := range effortFreeOmission {

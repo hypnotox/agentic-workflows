@@ -31,17 +31,16 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 	functions := functionDeclarations(file)
 	want := map[string]map[string]int{
 		"checkReport": {
-			"Compose": 1, "Diagnostics": 1, "Evaluate": 1, "SplitWarnings": 1,
-			"ValidateCommandWiring": 1, "advisoryResultsWithState": 1,
-			"checkWithTrackingState": 1, "fullProfile": 1, "planArtifactResults": 1,
+			"Compose": 1, "Evaluate": 1, "ValidateCommandWiring": 1,
+			"advisoryResultsWithState": 1, "checkWithTrackingState": 1,
 		},
 		"checkWithTrackingState": {
 			"Additional": 1, "Findings": 1, "LoadOptional": 1, "Locked": 1,
 			"New": 1, "ReadFile": 1, "ResolveOutput": 1, "SplitWarnings": 1,
-			"Tracking": 1, "adrRelatedResult": 1, "append": 8, "fullProfile": 2,
+			"Tracking": 1, "adrRelatedResult": 1, "append": 7, "fullProfile": 1,
 			"isNested": 2, "len": 1, "lockPath": 1, "pendingADRResult": 1,
-			"pitfallResult": 1, "planResult": 1, "referenceResult": 1,
-			"residentRoots": 1, "root": 1, "trackingFindings": 2, "trackingInformation": 2,
+			"pitfallResult": 1, "referenceResult": 1, "residentRoots": 1, "root": 1,
+			"trackingFindings": 2, "trackingInformation": 2,
 		},
 	}
 	for name, expected := range want {
@@ -63,11 +62,9 @@ func TestProducerRankPropertyCensus(t *testing.T) {
 		`internal/generatedcheck/generatedcheck.go:errorFinding:severity.Error|PropertyReproducibility`,
 		`internal/memorycite/memorycite.go:Result:severity.Error|"effort-memory-citation"`,
 		`internal/pitfallcheck/pitfallcheck.go:finding:severity.Error|PropertyCorrectness`,
-		`internal/plancheck/plancheck.go:finding:rank|property`,
 		`internal/project/check.go:advisoryResultsWithState:severity.Warn|propertyHeuristic`,
 		`internal/project/check.go:pendingADRResult:severity.Error|propertyAuthority`,
 		`internal/currentstatecoord/currentstate.go:classifyCurrentState:coverage.Severity|propertyCurrentCoverage`,
-		`internal/currentstatecoord/currentstate.go:classifyCurrentState:severity.Error|propertyPlanArtifact`,
 		`internal/prosegate/prosegate.go:Result:severity.Warn|"prose-restraint"`,
 		`internal/referencecheck/referencecheck.go:finding:severity.Error|property`,
 		`internal/glossarycheck/glossarycheck.go:errorFinding:severity.Error|PropertyCorrectness`,
@@ -97,7 +94,7 @@ func TestRepositoryCheckerOwnershipCensus(t *testing.T) {
 	ownerPackages := map[string]bool{
 		"internal/configcheck": true, "internal/generatedcheck": true,
 		"internal/memorycite": true, "internal/pitfallcheck": true,
-		"internal/plancheck": true, "internal/prosegate": true,
+		"internal/prosegate": true,
 		"internal/referencecheck": true, "internal/glossarycheck": true,
 	}
 	aggregatorImports := map[string]bool{}

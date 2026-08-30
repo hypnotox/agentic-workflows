@@ -366,11 +366,11 @@ func TestTargetOutputRenderError(t *testing.T) {
 // invariant: rendering/pi-workflows:pi-implementation-batch-exclusivity (TestPiStructuredExplorationContractRender)
 func TestPiStructuredExplorationContractRender(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
-	if got := strings.Count(body, `id: "awf-`); got != 6 {
-		t.Fatalf("Pi profile definitions = %d, want exactly 6", got)
+	if got := strings.Count(body, `id: "awf-`); got != 5 {
+		t.Fatalf("Pi profile definitions = %d, want exactly 5", got)
 	}
-	if got := strings.Count(body, "toolName:"); got != 8 { // six profile specs plus the shared review factory input and output fields
-		t.Fatalf("Pi profile tool-name fields = %d, want 8", got)
+	if got := strings.Count(body, "toolName:"); got != 7 { // five profile specs plus the shared review factory input and output fields
+		t.Fatalf("Pi profile tool-name fields = %d, want 7", got)
 	}
 	profiles := []struct {
 		id, tool, parameters, concurrency string
@@ -379,7 +379,6 @@ func TestPiStructuredExplorationContractRender(t *testing.T) {
 		{"awf-grounding", "subagent_grounding", `task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_GROUNDING_CONCURRENCY", false},
 		{"awf-explore", "subagent_explore", `task: Type.String({ minLength: 1 }), breadth: StringEnum(["targeted", "bounded", "broad"] as const), detail: StringEnum(["paths", "summary", "analysis"] as const), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_EXPLORATION_CONCURRENCY", false},
 		{"awf-review-adr", "subagent_review_adr", `task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_REVIEW_CONCURRENCY", false},
-		{"awf-review-plan", "subagent_review_plan", `task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_REVIEW_CONCURRENCY", false},
 		{"awf-review-code", "subagent_review_code", `task: Type.String({ minLength: 1 }), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: MAX_REVIEW_CONCURRENCY", false},
 		{"awf-implement", "subagent_implement", `task: Type.String({ minLength: 1 }), verificationCheckout: Type.Optional(Type.String()), model: Type.Optional(MODEL_REFERENCE_SCHEMA)`, "concurrency: 1", true},
 	}
@@ -872,70 +871,6 @@ func TestMultiTargetRender(t *testing.T) {
 	}
 }
 
-// invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract (TestMaintainableCodeMultiTargetParity)
-func TestMaintainableCodeMultiTargetParity(t *testing.T) {
-	root := scaffold(t, "prefix: example\nprofile: full\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := renderAll(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	byPath := map[string]string{}
-	subagentArtifacts := map[string]int{
-		".claude/skills/example-subagent-driven-development/SKILL.md": 0,
-		".pi/skills/example-subagent-driven-development/SKILL.md":     0,
-	}
-	for _, file := range files {
-		byPath[file.Path] = file.Content
-		if _, ok := subagentArtifacts[file.Path]; ok && file.TemplateID == "skills/subagent-driven-development/SKILL.md.tmpl" {
-			subagentArtifacts[file.Path]++
-		}
-	}
-	categories := []string{
-		"semantic boundary and ownership",
-		"external/internal representations and their translation point",
-		"allowed dependency direction",
-		"preparatory-refactor decision",
-		"prohibited bolt-on shortcuts",
-		"validation expectations",
-		"does not replan, broaden the task, or perform unrelated cleanup",
-	}
-	for _, path := range []string{
-		".claude/skills/example-subagent-driven-development/SKILL.md",
-		".pi/skills/example-subagent-driven-development/SKILL.md",
-	} {
-		out := byPath[path]
-		if out == "" {
-			t.Fatalf("missing rendered skill %q", path)
-		}
-		for _, want := range categories {
-			if !strings.Contains(out, want) {
-				t.Errorf("%s missing handoff semantic %q:\n%s", path, want, out)
-			}
-		}
-	}
-	if got := len(byPath); got != len(files) {
-		t.Fatalf("rendered outputs contain duplicate paths: %d files, %d paths", len(files), got)
-	}
-	for path, got := range subagentArtifacts {
-		if got != 1 {
-			t.Errorf("%s rendered %d subagent-driven-development artifacts from its template, want 1", path, got)
-		}
-	}
-	docs := 0
-	for _, file := range files {
-		if file.Path == "docs/maintainable-code-design.md" {
-			docs++
-		}
-	}
-	if docs != 1 {
-		t.Errorf("maintainable design guide renders %d times, want 1", docs)
-	}
-}
-
 const (
 	semanticPlanningInstruction    = "- **Semantic rendering review:** plans name concrete examples and expected readings only when load-bearing. The implementation phase owner performs focused generated-prose meaning review, records inspected output boundaries and result in completion evidence, and checks contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders without a universal language validator. Plan review inspects the requirement and any evidence already available; code review inspects the completed implementation evidence."
 	semanticPlanReviewInstruction  = "1. **semantic-rendering-review**: inspect the change-specific requirement for focused generated-prose meaning review at affected output boundaries, including contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders such as `<literal-placeholder>`. During precommit plan review, do not require future implementation completion evidence; during a later review, inspect that evidence when it exists. Concrete examples and expected readings are required only when load-bearing; this is not a general output validator."
@@ -966,10 +901,7 @@ func TestSemanticRenderingReviewMultiTargetAuthority(t *testing.T) {
 			path        string
 			instruction string
 		}{
-			{target + "/skills/example-writing-plans/SKILL.md", semanticPlanningInstruction},
-			{target + "/skills/example-executing-plans/SKILL.md", semanticInlineInstruction},
 			{target + "/agents/implementer.md", semanticImplementerInstruction},
-			{target + "/agents/plan-reviewer.md", semanticPlanReviewInstruction},
 			{target + "/agents/code-reviewer.md", semanticCodeReviewInstruction},
 		} {
 			out := byPath[artifact.path]
@@ -1014,16 +946,6 @@ func TestConcreteMaintainabilityReviewTargetParity(t *testing.T) {
 							t.Errorf("%s contains unresolved no-value token", path)
 						}
 					}
-					if profile == catalog.ProfileFull {
-						for _, path := range []string{
-							"." + target + "/skills/example-reviewing-plan/SKILL.md",
-							"." + target + "/agents/plan-reviewer.md",
-						} {
-							if out := files[path]; !strings.Contains(out, "smallest clean remediation") || !strings.Contains(out, "brainstorming") {
-								t.Errorf("%s missing Full concrete-maintainability semantics", path)
-							}
-						}
-					}
 				})
 			}
 		})
@@ -1040,10 +962,6 @@ func TestCleanIntegrationTargetParity(t *testing.T) {
 				t.Run(target, func(t *testing.T) {
 					skills := []string{"brainstorming", "executing-direct", "bugfix", "tdd", "reviewing-impl"}
 					agents := []string{"implementer", "code-reviewer"}
-					if profile == catalog.ProfileFull {
-						skills = append(skills, "writing-plans", "executing-plans", "subagent-driven-development", "reviewing-plan")
-						agents = append(agents, "plan-reviewer")
-					}
 					for _, skill := range skills {
 						path := "." + target + "/skills/example-" + skill + "/SKILL.md"
 						if out := files[path]; !strings.Contains(out, "current and target owner") || !strings.Contains(out, "residual debt") {
@@ -1054,13 +972,6 @@ func TestCleanIntegrationTargetParity(t *testing.T) {
 						path := "." + target + "/agents/" + agent + ".md"
 						if out := files[path]; !strings.Contains(out, "current and target owner") || !strings.Contains(out, "residual debt") {
 							t.Errorf("%s missing applicable clean-integration semantics", path)
-						}
-					}
-					if profile == catalog.ProfileCore {
-						for _, absent := range []string{"writing-plans", "executing-plans", "subagent-driven-development", "reviewing-plan"} {
-							if _, ok := files["."+target+"/skills/example-"+absent+"/SKILL.md"]; ok {
-								t.Errorf("Core unexpectedly rendered Full-only clean-integration consumer %s", absent)
-							}
 						}
 					}
 				})
@@ -1166,7 +1077,7 @@ func TestPiRoleContractLoader(t *testing.T) {
 	body := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
 		"loadAgentContract", "source: ContractSource",
-		`adr: ".pi/agents/adr-reviewer.md"`, `plan: ".pi/agents/plan-reviewer.md"`, `code: ".pi/agents/code-reviewer.md"`,
+		`adr: ".pi/agents/adr-reviewer.md"`, `code: ".pi/agents/code-reviewer.md"`,
 		`IMPLEMENTER_PATH = ".pi/agents/implementer.md"`, `EXPLORER_PATH = ".pi/agents/explorer.md"`, `GROUNDING_CHECKER_PATH = ".pi/agents/grounding-checker.md"`,
 		"relative: GROUNDING_CHECKER_PATH", "relative: EXPLORER_PATH", "relative: spec.relative", "relative: IMPLEMENTER_PATH",
 		"You are the governed grounding-check subagent. You are report-only: never edit or commit.",

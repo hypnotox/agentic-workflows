@@ -54,9 +54,8 @@ func TestCheckIgnoresEmptyVar(t *testing.T) {
 // The {{=awf:checkCmd}} placeholder channel: no assembled source references
 // .vars.checkCmd in this fixture (refactor-coupling-audit's template does not,
 // agents-doc and workflow are local, hooks/bootstrap are off), so only the
-// PartVarRefs plumbing can mark the var consumed. (gateCmd can no longer serve
-// this role: the always-on plans-template singleton now references .vars.gateCmd
-// - ADR-0108 - so it is consumed in every project.)
+// PartVarRefs plumbing can mark the var consumed. gateCmd cannot serve this
+// role because several always-on workflow artifacts consume it in every project.
 func TestPartPlaceholderConsumesVar(t *testing.T) {
 	cfg := "prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  checkCmd: awf check\n"
 	locals := map[string]string{}

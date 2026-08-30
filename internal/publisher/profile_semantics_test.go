@@ -69,19 +69,16 @@ func TestCoreRenderedWorkflowExcludesFullAuthority(t *testing.T) {
 	// adopter prose. Each entry names an executable command, artifact identity,
 	// reviewer schema, or workflow instruction that Core must not expose.
 	forbiddenCoreOperationalReferences := []string{
-		"`./awf adr", "`./awf plan", "`./awf audit",
-		"example-proposing-adr", "example-writing-plans", "example-reviewing-plan",
-		"example-executing-plans", "example-subagent-driven-development", "example-adr-lifecycle",
-		"adr-reviewer", "plan-reviewer",
-		"Before ADR or plan authoring", "effort-free ADR evidence",
-		"durable ADR, plan", "completes deferred artifact transitions",
-		"agent guide, ADRs", "ADR, plan, or code reviewer",
-		"kind adr, plan, or code", `StringEnum(["adr", "plan", "code"]`,
+		"`./awf adr", "`./awf audit",
+		"example-proposing-adr", "example-adr-lifecycle", "adr-reviewer",
+		"Before ADR authoring", "effort-free ADR evidence",
+		"durable ADR", "completes deferred artifact transitions",
+		"agent guide, ADRs", "ADR or code reviewer",
+		"kind adr or code", `StringEnum(["adr", "code"]`,
 		"ADR", "current-state", "State changes", "governance workflow",
-		"plan authoring", "plan review", "plan is warranted", "creating an ADR or plan",
-		"stale-ADR", "plan-adherence", "plan adherence", "plan's stated file paths", "Read every plan, ADR, or state doc",
-		"`awf new adr`", "`awf audit`", "decisions or plans directory", "Current-state topic ownership",
-		"decisions, plans, domains, topics", "domain sidecars", "`domains` (optional)", "optional `domains`, `tags`",
+		"stale-ADR", "Read every ADR or state doc",
+		"`awf new adr`", "`awf audit`", "decisions directory", "Current-state topic ownership",
+		"decisions, domains, topics", "domain sidecars", "`domains` (optional)", "optional `domains`, `tags`",
 	}
 	for _, tc := range []struct {
 		name    string

@@ -93,12 +93,12 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 		}
 	}
 
-	skill := activeByPath[".pi/skills/awf-writing-plans/SKILL.md"].file
+	skill := activeByPath[".pi/skills/awf-reviewing-impl/SKILL.md"].file
 	if skill == nil {
-		t.Fatal("writing-plans skill missing from producer matrix")
+		t.Fatal("reviewing-impl skill missing from producer matrix")
 	}
 	include := "<!-- awf:template-source templates/partials/gate-cadence.md -->"
-	returned := "<!-- awf:template-source templates/skills/writing-plans/SKILL.md.tmpl -->"
+	returned := "<!-- awf:template-source templates/skills/reviewing-impl/SKILL.md.tmpl -->"
 	enter := strings.Index(skill.Content, include)
 	back := -1
 	if enter >= 0 {

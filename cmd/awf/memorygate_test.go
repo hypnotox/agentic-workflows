@@ -52,7 +52,7 @@ func TestMemoryGateClean(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := memoryGateRepo(t, "", map[string]string{
-		"docs/plans/p.md":     "the file lives under " + dir + " and is named " + dir + "<effort-slug>/memory.md\n",
+		"docs/decisions/p.md": "the file lives under " + dir + " and is named " + dir + "<effort-slug>/memory.md\n",
 		"docs/decisions/a.md": "the ignore file " + dir + ".gitignore" + " is fine\n",
 	})
 	var out strings.Builder
@@ -68,7 +68,7 @@ func TestMemoryGateClean(t *testing.T) {
 func TestMemoryGateFindings(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	for _, path := range []string{"docs/decisions/0001-x.md", "docs/plans/2026-01-01-x.md"} {
+	for _, path := range []string{"docs/decisions/0001-x.md", "docs/decisions/2026-01-01-x.md"} {
 		root := memoryGateRepo(t, "",
 			map[string]string{path: "intro\n" + cite() + "\n"})
 		var out strings.Builder
@@ -102,18 +102,18 @@ func TestMemoryGateUsesFixedDocsDir(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := memoryGateRepo(t, "", map[string]string{
-		"handbook/plans/p.md": cite() + "\n",
-		"docs/plans/q.md":     dir + "other/memory.md\n",
+		"handbook/decisions/p.md": cite() + "\n",
+		"docs/decisions/q.md":     dir + "other/memory.md\n",
 	})
 	var out strings.Builder
 	err := runMemoryGate(ctx, root, &out)
 	if err == nil {
 		t.Fatal("a citation under fixed docs/ must be scanned despite docsDir config")
 	}
-	if !strings.Contains(out.String(), "docs/plans/q.md") {
+	if !strings.Contains(out.String(), "docs/decisions/q.md") {
 		t.Errorf("fixed docs directory was not scanned: %q", out.String())
 	}
-	if strings.Contains(out.String(), "handbook/plans/p.md") {
+	if strings.Contains(out.String(), "handbook/decisions/p.md") {
 		t.Errorf("configured custom docsDir must not affect the scan: %q", out.String())
 	}
 }
@@ -122,8 +122,8 @@ func TestMemoryGateExemptionPermits(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := memoryGateRepo(t,
-		"memoryCite:\n  exemptions:\n    - path: docs/plans/p.md\n",
-		map[string]string{"docs/plans/p.md": cite() + "\n"})
+		"memoryCite:\n  exemptions:\n    - path: docs/decisions/p.md\n",
+		map[string]string{"docs/decisions/p.md": cite() + "\n"})
 	var out strings.Builder
 	if err := runMemoryGate(ctx, root, &out); err != nil {
 		t.Fatalf("exempt path: want nil, got %v", err)
@@ -139,11 +139,11 @@ func TestMemoryGateSkipsStagedSymlink(t *testing.T) {
 	// A staged symlink's bytes are its target path, not document text, so even a
 	// target of exactly the flagged shape is not a citation.
 	root := memoryGateRepo(t, "",
-		map[string]string{"docs/plans/p.md": "clean\n"})
-	if err := os.Symlink(cite(), filepath.Join(root, "docs/plans/link.md")); err != nil {
+		map[string]string{"docs/decisions/p.md": "clean\n"})
+	if err := os.Symlink(cite(), filepath.Join(root, "docs/decisions/link.md")); err != nil {
 		t.Fatal(err)
 	}
-	gitfixture.Add(t, gitfixture.At(root), "docs/plans/link.md")
+	gitfixture.Add(t, gitfixture.At(root), "docs/decisions/link.md")
 	if err := runMemoryGate(ctx, root, io.Discard); err != nil {
 		t.Fatalf("a staged symlink must not block regular staged files: %v", err)
 	}
@@ -154,8 +154,8 @@ func TestMemoryGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 	_ = ctx
 	t.Run("citation cleaned without restaging remains a finding", func(t *testing.T) {
 		root := memoryGateRepo(t, "",
-			map[string]string{"docs/plans/p.md": cite() + "\n"})
-		if err := os.WriteFile(filepath.Join(root, "docs/plans/p.md"), []byte("worktree clean\n"), 0o644); err != nil {
+			map[string]string{"docs/decisions/p.md": cite() + "\n"})
+		if err := os.WriteFile(filepath.Join(root, "docs/decisions/p.md"), []byte("worktree clean\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		if err := runMemoryGate(ctx, root, io.Discard); err == nil {
@@ -164,8 +164,8 @@ func TestMemoryGateUsesStagedBytesWhenWorktreeDiffers(t *testing.T) {
 	})
 	t.Run("citation added without staging is not a finding", func(t *testing.T) {
 		root := memoryGateRepo(t, "",
-			map[string]string{"docs/plans/p.md": "clean\n"})
-		if err := os.WriteFile(filepath.Join(root, "docs/plans/p.md"), []byte(cite()+"\n"), 0o644); err != nil {
+			map[string]string{"docs/decisions/p.md": "clean\n"})
+		if err := os.WriteFile(filepath.Join(root, "docs/decisions/p.md"), []byte(cite()+"\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 		if err := runMemoryGate(ctx, root, io.Discard); err != nil {
@@ -180,7 +180,7 @@ func TestMemoryGateDispatch(t *testing.T) {
 	// Drive the command through run() so the dispatch handler closure is
 	// exercised, not just runMemoryGate directly.
 	root := memoryGateRepo(t, "",
-		map[string]string{"docs/plans/p.md": "clean\n"})
+		map[string]string{"docs/decisions/0001-p.md": testsupport.ADR("Proposed")})
 	if err := initializeProject(ctx, root, io.Discard); err != nil {
 		t.Fatal(err)
 	}

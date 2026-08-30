@@ -11,7 +11,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
-	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -27,15 +26,13 @@ type OperationSemantics struct {
 	Pitfalls        pitfall.Corpus
 	Topics          topic.Corpus
 	EffectiveSkills map[string]bool
-	Plans           []plan.Plan
-	PlansError      error
 	GeneratedOutput generatedcheck.AdditionalInput
 	Glossary        glossarycheck.Input
 }
 
 // AdvisoryNotes reports non-blocking project checks from one prepared universe.
 func AdvisoryNotes(state *ProjectState, cfg *config.Config, output outputplan.Plan, semantics OperationSemantics) ([]string, error) {
-	return advisoryNotes(operationInputs(state, cfg), semantics.Plans, semantics.PlansError, &output, semantics.Glossary)
+	return advisoryNotes(operationInputs(state, cfg), &output, semantics.Glossary)
 }
 
 // BuildCheckReport checks the selected project tree using one prepared universe.
@@ -53,12 +50,6 @@ func BuildListDocument(state *ProjectState, cfg *config.Config, kindFilter strin
 // presentation.
 func NewADRLeased(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, title string, lease *filesystem.Lease, files *filesystem.Handle) (string, error) {
 	return newADRLeased(root, cfg, repo, ctx, title, lease, files)
-}
-
-// NewPlanLeased scaffolds one plan through the caller-held selected-root
-// capability. The caller retains its tracked lease through presentation.
-func NewPlanLeased(root, title string, lease *filesystem.Lease, files *filesystem.Handle) (string, error) {
-	return newPlanLeased(root, title, lease, files)
 }
 
 // NewPitfall scaffolds one authored pitfall beneath root.

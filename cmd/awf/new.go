@@ -17,14 +17,11 @@ import (
 
 const localDocumentKind = "doc"
 
-// runNew scaffolds one of the surviving authored artifacts: an ADR, plan,
-// current-state topic, domain, or pitfall. Each arm owns its kind-specific arguments.
+// runNew scaffolds one of the surviving authored artifacts.
 func runNew(ctx context.Context, root, kind string, args []string, stdout io.Writer) error {
 	switch {
 	case kind == "adr":
 		return newADR(ctx, root, args, stdout)
-	case kind == "plan":
-		return newPlan(ctx, root, args, stdout)
 	case kind == "topic":
 		return newTopic(ctx, root, args, stdout)
 	case kind == "pitfall":
@@ -37,7 +34,7 @@ func runNew(ctx context.Context, root, kind string, args []string, stdout io.Wri
 		}
 		return runNewDomain(ctx, root, args[0], stdout)
 	default:
-		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, plan, topic, domain, pitfall, doc)", kind)}
+		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, topic, domain, pitfall, doc)", kind)}
 	}
 }
 
@@ -63,34 +60,6 @@ func newADR(ctx context.Context, root string, titleWords []string, stdout io.Wri
 	}
 	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
 	path, err := project.NewADRLeased(state.Root(), cfg, repo, ctx, strings.Join(titleWords, " "), lease, files)
-	if err != nil {
-		return err
-	}
-	return writeStatus(stdout, "created: "+path)
-}
-
-func newPlan(ctx context.Context, root string, titleWords []string, stdout io.Writer) (returnErr error) {
-	if len(titleWords) == 0 {
-		return &usageErr{"usage: awf new plan <title>"}
-	}
-	lease, err := filesystem.AcquireTrackedLease(ctx, root)
-	if err != nil {
-		return err
-	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-	if err := gate(ctx, root); err != nil {
-		return err
-	}
-	state, _, _, err := openProjectOperation(ctx, root)
-	if err != nil {
-		return err
-	}
-	files, err := filesystem.Open(state.Root())
-	if err != nil {
-		return err
-	}
-	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
-	path, err := project.NewPlanLeased(state.Root(), strings.Join(titleWords, " "), lease, files)
 	if err != nil {
 		return err
 	}

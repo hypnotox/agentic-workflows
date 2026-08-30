@@ -168,7 +168,7 @@ func TestOrdinaryCommandOutputUsesPresentation(t *testing.T) {
 			t.Errorf("%s findings = %v, want exactly one %q finding", fixture, findings, want)
 		}
 	}
-	for _, fixture := range []string{"positive-read-plan.go", "positive-changelog.go", "positive-activity.go", "positive-memory.go", "positive-init.go", "positive-shadow.go"} {
+	for _, fixture := range []string{"positive-changelog.go", "positive-activity.go", "positive-memory.go", "positive-init.go", "positive-shadow.go"} {
 		if findings := fixtureFindings(t, fixture); len(findings) != 0 {
 			t.Errorf("%s findings: %v", fixture, findings)
 		}
@@ -208,7 +208,6 @@ func repoRoot(t *testing.T) string {
 const modulePath = "github.com/hypnotox/agentic-workflows"
 
 var successfulBypasses = map[string]bool{
-	modulePath + "/cmd/awf.runReadPlan":                 true,
 	modulePath + "/cmd/awf.writeChangelogPayload":       true,
 	modulePath + "/cmd/awf.writeEffortActivityProtocol": true,
 	modulePath + "/cmd/awf.writeEffortMemoryProtocol":   true,

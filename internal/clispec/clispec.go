@@ -246,8 +246,6 @@ var Commands = []Command{
 		MaxPos: 0, Gating: Gated,
 		Help: Help{Usage: []string{"awf read <subcommand>"}, Description: "Read a bounded projection from parsed current-state authority."},
 		Children: []Command{
-			{Name: "plan", Summary: "Read one exact plan phase or task projection", MinPos: 2, MaxPos: 2, FullOnly: true,
-				Help: Help{Usage: []string{"awf read plan <plan> <P[.T]>"}, Description: "Resolve <plan> as an exact filename or exact filename stem under the configured", Details: []string{"plans directory. P selects a complete phase; P.T selects one task plus its phase", "closure. Plan-v2 always includes task-scoped Decisions and phase outcomes; plan-v1", "retains its original closure. Selectors are canonical positive integers, and failures", "list available exact plan names or selectors."}, Positionals: []HelpItem{{Name: "<plan>", Description: "exact plan filename or filename stem"}, {Name: "<P[.T]>", Description: "canonical positive phase or phase.task selector"}}}},
 			{Name: "topic", Summary: "Read one topic or claim authority projection", BoolFlags: []string{"--references", "--coverage"}, MinPos: 1, MaxPos: 1, FullOnly: true,
 				Help: Help{Usage: []string{"awf read topic <domain>/<topic>[:<claim>] [flags]"}, Description: "Read active topic or claim authority with optional direct references and coverage.", Positionals: []HelpItem{{Name: "<domain>/<topic>[:<claim>]", Description: "current-state topic or claim identifier"}}, Options: []HelpItem{{Name: "--references", Description: "add direct claim references"}, {Name: "--coverage", Description: "add ownership and marker coverage"}}}},
 		},
@@ -317,17 +315,16 @@ var Commands = []Command{
 		Help: Help{Usage: []string{"awf config [<key-or-var>]"}, Description: "Print the configuration reference: every config key, var, sidecar field, and", Details: []string{"data key with descriptions, defaults, and availability. Inside an awf project", "the output adds live state (current values and which catalog artifacts consume", "each var). Outside one, a static catalog-wide reference prints.", "With an argument, print just that entry (a config key path like", "audit.allowedScopes, a var name like gateCmd, a sidecar field like", "sidecar.dataDefaults, or a data key name)."}, Positionals: []HelpItem{{Name: "<key-or-var>", Description: "config key, var, sidecar field, or data key"}}},
 	},
 	{
-		Name: "new", Summary: "Scaffold a new artifact: kind in {plan, topic, domain, pitfall, doc}",
+		Name: "new", Summary: "Scaffold a new artifact: kind in {topic, domain, pitfall, doc}",
 		MaxPos: -1, Gating: GatedInHandler,
 		Help: Help{
 			Usage:       []string{"awf new <kind> <args>"},
-			Description: "Scaffold a new artifact. The kind is plan, topic, domain, pitfall, or doc.",
+			Description: "Scaffold a new artifact. The kind is topic, domain, pitfall, or doc.",
 			Positionals: []HelpItem{
 				{Name: "<kind>", Description: "artifact kind"},
 				{Name: "<args>", Description: "arguments required by the selected kind"},
 			},
 			Examples: []string{
-				"awf new plan \"Some Plan Title\"",
 				"awf new topic <domain> \"Some Topic Title\"",
 				"awf new domain <name>",
 				"awf new pitfall \"Some Durable Hazard\"",
@@ -335,10 +332,6 @@ var Commands = []Command{
 			},
 		},
 		Children: []Command{
-			{
-				Name: "plan", Summary: "Scaffold a new plan", MinPos: 1, MaxPos: -1, FullOnly: true,
-				Help: Help{Usage: []string{"awf new plan <title>..."}, Description: "Scaffold a new plan under docs/plans, date-prefixed (no sequential number),", Details: []string{"from the rendered plans template with its date and title heading filled in."}, Positionals: []HelpItem{{Name: "<title>", Description: "human-readable artifact title"}}},
-			},
 			{
 				Name: "topic", Summary: "Scaffold paired current-state topic inputs", MinPos: 2, MaxPos: -1, FullOnly: true,
 				Help: Help{Usage: []string{"awf new topic <domain> <title>..."}, Description: "Scaffold paired topic metadata and authored current-state inputs without syncing.", Details: []string{"Edit the path placeholder and author reviewed claims manually."}, Positionals: []HelpItem{{Name: "<domain>", Description: "current-state domain identifier"}, {Name: "<title>", Description: "human-readable artifact title"}}},

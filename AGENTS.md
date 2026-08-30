@@ -42,7 +42,7 @@ Hard rules every change must respect:
 - **Stage and gate each commit.** Stage the complete transaction; run `./awf check staged` and `./x gate`. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
 - **Publication-safe templates.** Keep unset interpolation coherent and token-free. (ADR-0001, ADR-0045)
 - **`awf check` is the drift oracle.** After `.awf/` edits run `./x render && ./x check`; commit generated outputs with their sources.
-- **Conventional Commits, scopes `adr`, `adr-system`, `awf`, `code-design`, `config`, `invariants`, `plans`, `rendering`, `tooling`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
+- **Conventional Commits, scopes `adr`, `adr-system`, `awf`, `code-design`, `config`, `invariants`, `rendering`, `tooling`.** One concern per commit; stage explicitly, no `git add -A`; the allowed-scope list lives in `audit.allowedScopes`.
 - **Backed invariants.** Declare and prove current-state invariants; see the current-state contract. (ADR-0134)
 - **Punctuation restraint.** Prefer ordinary punctuation; punctuation findings are advisory Warnings with zero exit. En dashes remain prohibited and paragraphs use at most two em dashes. Ellipses and curly quotes are permitted; see the prose gate contract. (ADR-replace-plain-punctuation-ban-with-punctuation-restraint)
 - **No memory citation.** Never cite concrete effort memory paths in durable records. (ADR-0158, ADR-0175)
@@ -75,11 +75,10 @@ go test ./...: run the test suite
 ./x check: check rendered-file drift
 ./awf upgrade: migrate the config tree after upgrading awf
 ./awf audit: report workflow conformance for a commit range
-./awf new plan "<Title>": scaffold a dated implementation plan
 ./awf new pitfall "<Title>": scaffold one authored pitfall source without rendering
 ```
 
-Use `./awf read plan <plan> <P[.T]>` for executable plan scope. For command flags and daily use, see [docs/working-with-awf.md](docs/working-with-awf.md). Use CodeGraph for structural discovery; Git selects changed paths. In Full use `./awf resolve topic`, `./awf read topic`, and `./awf read adr` for normative authority. Selected native skills own effort and ADR lifecycle procedure.
+For command flags and daily use, see [docs/working-with-awf.md](docs/working-with-awf.md). Use CodeGraph for structural discovery; Git selects changed paths. Use `./awf resolve topic` and `./awf read topic` for normative current-state authority. Selected native skills own effort and decision procedure.
 
 
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl#document-map -->
@@ -89,7 +88,6 @@ Use `./awf read plan <plan> <P[.T]>` for executable plan scope. For command flag
 
 - **ADR index:** [docs/decisions/README.md](docs/decisions/README.md), architecture decisions and lifecycle.
 - **Decision index:** [docs/decisions/INDEX.md](docs/decisions/INDEX.md), generated status index.
-- **Plans:** [docs/plans](docs/plans), implementation directives.
 - **Authoring AGENTS.md:** [docs/agents-md-standard.md](docs/agents-md-standard.md), layout, content, and rules for the agent guide
 - **Configuration Reference:** [docs/config-reference.md](docs/config-reference.md), every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state
 - **Documentation Standard:** [docs/doc-standard.md](docs/doc-standard.md), how-to-write rules for all awf-managed prose

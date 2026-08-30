@@ -21,22 +21,18 @@ type Slot struct {
 // Inputs names the established working-check destinations. Callers place each
 // completed owner result in its semantic slot before aggregation.
 type Inputs struct {
-	Tracking             Slot
-	ProducerResults      []Slot
-	PlanDiagnostics      Slot
-	PlanArtifactErrors   Slot
-	OrdinaryAdvisories   Slot
-	TrackingInformation  Slot
-	DeferredPlanWarnings Slot
+	Tracking            Slot
+	ProducerResults     []Slot
+	OrdinaryAdvisories  Slot
+	TrackingInformation Slot
 }
 
-// Report preserves the existing repository-check compatibility projections.
+// Report preserves the existing repository-check projections.
 type Report struct {
 	Drift               []manifest.Drift
 	Warnings            []string
 	Information         []string
 	TrackingInformation []string
-	PlanWarnings        []string
 	Result              checkresult.Result
 	// DirectResult is the explicitly placed direct-drift projection. Aggregate
 	// advisories remain in Result but never appear in a direct child.
@@ -44,10 +40,8 @@ type Report struct {
 	// Typed aggregate partitions retain owner classification for command consumers.
 	aggregateAdvisoryResult   checkresult.Result
 	trackingInformationResult checkresult.Result
-	deferredPlanWarningResult checkresult.Result
 	Notes                     []string
 	TrackingNotes             []string
-	PlanNotes                 []string
 }
 
 // Presentation is the explicit ranked projection of owner-classified results.
@@ -139,9 +133,6 @@ func Compose(input Inputs) (Report, error) {
 	if err := requireInformation("tracking information", input.TrackingInformation.Result); err != nil {
 		return Report{}, err
 	}
-	if err := requireWarnings("deferred plan warnings", input.DeferredPlanWarnings.Result); err != nil {
-		return Report{}, err
-	}
 	var findings []checkresult.Finding
 	var information []checkresult.Information
 	var directFindings []checkresult.Finding
@@ -167,11 +158,8 @@ func Compose(input Inputs) (Report, error) {
 	for _, slot := range input.ProducerResults {
 		appendSlot(slot, slot.IncludeInformationInDrift)
 	}
-	appendSlot(input.PlanDiagnostics, input.PlanDiagnostics.IncludeInformationInDrift)
-	appendSlot(input.PlanArtifactErrors, input.PlanArtifactErrors.IncludeInformationInDrift)
 	appendSlot(input.OrdinaryAdvisories, input.OrdinaryAdvisories.IncludeInformationInDrift)
 	appendSlot(input.TrackingInformation, input.TrackingInformation.IncludeInformationInDrift)
-	appendSlot(input.DeferredPlanWarnings, input.DeferredPlanWarnings.IncludeInformationInDrift)
 
 	result, err := checkresult.New(findings, information)
 	if err != nil { // coverage-ignore: aggregation copies only validated owner results
@@ -187,15 +175,12 @@ func Compose(input Inputs) (Report, error) {
 		Drift:                     drift,
 		aggregateAdvisoryResult:   input.OrdinaryAdvisories.Result,
 		trackingInformationResult: input.TrackingInformation.Result,
-		deferredPlanWarningResult: input.DeferredPlanWarnings.Result,
 	}
 	report.Warnings = findingDetails(input.OrdinaryAdvisories.Result)
 	report.Information = informationDetails(input.OrdinaryAdvisories.Result)
 	report.TrackingInformation = append(informationDetails(input.Tracking.Result), informationDetails(input.TrackingInformation.Result)...)
-	report.PlanWarnings = findingDetails(input.DeferredPlanWarnings.Result)
 	report.Notes = append(slices.Clone(report.Information), report.Warnings...)
 	report.TrackingNotes = slices.Clone(report.TrackingInformation)
-	report.PlanNotes = slices.Clone(report.PlanWarnings)
 	return report, nil
 }
 
@@ -226,11 +211,6 @@ func (r Report) AggregateAdvisoryResult() checkresult.Result {
 // TrackingInformationResult returns the typed aggregate tracking Information partition.
 func (r Report) TrackingInformationResult() checkresult.Result {
 	return r.trackingInformationResult
-}
-
-// DeferredPlanWarningResult returns the typed plan Warning partition.
-func (r Report) DeferredPlanWarningResult() checkresult.Result {
-	return r.deferredPlanWarningResult
 }
 
 func requireAdvisories(role string, result checkresult.Result) error {

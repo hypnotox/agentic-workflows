@@ -7,16 +7,11 @@ import (
 	"maps"
 	"os"
 	"path/filepath"
-	"regexp"
 	"slices"
 	"strings"
 	"testing"
-	"time"
-
-	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -316,62 +311,15 @@ func mustReadCLIFile(t *testing.T, path string) string {
 	return string(b)
 }
 
-func TestRunNewScaffoldsPlan(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	var out bytes.Buffer
-	if err := runNew(ctx, root, "plan", []string{"Some", "Plan", "Title"}, &out); err != nil {
-		t.Fatalf("runNew: %v", err)
-	}
-	got := strings.TrimPrefix(strings.TrimSpace(out.String()), "status: created: ")
-	// Date-prefixed under docs/plans (no sequential number); the date is today's,
-	// so match on shape rather than couple the test to the wall clock.
-	if dir := filepath.Dir(got); dir != filepath.Join(root, "docs", "plans") {
-		t.Errorf("plan written to %q, want under docs/plans", got)
-	}
-	if !regexp.MustCompile(`^\d{4}-\d{2}-\d{2}-some-plan-title\.md$`).MatchString(filepath.Base(got)) {
-		t.Errorf("plan filename %q not YYYY-MM-DD-some-plan-title.md", filepath.Base(got))
-	}
-	body, err := os.ReadFile(got)
-	if err != nil {
-		t.Fatalf("created file not found: %v", err)
-	}
-	if !strings.Contains(string(body), "format: plan-v2\n") || !strings.Contains(string(body), "# Plan: Some Plan Title") || !strings.Contains(string(body), "status: Proposed") {
-		t.Errorf("plan not scaffolded from plan-v2 template:\n%s", body)
-	}
-	plans, err := plan.ParseDir(filepath.Dir(got))
-	if err != nil {
-		t.Fatalf("scaffolded plan does not parse cleanly: %v", err)
-	}
-	if len(plans) != 1 || plans[0].Filename != filepath.Base(got) || plans[0].Format != "plan-v2" {
-		t.Fatalf("parsed scaffold = %#v, want created plan-v2", plans)
-	}
-}
-
-func TestRunNewPlanMissingTitle(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "plan", nil, os.Stdout); err == nil {
-		t.Fatal("expected usage error for a missing plan title")
-	}
-}
-
-func TestRunNewPlanRefusesExisting(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := runNew(ctx, root, "plan", []string{"Same", "Plan"}, io.Discard); err != nil {
-		t.Fatalf("first runNew: %v", err)
-	}
-	if err := runNew(ctx, root, "plan", []string{"Same", "Plan"}, io.Discard); err == nil {
-		t.Fatal("expected overwrite refusal for a same-day same-title plan")
-	}
-}
-
 // invariant: tooling/cli:pitfall-scaffold (TestRunNewDispatch)
 // invariant: tooling/cli:cli-creation-and-inventory (TestRunNewDispatch)
+func TestRunNewRejectsRetiredPlanKind(t *testing.T) {
+	err := runNew(testContext(t), t.TempDir(), "plan", []string{"retired"}, io.Discard)
+	if err == nil || !strings.Contains(err.Error(), "unknown kind") {
+		t.Fatalf("retired plan kind error = %v", err)
+	}
+}
+
 func TestRunNewDispatch(t *testing.T) {
 	root := scaffoldProject(t)
 	var out, errb bytes.Buffer
@@ -443,37 +391,5 @@ func TestRunNewDomainRejectsInvalidNameBeforeWriting(t *testing.T) {
 func TestRunNewRetiredKind(t *testing.T) {
 	if err := runNew(testContext(t), t.TempDir(), "skill", []string{"x"}, io.Discard); err == nil || !strings.Contains(err.Error(), "unknown kind") {
 		t.Fatalf("retired kind error = %v", err)
-	}
-}
-
-func TestNewPlanWaitsForLeaseBeforeGateObservation(t *testing.T) {
-	root := scaffoldProject(t)
-	testsupport.WriteAwfConfig(t, root, minimalYAML+"unknown: true\n")
-	lease, err := filesystem.AcquireTrackedLease(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer func() {
-		if err := lease.Release(); err != nil {
-			t.Errorf("release new-plan test lease: %v", err)
-		}
-	}()
-	result := make(chan error, 1)
-	go func() { result <- newPlan(testContext(t), root, []string{"blocked"}, io.Discard) }()
-	select {
-	case err := <-result:
-		t.Fatalf("new plan returned before the held transaction released: %v", err)
-	case <-time.After(100 * time.Millisecond):
-	}
-	if err := lease.Release(); err != nil {
-		t.Fatal(err)
-	}
-	select {
-	case err := <-result:
-		if err == nil || !strings.Contains(err.Error(), "parse config") {
-			t.Fatalf("new plan error after release = %v, want gate refusal", err)
-		}
-	case <-time.After(time.Second):
-		t.Fatal("new plan did not complete after lease release")
 	}
 }

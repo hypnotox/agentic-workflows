@@ -18,8 +18,8 @@ func TestRetainedNewUsageAndProjectErrors(t *testing.T) {
 	if err := runNew(testContext(t), t.TempDir(), "domain", nil, io.Discard); err == nil {
 		t.Fatal("domain without name accepted")
 	}
-	if err := newPlan(testContext(t), t.TempDir(), []string{"title"}, io.Discard); err == nil {
-		t.Fatal("plan without project accepted")
+	if err := runNew(testContext(t), t.TempDir(), "plan", []string{"title"}, io.Discard); err == nil {
+		t.Fatal("retired plan kind accepted")
 	}
 }
 
@@ -46,9 +46,6 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 		lockAfterDomain := mustReadCLIFile(t, filepath.Join(root, ".awf", "awf.lock"))
 		pitfallsBefore := mustReadCLIFile(t, filepath.Join(root, "docs", "pitfalls.md"))
 
-		if err := runNew(ctx, root, "plan", []string{"Dispatch", "Plan"}, io.Discard); err != nil {
-			t.Fatalf("dispatch plan: %v", err)
-		}
 		if err := runNew(ctx, root, "topic", []string{"payments", "Dispatch", "Topic"}, io.Discard); err != nil {
 			t.Fatalf("dispatch topic: %v", err)
 		}
@@ -57,7 +54,6 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 		}
 
 		for _, pattern := range []string{
-			filepath.Join(root, "docs", "plans", "*-dispatch-plan.md"),
 			filepath.Join(root, ".awf", "domains", "parts", "payments", "current-state.md"),
 			filepath.Join(root, ".awf", "topics", "metadata", "payments", "dispatch-topic.yaml"),
 			filepath.Join(root, ".awf", "docs", "pitfalls", "dispatch-pitfall.md"),

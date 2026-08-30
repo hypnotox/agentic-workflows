@@ -77,7 +77,6 @@ Evaluate continuity independently; when durable continuity materially helps, use
 
 {{ if ne .profile "core" }}- **ADR index:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}), architecture decisions and lifecycle.
 - **Decision index:** [{{ .layout.indexMd }}]({{ .layout.indexMd }}), generated status index.
-- **Plans:** [{{ .layout.plansDir }}]({{ .layout.plansDir }}), implementation directives.
 {{ end }}{{ range .mandatoryDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }}, {{ . }}{{ end }}

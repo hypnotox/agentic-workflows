@@ -68,11 +68,6 @@ Backing: test
 awf audit compares old and new text for each non-generated Markdown file under the documentation root and emits a Warning when the en-dash count or total em-dash excess rises. Total em-dash excess sums each blank-line-delimited paragraph's count beyond two. The finding names the file and risen measures in sorted order; permitted ellipses, curly quotes, and restrained em dashes are silent, as are unchanged or falling measures, generated paths, and paths outside the documentation root.
 Backing: test
 
-### `invariant: audit-plan-threshold-warn`
-
-awf audit raises a Warning finding when the branch-aggregate count of non-generated changed lines exceeds the fixed threshold of 400 but no file under the plans directory was touched.
-Backing: test
-
 ### `invariant: audit-uncommitted-changes`
 
 When the working tree is dirty, audit always emits a single Error finding whose detail tallies the tracked-change and untracked-file counts.

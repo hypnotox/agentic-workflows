@@ -157,17 +157,10 @@ func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]ha
 			return handlerReport(result)
 		},
 		"read": func(c *cmdCtx) handlerResult {
-			switch c.sub {
-			case "plan":
-				if err := gate(c.ctx, c.root); err != nil {
-					return handlerFailure(err)
-				}
-				return handlerFailure(runReadPlan(c.ctx, c.root, c.inv.positionals, c.stdout))
-			case "topic":
-				return handlerFailure(runReadTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--references"], c.inv.bools["--coverage"], c.stdout))
-			default:
-				return handlerFailure(&usageErr{"usage: awf read <plan|topic>"})
+			if c.sub != "topic" {
+				return handlerFailure(&usageErr{"usage: awf read topic <domain>/<topic>[:<claim>]"})
 			}
+			return handlerFailure(runReadTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--references"], c.inv.bools["--coverage"], c.stdout))
 		},
 		"resolve": func(c *cmdCtx) handlerResult {
 			if c.sub != "topic" {

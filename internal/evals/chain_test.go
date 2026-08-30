@@ -88,7 +88,6 @@ func TestPiReviewerDispatchNamesToolAndRenderedReviewer(t *testing.T) {
 	for _, tc := range []struct{ skill, agent, tool string }{
 		{"reviewing-impl", "code-reviewer", "subagent_review_code"},
 		{"reviewing-adr", "adr-reviewer", "subagent_review_adr"},
-		{"reviewing-plan", "plan-reviewer", "subagent_review_plan"},
 	} {
 		body := read(t, filepath.Join(root, ".pi", "skills", evalPrefix+"-"+tc.skill, "SKILL.md"))
 		if !namesOnInvocationLine(body, tc.tool) || !strings.Contains(extension, tc.agent+".md") {
@@ -109,7 +108,6 @@ func TestReviewerDispatchCarriesSpine(t *testing.T) {
 	for _, tc := range []struct{ skill, agent string }{
 		{"reviewing-impl", "code-reviewer"},
 		{"reviewing-adr", "adr-reviewer"},
-		{"reviewing-plan", "plan-reviewer"},
 	} {
 		t.Run(tc.skill, func(t *testing.T) {
 			assertDispatch(t, root, tc.skill, tc.agent, "## Classification rules")
@@ -119,11 +117,8 @@ func TestReviewerDispatchCarriesSpine(t *testing.T) {
 
 func TestSemanticRenderingReviewReachesEnabledTargets(t *testing.T) {
 	const (
-		planningInstruction    = "- **Semantic rendering review:** plans name concrete examples and expected readings only when load-bearing. The implementation phase owner performs focused generated-prose meaning review, records inspected output boundaries and result in completion evidence, and checks contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders without a universal language validator. Plan review inspects the requirement and any evidence already available; code review inspects the completed implementation evidence."
-		planReviewInstruction  = "1. **semantic-rendering-review**: inspect the change-specific requirement for focused generated-prose meaning review at affected output boundaries, including contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders such as `<literal-placeholder>`. During precommit plan review, do not require future implementation completion evidence; during a later review, inspect that evidence when it exists. Concrete examples and expected readings are required only when load-bearing; this is not a general output validator."
 		codeReviewInstruction  = "1. **semantic-rendering-review**: for generated prose changes, inspect the requirement and phase completion evidence naming produced-output boundaries and result, including contradictory fragments, concept-preserving paraphrase, and literal-placeholder intent. Keep this as human meaning review, not a general output validator or new deterministic inference."
 		implementerInstruction = "For generated-prose changes, perform the focused meaning review required by the phase at the produced-output boundaries. Check contradictory fragments, concept-preserving paraphrase, and intentional literal placeholders without inventing a universal language validator; retain the inspected boundaries and result as completion evidence for your report."
-		inlineInstruction      = "For generated-prose changes, perform the focused meaning review at the produced-output boundaries and retain the inspected boundaries and result as completion evidence."
 	)
 	cat := loadCatalog(t)
 	for _, target := range []string{"claude", "pi"} {
@@ -134,10 +129,7 @@ func TestSemanticRenderingReviewReachesEnabledTargets(t *testing.T) {
 				path        string
 				instruction string
 			}{
-				{filepath.Join(base, "skills", evalPrefix+"-writing-plans", "SKILL.md"), planningInstruction},
-				{filepath.Join(base, "skills", evalPrefix+"-executing-plans", "SKILL.md"), inlineInstruction},
 				{filepath.Join(base, "agents", "implementer.md"), implementerInstruction},
-				{filepath.Join(base, "agents", "plan-reviewer.md"), planReviewInstruction},
 				{filepath.Join(base, "agents", "code-reviewer.md"), codeReviewInstruction},
 			} {
 				out := read(t, tc.path)
@@ -157,9 +149,8 @@ func TestSemanticRenderingReviewReachesEnabledTargets(t *testing.T) {
 // Task skills bugfix/debugging are deliberately NOT nodes - their handoffs are
 // covered by the per-edge positional check above.
 var chainNodes = []string{
-	"brainstorming", "executing-direct", "proposing-adr", "reviewing-adr", "writing-plans",
-	"reviewing-plan", "executing-plans",
-	"subagent-driven-development", "reviewing-impl", "retrospective",
+	"brainstorming", "executing-direct", "proposing-adr", "reviewing-adr",
+	"reviewing-impl", "retrospective",
 }
 
 // The catalog's Chain flags and this suite's pinned node set are the same
@@ -191,10 +182,8 @@ func TestStagedAuthorityExecutionOrder(t *testing.T) {
 	cat := loadCatalog(t)
 	root := cloneFullCatalog(t, cat)
 	paths := map[string]string{
-		"adr-lifecycle":               skillPath(root, "adr-lifecycle"),
-		"executing-plans":             skillPath(root, "executing-plans"),
-		"subagent-driven-development": skillPath(root, "subagent-driven-development"),
-		"AGENTS":                      filepath.Join(root, "AGENTS.md"),
+		"adr-lifecycle": skillPath(root, "adr-lifecycle"),
+		"AGENTS":        filepath.Join(root, "AGENTS.md"),
 	}
 	for name, path := range paths {
 		t.Run(name, func(t *testing.T) {

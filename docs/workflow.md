@@ -32,13 +32,6 @@ Core and Full select available governance artifacts. They do not select differen
 <!-- awf:template-source templates/partials/model-selection.md -->
 Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable.
 
-<!-- awf:template-source templates/partials/plan-flexibility.md -->
-**Plan flexibility.**
-
-The protected-contract rule in the workflow document governs what a plan may not change. The plan records the best known route at authoring time, not a binding implementation choreography. The parent may merge, split, reorder, add, remove, or replace recorded route detail while the protected contract holds, and may batch independent cheap operations only when they safely share context. Batching never transfers transaction authority or weakens path confinement. An implementation child remains commit-disabled and confined to its assigned paths. A path omitted from the plan is not alone a reason to stop, and a stale listed path need not be touched. Reapproval is required only when the protected contract would change or an unresolved material decision appears.
-
-Reconcile a Proposed plan only when another phase or reviewer could rely on stale material instructions. Inconsequential and independently local edits require no deviation record. A delegated owner reports material cross-owner revisions for parent reconciliation. A helper remains confined to its assigned paths and gains no scope, commit, review, checkpoint, handoff, or outcome authority from route flexibility.
-
 <!-- awf:template-source templates/partials/semantic-owner-assurance.md -->
 **Semantic-owner assurance.**
 
@@ -165,13 +158,13 @@ Decomposition preserves parent-owned focused evidence for each fresh unit, and t
 
 - Brainstorming retains the single mandatory pre-artifact outline approval check-in, stopping for explicit approval and persisting it only when an effort exists.
 
-- Settled ADR review continues autonomously to linked-plan handling or the independently selected implementation path.
+- Settled decision review continues autonomously to the independently selected implementation path.
 
 - At a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work. Continue autonomously or through a target-native successor when one is available. Handoff is prohibited while required late-creation memory initialization remains incomplete.
 
 - Reorient from repository authority before substantive successor work. Append a log only for an actual fresh boundary; continuation, cancellation, or failure that leaves the current session active appends none. Target-specific skill guidance owns any executable replacement protocol.
 
-A routine implementation checkpoint occurs only after a phase's closing commit has received report-only review and all findings are settled; heading-identified tasks, executable projections, and helper returns are not checkpoint boundaries.
+A routine implementation checkpoint occurs only at a safe resumable transaction boundary after required verification and any selected review have settled; task headings and helper returns are not checkpoint boundaries.
 
 ### Memory format and logs
 
@@ -199,7 +192,7 @@ A routine implementation checkpoint occurs only after a phase's closing commit h
 ### Finish and prohibitions
 
 
-- Never commit the file or cite a concrete owned-memory path in a durable ADR, plan, or commit message; the bare efforts directory and angle-bracket placeholder form remain legal.
+- Never commit the file or cite a concrete owned-memory path in a durable decision record or commit message; the bare efforts directory and angle-bracket placeholder form remain legal.
 
 - Optional `activity.json` is advisory and may make older binaries unable to read the effort, but never gates unrelated show, list, or finish commands.
 
@@ -223,7 +216,6 @@ The allowed commit scopes are stored once, in `audit.allowedScopes` (ADR-0051), 
 | `code-design` | code-design authority and cross-package code structure |
 | `config` | the .awf config tree, schema, migrations |
 | `invariants` | invariant backing and checks |
-| `plans` | plan markdown documents |
 | `rendering` | the render engine and templates |
 | `tooling` | CLI, audit/gate, coverage, CI, ./x, changelog, evals |
 

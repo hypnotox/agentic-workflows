@@ -5,12 +5,11 @@
 
 **Domains:** tooling
 
-An ADR- or plan-sketched Go signature can be unimplementable as written: the `nilnil` linter
+A decision- or implementation-sketched Go signature can be unimplementable as written: the `nilnil` linter
 forbids returning a nil pointer beside a nil error, so a "missing → `(nil, nil)`" empty-state
 API must carry a `found bool` (or a sentinel error) instead; discovered mid-execution on
 ADR-0076's `manifest.LoadOptional`, forcing an amendment-while-Proposed after the signature
 had survived two reviews. `errorlint` (wrap with `%w`, no `!=` on errors) and `perfsprint`
-(no zero-arg `fmt.Errorf`) similarly bite embedded plan code at commit time. When a design
+(no zero-arg `fmt.Errorf`) similarly bite sketched implementation code at commit time. When a design
 artifact pins an exact signature or error string, check it against `.golangci.yml`'s enabled
-set before the plan freezes; the plan-reviewer's gate-clean-embedded focus covers what it
-enumerates, not novel linter/API interactions.
+set before implementation; ordinary review covers enumerated risks, not novel linter/API interactions.

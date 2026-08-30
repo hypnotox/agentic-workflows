@@ -239,8 +239,7 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 // names both sides and the fix. The fixture carries reviewing-impl's skill
 // closure so the agent edge is the failing one, and validation walks the
 // declared config order, so reviewing-impl's missing code-reviewer is reported
-// rather than executing-plans' missing implementer (ADR-0050, generalized by
-// ADR-0081's closure validation).
+// deterministically (ADR-0050, generalized by ADR-0081's closure validation).
 func TestSyncRecordsTopicOutputsInManifest(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root)

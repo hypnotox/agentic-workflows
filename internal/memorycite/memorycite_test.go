@@ -106,14 +106,14 @@ func TestScanAppliesExemptions(t *testing.T) {
 }
 
 func TestFormatNamesOwnedMemoryRepair(t *testing.T) {
-	plain := Format(Finding{Path: "docs/plans/p.md", Lines: []int{3, 9}})
-	for _, want := range []string{"docs/plans/p.md", "2 effort-owned memory citation(s)", "3, 9", ".awf/efforts/", "placeholder"} {
+	plain := Format(Finding{Path: "docs/decisions/p.md", Lines: []int{3, 9}})
+	for _, want := range []string{"docs/decisions/p.md", "2 effort-owned memory citation(s)", "3, 9", ".awf/efforts/", "placeholder"} {
 		if !strings.Contains(plain, want) {
 			t.Errorf("unpinned format missing %q: %s", want, plain)
 		}
 	}
-	pinned := Format(Finding{Path: "docs/plans/p.md", Lines: []int{3}, Pinned: ptr(2)})
-	for _, want := range []string{"docs/plans/p.md", "1 effort-owned memory citation(s)", "pins 2"} {
+	pinned := Format(Finding{Path: "docs/decisions/p.md", Lines: []int{3}, Pinned: ptr(2)})
+	for _, want := range []string{"docs/decisions/p.md", "1 effort-owned memory citation(s)", "pins 2"} {
 		if !strings.Contains(pinned, want) {
 			t.Errorf("pinned format missing %q: %s", want, pinned)
 		}

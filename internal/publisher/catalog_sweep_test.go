@@ -739,7 +739,7 @@ func TestSingletonConditionalInspectionRejectsMissingContextDescendant(t *testin
 }
 
 // kebabToCamel converts a kebab-case artifact name to its test-func stem
-// ("subagent-driven-development" → "SubagentDrivenDevelopment").
+// ("reviewing-impl" → "ReviewingImpl").
 func kebabToCamel(name string) string {
 	parts := strings.Split(name, "-")
 	for i, p := range parts {
@@ -754,7 +754,6 @@ func goldenTestSource(t *testing.T) string {
 	paths := []string{
 		"../project/agent_template_test.go",
 		"../project/maintainable_workflow_template_test.go",
-		"../project/plan_execution_workflow_template_test.go",
 		"../project/diagnostic_workflow_template_test.go",
 		"../project/authoring_workflow_template_test.go",
 		"../project/review_workflow_template_test.go",

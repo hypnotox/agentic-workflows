@@ -5,7 +5,6 @@ import (
 	"maps"
 	"path"
 	"slices"
-	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
@@ -15,7 +14,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
-	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -71,48 +69,20 @@ func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpu
 	return corpus, pitfalls, topics, eff, nil
 }
 
-func derivePlans(p renderInputs) ([]plan.Plan, error) {
-	if !fullProfile(p) {
-		return nil, nil
-	}
-	prefix := path.Join(config.DocsDir, "plans") + "/"
-	paths, err := p.read.Paths(prefix)
-	if err != nil {
-		return nil, err
-	}
-	slices.Sort(paths)
-	sources := make([]plan.Source, 0, len(paths))
-	for _, sourcePath := range paths {
-		if path.Dir(sourcePath) != strings.TrimSuffix(prefix, "/") {
-			continue
-		}
-		data, found, err := p.read.ReadFile(sourcePath)
-		if err != nil {
-			return nil, fmt.Errorf("read %s: %w", path.Base(sourcePath), err)
-		}
-		if found {
-			sources = append(sources, plan.Source{Filename: path.Base(sourcePath), Path: sourcePath, Bytes: data})
-		}
-	}
-	return plan.ParseSources(sources)
-}
-
 // Publisher is the sole output-plan construction and rendering coordinator.
 type Publisher struct{ inputs renderInputs }
 
 // Preparation is one Publisher-owned derivation and its direct semantic
 // projections for residual consumers.
 type Preparation struct {
-	publisher  *Publisher
-	plan       outputplan.Plan
-	adrs       adr.Corpus
-	pitfalls   pitfall.Corpus
-	topics     topic.Corpus
-	skills     map[string]bool
-	plans      []plan.Plan
-	plansError error
-	generated  generatedcheck.AdditionalInput
-	glossary   glossarycheck.Input
+	publisher *Publisher
+	plan      outputplan.Plan
+	adrs      adr.Corpus
+	pitfalls  pitfall.Corpus
+	topics    topic.Corpus
+	skills    map[string]bool
+	generated generatedcheck.AdditionalInput
+	glossary  glossarycheck.Input
 }
 
 // New composes a Publisher from immutable loaded facts and an explicit operation tree reader.
@@ -132,7 +102,6 @@ func (p *Publisher) Prepare() (Preparation, error) {
 	if err != nil {
 		return Preparation{}, err
 	}
-	plans, plansErr := derivePlans(p.inputs)
 	built, err := outputPlanWithPitfalls(p.inputs, adrs, pitfalls, topics, skills)
 	if err != nil {
 		return Preparation{}, err
@@ -145,7 +114,7 @@ func (p *Publisher) Prepare() (Preparation, error) {
 	if err != nil {
 		return Preparation{}, err
 	}
-	return Preparation{publisher: p, plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), plans: clonePlans(plans), plansError: plansErr, generated: generated, glossary: glossary}, nil
+	return Preparation{publisher: p, plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), generated: generated, glossary: glossary}, nil
 }
 
 // Plan derives exactly one immutable plan for this operation.
@@ -168,12 +137,6 @@ func (p Preparation) Topics() topic.Corpus { return p.topics.Clone() }
 
 // EffectiveSkills returns a defensive projection of the operation's effective skills.
 func (p Preparation) EffectiveSkills() map[string]bool { return maps.Clone(p.skills) }
-
-// Plans returns a defensive projection of the operation's parsed plans.
-func (p Preparation) Plans() []plan.Plan { return clonePlans(p.plans) }
-
-// PlansError returns diagnostics or another error from parsing the selected plans.
-func (p Preparation) PlansError() error { return p.plansError }
 
 // GeneratedOutput returns a defensive prepared projection for generated-output checks.
 func (p Preparation) GeneratedOutput() generatedcheck.AdditionalInput {
@@ -231,30 +194,6 @@ func clonePitfallCorpus(corpus pitfall.Corpus) pitfall.Corpus {
 		entries[i].Source = slices.Clone(entries[i].Source)
 	}
 	return pitfall.New(entries)
-}
-
-func clonePlans(plans []plan.Plan) []plan.Plan {
-	out := slices.Clone(plans)
-	for i := range out {
-		out[i].ADRs = slices.Clone(out[i].ADRs)
-		out[i].Source = slices.Clone(out[i].Source)
-		out[i].Phases = slices.Clone(out[i].Phases)
-		for phaseIndex := range out[i].Phases {
-			phase := &out[i].Phases[phaseIndex]
-			phase.Tasks = slices.Clone(phase.Tasks)
-			phase.Advances = slices.Clone(phase.Advances)
-			phase.Completes = slices.Clone(phase.Completes)
-			for taskIndex := range phase.Tasks {
-				fields := &phase.Tasks[taskIndex].Fields
-				fields.Paths = slices.Clone(fields.Paths)
-				fields.Applying = slices.Clone(fields.Applying)
-				fields.Context = slices.Clone(fields.Context)
-			}
-		}
-		out[i].DoD = slices.Clone(out[i].DoD)
-		out[i].CommitSubjects = slices.Clone(out[i].CommitSubjects)
-	}
-	return out
 }
 
 func freezeOutput(file RenderedFile) outputplan.Output {

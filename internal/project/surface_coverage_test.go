@@ -79,7 +79,7 @@ func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
 	if planErr != nil {
 		t.Fatal(planErr)
 	}
-	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
+	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
 	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), prepared.Plan(), semantics); err != nil {
 		t.Fatalf("CheckReport changed after preparation: %v after %d glossary reads", err, reader.reads)
 	}

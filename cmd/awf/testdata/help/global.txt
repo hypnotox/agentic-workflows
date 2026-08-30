@@ -16,7 +16,7 @@ help:
       effort | Manage slugged repository-local efforts
       list | Show the catalog and configured domain inventory
       config | Describe config keys and vars (live state inside a project)
-      new | Scaffold a new artifact: kind in {plan, topic, domain, pitfall, doc}
+      new | Scaffold a new artifact: kind in {topic, domain, pitfall, doc}
       remove | Remove a configured domain
       upgrade | Migrate the .awf/ config tree or recover an interrupted upgrade
       uninstall | Remove awf's generated files (keeps .awf/)
@@ -44,7 +44,6 @@ help:
         commit | Validate one commit message against shared commit rules, blocking
     read:
       commands:
-        plan | Read one exact plan phase or task projection
         topic | Read one topic or claim authority projection
     resolve:
       commands:
@@ -69,7 +68,6 @@ help:
         detach | Detach an owned advisory activity claim
     new:
       commands:
-        plan | Scaffold a new plan
         topic | Scaffold paired current-state topic inputs
         domain | Create a configured domain
         doc | Scaffold one project-local document

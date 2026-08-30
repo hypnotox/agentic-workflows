@@ -138,47 +138,6 @@ func TestAgentsDocSectionParity(t *testing.T) {
 	}
 }
 
-// TestWorkflowDocChainOrder asserts the workflow doc's default render carries
-// the canonical chain string: ADR review precedes every affected ordinary plan
-// review and the workflow exposes no separate reconciliation node.
-// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestWorkflowDocChainOrder)
-func TestWorkflowDocChainOrder(t *testing.T) {
-	out := renderGolden(t, "docs/workflow.md.tmpl", map[string]any{
-		"vars":   map[string]any{},
-		"layout": testLayout(),
-		"data":   map[string]any{},
-	})
-	// invariant: rendering/workflow-skill-templates:workflow-chain-adr-before-plan (TestWorkflowDocChainOrder)
-	if strings.Index(out, "**ADR**") > strings.Index(out, "**Planning**") {
-		t.Errorf("workflow guidance must present ADR before plan:\n%s", out)
-	}
-	// invariant: rendering/workflow-skill-templates:linked-plan-review-freshness (TestWorkflowDocChainOrder)
-	if !strings.Contains(out, "settle ADR review first") || !strings.Contains(out, "every linked Proposed plan") {
-		t.Errorf("workflow guidance must route ADR-first ordinary plan review:\n%s", out)
-	}
-	if !strings.Contains(out, "Governance footprints add no depth controls, rigor modes, routers, classifiers, or runtime policy knobs") {
-		t.Errorf("workflow guidance does not reject footprint-driven rigor controls:\n%s", out)
-	}
-	if strings.Contains(out, "workflow profiles") {
-		t.Errorf("workflow guidance retains misleading workflow-profile terminology:\n%s", out)
-	}
-	planSelection := []string{"sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work"}
-	for _, want := range planSelection {
-		if !strings.Contains(out, want) {
-			t.Errorf("workflow plan selection missing %q:\n%s", want, out)
-		}
-	}
-	override, err := os.ReadFile(filepath.Join(repoRootDir(t), ".awf", "parts", "workflow", "chain.md"))
-	if err != nil {
-		t.Fatalf("read project workflow override: %v", err)
-	}
-	for _, want := range planSelection {
-		if !strings.Contains(string(override), want) {
-			t.Errorf("project workflow override missing plan selection %q:\n%s", want, override)
-		}
-	}
-}
-
 // invariant: rendering/workflow-skill-templates:closed-workflow-profiles (TestClosedWorkflowProfiles)
 func TestClosedWorkflowProfiles(t *testing.T) {
 	core := catalog.StandardProfileView(catalog.ProfileCore).Catalog()

@@ -5,42 +5,6 @@ import (
 	"testing"
 )
 
-// TestPlanReviewerChangeSpecificExecutabilitySanctionsBatch pins the compact
-// contract: batch metadata is optional while ambiguous populations retain
-// deterministic scope and terminal-state evidence.
-func TestPlanReviewerChangeSpecificExecutabilitySanctionsBatch(t *testing.T) {
-	items, ok := Standard.Agents["plan-reviewer"].Data["focusItems"].([]any)
-	if !ok {
-		t.Fatalf("plan-reviewer focusItems missing or not []any")
-	}
-	var desc string
-	for _, it := range items {
-		m, ok := it.(map[string]any)
-		if !ok {
-			continue
-		}
-		if m["name"] == "change-specific-executability" {
-			desc, _ = m["description"].(string)
-		}
-	}
-	for _, clause := range []string{
-		"inline or subagent-driven", "green transaction", "change-specific outcomes",
-		"ordering dependencies only where they protect a named authority, outcome, scope, safety, compatibility, lifecycle, or verification property",
-		"focused evidence", "batch kind", "optional aids", "ambiguous populations",
-		"exhaustive Paths", "deterministic Post-check", "commit-capable owners",
-		"helpers remain path-confined and commit-disabled", "duplicated generic execution protocol",
-	} {
-		if !strings.Contains(desc, clause) {
-			t.Errorf("change-specific-executability missing %q: %q", clause, desc)
-		}
-	}
-	for _, forbidden := range []string{"coupled phase", "coupled-phase", "one commit per task", "exact paths, symbols, commands", "material boundaries, ordering dependencies, focused evidence"} {
-		if strings.Contains(desc, forbidden) {
-			t.Errorf("change-specific-executability retains %q: %q", forbidden, desc)
-		}
-	}
-}
-
 func TestADRReviewerDefaultsDoNotDuplicateUniversalLenses(t *testing.T) {
 	items, ok := Standard.Agents["adr-reviewer"].Data["focusItems"].([]any)
 	if !ok {
@@ -63,13 +27,7 @@ func TestReviewerVerificationGuidanceDefaults(t *testing.T) {
 		agent string
 		items map[string][]string
 	}{
-		{
-			agent: "plan-reviewer",
-			items: map[string][]string{
-				"snapshot-scoped-verification": {"material census and post-check commands", "exact intermediate snapshot", "terminal set", "lifecycle-authorized residual findings", "premature zero"},
-				"check-authority-taxonomy":     {"authority, state, or choreography", "preserve authority checks", "no stricter than the durable property", "no named authority or state obligation"},
-			},
-		},
+
 		{
 			agent: "code-reviewer",
 			items: map[string][]string{

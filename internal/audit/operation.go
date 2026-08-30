@@ -35,7 +35,6 @@ func RunConfigured(ctx context.Context, root string, cfg *config.Config, base, h
 		ADRDir:         docsDir + "/decisions",
 		DocsDir:        docsDir,
 		IndexMd:        docsDir + "/decisions/INDEX.md",
-		PlansDir:       docsDir + "/plans",
 	})
 	if err != nil {
 		return Outcome{}, err

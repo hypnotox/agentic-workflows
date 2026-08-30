@@ -101,12 +101,12 @@ func TestHandlerRegistryParity(t *testing.T) {
 func TestResolveReturnsTopLevel(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	cmd, top, sub, rest, ok := resolve([]string{"new", "plan", "A Title"})
-	if !ok || cmd.Name != "plan" || top.Name != "new" || sub != "plan" {
-		t.Fatalf("resolve(new plan) = cmd=%q top=%q sub=%q ok=%v", cmd.Name, top.Name, sub, ok)
+	cmd, top, sub, rest, ok := resolve([]string{"new", "topic", "tooling", "A Title"})
+	if !ok || cmd.Name != "topic" || top.Name != "new" || sub != "topic" {
+		t.Fatalf("resolve(new topic) = cmd=%q top=%q sub=%q ok=%v", cmd.Name, top.Name, sub, ok)
 	}
-	if len(rest) != 1 || rest[0] != "A Title" {
-		t.Errorf("resolve(new plan) rest = %v", rest)
+	if len(rest) != 2 || rest[0] != "tooling" || rest[1] != "A Title" {
+		t.Errorf("resolve(new topic) rest = %v", rest)
 	}
 	if cmd, top, _, _, ok := resolve([]string{"render"}); !ok || cmd.Name != "render" || top.Name != "render" {
 		t.Errorf("resolve(render) = cmd=%q top=%q ok=%v; leaf should return itself as top", cmd.Name, top.Name, ok)

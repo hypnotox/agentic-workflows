@@ -9,8 +9,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/pitfallcheck"
-	"github.com/hypnotox/agentic-workflows/internal/plan"
-	"github.com/hypnotox/agentic-workflows/internal/plancheck"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
@@ -18,16 +16,6 @@ const glossarySidecarPath = glossary.SidecarPath
 const glossaryMeaningMax = glossary.MeaningMax
 
 type glossaryRecord = glossary.Record
-
-func knownDynamicPlanDiagnosticCategory(category string) bool {
-	result, err := plancheck.Diagnostics(&plan.DiagnosticsError{Diagnostics: []*plan.Diagnostic{{Category: category, Path: "example.md", Detail: "example"}}})
-	return err == nil && len(result.Findings()) == 1
-}
-
-func checkPlans(p renderInputs, corpus adr.Corpus, plans []plan.Plan) []manifest.Drift {
-	result, _ := plancheck.Validity(plans, corpus, config.AuditScopes(p.cfg.Audit), fullProfile(p))
-	return resultDriftForTest(result)
-}
 
 func checkPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus) ([]manifest.Drift, error) {
 	result, err := pitfallcheck.Check(p.cfg.Domains, pitfalls, corpus)
@@ -62,26 +50,6 @@ func glossaryInputForTest(p renderInputs) (glossarycheck.Input, error) {
 
 func mergedGlossaryRecords(sc config.Sidecar) ([]glossaryRecord, error) { return glossary.Merge(sc) }
 func glossaryRecords(raw any) ([]glossaryRecord, error)                 { return glossary.Records(raw) }
-
-func selectedRefs(p plan.Plan, selector string) (plan.Phase, plan.Task, error) {
-	return plancheck.Select(p, selector)
-}
-
-func resolveSelectedPlanDecisions(p plan.Plan, corpus adr.Corpus, phase plan.Phase, task plan.Task) ([]plan.ResolvedDecision, []plan.ResolvedDecision, error) {
-	return plancheck.ResolveSelectedDecisions(p, corpus, phase, task)
-}
-
-func planArtifactReport(plans []plan.Plan, corpus adr.Corpus) ([]manifest.Drift, []string) {
-	result, _ := plancheck.Artifact(plans, corpus)
-	var notes []string
-	for _, finding := range result.Findings() {
-		if finding.Rank == severity.Warn {
-			notes = append(notes, finding.Evidence.Detail)
-		}
-	}
-	return resultDriftForTest(result), notes
-}
-
 func resultDriftForTest(result checkresult.Result) []manifest.Drift {
 	var drift []manifest.Drift
 	for _, finding := range result.Findings() {

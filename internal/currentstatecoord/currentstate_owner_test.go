@@ -143,18 +143,6 @@ func TestCoordinatorSnapshotHelpersRejectUnsafeInputs(t *testing.T) {
 	}
 }
 
-func TestCoordinatorPlansFromSelectedTree(t *testing.T) {
-	tree := ownerTree(t,
-		snapshot.File{Path: "guide/plans/link.md", Mode: snapshot.Symlink, Bytes: []byte("outside")},
-		snapshot.File{Path: "guide/plans/nested/ignored.md", Mode: snapshot.Regular, Bytes: []byte("---\nformat: plan-v2\n---\n")},
-		snapshot.File{Path: "guide/plans/2026-08-03-broken.md", Mode: snapshot.Regular, Bytes: []byte("---\nformat: plan-v2\ndate: 2026-08-03\nadrs: []\nstatus: Proposed\n---\n# Bad\n")},
-	)
-	plans, drift, err := plansFromTree(tree, "guide")
-	if err != nil || plans != nil || len(drift) != 1 || drift[0].Path != "guide/plans/2026-08-03-broken.md" || drift[0].Kind != "plan-structure" {
-		t.Fatalf("plans from selected tree = %#v, %#v, %v", plans, drift, err)
-	}
-}
-
 // invariant: invariants/current-state-authority:domain-owned-coverage-no-ignore (TestCoordinatorSnapshotReaderAndEligiblePaths)
 func TestCoordinatorSnapshotReaderAndEligiblePaths(t *testing.T) {
 	tree := ownerTree(t,

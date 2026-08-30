@@ -43,22 +43,6 @@ func TestCheckCommitSpecDescribesSharedPolicy(t *testing.T) {
 	}
 }
 
-func TestReadPlanSpec(t *testing.T) {
-	read, ok := Lookup("read")
-	if !ok || read.Gating != Gated {
-		t.Fatalf("read spec = %#v, found %v", read, ok)
-	}
-	plan, ok := read.Child("plan")
-	if !ok || plan.MinPos != 2 || plan.MaxPos != 2 {
-		t.Fatalf("read plan spec = %#v, found %v", plan, ok)
-	}
-	for _, text := range []string{"awf read plan <plan> <P[.T]>", "exact filename", "canonical positive", "available"} {
-		if !strings.Contains(helpText(plan), text) {
-			t.Errorf("read plan help missing %q", text)
-		}
-	}
-}
-
 func TestPartAuthoringCommandGrammar(t *testing.T) {
 	edit, ok := Lookup("edit")
 	if !ok || edit.Gating != Gated || edit.MinPos != 3 || edit.MaxPos != 3 {
@@ -97,7 +81,7 @@ func TestConfigurationSurfaceGrammar(t *testing.T) {
 	for _, child := range newCommand.Children {
 		children = append(children, child.Name)
 	}
-	if got, want := strings.Join(children, ","), "plan,topic,domain,doc,pitfall"; got != want {
+	if got, want := strings.Join(children, ","), "topic,domain,doc,pitfall"; got != want {
 		t.Fatalf("new children = %q, want %q", got, want)
 	}
 }
@@ -444,14 +428,14 @@ func TestLookup(t *testing.T) {
 	if !ok {
 		t.Fatal("Lookup(new) missing")
 	}
-	if len(newCmd.Children) != 5 {
-		t.Errorf("new has %d children, want 5", len(newCmd.Children))
+	if len(newCmd.Children) != 4 {
+		t.Errorf("new has %d children, want 4", len(newCmd.Children))
 	}
 	if _, ok := newCmd.Child("adr"); ok {
 		t.Error("retired new.Child(adr) remains")
 	}
-	if _, ok := newCmd.Child("plan"); !ok {
-		t.Error("new.Child(plan) missing")
+	if _, ok := newCmd.Child("plan"); ok {
+		t.Error("retired new.Child(plan) remains")
 	}
 	if pitfall, ok := newCmd.Child("pitfall"); !ok {
 		t.Error("new.Child(pitfall) missing")

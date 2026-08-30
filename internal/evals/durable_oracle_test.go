@@ -99,7 +99,7 @@ func TestStrongestPracticalDurableOracleScenarios(t *testing.T) {
 
 	for _, profile := range []string{"core", "full"} {
 		t.Run(profile, func(t *testing.T) {
-			root := syncPlanFlexibilityProfile(t, profile)
+			root := syncStandardFootprint(t, profile)
 			for _, target := range []string{"pi", "claude"} {
 				t.Run(target, func(t *testing.T) {
 					for consumer, body := range durableOracleConsumerBodies(t, root, profile, target) {
@@ -147,18 +147,14 @@ func durableOracleDisposition(body string, facts durableOracleFacts, clauses ...
 	}
 }
 
-func durableOracleConsumerBodies(t *testing.T, root, profile, target string) map[string]string {
+func durableOracleConsumerBodies(t *testing.T, root, _, target string) map[string]string {
 	t.Helper()
 	bodies := map[string]string{
-		"bugfix":        read(t, planSkillPath(root, target, "bugfix")),
-		"tdd":           read(t, planSkillPath(root, target, "tdd")),
-		"debugging":     read(t, planSkillPath(root, target, "debugging")),
+		"bugfix":        read(t, targetSkillPath(root, target, "bugfix")),
+		"tdd":           read(t, targetSkillPath(root, target, "tdd")),
+		"debugging":     read(t, targetSkillPath(root, target, "debugging")),
 		"code-reviewer": read(t, filepath.Join(root, "."+target, "agents", "code-reviewer.md")),
 		"testing":       read(t, filepath.Join(root, "docs", "testing.md")),
-	}
-	if profile == "full" {
-		bodies["writing-plans"] = read(t, planSkillPath(root, target, "writing-plans"))
-		bodies["plan-reviewer"] = read(t, filepath.Join(root, "."+target, "agents", "plan-reviewer.md"))
 	}
 	return bodies
 }

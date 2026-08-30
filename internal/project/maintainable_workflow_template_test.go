@@ -14,10 +14,6 @@ import (
 // invariant: rendering/workflow-skill-templates:maintainable-code-review-lenses (TestMaintainableCodeReviewLenses)
 func TestMaintainableCodeReviewLenses(t *testing.T) {
 	outputs := map[string]string{
-		"plan": renderAgentGolden(t, "plan-reviewer", map[string]any{
-			"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
-			"layout": map[string]any{"plansDir": "docs/plans"},
-		}),
 		"code": renderAgentGolden(t, "code-reviewer", map[string]any{
 			"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout(),
 		}),
@@ -27,11 +23,6 @@ func TestMaintainableCodeReviewLenses(t *testing.T) {
 		}),
 	}
 	contracts := map[string][]string{
-		"plan": {
-			"model", "ownership", "representations", "translation boundaries", "dependency direction", "test seams",
-			"where a protected property requires dependency ordering", "necessary enabling refactors precede dependent behavior", "bounded to the failure they prevent", "deterministically verifiable",
-			"approved, deferred, or declined disposition", "needless indirection", "pattern mandates", "unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process", "Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable",
-		},
 		"code": {
 			"cohesion", "coupling", "dependency direction", "representation leakage", "duplicated policy", "testability",
 			"needless indirection", "protected-contract conformance", "coherent transactions rather than literal planned phase grouping", "behavior bolted onto an unsuitable abstraction",
@@ -62,7 +53,6 @@ func TestMaintainableCodeReviewLenses(t *testing.T) {
 			}
 		}
 		if forbidden := map[string]string{
-			"plan": "necessary enabling refactors are ordered before dependent behavior",
 			"code": "conformance to the settled design",
 		}[name]; forbidden != "" && strings.Contains(out, forbidden) {
 			t.Errorf("%s reviewer retains route-binding review rule %q", name, forbidden)
@@ -103,8 +93,8 @@ func TestConcreteMaintainabilityReview(t *testing.T) {
 		}
 	}
 	consumers := []string{
-		"agents/code-reviewer.md.tmpl", "agents/plan-reviewer.md.tmpl",
-		"skills/reviewing-impl/SKILL.md.tmpl", "skills/reviewing-plan/SKILL.md.tmpl",
+		"agents/code-reviewer.md.tmpl",
+		"skills/reviewing-impl/SKILL.md.tmpl",
 	}
 	expectedConsumers := make(map[string]bool, len(consumers))
 	for _, consumer := range consumers {
@@ -196,8 +186,7 @@ func TestStrongestPracticalDurableOracleContract(t *testing.T) {
 
 	consumers := []string{
 		"skills/bugfix/SKILL.md.tmpl", "skills/tdd/SKILL.md.tmpl",
-		"skills/debugging/SKILL.md.tmpl", "skills/writing-plans/SKILL.md.tmpl",
-		"agents/plan-reviewer.md.tmpl", "agents/code-reviewer.md.tmpl",
+		"skills/debugging/SKILL.md.tmpl", "agents/code-reviewer.md.tmpl",
 		"docs/testing.md.tmpl",
 	}
 	expected := make(map[string]bool, len(consumers))
@@ -278,7 +267,7 @@ func TestStrongestPracticalDurableOracleContract(t *testing.T) {
 	if !strings.Contains(string(tddSource), "alternative-oracle path does not widen to features") {
 		t.Error("TDD alternative path is not explicitly confined to fixes")
 	}
-	for _, reviewer := range []string{"agents/code-reviewer.md.tmpl", "agents/plan-reviewer.md.tmpl"} {
+	for _, reviewer := range []string{"agents/code-reviewer.md.tmpl"} {
 		raw, err := fs.ReadFile(templates.FS, reviewer)
 		if err != nil {
 			t.Fatal(err)
@@ -340,12 +329,10 @@ func TestCleanIntegrationContract(t *testing.T) {
 	// This explicit manifest is intentionally consumer-owned rather than inferred
 	// from text: new consumers must make their ownership visible here.
 	consumers := []string{
-		"skills/brainstorming/SKILL.md.tmpl", "skills/writing-plans/SKILL.md.tmpl",
-		"skills/executing-direct/SKILL.md.tmpl", "skills/executing-plans/SKILL.md.tmpl",
-		"skills/subagent-driven-development/SKILL.md.tmpl", "skills/bugfix/SKILL.md.tmpl",
-		"skills/tdd/SKILL.md.tmpl", "skills/reviewing-plan/SKILL.md.tmpl",
+		"skills/brainstorming/SKILL.md.tmpl", "skills/executing-direct/SKILL.md.tmpl",
+		"skills/bugfix/SKILL.md.tmpl", "skills/tdd/SKILL.md.tmpl",
 		"skills/reviewing-impl/SKILL.md.tmpl", "agents/implementer.md.tmpl",
-		"agents/plan-reviewer.md.tmpl", "agents/code-reviewer.md.tmpl",
+		"agents/code-reviewer.md.tmpl",
 	}
 	for _, consumer := range consumers {
 		raw, err := fs.ReadFile(templates.FS, consumer)
@@ -441,11 +428,11 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 		}
 	}
 
-	consumers := []string{"agents/implementer.md.tmpl", "skills/executing-direct/SKILL.md.tmpl", "skills/bugfix/SKILL.md.tmpl", "skills/tdd/SKILL.md.tmpl", "skills/executing-plans/SKILL.md.tmpl", "skills/subagent-driven-development/SKILL.md.tmpl", "skills/reviewing-impl/SKILL.md.tmpl"}
+	consumers := []string{"agents/implementer.md.tmpl", "skills/executing-direct/SKILL.md.tmpl", "skills/bugfix/SKILL.md.tmpl", "skills/tdd/SKILL.md.tmpl", "skills/reviewing-impl/SKILL.md.tmpl"}
 	variants := map[string]map[string]any{
 		"configured": {
 			"prefix": "example", "vars": map[string]any{"gateCmd": "./x gate"}, "layout": testLayout(),
-			"data": catalog.Standard.Agents["plan-reviewer"].Data, "skills": map[string]bool{"reviewing-impl": true}, "targetSubagentTools": true,
+			"data": catalog.Standard.Agents["code-reviewer"].Data, "skills": map[string]bool{"reviewing-impl": true}, "targetSubagentTools": true,
 		},
 		"empty": {"prefix": "example", "vars": map[string]any{}, "layout": testLayout(), "data": map[string]any{}, "skills": map[string]bool{}},
 	}
@@ -494,13 +481,6 @@ func TestAuthorityGuidedImplementationAutonomy(t *testing.T) {
 			for _, reject := range obsolete {
 				if strings.Contains(out, reject) {
 					t.Errorf("%s/%s retains obsolete broad-stop rule %q", variant, consumer, reject)
-				}
-			}
-			if consumer == "skills/executing-plans/SKILL.md.tmpl" {
-				for _, want := range []string{"Amend the mutable plan", "only when another phase or reviewer can rely on that material instruction"} {
-					if !strings.Contains(out, want) {
-						t.Errorf("%s/%s missing inline reconciliation directive %q", variant, consumer, want)
-					}
 				}
 			}
 		}
@@ -559,8 +539,7 @@ func TestProductionCodeOutlineApprovalProjection(t *testing.T) {
 	}
 	for _, consumer := range []string{
 		"agents/implementer.md.tmpl", "skills/executing-direct/SKILL.md.tmpl", "skills/tdd/SKILL.md.tmpl",
-		"skills/bugfix/SKILL.md.tmpl", "skills/executing-plans/SKILL.md.tmpl", "skills/subagent-driven-development/SKILL.md.tmpl",
-		"skills/writing-plans/SKILL.md.tmpl", "skills/proposing-adr/SKILL.md.tmpl",
+		"skills/bugfix/SKILL.md.tmpl", "skills/proposing-adr/SKILL.md.tmpl",
 	} {
 		raw, err := fs.ReadFile(templates.FS, consumer)
 		if err != nil {
@@ -775,26 +754,14 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 		"refactor-coupling-audit": {wants: []string{
 			"docs/maintainable-code-design.md", "duplication, coupling, representation leakage, or a workaround", "bounded enabling-refactor or larger-work result", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "ADR scope", "Context section before", "Decision is drafted", "Scope shrink rule", "defer X",
 		}},
-		"writing-plans": {wants: []string{
-			"docs/maintainable-code-design.md", "settled model and ownership, boundaries, dependency direction, representation translations, refactor decision, prohibited shortcuts, and validation", "ordered executable tasks", "self-contained", "no prior conversation context", "sequencing, coordination, or resumability materially helps", "records and operationalizes approved choices", "rather than inventing speculative structure, checks, or work",
-		}},
 		"tdd": {wants: []string{
 			"docs/maintainable-code-design.md", "bounded enabling refactor", "duplication, coupling, representation leakage, or a workaround", "Route materially larger work through the active workflow's design discussion", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "smallest behavior-proving, model-supporting seam", "force representation leakage or needless indirection", "confirm it fails for the right reason", "minimal root-cause change", "Ground tests, checks, seams, and harness work only in changed behavior, a demonstrated regression, an existing documented contract, or a clearly applicable project invariant", "reject speculative test or policy machinery", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
-		}},
-		"executing-plans": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled durable choices", "bounded enabling refactor", "reassess if grounded source contradicts them", "stop rather than bolt correctness onto the wrong abstraction", "Each brief explicitly identifies the parent-supplied approved boundary", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
 		"executing-direct": {wants: []string{
 			"docs/maintainable-code-design.md", "assess bounded enabling refactoring before editing", "preserve settled boundaries", "no independent need for brainstorming", "material choice or clarification", "Re-evaluate planning", "only when that independent need fires", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
 		}},
-		"subagent-driven-development": {wants: []string{
-			"docs/maintainable-code-design.md", "preserve the plan's settled durable choices", "bounded enabling refactor", "reassess them if grounded source contradicts them", "stop and escalate rather than accept a bolt-on workaround", "Sequential dispatch only, never parallel", "complete phase", "explicitly identify the parent-supplied approved boundary", "commit-disabled implementation child", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
-		}},
 		"bugfix": {wants: []string{
 			"docs/maintainable-code-design.md", "unsuitable model or boundary", "bounded enabling work that prevents a workaround", "For materially larger work, route the disposition through the active workflow's design discussion", "perform it first, include it in the current effort, defer it in a durable project-owned record, or decline it with the trade-off stated", "root-cause fix, not the symptom", "one concern per commit", "Resolve implementation findings autonomously", "applicable ADRs, current-state claims, and repository authority", "approved outcome, material scope, settled durable boundaries", "Stop and report through the active workflow only",
-		}},
-		"reviewing-plan": {wants: []string{
-			"docs/maintainable-code-design.md", "current and target owner", "residual debt", "report-only judge", "full mode",
 		}},
 		"reviewing-impl": {wants: []string{
 			"docs/maintainable-code-design.md", "current and target owner", "residual debt", "independent assurance", "report-only findings",
@@ -818,112 +785,6 @@ func TestMaintainableCodeStageCoverage(t *testing.T) {
 				}
 			}
 		})
-	}
-}
-
-// invariant: rendering/workflow-skill-templates:maintainable-code-subagent-contract (TestMaintainableCodeSubagentContract)
-func TestMaintainableCodeSubagentContract(t *testing.T) {
-	renderSection := func(t *testing.T, templateID, section string, data map[string]any) string {
-		t.Helper()
-		src, err := fs.ReadFile(templates.FS, templateID)
-		if err != nil {
-			t.Fatalf("read %s: %v", templateID, err)
-		}
-		expanded, err := render.ExpandIncludes(string(src), templates.FS)
-		if err != nil {
-			t.Fatalf("expand %s: %v", templateID, err)
-		}
-		for _, segment := range parseSections(expanded) {
-			if segment.IsSection && segment.Name == section {
-				out, err := render.Execute(segment.Text, data, nil, "test")
-				if err != nil {
-					t.Fatalf("render %s section %s: %v", templateID, section, err)
-				}
-				assertNoLeaks(t, out)
-				return out
-			}
-		}
-		t.Fatalf("%s has no %s section", templateID, section)
-		return ""
-	}
-	const subagentTemplate = "skills/subagent-driven-development/SKILL.md.tmpl"
-	const scopedContext = "semantic boundary and ownership, external/internal representations and their translation point, allowed dependency direction, preparatory-refactor decision, prohibited bolt-on shortcuts, validation expectations"
-	data := map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout()}
-
-	context := renderSection(t, subagentTemplate, "procedure-extract-context", data)
-	if !strings.Contains(context, scopedContext) {
-		t.Errorf("scoped context is not closed to the six task-relevant categories:\n%s", context)
-	}
-
-	for _, tc := range []struct {
-		name, dispatch, review, reportOnly string
-		data                               map[string]any
-		wants                              []string
-	}{
-		{
-			name: "Pi", data: map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "layout": testLayout(), "targetSubagentTools": true},
-			dispatch: "known clean and green baseline", review: "Review is report-only and phase-level", reportOnly: "parent-owned",
-			wants: []string{"commit-disabled implementation child", "complete phase", "explicitly identify the parent-supplied approved boundary", "parent independently inventories the checkout"},
-		},
-		{
-			name: "generic", data: data,
-			dispatch: "known clean and green baseline", review: "Review is report-only and phase-level", reportOnly: "parent-owned",
-			wants: []string{"commit-disabled implementation child", "complete phase", "explicitly identify the parent-supplied approved boundary", "parent independently inventories the checkout"},
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			dispatch := renderSection(t, subagentTemplate, "dispatch-conventions", tc.data)
-			if !strings.Contains(dispatch, tc.dispatch) {
-				t.Errorf("dispatch branch missing its instruction %q:\n%s", tc.dispatch, dispatch)
-			}
-			for _, want := range tc.wants {
-				if !strings.Contains(dispatch, want) {
-					t.Errorf("dispatch branch missing %q:\n%s", want, dispatch)
-				}
-			}
-			review := renderSection(t, subagentTemplate, "per-task-review", tc.data)
-			if !strings.Contains(review, tc.review) {
-				t.Errorf("review branch missing its instruction %q:\n%s", tc.review, review)
-			}
-			if !strings.Contains(review, tc.reportOnly) {
-				t.Errorf("review branch lost report-only clause %q:\n%s", tc.reportOnly, review)
-			}
-		})
-	}
-
-	implementer := renderAgentGolden(t, "implementer", data)
-	for _, want := range []string{
-		"Resolve implementation findings autonomously",
-		"applicable ADRs, current-state claims, and repository authority",
-		"reasoned non-mechanical deviation that another owner or reviewer can rely on records its changed detail, rationale, governing authority, and verification",
-		"The parent may add an omitted path",
-		"An omitted path alone is not a reason to stop",
-		"implementation child reports the necessity",
-		"never modifies an unassigned path",
-		"Do not replan the approved outcome, broaden material scope",
-		"or perform unrelated cleanup",
-		"`deviations: none` or each changed detail, rationale, governing authority",
-		"and verification, plus deliberately out-of-scope work",
-		"current and target owner",
-		"residual debt",
-	} {
-		if !strings.Contains(implementer, want) {
-			t.Errorf("implementer contract missing authority-preserving deviation clause %q:\n%s", want, implementer)
-		}
-	}
-
-	inline := renderSection(t, "skills/executing-plans/SKILL.md.tmpl", "procedure-per-task", data)
-	const inlineContext = "Iterate phases, not tasks"
-	if !strings.Contains(inline, inlineContext) {
-		t.Errorf("inline current-task context is not closed to the six categories:\n%s", inline)
-	}
-	if !strings.Contains(inline, "Each brief explicitly identifies the parent-supplied approved boundary") {
-		t.Errorf("inline helper dispatch omits the parent-supplied approved boundary:\n%s", inline)
-	}
-	for _, want := range []string{"current and target owner", "residual debt"} {
-		if !strings.Contains(inline, want) {
-			t.Errorf("inline helper dispatch omits clean-integration semantic %q:\n%s", want, inline)
-		}
 	}
 }
 
@@ -984,7 +845,7 @@ func TestConditionalVerifyPass(t *testing.T) {
 		"layout": testLayout(),
 		"data":   map[string]any{},
 	}
-	for _, name := range []string{"reviewing-adr", "reviewing-plan"} {
+	for _, name := range []string{"reviewing-adr"} {
 		t.Run(name, func(t *testing.T) {
 			out := renderSkillGolden(t, name, data)
 			assertOrderedPhrases(t, out,

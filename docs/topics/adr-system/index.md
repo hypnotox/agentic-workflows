@@ -5,4 +5,3 @@
 
 - [ADR lifecycle and parsing](adr-lifecycle.md): How ADR records are parsed, identified, and moved through their lifecycle states.
 - [Frontmatter parsing](frontmatter.md): How document frontmatter is split and validated.
-- [Plan artifacts](plan-artifacts.md): How implementation plan documents are parsed and validated.

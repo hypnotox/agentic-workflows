@@ -118,28 +118,6 @@ func TestRuleConventionalCommitsUsesFixedPolicy(t *testing.T) {
 	}
 }
 
-func TestCheckPlannedSubject(t *testing.T) {
-	s := Settings{AllowedScopes: []config.ScopeSpec{{Name: "awf"}}}
-	// A disallowed scope is a warn at plan time (a plan may add the scope).
-	if got := CheckPlannedSubject("feat(newscope): x", s); len(got) != 1 || got[0].Severity != severity.Warn {
-		t.Fatalf("scope: want 1 warn, got %#v", got)
-	}
-	// Length, disallowed type, and malformed shape stay error.
-	if got := CheckPlannedSubject("feat(awf): "+strings.Repeat("x", 80), s); len(got) != 1 || got[0].Severity != severity.Error {
-		t.Fatalf("length: want 1 error, got %#v", got)
-	}
-	if got := CheckPlannedSubject("unknown(awf): x", s); len(got) != 1 || got[0].Severity != severity.Error {
-		t.Fatalf("type: want 1 error, got %#v", got)
-	}
-	if got := CheckPlannedSubject("not conventional", s); len(got) != 1 || got[0].Severity != severity.Error {
-		t.Fatalf("malformed: want 1 error, got %#v", got)
-	}
-	// A fully valid subject yields nothing.
-	if got := CheckPlannedSubject("feat(awf): ok", s); len(got) != 0 {
-		t.Fatalf("valid: want 0, got %#v", got)
-	}
-}
-
 var proposedADR = testsupport.ADR("Proposed")
 var acceptedADR = testsupport.ADR("Accepted")
 
@@ -250,36 +228,6 @@ func TestRuleDependencyADR(t *testing.T) {
 		})
 	}
 }
-
-// invariant: tooling/audit-and-snapshots:audit-plan-threshold-warn (TestRulePlanForLargeChange)
-func TestRulePlanForLargeChange(t *testing.T) {
-	gen := map[string]bool{"gen/out.txt": true}
-	big := FileChange{Path: "src/a.go", Action: Modified, Added: 300, Deleted: 200}
-	genBig := FileChange{Path: "gen/out.txt", Action: Modified, Added: 9000, Deleted: 0}
-	plan := FileChange{Path: "docs/plans/2026-01-01-x.md", Action: Added, Added: 10}
-	base := Inputs{PlansDir: "docs/plans", GeneratedPaths: gen}
-	cases := []struct {
-		name     string
-		commits  []Commit
-		in       Inputs
-		wantWarn int
-	}{
-		{"over no plan", []Commit{{Changes: []FileChange{big}}}, base, 1},
-		{"over with plan", []Commit{{Changes: []FileChange{big, plan}}}, base, 0},
-		{"generated inflates only", []Commit{{Changes: []FileChange{genBig}}}, base, 0},
-		{"under threshold", []Commit{{Changes: []FileChange{{Path: "src/a.go", Added: 5, Deleted: 5}}}}, base, 0},
-		{"threshold is fixed", []Commit{{Changes: []FileChange{big}}}, Inputs{PlansDir: "docs/plans"}, 1},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			got := countRule(rulePlanForLargeChange(tc.commits, tc.in), "plan-for-large-change", severity.Warn)
-			if got != tc.wantWarn {
-				t.Errorf("got %d warnings, want %d", got, tc.wantWarn)
-			}
-		})
-	}
-}
-
 func TestEvaluateAggregates(t *testing.T) {
 	in := Inputs{ADRDir: "docs/decisions"}
 	commits := []Commit{
@@ -320,13 +268,13 @@ func TestADRRecordOf(t *testing.T) {
 }
 
 func TestUnderDir(t *testing.T) {
-	if !underDir("docs/plans", "docs/plans") {
+	if !underDir("docs/notes", "docs/notes") {
 		t.Error("exact dir should match")
 	}
-	if !underDir("docs/plans/x.md", "docs/plans") {
+	if !underDir("docs/notes/x.md", "docs/notes") {
 		t.Error("nested path should match")
 	}
-	if underDir("docs/plansx", "docs/plans") {
+	if underDir("docs/notes-extra", "docs/notes") {
 		t.Error("sibling prefix should not match")
 	}
 }
@@ -376,7 +324,7 @@ func TestRulePlainPunctuation(t *testing.T) {
 		t.Fatalf("want both risen measures named in stable order, got %v", multi)
 	}
 	// Three em dashes split across paragraphs remain restrained.
-	if f := rulePlainPunctuation(change("docs/plans/p.md", "plain", "a"+dash+"b\n\nc"+dash+"d\n\ne"+dash+"f"), in); len(f) != 0 {
+	if f := rulePlainPunctuation(change("docs/notes/p.md", "plain", "a"+dash+"b\n\nc"+dash+"d\n\ne"+dash+"f"), in); len(f) != 0 {
 		t.Errorf("paragraph-local restraint should be silent, got %v", f)
 	}
 	// Excess is summed across paragraphs: one paragraph contributes one and a
@@ -387,10 +335,10 @@ func TestRulePlainPunctuation(t *testing.T) {
 		t.Errorf("multiple violating paragraphs must contribute summed excess, got %v", f)
 	}
 	// Unchanged or falling violation measures are silent.
-	if f := rulePlainPunctuation(change("docs/plans/p.md", "a"+dash+"b"+dash+"c"+dash+"d", "w"+dash+"x"+dash+"y"+dash+"z"), in); len(f) != 0 {
+	if f := rulePlainPunctuation(change("docs/notes/p.md", "a"+dash+"b"+dash+"c"+dash+"d", "w"+dash+"x"+dash+"y"+dash+"z"), in); len(f) != 0 {
 		t.Errorf("unchanged excess should be silent, got %v", f)
 	}
-	if f := rulePlainPunctuation(change("docs/plans/p.md", "a"+endash+"b", "plain"), in); len(f) != 0 {
+	if f := rulePlainPunctuation(change("docs/notes/p.md", "a"+endash+"b", "plain"), in); len(f) != 0 {
 		t.Errorf("a violation removal should be silent, got %v", f)
 	}
 	// A new file has empty OldText, so a violation in it is new.

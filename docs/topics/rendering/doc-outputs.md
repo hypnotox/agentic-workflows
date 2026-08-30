@@ -23,7 +23,7 @@ Backing: test
 
 ### `invariant: layout-derivation`
 
-For Full, the decisions directory, ADR index file, and plans directory derive structurally from the fixed `docs` root as `docs/decisions`, `docs/decisions/INDEX.md`, and `docs/plans`; Core does not emit those managed structural outputs.
+The decisions directory and ADR index file derive structurally from the fixed `docs` root as `docs/decisions` and `docs/decisions/INDEX.md`.
 Backing: test
 
 ### `invariant: docs-root-fixed`

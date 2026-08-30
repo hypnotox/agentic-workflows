@@ -12,7 +12,6 @@ type Layout struct {
 	DocsDir    string
 	ADRDir     string
 	IndexMd    string
-	PlansDir   string
 	Docs       map[string]string // catalog name -> output path (inv: layout-docs-full-catalog)
 	Singletons map[string]string // template key -> output path
 	DomainsDir string

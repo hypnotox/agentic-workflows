@@ -32,7 +32,7 @@ type repoCheckCounters struct {
 func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.ProjectState, check project.CheckReport, state project.CurrentStateReport, tree *snapshot.Tree, counts *repoCheckCounters) repoCheckDependencies {
 	t.Helper()
 	state = currentStateReportForTest(t, state)
-	if !hasCheckResults(check.AggregateAdvisoryResult()) && !hasCheckResults(check.TrackingInformationResult()) && !hasCheckResults(check.DeferredPlanWarningResult()) && (len(check.Warnings) > 0 || len(check.Information) > 0 || len(check.TrackingInformation) > 0 || len(check.PlanWarnings) > 0) {
+	if !hasCheckResults(check.AggregateAdvisoryResult()) && !hasCheckResults(check.TrackingInformationResult()) && (len(check.Warnings) > 0 || len(check.Information) > 0 || len(check.TrackingInformation) > 0) {
 		result := func(warnings []string, informationNotes []string, property checkresult.Property) checkresult.Result {
 			findings := make([]checkresult.Finding, 0, len(warnings))
 			for _, warning := range warnings {
@@ -49,9 +49,8 @@ func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Proj
 			return out
 		}
 		typed, err := repositorycheck.Compose(repositorycheck.Inputs{
-			OrdinaryAdvisories:   repositorycheck.Slot{Result: result(check.Warnings, check.Information, "test-advisory")},
-			TrackingInformation:  repositorycheck.Slot{Result: result(nil, check.TrackingInformation, "test-tracking")},
-			DeferredPlanWarnings: repositorycheck.Slot{Result: result(check.PlanWarnings, nil, "test-plan")},
+			OrdinaryAdvisories:  repositorycheck.Slot{Result: result(check.Warnings, check.Information, "test-advisory")},
+			TrackingInformation: repositorycheck.Slot{Result: result(nil, check.TrackingInformation, "test-tracking")},
 		})
 		if err != nil {
 			t.Fatal(err)
@@ -149,17 +148,9 @@ func TestRepoCheckRoutesAggregateOwnerResultsWithoutCompatibilitySlices(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := checkresult.New([]checkresult.Finding{{
-		Rank: severity.Warn, Property: "plan-property",
-		Evidence: checkresult.Evidence{Kind: "plan-kind", Detail: "plan warning"},
-	}}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
 	report, err := repositorycheck.Compose(repositorycheck.Inputs{
-		OrdinaryAdvisories:   repositorycheck.Slot{Result: ordinary},
-		TrackingInformation:  repositorycheck.Slot{Result: tracking},
-		DeferredPlanWarnings: repositorycheck.Slot{Result: plan},
+		OrdinaryAdvisories:  repositorycheck.Slot{Result: ordinary},
+		TrackingInformation: repositorycheck.Slot{Result: tracking},
 	})
 	if err != nil {
 		t.Fatal(err)
@@ -167,7 +158,6 @@ func TestRepoCheckRoutesAggregateOwnerResultsWithoutCompatibilitySlices(t *testi
 	report.Warnings = []string{"mutated compatibility warning"}
 	report.Information = []string{"mutated compatibility information"}
 	report.TrackingInformation = []string{"mutated compatibility tracking"}
-	report.PlanWarnings = []string{"mutated compatibility plan warning"}
 
 	counts := &repoCheckCounters{}
 	deps := repoCheckTestDependencies(t, &config.Config{}, &project.ProjectState{}, report, project.CurrentStateReport{}, nil, counts)
@@ -187,7 +177,7 @@ func TestRepoCheckRoutesAggregateOwnerResultsWithoutCompatibilitySlices(t *testi
 	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &stdout, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, deps); err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []checkresult.Property{"ordinary-property", "plan-property"} {
+	for _, want := range []checkresult.Property{"ordinary-property"} {
 		if !slices.Contains(properties, want) {
 			t.Fatalf("presented properties = %v, missing %q", properties, want)
 		}
@@ -197,7 +187,7 @@ func TestRepoCheckRoutesAggregateOwnerResultsWithoutCompatibilitySlices(t *testi
 			t.Fatalf("presented information kinds = %v, missing %q", informationKinds, want)
 		}
 	}
-	for _, want := range []string{"ordinary warning", "plan warning", "ordinary information", "tracking information"} {
+	for _, want := range []string{"ordinary warning", "ordinary information", "tracking information"} {
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("typed aggregate output missing %q: %q", want, stdout.String())
 		}
@@ -218,7 +208,6 @@ func TestRepoCheckRoutesWorkingCurrentStateOwnerResult(t *testing.T) {
 	state := project.CurrentStateReport{
 		CurrentResult: result,
 		OwnerResult:   result,
-		PlanNotes:     []string{"mutated compatibility warning"},
 	}
 	counts := &repoCheckCounters{}
 	deps := repoCheckTestDependencies(t, &config.Config{}, &project.ProjectState{}, project.CheckReport{}, state, nil, counts)
@@ -262,14 +251,13 @@ func TestRepoCheckAggregateTypedPresentationFailuresPropagate(t *testing.T) {
 		t.Fatal(err)
 	}
 	report, err := repositorycheck.Compose(repositorycheck.Inputs{
-		OrdinaryAdvisories:   repositorycheck.Slot{Result: warning},
-		TrackingInformation:  repositorycheck.Slot{Result: information},
-		DeferredPlanWarnings: repositorycheck.Slot{Result: warning},
+		OrdinaryAdvisories:  repositorycheck.Slot{Result: warning},
+		TrackingInformation: repositorycheck.Slot{Result: information},
 	})
 	if err != nil {
 		t.Fatal(err)
 	}
-	for target := 1; target <= 5; target++ {
+	for target := 1; target <= 4; target++ {
 		t.Run(fmt.Sprintf("projection-%d", target), func(t *testing.T) {
 			failure := fmt.Errorf("projection %d failed", target)
 			deps := repoCheckTestDependencies(t, &config.Config{}, &project.ProjectState{}, report, project.CurrentStateReport{}, nil, &repoCheckCounters{})
@@ -287,29 +275,6 @@ func TestRepoCheckAggregateTypedPresentationFailuresPropagate(t *testing.T) {
 				t.Fatalf("presentation failure = %v, want %v", err, failure)
 			}
 		})
-	}
-}
-
-func TestPresentCurrentStateReportPropagatesPlanPartitionFailure(t *testing.T) {
-	planError, err := checkresult.New([]checkresult.Finding{{
-		Rank: severity.Error, Property: "plan-validity",
-		Evidence: checkresult.Evidence{Kind: "plan", Detail: "broken"},
-	}}, nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	failure := errors.New("plan partition presentation failed")
-	calls := 0
-	present := func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
-		calls++
-		if calls == 2 {
-			return repositorycheck.Presentation{}, failure
-		}
-		return repositorycheck.Present(result, check)
-	}
-	_, err = presentCurrentStateReport(project.CurrentStateReport{PlanArtifactResult: planError, OwnerResult: planError}, "current-state", planNoteSink{}, present)
-	if !errors.Is(err, failure) {
-		t.Fatalf("plan partition failure = %v, want %v", err, failure)
 	}
 }
 

@@ -4,8 +4,7 @@ description: >
   Use after {{ .prefix }}-proposing-adr writes a Proposed ADR, or when an amendable
   Accepted or Implementing ADR needs review. Dispatches the adr-reviewer subagent,
   routes findings (mechanical / reasoned / user-decision), preserves the ADR's
-  nonterminal lifecycle status, and sends every linked Proposed plan through
-  ordinary {{ .prefix }}-reviewing-plan after ADR settlement.
+  nonterminal lifecycle status, and returns settled authority to implementation.
 ---
 
 <!-- awf:section when-fires -->
@@ -35,7 +34,7 @@ This skill may run without an effort. If continuity independently fired, validat
 {{ else }}3. **Dispatch the `adr-reviewer` subagent.** Provide it a brief that includes the following. Choose the smallest reliable tier - `small` (narrow, mechanical), `standard` (substantive but bounded), or `large` (broad, intricate, cross-cutting, or high-consequence) - escalating after uncertainty, failed reasoning, or widened scope; select the smallest reliable target-native model explicitly, or use the harness default and note in the dispatch brief that explicit selection is unavailable. Full tier definitions: docs/workflow.md.
 {{ end }}   - The absolute ADR path. For effort-backed work, also include the effort slug and exact `.awf/efforts/<slug>/memory.md` path with an explicit instruction that the reviewer must not edit memory.
    - The consent evidence for decision adherence. For effort-backed work, paste every user-provenance decision-log entry verbatim, including whatever `Record:` blocks exist. For effort-free work, paste the explicitly approved design summary from the current conversation. If neither evidence form is available, say so explicitly; repository facts do not establish consent and the reviewer must not infer it.
-   - The hint that the reviewer may run `./awf read topic <domain>/<topic>[:<claim>]` on each destination topic named in the ADR's State changes when it needs current claim text. The reviewer reads lifecycle progress and linked plans separately with `./awf read adr <identity>`.
+   - The hint that the reviewer may run `./awf read topic <domain>/<topic>[:<claim>]` on each destination topic named in the ADR's State changes when it needs current claim text. The reviewer reads lifecycle progress separately with `./awf read adr <identity>`.
    - The instruction to return findings as `[{focus, severity, location, issue, suggested_fix, classification}]`.
 
    The reviewer handles lens application and finding classification, and returns the digest. Fix application and the verify pass are this skill's job (steps below). Do not ask the reviewer to edit, commit, or re-review.
@@ -49,7 +48,7 @@ This skill may run without an effort. If continuity independently fired, validat
 <!-- awf:end -->
 
 <!-- awf:section apply-fixes-commit -->
-5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using the project's commit scope conventions. Preserve the ADR's entry status: a `Proposed` record remains freely mutable, while an `Accepted` or `Implementing` record uses `{{ .prefix }}-adr-lifecycle` to append the required amendment history without changing status or rewriting an already Applied operation. A substantive amendment or review correction invalidates prior review of every Proposed plan linked to this ADR.
+5. **Apply and commit fixes.** This skill applies the mechanical and reasoned fixes to the ADR file and commits them as new commits (never `--amend`) using the project's commit scope conventions. Preserve the ADR's entry status: a `Proposed` record remains freely mutable, while an `Accepted` or `Implementing` record uses `{{ .prefix }}-adr-lifecycle` to append the required amendment history without changing status or rewriting an already Applied operation.
 <!-- awf:end -->
 
 <!-- awf:section re-review-loop -->
@@ -61,7 +60,7 @@ This skill may run without an effort. If continuity independently fired, validat
 <!-- awf:end -->
 
 <!-- awf:section hand-off-to-plan-review -->
-8. **Continue from settled review.** Once the review converges (the ADR retains its entry status), disclose separate inventories of removed unauthorized surplus commitments and semantics-preserving refinements, writing `none` for an empty inventory. After the review settles, run `./awf read adr <identity>` and consume its deterministic linked-plan references, which come from parsed plan-level `adrs:` identities rather than modification time, filename implication, or session inference. Invoke ordinary `{{ .prefix }}-reviewing-plan` separately for every linked plan whose parsed status remains `Proposed`; never omit one or start plan review before ADR review settles. If implementation has begun, each plan review inventories completed affected phases and renews assurance where the amended decision can affect landed work before progression. If no linked Proposed plan exists yet, route by the brainstorm's terminal decision: invoke `{{ .prefix }}-writing-plans` when planning is warranted, else proceed directly to implementation.
+8. **Continue from settled review.** Once the review converges (the ADR retains its entry status), disclose separate inventories of removed unauthorized surplus commitments and semantics-preserving refinements, writing `none` for an empty inventory. Re-read the settled decision authority, then proceed to implementation or return to the active implementation when one already exists.
 <!-- awf:end -->
 
 <!-- awf:section notes -->

@@ -47,10 +47,10 @@ func TestSkillRefScannerIgnoresUnknownAndFenced(t *testing.T) {
 	}
 }
 
-// Whole-token matching: the retired reviewing-plan-resync token is unknown
-// and never degrades into a false dead hit on the surviving reviewing-plan.
+// Whole-token matching keeps an unknown retired skill token from degrading
+// into a false dead reference to a similarly named live skill.
 func TestSkillRefScannerIgnoresRetiredUnknownToken(t *testing.T) {
-	got := deadSkillRefs(t, map[string]string{"parts/agents-doc/workflow.md": "Resync via `example-reviewing-plan-resync`.\n"})
+	got := deadSkillRefs(t, map[string]string{"parts/agents-doc/workflow.md": "Resync via `example-reviewing-impl-resync`.\n"})
 	if len(got) != 0 {
 		t.Fatalf("retired unknown token findings = %v", got)
 	}

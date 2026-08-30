@@ -22,9 +22,6 @@ func currentStateFindings(r CurrentStateReport) []string {
 			out = append(out, coverage.Message())
 		}
 	}
-	for _, drift := range r.PlanDrift {
-		out = append(out, fmt.Sprintf("%s %s: %s", drift.Kind, drift.Path, drift.Detail))
-	}
 	return out
 }
 
@@ -35,13 +32,13 @@ func currentStateWarningNotes(report CurrentStateReport) []string {
 			out = append(out, finding.Message())
 		}
 	}
-	return append(out, report.PlanNotes...)
+	return out
 }
 
 func TestCurrentStateReportRouting(t *testing.T) {
-	r := CurrentStateReport{PlanDrift: []manifest.Drift{{Path: "docs/plans/v2.md", Kind: "plan-reference", Detail: "missing ADR"}}, Coverage: []topic.CoverageFinding{{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error, CandidateTopics: []string{"alpha/global"}}, {Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3}}}
+	r := CurrentStateReport{Coverage: []topic.CoverageFinding{{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error, CandidateTopics: []string{"alpha/global"}}, {Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3}}}
 	findings := currentStateFindings(r)
-	if len(findings) != 2 || !strings.Contains(findings[0], "internal/a.go") || findings[1] != "plan-reference docs/plans/v2.md: missing ADR" {
+	if len(findings) != 1 || !strings.Contains(findings[0], "internal/a.go") {
 		t.Fatalf("findings = %#v", findings)
 	}
 	if notes := currentStateWarningNotes(r); len(notes) != 1 || !strings.Contains(notes[0], "internal/b.go") {

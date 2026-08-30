@@ -14,7 +14,7 @@ import (
 
 func testLayout() map[string]any {
 	return map[string]any{
-		"docsDir": "docs", "adrDir": "docs/decisions", "indexMd": "docs/decisions/INDEX.md", "adrReadme": "docs/decisions/README.md", "adrTemplate": "docs/decisions/template.md", "plansDir": "docs/plans", "plansReadme": "docs/plans/README.md", "plansTemplate": "docs/plans/template.md", "docs": map[string]any{}, "workflowRef": "docs/workflow.md", "docStandard": "docs/doc-standard.md", "agentsMdStandard": "docs/agents-md-standard.md", "workingWithAwf": "docs/working-with-awf.md", "maintainableCodeDesign": "docs/maintainable-code-design.md", "configReference": "docs/config-reference.md", "domainsDir": "docs/domains",
+		"docsDir": "docs", "adrDir": "docs/decisions", "indexMd": "docs/decisions/INDEX.md", "adrReadme": "docs/decisions/README.md", "adrTemplate": "docs/decisions/template.md", "docs": map[string]any{}, "workflowRef": "docs/workflow.md", "docStandard": "docs/doc-standard.md", "agentsMdStandard": "docs/agents-md-standard.md", "workingWithAwf": "docs/working-with-awf.md", "maintainableCodeDesign": "docs/maintainable-code-design.md", "configReference": "docs/config-reference.md", "domainsDir": "docs/domains",
 	}
 }
 func parseSections(src string, markdown ...bool) []render.Segment {
@@ -143,10 +143,6 @@ var unsetFallbackCases = []fallbackCase{
 		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits", "Edit the", "Apply a fix", "Commit the change", "Loop a re-review"},
 	},
 	{
-		tmpl: "agents/plan-reviewer.md.tmpl",
-		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits", "Edit the", "Apply a fix", "Commit the change", "Loop a re-review"},
-	},
-	{
 		tmpl: "agents/code-reviewer.md.tmpl",
 		ban:  []string{"For each item below", "Apply mechanical and reasoned fixes directly", "apply the fix directly", "3-round soft cap", "as new commits", "Edit the", "Apply a fix", "Commit the change", "Loop a re-review"},
 	},
@@ -172,10 +168,6 @@ var unsetFallbackCases = []fallbackCase{
 		want: []string{"sole owner of the effort lifecycle", "Continue autonomously or through a target-native successor"},
 	},
 	{
-		tmpl: "skills/executing-plans/SKILL.md.tmpl",
-		want: []string{"the project's gate", "Auto-commit the phase only when green"},
-	},
-	{
 		tmpl: "skills/proposing-adr/SKILL.md.tmpl",
 		want: []string{"follow the ADR template's section order", "Run `./awf render` to regenerate"},
 	},
@@ -191,10 +183,6 @@ var unsetFallbackCases = []fallbackCase{
 		want: []string{"locally obvious, low-risk, directly verified", "Effort-free review creates no effort"},
 	},
 	{
-		tmpl: "skills/reviewing-plan/SKILL.md.tmpl",
-		want: []string{"explicit uncommitted plan path", "selected working-tree snapshot", "mechanical fixes directly without a durable ledger", "one initial plan commit"},
-	},
-	{
 		tmpl: "skills/roadmap-graduation/SKILL.md.tmpl",
 		docs: map[string]any{"roadmap": "docs/roadmap.md"},
 		want: []string{
@@ -202,14 +190,6 @@ var unsetFallbackCases = []fallbackCase{
 			"moving an item out of `docs/roadmap.md`",
 		},
 		ban: []string{"example-proposing-adr"},
-	},
-	{
-		tmpl: "skills/subagent-driven-development/SKILL.md.tmpl",
-		want: []string{"known clean and green baseline", "the project's gate", "wired pre-commit hook enforces both", "Sequential dispatch only, never parallel"},
-	},
-	{
-		tmpl: "skills/writing-plans/SKILL.md.tmpl",
-		want: []string{"per the example plan convention", "the project's gate runs before every commit"},
 	},
 	// Voluntary doc entry (ADR-0089): the ADR-0080 guard covers skills and
 	// agents only, so the glossary's conditional is pinned by hand.

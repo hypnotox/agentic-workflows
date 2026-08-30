@@ -15,7 +15,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/glossary"
 	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
-	"github.com/hypnotox/agentic-workflows/internal/plan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -195,47 +194,6 @@ func TestSyncPlanningFailurePrecedesInvalidCommandWiring(t *testing.T) {
 	}
 }
 
-type plansReaderForTest struct {
-	paths   []string
-	pathErr error
-	files   map[string][]byte
-	readErr error
-}
-
-func (r plansReaderForTest) Paths(string) ([]string, error) { return r.paths, r.pathErr }
-func (r plansReaderForTest) ReadFile(name string) ([]byte, bool, error) {
-	if r.readErr != nil {
-		return nil, false, r.readErr
-	}
-	data, ok := r.files[name]
-	return data, ok, nil
-}
-
-func TestDerivePlansFiltersTreeInputsAndPropagatesReaderFaults(t *testing.T) {
-	cases := []struct {
-		name string
-		read plansReaderForTest
-		want string
-	}{
-		{"paths", plansReaderForTest{pathErr: os.ErrPermission}, "permission denied"},
-		{"read", plansReaderForTest{paths: []string{"docs/plans/2026-08-01-read.md"}, readErr: os.ErrPermission}, "read 2026-08-01-read.md"},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
-			_, err := derivePlans(renderInputs{cfg: &config.Config{}, read: tc.read})
-			if err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("derivePlans error = %v, want %q", err, tc.want)
-			}
-		})
-	}
-	plans, err := derivePlans(renderInputs{cfg: &config.Config{}, read: plansReaderForTest{paths: []string{
-		"docs/plans/nested/2026-08-01-hidden.md", "docs/plans/2026-08-01-absent.md",
-	}}})
-	if err != nil || len(plans) != 0 {
-		t.Fatalf("filtered plans = %#v, %v", plans, err)
-	}
-}
-
 func TestPreparationResidentMarkerRejectsAbsentMarker(t *testing.T) {
 	if _, err := (Preparation{}).ResidentMarker("effort-archive"); err == nil {
 		t.Fatal("absent resident marker was accepted")
@@ -315,17 +273,8 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 		Merged:   []glossary.Record{{Term: "merged", Meaning: "meaning", Domains: []string{"rendering"}}},
 		Domains:  []string{"rendering"},
 	}
-	prepared.plans = []plan.Plan{{
-		ADRs: []plan.ADRLink{{Number: 1}}, Source: []byte("source"), DoD: []plan.DoDItem{{Slug: "done"}},
-		CommitSubjects: []string{"subject"}, Phases: []plan.Phase{{
-			Advances: []string{"advance"}, Completes: []string{"complete"}, Tasks: []plan.Task{{Fields: plan.TaskFields{
-				Paths: []plan.PathEntry{{Value: "path"}}, Applying: []plan.DecisionRef{{ADR: "0001"}}, Context: []plan.DecisionRef{{ADR: "0001"}},
-			}}},
-		}},
-	}}
-
 	beforeADRs, beforePitfalls, beforeTopics := prepared.ADRs(), prepared.Pitfalls(), prepared.Topics()
-	beforeSkills, beforePlans, beforePlan := prepared.EffectiveSkills(), prepared.Plans(), prepared.Plan()
+	beforeSkills, beforePlan := prepared.EffectiveSkills(), prepared.Plan()
 	beforeGlossary := prepared.Glossary()
 
 	projectedADRs := prepared.ADRs().All()
@@ -354,17 +303,6 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 		projectedSkills["mutated"] = true
 		break
 	}
-	projectedPlans := prepared.Plans()
-	projectedPlans[0].ADRs[0].Number = 99
-	projectedPlans[0].Source[0] = 'X'
-	projectedPlans[0].DoD[0].Slug = "mutated"
-	projectedPlans[0].CommitSubjects[0] = "mutated"
-	projectedPlans[0].Phases[0].Advances[0] = "mutated"
-	projectedPlans[0].Phases[0].Completes[0] = "mutated"
-	projectedPlans[0].Phases[0].Tasks[0].Fields.Paths[0].Value = "mutated"
-	projectedPlans[0].Phases[0].Tasks[0].Fields.Applying[0].ADR = "mutated"
-	projectedPlans[0].Phases[0].Tasks[0].Fields.Context[0].ADR = "mutated"
-
 	projectedGlossary := prepared.Glossary()
 	projectedGlossary.Authored[0].Domains[0] = "mutated"
 	projectedGlossary.Merged[0].Domains[0] = "mutated"
@@ -402,7 +340,6 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 		"Pitfalls":        {prepared.Pitfalls(), beforePitfalls},
 		"Topics":          {prepared.Topics(), beforeTopics},
 		"EffectiveSkills": {prepared.EffectiveSkills(), beforeSkills},
-		"Plans":           {prepared.Plans(), beforePlans},
 		"Plan":            {prepared.Plan(), beforePlan},
 		"Glossary":        {prepared.Glossary(), beforeGlossary},
 	} {

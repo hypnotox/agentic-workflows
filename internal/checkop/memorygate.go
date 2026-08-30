@@ -28,17 +28,11 @@ func memoryFindings(cfg *config.Config, tree *snapshot.Tree) []memorycite.Findin
 	for _, e := range configured {
 		exemptions = append(exemptions, memorycite.Exemption{Path: e.Path, Count: e.Count})
 	}
-	prefixes := []string{config.DocsDir + "/decisions/", config.DocsDir + "/plans/"}
+	prefix := config.DocsDir + "/decisions/"
 	var files []memorycite.File
 	for _, blob := range tree.List() {
-		if !blob.Scannable() {
-			continue
-		}
-		for _, prefix := range prefixes {
-			if strings.HasPrefix(blob.Path, prefix) {
-				files = append(files, memorycite.File{Path: blob.Path, Bytes: blob.Bytes})
-				break
-			}
+		if blob.Scannable() && strings.HasPrefix(blob.Path, prefix) {
+			files = append(files, memorycite.File{Path: blob.Path, Bytes: blob.Bytes})
 		}
 	}
 	return memorycite.Scan(files, exemptions)

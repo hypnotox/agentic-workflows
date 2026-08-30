@@ -75,70 +75,6 @@ func TestAdrReviewerAgent(t *testing.T) {
 	}
 }
 
-func TestPlanReviewerAgent(t *testing.T) {
-	data := map[string]any{
-		"prefix": "example",
-		"vars":   map[string]any{},
-		"layout": map[string]any{"plansDir": "docs/plans"},
-		"data": map[string]any{
-			"focusItems": []map[string]any{
-				{
-					"name":        "convention-alignment-extra",
-					"description": "Verify commit subjects follow Conventional Commits; flag subjects over 72 chars or missing scope.",
-				},
-			},
-			"docCurrencyItems": []map[string]any{
-				{"check": ".awf/topics/parts/<domain>/<topic>/current-state.md - update when plan shifts current authority"},
-				{"check": "docs/workflow.md - update when plan changes a workflow rule"},
-				{"check": "AGENTS.md - update when plan changes chain, principles, or invariants"},
-				{"check": "docs/decisions/INDEX.md - regenerate when plan flips an ADR status"},
-			},
-		},
-	}
-
-	out := renderAgentGolden(t, "plan-reviewer", data)
-
-	// Assert frontmatter name line (agents are unprefixed)
-	if !strings.Contains(out, "name: plan-reviewer") {
-		t.Errorf("expected 'name: plan-reviewer' in output:\n%s", out)
-	}
-
-	// Assert shared review-discipline spine phrases
-	sharedPhrases := []string{
-		"mechanical",
-		"reasoned",
-		"user-decision",
-		"suggested_fix",
-	}
-	for _, phrase := range sharedPhrases {
-		if !strings.Contains(out, phrase) {
-			t.Errorf("expected shared spine phrase %q in output:\n%s", phrase, out)
-		}
-	}
-
-	// Assert plan-specific lens phrases
-	planPhrases := []string{
-		"scope-completeness",
-		"executability",
-		"one final `### Phase close` with a single commit fence and can pass focused verification on its own",
-		"maintainable-design",
-		"docs/maintainable-code-design.md",
-		"model, ownership, representations, translation boundaries, dependency direction, and test seams",
-		"where a protected property requires dependency ordering",
-		"necessary enabling refactors precede dependent behavior",
-		"bounded to the failure they prevent",
-		"deterministically verifiable",
-		"approved, deferred, or declined disposition",
-		"needless indirection, pattern mandates, and unapproved or unjustified abstraction, indirection, validation, test machinery, tooling, cleanup, or process",
-		"Do not demand additions merely because more structure, testing, cleanup, or validation is imaginable",
-	}
-	for _, phrase := range planPhrases {
-		if !strings.Contains(out, phrase) {
-			t.Errorf("expected plan-lens phrase %q in output:\n%s", phrase, out)
-		}
-	}
-}
-
 func TestCodeReviewerAgent(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
@@ -201,16 +137,6 @@ func TestCodeReviewerAgent(t *testing.T) {
 func TestRenderedReviewerVerificationGuidance(t *testing.T) {
 	root := testsupport.RepoRoot(t)
 	contracts := map[string][]string{
-		"plan-reviewer": {
-			"material census and post-check commands",
-			"exact intermediate snapshot",
-			"terminal set or lifecycle-authorized residual findings",
-			"reject a premature zero requirement",
-			"authority, state, or choreography check",
-			"preserve authority checks",
-			"no stricter than the durable property",
-			"no named authority or state obligation",
-		},
 		"code-reviewer": {
 			"added or changed mechanical check",
 			"negative case",
@@ -231,7 +157,7 @@ func TestRenderedReviewerVerificationGuidance(t *testing.T) {
 			"generic " + agent: renderAgentGolden(t, agent, map[string]any{
 				"prefix": "example",
 				"vars":   map[string]any{},
-				"layout": map[string]any{"plansDir": "docs/plans"},
+				"layout": testLayout(),
 				"data":   catalog.Standard.Agents[agent].Data,
 			}),
 		}
@@ -333,48 +259,6 @@ func TestImplementerAgent(t *testing.T) {
 		}
 	}
 
-	// The claim's second sentence: both dispatching skills name the agent in
-	// every dispatch branch, and their own imperatives carry a subject. Rendered
-	// with and without subagent-tool capability, since each shape has its own
-	// dispatch branch.
-	for _, capable := range []bool{true, false} {
-		for _, skill := range []string{"subagent-driven-development", "executing-plans"} {
-			data := map[string]any{
-				"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
-				"skills": map[string]bool{}, "layout": testLayout(),
-			}
-			if capable {
-				data["targetSubagentTools"] = true
-			}
-			rendered := renderSkillGolden(t, skill, data)
-			if !strings.Contains(rendered, "`implementer` agent") {
-				t.Errorf("%s (subagentTools=%v) does not name the implementer agent:\n%s", skill, capable, rendered)
-			}
-		}
-	}
-
-	sdd := renderSkillGolden(t, "subagent-driven-development", map[string]any{
-		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
-		"skills": map[string]bool{}, "layout": testLayout(),
-	})
-	if !strings.Contains(sdd, "You, the dispatching parent, resolve missing phase context") {
-		t.Errorf("the raise-concerns imperative lost its explicit subject:\n%s", sdd)
-	}
-	inline := renderSkillGolden(t, "executing-plans", map[string]any{
-		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
-		"skills": map[string]bool{}, "layout": testLayout(),
-	})
-	if !strings.Contains(inline, "You, the parent executing this plan, resolve a missing or stale phase path") {
-		t.Errorf("executing-plans' raise-concerns imperative lost its explicit subject:\n%s", inline)
-	}
-	for _, subject := range []string{"you preserve the plan's settled", "When discovery or a structural question exists"} {
-		if !strings.Contains(inline, subject) {
-			t.Errorf("executing-plans lost the explicit subject %q:\n%s", subject, inline)
-		}
-	}
-	if !strings.Contains(inline, "You independently inventory each return") {
-		t.Errorf("executing-plans' batch imperatives lost their explicit subject:\n%s", inline)
-	}
 }
 
 // invariant: rendering/workflow-skill-templates:explorer-and-grounding-role-contracts (TestExplorerAgent)
@@ -454,6 +338,18 @@ func TestGroundingCheckerAgent(t *testing.T) {
 	for _, banned := range []string{"Selected breadth maximum", "at most ten active exploration children"} {
 		if strings.Contains(out, banned) {
 			t.Errorf("per-call or runtime-specific text %q leaked into the rendered body:\n%s", banned, out)
+		}
+	}
+}
+
+func TestExecutingDirectTemplate(t *testing.T) {
+	out := renderSkillGolden(t, "executing-direct", map[string]any{
+		"prefix": "example", "vars": map[string]any{}, "data": map[string]any{},
+		"skills": map[string]bool{}, "layout": testLayout(), "targetSubagentTools": true,
+	})
+	for _, want := range []string{"name: example-executing-direct", "Implement an understood narrow change directly", "clean integration"} {
+		if !strings.Contains(out, want) {
+			t.Errorf("executing-direct missing %q:\n%s", want, out)
 		}
 	}
 }

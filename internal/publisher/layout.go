@@ -17,7 +17,6 @@ type Layout struct {
 	DocsDir    string
 	ADRDir     string
 	IndexMd    string
-	PlansDir   string
 	Docs       map[string]string // catalog name -> output path (inv: layout-docs-full-catalog)
 	Singletons map[string]string // template key -> output path
 	DomainsDir string
@@ -41,7 +40,6 @@ func layout(p renderInputs) Layout {
 		DocsDir:    d,
 		ADRDir:     dec,
 		IndexMd:    dec + "/INDEX.md",
-		PlansDir:   d + "/plans",
 		Docs:       docs,
 		Singletons: singletons,
 		DomainsDir: d + "/domains", // inv: domains-dir-given
@@ -50,8 +48,7 @@ func layout(p renderInputs) Layout {
 
 // templateMap projects the layout into the map the .layout template namespace and
 // the per-file ConfigHash consume. The fixed directory/generated keys are set
-// here; the mandatory-singleton keys (adrReadme, adrTemplate, plansReadme,
-// workflowRef, docStandard, agentsMdStandard, workingWithAwf) derive from the
+// here; mandatory singleton keys derive from the
 // catalog doc collection - each entry's TemplateKey at docsDir/Path - so the map
 // reproduces the historical key set and values byte-for-byte (ADR-0061).
 func (l Layout) templateMap() map[string]any {
@@ -63,7 +60,6 @@ func (l Layout) templateMap() map[string]any {
 		"docsDir":    l.DocsDir,
 		"adrDir":     l.ADRDir,
 		"indexMd":    l.IndexMd,
-		"plansDir":   l.PlansDir,
 		"docs":       docs,
 		"domainsDir": l.DomainsDir,
 	}

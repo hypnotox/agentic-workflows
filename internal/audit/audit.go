@@ -1,8 +1,8 @@
 // Package audit reports workflow-conformance findings over a branch's git
 // history. The range rules are advisory (ADR-0017): standalone, never wired into
 // the gate. The shared CheckConventionalCommit rule is the exception - it is also
-// consumed at commit time by `awf check staged commit` and at plan time by `awf check`
-// (ADR-0111). Most rules are pure over the commit range; the uncommitted-changes
+// consumed at commit time by the repository commit hook. Most rules are pure over
+// the commit range; the uncommitted-changes
 // rule (ADR-0025) additionally inspects the live working tree.
 package audit
 
@@ -37,9 +37,8 @@ type Inputs struct {
 	Settings
 	GeneratedPaths map[string]bool
 	ADRDir         string // e.g. "docs/decisions"
-	DocsDir        string // e.g. "docs"; the authored-prose root (ADRDir and PlansDir sit under it)
+	DocsDir        string // e.g. "docs"; the authored-prose root
 	IndexMd        string // e.g. "docs/decisions/INDEX.md"
-	PlansDir       string // e.g. "docs/plans"
 }
 
 // ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
@@ -98,7 +97,7 @@ type rangeEvaluator struct {
 	conventional, status, front []Finding
 	punctuation                 []Finding
 	manifest                    *Finding
-	adrTouched, planTouched     bool
+	adrTouched                  bool
 	lines                       int
 }
 
@@ -119,9 +118,6 @@ func (e *rangeEvaluator) observe(c awfgit.Commit) {
 		if e.manifest == nil && matchesAny(defaultDependencyManifests(), ch.Path) {
 			f := finding(severity.Warn, "dependency-adr", c, "dependency manifest changed on this branch with no ADR touched: if a dependency was added, confirm an ADR covers it")
 			e.manifest = &f
-		}
-		if e.in.PlansDir != "" && underDir(ch.Path, e.in.PlansDir) {
-			e.planTouched = true
 		}
 		if !e.in.GeneratedPaths[ch.Path] {
 			e.lines += ch.Added + ch.Deleted
@@ -164,25 +160,15 @@ func (e *rangeEvaluator) findings() []Finding {
 	if e.manifest != nil && !e.adrTouched {
 		out = append(out, *e.manifest)
 	}
-	if e.lines > diffThreshold && !e.planTouched {
-		out = append(out, Finding{Severity: severity.Warn, Rule: "plan-for-large-change", Detail: fmt.Sprintf("branch changes %d non-generated lines (> %d) with no plan under %s", e.lines, diffThreshold, e.in.PlansDir)})
-	}
 	return append(out, e.punctuation...)
 }
 
 // CheckConventionalCommit validates one commit's subject against the Conventional
 // Commits settings and returns any violations. It is the single definition of the
-// rule - consumed by the audit range loop above, by the blocking `awf check staged commit`
-// command (ADR-0036), and by the plan-time planned-subject check
-// (CheckPlannedSubject, ADR-0111) - so none re-implements the regex, the type/scope
-// allow-lists, or the subject-length limit. Merge commits are exempt.
+// rule consumed by the audit range loop and the command-local commit hook.
+// Merge commits are exempt.
 func CheckConventionalCommit(c awfgit.Commit, s Settings) []Finding {
 	return checkConventionalCommit(c, s, severity.Error)
-}
-
-// CheckPlannedSubject validates a commit subject a plan proposes with the shared policy.
-func CheckPlannedSubject(subject string, s Settings) []Finding {
-	return checkConventionalCommit(awfgit.Commit{Subject: subject}, s, severity.Warn)
 }
 
 func checkConventionalCommit(c awfgit.Commit, s Settings, scopeSeverity severity.Rank) []Finding {

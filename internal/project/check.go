@@ -21,8 +21,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/pitfallcheck"
-	"github.com/hypnotox/agentic-workflows/internal/plan"
-	"github.com/hypnotox/agentic-workflows/internal/plancheck"
 	"github.com/hypnotox/agentic-workflows/internal/referencecheck"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
@@ -36,29 +34,21 @@ type CheckAdvisories struct {
 	Information []string
 }
 
-// AdvisoryNotes returns the compatibility projection of the non-failing notes
-// produced by one operation-scoped plan parse.
-func advisoryNotes(p renderInputs, plans []plan.Plan, plansErr error, op *OutputPlan, glossary glossarycheck.Input) ([]string, error) {
-	if plansErr != nil {
-		return nil, plansErr
-	}
+// AdvisoryNotes returns the non-failing notes derived from one prepared output plan.
+func advisoryNotes(p renderInputs, op *OutputPlan, glossary glossarycheck.Input) ([]string, error) {
 	glossaryResults, err := glossarycheck.Evaluate(glossary)
 	if err != nil { // coverage-ignore: prepared glossary checks are infallible
 		return nil, err
 	}
-	advisories := advisoryNotesWithState(p, plans, op, glossaryResults)
+	advisories := advisoryNotesWithState(p, op, glossaryResults)
 	return append(slices.Clone(advisories.Warnings), advisories.Information...), nil
 }
 
-// advisoryNotesWithState classifies the non-failing render advisories from
-// operation-owned state, its already parsed plans, and its one prepared output
-// plan.
-func advisoryNotesWithState(p renderInputs, plans []plan.Plan, op *OutputPlan, glossaryResult checkresult.Result) CheckAdvisories {
+func advisoryNotesWithState(p renderInputs, op *OutputPlan, glossaryResult checkresult.Result) CheckAdvisories {
 	files := planWriteFiles(op)
 	all := advisoryCompatibilityFiles(op)
 	information := append(unsetVarNotes(p, files), stubNotes(all)...)
 	information = append(information, markerNotes(all)...)
-	information = append(information, planCommitScopeNotes(p, plans)...)
 	var warnings []string
 	for _, finding := range glossaryResult.Findings() {
 		if finding.Rank == severity.Warn {
@@ -191,62 +181,40 @@ func artifactLabel(tid string) string {
 // CheckReport is the ordinary check operation's compatibility projection.
 type CheckReport = repositorycheck.Report
 
-// CheckReport performs one ordinary project check. Plans are parsed once and
-// completed owner results are placed into RepositoryChecker's explicit slots.
+// CheckReport performs one ordinary project check from prepared semantic inputs.
 func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semantics OperationSemantics, op *OutputPlan) (CheckReport, error) {
 	if err := configcheck.ValidateCommandWiring(p.cfg); err != nil {
 		return CheckReport{}, err
 	}
 	corpus, pitfalls, eff := semantics.ADRs, semantics.Pitfalls, semantics.EffectiveSkills
-	plans, parseErr := semantics.Plans, semantics.PlansError
-	planDiagnostics, err := plancheck.Diagnostics(parseErr)
-	if err != nil {
-		return CheckReport{}, err
-	}
 	glossaryResults, err := glossarycheck.Evaluate(semantics.Glossary)
 	if err != nil { // coverage-ignore: Publisher preparation supplied validated glossary semantics
 		return CheckReport{}, err
 	}
-	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, eff, plans, semantics.GeneratedOutput, op, glossaryResults)
+	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, eff, semantics.GeneratedOutput, op, glossaryResults)
 	if err != nil {
 		return CheckReport{}, err
 	}
-	var planArtifacts checkresult.Result
-	var planArtifactErrors, deferredPlanWarnings checkresult.Result
-	if fullProfile(p) {
-		planArtifacts = planArtifactResults(plans, corpus)
-		planArtifactErrors, deferredPlanWarnings, err = repositorycheck.SplitWarnings(planArtifacts)
-		if err != nil { // coverage-ignore: splitting PlanChecker's validated immutable result cannot invalidate evidence
-			return CheckReport{}, err
-		}
-	}
-	advisories, err := advisoryResultsWithState(p, plans, op, glossaryResults)
+	advisories, err := advisoryResultsWithState(p, op, glossaryResults)
 	if err != nil { // coverage-ignore: Publisher preparation validated advisory inputs and the output plan is immutable
 		return CheckReport{}, err
 	}
 	return repositorycheck.Compose(repositorycheck.Inputs{
-		Tracking:             trackingResult,
-		ProducerResults:      producerResults,
-		PlanDiagnostics:      repositorycheck.Slot{Result: planDiagnostics},
-		PlanArtifactErrors:   repositorycheck.Slot{Result: planArtifactErrors},
-		OrdinaryAdvisories:   repositorycheck.Slot{Result: advisories},
-		TrackingInformation:  repositorycheck.Slot{Result: tracking},
-		DeferredPlanWarnings: repositorycheck.Slot{Result: deferredPlanWarnings},
+		Tracking:            trackingResult,
+		ProducerResults:     producerResults,
+		OrdinaryAdvisories:  repositorycheck.Slot{Result: advisories},
+		TrackingInformation: repositorycheck.Slot{Result: tracking},
 	})
 }
 
-// Dynamic plan diagnostics originate in a closed parser category set. Refusing
-// an unknown category keeps parser evolution from silently acquiring checker
-// policy or a fabricated finding identity.
 const (
 	propertyAuthority       checkresult.Property = "authority"
 	propertyCorrectness     checkresult.Property = "correctness"
 	propertyReproducibility checkresult.Property = "reproducibility"
 	propertyHeuristic       checkresult.Property = "heuristic-quality"
-	propertyPlanDetail      checkresult.Property = "plan-detail-quality"
 )
 
-func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, eff map[string]bool, plans []plan.Plan, generatedInput generatedcheck.AdditionalInput, op *OutputPlan, glossaryResult checkresult.Result) (repositorycheck.Slot, []repositorycheck.Slot, checkresult.Result, error) {
+func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, eff map[string]bool, generatedInput generatedcheck.AdditionalInput, op *OutputPlan, glossaryResult checkresult.Result) (repositorycheck.Slot, []repositorycheck.Slot, checkresult.Result, error) {
 	var indexPaths generatedcheck.IndexPaths
 	if repo != nil {
 		indexPaths = repo.IndexPaths
@@ -281,9 +249,6 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results = append(results, repositorycheck.Slot{Result: references})
-	if fullProfile(p) {
-		results = append(results, repositorycheck.Slot{Result: planResult(p, corpus, plans)})
-	}
 	pitfallsResult, err := pitfallResult(p, corpus, pitfalls)
 	if err != nil { // coverage-ignore: the operation supplied its validated pitfall corpus
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
@@ -340,13 +305,6 @@ func adrRelatedResult(corpus adr.Corpus) (checkresult.Result, error) {
 // Result adapters preserve owner-classified results for ordinary CheckReport
 // composition. Legacy helpers remain available to direct callers without
 // changing the normal composition boundary.
-func planResult(p renderInputs, corpus adr.Corpus, plans []plan.Plan) checkresult.Result {
-	result, err := plancheck.Validity(plans, corpus, config.AuditScopes(p.cfg.Audit), fullProfile(p))
-	if err != nil { // coverage-ignore: validity over prepared semantic values is infallible
-		return checkresult.Result{}
-	}
-	return result
-}
 func pitfallResult(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus) (checkresult.Result, error) {
 	return pitfallcheck.Check(p.cfg.Domains, pitfalls, corpus)
 }
@@ -361,15 +319,8 @@ func pendingADRResult(p renderInputs, repo *awfgit.Repo, ctx context.Context, co
 	}
 	return result
 }
-func planArtifactResults(plans []plan.Plan, corpus adr.Corpus) checkresult.Result {
-	result, err := plancheck.Artifact(plans, corpus)
-	if err != nil { // coverage-ignore: artifact checks over prepared semantic values are infallible
-		return checkresult.Result{}
-	}
-	return result
-}
-func advisoryResultsWithState(p renderInputs, plans []plan.Plan, op *OutputPlan, glossaryResult checkresult.Result) (checkresult.Result, error) {
-	advisories := advisoryNotesWithState(p, plans, op, glossaryResult)
+func advisoryResultsWithState(p renderInputs, op *OutputPlan, glossaryResult checkresult.Result) (checkresult.Result, error) {
+	advisories := advisoryNotesWithState(p, op, glossaryResult)
 	var findings []checkresult.Finding
 	for _, note := range advisories.Warnings {
 		findings = append(findings, checkresult.Finding{Rank: severity.Warn, Property: propertyHeuristic, Evidence: checkresult.Evidence{Kind: "advisory", Detail: note}})
@@ -411,28 +362,4 @@ func checkPendingADRs(p renderInputs, repo *awfgit.Repo, ctx context.Context, co
 		drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "pending-adr-on-integration-branch", Detail: a.Slug})
 	}
 	return drift
-}
-
-// checkPlans validates plan frontmatter, plan→ADR links, and planned commit
-// subjects over docs/plans/, scanning the YYYY-MM-DD-*.md set only (excluding
-// template.md and README.md). Frontmatter-less plans (the grandfathered corpus,
-// ADR-0098) are skipped. A ```commit subject's length/type/shape violation is
-// drift; an unknown scope is advisory (planCommitScopeNotes), not drift (ADR-0111).
-// An adrs: entry resolves by identity, so a number and a pending record's slug
-// resolve through one lookup and a link survives numbering (ADR-0202 item 14).
-// planCommitScopeNotes returns advisory (non-failing) notes for a plan's ```commit
-// subject naming a scope outside the configured allow-list. Unlike an over-length or
-// mistyped subject (hard drift in checkPlans), an unknown scope is advisory: a plan
-// may be the change that adds the scope (ADR-0111). Mirrors checkPlans' scan; a
-// frontmatter-less plan is skipped.
-func planCommitScopeNotes(p renderInputs, plans []plan.Plan) []string {
-	information, err := plancheck.ScopeInformation(plans, config.AuditScopes(p.cfg.Audit))
-	if err != nil { // coverage-ignore: prepared subject evaluation is infallible
-		return nil
-	}
-	notes := make([]string, len(information))
-	for i, item := range information {
-		notes[i] = item.Evidence.Detail
-	}
-	return notes
 }

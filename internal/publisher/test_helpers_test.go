@@ -369,7 +369,7 @@ func newADRProject(state *ProjectState, ctx context.Context, title string) (resu
 	return project.NewADRLeased(state.Root(), testConfig(state), repo, ctx, title, lease, files)
 }
 func projectOperationSemantics(prepared Preparation) project.OperationSemantics {
-	return project.OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), Plans: prepared.Plans(), PlansError: prepared.PlansError(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
+	return project.OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
 }
 func checkReportProject(state *ProjectState, ctx context.Context) (project.CheckReport, error) {
 	cfg := testConfig(state)

@@ -15,10 +15,7 @@ type governedDispatches struct {
 var deliberateSelectionDispatches = []governedDispatches{
 	{skill: "grounding", sections: []string{"brief-construction-and-dispatch"}},
 	{skill: "exploring", sections: []string{"dispatch"}},
-	{skill: "executing-plans", sections: []string{"procedure-per-task"}},
-	{skill: "subagent-driven-development", sections: []string{"dispatch-conventions", "procedure-status-handling"}},
 	{skill: "reviewing-adr", sections: []string{"dispatch-subagent", "re-review-loop"}},
-	{skill: "reviewing-plan", sections: []string{"dispatch-subagent", "re-review-loop"}},
 	{skill: "reviewing-impl", sections: []string{"dispatch-subagent", "re-review-loop"}},
 }
 

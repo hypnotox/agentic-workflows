@@ -15,7 +15,7 @@ check` detects drift.
 
 - Core and Full governance footprints with one shared correctness, autonomy, maintainability, and review-quality bar
 - A workflow from clarification through implementation, review, and retrospective
-- ADRs for load-bearing decisions and plans when sequencing or coordination helps
+- Durable decisions for load-bearing choices and effort-local operational plans when sequencing or coordination helps
 - Fresh-context agents for exploration, grounding, implementation, and review
 - CodeGraph for structural source discovery, architecture, callers, dependencies, and impact analysis; Git for changed-path selection
 - Generated agent guides, skills, documentation, and optional Git hook payloads
@@ -78,7 +78,7 @@ awf list
 ```
 
 `awf init` creates a Core `.awf/` tree and renders the workflow. Use `awf init --profile full`
-to add ADR, plan, current-state authority, and workflow-audit governance. Both footprints use the
+to add durable decisions, current-state authority, and workflow-audit governance. Both footprints use the
 same correctness, autonomy, maintainability, and review-quality bar. Existing repositories upgrade
 explicitly to Full. Commit both the source tree and its rendered outputs. After changing
 `.awf/`, render and check again:
@@ -102,8 +102,8 @@ collision. `awf init --force` first saves each replaced file as `<path>.awf-bak`
 ```
 
 Core includes the operational workflow: brainstorming, implementation, testing, review, efforts,
-and managed worktrees. Full adds ADRs for durable decisions, plans for sequenced work,
-current-state authority, and workflow audit. These governance footprints select artifacts,
+and managed worktrees. Full adds durable decisions, current-state authority, and workflow audit.
+An optional operational plan is an unparsed `scratch/plan.md` inside its effort, not permanent project authority. These governance footprints select artifacts,
 not different standards of rigor or autonomy.
 
 ```mermaid
@@ -112,10 +112,10 @@ flowchart LR
     B -->|yes| BR[brainstorm]
     B -->|no| D{durable decision?}
     BR --> D
-    D -->|yes| A[ADR and review]
-    D -->|no| P{plan useful?}
+    D -->|yes| A[record the decision]
+    D -->|no| P{operational plan useful?}
     A --> P
-    P -->|yes| PL[plan and review]
+    P -->|yes| PL[write effort scratch plan]
     P -->|no| X[implement]
     PL --> X
     X --> R[review when warranted]
@@ -142,7 +142,7 @@ Punctuation findings are advisory Warnings with zero exit.
 | `awf effort <subcommand>` | Manage slugged repository-local efforts |
 | `awf list [<kind>]` | Show the catalog and configured domain inventory |
 | `awf config [<key-or-var>]` | Describe config keys and vars (live state inside a project) |
-| `awf new <kind> <args>` | Scaffold a new artifact: kind in {plan, topic, domain, pitfall, doc} |
+| `awf new <kind> <args>` | Scaffold a new artifact: kind in {topic, domain, pitfall, doc} |
 | `awf remove domain <name>` | Remove a configured domain |
 | `awf upgrade [--recover]` | Migrate the .awf/ config tree or recover an interrupted upgrade |
 | `awf uninstall` | Remove awf's generated files (keeps .awf/) |

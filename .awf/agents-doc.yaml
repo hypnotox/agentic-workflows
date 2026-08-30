@@ -10,8 +10,6 @@ data:
           desc: migrate the config tree after upgrading awf
         - cmd: ./awf audit
           desc: report workflow conformance for a commit range
-        - cmd: ./awf new plan "<Title>"
-          desc: scaffold a dated implementation plan
         - cmd: ./awf new pitfall "<Title>"
           desc: scaffold one authored pitfall source without rendering
     invariants:

@@ -44,7 +44,7 @@ func TestCleanIntegrationScenarios(t *testing.T) {
 	}
 	for _, profile := range []string{"core", "full"} {
 		t.Run(profile, func(t *testing.T) {
-			root := syncPlanFlexibilityProfile(t, profile)
+			root := syncStandardFootprint(t, profile)
 			for _, target := range []string{"pi", "claude"} {
 				t.Run(target, func(t *testing.T) {
 					for consumer, body := range cleanIntegrationConsumerBodies(t, root, profile, target) {
@@ -105,17 +105,13 @@ func cleanIntegrationDisposition(body string, facts cleanIntegrationFacts) (stri
 	}
 }
 
-func cleanIntegrationConsumerBodies(t *testing.T, root, profile, target string) map[string]string {
+func cleanIntegrationConsumerBodies(t *testing.T, root, _, target string) map[string]string {
 	t.Helper()
 	skills := []string{"brainstorming", "executing-direct", "bugfix", "tdd", "reviewing-impl"}
 	agents := []string{"implementer", "code-reviewer"}
-	if profile == "full" {
-		skills = append(skills, "writing-plans", "executing-plans", "subagent-driven-development", "reviewing-plan")
-		agents = append(agents, "plan-reviewer")
-	}
 	bodies := make(map[string]string, len(skills)+len(agents))
 	for _, skill := range skills {
-		bodies[skill] = read(t, planSkillPath(root, target, skill))
+		bodies[skill] = read(t, targetSkillPath(root, target, skill))
 	}
 	for _, agent := range agents {
 		bodies[agent] = read(t, filepath.Join(root, "."+target, "agents", agent+".md"))
