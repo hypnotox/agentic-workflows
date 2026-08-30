@@ -4,7 +4,7 @@ go 1.27
 
 require (
 	github.com/bmatcuk/doublestar/v4 v4.10.0
-	github.com/go-git/go-billy/v5 v5.9.0
+	github.com/go-git/go-billy/v5 v5.9.1
 	github.com/go-git/go-git/v5 v5.19.1
 	github.com/gofrs/flock v0.13.0
 	golang.org/x/mod v0.40.0
