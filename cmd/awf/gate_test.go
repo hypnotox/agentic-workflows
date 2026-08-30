@@ -320,7 +320,7 @@ func TestProjectGuardStateSurfacesControlStatErrors(t *testing.T) {
 				if err := os.Symlink(rel, config.ConfigPath(root)); err != nil {
 					t.Fatal(err)
 				}
-				if err := os.WriteFile(config.LockPath(root), []byte(`{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}`), 0o644); err != nil {
+				if err := os.WriteFile(config.LockPath(root), []byte(`{"awfVersion":"0.39.2","schemaVersion":49,"files":{}}`), 0o644); err != nil {
 					t.Fatal(err)
 				}
 			} else {
@@ -361,7 +361,7 @@ func TestCommandStateGuardAdmitsOnlyCompleteLiveAuthority(t *testing.T) {
 
 	t.Run("working below-floor authority refuses before malformed bridge interpretation", func(t *testing.T) {
 		root := scaffoldProject(t)
-		testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}`)
+		testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.39.2","schemaVersion":49,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}`)
 		var stdout, stderr bytes.Buffer
 		if code := runAt(t, root, []string{"awf", "render"}, &stdout, &stderr); code != 1 {
 			t.Fatalf("exit = %d, stdout=%q stderr=%q", code, stdout.String(), stderr.String())
@@ -375,7 +375,7 @@ func TestCommandStateGuardAdmitsOnlyCompleteLiveAuthority(t *testing.T) {
 		repo := gitfixture.InitRepo(t)
 		gitfixture.Stage(t, repo, map[string]string{
 			".awf/config.yaml": "prefix: test\n",
-			".awf/awf.lock":    `{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}` + "\n",
+			".awf/awf.lock":    `{"awfVersion":"0.39.2","schemaVersion":49,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}` + "\n",
 		})
 		var stdout, stderr bytes.Buffer
 		if code := runAt(t, repo.Root(), []string{"awf", "check", "staged"}, &stdout, &stderr); code != 1 {
@@ -420,7 +420,7 @@ func TestCommandStateGuardAdmitsOnlyCompleteLiveAuthority(t *testing.T) {
 		repo := gitfixture.InitRepo(t)
 		gitfixture.Stage(t, repo, map[string]string{
 			".claude/awf/config.yaml": "prefix: test\n",
-			".claude/awf/awf.lock":    `{"awfVersion":"0.39.2","schemaVersion":46,"files":{}}` + "\n",
+			".claude/awf/awf.lock":    `{"awfVersion":"0.39.2","schemaVersion":49,"files":{}}` + "\n",
 		})
 		var stdout, stderr bytes.Buffer
 		if code := runAt(t, repo.Root(), []string{"awf", "check", "staged"}, &stdout, &stderr); code != 1 {

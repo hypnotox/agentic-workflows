@@ -1,7 +1,6 @@
 package publisher
 
 import (
-	"encoding/json"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -9,7 +8,6 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 )
 
@@ -20,20 +18,7 @@ func loadPitfallCorpus(p renderInputs) (pitfall.Corpus, error) {
 }
 
 func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
-	generation := migrate.Current()
-	if lockBytes, found, err := reader.ReadFile(config.DirName + "/awf.lock"); err == nil && found {
-		var header struct {
-			SchemaVersion int `json:"schemaVersion"`
-		}
-		if json.Unmarshal(lockBytes, &header) == nil && header.SchemaVersion != 0 {
-			generation = header.SchemaVersion
-		}
-	}
 	paths, err := reader.Paths(pitfallsSourceDir + "/")
-	if err != nil {
-		return pitfall.Corpus{}, err
-	}
-	decisionPaths, err := reader.Paths(config.DocsDir + "/decisions/")
 	if err != nil {
 		return pitfall.Corpus{}, err
 	}
@@ -53,10 +38,6 @@ func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
 		}
 		if !ok {
 			regular = false
-		}
-		b, err = migrate.PitfallBytesForGenerationWithDecisionPaths(generation, source, b, decisionPaths)
-		if err != nil {
-			return pitfall.Corpus{}, fmt.Errorf("migrate pitfall source %s: %w", source, err)
 		}
 		files = append(files, pitfall.SourceFile{Path: filepath.ToSlash(source), Bytes: b, Regular: regular})
 	}

@@ -238,11 +238,7 @@ func configFromTree(root string, tree *snapshot.Tree, lock *manifest.Lock) (*con
 	if lock == nil {
 		return nil, false, fmt.Errorf("partial .awf authority: .awf/config.yaml requires .awf/awf.lock; restore it or delete .awf deliberately to re-adopt")
 	}
-	configBytes, err := migrate.ConfigBytesForGeneration(lock.SchemaVersion, cfgFile.Bytes)
-	if err != nil {
-		return nil, false, err
-	}
-	cfg, err := config.ParseTree(config.RootDir(root), configBytes, configSnapshotReader{tree: tree})
+	cfg, err := config.ParseTree(config.RootDir(root), cfgFile.Bytes, configSnapshotReader{tree: tree})
 	if err != nil {
 		return nil, false, err
 	}

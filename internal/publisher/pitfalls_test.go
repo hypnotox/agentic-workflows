@@ -1,6 +1,7 @@
 package publisher
 
 import (
+	"bytes"
 	"errors"
 	"strings"
 	"testing"
@@ -70,11 +71,44 @@ func TestPitfallCorpusReaderErrorsAndIndexTie(t *testing.T) {
 	}
 }
 
+type currentPitfallReader struct{ source []byte }
+
+func (r currentPitfallReader) Paths(prefix string) ([]string, error) {
+	if prefix != pitfallsSourceDir+"/" {
+		return nil, errors.New("unexpected path enumeration: " + prefix)
+	}
+	return []string{pitfallsSourceDir + "/current.md"}, nil
+}
+
+func (r currentPitfallReader) ReadFile(path string) ([]byte, bool, error) {
+	if path != pitfallsSourceDir+"/current.md" {
+		return nil, false, errors.New("unexpected file read: " + path)
+	}
+	return bytes.Clone(r.source), true, nil
+}
+
+func TestPitfallCorpusParsesCurrentBytesDirectly(t *testing.T) {
+	source := []byte("---\ntitle: Current\ndomains: [rendering]\n---\nretained body\r\n")
+	corpus, err := loadPitfallCorpusFrom(currentPitfallReader{source: source})
+	if err != nil {
+		t.Fatal(err)
+	}
+	entries := corpus.All()
+	if len(entries) != 1 {
+		t.Fatalf("entries = %#v", entries)
+	}
+	entry := entries[0]
+	if entry.Slug != "current" || entry.Title != "Current" || entry.Body != "retained body\r\n" || !bytes.Equal(entry.Source, source) {
+		t.Fatalf("current bytes were not parsed directly: %#v", entry)
+	}
+}
+
 func TestPitfallMetadataProjectionKeepsMarkdownStructure(t *testing.T) {
 	const domain = "# [domain] | `code` \\ path\r\nnext"
 	const tag = "tag | [literal] `tick` \\ value\r\ncontinued"
+	const body = "body bytes | remain `verbatim`\r\n"
 	root := scaffoldFiles(t, pitfallsCfg, map[string]string{
-		"docs/pitfalls/punctuation.md": pitfallSource("'# [Title] | `tick` \\ literal'", "domains: [\"# [domain] | `code` \\\\ path\\r\\nnext\"]\n", "body bytes | remain `verbatim`\n"),
+		"docs/pitfalls/punctuation.md": pitfallSource("'# [Title] | `tick` \\ literal'", "domains: [\"# [domain] | `code` \\\\ path\\r\\nnext\"]\n", body),
 	})
 	files := renderPitfallFiles(t, root)
 	index := files["docs/pitfalls.md"]
@@ -104,8 +138,8 @@ func TestPitfallMetadataProjectionKeepsMarkdownStructure(t *testing.T) {
 		t.Fatalf("metadata line breaks are not visibly escaped:\n%s", index)
 	}
 	leaf := files["docs/pitfalls/punctuation.md"]
-	if !strings.HasSuffix(leaf, "body bytes | remain `verbatim`\n") {
-		t.Fatalf("body bytes changed:\n%s", leaf)
+	if !bytes.HasSuffix([]byte(leaf), []byte(body)) {
+		t.Fatalf("body bytes changed: got suffix %q, want %q", leaf, body)
 	}
 }
 

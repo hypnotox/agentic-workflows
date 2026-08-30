@@ -2,7 +2,6 @@ package project
 
 import (
 	"fmt"
-	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
@@ -29,27 +28,6 @@ func stagedCompatibilityDrift(result checkresult.Result) []manifest.Drift {
 		drift[i] = manifest.Drift{Path: finding.Evidence.Path, Kind: finding.Evidence.Kind, Detail: finding.Evidence.Detail}
 	}
 	return drift
-}
-
-// TestCheckStagedRefusesHistoricalWorkflowTelemetry proves staged validation is
-// live-source validation, not an audit forward-decoding path.
-func TestCheckStagedRefusesHistoricalWorkflowTelemetry(t *testing.T) {
-	t.Parallel()
-	repo := gitfixture.InitRepo(t)
-	dir := repo.Root()
-	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: example\nintegrationBranch: main\nworkflowTelemetry:\n  retention: {}\n",
-		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":19,"files":{}}`,
-	})
-	gitfixture.Commit(t, repo, "generation 19", nil)
-	gitfixture.Stage(t, repo, map[string]string{
-		".awf/config.yaml": "prefix: example\nintegrationBranch: main\n",
-		".awf/awf.lock":    `{"awfVersion":"0.20.0","schemaVersion":20,"files":{}}`,
-	})
-	p := openStaged(t, dir)
-	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "live floor 46") {
-		t.Fatalf("CheckStaged historical source error = %v", err)
-	}
 }
 
 func TestCheckStagedRefusesHistoricalMalformedOrDuplicateConfigAndCurrentInvalidBlock(t *testing.T) {

@@ -5,6 +5,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"reflect"
 	"strings"
 	"testing"
 
@@ -55,8 +56,8 @@ func assertVersionFixtureUnchanged(t *testing.T, root string, before map[string]
 // invariant: config/migrations-and-locks:schema-min-version (TestSchemaMinimumVersionAuthority)
 // invariant: tooling/cli:single-version-authority (TestSchemaMinimumVersionAuthority)
 func TestSchemaMinimumVersionAuthority(t *testing.T) {
-	if got := minVersionBySchema; got[migrate.LiveSchemaFloor] != "0.39.0" || got[migrate.Current()] != "0.44.0" {
-		t.Fatalf("live schema minimums = %#v", got)
+	if got, want := minVersionBySchema, map[int]string{50: "0.44.0"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("live schema minimums = %#v, want %#v", got, want)
 	}
 	if err := ValidateSchemaMinimumVersion(migrate.Current(), Version); err != nil {
 		t.Fatalf("current schema minimum: %v", err)
@@ -78,12 +79,12 @@ func TestVersionAuthority(t *testing.T) {
 		schema                   int
 	}{
 		{"valid", "0.44.0\n", "0.44.0", "", migrate.Current()},
-		{"missing newline", "0.39.0", "0.39.0", "canonical version file", migrate.Current()},
-		{"extra newline", "0.39.0\n\n", "0.39.0", "canonical version file", migrate.Current()},
-		{"prefixed version", "v0.39.0\n", "v0.39.0", "canonical semantic version", migrate.Current()},
-		{"leading zero", "0.039.0\n", "0.039.0", "canonical semantic version", migrate.Current()},
-		{"divergent exposed value", "0.39.0\n", "0.38.0", "embedded version", migrate.Current()},
-		{"missing schema mapping", "0.39.0\n", "0.39.0", "no minimum", migrate.Current() + 1},
+		{"missing newline", "0.44.0", "0.44.0", "canonical version file", migrate.Current()},
+		{"extra newline", "0.44.0\n\n", "0.44.0", "canonical version file", migrate.Current()},
+		{"prefixed version", "v0.44.0\n", "v0.44.0", "canonical semantic version", migrate.Current()},
+		{"leading zero", "0.044.0\n", "0.044.0", "canonical semantic version", migrate.Current()},
+		{"divergent exposed value", "0.44.0\n", "0.43.0", "embedded version", migrate.Current()},
+		{"missing schema mapping", "0.44.0\n", "0.44.0", "no minimum", migrate.Current() + 1},
 		{"retired schema", "0.23.0\n", "0.23.0", "no minimum", 20},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
@@ -104,7 +105,7 @@ func TestVersionAuthority(t *testing.T) {
 	}
 }
 
-func TestSchema41RefusesBeforeEffortOrUpgrade(t *testing.T) {
+func TestSchema49RefusesBeforeEffortOrUpgrade(t *testing.T) {
 	binary := filepath.Join(t.TempDir(), "awf")
 	build := exec.CommandContext(testContext(t), "go", "build", "-o", binary, "./cmd/awf")
 	build.Dir = repoRootDir(t)
@@ -121,16 +122,16 @@ func TestSchema41RefusesBeforeEffortOrUpgrade(t *testing.T) {
 
 	root := scaffold(t, "prefix: archive\nintegrationBranch: main\n")
 	lockPath := filepath.Join(root, ".awf", "awf.lock")
-	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 41, Files: map[string]manifest.Entry{"prior": {}}}
+	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 49, Files: map[string]manifest.Entry{"prior": {}}}
 	if err := lock.Save(lockPath); err != nil {
 		t.Fatal(err)
 	}
-	if output, err := run(root, "effort", "list"); err == nil || !strings.Contains(output, "below live floor 46") || strings.Contains(output, "run awf upgrade") {
-		t.Fatalf("generation-41 effort command = %v\n%s; want unsupported live-source refusal", err, output)
+	if output, err := run(root, "effort", "list"); err == nil || !strings.Contains(output, "below live floor 50") || strings.Contains(output, "run awf upgrade") {
+		t.Fatalf("generation-49 effort command = %v\n%s; want unsupported live-source refusal", err, output)
 	}
 
 	before := snapshotVersionFixture(t, root)
-	if output, err := run(root, "upgrade"); err == nil || !strings.Contains(output, "below live floor 46") {
+	if output, err := run(root, "upgrade"); err == nil || !strings.Contains(output, "below live floor 50") {
 		t.Fatalf("awf upgrade = %v\n%s; want below-floor refusal", err, output)
 	}
 	assertVersionFixtureUnchanged(t, root, before)
@@ -138,10 +139,12 @@ func TestSchema41RefusesBeforeEffortOrUpgrade(t *testing.T) {
 
 func TestCheckStagedRejectsInitializedVersionMutation(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
-	gitfixture.Stage(t, repo, stagedHeadFiles())
+	head := stagedHeadFiles()
+	head[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.44.0", SchemaVersion: 50, Files: map[string]manifest.Entry{"prior": {}}})
+	gitfixture.Stage(t, repo, head)
 	gitfixture.Commit(t, repo, "head", nil)
 	gitfixture.Stage(t, repo, map[string]string{
-		".awf/awf.lock": lockJSON(t, &manifest.Lock{AWFVersion: "0.18.0", SchemaVersion: 46, InitializedWithVersion: "0.18.0", Files: map[string]manifest.Entry{"prior": {}}}),
+		".awf/awf.lock": lockJSON(t, &manifest.Lock{AWFVersion: "0.44.0", SchemaVersion: 50, InitializedWithVersion: "0.44.0", Files: map[string]manifest.Entry{"prior": {}}}),
 	})
 	p := openStaged(t, repo.Root())
 	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "initializedWithVersion") {

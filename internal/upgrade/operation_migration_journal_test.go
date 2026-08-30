@@ -19,6 +19,7 @@ import (
 func TestRunCommitsPlannedMigrationBeforeOrdinarySyncWithLockLast(t *testing.T) {
 	root := t.TempDir()
 	operationLock(t, root)
+	setOperationLockSchema(t, root, 49)
 	const path = ".awf/future.yaml"
 	const removedPath = ".awf/retired.yaml"
 	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(removedPath)), []byte("retired\n"), 0o640); err != nil {
@@ -31,13 +32,13 @@ func TestRunCommitsPlannedMigrationBeforeOrdinarySyncWithLockLast(t *testing.T) 
 			if loadErr != nil {
 				t.Fatal(loadErr)
 			}
-			sawCurrentLock = lock.SchemaVersion == 47
+			sawCurrentLock = lock.SchemaVersion == 50
 			return presentation.Mutation{Status: "synced"}, nil
 		},
 		func(context.Context, string) error { return nil },
 		func(string) (bool, error) { return true, nil },
-		func() (int, int) { return 46, 47 },
-		func(string) (string, int, error) { return "gate", 46, nil },
+		func() (int, int) { return 49, 50 },
+		func(string) (string, int, error) { return "gate", 49, nil },
 		func(context.Context, string) (MigrationResult, error) {
 			return MigrationResult{Planned: []string{"future"}, Mutations: []FileMutation{
 				{Path: path, Content: []byte("future\n"), Mode: 0o600},
@@ -79,7 +80,7 @@ func TestCommitMigrationPhysicallyAppliesLockLast(t *testing.T) {
 		paths = append(paths, path)
 		return apply(root, path, image)
 	}
-	_, err = commitMigrationWith(root, lock, 47, []FileMutation{
+	_, err = commitMigrationWith(root, lock, 50, []FileMutation{
 		{Path: ".awf/z-last.yaml", Content: []byte("z\n"), Mode: 0o600},
 		{Path: ".awf/a-first.yaml", Content: []byte("a\n"), Mode: 0o600},
 	}, operation)
@@ -111,11 +112,11 @@ func TestCommitMigrationRejectsInvalidPlansBeforeMutation(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := commitMigration(root, lock, 47, tc.mutations); err == nil || !strings.Contains(err.Error(), tc.want) {
+			if _, err := commitMigration(root, lock, 50, tc.mutations); err == nil || !strings.Contains(err.Error(), tc.want) {
 				t.Fatalf("commitMigration error = %v, want %q", err, tc.want)
 			}
 			got, err := manifest.Load(config.LockPath(root))
-			if err != nil || got.SchemaVersion != 46 {
+			if err != nil || got.SchemaVersion != 50 {
 				t.Fatalf("lock changed after rejected plan: schema=%v err=%v", got.SchemaVersion, err)
 			}
 		})
@@ -134,7 +135,7 @@ func TestCommitMigrationPreservesPlanningReadFailures(t *testing.T) {
 		if err := os.Symlink("loop", path); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := commitMigration(root, lock, 47, []FileMutation{{Path: ".awf/loop", Mode: 0o600}}); !errors.Is(err, syscall.ELOOP) {
+		if _, err := commitMigration(root, lock, 50, []FileMutation{{Path: ".awf/loop", Mode: 0o600}}); !errors.Is(err, syscall.ELOOP) {
 			t.Fatalf("mutation read error = %v", err)
 		}
 	})
@@ -152,7 +153,7 @@ func TestCommitMigrationPreservesPlanningReadFailures(t *testing.T) {
 		if err := os.Symlink("awf.lock", lockPath); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := commitMigration(root, lock, 47, nil); !errors.Is(err, syscall.ELOOP) {
+		if _, err := commitMigration(root, lock, 50, nil); !errors.Is(err, syscall.ELOOP) {
 			t.Fatalf("lock read error = %v", err)
 		}
 	})
@@ -173,7 +174,7 @@ func TestCommitMigrationRefusesSymlinkAncestorEscape(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, ".awf", "escape")); err != nil {
 		t.Skipf("symlink unsupported: %v", err)
 	}
-	if _, err := commitMigration(root, lock, 47, []FileMutation{{Path: ".awf/escape/victim", Content: []byte("changed\n"), Mode: 0o600}}); err == nil {
+	if _, err := commitMigration(root, lock, 50, []FileMutation{{Path: ".awf/escape/victim", Content: []byte("changed\n"), Mode: 0o600}}); err == nil {
 		t.Fatal("journal planning accepted a symlink-ancestor escape")
 	}
 	contents, readErr := os.ReadFile(victim)
@@ -204,7 +205,7 @@ func TestCommitMigrationRollsBackAppliedFilesBeforeLock(t *testing.T) {
 		}
 		return applyImage(root, path, image)
 	}
-	if _, err := commitMigrationWith(root, lock, 47, mutations, operation); err == nil || !strings.Contains(err.Error(), "apply .awf/second") {
+	if _, err := commitMigrationWith(root, lock, 50, mutations, operation); err == nil || !strings.Contains(err.Error(), "apply .awf/second") {
 		t.Fatalf("commitMigration error = %v, want apply failure", err)
 	}
 	for _, name := range []string{"first", "second"} {
@@ -216,7 +217,7 @@ func TestCommitMigrationRollsBackAppliedFilesBeforeLock(t *testing.T) {
 		t.Fatalf("journal after complete rollback: found=%t err=%v", found, err)
 	}
 	got, err := manifest.Load(config.LockPath(root))
-	if err != nil || got.SchemaVersion != 46 {
+	if err != nil || got.SchemaVersion != 50 {
 		t.Fatalf("lock after rollback: schema=%v err=%v", got.SchemaVersion, err)
 	}
 }
@@ -224,8 +225,8 @@ func TestCommitMigrationRollsBackAppliedFilesBeforeLock(t *testing.T) {
 func TestCommitMigrationRejectsInvalidFinalAuthority(t *testing.T) {
 	root := t.TempDir()
 	operationLock(t, root)
-	lock := &manifest.Lock{AWFVersion: "0.39.2", SchemaVersion: 46, Files: map[string]manifest.Entry{}, InitializedWithVersion: "bad"}
-	if _, err := commitMigration(root, lock, 47, nil); err == nil || !strings.Contains(err.Error(), "initializedWithVersion") {
+	lock := &manifest.Lock{AWFVersion: "0.39.2", SchemaVersion: 50, Files: map[string]manifest.Entry{}, InitializedWithVersion: "bad"}
+	if _, err := commitMigration(root, lock, 50, nil); err == nil || !strings.Contains(err.Error(), "initializedWithVersion") {
 		t.Fatalf("invalid final authority error = %v", err)
 	}
 }
@@ -234,8 +235,8 @@ func TestRunWrapsRejectedMigrationPlanAsJournalFailure(t *testing.T) {
 	root := t.TempDir()
 	operationLock(t, root)
 	_, err := Run(context.Background(), root, nil, nil, func(string) (bool, error) { return true, nil },
-		func() (int, int) { return 46, 47 },
-		func(string) (string, int, error) { return "gate", 46, nil },
+		func() (int, int) { return 50, 50 },
+		func(string) (string, int, error) { return "gate", 50, nil },
 		func(context.Context, string) (MigrationResult, error) {
 			return MigrationResult{Planned: []string{"future"}, Mutations: []FileMutation{{Path: LockRel(), Mode: 0o600}}}, nil
 		},
@@ -265,7 +266,7 @@ func TestCommitMigrationPreservesInjectedPreimageFailures(t *testing.T) {
 				}
 				return image(root, path)
 			}
-			if _, err := commitMigrationWith(root, lock, 47, []FileMutation{{Path: ".awf/future", Content: []byte("future"), Mode: 0o600}}, operation); !errors.Is(err, failure) {
+			if _, err := commitMigrationWith(root, lock, 50, []FileMutation{{Path: ".awf/future", Content: []byte("future"), Mode: 0o600}}, operation); !errors.Is(err, failure) {
 				t.Fatalf("error = %v, want %v", err, failure)
 			}
 			if found, err := JournalPresent(root); err != nil || found {

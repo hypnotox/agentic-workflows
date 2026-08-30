@@ -105,17 +105,11 @@ type Migration struct {
 }
 
 // LiveSchemaFloor is the oldest source generation this binary can operate on.
-const LiveSchemaFloor = 46
+const LiveSchemaFloor = 50
 
-// registry intentionally begins at the floor. The no-op floor entry is the one
-// explicit seam where a later supported schema migration is appended.
-var registry = []Migration{
-	{To: LiveSchemaFloor, Name: "supported-schema-46"},
-	{To: 47, Name: retireRelevanceMetadataName, Build: retireRelevanceMetadata},
-	{To: 48, Name: retireClaimProvenanceMetadataName, Build: retireClaimProvenanceMetadata},
-	{To: workflowConfigGeneration, Name: retireWorkflowConfigName, Build: retireWorkflowConfig},
-	{To: pitfallRelationsGeneration, Name: retirePitfallRelationsName, Build: retirePitfallRelations},
-}
+// registry intentionally contains only the current live generation. The no-op
+// floor entry is the explicit seam where a later supported migration is appended.
+var registry = []Migration{{To: LiveSchemaFloor, Name: "supported-schema-50"}}
 
 func Current() int                { return registry[len(registry)-1].To }
 func LiveSchemaRange() (int, int) { return LiveSchemaFloor, Current() }

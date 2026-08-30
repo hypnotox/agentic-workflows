@@ -21,7 +21,7 @@ func operationLock(t *testing.T, root string) string {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := (&manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 46, Files: map[string]manifest.Entry{"prior": {}}}).Save(path); err != nil {
+	if err := (&manifest.Lock{AWFVersion: "0.19.0", SchemaVersion: 50, Files: map[string]manifest.Entry{"prior": {}}}).Save(path); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(config.ConfigPath(root), []byte("prefix: test\nintegrationBranch: main\n"), 0o644); err != nil {
@@ -42,7 +42,7 @@ func setOperationLockSchema(t *testing.T, root string, schema int) {
 	}
 }
 
-func testLiveSchemaRange() (int, int) { return 46, 46 }
+func testLiveSchemaRange() (int, int) { return 50, 50 }
 
 func runOperation(t *testing.T, root string, sync Sync, gate Gate, migration Migration, schema SchemaGate) (OperationOutcome, error) {
 	t.Helper()
@@ -117,7 +117,7 @@ func TestRunSequencingAndCurrentSchemaPresentation(t *testing.T) {
 			calls = append(calls, "migrate")
 			return MigrationResult{Planned: []string{"first"}, Changes: []string{"changed config"}}, nil
 		},
-		func(string) (string, int, error) { calls = append(calls, "schema"); return "ok", 14, nil },
+		func(string) (string, int, error) { calls = append(calls, "schema"); return "ok", 50, nil },
 	)
 	if err != nil {
 		t.Fatal(err)
@@ -139,7 +139,7 @@ func TestRunSequencingAndCurrentSchemaPresentation(t *testing.T) {
 func TestRunPropagatesAuthorityAndSchemaFailures(t *testing.T) {
 	root := t.TempDir()
 	path := operationLock(t, root)
-	testsupport.WriteFile(t, path, `{"awfVersion":"0.19.0","schemaVersion":46,"initializedWithVersion":"bad","files":{"prior":{}}}`)
+	testsupport.WriteFile(t, path, `{"awfVersion":"0.19.0","schemaVersion":50,"initializedWithVersion":"bad","files":{"prior":{}}}`)
 	_, err := Run(testContext(t), root, nil, nil, func(string) (bool, error) { return true, nil }, testLiveSchemaRange, nil, nil, nil)
 	if err == nil || !strings.Contains(err.Error(), "invalid lock authority") {
 		t.Fatalf("authority error = %v", err)
@@ -155,11 +155,11 @@ func TestRunPropagatesAuthorityAndSchemaFailures(t *testing.T) {
 func TestRunRejectsBelowFloorBeforeAuthorityValidation(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteFile(t, config.ConfigPath(root), "prefix: test\n")
-	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}`)
+	testsupport.WriteFile(t, config.LockPath(root), `{"awfVersion":"0.39.2","schemaVersion":49,"files":{},"bridgeAttestation":{"version":1,"adrFormatV1From":1,"legacyADRGaps":null}}`)
 
 	called := false
 	_, err := Run(testContext(t), root, nil, nil, func(string) (bool, error) { return true, nil }, testLiveSchemaRange,
-		func(string) (string, int, error) { called = true; return "ok", 45, nil },
+		func(string) (string, int, error) { called = true; return "ok", 49, nil },
 		func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
 	if !errors.Is(err, manifest.ErrUnsupportedLiveSource) || called {
 		t.Fatalf("Run() error = %v, dispatch = %t, want schema-first refusal", err, called)
@@ -175,9 +175,9 @@ func TestRunRefusesUnsupportedLiveAuthorityBeforeDispatch(t *testing.T) {
 		schema     int
 		rangeFn    LiveSchemaRange
 	}{
-		{"below floor", "below live floor 46", 45, testLiveSchemaRange},
-		{"ahead of range", "ahead of live schema 46", 47, testLiveSchemaRange},
-		{"caller supplied bounds", "below live floor 47", 46, func() (int, int) { return 47, 48 }},
+		{"below floor", "below live floor 50", 49, testLiveSchemaRange},
+		{"ahead of range", "ahead of live schema 50", 51, testLiveSchemaRange},
+		{"caller supplied bounds", "below live floor 51", 50, func() (int, int) { return 51, 51 }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -225,7 +225,7 @@ func TestRunRefusesPartialCurrentAuthorityBeforeDispatch(t *testing.T) {
 			tc.writeAuthority(t, root)
 			called := false
 			_, err := Run(testContext(t), root, nil, nil, func(string) (bool, error) { return true, nil }, testLiveSchemaRange,
-				func(string) (string, int, error) { called = true; return "ok", 46, nil },
+				func(string) (string, int, error) { called = true; return "ok", 50, nil },
 				func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
 			var partial *manifest.PartialAuthorityError
 			if !errors.As(err, &partial) || *partial != tc.want || called {
@@ -265,7 +265,7 @@ func TestRunPreservesCurrentAuthorityStatFailuresBeforeDispatch(t *testing.T) {
 				},
 				func(context.Context, string) error { called = true; return nil },
 				func(string) (bool, error) { return true, nil }, testLiveSchemaRange,
-				func(string) (string, int, error) { called = true; return "ok", 46, nil },
+				func(string) (string, int, error) { called = true; return "ok", 50, nil },
 				func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
 			if !errors.Is(err, syscall.ELOOP) || called {
 				t.Fatalf("Run() error = %v, dispatch = %t, want config stat failure before dispatch", err, called)
@@ -291,7 +291,7 @@ func TestRunPreservesInitialLockStatFailure(t *testing.T) {
 		},
 		func(context.Context, string) error { called = true; return nil },
 		func(string) (bool, error) { return true, nil }, testLiveSchemaRange,
-		func(string) (string, int, error) { called = true; return "ok", 46, nil },
+		func(string) (string, int, error) { called = true; return "ok", 50, nil },
 		func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
 	if !errors.Is(err, syscall.ELOOP) || called {
 		t.Fatalf("Run() error = %v, dispatch = %t, want initial lock stat failure", err, called)
@@ -342,7 +342,7 @@ func TestRunRevalidatesCurrentAuthorityAfterSchemaClassification(t *testing.T) {
 			name: "lock replaced",
 			mutate: func(t *testing.T, lockPath string) {
 				t.Helper()
-				testsupport.WriteFile(t, lockPath, `{"awfVersion":"0.39.2","schemaVersion":45,"files":{},"bridgeAttestation":{"version":1}}`)
+				testsupport.WriteFile(t, lockPath, `{"awfVersion":"0.39.2","schemaVersion":49,"files":{},"bridgeAttestation":{"version":1}}`)
 			},
 			check: func(t *testing.T, err error) {
 				t.Helper()
@@ -365,7 +365,7 @@ func TestRunRevalidatesCurrentAuthorityAfterSchemaClassification(t *testing.T) {
 				func(string) (bool, error) { return true, nil }, testLiveSchemaRange,
 				func(string) (string, int, error) {
 					tc.mutate(t, lockPath)
-					return "ok", 46, nil
+					return "ok", 50, nil
 				},
 				func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
 			tc.check(t, err)
@@ -394,7 +394,7 @@ func TestRunRevalidatesConfigAfterSchemaClassification(t *testing.T) {
 			if err := os.Symlink("config.yaml", config.ConfigPath(root)); err != nil {
 				t.Fatal(err)
 			}
-			return "ok", 46, nil
+			return "ok", 50, nil
 		},
 		func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
 	if !errors.Is(err, syscall.ELOOP) || called {

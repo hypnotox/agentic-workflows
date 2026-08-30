@@ -18,7 +18,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/upgrade"
@@ -354,8 +353,8 @@ func TestValidJournalRecoveryRollsBackInterrupted(t *testing.T) {
 
 func TestRunUpgradeLegacyAdopterRefusesBelowFloorWithoutMutation(t *testing.T) {
 	ctx := testContext(t)
-	// A legacy single-file project migrates to the tree layout, covering the
-	// applied-migrations loop and the terminal sync.
+	// A retired single-file project is recognized only to produce the typed,
+	// non-mutating unsupported-layout refusal.
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	claude := filepath.Join(root, ".claude")
@@ -379,9 +378,8 @@ func TestRunUpgradeLegacyAdopterRefusesBelowFloorWithoutMutation(t *testing.T) {
 	assertUpgradeFixtureUnchanged(t, root, before)
 }
 
-// A schema-7 config the ADR-0081 closure validation refuses is repaired by
-// awf upgrade: close-enabled-set closes the enabled set, then the terminal
-// sync opens it cleanly.
+// A schema-7 current-layout project is below the live floor and refuses before
+// upgrade can mutate its authority or run terminal synchronization.
 func TestRunUpgradeRefusesBelowFloorWithoutMutation(t *testing.T) {
 	ctx := testContext(t)
 	repo := gitfixture.InitRepo(t)
@@ -453,112 +451,99 @@ func TestRunUpgradeRendersSuccessfulFinalJournalMutation(t *testing.T) {
 	}
 }
 
-func TestSchema47RelevanceMigrationRecoversAndConverges(t *testing.T) {
-	root := scaffoldProject(t)
-	configPath := config.ConfigPath(root)
-	legacyConfig, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	legacyConfig = append(legacyConfig, []byte("tags: {legacy: retained-only-for-migration}\ncontextIgnore: [docs/**]\n")...)
-	if err := os.WriteFile(configPath, legacyConfig, 0o644); err != nil {
-		t.Fatal(err)
-	}
-	pitfallPath := filepath.Join(root, filepath.FromSlash(pitfall.SourceDir+"/legacy-relevance.md"))
-	legacyPitfall := []byte("---\ntitle: Legacy relevance\ntags: [legacy]\n---\nbody\n")
-	testsupport.WriteFile(t, pitfallPath, string(legacyPitfall))
-
-	lock, err := manifest.Load(config.LockPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	lock.SchemaVersion = migrate.LiveSchemaFloor
-	if err := lock.Save(config.LockPath(root)); err != nil {
-		t.Fatal(err)
-	}
-
-	migration, err := upgradeMigration(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(migration.Mutations) != 2 || len(migration.Planned) != 4 {
-		t.Fatalf("migration = %#v", migration)
-	}
-	operations := make([]upgrade.Operation, 0, len(migration.Mutations)+1)
-	for _, mutation := range migration.Mutations {
-		prior, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(mutation.Path)))
+func TestSchema47JournalRecoveryRestoresLegacyAuthorityThenRefuses(t *testing.T) {
+	// The journal format remains able to recover the last retired source shape,
+	// even though normal operations no longer migrate it. Recovery must restore
+	// its exact bytes before the normal live-floor admission refuses schema 47.
+	writeJournal := func(t *testing.T, root, phase string, priorConfig, finalConfig, priorLock, finalLock []byte) {
+		t.Helper()
+		journal := upgrade.Journal{
+			Version:         upgrade.JournalVersion,
+			Phase:           phase,
+			FinalLockSHA256: fmt.Sprintf("%x", sha256.Sum256(finalLock)),
+			Operations: []upgrade.Operation{
+				{Path: ".awf/config.yaml", Prior: upgrade.Image{Present: true, Mode: 0o644, Content: priorConfig}, Replacement: upgrade.Image{Present: true, Mode: 0o644, Content: finalConfig}},
+				{Path: upgrade.LockRel(), Prior: upgrade.Image{Present: true, Mode: 0o644, Content: priorLock}, Replacement: upgrade.Image{Present: true, Mode: 0o644, Content: finalLock}},
+			},
+		}
+		encoded, err := json.MarshalIndent(journal, "", "  ")
 		if err != nil {
 			t.Fatal(err)
 		}
-		info, err := os.Stat(filepath.Join(root, filepath.FromSlash(mutation.Path)))
+		if err := os.WriteFile(upgradeJournalPath(root), append(encoded, '\n'), 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	legacy := func(t *testing.T) (legacyConfig, finalConfig, legacyLock, finalLock []byte) {
+		t.Helper()
+		// This is a real schema-47-to-50 image shape from v0.44: schema 47 still
+		// allowed the workflow profile and retired empty workflow variable, while
+		// schema 50 removes both and retains the rest of the current config.
+		legacyConfig = []byte("prefix: example\nprofile: full\nintegrationBranch: main\nvars:\n  activeMdRegenCmd: \"\"\n")
+		finalConfig = []byte("prefix: example\nintegrationBranch: main\nvars: {}\n")
+		var err error
+		legacyLock, err = (&manifest.Lock{AWFVersion: "0.40.0", SchemaVersion: 47, Files: map[string]manifest.Entry{"prior": {}}}).Marshal()
 		if err != nil {
 			t.Fatal(err)
 		}
-		operations = append(operations, upgrade.Operation{Path: mutation.Path, Prior: upgrade.Image{Present: true, Mode: uint32(info.Mode().Perm()), Content: prior}, Replacement: upgrade.Image{Present: true, Mode: uint32(mutation.Mode.Perm()), Content: mutation.Content}})
-	}
-	lockBytes, err := os.ReadFile(config.LockPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	lockInfo, err := os.Stat(config.LockPath(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	finalLock := lock.Clone()
-	finalLock.SchemaVersion = migrate.Current()
-	finalBytes, err := finalLock.Marshal()
-	if err != nil {
-		t.Fatal(err)
-	}
-	operations = append(operations, upgrade.Operation{Path: upgrade.LockRel(), Prior: upgrade.Image{Present: true, Mode: uint32(lockInfo.Mode().Perm()), Content: lockBytes}, Replacement: upgrade.Image{Present: true, Mode: 0o644, Content: finalBytes}})
-	journal := upgrade.Journal{Version: upgrade.JournalVersion, Phase: "applying", FinalLockSHA256: fmt.Sprintf("%x", sha256.Sum256(finalBytes)), Operations: operations}
-	journalBytes, err := json.MarshalIndent(journal, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(upgradeJournalPath(root), append(journalBytes, '\n'), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	// The interrupted transaction applied one migration image but not its lock.
-	if err := os.WriteFile(filepath.Join(root, filepath.FromSlash(migration.Mutations[0].Path)), migration.Mutations[0].Content, migration.Mutations[0].Mode); err != nil {
-		t.Fatal(err)
-	}
-	if err := runRecover(testContext(t), root, io.Discard); err != nil {
-		t.Fatalf("recover interrupted relevance migration: %v", err)
-	}
-	if journalPresence(t, root) {
-		t.Fatal("journal remained after relevance migration recovery")
-	}
-	if restored, err := os.ReadFile(configPath); err != nil || !bytes.Equal(restored, legacyConfig) {
-		t.Fatalf("recovery config = %q, err=%v", restored, err)
+		finalLock, err = (&manifest.Lock{AWFVersion: "0.44.0", SchemaVersion: 50, Files: map[string]manifest.Entry{"prior": {}}}).Marshal()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return legacyConfig, finalConfig, legacyLock, finalLock
 	}
 
-	if err := runUpgrade(testContext(t), root, io.Discard); err != nil {
-		t.Fatalf("upgrade relevance migration: %v", err)
-	}
-	migratedConfig, err := os.ReadFile(configPath)
-	if err != nil || bytes.Contains(migratedConfig, []byte("tags:")) || bytes.Contains(migratedConfig, []byte("contextIgnore:")) {
-		t.Fatalf("migrated config = %q, err=%v", migratedConfig, err)
-	}
-	if _, err := config.Load(filepath.Join(root, ".awf")); err != nil {
-		t.Fatalf("strict migrated config decode: %v", err)
-	}
-	migratedPitfall, err := os.ReadFile(pitfallPath)
-	if err != nil || bytes.Contains(migratedPitfall, []byte("tags:")) {
-		t.Fatalf("migrated pitfall = %q, err=%v", migratedPitfall, err)
-	}
-	if _, err := pitfall.Load([]pitfall.SourceFile{{Path: pitfall.SourceDir + "/legacy-relevance.md", Regular: true, Bytes: migratedPitfall}}); err != nil {
-		t.Fatalf("strict migrated pitfall decode: %v", err)
-	}
-	lock, err = manifest.Load(config.LockPath(root))
-	if err != nil || lock.SchemaVersion != migrate.Current() {
-		t.Fatalf("migrated lock schema = %d, err=%v", lock.SchemaVersion, err)
-	}
-	converged := snapshotUpgradeFixture(t, root)
-	if err := runUpgrade(testContext(t), root, io.Discard); err != nil {
-		t.Fatalf("converged upgrade: %v", err)
-	}
-	assertUpgradeFixtureUnchanged(t, root, converged)
+	t.Run("pre-commit restores schema-47 bytes then normal upgrade refuses", func(t *testing.T) {
+		root := scaffoldProject(t)
+		legacyConfig, finalConfig, legacyLock, finalLock := legacy(t)
+		testsupport.WriteFile(t, config.ConfigPath(root), string(finalConfig)) // migration image landed
+		testsupport.WriteFile(t, config.LockPath(root), string(legacyLock))    // lock did not
+		writeJournal(t, root, "applying", legacyConfig, finalConfig, legacyLock, finalLock)
+
+		if err := runRecover(testContext(t), root, io.Discard); err != nil {
+			t.Fatalf("recover pre-commit schema-47 journal: %v", err)
+		}
+		if got, err := os.ReadFile(config.ConfigPath(root)); err != nil || !bytes.Equal(got, legacyConfig) {
+			t.Fatalf("restored config = %q, err=%v; want exact schema-47 bytes", got, err)
+		}
+		if got, err := os.ReadFile(config.LockPath(root)); err != nil || !bytes.Equal(got, legacyLock) {
+			t.Fatalf("restored lock = %q, err=%v; want exact schema-47 bytes", got, err)
+		}
+		if journalPresence(t, root) {
+			t.Fatal("pre-commit journal residue after recovery")
+		}
+		if err := runUpgrade(testContext(t), root, io.Discard); !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
+			t.Fatalf("normal operation after schema-47 recovery = %v, want below-floor refusal", err)
+		}
+	})
+
+	t.Run("post-commit keeps schema-50 authority and removes residue", func(t *testing.T) {
+		root := scaffoldProject(t)
+		legacyConfig, finalConfig, legacyLock, finalLock := legacy(t)
+		testsupport.WriteFile(t, config.ConfigPath(root), string(finalConfig))
+		testsupport.WriteFile(t, config.LockPath(root), string(finalLock))
+		writeJournal(t, root, "lock-committed", legacyConfig, finalConfig, legacyLock, finalLock)
+
+		if err := runRecover(testContext(t), root, io.Discard); err != nil {
+			t.Fatalf("recover post-commit schema-50 journal: %v", err)
+		}
+		lock, err := manifest.Load(config.LockPath(root))
+		if err != nil {
+			t.Fatalf("load post-commit lock: %v", err)
+		}
+		if lock.SchemaVersion != 50 {
+			t.Fatalf("post-commit lock schema = %d, want 50", lock.SchemaVersion)
+		}
+		if got, err := os.ReadFile(config.ConfigPath(root)); err != nil || !bytes.Equal(got, finalConfig) {
+			t.Fatalf("post-commit config = %q, err=%v; want unchanged schema-50 bytes", got, err)
+		}
+		if got, err := os.ReadFile(config.LockPath(root)); err != nil || !bytes.Equal(got, finalLock) {
+			t.Fatalf("post-commit lock = %q, err=%v; want unchanged schema-50 bytes", got, err)
+		}
+		if journalPresence(t, root) {
+			t.Fatal("post-commit journal residue after recovery")
+		}
+	})
 }
 
 func TestRunUpgradeRetiredLayoutDoesNotDecodeMalformedConfig(t *testing.T) {

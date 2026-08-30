@@ -98,7 +98,7 @@ func TestPrepareStagedOutputSelectedUniverseErrors(t *testing.T) {
 			if tc.lock != "" {
 				gitfixture.Stage(t, fixture, map[string]string{".awf/awf.lock": tc.lock})
 			} else if tc.config != "" {
-				gitfixture.Stage(t, fixture, map[string]string{".awf/awf.lock": `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`})
+				gitfixture.Stage(t, fixture, map[string]string{".awf/awf.lock": `{"awfVersion":"0.44.0","schemaVersion":50,"files":{"prior":{}}}`})
 			}
 			if tc.unmerged {
 				gitfixture.StageUnmerged(t, fixture, "conflict")
@@ -117,7 +117,7 @@ func TestPrepareStagedOutputSelectedUniverseErrors(t *testing.T) {
 	if err := os.Symlink("elsewhere", path); err != nil {
 		t.Fatal(err)
 	}
-	writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)
+	writeContextFile(t, fixture.Root(), ".awf/awf.lock", `{"awfVersion":"0.44.0","schemaVersion":50,"files":{"prior":{}}}`)
 	gitfixture.Add(t, fixture, ".awf/config.yaml", ".awf/awf.lock")
 	if _, err := PrepareStagedOutput(ctx, fixture.Root()); err == nil || !strings.Contains(err.Error(), "not a scannable file") {
 		t.Fatalf("unscannable config error = %v", err)
@@ -194,7 +194,7 @@ func TestCoordinatorLockTransitionAndCoreConfig(t *testing.T) {
 	}
 	withConfig := ownerTree(t,
 		snapshot.File{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: x\nintegrationBranch: main\n")},
-		snapshot.File{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`)},
+		snapshot.File{Path: ".awf/awf.lock", Mode: snapshot.Regular, Bytes: []byte(`{"awfVersion":"0.44.0","schemaVersion":50,"files":{"prior":{}}}`)},
 	)
 	if err := validateLockTransition(withConfig, withConfig, nil, &manifest.Lock{}); err == nil {
 		t.Fatal("pre-adoption config accepted")
@@ -202,7 +202,7 @@ func TestCoordinatorLockTransitionAndCoreConfig(t *testing.T) {
 	if err := validateLockTransition(empty, afterWithConfig, &manifest.Lock{InitializedWithVersion: "one"}, &manifest.Lock{InitializedWithVersion: "two"}); err == nil {
 		t.Fatal("initialized version mutation accepted")
 	}
-	loaded, cfg, err := loadTreeCurrentState(".", withConfig, &manifest.Lock{AWFVersion: "0.39.2", SchemaVersion: 46})
+	loaded, cfg, err := loadTreeCurrentState(".", withConfig, &manifest.Lock{AWFVersion: "0.44.0", SchemaVersion: 50})
 	if err != nil || cfg == nil || len(loaded.Topics.All()) != 0 {
 		t.Fatalf("current-state config load = %#v, %#v, %v", loaded, cfg, err)
 	}
@@ -223,7 +223,7 @@ func TestCurrentStateCoordinationIgnoresHistoricalDecisions(t *testing.T) {
 	const topicPart = "Intro.\n\n## Claims\n\n### `invariant: covered`\nCoverage remains active.\nBacking: test\n"
 	files := map[string]string{
 		".awf/config.yaml":                                  configBody,
-		".awf/awf.lock":                                     `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`,
+		".awf/awf.lock":                                     `{"awfVersion":"0.44.0","schemaVersion":50,"files":{"prior":{}}}`,
 		".awf/domains/alpha.yaml":                           "paths: [\"internal/**\"]\n",
 		".awf/topics/metadata/alpha/coverage.yaml":          "title: Coverage\nsummary: Active coverage.\npaths: [\"internal/**\"]\n",
 		".awf/topics/parts/alpha/coverage/current-state.md": topicPart,

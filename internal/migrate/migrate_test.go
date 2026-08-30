@@ -9,23 +9,24 @@ import (
 	"os"
 	"path/filepath"
 	"slices"
+	"strconv"
 	"strings"
 	"syscall"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func writeLock(t *testing.T, root string, schema int) {
 	t.Helper()
 	testsupport.WriteFile(t, config.ConfigPath(root), "prefix: test\n")
-	if err := (&manifest.Lock{AWFVersion: "0.39.2", SchemaVersion: schema, Files: map[string]manifest.Entry{}}).Save(config.LockPath(root)); err != nil {
+	if err := (&manifest.Lock{AWFVersion: "0.45.0", SchemaVersion: schema, Files: map[string]manifest.Entry{}}).Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
 }
+
 func snapshot(t *testing.T, root string) map[string][]byte {
 	t.Helper()
 	got := map[string][]byte{}
@@ -50,6 +51,7 @@ func snapshot(t *testing.T, root string) map[string][]byte {
 	}
 	return got
 }
+
 func assertSnapshot(t *testing.T, root string, want map[string][]byte) {
 	t.Helper()
 	got := snapshot(t, root)
@@ -63,41 +65,76 @@ func assertSnapshot(t *testing.T, root string, want map[string][]byte) {
 	}
 }
 
-// invariant: config/migrations-and-locks:upgrade-gate (TestUnsupportedSourcesRefuseWithoutMutation)
-func TestUnsupportedSourcesRefuseWithoutMutation(t *testing.T) {
-	cases := []struct {
-		name, path string
-		schema     int
-	}{
-		{"legacy single file", ".claude/awf.yaml", 0}, {"retired tree", ".claude/awf/config.yaml", 0},
-		{"schema below floor", ".awf/config.yaml", LiveSchemaFloor - 1},
-	}
-	for _, tc := range cases {
-		t.Run(tc.name, func(t *testing.T) {
+// invariant: config/migrations-and-locks:upgrade-gate (TestBelowSchema50RefusesBeforePlanningOrMutation)
+func TestBelowSchema50RefusesBeforePlanningOrMutation(t *testing.T) {
+	original := registry
+	called := false
+	registry = append(registry, Migration{To: 51, Name: "synthetic future", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) {
+		called = true
+		return []FileMutation{{Path: ".awf/future.yaml", Content: []byte("future\n"), Mode: 0o600}}, nil
+	}})
+	t.Cleanup(func() { registry = original })
+
+	for _, schema := range []int{0, 49} {
+		t.Run("schema-"+strconv.Itoa(schema), func(t *testing.T) {
 			root := t.TempDir()
-			if tc.schema == 0 {
-				testsupport.WriteFile(t, filepath.Join(root, tc.path), "malformed: [")
-			} else {
-				writeLock(t, root, tc.schema)
-			}
+			writeLock(t, root, schema)
 			before := snapshot(t, root)
-			_, _, _, err := Build(context.Background(), root)
+			applied, changes, mutations, err := Build(context.Background(), root)
 			if !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
-				t.Fatalf("Upgrade error=%v", err)
+				t.Fatalf("Build() error = %v, want typed unsupported-source refusal", err)
+			}
+			if called || len(applied) != 0 || len(changes) != 0 || len(mutations) != 0 {
+				t.Fatalf("refusal planned migration: called=%t applied=%v changes=%v mutations=%v", called, applied, changes, mutations)
 			}
 			assertSnapshot(t, root, before)
 		})
 	}
 }
 
-// invariant: config/migrations-and-locks:migration-ordering (TestSchema47MigrationAndFutureOrdering)
-func TestSchema47MigrationAndFutureOrdering(t *testing.T) {
+func TestSchema50IsCurrentWithoutAppliedMigrationOrMutation(t *testing.T) {
 	root := t.TempDir()
-	writeLock(t, root, LiveSchemaFloor)
-	applied, _, _, err := Build(context.Background(), root)
-	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName, retirePitfallRelationsName}) {
-		t.Fatalf("schema 46: applied=%v err=%v", applied, err)
+	writeLock(t, root, 50)
+	before := snapshot(t, root)
+	applied, changes, mutations, err := Build(context.Background(), root)
+	if err != nil || len(applied) != 0 || len(changes) != 0 || len(mutations) != 0 {
+		t.Fatalf("Build() = applied=%v changes=%v mutations=%v err=%v", applied, changes, mutations, err)
 	}
+	assertSnapshot(t, root, before)
+}
+
+func TestAheadSchemasRefuse(t *testing.T) {
+	for _, schema := range []int{51, 99} {
+		t.Run("schema-"+strconv.Itoa(schema), func(t *testing.T) {
+			root := t.TempDir()
+			writeLock(t, root, schema)
+			before := snapshot(t, root)
+			if _, _, _, err := Build(context.Background(), root); !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
+				t.Fatalf("Build() error = %v, want typed unsupported-source refusal", err)
+			}
+			assertSnapshot(t, root, before)
+		})
+	}
+}
+
+func TestRegistryIsOnlyTheSchema50NoOpAndHasNoReachablePre50Migrator(t *testing.T) {
+	if LiveSchemaFloor != 50 || Current() != 50 {
+		t.Fatalf("live schema range = %d..%d, want 50..50", LiveSchemaFloor, Current())
+	}
+	if len(registry) != 1 || registry[0].To != 50 || registry[0].Name != "supported-schema-50" || registry[0].Build != nil {
+		t.Fatalf("registry = %#v, want only schema-50 no-op", registry)
+	}
+	for _, migration := range registry {
+		if migration.To < 50 || migration.Build != nil {
+			t.Fatalf("concrete pre-50 migrator remains reachable: %#v", migration)
+		}
+	}
+}
+
+// invariant: config/migrations-and-locks:migration-ordering (TestFutureMigrationsPlanInOrderWithoutWriting)
+func TestFutureMigrationsPlanInOrderWithoutWriting(t *testing.T) {
+	root := t.TempDir()
+	writeLock(t, root, Current())
 	original := registry
 	var calls []string
 	registry = append(registry,
@@ -111,15 +148,16 @@ func TestSchema47MigrationAndFutureOrdering(t *testing.T) {
 		}},
 	)
 	t.Cleanup(func() { registry = original })
+
 	applied, _, mutations, err := Build(context.Background(), root)
-	if err != nil || !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName, retirePitfallRelationsName, "first future", "second future"}) || !slices.Equal(calls, []string{"first", "second"}) {
-		t.Fatalf("future seam: applied=%v calls=%v err=%v", applied, calls, err)
+	if err != nil || !slices.Equal(applied, []string{"first future", "second future"}) || !slices.Equal(calls, []string{"first", "second"}) {
+		t.Fatalf("Build() applied=%v calls=%v err=%v", applied, calls, err)
 	}
 	if len(mutations) != 2 || mutations[0].Path != ".awf/future.yaml" || mutations[1].Path != ".awf/retired.yaml" || !mutations[1].Remove {
-		t.Fatalf("future mutations = %#v", mutations)
+		t.Fatalf("mutations = %#v", mutations)
 	}
-	if _, statErr := os.Stat(filepath.Join(root, ".awf", "future.yaml")); !errors.Is(statErr, os.ErrNotExist) {
-		t.Fatalf("Build mutated future file: %v", statErr)
+	if _, err := os.Stat(filepath.Join(root, ".awf", "future.yaml")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("Build wrote planned file: %v", err)
 	}
 }
 
@@ -149,6 +187,7 @@ func TestOrderedMigrationStepsReadAndCoalesceTheProposedTree(t *testing.T) {
 		}},
 	)
 	t.Cleanup(func() { registry = original })
+
 	_, _, mutations, err := Build(context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
@@ -156,14 +195,11 @@ func TestOrderedMigrationStepsReadAndCoalesceTheProposedTree(t *testing.T) {
 	if len(mutations) != 1 || mutations[0].Path != ".awf/future.yaml" || string(mutations[0].Content) != "final\n" || mutations[0].Mode != 0o600 {
 		t.Fatalf("coalesced mutations = %#v", mutations)
 	}
-	if _, statErr := os.Stat(filepath.Join(root, ".awf", "future.yaml")); !errors.Is(statErr, os.ErrNotExist) {
-		t.Fatalf("planning mutated project: %v", statErr)
-	}
 }
 
 func TestBuildValidatesPlannedPathsAgainstTheConfinedTree(t *testing.T) {
 	root := t.TempDir()
-	writeLock(t, root, LiveSchemaFloor)
+	writeLock(t, root, Current())
 	outside := t.TempDir()
 	victim := filepath.Join(outside, "victim")
 	if err := os.WriteFile(victim, []byte("outside\n"), 0o640); err != nil {
@@ -173,7 +209,7 @@ func TestBuildValidatesPlannedPathsAgainstTheConfinedTree(t *testing.T) {
 		t.Skipf("symlink unsupported: %v", err)
 	}
 	original := registry
-	registry = append(registry, Migration{To: LiveSchemaFloor + 1, Name: "escaping plan", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) {
+	registry = append(registry, Migration{To: Current() + 1, Name: "escaping plan", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) {
 		return []FileMutation{{Path: ".awf/escape/victim", Content: []byte("changed\n"), Mode: 0o600}}, nil
 	}})
 	t.Cleanup(func() { registry = original })
@@ -188,26 +224,17 @@ func TestBuildValidatesPlannedPathsAgainstTheConfinedTree(t *testing.T) {
 	}
 }
 
-func TestAheadSchemaRefuses(t *testing.T) {
-	root := t.TempDir()
-	writeLock(t, root, Current()+1)
-	_, _, _, err := Build(context.Background(), root)
-	if !errors.Is(err, manifest.ErrUnsupportedLiveSource) {
-		t.Fatalf("error=%v", err)
-	}
-}
-
 func TestSupportedMigrationClassifierAndFailure(t *testing.T) {
-	if got := gateStateFor(LiveSchemaFloor+1, LiveSchemaFloor, []int{LiveSchemaFloor}); got != "ahead" {
+	if got := gateStateFor(51, 50, []int{50}); got != "ahead" {
 		t.Fatalf("ahead state = %q", got)
 	}
-	if got := gateStateFor(LiveSchemaFloor, LiveSchemaFloor, []int{LiveSchemaFloor}); got != "ok" {
+	if got := gateStateFor(50, 50, []int{50}); got != "ok" {
 		t.Fatalf("current state = %q", got)
 	}
-	if got := gateStateFor(LiveSchemaFloor, LiveSchemaFloor+1, []int{LiveSchemaFloor, LiveSchemaFloor + 1}); got != "gate" {
+	if got := gateStateFor(50, 51, []int{50, 51}); got != "gate" {
 		t.Fatalf("migration state = %q", got)
 	}
-	if got := gateStateFor(LiveSchemaFloor, LiveSchemaFloor+1, []int{LiveSchemaFloor}); got != "autobump" {
+	if got := gateStateFor(50, 51, []int{50}); got != "autobump" {
 		t.Fatalf("autobump state = %q", got)
 	}
 
@@ -215,17 +242,13 @@ func TestSupportedMigrationClassifierAndFailure(t *testing.T) {
 	failure := errors.New("future migration failed")
 	registry = append(registry, Migration{To: Current() + 1, Name: "future", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) { return nil, failure }})
 	t.Cleanup(func() { registry = original })
-
-	err := CheckLiveGeneration(LiveSchemaFloor)
-	var required *UpgradeRequiredError
-	if !errors.As(err, &required) || !strings.Contains(required.Error(), "requires migration") {
+	if err := CheckLiveGeneration(50); err == nil || !strings.Contains(err.Error(), "requires migration") {
 		t.Fatalf("CheckLiveGeneration() error = %v, want upgrade requirement", err)
 	}
 	root := t.TempDir()
-	writeLock(t, root, Current()-1)
-	_, _, _, err = Build(context.Background(), root)
-	if !errors.Is(err, failure) || !strings.Contains(err.Error(), `migration "future"`) {
-		t.Fatalf("Upgrade() error = %v, want named migration failure", err)
+	writeLock(t, root, 50)
+	if _, _, _, err := Build(context.Background(), root); !errors.Is(err, failure) || !strings.Contains(err.Error(), `migration "future"`) {
+		t.Fatalf("Build() error = %v, want named migration failure", err)
 	}
 }
 
@@ -238,8 +261,8 @@ func TestBuildRejectsInvalidMigrationRegistry(t *testing.T) {
 		want string
 	}{
 		{"empty", nil, "begin at supported floor"},
-		{"wrong floor", []Migration{{To: LiveSchemaFloor + 1}}, "begin at supported floor"},
-		{"unordered", append(append([]Migration{}, original...), Migration{To: LiveSchemaFloor + 2}, Migration{To: LiveSchemaFloor + 1}), "strictly ascending"},
+		{"wrong floor", []Migration{{To: 51}}, "begin at supported floor"},
+		{"unordered", []Migration{{To: 50}, {To: 52}, {To: 51}}, "strictly ascending"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			registry = tc.set
@@ -250,7 +273,6 @@ func TestBuildRejectsInvalidMigrationRegistry(t *testing.T) {
 	}
 }
 
-// invariant: config/configuration:awf-config-root (TestRetiredConfigLayoutsHavePresenceOnlyProductionConsumers)
 func TestRetiredConfigLayoutsHavePresenceOnlyProductionConsumers(t *testing.T) {
 	allowedCalls := map[string]map[string]bool{
 		"retiredLayout":           {"filepath.Join": true, "os.Stat": true, "errors.Is": true, "fmt.Errorf": true},
@@ -280,8 +302,6 @@ func TestRetiredConfigLayoutsHavePresenceOnlyProductionConsumers(t *testing.T) {
 		})
 		return valid
 	}
-	// This mutation-style specimen proves the census rejects a retired-layout
-	// representation read rather than merely counting its path literal.
 	synthetic, err := parser.ParseFile(token.NewFileSet(), "synthetic.go", `package migrate; func retiredLayout(string) { os.ReadFile(".claude/awf.yaml") }`, 0)
 	if err != nil {
 		t.Fatal(err)
@@ -312,10 +332,7 @@ func TestRetiredConfigLayoutsHavePresenceOnlyProductionConsumers(t *testing.T) {
 					return true
 				}
 				found++
-				if _, ok := allowedCalls[function.Name.Name]; !ok {
-					t.Fatalf("retired config layout interpreted by %s", function.Name.Name)
-				}
-				if !presenceOnly(function) {
+				if _, ok := allowedCalls[function.Name.Name]; !ok || !presenceOnly(function) {
 					t.Fatalf("retired config layout representation interpreted by %s", function.Name.Name)
 				}
 				return true
@@ -327,7 +344,7 @@ func TestRetiredConfigLayoutsHavePresenceOnlyProductionConsumers(t *testing.T) {
 	}
 }
 
-func TestProjectPresentPreservesControlPathStatFailures(t *testing.T) {
+func TestProjectPresentAndGenerationPreserveControlPathStatFailures(t *testing.T) {
 	root := t.TempDir()
 	path := config.ConfigPath(root)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -339,54 +356,7 @@ func TestProjectPresentPreservesControlPathStatFailures(t *testing.T) {
 	if present, err := ProjectPresent(root); present || !errors.Is(err, syscall.ELOOP) {
 		t.Fatalf("ProjectPresent = %t, %v; want false, stat loop", present, err)
 	}
-}
-
-func TestGenerationPreservesControlPathStatFailures(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		path func(string) string
-	}{
-		{"current config", config.ConfigPath},
-		{"retired layout", func(root string) string { return filepath.Join(root, ".claude", "awf.yaml") }},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
-			path := tc.path(root)
-			if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-				t.Fatal(err)
-			}
-			if err := os.Symlink(filepath.Base(path), path); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := Generation(root); !errors.Is(err, syscall.ELOOP) {
-				t.Fatalf("Generation error = %v, want stat loop", err)
-			}
-		})
-	}
-}
-
-func TestRetireRelevanceMetadataMigration(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteFile(t, config.ConfigPath(root), "# keep\nprefix: test\nprofile: full\nintegrationBranch: main\ntags: {one: meaning}\ncontextIgnore:\n  - docs/**\nvars: {kept: value}\n")
-	testsupport.WriteFile(t, filepath.Join(root, pitfall.SourceDir, "with-domain.md"), "---\ntitle: With domain\ndomains: [rendering]\ntags: [one]\nrelated: [1]\n---\nbody\n")
-	testsupport.WriteFile(t, filepath.Join(root, decisionDir, "0001-decision.md"), "# Historical decision\n")
-	testsupport.WriteFile(t, filepath.Join(root, pitfall.SourceDir, "without-domain.md"), "---\ntitle: Without domain\ntags:\n  - one\n---\nbody\n")
-	if err := (&manifest.Lock{AWFVersion: "0.39.2", SchemaVersion: LiveSchemaFloor, Files: map[string]manifest.Entry{}}).Save(config.LockPath(root)); err != nil {
-		t.Fatal(err)
-	}
-	applied, changes, mutations, err := Build(context.Background(), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !slices.Equal(applied, []string{retireRelevanceMetadataName, retireClaimProvenanceMetadataName, retireWorkflowConfigName, retirePitfallRelationsName}) || len(changes) != 5 || len(mutations) != 3 {
-		t.Fatalf("applied=%v changes=%v mutations=%v", applied, changes, mutations)
-	}
-	for _, mutation := range mutations {
-		if strings.Contains(string(mutation.Content), "tags:") || strings.Contains(string(mutation.Content), "contextIgnore:") {
-			t.Fatalf("retired metadata remains in %s: %s", mutation.Path, mutation.Content)
-		}
-		if mutation.Path == config.DirName+"/config.yaml" && (!strings.Contains(string(mutation.Content), "# keep") || !strings.Contains(string(mutation.Content), "vars: {kept: value}")) {
-			t.Fatalf("unrelated config formatting changed: %s", mutation.Content)
-		}
+	if _, err := Generation(root); !errors.Is(err, syscall.ELOOP) {
+		t.Fatalf("Generation error = %v, want stat loop", err)
 	}
 }
