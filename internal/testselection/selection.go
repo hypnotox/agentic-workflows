@@ -1,5 +1,4 @@
-// Package testselection owns the conservative affected-Go-package selection
-// policy used by the separate local feedback command.
+// Package testselection owns the conservative typed behavioral selection policy.
 package testselection
 
 import (
@@ -10,6 +9,7 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"sort"
 	"strings"
@@ -17,33 +17,57 @@ import (
 	"github.com/bmatcuk/doublestar/v4"
 )
 
-// Policy is the versioned repository selection policy.
-type Policy struct {
-	Version             int      `json:"version"`
-	SmokePackages       []string `json:"smoke_packages"`
-	SharedPathPatterns  []string `json:"shared_path_patterns"`
-	GeneratedGoPatterns []string `json:"generated_go_patterns"`
+const PolicyVersion = 2
+
+var requiredLanes = []string{
+	"go",
+	"pi-runtime",
+	"platform-sensitive",
+	"release-archive",
+	"render-template",
 }
 
-// Package is one selected Go package and its stable, accumulated reasons.
+// LanePolicy assigns repository paths, including dynamically read inputs, to a
+// behavioral lane.
+type LanePolicy struct {
+	Name     string   `json:"name"`
+	Patterns []string `json:"patterns"`
+}
+
+// Policy is the versioned repository selection policy.
+type Policy struct {
+	Version             int          `json:"version"`
+	Lanes               []LanePolicy `json:"lanes"`
+	SharedPathPatterns  []string     `json:"shared_path_patterns"`
+	GeneratedGoPatterns []string     `json:"generated_go_patterns"`
+}
+
+// Lane is one selected behavioral lane and its stable reasons.
+type Lane struct {
+	Name    string   `json:"name"`
+	Reasons []string `json:"reasons"`
+}
+
+// Package is one selected Go package and its stable reasons.
 type Package struct {
 	Path    string   `json:"path"`
 	Reasons []string `json:"reasons"`
 }
 
-// Result is machine-consumable selection evidence. Outcome is selected, empty,
-// widened, or refused; refused is returned alongside an error to retain the
-// diagnostic when package discovery is unavailable.
+// Result is the stable machine-readable selection interface. Outcome is one of
+// selected, empty, widened, or refused. Every slice is emitted, including when
+// empty, so consumers do not need null handling.
 type Result struct {
-	Version  int       `json:"version"`
-	Outcome  string    `json:"outcome"`
-	Packages []Package `json:"packages"`
-	Reasons  []string  `json:"reasons,omitempty"`
+	Version     int       `json:"version"`
+	Outcome     string    `json:"outcome"`
+	Lanes       []Lane    `json:"lanes"`
+	Packages    []Package `json:"packages"`
+	Diagnostics []string  `json:"diagnostics"`
 }
 
-// Load reads and validates a versioned selection policy.
-func Load(path string) (Policy, error) {
-	data, err := os.ReadFile(path)
+// Load reads and validates the typed selection policy.
+func Load(filename string) (Policy, error) {
+	data, err := os.ReadFile(filename)
 	if err != nil {
 		return Policy{}, fmt.Errorf("read selection policy: %w", err)
 	}
@@ -56,66 +80,146 @@ func Load(path string) (Policy, error) {
 	if err := decoder.Decode(&struct{}{}); err != io.EOF {
 		return Policy{}, fmt.Errorf("parse selection policy: trailing content")
 	}
-	if policy.Version != 1 {
+	if policy.Version != PolicyVersion {
 		return Policy{}, fmt.Errorf("selection policy version %d is unsupported", policy.Version)
 	}
-	if len(policy.SmokePackages) == 0 {
-		return Policy{}, fmt.Errorf("selection policy declares no smoke packages")
+
+	remaining := make(map[string]bool, len(requiredLanes))
+	for _, name := range requiredLanes {
+		remaining[name] = true
 	}
-	declared := map[string]bool{}
-	for _, packagePath := range policy.SmokePackages {
-		if !validPackage(packagePath) || declared[packagePath] {
-			return Policy{}, fmt.Errorf("selection policy has invalid or duplicate smoke package %q", packagePath)
+	for _, lane := range policy.Lanes {
+		if !remaining[lane.Name] || len(lane.Patterns) == 0 {
+			return Policy{}, fmt.Errorf("selection policy has invalid or duplicate lane %q", lane.Name)
 		}
-		declared[packagePath] = true
+		delete(remaining, lane.Name)
+		if err := validatePatterns(lane.Patterns); err != nil {
+			return Policy{}, fmt.Errorf("selection policy lane %q: %w", lane.Name, err)
+		}
+	}
+	if len(remaining) != 0 {
+		return Policy{}, fmt.Errorf("selection policy omits required lanes: %s", strings.Join(sortedKeys(remaining), ", "))
 	}
 	if len(policy.SharedPathPatterns) == 0 || len(policy.GeneratedGoPatterns) == 0 {
 		return Policy{}, fmt.Errorf("selection policy requires shared and generated Go path patterns")
 	}
-	for _, pattern := range append(append([]string(nil), policy.SharedPathPatterns...), policy.GeneratedGoPatterns...) {
-		if pattern == "" || !doublestar.ValidatePattern(pattern) {
-			return Policy{}, fmt.Errorf("selection policy has invalid path pattern %q", pattern)
-		}
+	if err := validatePatterns(policy.SharedPathPatterns); err != nil {
+		return Policy{}, fmt.Errorf("selection policy shared paths: %w", err)
+	}
+	if err := validatePatterns(policy.GeneratedGoPatterns); err != nil {
+		return Policy{}, fmt.Errorf("selection policy generated Go paths: %w", err)
 	}
 	return policy, nil
 }
 
-func validPackage(path string) bool {
-	return strings.HasPrefix(path, "./") && path != "./..." && !strings.Contains(path, "..")
+func validatePatterns(patterns []string) error {
+	seen := map[string]bool{}
+	for _, pattern := range patterns {
+		if pattern == "" || seen[pattern] || !doublestar.ValidatePattern(pattern) {
+			return fmt.Errorf("invalid or duplicate path pattern %q", pattern)
+		}
+		seen[pattern] = true
+	}
+	return nil
 }
 
-// Select discovers repository packages then selects changed package ownership,
-// their reverse dependents, test importers, and a small declared smoke set. Production dependency
-// effects close transitively; test-only imports select their importing package
-// without falsely making that package's production consumers affected. Any
-// shared or uncertain path widens visibly; unavailable package discovery
-// refuses rather than guessing at a partial dependency graph.
+// Select discovers repository packages and selects typed behavioral lanes. Go
+// changes close over production reverse dependencies and test importers. A
+// shared, generated, build-tagged, deleted, or unclassified input widens
+// visibly instead of guessing at incomplete assurance.
 func Select(ctx context.Context, root string, policy Policy, changedPaths []string) (Result, error) {
 	paths, err := normalizePaths(changedPaths)
 	if err != nil {
 		return refused(policy, err), err
 	}
 	if len(paths) == 0 {
-		return Result{Version: policy.Version, Outcome: "empty", Packages: []Package{}, Reasons: []string{"no-relevant-changes"}}, nil
+		return empty(policy), nil
 	}
 	graph, err := discover(ctx, root)
 	if err != nil {
 		err = fmt.Errorf("discover Go packages: %w", err)
 		return refused(policy, err), err
 	}
-	shared, reason := sharedChange(root, policy, paths)
-	if shared {
+	if shared, reason := sharedChange(policy, paths); shared {
 		return widened(policy, graph, reason), nil
 	}
-	return selectPaths(policy, graph, paths), nil
+
+	lanes, classified := selectedLanes(policy, paths)
+	if widenedGo, reason := packageWideningChange(root, policy, paths); widenedGo {
+		if strings.HasPrefix(reason, "build-tag-change:") {
+			lanes = addLane(lanes, "platform-sensitive", "build-constraint:"+strings.TrimPrefix(reason, "build-tag-change:"))
+		}
+		return widenedPackages(policy, graph, lanes, reason), nil
+	}
+	for _, changed := range paths {
+		if !classified[changed] {
+			return widened(policy, graph, "unclassified-change:"+changed), nil
+		}
+	}
+	packages, widenReason := selectGoPackages(policy, graph, paths)
+	if widenReason != "" {
+		return widened(policy, graph, widenReason), nil
+	}
+	return Result{
+		Version:     policy.Version,
+		Outcome:     "selected",
+		Lanes:       lanes,
+		Packages:    packages,
+		Diagnostics: []string{},
+	}, nil
+}
+
+func empty(policy Policy) Result {
+	return Result{
+		Version:     policy.Version,
+		Outcome:     "empty",
+		Lanes:       []Lane{},
+		Packages:    []Package{},
+		Diagnostics: []string{"no-relevant-changes"},
+	}
 }
 
 func refused(policy Policy, err error) Result {
-	return Result{Version: policy.Version, Outcome: "refused", Packages: []Package{}, Reasons: []string{err.Error()}}
+	return Result{
+		Version:     policy.Version,
+		Outcome:     "refused",
+		Lanes:       []Lane{},
+		Packages:    []Package{},
+		Diagnostics: []string{err.Error()},
+	}
+}
+
+func selectedLanes(policy Policy, paths []string) ([]Lane, map[string]bool) {
+	selected := map[string]map[string]bool{}
+	classified := map[string]bool{}
+	for _, changed := range paths {
+		for _, lane := range policy.Lanes {
+			if matchesAny(lane.Patterns, changed) {
+				addReason(selected, lane.Name, "changed:"+changed)
+				classified[changed] = true
+			}
+		}
+	}
+	names := sortedKeys(selected)
+	lanes := make([]Lane, 0, len(names))
+	for _, name := range names {
+		lanes = append(lanes, Lane{Name: name, Reasons: sortedKeys(selected[name])})
+	}
+	return lanes, classified
+}
+
+func matchesAny(patterns []string, filename string) bool {
+	for _, pattern := range patterns {
+		matched, err := doublestar.Match(pattern, filename)
+		if err != nil || matched {
+			return true
+		}
+	}
+	return false
 }
 
 type graph struct {
-	packages map[string]node // package pattern by repository directory
+	packages map[string]node
 }
 
 type node struct {
@@ -142,16 +246,16 @@ func discover(ctx context.Context, root string) (graph, error) {
 		if err != nil {
 			return graph{}, err
 		}
-		for path, item := range packages {
-			if imports[path] == nil {
-				imports[path] = map[string]bool{}
-				testImports[path] = map[string]bool{}
+		for packagePath, item := range packages {
+			if imports[packagePath] == nil {
+				imports[packagePath] = map[string]bool{}
+				testImports[packagePath] = map[string]bool{}
 			}
 			for _, imported := range item.imports {
-				imports[path][imported] = true
+				imports[packagePath][imported] = true
 			}
 			for _, imported := range item.testImports {
-				testImports[path][imported] = true
+				testImports[packagePath][imported] = true
 			}
 		}
 	}
@@ -159,8 +263,11 @@ func discover(ctx context.Context, root string) (graph, error) {
 		return graph{}, fmt.Errorf("go list returned no packages")
 	}
 	packages := make(map[string]node, len(imports))
-	for path := range imports {
-		packages[path] = node{imports: sortedKeys(imports[path]), testImports: sortedKeys(testImports[path])}
+	for packagePath := range imports {
+		packages[packagePath] = node{
+			imports:     sortedKeys(imports[packagePath]),
+			testImports: sortedKeys(testImports[packagePath]),
+		}
 	}
 	return graph{packages: packages}, nil
 }
@@ -169,11 +276,12 @@ func discoverPlatform(ctx context.Context, root, goos, goarch string) (map[strin
 	cmd := exec.CommandContext(ctx, "go", "list", "-json", "./...")
 	cmd.Dir = root
 	cmd.Env = platformEnvironment(goos, goarch)
-	out, err := cmd.Output()
+	output, err := cmd.Output()
 	if err != nil {
 		return nil, fmt.Errorf("go list for %s/%s: %w", goos, goarch, err)
 	}
-	decoder := json.NewDecoder(bytes.NewReader(out))
+
+	decoder := json.NewDecoder(bytes.NewReader(output))
 	byImport := map[string]string{}
 	type rawNode struct{ imports, testImports []string }
 	raw := map[string]rawNode{}
@@ -188,20 +296,21 @@ func discoverPlatform(ctx context.Context, root, goos, goarch string) (map[strin
 		if item.Error != nil {
 			return nil, fmt.Errorf("go list package %q for %s/%s: %s", item.ImportPath, goos, goarch, item.Error.Err)
 		}
-		rel, err := filepath.Rel(root, item.Dir)
-		if err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(filepath.Separator)) {
+		relative, err := filepath.Rel(root, item.Dir)
+		if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 			return nil, fmt.Errorf("go list package %q is outside repository", item.ImportPath)
 		}
-		pattern := "./"
-		if rel != "." {
-			pattern += filepath.ToSlash(rel)
+		packagePath := "./"
+		if relative != "." {
+			packagePath += filepath.ToSlash(relative)
 		}
-		byImport[item.ImportPath] = pattern
+		byImport[item.ImportPath] = packagePath
 		raw[item.ImportPath] = rawNode{
 			imports:     append([]string(nil), item.Imports...),
 			testImports: append(append([]string(nil), item.TestImports...), item.XTestImports...),
 		}
 	}
+
 	packages := make(map[string]node, len(raw))
 	for importPath, item := range raw {
 		packages[byImport[importPath]] = node{
@@ -224,53 +333,52 @@ func platformEnvironment(goos, goarch string) []string {
 }
 
 func localPackages(imports []string, byImport map[string]string) []string {
-	set := map[string]bool{}
+	local := map[string]bool{}
 	for _, imported := range imports {
-		if target, ok := byImport[imported]; ok {
-			set[target] = true
+		if packagePath, ok := byImport[imported]; ok {
+			local[packagePath] = true
 		}
 	}
-	return sortedKeys(set)
+	return sortedKeys(local)
 }
 
 func normalizePaths(paths []string) ([]string, error) {
-	set := map[string]bool{}
+	normalized := map[string]bool{}
 	for _, raw := range paths {
-		path := strings.TrimPrefix(filepath.ToSlash(raw), "./")
-		if path == "" || strings.HasPrefix(path, "/") || path == ".." || strings.HasPrefix(path, "../") {
+		if raw == "" || strings.ContainsRune(raw, '\x00') || strings.Contains(raw, `\`) {
 			return nil, fmt.Errorf("invalid changed path %q", raw)
 		}
-		set[path] = true
+		candidate := strings.TrimPrefix(raw, "./")
+		cleaned := path.Clean(candidate)
+		if candidate == "" || candidate != cleaned || cleaned == "." || strings.HasPrefix(cleaned, "/") || cleaned == ".." || strings.HasPrefix(cleaned, "../") {
+			return nil, fmt.Errorf("invalid changed path %q", raw)
+		}
+		normalized[cleaned] = true
 	}
-	out := make([]string, 0, len(set))
-	for path := range set {
-		out = append(out, path)
-	}
-	sort.Strings(out)
-	return out, nil
+	return sortedKeys(normalized), nil
 }
 
-func sharedChange(root string, policy Policy, paths []string) (bool, string) {
-	for _, path := range paths {
-		for _, pattern := range policy.SharedPathPatterns {
-			matched, err := doublestar.Match(pattern, path)
-			if err != nil || matched {
-				return true, "shared-change:" + path
-			}
+func sharedChange(policy Policy, paths []string) (bool, string) {
+	for _, changed := range paths {
+		if matchesAny(policy.SharedPathPatterns, changed) {
+			return true, "shared-change:" + changed
 		}
-		for _, pattern := range policy.GeneratedGoPatterns {
-			matched, err := doublestar.Match(pattern, path)
-			if err != nil || matched {
-				return true, "generated-go-change:" + path
-			}
+	}
+	return false, ""
+}
+
+func packageWideningChange(root string, policy Policy, paths []string) (bool, string) {
+	for _, changed := range paths {
+		if matchesAny(policy.GeneratedGoPatterns, changed) {
+			return true, "generated-go-change:" + changed
 		}
-		if strings.HasSuffix(path, ".go") {
-			contents, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		if strings.HasSuffix(changed, ".go") {
+			contents, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(changed)))
 			if err != nil {
-				return true, "unreadable-go-change:" + path
+				return true, "unreadable-go-change:" + changed
 			}
 			if hasBuildConstraint(contents) {
-				return true, "build-tag-change:" + path
+				return true, "build-tag-change:" + changed
 			}
 		}
 	}
@@ -290,47 +398,44 @@ func hasBuildConstraint(contents []byte) bool {
 	return false
 }
 
-func selectPaths(policy Policy, graph graph, paths []string) Result {
+func selectGoPackages(policy Policy, graph graph, paths []string) ([]Package, string) {
 	selected := map[string]map[string]bool{}
 	direct := map[string]bool{}
 	productionDirect := map[string]bool{}
-	for _, path := range paths {
-		owner, owned := packageOwner(graph, path)
-		if strings.HasSuffix(path, ".go") {
-			exactOwner := "./"
-			if dir := filepath.ToSlash(filepath.Dir(path)); dir != "." {
-				exactOwner += dir
-			}
-			if !owned || owner != exactOwner {
-				return widened(policy, graph, "unowned-go-change:"+path)
-			}
-			direct[owner] = true
-			if !strings.HasSuffix(path, "_test.go") {
-				productionDirect[owner] = true
-			}
-			addReason(selected, owner, "changed-package:"+path)
+	for _, changed := range paths {
+		if !laneMatches(policy, "go", changed) {
 			continue
 		}
+		owner, owned := packageOwner(graph, changed)
 		if !owned {
-			return widened(policy, graph, "unclassified-change:"+path)
+			return nil, "unowned-go-change:" + changed
+		}
+		if strings.HasSuffix(changed, ".go") {
+			exactOwner := "./"
+			if directory := path.Dir(changed); directory != "." {
+				exactOwner += directory
+			}
+			if owner != exactOwner {
+				return nil, "unowned-go-change:" + changed
+			}
+			addReason(selected, owner, "changed-package:"+changed)
+			if !strings.HasSuffix(changed, "_test.go") {
+				productionDirect[owner] = true
+			}
+		} else {
+			addReason(selected, owner, "changed-package-input:"+changed)
+			productionDirect[owner] = true
 		}
 		direct[owner] = true
-		productionDirect[owner] = true
-		addReason(selected, owner, "changed-package-input:"+path)
-	}
-	if len(selected) == 0 {
-		return Result{Version: policy.Version, Outcome: "empty", Packages: []Package{}, Reasons: []string{"no-relevant-changes"}}
 	}
 
 	productionAffected := map[string]bool{}
 	for changed := range productionDirect {
-		closure := productionReverseClosure(graph, changed)
-		for packagePath := range closure {
+		for packagePath := range productionReverseClosure(graph, changed) {
 			productionAffected[packagePath] = true
-			if packagePath == changed {
-				continue
+			if packagePath != changed {
+				addReason(selected, packagePath, "reverse-dependent:"+changed)
 			}
-			selectDependent(selected, packagePath, "reverse-dependent:"+changed)
 		}
 	}
 	for packagePath, item := range graph.packages {
@@ -339,28 +444,31 @@ func selectPaths(policy Policy, graph graph, paths []string) Result {
 		}
 		for _, imported := range item.testImports {
 			if productionAffected[imported] {
-				selectDependent(selected, packagePath, "test-reverse-dependent:"+imported)
+				addReason(selected, packagePath, "test-reverse-dependent:"+imported)
 				break
 			}
 		}
 	}
-	for _, packagePath := range policy.SmokePackages {
-		if _, ok := graph.packages[packagePath]; !ok {
-			return widened(policy, graph, "unavailable-smoke-package:"+packagePath)
-		}
-		addReason(selected, packagePath, "global-smoke")
-	}
-	return result(policy, "selected", selected, nil)
+	return packages(selected), ""
 }
 
-func packageOwner(graph graph, path string) (string, bool) {
-	for directory := filepath.ToSlash(filepath.Dir(path)); ; directory = filepath.ToSlash(filepath.Dir(directory)) {
-		pattern := "./"
-		if directory != "." {
-			pattern += directory
+func laneMatches(policy Policy, laneName, changed string) bool {
+	for _, lane := range policy.Lanes {
+		if lane.Name == laneName {
+			return matchesAny(lane.Patterns, changed)
 		}
-		if _, ok := graph.packages[pattern]; ok {
-			return pattern, true
+	}
+	return false
+}
+
+func packageOwner(graph graph, filename string) (string, bool) {
+	for directory := path.Dir(filename); ; directory = path.Dir(directory) {
+		packagePath := "./"
+		if directory != "." {
+			packagePath += directory
+		}
+		if _, ok := graph.packages[packagePath]; ok {
+			return packagePath, true
 		}
 		if directory == "." {
 			return "", false
@@ -368,21 +476,18 @@ func packageOwner(graph graph, path string) (string, bool) {
 	}
 }
 
-func selectDependent(selected map[string]map[string]bool, packagePath, reason string) {
-	addReason(selected, packagePath, reason)
-}
-
-func productionReverseClosure(g graph, changed string) map[string]bool {
+func productionReverseClosure(graph graph, changed string) map[string]bool {
 	seen := map[string]bool{changed: true}
 	for progressed := true; progressed; {
 		progressed = false
-		for packagePath, item := range g.packages {
+		for packagePath, item := range graph.packages {
 			if seen[packagePath] {
 				continue
 			}
 			for _, imported := range item.imports {
 				if seen[imported] {
-					seen[packagePath], progressed = true, true
+					seen[packagePath] = true
+					progressed = true
 					break
 				}
 			}
@@ -392,28 +497,59 @@ func productionReverseClosure(g graph, changed string) map[string]bool {
 }
 
 func widened(policy Policy, graph graph, reason string) Result {
+	laneNames := append([]string(nil), requiredLanes...)
+	sort.Strings(laneNames)
+	lanes := make([]Lane, 0, len(laneNames))
+	for _, name := range laneNames {
+		lanes = append(lanes, Lane{Name: name, Reasons: []string{"widened:" + reason}})
+	}
+	return widenedPackages(policy, graph, lanes, reason)
+}
+
+func widenedPackages(policy Policy, graph graph, lanes []Lane, reason string) Result {
+	selectedPackages := map[string]map[string]bool{}
+	for packagePath := range graph.packages {
+		addReason(selectedPackages, packagePath, "widened:"+reason)
+	}
+	return Result{
+		Version:     policy.Version,
+		Outcome:     "widened",
+		Lanes:       lanes,
+		Packages:    packages(selectedPackages),
+		Diagnostics: []string{reason},
+	}
+}
+
+func addLane(lanes []Lane, name, reason string) []Lane {
 	selected := map[string]map[string]bool{}
-	for path := range graph.packages {
-		addReason(selected, path, "widened:"+reason)
+	for _, lane := range lanes {
+		for _, existing := range lane.Reasons {
+			addReason(selected, lane.Name, existing)
+		}
 	}
-	return result(policy, "widened", selected, []string{reason})
+	addReason(selected, name, reason)
+	names := sortedKeys(selected)
+	out := make([]Lane, 0, len(names))
+	for _, laneName := range names {
+		out = append(out, Lane{Name: laneName, Reasons: sortedKeys(selected[laneName])})
+	}
+	return out
 }
 
-func addReason(selected map[string]map[string]bool, path, reason string) {
-	if selected[path] == nil {
-		selected[path] = map[string]bool{}
-	}
-	selected[path][reason] = true
-}
-
-func result(policy Policy, outcome string, selected map[string]map[string]bool, reasons []string) Result {
+func packages(selected map[string]map[string]bool) []Package {
 	paths := sortedKeys(selected)
 	packages := make([]Package, 0, len(paths))
-	for _, path := range paths {
-		packages = append(packages, Package{Path: path, Reasons: sortedKeys(selected[path])})
+	for _, packagePath := range paths {
+		packages = append(packages, Package{Path: packagePath, Reasons: sortedKeys(selected[packagePath])})
 	}
-	sort.Strings(reasons)
-	return Result{Version: policy.Version, Outcome: outcome, Packages: packages, Reasons: reasons}
+	return packages
+}
+
+func addReason(selected map[string]map[string]bool, key, reason string) {
+	if selected[key] == nil {
+		selected[key] = map[string]bool{}
+	}
+	selected[key][reason] = true
 }
 
 func sortedKeys[V any](items map[string]V) []string {

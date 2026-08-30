@@ -73,6 +73,30 @@ case "$cmd" in
   test-affected)
     go run ./cmd/testselection --execute "$@"
     ;;
+  test-full-linux)
+    mode="${1:-}"
+    shift || true
+    case "$mode" in
+      calibrate|budget) ;;
+      *) echo "usage: ./x test-full-linux <calibrate|budget> [--artifact FILE]" >&2; exit 2 ;;
+    esac
+    artifact="${AWF_FULL_LINUX_TIMING_ARTIFACT:-$PWD/.cache/full-linux-timing.json}"
+    if [ "${1:-}" = "--artifact" ]; then
+      [ "$#" -ge 2 ] || { echo "missing artifact path" >&2; exit 2; }
+      artifact="$2"
+      shift 2
+    fi
+    [ "$#" -eq 0 ] || { echo "usage: ./x test-full-linux <calibrate|budget> [--artifact FILE]" >&2; exit 2; }
+    if [ "$mode" = budget ] && [ -z "${AWF_FULL_LINUX_CEILING:-}" ]; then
+      echo "test-full-linux: budget requires AWF_FULL_LINUX_CEILING from reviewed hosted evidence" >&2
+      exit 2
+    fi
+    timing_args=(full-linux --mode "$mode" --artifact "$artifact")
+    if [ -n "${AWF_FULL_LINUX_CEILING:-}" ]; then
+      timing_args+=(--ceiling "$AWF_FULL_LINUX_CEILING")
+    fi
+    go run ./cmd/testselection "${timing_args[@]}"
+    ;;
   clean-test-tmp)
     go run ./internal/testsupport/cmd/testtmpclean "$@"
     ;;
@@ -103,7 +127,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [timings]|lint|fmt|test|test-affected [--staged|--range <base>..<head>]|clean-test-tmp [--all]|deadcode|render|check|pi-test <run>|build|install|audit-local>" >&2
+    echo "usage: ./x <gate [timings]|lint|fmt|test|test-affected [--staged|--range <base>..<head>]|test-full-linux <calibrate|budget> [--artifact FILE]|clean-test-tmp [--all]|deadcode|render|check|pi-test <run>|build|install|audit-local>" >&2
     exit 2
     ;;
 esac

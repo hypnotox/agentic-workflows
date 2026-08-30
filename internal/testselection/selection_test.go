@@ -2,140 +2,155 @@ package testselection
 
 import (
 	"context"
+	"encoding/json"
 	"os"
 	"path/filepath"
 	"reflect"
+	"strings"
 	"testing"
 )
 
 func testPolicy() Policy {
-	return Policy{Version: 1, SmokePackages: []string{"./cmd/meta"}, SharedPathPatterns: []string{"templates/**", "*.json", "x", "tools/**"}, GeneratedGoPatterns: []string{"*_generated.go"}}
+	return Policy{
+		Version: PolicyVersion,
+		Lanes: []LanePolicy{
+			{Name: "go", Patterns: []string{"**/*.go", "**/testdata/**", "go.mod"}},
+			{Name: "pi-runtime", Patterns: []string{"templates/pi/**", "templates/skills/**", "tools/pi-extension-test/**"}},
+			{Name: "render-template", Patterns: []string{".awf/**", "templates/**", "internal/publisher/**"}},
+			{Name: "platform-sensitive", Patterns: []string{"**/*_linux.go", "cmd/releasecheck/**", "internal/filesystem/**", "internal/resident/**", "internal/upgrade/**", "tools/native-release-test/**"}},
+			{Name: "release-archive", Patterns: []string{".goreleaser.yaml", "cmd/releasecheck/**", "changelog/**"}},
+		},
+		SharedPathPatterns:  []string{"go.mod", "test-selection.json", "x"},
+		GeneratedGoPatterns: []string{"**/*_generated.go"},
+	}
 }
 
 func testGraph() graph {
 	return graph{packages: map[string]node{
 		"./internal/leaf":     {},
 		"./internal/user":     {imports: []string{"./internal/leaf"}},
-		"./internal/testuser": {testImports: []string{"./internal/leaf"}},
+		"./internal/testuser": {testImports: []string{"./internal/user"}},
 		"./internal/consumer": {imports: []string{"./internal/testuser"}},
 		"./cmd/meta":          {imports: []string{"./internal/user"}},
 	}}
 }
 
-// invariant: tooling/quality-gates:affected-package-feedback (TestSelectPathsConservativelyClosesAffectedPackages)
-func TestSelectPathsConservativelyClosesAffectedPackages(t *testing.T) {
-	result := selectPaths(testPolicy(), testGraph(), []string{"internal/leaf/leaf_external_test.go", "internal/leaf/leaf.go"})
-	if result.Outcome != "selected" {
-		t.Fatalf("outcome = %q", result.Outcome)
+func laneNames(lanes []Lane) []string {
+	names := make([]string, 0, len(lanes))
+	for _, lane := range lanes {
+		names = append(names, lane.Name)
 	}
-	got := make([]string, len(result.Packages))
-	for i, pkg := range result.Packages {
-		got[i] = pkg.Path
+	return names
+}
+
+func packagePaths(packages []Package) []string {
+	paths := make([]string, 0, len(packages))
+	for _, selected := range packages {
+		paths = append(paths, selected.Path)
+	}
+	return paths
+}
+
+// invariant: tooling/quality-gates:affected-package-feedback (TestTypedLaneChangeMatrix)
+func TestTypedLaneChangeMatrix(t *testing.T) {
+	policy := testPolicy()
+	cases := []struct {
+		name string
+		path string
+		want []string
+	}{
+		{name: "Go", path: "internal/leaf/leaf.go", want: []string{"go"}},
+		{name: "Pi template also renders", path: "templates/pi/index.ts.tmpl", want: []string{"pi-runtime", "render-template"}},
+		{name: "generic skill drives Pi discovery and render", path: "templates/skills/implementing/SKILL.md.tmpl", want: []string{"pi-runtime", "render-template"}},
+		{name: "partial", path: "templates/partials/gate.md", want: []string{"render-template"}},
+		{name: "platform Go", path: "internal/filesystem/replace_linux.go", want: []string{"go", "platform-sensitive"}},
+		{name: "release Go is native-sensitive", path: "cmd/releasecheck/main.go", want: []string{"go", "platform-sensitive", "release-archive"}},
+		{name: "resident lifecycle", path: "internal/resident/resident.go", want: []string{"go", "platform-sensitive"}},
+		{name: "upgrade mutation", path: "internal/upgrade/operation.go", want: []string{"go", "platform-sensitive"}},
+		{name: "Pi script", path: "tools/pi-extension-test/run.sh", want: []string{"pi-runtime"}},
+		{name: "render authority", path: ".awf/docs/parts/testing.md", want: []string{"render-template"}},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, classified := selectedLanes(policy, []string{tc.path})
+			if !classified[tc.path] || !reflect.DeepEqual(laneNames(got), tc.want) {
+				t.Fatalf("lanes for %s = %v, classified=%v; want %v", tc.path, laneNames(got), classified[tc.path], tc.want)
+			}
+		})
+	}
+}
+
+func TestDynamicReaderInputsHaveExplicitOwners(t *testing.T) {
+	root, err := filepath.Abs(filepath.Join("..", ".."))
+	if err != nil {
+		t.Fatal(err)
+	}
+	policy, err := Load(filepath.Join(root, "test-selection.json"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	cases := map[string][]string{
+		"templates/embed.go":                        {"go", "render-template"},
+		"templates/partials/gate-cadence.md":        {"render-template"},
+		"internal/catalog/standard.go":              {"go", "pi-runtime", "render-template"},
+		"internal/publisher/testdata/input.golden":  {"go", "render-template"},
+		"tools/pi-extension-test/run.sh":            {"pi-runtime"},
+		"tools/pi-extension-test/package-lock.json": {"pi-runtime"},
+		".goreleaser.yaml":                          {"release-archive"},
+		"changelog/CHANGELOG.md":                    {"release-archive"},
+		"internal/project/VERSION":                  {"release-archive"},
+		"cmd/releasecheck/testdata/archive.tar.gz":  {"go", "platform-sensitive", "release-archive"},
+	}
+	for changed, want := range cases {
+		lanes, classified := selectedLanes(policy, []string{changed})
+		if !classified[changed] || !reflect.DeepEqual(laneNames(lanes), want) {
+			t.Errorf("dynamic input %s lanes = %v; want %v", changed, laneNames(lanes), want)
+		}
+	}
+}
+
+func TestUnrelatedLaneExclusion(t *testing.T) {
+	lanes, _ := selectedLanes(testPolicy(), []string{"templates/partials/a.md"})
+	if got, want := laneNames(lanes), []string{"render-template"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("unrelated lanes selected: got %v want %v", got, want)
+	}
+}
+
+func TestSelectGoPackagesClosesProductionAndTestDependenciesWithoutSmoke(t *testing.T) {
+	packages, reason := selectGoPackages(testPolicy(), testGraph(), []string{"internal/leaf/leaf.go"})
+	if reason != "" {
+		t.Fatal(reason)
 	}
 	want := []string{"./cmd/meta", "./internal/leaf", "./internal/testuser", "./internal/user"}
-	if !reflect.DeepEqual(got, want) {
-		t.Fatalf("packages = %#v, want %#v", got, want)
+	if got := packagePaths(packages); !reflect.DeepEqual(got, want) {
+		t.Fatalf("packages = %v, want %v", got, want)
 	}
-	if wantReasons := []string{"global-smoke", "reverse-dependent:./internal/leaf"}; !reflect.DeepEqual(result.Packages[0].Reasons, wantReasons) {
-		t.Fatalf("meta package reasons = %#v, want %#v", result.Packages[0].Reasons, wantReasons)
-	}
-	for _, pkg := range result.Packages {
-		if pkg.Path == "./internal/consumer" {
-			t.Fatal("test-only dependency incorrectly propagated to production consumer")
+	for _, selected := range packages {
+		if selected.Path == "./cmd/meta" && !reflect.DeepEqual(selected.Reasons, []string{"reverse-dependent:./internal/leaf"}) {
+			t.Fatalf("cmd/meta reasons = %v", selected.Reasons)
 		}
 	}
 }
 
-func TestChangedTestPackageDoesNotPropagateAsProduction(t *testing.T) {
-	result := selectPaths(testPolicy(), testGraph(), []string{"internal/leaf/leaf_test.go"})
-	got := []string{result.Packages[0].Path, result.Packages[1].Path}
-	if want := []string{"./cmd/meta", "./internal/leaf"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("packages = %#v, want %#v", got, want)
+func TestChangedTestDoesNotPropagateAndPackageFixtureDoes(t *testing.T) {
+	packages, reason := selectGoPackages(testPolicy(), testGraph(), []string{"internal/leaf/leaf_test.go"})
+	if reason != "" || !reflect.DeepEqual(packagePaths(packages), []string{"./internal/leaf"}) {
+		t.Fatalf("test-only selection = %v, %q", packagePaths(packages), reason)
+	}
+	packages, reason = selectGoPackages(testPolicy(), testGraph(), []string{"internal/leaf/testdata/input.txt"})
+	want := []string{"./cmd/meta", "./internal/leaf", "./internal/testuser", "./internal/user"}
+	if reason != "" || !reflect.DeepEqual(packagePaths(packages), want) {
+		t.Fatalf("fixture selection = %v, %q; want %v", packagePaths(packages), reason, want)
 	}
 }
 
-func TestDirectSmokePackageRunsOnce(t *testing.T) {
-	result := selectPaths(testPolicy(), testGraph(), []string{"cmd/meta/main.go"})
-	if len(result.Packages) != 1 || result.Packages[0].Path != "./cmd/meta" || !reflect.DeepEqual(result.Packages[0].Reasons, []string{"changed-package:cmd/meta/main.go", "global-smoke"}) {
-		t.Fatalf("result = %#v", result)
-	}
-}
-
-func TestSelectPathsOwnsNonGoPackageInputsAndWidensUnknownPaths(t *testing.T) {
-	result := selectPaths(testPolicy(), testGraph(), []string{"internal/leaf/testdata/input.txt"})
-	got := []string{}
-	for _, pkg := range result.Packages {
-		got = append(got, pkg.Path)
-	}
-	if want := []string{"./cmd/meta", "./internal/leaf", "./internal/testuser", "./internal/user"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("package input selection = %#v, want %#v", got, want)
-	}
-	result = selectPaths(testPolicy(), testGraph(), []string{"docs/unknown.txt"})
-	if result.Outcome != "widened" || !reflect.DeepEqual(result.Reasons, []string{"unclassified-change:docs/unknown.txt"}) {
-		t.Fatalf("unknown path result = %#v", result)
-	}
-}
-
-func TestSelectPathsWidensDeletedOrUnownedGoPackage(t *testing.T) {
-	result := selectPaths(testPolicy(), testGraph(), []string{"removed/package.go"})
-	if result.Outcome != "widened" || !reflect.DeepEqual(result.Reasons, []string{"unowned-go-change:removed/package.go"}) {
-		t.Fatalf("result = %#v", result)
-	}
-	if len(result.Packages) != len(testGraph().packages) {
-		t.Fatalf("widened targets = %#v", result)
-	}
-}
-
-func TestSharedChangeRecognizesTemplatesConfigurationToolingGeneratedAndBuildTags(t *testing.T) {
+func TestUnknownDeletedSharedGeneratedAndBuildTagChangesWiden(t *testing.T) {
 	root := t.TempDir()
-	if err := os.MkdirAll(filepath.Join(root, "internal", "tagged"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "internal", "tagged", "tagged.go"), []byte("//go:build linux\npackage tagged\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	for _, path := range []string{"templates/a.tmpl", "test-selection.json", "x", "tools/run.go", "internal/leaf_generated.go", "internal/tagged/tagged.go"} {
-		shared, reason := sharedChange(root, testPolicy(), []string{path})
-		if !shared || reason == "" {
-			t.Errorf("%s was not shared: %q", path, reason)
-		}
-	}
-	ordinary := filepath.Join(root, "internal", "tagged", "ordinary.go")
-	if err := os.WriteFile(ordinary, []byte("package tagged\nconst buildMarker = `//go:build linux`\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if shared, reason := sharedChange(root, testPolicy(), []string{"internal/tagged/ordinary.go"}); shared {
-		t.Fatalf("ordinary source with marker text widened: %q", reason)
-	}
-}
-
-func TestSelectEmptyAndRejectsInvalidPath(t *testing.T) {
-	result, err := Select(context.Background(), t.TempDir(), testPolicy(), nil)
-	if err != nil || result.Outcome != "empty" || !reflect.DeepEqual(result.Reasons, []string{"no-relevant-changes"}) {
-		t.Fatalf("empty = %#v, %v", result, err)
-	}
-	result, err = Select(context.Background(), t.TempDir(), testPolicy(), []string{"../outside.go"})
-	if err == nil || result.Outcome != "refused" {
-		t.Fatalf("invalid = %#v, %v", result, err)
-	}
-	result, err = Select(context.Background(), t.TempDir(), testPolicy(), []string{"missing.go"})
-	if err == nil || result.Outcome != "refused" {
-		t.Fatalf("unavailable graph = %#v, %v", result, err)
-	}
-}
-
-func TestDiscoverAndSelectSeparatesProductionAndTestDependencyEdges(t *testing.T) {
-	root := t.TempDir()
-	for path, contents := range map[string]string{
-		"go.mod":                             "module example.test/selection\ngo 1.26\n",
-		"internal/leaf/leaf.go":              "package leaf\n",
-		"internal/user/user.go":              "package user\nimport _ \"example.test/selection/internal/leaf\"\n",
-		"internal/testuser/testuser.go":      "package testuser\n",
-		"internal/testuser/testuser_test.go": "package testuser\nimport _ \"example.test/selection/internal/leaf\"\n",
-		"internal/consumer/consumer.go":      "package consumer\nimport _ \"example.test/selection/internal/testuser\"\n",
-		"cmd/meta/main.go":                   "package main\nimport _ \"example.test/selection/internal/user\"\nfunc main() {}\n",
+	for filename, contents := range map[string]string{
+		"go.mod":                  "module example.test/tagged\ngo 1.27\n",
+		"internal/leaf/tagged.go": "//go:build linux\n\npackage leaf\n",
 	} {
-		full := filepath.Join(root, path)
+		full := filepath.Join(root, filename)
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -143,29 +158,56 @@ func TestDiscoverAndSelectSeparatesProductionAndTestDependencyEdges(t *testing.T
 			t.Fatal(err)
 		}
 	}
-	result, err := Select(context.Background(), root, testPolicy(), []string{"internal/leaf/leaf.go"})
+	if lanes, classified := selectedLanes(testPolicy(), []string{"docs/unowned.txt"}); classified["docs/unowned.txt"] || len(lanes) != 0 {
+		t.Fatalf("unknown path was classified: lanes=%v", lanes)
+	}
+	if _, reason := selectGoPackages(testPolicy(), testGraph(), []string{"internal/missing/missing.go"}); reason != "unowned-go-change:internal/missing/missing.go" {
+		t.Fatalf("deleted Go reason = %q", reason)
+	}
+	if shared, reason := sharedChange(testPolicy(), []string{"x"}); !shared || reason != "shared-change:x" {
+		t.Fatalf("shared=%v reason=%q", shared, reason)
+	}
+	if widened, reason := packageWideningChange(root, testPolicy(), []string{"internal/leaf/code_generated.go"}); !widened || reason != "generated-go-change:internal/leaf/code_generated.go" {
+		t.Fatalf("generated widened=%v reason=%q", widened, reason)
+	}
+	result, err := Select(t.Context(), root, testPolicy(), []string{"internal/leaf/tagged.go"})
+	if err != nil || result.Outcome != "widened" || result.Diagnostics[0] != "build-tag-change:internal/leaf/tagged.go" {
+		t.Fatalf("build-tag result=%#v err=%v", result, err)
+	}
+	if got, want := laneNames(result.Lanes), []string{"go", "platform-sensitive"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("build-tag lanes=%v, want %v", got, want)
+	}
+}
+
+func TestSelectEmptyRefusedAndWidenedResultsAreStableJSON(t *testing.T) {
+	policy := testPolicy()
+	emptyResult, err := Select(context.Background(), t.TempDir(), policy, nil)
+	if err != nil || emptyResult.Outcome != "empty" || emptyResult.Lanes == nil || emptyResult.Packages == nil || emptyResult.Diagnostics == nil {
+		t.Fatalf("empty = %#v, %v", emptyResult, err)
+	}
+	refusedResult, err := Select(context.Background(), t.TempDir(), policy, []string{"a/../../outside.go"})
+	if err == nil || refusedResult.Outcome != "refused" {
+		t.Fatalf("refused = %#v, %v", refusedResult, err)
+	}
+	one, err := json.Marshal(refusedResult)
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := []string{}
-	for _, pkg := range result.Packages {
-		got = append(got, pkg.Path)
-	}
-	if want := []string{"./cmd/meta", "./internal/leaf", "./internal/testuser", "./internal/user"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("packages = %#v, want %#v; result=%#v", got, want, result)
+	two, _ := json.Marshal(refusedResult)
+	if !reflect.DeepEqual(one, two) || !strings.Contains(string(one), `"lanes":[]`) || !strings.Contains(string(one), `"diagnostics":[`) {
+		t.Fatalf("unstable interface: %s", one)
 	}
 }
 
 func TestDiscoverUnionsSupportedPlatformDependencies(t *testing.T) {
 	root := t.TempDir()
-	for path, contents := range map[string]string{
-		"go.mod":                         "module example.test/platforms\ngo 1.26\n",
+	for filename, contents := range map[string]string{
+		"go.mod":                         "module example.test/platforms\ngo 1.27\n",
 		"internal/leaf/leaf.go":          "package leaf\n",
 		"internal/darwin/user_darwin.go": "//go:build darwin\n\npackage darwin\nimport _ \"example.test/platforms/internal/leaf\"\n",
 		"internal/darwin/user_linux.go":  "//go:build !darwin\n\npackage darwin\n",
-		"cmd/meta/main.go":               "package main\nfunc main() {}\n",
 	} {
-		full := filepath.Join(root, path)
+		full := filepath.Join(root, filename)
 		if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 			t.Fatal(err)
 		}
@@ -177,16 +219,12 @@ func TestDiscoverUnionsSupportedPlatformDependencies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	got := []string{}
-	for _, pkg := range result.Packages {
-		got = append(got, pkg.Path)
-	}
-	if want := []string{"./cmd/meta", "./internal/darwin", "./internal/leaf"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("platform union packages = %#v, want %#v; result=%#v", got, want, result)
+	if got, want := packagePaths(result.Packages), []string{"./internal/darwin", "./internal/leaf"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("platform union packages = %v, want %v", got, want)
 	}
 }
 
-func TestRepositoryPolicySelectsRepresentativeCommonChange(t *testing.T) {
+func TestRepositoryPolicySelectsRepresentativeGoChangeWithoutCmdAWFDefault(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
@@ -199,34 +237,34 @@ func TestRepositoryPolicySelectsRepresentativeCommonChange(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	gotPackages := []string{}
-	for _, pkg := range result.Packages {
-		gotPackages = append(gotPackages, pkg.Path)
+	got := packagePaths(result.Packages)
+	want := []string{"./cmd/testselection", "./internal/testselection"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("packages = %v, want %v; result=%#v", got, want, result)
 	}
-	if want := []string{"./cmd/awf", "./cmd/testselection", "./internal/testselection"}; !reflect.DeepEqual(gotPackages, want) {
-		t.Fatalf("packages = %#v, want %#v; result=%#v", gotPackages, want, result)
+	for _, selected := range got {
+		if selected == "./cmd/awf" {
+			t.Fatal("Go-only change selected cmd/awf unconditionally")
+		}
 	}
-
 }
 
-func TestLoadRejectsUnsupportedOrIncompletePolicy(t *testing.T) {
-	path := filepath.Join(t.TempDir(), "policy.json")
+func TestLoadRejectsUnsupportedIncompleteDuplicateAndUnknownPolicy(t *testing.T) {
+	filename := filepath.Join(t.TempDir(), "policy.json")
+	validLanes := `[{"name":"go","patterns":["**/*.go"]},{"name":"pi-runtime","patterns":["pi/**"]},{"name":"render-template","patterns":["templates/**"]},{"name":"platform-sensitive","patterns":["platform/**"]},{"name":"release-archive","patterns":["release/**"]}]`
 	bodies := []string{
-		`{"version":2,"smoke_packages":["./cmd/meta"],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
-		`{"version":1,"smoke_packages":[],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
-		`{"version":1,"smoke_packages":["./..."],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
-		`{"version":1,"smoke_packages":["./cmd/meta","./cmd/meta"],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
-		`{"version":1,"smoke_packages":["./cmd/meta"],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"],"unknown":true}`,
-		`{"version":1,"smoke_packages":["./cmd/meta"],"shared_path_patterns":[],"generated_go_patterns":["*.gen.go"]}`,
-		`{"version":1,"smoke_packages":["./cmd/meta"],"shared_path_patterns":[""],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1}`,
+		`{"version":2,"lanes":[],"shared_path_patterns":["x"],"generated_go_patterns":["*.go"]}`,
+		`{"version":2,"lanes":` + validLanes + `,"shared_path_patterns":[],"generated_go_patterns":["*.go"]}`,
+		`{"version":2,"lanes":` + validLanes + `,"shared_path_patterns":["x","x"],"generated_go_patterns":["*.go"]}`,
+		`{"version":2,"lanes":` + validLanes + `,"shared_path_patterns":["x"],"generated_go_patterns":["*.go"],"unknown":true}`,
 	}
-
 	for _, body := range bodies {
-		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
+		if err := os.WriteFile(filename, []byte(body), 0o644); err != nil {
 			t.Fatal(err)
 		}
-		if _, err := Load(path); err == nil {
-			t.Fatalf("Load(%s) unexpectedly succeeded", body)
+		if _, err := Load(filename); err == nil {
+			t.Errorf("Load(%s) unexpectedly succeeded", body)
 		}
 	}
 }
