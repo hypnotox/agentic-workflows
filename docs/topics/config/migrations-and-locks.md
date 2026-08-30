@@ -32,7 +32,7 @@ Backing: test
 
 ### `invariant: migration-ordering`
 
-awf upgrade applies only registered migrations for supported live sources whose target generation exceeds the source generation, in ascending target order. The explicit ordered seam begins at schema 46; re-running at the current schema applies nothing and exits zero.
+awf upgrade applies only registered migrations for supported live sources whose target generation exceeds the source generation, in ascending target order. The registry begins with the schema-50 no-op seam for future supported advances; re-running at the current schema applies nothing and exits zero.
 Backing: test
 
 
@@ -50,10 +50,10 @@ Backing: test
 
 ### `invariant: upgrade-gate`
 
-Live operations refuse a source below schema 46, a retired layout, or partial authority before decoding, dispatch, or mutation with the supported floor and recovery direction. Only upgrade may execute an ordered supported migration from that floor; ordinary render, check, and staged operations never use historical decoding.
+Live operations refuse a source below schema 50, a retired layout, or partial authority before decoding, dispatch, or mutation with the supported floor and recovery direction. Only upgrade may execute a future ordered supported migration from that floor; ordinary render, check, and staged operations never use historical decoding.
 Backing: test
 
 
 ### `rule: live-source-compatibility-floor`
 
-Live project authority begins at schema generation 46. A below-floor, retired-layout, or partial authority refuses before decoding or dispatch with recovery direction; historical parsing is audit-only and cannot authorize live migration.
+Live project authority begins at schema generation 50. A below-floor, retired-layout, or partial authority refuses before decoding or dispatch with recovery direction; historical parsing is audit-only and cannot authorize live migration.
