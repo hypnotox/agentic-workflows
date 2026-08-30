@@ -10,7 +10,7 @@
 - [Frontmatter parsing](frontmatter.md): How authored-document frontmatter is split and validated.
 - [Guide and doc templates](guide-and-doc-templates.md): Agent-guide and documentation template contracts.
 - [Inplace and placeholders](inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
-- [Pi runtime](pi-runtime.md): The Pi runtime floor and its boundaries.
+- [Pi runtime](pi-runtime.md): The Pi runtime and its boundaries.
 - [Pi workflows](pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, native skills, exploration dispatch.
 - [Project output plan](project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.
 - [Render engine](render-engine.md): The template overlay render engine and its reference resolution.

@@ -31,7 +31,7 @@ func AcquireMutationLease(ctx context.Context, root, subcommand string) (*filesy
 
 func mutates(subcommand string) bool {
 	switch subcommand {
-	case "new", "finish", "worktree", "integrate", "memory edit", "memory update", "activity attach", "activity heartbeat", "activity detach":
+	case "new", "finish", "worktree", "integrate":
 		return true
 	default:
 		return false
@@ -108,36 +108,6 @@ func Integrate(ctx context.Context, root string, manager *worktree.Manager, slug
 		return presentation.Document{}, err
 	}
 	return worktreeDocument(manager.Integrate(ctx, slug, gate))
-}
-
-// ReadMemory performs one bounded memory read.
-func ReadMemory(service *effort.Service, input effort.MemoryReadInput) (effort.MemoryOperationResult, error) {
-	return service.Memory(input)
-}
-
-// EditMemory performs one exact memory edit or preview.
-func EditMemory(service *effort.Service, input effort.MemoryEditInput) (effort.MemoryOperationResult, error) {
-	return service.Memory(input)
-}
-
-// UpdateMemory updates effort memory metadata or previews the update.
-func UpdateMemory(service *effort.Service, input effort.MemoryUpdateInput) (effort.MemoryOperationResult, error) {
-	return service.UpdateMemory(input)
-}
-
-// AttachActivity attaches one bounded activity owner.
-func AttachActivity(service *effort.Service, slug, owner string) effort.ActivityReply {
-	return service.AttachActivity(slug, owner)
-}
-
-// HeartbeatActivity refreshes one bounded activity owner.
-func HeartbeatActivity(service *effort.Service, slug, owner string) effort.ActivityReply {
-	return service.HeartbeatActivity(slug, owner)
-}
-
-// DetachActivity detaches one bounded activity owner.
-func DetachActivity(service *effort.Service, slug, owner string) effort.ActivityReply {
-	return service.DetachActivity(slug, owner)
 }
 
 func newDocument(record effort.Record, result worktree.Result) (presentation.Document, error) {

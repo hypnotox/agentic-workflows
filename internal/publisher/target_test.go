@@ -33,16 +33,29 @@ func TestClaudeTargetPaths(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestPiRuntimeTargetRender)
-// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestPiRuntimeTargetRender)
-// invariant: rendering/pi-runtime:pi-extension-target-render (TestPiRuntimeTargetRender)
-// invariant: rendering/pi-workflows:using-effort-skill (TestPiRuntimeTargetRender)
-// invariant: rendering/pi-runtime:pi-session-handoff-workflow (TestPiRuntimeTargetRender)
-func TestPiRuntimeTargetRender(t *testing.T) {
-	if _, independentlySelectable := catalog.Standard.Skills["using-effort"]; independentlySelectable {
-		t.Fatal("using-effort companion became independently selectable")
+// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow)
+// invariant: rendering/pi-runtime:pi-extension-target-render (TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow)
+// invariant: rendering/pi-runtime:pi-session-handoff-workflow (TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow)
+func TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow(t *testing.T) {
+	if !hasCapability(piTarget, CapabilitySubagentTools) || !hasCapability(piTarget, CapabilitySessionHandoff) {
+		t.Fatalf("Pi capabilities = %v", piTarget.Capabilities)
 	}
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	if len(piTarget.Outputs) != 2 {
+		t.Fatalf("Pi outputs = %#v, want only two subagent outputs", piTarget.Outputs)
+	}
+	for _, output := range piTarget.Outputs {
+		if !strings.HasPrefix(output.Path, ".pi/extensions/awf-subagents/") || output.SkillName != "" {
+			t.Fatalf("non-host-neutral Pi output remains: %#v", output)
+		}
+	}
+	data := targetTemplateData(piTarget)
+	if data["targetSubagentTools"] != true || data["targetSessionHandoff"] != true {
+		t.Fatalf("Pi template data = %#v", data)
+	}
+	if _, exists := data["targetEffortSessions"]; exists {
+		t.Fatalf("retired effort-session datum remains: %#v", data)
+	}
+	root := scaffold(t, sampleYAML)
 	p, err := Open(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
@@ -51,228 +64,29 @@ func TestPiRuntimeTargetRender(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	extensions := map[string]string{}
+	paths := map[string]bool{}
 	for _, file := range files {
-		if strings.HasPrefix(file.Path, ".pi/extensions/") {
-			extensions[file.Path] = file.Content
+		paths[file.Path] = true
+	}
+	if !paths[".pi/skills/example-effort-workflow/SKILL.md"] {
+		t.Fatal("generic effort-workflow skill was not rendered for Pi")
+	}
+	for _, retired := range []string{".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts", ".pi/skills/example-using-effort/SKILL.md"} {
+		if paths[retired] {
+			t.Errorf("retired Pi output rendered: %s", retired)
 		}
 	}
-	expectedExtensions := map[string]bool{}
-	for _, path := range []string{".pi/extensions/awf-subagents/index.ts", ".pi/extensions/awf-subagents/model-routing.ts", ".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts"} {
-		expectedExtensions[path] = true
-		content, ok := extensions[path]
-		if !ok {
-			t.Errorf("missing governed Pi extension %s", path)
-		} else if !strings.HasPrefix(content, "// "+bannerText+"\n") {
-			t.Errorf("%s lacks provenance banner", path)
+	for _, file := range files {
+		if file.Path != ".pi/skills/example-effort-workflow/SKILL.md" {
+			continue
 		}
-	}
-	for path := range extensions {
-		if !expectedExtensions[path] {
-			t.Errorf("unexpected Pi extension rendered: %s", path)
-		}
-	}
-	// The optional presentation boundary is awf-owned and independent of metadata.
-	effort := extensions[".pi/extensions/awf-effort/index.ts"]
-	for _, required := range []string{
-		"pi-cockpit:capabilities:request",
-		"pi-cockpit:capabilities",
-		"pi-cockpit:display-suffix:set",
-		"pi-cockpit:display-suffix:request",
-		"displaySuffix",
-		"value: string | null",
-		`suffixSupported && current ? current.slug : null`,
-		`pi.on?.("session_start", () => { clear(); requestCapabilities(); })`,
-		`pi.events?.on?.("pi-cockpit:display-suffix:request", () => publishSuffix())`,
-		`pi.events?.on?.("pi-cockpit:capabilities", (caps: PiCockpitCapabilitiesReplyPayload) => { suffixSupported = supportsDisplaySuffix(caps); publishSuffix(); })`,
-		`namespace: "awf", value: snapshot ?`,
-	} {
-		if !strings.Contains(effort, required) {
-			t.Errorf("awf effort extension lacks display-suffix behavior %q", required)
-		}
-	}
-	if got := strings.Count(effort, "requestCapabilities()"); got != 2 {
-		t.Errorf("awf effort extension capability request count = %d, want factory plus session start", got)
-	}
-	for _, forbidden := range []string{"RemotePi", "remote-pi:"} {
-		if strings.Contains(effort, forbidden) {
-			t.Errorf("awf effort extension retains legacy integration identity %q", forbidden)
-		}
-	}
-	for _, forbidden := range []string{"name-override", "nameOverride", "NameOverride", "_displayName"} {
-		if strings.Contains(effort, forbidden) {
-			t.Errorf("awf effort extension retains routing-name contract %q", forbidden)
-		}
-	}
-	for _, banned := range []string{"awf-telemetry", "awf-workflow", "awf-workflows"} {
-		for path := range extensions {
-			if strings.Contains(path, banned) {
-				t.Errorf("retired extension rendered: %s", path)
+		for _, want := range []string{"./awf effort show <slug>", "ordinary file tools", "one user-managed writer"} {
+			if !strings.Contains(file.Content, want) {
+				t.Errorf("effort workflow missing %q", want)
 			}
-		}
-	}
-	index := extensions[".pi/extensions/awf-subagents/index.ts"]
-	routing := extensions[".pi/extensions/awf-subagents/model-routing.ts"]
-	for _, want := range []string{"registerSubagentTools(pi", "PROTOCOL_VERSION = 2", "ProfileDefinition[]", "pi-tools:subagent-profiles:request", "pi-tools:subagent-profiles:capability", "pi-tools:subagent-profiles:registration-result", "suppressDefault: true", "awf provides no fallback"} {
-		if !strings.Contains(index, want) {
-			t.Errorf("Pi profile adapter missing %q", want)
-		}
-	}
-	for _, owned := range []string{"export const PREFERENCE_FIELDS", "export function parsePreferenceSource", "export async function loadPreferenceState", "export function effectivePreferenceState", "export function resolveChildModel", "export function buildRoutingCard"} {
-		if !strings.Contains(routing, owned) {
-			t.Errorf("model-routing module missing owned policy %q", owned)
-		}
-		if strings.Contains(index, owned) {
-			t.Errorf("subagent entrypoint duplicates routing policy %q", owned)
-		}
-	}
-	if !strings.Contains(index, `from "./model-routing.ts"`) {
-		t.Error("subagent entrypoint does not consume model-routing module")
-	}
-	for _, want := range []string{`.pi/agents/premise-checker.md`, `.pi/agents/explorer.md`, `toolName: "subagent_grounding"`, `toolName: "subagent_explore"`} {
-		if !strings.Contains(index, want) {
-			t.Errorf("Pi repository-context adapter missing %q", want)
-		}
-	}
-	for _, file := range files {
-		if strings.HasPrefix(file.Path, ".claude/") && (strings.Contains(file.Content, "subagent_grounding") || strings.Contains(file.Content, "subagent_explore")) {
-			t.Errorf("non-Pi output %s contains a Pi subagent tool name", file.Path)
-		}
-	}
-	if _, ok := extensions[".pi/extensions/awf-effort/index.ts"]; !ok {
-		t.Error("selected effort-workflow did not render awf-effort index")
-	}
-	if _, ok := extensions[".pi/extensions/awf-effort/client.ts"]; !ok {
-		t.Error("selected effort-workflow did not render awf-effort client")
-	}
-	usingEffort := ""
-	for _, file := range files {
-		switch file.Path {
-		case ".pi/skills/example-using-effort/SKILL.md":
-			usingEffort = file.Content
-		}
-	}
-	for _, want := range []string{"Use `using_effort` explicitly", "{ effort: \"<canonical-slug>\" }", "{ detach: true }", "Pi remains at repository root", "use the supplied relative memory path `.awf/efforts/<slug>/memory.md`", "when present, managed-worktree path `.awf/worktrees/<slug>`", "Restart begins detached", "display-only suffix", "suffix is never routing input", "Activity is neither authority nor a lock", "When attached, prefer `effort_memory_read` for pathless reads", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available", "After a persisted formal phase checkpoint", "a persisted approval checkpoint", "another safe resumable effort point", "current `[session context]` model-window and active-branch-compaction evidence", "No fixed threshold controls this choice", "invoke `handoff_session` alone with kickoff exactly `Continue with effort <slug>.`", "The kickoff identifies only the effort: it carries no phase or task limit, association mechanic, resume procedure, or handoff-log instruction.", "If relevant discussion predates late effort creation, handoff is prohibited until effort-workflow initializes the owned memory from retained evidence.", "reorient from repository authority and the owned memory", "governed primary checkout for integration, deferred lifecycle closure, worktree removal, and retrospective", "Handoff validates only canonical YAML effort identity", "it does not validate mutable metadata, parse state or activity, select an effort, or mutate memory", "actual boundary to `## Handoff log` before substantive work", "Continuation, cancellation, or failure that leaves the old session active appends none"} {
-		if !strings.Contains(usingEffort, want) {
-			t.Errorf("using-effort companion missing %q:\n%s", want, usingEffort)
-		}
-	}
-	lateCreation := "If relevant discussion predates late effort creation"
-	handoffProhibition := "handoff is prohibited until effort-workflow initializes the owned memory from retained evidence"
-	reorientation := "reorient from repository authority and the owned memory"
-	if start, middle, end := strings.Index(usingEffort, lateCreation), strings.Index(usingEffort, handoffProhibition), strings.Index(usingEffort, reorientation); start < 0 || middle < start || end < middle {
-		t.Error("Pi handoff does not prohibit late-creation handoff before memory initialization and reorientation")
-	}
-	lateHandoff := strings.Replace(usingEffort, handoffProhibition, "handoff may proceed before memory initialization", 1)
-	if strings.Contains(lateHandoff, handoffProhibition) {
-		t.Error("Pi handoff oracle accepted late-creation handoff before memory initialization")
-	}
-	for _, unique := range []string{"## Pi session replacement", "invoke `handoff_session` alone", "`Continue with effort <slug>.`"} {
-		count := 0
-		for _, file := range files {
-			occurrences := strings.Count(file.Content, unique)
-			count += occurrences
-			if file.Path != ".pi/skills/example-using-effort/SKILL.md" && occurrences != 0 {
-				t.Errorf("rendered output %s duplicates Pi handoff signature %q", file.Path, unique)
-			}
-		}
-		if count != 1 {
-			t.Errorf("rendered output set has %d copies of %q, want exactly one", count, unique)
 		}
 	}
 }
-
-// invariant: rendering/pi-workflows:pi-effort-memory-tools (TestPiEffortMemoryToolContract)
-func TestPiEffortMemoryToolContract(t *testing.T) {
-	selected := explorationRenderedByPath(t, "prefix: example\nintegrationBranch: main\n")
-	index := selected[".pi/extensions/awf-effort/index.ts"]
-	client := selected[".pi/extensions/awf-effort/client.ts"]
-	guidance := selected[".pi/skills/example-using-effort/SKILL.md"]
-	for _, want := range []string{
-		`MEMORY_TOOL_NAMES = ["effort_memory_read", "effort_memory_edit", "effort_memory_update"]`,
-		`Type.Object({ offset: Type.Optional(Type.Integer({ minimum: 1 })), limit: Type.Optional(Type.Integer({ minimum: 1 })) }, { additionalProperties: false })`,
-		`Type.Array(Type.Object({ oldText: Type.String({ minLength: 1, maxLength: 1048576 }), newText: Type.String({ maxLength: 1048576 }) }, { additionalProperties: false }), { minItems: 1, maxItems: 128 })`,
-		`Type.Object({ phase: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })), next: Type.Optional(Type.String({ minLength: 1, maxLength: 500 })) }, { additionalProperties: false })`,
-		"activate(true)", "const clear = () => { current = undefined; activate(false); publish(); }", "fileMutationQueue(join(ctx.cwd, \".awf\", \"efforts\", snapshot.slug, \"memory.md\"), run)",
-		"const memoryCall = async", "serial(async () =>", `reply.condition === "not-owner" || reply.condition === "missing" || reply.condition === "unsafe-activity"`, `pi.on?.("session_start", () => { clear();`,
-		"getActiveTools", "setActiveTools", "withFileMutationQueue", "promptGuidelines", "Generic file tools remain available",
-	} {
-		if !strings.Contains(index, want) {
-			t.Errorf("rendered effort index missing memory-tool contract %q", want)
-		}
-	}
-	for _, want := range []string{"decodeMemory", "exact(reply", "MEMORY_STDOUT_MAX", "MEMORY_STDERR_MAX", `stdout.endsWith("\n")`, "memoryRead", "memoryEdit", "memoryUpdate", "childMemoryExecutor"} {
-		if !strings.Contains(client, want) {
-			t.Errorf("rendered effort client missing memory-tool contract %q", want)
-		}
-	}
-	for _, want := range []string{"prefer `effort_memory_read`", "`effort_memory_edit` only for Markdown body changes", "`effort_memory_update` for `phase` or `next`", "timestamps are automatic", "Generic file tools and direct awf commands remain available"} {
-		if !strings.Contains(guidance, want) {
-			t.Errorf("rendered using-effort guidance missing %q", want)
-		}
-	}
-	// The preview and retained-diff surface must be identical in the embedded
-	// template and in what the Pi target actually writes, so a drifting or
-	// partially rendered extension cannot claim the invariant (ADR-0239 as
-	// revised by ADR-0244).
-	for _, want := range []string{
-		`import { renderDiff } from "@earendil-works/pi-coding-agent";`,
-		`import { Box, Container, Spacer, Text } from "@earendil-works/pi-tui";`,
-		`renderShell: "self"`,
-		"const registerMutation = (spec: MutationSpec)",
-		"const previewCall = (toolCallId: string, key: string, cwd: string, invoke: (snapshot: Snapshot) => Promise<MemoryReply>)",
-		`if (preview.condition !== "previewed") throw new Error(renderMemoryOutcome(preview.outcome!));`,
-		"existing.key === key && existing.cwd === cwd",
-		"if (previews.size > PREVIEW_ENTRY_LIMIT) previews.delete(previews.keys().next().value as string);",
-		`await previewCall(toolCallId, spec.key(args) ?? "", ctx.cwd, (snapshot) => spec.invoke(snapshot, ctx.cwd, args, true, signal)); return await memoryCall(ctx, signal, (snapshot) => spec.invoke(snapshot, ctx.cwd, args, false, signal), true);`,
-		"(preview) => settlePreview(row, key, spec.title, theme, context, () => showMutationDiff(row, preview.diff!))",
-		"(error: Error) => settlePreview(row, key, spec.title, theme, context, () => showMutationFailure(row, error.message, theme))",
-		"if (row.key !== key || row.authoritative) return; try { apply(); buildMutationRow(row, title, theme); context.invalidate(); } catch",
-		`if (row) { row.authoritative = true; const reply = context.isError ? undefined : result.details as MemoryReply | undefined; if (reply && reply.diff) showMutationDiff(row, reply.diff); else showMutationFailure(row, mutationResultText(result), theme);`,
-		`const MUTATION_TRUNCATION_NOTICE = "Diff truncated for display.";`,
-		`theme.fg("warning", MUTATION_TRUNCATION_NOTICE)`,
-		`const text = diff.text.endsWith("\n") ? diff.text.slice(0, -1) : diff.text;`,
-		`const body = text === "" ? undefined : renderDiff(text);`,
-		"`Replaced ${reply.replacementCount} block(s) in effort memory.`",
-		`reply.condition === "updated" ? "Memory metadata updated."`,
-		"memoryEdit(memoryExecutor, cwd, snapshot.slug, snapshot.owner, args.edits, signal, { preview })",
-		"memoryUpdate(memoryExecutor, cwd, snapshot.slug, snapshot.owner, args, signal, { preview })",
-	} {
-		for source, label := range map[string]string{index: "rendered effort index", templateSource(t, "pi/awf-effort/index.ts.tmpl"): "effort index template"} {
-			if !strings.Contains(source, want) {
-				t.Errorf("%s missing mutation-rendering contract %q", label, want)
-			}
-		}
-	}
-	for _, want := range []string{
-		`"previewed"`,
-		`const previewing = operation === "edit-preview" || operation === "update-preview";`,
-		`if (condition === "previewed") { if (!previewing) return; const editPreview = operation === "edit-preview";`,
-		`exact(reply, ["schemaVersion", "condition", ...(editPreview ? ["replacementCount"] : []), "diff"])`,
-		`(editPreview && !integer(reply.replacementCount, 1, 128))`,
-		`if (previewing && (condition === "read" || condition === "edited" || condition === "updated")) return;`,
-		"function previewing(options: MemoryPreviewOption): boolean",
-		`invokeMemory(exec, preview ? "edit-preview" : "edit", ["effort", "memory", "edit", slugValue, ...(preview ? ["--preview"] : []), "--owner", owner, "--json"]`,
-		`...(args.next === undefined ? [] : ["--next", args.next]), ...(preview ? ["--preview"] : []), "--owner", owner, "--json"`,
-		`invokeMemory(exec, preview ? "update-preview" : "update"`,
-	} {
-		for source, label := range map[string]string{client: "rendered effort client", templateSource(t, "pi/awf-effort/client.ts.tmpl"): "effort client template"} {
-			if !strings.Contains(source, want) {
-				t.Errorf("%s missing preview-protocol contract %q", label, want)
-			}
-		}
-	}
-	fallback := renderSkillGolden(t, "using-effort", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
-	assertNoLeaks(t, fallback)
-	for _, tid := range []string{"pi/awf-effort/index.ts.tmpl", "pi/awf-effort/client.ts.tmpl"} {
-		// renderGolden already rejects unresolved tokens, so an empty-variable render is the assertion.
-		renderGolden(t, tid, map[string]any{"prefix": "", "vars": map[string]any{}, "data": map[string]any{}})
-	}
-	if os.Getenv("AWF_PI_RUNTIME_SMOKE") == "1" {
-		assertPiRuntimeSmoke(t)
-	}
-}
-
 func templateSource(t *testing.T, tid string) string {
 	t.Helper()
 	src, err := fs.ReadFile(templates.FS, tid)
@@ -283,13 +97,12 @@ func templateSource(t *testing.T, tid string) string {
 }
 
 // invariant: rendering/pi-runtime:pi-real-runtime-smoke (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-runtime:pi-minimum-runtime (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestPiRealRuntimeSmoke)
+// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-runtime:pi-tools-integration-boundary (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-routing (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:pi-effort-session-association (TestPiRealRuntimeSmoke)
 // invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiRealRuntimeSmoke)
 var (
 	piRuntimeSmokeOnce   sync.Once

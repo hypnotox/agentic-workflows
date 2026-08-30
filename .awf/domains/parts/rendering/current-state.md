@@ -11,4 +11,4 @@ The glossary renders from two layers: a standard vocabulary the catalog ships in
 
 Pi extension entrypoints check their required runtime APIs before registering hooks.
 
-Pi rendering governs the retained subagent and effort extension outputs through the fixed target descriptor. Independently installed `pi-tools` owns general context usage, handoff, scheduling, execution, and presentation.
+Pi rendering governs the retained subagent profile adapter and model-routing outputs through the fixed target descriptor. Independently installed `pi-tools` owns general context usage, handoff, scheduling, execution, and presentation.

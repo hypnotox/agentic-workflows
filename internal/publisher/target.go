@@ -27,8 +27,6 @@ const (
 	CapabilitySubagentTools = projectstate.CapabilitySubagentTools
 	// CapabilitySessionHandoff preserves the session-handoff capability value.
 	CapabilitySessionHandoff = projectstate.CapabilitySessionHandoff
-	// CapabilityEffortSessions preserves the effort-sessions capability value.
-	CapabilityEffortSessions = projectstate.CapabilityEffortSessions
 )
 
 // TargetOutputProducer preserves the project package's producer compatibility name.
@@ -53,7 +51,6 @@ func targetTemplateData(t Target) map[string]any {
 	return map[string]any{
 		"targetSubagentTools":  hasCapability(t, CapabilitySubagentTools),
 		"targetSessionHandoff": hasCapability(t, CapabilitySessionHandoff),
-		"targetEffortSessions": hasCapability(t, CapabilityEffortSessions),
 	}
 }
 

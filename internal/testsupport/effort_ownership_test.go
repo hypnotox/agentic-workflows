@@ -21,6 +21,37 @@ const (
 	worktreeImport = "github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
+func TestRetiredEffortProtocolSymbolsAreAbsent(t *testing.T) {
+	forbidden := map[string]bool{
+		"Activity": true, "ActivityCondition": true, "ActivityReply": true, "ActivityEffort": true,
+		"AttachActivity": true, "HeartbeatActivity": true, "DetachActivity": true,
+		"MemoryMetadata": true, "MemoryUpdate": true, "MemoryCondition": true,
+		"MemoryOperationInput": true, "MemoryReadInput": true, "MemoryReplacement": true,
+		"MemoryEditInput": true, "MemoryUpdateInput": true, "MemoryOperationResult": true,
+		"ReadMemory": true, "EditMemory": true, "UpdateMemory": true,
+		"CapabilityEffortSessions": true, "targetEffortSessions": true,
+		"boundedMemoryCommandError": true, "decodeMemoryEditRequest": true,
+		"writeEffortMemoryProtocol": true, "writeEffortActivityProtocol": true,
+		"validateEffortMemoryGrammar": true, "validateEffortActivityGrammar": true,
+		"replaceActivity": true, "removeActivityExpected": true, "replaceMemory": true,
+	}
+	root := testsupport.RepoRoot(t)
+	testsupport.WalkRepoSources(t, root, func(rel string, body []byte) {
+		file, err := parser.ParseFile(token.NewFileSet(), rel, body, parser.SkipObjectResolution)
+		if err != nil {
+			t.Errorf("parse production source %s: %v", rel, err)
+			return
+		}
+		ast.Inspect(file, func(node ast.Node) bool {
+			ident, ok := node.(*ast.Ident)
+			if ok && forbidden[ident.Name] {
+				t.Errorf("production source %s retains retired effort protocol symbol %s", rel, ident.Name)
+			}
+			return true
+		})
+	})
+}
+
 // TestEffortCommandUsesOneFocusedOperationPerLeaf protects the composition
 // boundary. It associates calls with runEffort's actual switch leaves, rather
 // than counting source text, so comments and dead helpers cannot satisfy a
@@ -62,12 +93,6 @@ case "show": return /* e.Show() */
 case "finish": e.Finish()
 case "worktree": if c.add { e.AddWorktree() } else { e.RemoveWorktree() }
 case "integrate": e.Integrate()
-case "memory read": e.ReadMemory()
-case "memory edit": e.EditMemory()
-case "memory update": e.UpdateMemory()
-case "activity attach": e.AttachActivity()
-case "activity heartbeat": e.HeartbeatActivity()
-case "activity detach": e.DetachActivity()
 } }
 func obsoleteHelper() { e.Show() }`,
 			want: `leaf "show" focused operations = []`,
@@ -156,25 +181,18 @@ type effortLeaf struct {
 }
 
 var effortLeafOperations = map[string]string{
-	"new":                "New",
-	"list":               "List",
-	"show":               "Show",
-	"finish":             "Finish",
-	"worktree add":       "AddWorktree",
-	"worktree remove":    "RemoveWorktree",
-	"integrate":          "Integrate",
-	"memory read":        "ReadMemory",
-	"memory edit":        "EditMemory",
-	"memory update":      "UpdateMemory",
-	"activity attach":    "AttachActivity",
-	"activity heartbeat": "HeartbeatActivity",
-	"activity detach":    "DetachActivity",
+	"new":             "New",
+	"list":            "List",
+	"show":            "Show",
+	"finish":          "Finish",
+	"worktree add":    "AddWorktree",
+	"worktree remove": "RemoveWorktree",
+	"integrate":       "Integrate",
 }
 
 var directEffortOperations = map[string]bool{
 	"New": true, "InvokingRoot": true, "List": true, "Show": true, "Finish": true,
-	"RollbackCreation": true, "Memory": true, "UpdateMemory": true,
-	"AttachActivity": true, "HeartbeatActivity": true, "DetachActivity": true,
+	"RollbackCreation": true,
 }
 
 var directWorktreeOperations = map[string]bool{

@@ -306,7 +306,7 @@ func TestUsagePositionalCardinality(t *testing.T) {
 		{"optional positional", "awf adr number [<slug>]", "awf adr number", 0, 1, []string{"<slug>"}},
 		{"variadic positional", "awf adr number <slug>...", "awf adr number", 1, -1, []string{"<slug>"}},
 		{"optional variadic positional", "awf adr number [<slug>...]", "awf adr number", 0, -1, []string{"<slug>"}},
-		{"value option operand is skipped", "awf effort activity attach <slug> --owner <uuid>", "awf effort activity attach", 1, 1, []string{"<slug>"}},
+		{"value option operand is skipped", "awf test <slug> --owner <uuid>", "awf test", 1, 1, []string{"<slug>"}},
 		{"exact command prefix", "awf test <slug>", "awf tests", 0, 0, nil},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -454,41 +454,21 @@ func TestLookup(t *testing.T) {
 		t.Fatalf("legacy topic spec remains: %#v", topic)
 	}
 	effort, ok := Lookup("effort")
-	if !ok || len(effort.Children) != 8 {
+	if !ok || len(effort.Children) != 6 {
 		t.Fatalf("effort spec = %#v, found %v", effort, ok)
 	}
 	if newEffort, found := effort.Child("new"); !found || len(newEffort.BoolFlags) != 0 || strings.Join(newEffort.ValueFlags, ",") != "--slug,--base" || !strings.Contains(helpText(newEffort), "awf effort new --slug <slug> <outcome-title>") || !strings.Contains(helpText(newEffort), "1 through 32 bytes") {
 		t.Fatalf("effort new spec = %#v, found %v", newEffort, found)
 	}
-	wantEffortChildren := []string{"new", "list", "show", "finish", "worktree", "integrate", "memory", "activity"}
+	wantEffortChildren := []string{"new", "list", "show", "finish", "worktree", "integrate"}
 	for index, name := range wantEffortChildren {
 		if effort.Children[index].Name != name {
 			t.Errorf("effort child %d = %q, want %q", index, effort.Children[index].Name, name)
 		}
 	}
-	memory, found := effort.Child("memory")
-	if !found || len(memory.Children) != 3 || memory.Children[0].Name != "read" || memory.Children[1].Name != "edit" || memory.Children[2].Name != "update" || strings.Join(memory.Children[0].ValueFlags, ",") != "--offset,--limit,--owner" || strings.Join(memory.Children[2].ValueFlags, ",") != "--phase,--next,--owner" {
-		t.Fatalf("effort memory spec = %#v, found %v", memory, found)
-	}
-	// Only a mutation may declare --preview: a read has nothing to preview, and
-	// an accepted but ignored flag is a silently wrong surface.
-	for index, wantBoolFlags := range []string{"--json", "--json,--preview", "--json,--preview"} {
-		command := memory.Children[index]
-		if got := strings.Join(command.BoolFlags, ","); got != wantBoolFlags || !strings.Contains(helpText(command), "--owner") {
-			t.Errorf("memory %s bool flags = %q, want %q: %#v", command.Name, got, wantBoolFlags, command)
-		}
-	}
-	activity, found := effort.Child("activity")
-	activityNames := make([]string, len(activity.Children))
-	for i, action := range activity.Children {
-		activityNames[i] = action.Name
-	}
-	if !found || strings.Join(activityNames, ",") != "attach,heartbeat,detach" {
-		t.Fatalf("effort activity spec = %#v, found %v", activity, found)
-	}
-	for _, action := range activity.Children {
-		if !strings.Contains(strings.Join(action.BoolFlags, ","), "--json") || !strings.Contains(helpText(action), "awf effort activity "+action.Name) {
-			t.Errorf("activity %s does not declare JSON-only grammar: %#v", action.Name, action)
+	for _, retired := range []string{"memory", "activity"} {
+		if _, found := effort.Child(retired); found {
+			t.Errorf("retired effort child %q remains", retired)
 		}
 	}
 	for _, removed := range []string{"rename", "complete", "abandon", "reopen", "repair", "integrated"} {

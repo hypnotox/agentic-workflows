@@ -21,43 +21,6 @@ func noTopology(deps *Dependencies) {
 	deps.Worktrees = func(context.Context) ([]awfgit.WorktreeRegistration, error) { return nil, nil }
 	deps.BranchExists = func(context.Context, string) (bool, error) { return false, nil }
 }
-
-func updateMemoryForTest(service *Service, slug string, update MemoryUpdate) (MemoryOperationResult, error) {
-	return service.UpdateMemory(MemoryUpdateInput{Slug: slug, Update: update})
-}
-
-func TestUpdateMemoryRefusesInvalidResidentsAndUnrepairedMetadata(t *testing.T) {
-	root := initEffortRepo(t)
-	service := openTestService(t, root, nil)
-	value := "replacement"
-	if _, err := updateMemoryForTest(service, "bad_slug", MemoryUpdate{Phase: &value}); err == nil || !strings.Contains(err.Error(), "invalid effort slug") {
-		t.Fatalf("invalid slug = %v", err)
-	}
-	if result, err := updateMemoryForTest(service, "missing-effort", MemoryUpdate{Phase: &value}); err != nil || result.Condition != MemoryMissing {
-		t.Fatalf("missing resident result=%#v err=%v", result, err)
-	}
-	if _, err := service.New(testContext(t), NewInput{Slug: "update-faults", Title: "Update faults"}); err != nil {
-		t.Fatal(err)
-	}
-	memory := filepath.Join(root, ".awf", "efforts", "update-faults", "memory.md")
-	if err := os.Remove(memory); err != nil {
-		t.Fatal(err)
-	}
-	if result, err := updateMemoryForTest(service, "update-faults", MemoryUpdate{Phase: &value}); err != nil || result.Condition != MemoryInvalid || result.Outcome == nil {
-		t.Fatalf("missing memory result=%#v err=%v", result, err)
-	}
-	if err := os.WriteFile(memory, []byte("---\neffort: update-faults\nphase: old\nnext: old\nupdated: invalid\n---\nbody\n"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if result, err := updateMemoryForTest(service, "update-faults", MemoryUpdate{Phase: &value, Next: &value}); err != nil || result.Condition != MemoryUpdated {
-		t.Fatalf("canonical metadata refresh result=%#v err=%v", result, err)
-	}
-	raw, err := os.ReadFile(memory)
-	if err != nil || !strings.Contains(string(raw), "updated: ") || strings.Contains(string(raw), "updated: invalid") {
-		t.Fatalf("canonical metadata refresh bytes=%q err=%v", raw, err)
-	}
-}
-
 func TestRefusalDiagnosticsPreserveErrorIdentityAndSeparateFacts(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)

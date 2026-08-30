@@ -1,6 +1,5 @@
 title: Pi runtime
-summary: "The Pi runtime floor and its boundaries."
+summary: "The Pi runtime and its boundaries."
 paths:
   - internal/catalog/**
   - .pi/extensions/**
-  - templates/skills/using-effort/SKILL.md.tmpl

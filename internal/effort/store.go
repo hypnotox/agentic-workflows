@@ -200,7 +200,7 @@ func (s store) create(record Record) error {
 	if err != nil {
 		return err
 	}
-	if err := s.publishNew(s.paths.memoryFile(record.Slug), memorySkeleton(record.Slug, record.CreatedAt), "memory"); err != nil {
+	if err := s.publishNew(s.paths.memoryFile(record.Slug), memorySkeleton(), "memory"); err != nil {
 		return err
 	}
 	raw, err := json.Marshal(persisted(record))
@@ -215,73 +215,6 @@ func (s store) create(record Record) error {
 	}
 	if err := syncDirectory(s.paths.efforts); err != nil {
 		return fmt.Errorf("fsync efforts root after publishing %s: %w", dir, err)
-	}
-	return nil
-}
-
-type memoryPublicationError struct {
-	Changed bool
-	Err     error
-}
-
-func (e *memoryPublicationError) Error() string { return e.Err.Error() }
-func (e *memoryPublicationError) Unwrap() error { return e.Err }
-
-func memoryPublicationChanged(err error) bool {
-	var publication *memoryPublicationError
-	return errors.As(err, &publication) && publication.Changed
-}
-
-// replaceMemory publishes a fully synced sibling and then atomically replaces
-// the old memory. All injected failures before rename leave the old bytes.
-func (s store) replaceMemory(path string, raw []byte) (returnErr error) {
-	dir := filepath.Dir(path)
-	temp, err := os.CreateTemp(dir, ".memory-update-*.tmp")
-	if err != nil {
-		return fmt.Errorf("create sibling temporary memory: %w", err)
-	}
-	tempPath := temp.Name()
-	closed, published := false, false
-	defer func() {
-		if !closed {
-			returnErr = errors.Join(returnErr, temp.Close())
-		}
-		if !published {
-			if err := os.Remove(tempPath); err != nil && !errors.Is(err, os.ErrNotExist) {
-				returnErr = errors.Join(returnErr, err)
-			}
-		}
-	}()
-	if err := s.hit("memory-update.write"); err != nil {
-		return err
-	}
-	if n, err := temp.Write(raw); err != nil {
-		return fmt.Errorf("write temporary memory: %w", err)
-	} else if n != len(raw) {
-		return io.ErrShortWrite
-	}
-	if err := s.hit("memory-update.fsync"); err != nil {
-		return err
-	}
-	if err := temp.Sync(); err != nil {
-		return fmt.Errorf("fsync temporary memory: %w", err)
-	}
-	if err := temp.Close(); err != nil {
-		return fmt.Errorf("close temporary memory: %w", err)
-	}
-	closed = true
-	if err := s.hit("memory-update.rename"); err != nil {
-		return err
-	}
-	if err := os.Rename(tempPath, path); err != nil {
-		return fmt.Errorf("replace memory atomically: %w", err)
-	}
-	published = true
-	if err := s.hit("memory-update.directory-fsync"); err != nil {
-		return &memoryPublicationError{Changed: true, Err: err}
-	}
-	if err := syncDirectory(dir); err != nil {
-		return &memoryPublicationError{Changed: true, Err: fmt.Errorf("fsync effort directory after memory update: %w", err)}
 	}
 	return nil
 }
@@ -368,12 +301,8 @@ func (s store) loadDirectory(dir, expectedSlug string, requireMemory bool) (Reco
 	}
 	if requireMemory {
 		memoryPath := filepath.Join(dir, "memory.md")
-		memory, err := readRegularNoFollow(memoryPath)
-		if err != nil {
+		if _, err := readRegularNoFollow(memoryPath); err != nil {
 			return Record{}, &CorruptError{Path: memoryPath, Err: &residentReadError{fmt.Errorf("published state has absent or invalid owned memory: %w", err)}}
-		}
-		if err := readMemoryIdentity(memory, expectedSlug); err != nil {
-			return Record{}, &CorruptError{Path: memoryPath, Err: fmt.Errorf("published state has memory with a mismatched effort identity: %w", err)}
 		}
 	}
 	return s.logical(value), nil

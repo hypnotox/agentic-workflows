@@ -168,7 +168,7 @@ func TestOrdinaryCommandOutputUsesPresentation(t *testing.T) {
 			t.Errorf("%s findings = %v, want exactly one %q finding", fixture, findings, want)
 		}
 	}
-	for _, fixture := range []string{"positive-changelog.go", "positive-activity.go", "positive-memory.go", "positive-init.go", "positive-shadow.go"} {
+	for _, fixture := range []string{"positive-changelog.go", "positive-init.go", "positive-shadow.go"} {
 		if findings := fixtureFindings(t, fixture); len(findings) != 0 {
 			t.Errorf("%s findings: %v", fixture, findings)
 		}
@@ -209,22 +209,18 @@ const modulePath = "github.com/hypnotox/agentic-workflows"
 
 var successfulBypasses = map[string]bool{
 	modulePath + "/cmd/awf.writeChangelogPayload":       true,
-	modulePath + "/cmd/awf.writeEffortActivityProtocol": true,
-	modulePath + "/cmd/awf.writeEffortMemoryProtocol":   true,
 	modulePath + "/cmd/awf.writeInitDescriptorProtocol": true,
 }
 
 // These exact helpers write authored files or spill-file storage rather than a
 // user-visible presentation. They are serialization sinks, not output bypasses.
 var nonPresentationWrites = map[string]bool{
-	modulePath + "/cmd/awf.writeAndCloseTopicFile":          true,
-	modulePath + "/internal/effort.replaceResidentExpected": true,
-	modulePath + "/internal/effort.replaceMemory":           true,
-	modulePath + "/internal/effort.publishNew":              true,
-	modulePath + "/internal/project.encodeMarkdownAgent":    true,
-	modulePath + "/internal/project.glossaryRows":           true,
-	modulePath + "/internal/project.pitfallsMarkdown":       true,
-	modulePath + "/internal/project.commitScopeTable":       true,
+	modulePath + "/cmd/awf.writeAndCloseTopicFile":       true,
+	modulePath + "/internal/effort.publishNew":           true,
+	modulePath + "/internal/project.encodeMarkdownAgent": true,
+	modulePath + "/internal/project.glossaryRows":        true,
+	modulePath + "/internal/project.pitfallsMarkdown":    true,
+	modulePath + "/internal/project.commitScopeTable":    true,
 }
 
 // These owners create authored payload bytes rather than user-facing text.
@@ -234,7 +230,7 @@ var nonPresentationLiteralOwners = map[string]bool{
 	modulePath + "/internal/topic.ScaffoldFiles":           true,
 	modulePath + "/internal/topic.ScaffoldFilesWithExists": true,
 	modulePath + "/internal/topic.ParsePart":               true,
-	modulePath + "/internal/effort.memoryBody":             true,
+	modulePath + "/internal/effort.memorySkeleton":         true,
 	modulePath + "/internal/project.pitfallsMarkdown":      true,
 	modulePath + "/internal/project.commitScopeTable":      true,
 }

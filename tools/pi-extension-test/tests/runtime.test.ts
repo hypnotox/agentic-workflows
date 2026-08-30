@@ -15,9 +15,7 @@ import {
   ModelRuntime,
   SessionManager,
   SettingsManager,
-  withFileMutationQueue,
 } from "@earendil-works/pi-coding-agent";
-import { registerEffort } from "../../../.pi/extensions/awf-effort/index.ts";
 import { registerSubagentTools, type ExtensionDependencies } from "../../../.pi/extensions/awf-subagents/index.ts";
 import { PREFERENCE_FIELDS } from "../../../.pi/extensions/awf-subagents/model-routing.ts";
 
@@ -36,7 +34,7 @@ function terminalMessage(): AssistantMessage {
   };
 }
 
-test("pinned Pi runtime discovers awf skills and delivers protocol-v2 routing with retained effort integration", async () => {
+test("pinned Pi runtime discovers awf skills and delivers protocol-v2 routing without effort association", async () => {
   const requests: Context[] = [];
   const stream = (_model: Model<any>, context: Context) => {
     requests.push(context);
@@ -104,10 +102,6 @@ test("pinned Pi runtime discovers awf skills and delivers protocol-v2 routing wi
       });
     },
     (pi: any) => registerSubagentTools(pi, deps),
-    (pi: any) => registerEffort(pi, {
-      packageVersion: "0.84.2", fileMutationQueue: withFileMutationQueue,
-      memoryExec: async () => { throw new Error("runtime smoke does not invoke effort transport"); },
-    }),
   ];
   const settingsManager = SettingsManager.inMemory({ compaction: { enabled: false }, retry: { enabled: false } });
   const loader = new DefaultResourceLoader({
@@ -130,14 +124,13 @@ test("pinned Pi runtime discovers awf skills and delivers protocol-v2 routing wi
 
   const loadedExtensions = loader.getExtensions().extensions;
   const registrations = loadedExtensions.map((extension: any) => [...extension.tools.keys()]);
-  assert.ok(registrations.some((tools: string[]) => tools.includes("using_effort")));
+  assert.ok(registrations.every((tools: string[]) => !tools.includes("using_effort")));
   const runtimeRegistry = {
     find: (provider: string, id: string) => provider === "runtime" && id === "model" ? model : undefined,
     hasConfiguredAuth: () => true,
     getAvailable: () => [model],
   };
   for (const loaded of loadedExtensions) {
-    if (loaded.tools.has("using_effort")) continue;
     const starts = loaded.handlers.get("session_start") ?? [];
     for (const start of starts) await start({}, { modelRegistry: runtimeRegistry, model, ui: { notify() {} }, sessionManager: {} });
   }

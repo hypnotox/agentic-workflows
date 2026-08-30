@@ -1,6 +1,7 @@
 package effort
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -191,6 +192,51 @@ func TestFinishValidatesMarkerAndRootBeforeActiveMutation(t *testing.T) {
 			}
 			if _, err := os.Stat(filepath.Join(root, ".awf", "efforts", "marker-guard")); err != nil {
 				t.Fatalf("active resident changed: %v", err)
+			}
+		})
+	}
+}
+
+func TestLegacyMemoryAndActivityAreOpaqueThroughLifecycle(t *testing.T) {
+	for name, activity := range map[string][]byte{
+		"valid":     []byte(`{"schemaVersion":2,"owner":"128f47a0-7b3d-4c52-8f1a-123456789abc","attachedAt":"2026-08-10T00:00:00Z","heartbeatAt":"2026-08-10T00:00:00Z"}`),
+		"stale":     []byte(`{"schemaVersion":2,"owner":"128f47a0-7b3d-4c52-8f1a-123456789abc","attachedAt":"2000-01-01T00:00:00Z","heartbeatAt":"2000-01-01T00:00:00Z"}`),
+		"malformed": []byte("not json\x00\n"),
+	} {
+		t.Run(name, func(t *testing.T) {
+			root := initEffortRepo(t)
+			service := openTestService(t, root, func(deps *Dependencies) {
+				noTopology(deps)
+				deps.UUID = func() (string, error) { return testIDA, nil }
+			})
+			record, err := service.New(testContext(t), NewInput{Slug: "legacy-" + name, Title: "Legacy " + name})
+			if err != nil {
+				t.Fatal(err)
+			}
+			resident := filepath.Join(root, ".awf", "efforts", record.Slug)
+			memory := []byte("---\neffort: " + record.Slug + "\nphase: ???\nnext: never\nupdated: nonsensical\n---\nlegacy body\n")
+			if err := os.WriteFile(filepath.Join(resident, "memory.md"), memory, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(resident, "activity.json"), activity, 0o600); err != nil {
+				t.Fatal(err)
+			}
+			if listed, err := service.List(); err != nil || len(listed) != 1 {
+				t.Fatalf("list=%#v err=%v", listed, err)
+			}
+			if _, err := service.Show(record.Slug); err != nil {
+				t.Fatal(err)
+			}
+			result, err := service.Finish(testContext(t), record.Slug)
+			if err != nil {
+				t.Fatal(err)
+			}
+			archive := filepath.Join(root, filepath.FromSlash(result.ArchivePath))
+			for leaf, want := range map[string][]byte{"memory.md": memory, "activity.json": activity} {
+				got, readErr := os.ReadFile(filepath.Join(archive, leaf))
+				if readErr != nil || !bytes.Equal(got, want) {
+					t.Fatalf("%s=%q err=%v, want %q", leaf, got, readErr, want)
+				}
 			}
 		})
 	}

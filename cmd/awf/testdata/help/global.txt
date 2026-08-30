@@ -56,16 +56,6 @@ help:
         finish | Finish and archive one effort
         worktree | Add or remove a managed worktree
         integrate | Integrate a managed worktree
-        memory | Read and update bounded effort memory
-        activity | Mutate advisory Pi session activity
-      memory:
-        read | Read complete memory lines
-        edit | Apply exact body replacements
-        update | Update memory phase or next action
-      activity:
-        attach | Attach or take over an advisory activity claim
-        heartbeat | Heartbeat an owned advisory activity claim
-        detach | Detach an owned advisory activity claim
     new:
       commands:
         topic | Scaffold paired current-state topic inputs

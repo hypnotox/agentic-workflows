@@ -168,7 +168,7 @@ func TestProjectStateDefensivelyOwnsTargetSnapshots(t *testing.T) {
 	if first[0].Capabilities[0] != CapabilitySubagentTools || first[0].Outputs[0].Path != "output" || first[0].Outputs[0].Inputs[0].Path != "input" {
 		t.Fatalf("project state retained a target construction alias: %#v", first)
 	}
-	first[0].Capabilities[0] = CapabilityEffortSessions
+	first[0].Capabilities[0] = CapabilitySessionHandoff
 	first[0].Outputs[0].Path = "returned mutation"
 	first[0].Outputs[0].Inputs[0].Path = "returned mutation"
 	second := state.Targets()

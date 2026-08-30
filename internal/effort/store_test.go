@@ -1,6 +1,7 @@
 package effort
 
 import (
+	"bytes"
 	"encoding/json"
 	"errors"
 	"io/fs"
@@ -80,7 +81,10 @@ func TestEffortProtocol2CreateShowListAndCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, phrase := range []string{"---\n", "effort: zeta-result\n", "phase:", "next:", "updated:", "## Brief", "## Decision log", "## Observations", "## Handoff log"} {
+	if bytes.HasPrefix(memory, []byte("---")) {
+		t.Fatal("new memory unexpectedly has frontmatter")
+	}
+	for _, phrase := range []string{"## Brief", "## Checkpoint", "## Decision log", "## Observations", "## Handoff log"} {
 		if !strings.Contains(string(memory), phrase) {
 			t.Fatalf("memory skeleton missing %q:\n%s", phrase, memory)
 		}
@@ -152,33 +156,6 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 		})
 	}
 }
-
-func TestMemoryUpdatePostRenameFaultReportsChangedBytes(t *testing.T) {
-	root := initEffortRepo(t)
-	service := openTestService(t, root, func(deps *Dependencies) {
-		deps.Fault = func(stage string) error {
-			if stage == "memory-update.directory-fsync" {
-				return errors.New("durability interrupted")
-			}
-			return nil
-		}
-	})
-	if _, err := service.New(testContext(t), NewInput{Slug: "durable-update", Title: "Durable update"}); err != nil {
-		t.Fatal(err)
-	}
-	phase := "Published before directory sync"
-	if result, err := updateMemoryForTest(service, "durable-update", MemoryUpdate{Phase: &phase}); err != nil || result.Condition != MemoryFailure || result.Outcome == nil || !result.Outcome.ChangedMemory || !strings.Contains(result.Outcome.Cause, "durability interrupted") {
-		t.Fatalf("post-rename result=%#v err=%v", result, err)
-	}
-	raw, err := os.ReadFile(filepath.Join(root, ".awf", "efforts", "durable-update", "memory.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(raw), "phase: Published before directory sync\n") {
-		t.Fatalf("post-rename fault did not retain published memory:\n%s", raw)
-	}
-}
-
 func TestConcurrentSameSlugCreationHasOneWinner(t *testing.T) {
 	t.Parallel()
 	root := initEffortRepo(t)
@@ -333,13 +310,6 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 				t.Fatal(err)
 			}
 			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "foreign-leaf", "extra"), "x")
-		},
-		"mismatched memory": func(t *testing.T, root string) {
-			service := openEffortService(t, root, time.Now().UTC())
-			if _, err := service.New(testContext(t), NewInput{Slug: "wrong-memory", Title: "Wrong memory"}); err != nil {
-				t.Fatal(err)
-			}
-			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "wrong-memory", "memory.md"), "Effort: other\n")
 		},
 		"non-directory effort": func(t *testing.T, root string) {
 			writeEffortFile(t, filepath.Join(root, ".awf", "efforts", "regular-file"), "x")

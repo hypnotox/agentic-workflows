@@ -28,9 +28,6 @@ func TestEffortPathsUseSlugDirectoryAndOwnedMemory(t *testing.T) {
 	if paths.memoryFile("meaningful-slug") != filepath.Join(wantEffort, "memory.md") {
 		t.Fatalf("unexpected memory path: %s", paths.memoryFile("meaningful-slug"))
 	}
-	if paths.activityFile("meaningful-slug") != filepath.Join(wantEffort, "activity.json") {
-		t.Fatalf("unexpected activity path: %s", paths.activityFile("meaningful-slug"))
-	}
 	if got := memoryPublicPath("meaningful-slug"); got != ".awf/efforts/meaningful-slug/memory.md" {
 		t.Fatalf("public memory path = %q", got)
 	}

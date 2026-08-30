@@ -1,6 +1,6 @@
 This topic records the current ownership contract for generated executable adapter-runtime outputs.
 
-The retained Pi subagent and effort extensions share the same generated-output ownership and whole-tree coverage exclusion.
+The retained Pi subagent extensions share the same generated-output ownership and whole-tree coverage exclusion.
 
 ## Claims
 

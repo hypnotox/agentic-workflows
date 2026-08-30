@@ -21,13 +21,6 @@ func TestProtocol2DirectorySyncAndExclusivePublication(t *testing.T) {
 	if raw, err := os.ReadFile(destination); err != nil || string(raw) != "new" {
 		t.Fatalf("published bytes=%q err=%v", raw, err)
 	}
-	identity, err := lstatRegular(destination)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := publishAtomic(filepath.Join(dir, "missing-temporary"), destination, &identity); err == nil {
-		t.Fatal("missing replacement temporary accepted")
-	}
 }
 
 func TestDirectoryMoveIsAtomicAndNoReplace(t *testing.T) {

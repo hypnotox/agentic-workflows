@@ -9,7 +9,7 @@ How a project assembles its render set, output plan, drift check, and prune beha
 
 Publisher assembles the full render set, constructs one immutable operation-scoped output plan, and owns sync-time publication. Immutable plan values live in `internal/outputplan`, while Publisher privately owns its declaration inventory. Current-state coordinator operations consume Publisher's defensive semantic projections when Publisher already participates, so drift, tracking, advisory, and staged consumers reuse one operation preparation without transferring Publisher ownership, reparsing its corpora, or collapsing distinct operation universes.
 
-The Pi target descriptor is the sole declaration of the five Pi-specific outputs: the subagent index and model-routing module, the effort index and client, and the `using-effort` skill; non-Pi target sets render and prune none of them.
+The Pi target descriptor is the sole declaration of the two Pi-specific outputs: the subagent index and model-routing module. No target descriptor retains an effort index, effort client, or `using-effort` output.
 
 ## Claims
 

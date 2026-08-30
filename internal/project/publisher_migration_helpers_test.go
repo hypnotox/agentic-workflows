@@ -27,7 +27,6 @@ func targetTemplateData(target Target) map[string]any {
 	return map[string]any{
 		"targetSubagentTools":  slices.Contains(target.Capabilities, CapabilitySubagentTools),
 		"targetSessionHandoff": slices.Contains(target.Capabilities, CapabilitySessionHandoff),
-		"targetEffortSessions": slices.Contains(target.Capabilities, CapabilityEffortSessions),
 	}
 }
 

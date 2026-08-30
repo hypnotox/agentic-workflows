@@ -20,7 +20,7 @@ The glossary renders from two layers: a standard vocabulary the catalog ships in
 
 Pi extension entrypoints check their required runtime APIs before registering hooks.
 
-Pi rendering governs the retained subagent and effort extension outputs through the fixed target descriptor. Independently installed `pi-tools` owns general context usage, handoff, scheduling, execution, and presentation.
+Pi rendering governs the retained subagent profile adapter and model-routing outputs through the fixed target descriptor. Independently installed `pi-tools` owns general context usage, handoff, scheduling, execution, and presentation.
 
 
 <!-- awf:template-source templates/domains/domain.md.tmpl -->
@@ -35,7 +35,7 @@ Pi rendering governs the retained subagent and effort extension outputs through 
 - [Frontmatter parsing](../topics/rendering/frontmatter.md): How authored-document frontmatter is split and validated.
 - [Guide and doc templates](../topics/rendering/guide-and-doc-templates.md): Agent-guide and documentation template contracts.
 - [Inplace and placeholders](../topics/rendering/inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
-- [Pi runtime](../topics/rendering/pi-runtime.md): The Pi runtime floor and its boundaries.
+- [Pi runtime](../topics/rendering/pi-runtime.md): The Pi runtime and its boundaries.
 - [Pi workflows](../topics/rendering/pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, native skills, exploration dispatch.
 - [Project output plan](../topics/rendering/project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.
 - [Render engine](../topics/rendering/render-engine.md): The template overlay render engine and its reference resolution.

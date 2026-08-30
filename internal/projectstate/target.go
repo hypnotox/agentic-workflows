@@ -33,8 +33,6 @@ const (
 	CapabilitySubagentTools Capability = "subagent-tools"
 	// CapabilitySessionHandoff enables target-native session handoff.
 	CapabilitySessionHandoff Capability = "session-handoff"
-	// CapabilityEffortSessions enables target-native effort sessions.
-	CapabilityEffortSessions Capability = "effort-sessions"
 )
 
 // TargetOutputProducer identifies how a target-owned output is produced.
@@ -67,7 +65,7 @@ type TargetOutput struct {
 }
 
 func (t Target) validate() error {
-	known := map[Capability]bool{CapabilitySubagentTools: true, CapabilitySessionHandoff: true, CapabilityEffortSessions: true}
+	known := map[Capability]bool{CapabilitySubagentTools: true, CapabilitySessionHandoff: true}
 	for _, c := range t.Capabilities {
 		if !known[c] {
 			return fmt.Errorf("target %q has unknown capability %q", t.Name, c)
@@ -171,13 +169,10 @@ var piTarget = Target{
 	AgentDir:     ".pi/agents",
 	AgentSuffix:  ".md",
 	AgentDialect: MarkdownAgentDialect,
-	Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff, CapabilityEffortSessions},
+	Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
 	Outputs: []TargetOutput{
 		{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true},
 		{Path: ".pi/extensions/awf-subagents/model-routing.ts", TemplateID: "pi/awf-subagents/model-routing.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-effort/index.ts", RequiresSkill: "effort-workflow", TemplateID: "pi/awf-effort/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true},
-		{Path: ".pi/extensions/awf-effort/client.ts", RequiresSkill: "effort-workflow", TemplateID: "pi/awf-effort/client.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true},
-		{SkillName: "using-effort", RequiresSkill: "effort-workflow", TemplateID: "skills/using-effort/SKILL.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, Policy: outputplan.Policy{ValidateFrontmatter: true, ScanReferences: true, ScanSkillReferences: true}, PolicyDeclared: true},
 	},
 }
 

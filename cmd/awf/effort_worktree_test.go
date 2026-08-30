@@ -51,7 +51,14 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 	if !effortWorktreeBranchExists(t, root, "default-cli") {
 		t.Fatal("managed branch absent")
 	}
-
+	code, stdout, stderr := runEffortCLI(t, managed, "effort", "show", "default-cli")
+	memory := filepath.Join(root, ".awf", "efforts", "default-cli", "memory.md")
+	if code != 0 || stderr != "" || !strings.Contains(stdout, "memory: "+memory) {
+		t.Fatalf("managed show code=%d stdout=%q stderr=%q, want resolvable %s", code, stdout, stderr, memory)
+	}
+	if _, err := os.Stat(memory); err != nil {
+		t.Fatalf("reported memory path is not resolvable: %v", err)
+	}
 }
 
 // invariant: tooling/effort-management:default-worktree-creation (TestEffortNewBasesTheManagedBranchOnTheNamedRef)

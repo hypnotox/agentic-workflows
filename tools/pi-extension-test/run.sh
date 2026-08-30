@@ -125,8 +125,6 @@ NODE
   node_modules/.bin/c8 --all \
     --include='.pi/extensions/awf-subagents/index.ts' \
     --include='.pi/extensions/awf-subagents/model-routing.ts' \
-    --include='.pi/extensions/awf-effort/index.ts' \
-    --include='.pi/extensions/awf-effort/client.ts' \
     --exclude='tools/pi-extension-test/tests/*.ts' \
     node --import tsx --test --experimental-test-isolation=none tools/pi-extension-test/tests/*.test.ts
 )

@@ -53,8 +53,8 @@ type NewInput struct {
 	Title string
 }
 
-// Record is the public protocol-2 effort view. SchemaVersion belongs to the
-// containing reply, while static state carries it directly.
+// Record is the public effort view. SchemaVersion belongs to the containing
+// reply, while static state carries it directly.
 type Record struct {
 	SchemaVersion int       `json:"-"`
 	ID            string    `json:"id"`

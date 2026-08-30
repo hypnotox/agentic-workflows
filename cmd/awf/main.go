@@ -230,9 +230,6 @@ func (r runner) run(args []string, stdout, stderr io.Writer) int {
 	}
 	inv, err := parseArgs(qualifiedParseSpec(cmd, top, sub), rest)
 	if err != nil {
-		if top.Name == "effort" && (sub == "memory" || strings.HasPrefix(sub, "memory ")) {
-			err = &usageErr{boundedMemoryCommandError(err).Error()}
-		}
 		return dispatchFailure(stdout, stderr, err) // parseArgs only returns usageErr → exit 2
 	}
 	// Process guards own interruption before dispatch so independently invocable

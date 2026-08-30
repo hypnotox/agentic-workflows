@@ -123,17 +123,6 @@ func (s *Service) List() ([]Record, error) { return s.store.list() }
 
 func (s *Service) Show(slug string) (Record, error) { return s.store.load(slug) }
 
-func memoryUpdateCommand(slug string, invalid map[string]bool) string {
-	command := "./awf effort memory update " + slug
-	if invalid["phase"] {
-		command += " --phase <replacement-phase>"
-	}
-	if invalid["next"] {
-		command += " --next <replacement-next>"
-	}
-	return command
-}
-
 func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error) {
 	if err := validateSlug(slug); err != nil {
 		return FinishResult{}, invalidSlugRefusal(slug, err)

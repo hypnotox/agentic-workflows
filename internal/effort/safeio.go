@@ -110,12 +110,6 @@ func readRegularNoFollowBoundedIdentity(path string, limit int64) ([]byte, fileI
 	return raw, identity, nil
 }
 
-type publicationIdentityError struct{ err error }
-
-func (e *publicationIdentityError) Error() string { return e.err.Error() }
-func (e *publicationIdentityError) Unwrap() error { return e.err }
-func publicationIdentityRefusal(err error) error  { return &publicationIdentityError{err: err} }
-
 // residentOwner is the ownership predicate behind ValidateCurrentOwner. It is a
 // variable so the foreign-owner refusal is provable without a privileged test
 // process able to create a foreign-owned fixture; production always binds the
