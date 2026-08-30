@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
@@ -57,7 +58,7 @@ func TestWorktreeRegistrationRoundTrip(t *testing.T) {
 	}
 	var found bool
 	for _, registration := range registrations {
-		if registration.Path == filepath.Clean(managed) {
+		if registration.Path == filesystem.NormalizePlatformPath(managed) {
 			found = true
 			if registration.Branch != "refs/heads/awf/round-trip" || registration.Detached || registration.Bare {
 				t.Fatalf("registration = %#v", registration)
@@ -78,7 +79,7 @@ func TestWorktreeRegistrationRoundTrip(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(registrations) != 1 || registrations[0].Path != filepath.Clean(dir) {
+	if len(registrations) != 1 || registrations[0].Path != filesystem.NormalizePlatformPath(dir) {
 		t.Fatalf("registrations after remove = %#v", registrations)
 	}
 	if err := repo.BranchDelete(ctx, "awf/round-trip"); err != nil {

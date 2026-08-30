@@ -15,6 +15,7 @@ import (
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 )
 
 const PolicyVersion = 2
@@ -282,6 +283,7 @@ func discoverPlatform(ctx context.Context, root, goos, goarch string) (map[strin
 	}
 
 	decoder := json.NewDecoder(bytes.NewReader(output))
+	repositoryIdentity := filesystem.NormalizePlatformPath(root)
 	byImport := map[string]string{}
 	type rawNode struct{ imports, testImports []string }
 	raw := map[string]rawNode{}
@@ -296,7 +298,7 @@ func discoverPlatform(ctx context.Context, root, goos, goarch string) (map[strin
 		if item.Error != nil {
 			return nil, fmt.Errorf("go list package %q for %s/%s: %s", item.ImportPath, goos, goarch, item.Error.Err)
 		}
-		relative, err := filepath.Rel(root, item.Dir)
+		relative, err := filepath.Rel(repositoryIdentity, filesystem.NormalizePlatformPath(item.Dir))
 		if err != nil || relative == ".." || strings.HasPrefix(relative, ".."+string(filepath.Separator)) {
 			return nil, fmt.Errorf("go list package %q is outside repository", item.ImportPath)
 		}

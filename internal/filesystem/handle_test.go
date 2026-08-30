@@ -1213,7 +1213,7 @@ func filesystemConsumerFinding(rel, src string) string {
 				if id, ok := s.X.(*ast.Ident); ok && bound[id.Name] {
 					capability = true
 				}
-				if id, ok := s.X.(*ast.Ident); ok && imports[id.Name] && (s.Sel.Name == "Backup" || s.Sel.Name == "CanonicalRoot" || s.Sel.Name == "SupportedTreeEntry" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireTrackedLease" || s.Sel.Name == "AcquireResidentLease" || s.Sel.Name == "AcquireProjectLease") {
+				if id, ok := s.X.(*ast.Ident); ok && imports[id.Name] && (s.Sel.Name == "Backup" || s.Sel.Name == "CanonicalRoot" || s.Sel.Name == "NormalizePlatformPath" || s.Sel.Name == "SupportedTreeEntry" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireTrackedLease" || s.Sel.Name == "AcquireResidentLease" || s.Sel.Name == "AcquireProjectLease") {
 					capability = true
 				}
 			}
@@ -1298,7 +1298,7 @@ func isFilesystemConstructor(call *ast.CallExpr, imports map[string]bool) bool {
 	s, ok := call.Fun.(*ast.SelectorExpr)
 	// Handle construction and the neutral lease capability are the two allowed
 	// production flows from this package; neither exports another concrete type.
-	return ok && (s.Sel.Name == "Open" || s.Sel.Name == "CanonicalRoot" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireTrackedLease" || s.Sel.Name == "AcquireResidentLease" || s.Sel.Name == "AcquireProjectLease") && importedOS(s.X, imports)
+	return ok && (s.Sel.Name == "Open" || s.Sel.Name == "CanonicalRoot" || s.Sel.Name == "NormalizePlatformPath" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireTrackedLease" || s.Sel.Name == "AcquireResidentLease" || s.Sel.Name == "AcquireProjectLease") && importedOS(s.X, imports)
 }
 
 func importedOS(expr ast.Expr, names map[string]bool) bool {

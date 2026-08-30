@@ -9,6 +9,8 @@ import (
 	"strings"
 	"testing"
 	"time"
+
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 )
 
 func TestControlRootInternalParserAndHelpers(t *testing.T) {
@@ -138,7 +140,7 @@ func TestControlRootRejectsUnexpectedBareScalarFromFixedArguments(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := "-C " + root + " rev-parse --is-bare-repository\n"
+	want := "-C " + filesystem.NormalizePlatformPath(root) + " rev-parse --is-bare-repository\n"
 	if string(recorded) != want {
 		t.Fatalf("native Git calls = %q, want the single fixed invocation %q", recorded, want)
 	}
@@ -167,7 +169,7 @@ func TestNativeGitStageFailuresAndStrictScalarParsing(t *testing.T) {
 			t.Setenv("PATH", bin+string(os.PathListSeparator)+os.Getenv("PATH"))
 			_, err := ResolveControlRoots(testContext(t), root)
 			var command *CommandError
-			if !errors.As(err, &command) || !strings.Contains(err.Error(), root) {
+			if !errors.As(err, &command) || !strings.Contains(err.Error(), filesystem.NormalizePlatformPath(root)) {
 				t.Fatalf("%s-stage error lost command identity or path context: %T %v", stage, err, err)
 			}
 		})
@@ -217,8 +219,9 @@ func TestControlRootInternalGitDirAndSafetyErrors(t *testing.T) {
 	if err := os.Mkdir(dotGit, 0o700); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := worktreeGitDir(root); err != nil || got != dotGit {
-		t.Fatalf("directory gitdir = %q, %v", got, err)
+	wantDotGit := filesystem.NormalizePlatformPath(dotGit)
+	if got, err := worktreeGitDir(root); err != nil || got != wantDotGit {
+		t.Fatalf("directory gitdir = %q, %v, want %q", got, err, wantDotGit)
 	}
 	if err := os.Remove(dotGit); err != nil {
 		t.Fatal(err)
@@ -230,8 +233,9 @@ func TestControlRootInternalGitDirAndSafetyErrors(t *testing.T) {
 	if err := os.WriteFile(dotGit, []byte("gitdir: metadata\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if got, err := worktreeGitDir(root); err != nil || got != metadata {
-		t.Fatalf("pointer gitdir = %q, %v", got, err)
+	wantMetadata := filesystem.NormalizePlatformPath(metadata)
+	if got, err := worktreeGitDir(root); err != nil || got != wantMetadata {
+		t.Fatalf("pointer gitdir = %q, %v, want %q", got, err, wantMetadata)
 	}
 	if err := os.WriteFile(dotGit, []byte("bad"), 0o600); err != nil {
 		t.Fatal(err)

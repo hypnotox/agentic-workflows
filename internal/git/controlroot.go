@@ -7,6 +7,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 )
 
 // ControlRoots identifies the invoking checkout, repository-wide Git common
@@ -193,7 +195,7 @@ func (r ControlRoots) ResidentRoot(name ResidentName) (string, error) {
 	if !filepath.IsAbs(r.PrimaryRoot) {
 		return "", &HardSafetyError{Category: "unconfined", Path: r.PrimaryRoot, Err: errors.New("primary root is not absolute")}
 	}
-	primary := filepath.Clean(r.PrimaryRoot)
+	primary := filesystem.NormalizePlatformPath(r.PrimaryRoot)
 	resident := filepath.Join(primary, ".awf", string(name))
 	if !lexicallyContained(primary, resident) {
 		return "", &HardSafetyError{Category: "unconfined", Path: resident}
@@ -244,7 +246,7 @@ func listWorktreeRegistrations(ctx context.Context, native runner, invokingRoot 
 		if !filepath.IsAbs(record.path) {
 			return nil, &HardSafetyError{Category: "unconfined", Path: record.path, Err: errors.New("git registration path is not absolute")}
 		}
-		path := filepath.Clean(record.path)
+		path := filesystem.NormalizePlatformPath(record.path)
 		result = append(result, WorktreeRegistration{Path: path, HEAD: record.head, Branch: record.branch, Detached: record.detached, Bare: record.bare, Prunable: record.prunable})
 	}
 	return result, nil
@@ -366,7 +368,7 @@ func worktreeGitDir(worktree string) (string, error) {
 		return "", err
 	}
 	if info.IsDir() {
-		return filepath.Clean(dotGit), nil
+		return filesystem.NormalizePlatformPath(dotGit), nil
 	}
 	raw, err := os.ReadFile(dotGit)
 	if err != nil {
@@ -379,7 +381,7 @@ func worktreeGitDir(worktree string) (string, error) {
 	if !filepath.IsAbs(pointer) {
 		pointer = filepath.Join(filepath.Dir(dotGit), pointer)
 	}
-	return filepath.Clean(pointer), nil
+	return filesystem.NormalizePlatformPath(pointer), nil
 }
 
 func runGitPathWith(ctx context.Context, native runner, args ...string) (string, error) {
@@ -465,7 +467,7 @@ func cleanAbsolute(path string) (string, error) {
 	if err != nil {
 		return "", err
 	}
-	return filepath.Clean(absolute), nil
+	return filesystem.NormalizePlatformPath(absolute), nil
 }
 
 func lexicallyContained(root, path string) bool {

@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
@@ -88,7 +89,7 @@ func TestControlRootSeparateGitDirRepository(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolve efforts resident root: %v", err)
 	}
-	if want := filepath.Join(primary, ".awf", "efforts"); resident != want {
+	if want := filepath.Join(cleanAbsolute(t, primary), ".awf", "efforts"); resident != want {
 		t.Fatalf("resident root = %q, want %q", resident, want)
 	}
 }
@@ -330,7 +331,7 @@ func TestControlRootResidentNameClosedSet(t *testing.T) {
 			if err != nil {
 				t.Fatalf("resolve %q resident root: %v", name, err)
 			}
-			if want := filepath.Join(primary, ".awf", leaf); got != want {
+			if want := filepath.Join(cleanAbsolute(t, primary), ".awf", leaf); got != want {
 				t.Fatalf("resident root = %q, want %q", got, want)
 			}
 		})
@@ -603,7 +604,7 @@ func cleanAbsolute(t *testing.T, path string) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	return filepath.Clean(absolute)
+	return filesystem.NormalizePlatformPath(absolute)
 }
 
 func requireNonForceableHardSafety(t *testing.T, err error, category, path string) {
@@ -625,14 +626,15 @@ func requireNonForceableHardSafety(t *testing.T, err error, category, path strin
 	if hard.Category != category {
 		t.Fatalf("hard safety category = %q, want %q (error: %v)", hard.Category, category, err)
 	}
-	if path != "" && filepath.Clean(hard.Path) != filepath.Clean(path) {
-		t.Fatalf("hard safety path = %q, want %q (error: %v)", hard.Path, path, err)
+	wantPath := filesystem.NormalizePlatformPath(path)
+	if path != "" && filepath.Clean(hard.Path) != wantPath {
+		t.Fatalf("hard safety path = %q, want %q (error: %v)", hard.Path, wantPath, err)
 	}
 	diagnostic := hard.Error()
 	if !strings.Contains(diagnostic, category) {
 		t.Fatalf("hard safety diagnostic %q omits category %q", diagnostic, category)
 	}
-	if path != "" && !strings.Contains(diagnostic, path) {
-		t.Fatalf("hard safety diagnostic %q omits path %q", diagnostic, path)
+	if path != "" && !strings.Contains(diagnostic, wantPath) {
+		t.Fatalf("hard safety diagnostic %q omits path %q", diagnostic, wantPath)
 	}
 }

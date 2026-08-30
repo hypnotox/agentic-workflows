@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -36,8 +37,9 @@ func TestResolveProjectResidentRoot(t *testing.T) {
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	linked := filepath.Join(t.TempDir(), "linked")
 	gitfixture.NativeWorktreeAdd(t, repo, linked, "linked")
-	if got := awfgit.ProjectResidentRoot(ctx, linked); got != primary {
-		t.Fatalf("resident root = %q, want primary %q", got, primary)
+	want := filesystem.NormalizePlatformPath(primary)
+	if got := awfgit.ProjectResidentRoot(ctx, linked); got != want {
+		t.Fatalf("resident root = %q, want primary %q", got, want)
 	}
 }
 
