@@ -24,8 +24,7 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 		"ruleset `main` (ID `18766557`) is the final remote control for publishing `main`",
 		"requires signed commits and blocks non-fast-forward updates and deletion, but has no required-status rule",
 		"`CI / gate` is therefore definitive post-push assurance rather than a pre-update requirement on `main`",
-		"`release tags` ruleset (ID `21631403`) requires `CI / gate` and the retired `CI / release-config`",
-		"before `refs/tags/v*` can be created or updated",
+		"`release tags` ruleset (ID `21631403`) requires only `CI / gate` before `refs/tags/v*` can be created or updated",
 		"One aggregate `CI / gate` result is the definitive hosted verdict.",
 	} {
 		if !strings.Contains(workflow, want) {
@@ -37,6 +36,7 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 		"CI is the enforcement backstop",
 		"currently requires the GitHub Actions checks `CI / gate` and the retired `CI / release-config`",
 		"release tags` ruleset (ID `21631403`) currently requires the same app-bound checks",
+		"requires `CI / gate` and the retired `CI / release-config`",
 	} {
 		if strings.Contains(workflow, stale) {
 			t.Errorf("self-hosted workflow retains stale remote-policy claim %q", stale)
@@ -47,8 +47,8 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	for _, want := range []string{
 		"Local hooks are optional preflight.",
 		"wait for that commit's `CI / gate` check to succeed",
-		"live ruleset still requires the retired `CI / release-config` status",
-		"repository owner must update the remote requirement",
+		"live GitHub `release tags` ruleset requires successful `CI / gate`",
+		"live tag ruleset requires that same conclusion before accepting the tag",
 		"needs-bound credential-bearing GoReleaser job",
 		"Production snapshot construction and portability validation belong to the read-only release verification job.",
 		"Ordinary local Go tests use synthetic archive fixtures and never invoke GoReleaser.",
