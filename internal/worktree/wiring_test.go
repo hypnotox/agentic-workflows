@@ -172,7 +172,7 @@ func invokingStub(invoking string, apply func(stub *checkoutStub)) OpenCheckout 
 }
 
 func sameWorktreePath(left, right string) bool {
-	return filepath.Clean(left) == filepath.Clean(right)
+	return filesystem.NormalizePlatformPath(left) == filesystem.NormalizePlatformPath(right)
 }
 
 // failing is the shape every injected fault takes: a named refusal a test can
@@ -278,6 +278,7 @@ func managerRooted(t *testing.T, root string, drift func(*awfgit.ControlRoots), 
 	service := newEffortService(t, roots, nil, nil)
 	drifted := roots
 	drift(&drifted)
+	drifted.InvokingRoot = filesystem.NormalizePlatformPath(drifted.InvokingRoot)
 	open := func(string) (Runner, error) {
 		checkout, err := awfgit.Open(root)
 		if err != nil {

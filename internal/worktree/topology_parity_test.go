@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/effort"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
@@ -128,7 +129,7 @@ func TestExactRegistrationRefusalAndManagedPathBranches(t *testing.T) {
 		t.Fatal("registration probe error was hidden")
 	}
 
-	root := t.TempDir()
+	root := filesystem.NormalizePlatformPath(t.TempDir())
 	oldOwner := managedOwner
 	defer func() { managedOwner = oldOwner }()
 	managedOwner = func(string, os.FileInfo) error { return errors.New("foreign owner") }

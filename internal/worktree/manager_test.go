@@ -873,7 +873,7 @@ func TestManagerAuthorityErrorBranches(t *testing.T) {
 	if err := unrooted.validateManagedTarget(testContext(t), t.TempDir()); err == nil {
 		t.Fatal("invalid resident authority accepted")
 	}
-	plain := t.TempDir()
+	plain := filesystem.NormalizePlatformPath(t.TempDir())
 	if err := m.validateManagedTarget(testContext(t), plain); err == nil || !strings.Contains(err.Error(), "repository-identity") {
 		t.Fatalf("plain managed target error = %v", err)
 	}
@@ -1971,7 +1971,7 @@ func initWorktreeRepo(t *testing.T, format string) string {
 		gitfixture.NativeAdd(t, repo, filepath.ToSlash(filepath.Join(".awf", resident, ".gitignore")))
 	}
 	commitWorktree(t, root, "base")
-	return root
+	return filesystem.NormalizePlatformPath(root)
 }
 
 func writeWorktreeFile(t *testing.T, path, content string) {

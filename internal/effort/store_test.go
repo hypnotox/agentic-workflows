@@ -14,6 +14,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
@@ -518,7 +519,7 @@ func initEffortRepo(t *testing.T) string {
 	if err := os.WriteFile(filepath.Join(archive, ".gitignore"), []byte(testArchiveMarker), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	return root
+	return filesystem.NormalizePlatformPath(root)
 }
 
 func writeEffortFile(t *testing.T, path, content string) {

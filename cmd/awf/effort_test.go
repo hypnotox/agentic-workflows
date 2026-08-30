@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -211,7 +212,7 @@ func commandRepo(t *testing.T) string {
 	}
 	gitfixture.NativeAdd(t, fixture, ".")
 	gitfixture.NativeCommit(t, fixture, "initialize awf")
-	return root
+	return filesystem.NormalizePlatformPath(root)
 }
 
 type effortErrorWriter struct{}
