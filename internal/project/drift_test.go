@@ -534,61 +534,6 @@ func TestCheckStaleTakesPrecedence(t *testing.T) {
 	}
 }
 
-// invariant: rendering/sync-and-drift:sync-always-writes-active-md (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
-// invariant: rendering/sync-and-drift:check-active-md-stale (TestSyncGeneratesActiveMDAndCheckDetectsStaleness)
-func TestSyncGeneratesActiveMDAndCheckDetectsStaleness(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	adrDir := filepath.Join(root, "docs", "decisions")
-	if err := os.MkdirAll(adrDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	adrBody := testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n## Decision\n\n1. x.\n"))
-	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-first.md"), adrBody)
-
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	if err := syncProject(p); err != nil {
-		t.Fatalf("Sync: %v", err)
-	}
-	index, err := os.ReadFile(filepath.Join(adrDir, "INDEX.md"))
-	if err != nil {
-		t.Fatalf("INDEX.md not generated: %v", err)
-	}
-	// The Accepted ADR renders under the In flight status section.
-	inflightPos := strings.Index(string(index), "## In flight")
-	entryPos := strings.Index(string(index), "ADR-0001: First")
-	if inflightPos < 0 || !strings.Contains(string(index), "## History") {
-		t.Errorf("INDEX.md missing status sections:\n%s", index)
-	}
-	if entryPos < 0 || entryPos < inflightPos {
-		t.Errorf("INDEX.md missing the ADR entry under In flight:\n%s", index)
-	}
-	if drift, err := checkProject(p, testContext(t)); err != nil || len(drift) != 0 {
-		t.Fatalf("expected clean check after sync, got drift=%#v err=%v", drift, err)
-	}
-
-	// Change frontmatter status (Accepted In flight -> Implemented History); the
-	// on-disk INDEX.md is now stale.
-	adr2 := strings.Replace(adrBody, "status: Accepted", "status: Implemented", 1)
-	testsupport.WriteFile(t, filepath.Join(adrDir, "0001-first.md"), adr2)
-	drift, err := checkProject(p, testContext(t))
-	if err != nil {
-		t.Fatalf("Check: %v", err)
-	}
-	found := false
-	for _, d := range drift {
-		if strings.HasSuffix(d.Path, "decisions/INDEX.md") && d.Kind == "stale" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected stale drift for INDEX.md, got %#v", drift)
-	}
-}
-
 // invariant: rendering/sync-and-drift:check-invalid-frontmatter (TestCheckDetectsInvalidFrontmatter)
 func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	root := scaffold(t, sampleYAML)
@@ -616,7 +561,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	}
 }
 
-// Generated indexes carry RegenChecked=true and use regeneration drift checks,
+// Regenerated documents carry RegenChecked=true and use regeneration drift checks,
 // while ordinary rendered files carry false and use frozen OutputHash checks.
 // The attribute is the single source for selecting the applicable check.
 func TestRegenCheckedAttribute(t *testing.T) {
@@ -626,10 +571,6 @@ func TestRegenCheckedAttribute(t *testing.T) {
 		t.Fatal(err)
 	}
 	// invariant: rendering/sync-and-drift:regeneration-checked-attribute (TestRegenCheckedAttribute)
-	amd := generateIndexMD(renderInputsForTest(p), mustDeriveCorpus(t, p))
-	if !amd.RegenChecked {
-		t.Errorf("INDEX.md must be regeneration-checked")
-	}
 	dds, err := generateDomainDocs(renderInputsForTest(p), mustDeriveTopics(t, p), mustDeriveSkills(t, p))
 	if err != nil {
 		t.Fatal(err)

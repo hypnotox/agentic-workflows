@@ -14,7 +14,7 @@ import (
 
 func testLayout() map[string]any {
 	return map[string]any{
-		"docsDir": "docs", "adrDir": "docs/decisions", "indexMd": "docs/decisions/INDEX.md", "adrReadme": "docs/decisions/README.md", "adrTemplate": "docs/decisions/template.md", "docs": map[string]any{}, "workflowRef": "docs/workflow.md", "docStandard": "docs/doc-standard.md", "agentsMdStandard": "docs/agents-md-standard.md", "workingWithAwf": "docs/working-with-awf.md", "maintainableCodeDesign": "docs/maintainable-code-design.md", "configReference": "docs/config-reference.md", "domainsDir": "docs/domains",
+		"docsDir": "docs", "docs": map[string]any{}, "workflowRef": "docs/workflow.md", "docStandard": "docs/doc-standard.md", "agentsMdStandard": "docs/agents-md-standard.md", "workingWithAwf": "docs/working-with-awf.md", "maintainableCodeDesign": "docs/maintainable-code-design.md", "configReference": "docs/config-reference.md", "domainsDir": "docs/domains",
 	}
 }
 func parseSections(src string, markdown ...bool) []render.Segment {
@@ -46,12 +46,6 @@ func renderGolden(t *testing.T, path string, data map[string]any) string {
 		}
 	}
 	return out
-}
-func assertV3ADRTemplatePublicationSafe(t *testing.T) {
-	out := renderGolden(t, "adr-template/template.md.tmpl", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}, "skills": map[string]bool{}, "layout": testLayout()})
-	if !strings.Contains(out, "format: current-state-v4") || !strings.Contains(out, "- YYYY-MM-DD: Proposed") {
-		t.Fatalf("V4 lifecycle example is not publication-safe:\n%s", out)
-	}
 }
 
 type fallbackCase struct {

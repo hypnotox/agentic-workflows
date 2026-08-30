@@ -44,7 +44,6 @@ var doubleBacktickExempt = map[string]bool{}
 // list (ADR-0080).
 // invariant: rendering/templates:catalog-template-sweep (TestCatalogTemplatesDegradeLeakFree)
 func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
-	assertV3ADRTemplatePublicationSafe(t)
 	cat := catalog.Standard
 	sweep := func(tid, requiresDoc string) {
 		t.Run(tid, func(t *testing.T) {
@@ -607,7 +606,7 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, eff, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
+	_, _, eff, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {
 		t.Fatal(err)
 	}

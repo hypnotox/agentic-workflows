@@ -71,11 +71,7 @@ func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, _, _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
-	if err != nil {
-		t.Fatal(err)
-	}
-	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
+	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -518,7 +514,7 @@ func TestOutputPlanPropagatesTopicGenerationEnumerationFault(t *testing.T) {
 	calls := 0
 	failure := errors.New("topic enumeration failed")
 	reader := failingPathsReader{memoryProjectReader: memoryProjectReader{}, failAt: 3, calls: &calls}
-	_, err := outputPlanWithPitfalls(newRenderInputs(state, &config.Config{}, reader, project.Version), mustCorpus(), pitfall.Corpus{}, topic.Corpus{}, map[string]bool{})
+	_, err := outputPlanWithPitfalls(newRenderInputs(state, &config.Config{}, reader, project.Version), pitfall.Corpus{}, topic.Corpus{}, map[string]bool{})
 	if err == nil || !strings.Contains(err.Error(), failure.Error()) && !strings.Contains(err.Error(), "enumeration fault") {
 		t.Fatalf("output plan error = %v", err)
 	}

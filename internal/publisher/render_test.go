@@ -1,19 +1,16 @@
 package publisher
 
 import (
-	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
-	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // syncedWorkflowDoc scaffolds a minimal project whose commit-discipline part is
@@ -65,11 +62,7 @@ func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 	if err != nil || !strings.Contains(string(second), "operator-owned body\n\nwith spacing") {
 		t.Fatalf("preserved local body = %q, %v", second, err)
 	}
-	corpus, err := adr.LoadCorpusFromTree(NewFilesystemReader(p.Root()), filepath.ToSlash(filepath.Join(config.DocsDir, "decisions")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: root}, corpus)
+	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -272,103 +265,6 @@ func TestUnknownPlaceholderInsideCommentRenders(t *testing.T) {
 	}
 }
 
-// The template seam end-to-end: the embedded adr-readme template includes a
-// partial containing only a qualified touches-state authoring comment, so any
-// regression in include expansion or renderTarget strip wiring leaks it into
-// every scaffolded project's rendered README.
-func TestEmbeddedTemplateAuthoringCommentStripped(t *testing.T) {
-	const directive = "<!-- awf:comment the embedded ADR README include is source-only -->"
-	src, err := fs.ReadFile(templates.FS, "adr-readme/README.md.tmpl")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(src), "<!-- awf:include template-source-observation -->") {
-		t.Fatal("embedded ADR README source lacks the comment-only include")
-	}
-	partial, err := fs.ReadFile(templates.FS, "partials/template-source-observation.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(string(partial), directive) {
-		t.Fatalf("embedded comment-only include lacks qualified directive %q", directive)
-	}
-
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", nil)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := syncProject(p); err != nil {
-		t.Fatal(err)
-	}
-	b, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "README.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if strings.Contains(string(b), directive) || strings.Contains(string(b), "awf:comment") {
-		t.Errorf("the embedded template's qualified authoring comment leaked into rendered output:\n%s", b)
-	}
-}
-
-func TestRenderTargetTemplateSourceActivation(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nrender:\n  templateSourceRoot: templates\n")
-	const tid = "adr-readme/README.md.tmpl"
-	src, err := fs.ReadFile(templates.FS, tid)
-	if err != nil {
-		t.Fatal(err)
-	}
-	expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
-	if err != nil {
-		t.Fatal(err)
-	}
-	const commentOnlySource = "partials/template-source-observation.md"
-	var commentOnlyText strings.Builder
-	for _, span := range expanded.Spans {
-		if span.Source == "" {
-			continue
-		}
-		if span.Source == commentOnlySource {
-			commentOnlyText.WriteString(span.Text)
-			continue
-		}
-		path := filepath.Join(root, "templates", filepath.FromSlash(span.Source))
-		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(path, []byte(span.Text), 0o644); err != nil {
-			t.Fatal(err)
-		}
-	}
-	if commentOnlyText.Len() == 0 {
-		t.Fatal("expanded template lost the comment-only include identity")
-	}
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := renderTarget(renderInputsForTest(p), "adr-readme", "", tid, projectCatalog(renderInputsForTest(p)).Docs["adr-readme"].Sections, config.Sidecar{}, projectData(renderInputsForTest(p), config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil || !strings.Contains(err.Error(), "templates/"+commentOnlySource) {
-		t.Fatalf("missing comment-only include mapping error = %v", err)
-	}
-	commentOnlyPath := filepath.Join(root, "templates", filepath.FromSlash(commentOnlySource))
-	if err := os.MkdirAll(filepath.Dir(commentOnlyPath), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(commentOnlyPath, []byte(commentOnlyText.String()), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	rf, err := renderTarget(renderInputsForTest(p), "adr-readme", "", tid, projectCatalog(renderInputsForTest(p)).Docs["adr-readme"].Sections, config.Sidecar{}, projectData(renderInputsForTest(p), config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !strings.Contains(rf.Content, "<!-- awf:template-source templates/"+tid+" -->") || strings.Contains(rf.Content, commentOnlySource) || rf.TemplateHash == "" || rf.ConfigHash == "" {
-		t.Fatalf("provenance render did not validate then strip the comment-only include: %s", rf.Content)
-	}
-	testConfig(p).Render.TemplateSourceRoot = "missing"
-	if _, err := renderTarget(renderInputsForTest(p), "adr-readme", "", tid, projectCatalog(renderInputsForTest(p)).Docs["adr-readme"].Sections, config.Sidecar{}, projectData(renderInputsForTest(p), config.Sidecar{}, map[string]bool{}), "docs/decisions/README.md", map[string]bool{}); err == nil {
-		t.Fatal("unresolved configured source root accepted")
-	}
-}
-
 func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: "templates/doc.md", Mode: snapshot.Regular, Bytes: []byte("source")},
@@ -503,25 +399,6 @@ func TestCaptureStructuralHeadingsReportsDefaultExpressionOmittedByOverride(t *t
 	assembled, parts := assemble(segs, map[string]render.SectionPlan{"body": {HasPart: true, PartBody: "override"}}, render.HTMLComment)
 	if output, assembleErr := render.Execute(assembled, map[string]any{}, parts, "test final assembly"); assembleErr != nil || !strings.Contains(output, "override") {
 		t.Fatalf("override final assembly = %q, %v", output, assembleErr)
-	}
-
-	// Exercise the renderTarget contextual return path with an embedded template:
-	// the capture sees this invalid data before section assembly can substitute a
-	// convention part.
-	root := scaffold(t, sampleYAML)
-	p, openErr := Open(testContext(t), root)
-	if openErr != nil {
-		t.Fatal(openErr)
-	}
-	sc, sidecarErr := testConfig(p).Sidecar("docs", "workflow")
-	if sidecarErr != nil {
-		t.Fatal(sidecarErr)
-	}
-	data := projectData(renderInputsForTest(p), sc, map[string]bool{})
-	data["layout"] = nil
-	entry := projectCatalog(renderInputsForTest(p)).Docs["workflow"]
-	if _, targetErr := renderTarget(renderInputsForTest(p), "docs", "workflow", entry.TID, entry.Sections, sc, data, "out.md", map[string]bool{}); targetErr == nil || !strings.Contains(targetErr.Error(), "render "+entry.TID+" headings: execute template") {
-		t.Fatalf("renderTarget capture error = %v", targetErr)
 	}
 
 	collisionSegs := parseSections("<!-- awf:section body -->\n## {{ .heading }}\ndefault\n<!-- awf:end -->", true)

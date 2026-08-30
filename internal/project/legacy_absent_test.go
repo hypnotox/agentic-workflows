@@ -5,13 +5,9 @@ import (
 	"testing"
 )
 
-// TestLegacyActiveMDIndexNotPlanned is the behavioral half of the current-state
-// legacy-authority denylist (its source-scan half is
-// currentstate.TestLegacyAuthorityAbsent, kept there to avoid a project import
-// cycle). It asserts the retired decision output is no longer planned while
-// INDEX.md is. This behavioral check keeps the absence pinned independently of
-// the source denylist.
-func TestLegacyActiveMDIndexNotPlanned(t *testing.T) {
+// TestDecisionIndexesNotPlanned pins that historical decision files are not
+// publisher-managed projections.
+func TestDecisionIndexesNotPlanned(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n",
 		map[string]string{"domains/rendering.yaml": "paths: ['internal/**']\n"})
 	p, err := Open(testContext(t), root)
@@ -22,12 +18,9 @@ func TestLegacyActiveMDIndexNotPlanned(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.Contains(planned, "docs/decisions/ACTIVE.md") {
-		t.Error("docs/decisions/ACTIVE.md is a planned output; the ADR-projected index is retired for INDEX.md (ADR-0135)")
-	}
-	// Positive control: INDEX.md must be planned, so the compatibility assertion
-	// is not passing vacuously over a plan that generates neither index.
-	if !slices.Contains(planned, "docs/decisions/INDEX.md") {
-		t.Errorf("docs/decisions/INDEX.md is not planned; the positive control failed:\n%v", planned)
+	for _, path := range []string{"docs/decisions/ACTIVE.md", "docs/decisions/INDEX.md", "docs/decisions/README.md", "docs/decisions/template.md"} {
+		if slices.Contains(planned, path) {
+			t.Errorf("historical decision path %s remains planned: %v", path, planned)
+		}
 	}
 }

@@ -18,7 +18,6 @@ import (
 // and no leaked <no value> token. Agent metadata is encoded separately.
 // invariant: rendering/templates:templates-valid-frontmatter (TestAllTemplatesProduceValidFrontmatter)
 func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
-	assertV3ADRTemplatePublicationSafe(t)
 	cat := catalog.Standard
 	// check renders one template with a docs map seeded only for the skill's own
 	// required doc - mirroring the suppression guarantee (a doc-gated skill renders

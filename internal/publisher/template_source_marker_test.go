@@ -31,11 +31,7 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, _, _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
-	if err != nil {
-		t.Fatal(err)
-	}
-	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()}, corpus)
+	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -83,10 +79,6 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 		}
 	}
 
-	index := activeByPath["docs/decisions/INDEX.md"].file
-	if index == nil || index.ObservedTemplateID != "" || strings.Contains(index.Content, "awf:template-source") {
-		t.Fatalf("template-less ADR index gained attribution: %#v", index)
-	}
 	for _, path := range []string{".awf/hooks/pre-commit.sh", ".pi/extensions/awf-subagents/index.ts"} {
 		if node := activeByPath[path]; node.file == nil || strings.Contains(node.file.Content, "awf:template-source") {
 			t.Errorf("native-format output %s gained attribution", path)

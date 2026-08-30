@@ -8,6 +8,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -225,12 +226,22 @@ func syncReportProject(state *ProjectState) ([]Backup, []Change, []string, error
 func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup, []Change, []string, error) {
 	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Initialize(seed))
 }
+func preparedSemantics(state *ProjectState, prepared publisher.Preparation) (OperationSemantics, error) {
+	corpus, err := adr.LoadCorpus(filepath.Join(state.Root(), config.DocsDir, "decisions"))
+	if err != nil {
+		return OperationSemantics{}, err
+	}
+	return OperationSemantics{ADRs: corpus, Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}, nil
+}
 func checkReportProject(state *ProjectState, ctx context.Context) (CheckReport, error) {
 	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()
 	if err != nil {
 		return CheckReport{}, err
 	}
-	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
+	semantics, err := preparedSemantics(state, prepared)
+	if err != nil {
+		return CheckReport{}, err
+	}
 	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx, prepared.Plan(), semantics)
 }
 func configReferenceProject(state *ProjectState) (publisher.ConfigReference, error) {
@@ -251,7 +262,10 @@ func advisoryNotesProject(state *ProjectState) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	semantics := OperationSemantics{ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
+	semantics, err := preparedSemantics(state, prepared)
+	if err != nil {
+		return nil, err
+	}
 	return AdvisoryNotes(state, testConfig(state), prepared.Plan(), semantics)
 }
 

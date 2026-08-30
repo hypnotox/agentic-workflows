@@ -142,12 +142,12 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		t.Errorf("publishing consumer call graph changed:\n got %#v\nwant %#v", byFunction, expected)
 	}
 
-	// The check and advisory consumers must hand both projections the same local
-	// preparation variable. The exact AST argument census makes replacing either
-	// use with another preparation (or adding a second call) fail this proof.
+	// The check and advisory consumers must derive temporary project semantics
+	// from the same local preparation whose plan they pass onward.
 	for _, rel := range []string{"internal/checkop/checkrepo.go", "internal/initop/init.go"} {
 		source := readProduction(t, root, rel)
-		if strings.Count(source, "prepared.Plan(), projectSemantics(prepared)") != 1 {
+		if strings.Count(source, "projectSemantics(state.Root(), prepared)") != 1 ||
+			strings.Count(source, "prepared.Plan(), semantics") != 1 {
 			t.Errorf("%s does not reuse one preparation for plan and semantics", rel)
 		}
 	}
@@ -342,12 +342,12 @@ func TestPublishingPlanningOwnership(t *testing.T) {
 		t.Error("project check no longer receives direct prepared semantics")
 	}
 	publisherSource := readProduction(t, root, "internal/publisher/inputs.go")
-	for _, required := range []string{"adr.LoadCorpusFromTree(p.read", "topic.LoadCorpusFromReader(p.read", "outputPlanWithPitfalls(p.inputs", "func (p Preparation) ResidentMarker"} {
+	for _, required := range []string{"topic.LoadCorpusFromReader(p.read", "outputPlanWithPitfalls(p.inputs", "func (p Preparation) ResidentMarker"} {
 		if !strings.Contains(publisherSource, required) {
 			t.Errorf("Publisher preparation lost selected-tree/single-plan clause %q", required)
 		}
 	}
-	for _, forbidden := range []string{"RenderResidentMarker", "adr.LoadCorpus(decisionsDir", "topic.LoadCorpus(p.root"} {
+	for _, forbidden := range []string{"RenderResidentMarker", "adr.LoadCorpusFromTree(p.read", "adr.LoadCorpus(decisionsDir", "topic.LoadCorpus(p.root"} {
 		if strings.Contains(publisherSource, forbidden) {
 			t.Errorf("Publisher retains parallel or working-tree planning path %q", forbidden)
 		}

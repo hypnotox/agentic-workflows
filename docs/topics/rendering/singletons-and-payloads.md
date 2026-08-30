@@ -7,14 +7,9 @@ Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, file 
 
 **Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`. Both domain and topic selectors must match. Run `awf read topic rendering/singletons-and-payloads --coverage` for current applicable and owned paths and marker sites.
 
-Always-on and toggleable singleton outputs: ADR-system files, bootstrap and hook payloads, resident-root gitignores, and executable-mode rules. The commit-msg payload remains a thin delegate to the profile-selected commit-message gate: Core checks shared commit rules, while Full also enforces stale-ADR merge authorization. Pre-merge-commit remains a thin staged check because Git has not exposed the final message and parents at that earlier hook.
+Always-on and toggleable singleton outputs: bootstrap and hook payloads, resident-root gitignores, and executable-mode rules. The commit-msg payload delegates to the commit-message gate. Pre-merge-commit remains a thin staged check because Git has not exposed the final message and parents at that earlier hook.
 
 ## Claims
-
-### `invariant: adr-system-singletons-rendered`
-
-A Full render emits docs/decisions/README.md and docs/decisions/template.md from its selected ADR-system singletons; Core does not emit them.
-Backing: test
 
 ### `invariant: bootstrap-config-tree-path`
 

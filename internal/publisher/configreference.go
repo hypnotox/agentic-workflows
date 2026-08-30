@@ -472,11 +472,11 @@ func generateConfigReference(p renderInputs, files []RenderedFile, eff map[strin
 // (ConfigKeys, VarEntries, SidecarFields, DataKeys) with live project state -
 // the `awf config` command's data source.
 func configReferenceModel(p renderInputs) (ConfigReference, error) {
-	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
+	pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return ConfigReference{}, err
 	}
-	op, err := outputPlanWithPitfalls(p, corpus, pitfalls, topics, eff)
+	op, err := outputPlanWithPitfalls(p, pitfalls, topics, eff)
 	if err != nil {
 		return ConfigReference{}, err
 	}

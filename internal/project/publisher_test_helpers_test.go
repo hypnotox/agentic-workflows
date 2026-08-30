@@ -2,6 +2,7 @@ package project
 
 import (
 	"context"
+	"path/filepath"
 
 	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -31,22 +32,14 @@ func outputPlan(p renderInputs) (*OutputPlan, error) {
 }
 func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
 	prepared, err := testPublisher(p).Prepare()
-	return prepared.ADRs(), prepared.Pitfalls(), prepared.Topics(), prepared.EffectiveSkills(), err
+	if err != nil {
+		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
+	}
+	corpus, err := adr.LoadCorpus(filepath.Join(p.root(), config.DocsDir, "decisions"))
+	return corpus, prepared.Pitfalls(), prepared.Topics(), prepared.EffectiveSkills(), err
 }
 func outputPlanWithPitfalls(p renderInputs, _ adr.Corpus, _ pitfall.Corpus, _ topic.Corpus, _ map[string]bool) (*OutputPlan, error) {
 	return outputPlan(p)
-}
-func generateIndexMD(p renderInputs, _ adr.Corpus) RenderedFile {
-	plan, err := outputPlan(p)
-	if err != nil {
-		return RenderedFile{}
-	}
-	for _, file := range planWriteFiles(plan) {
-		if file.Path == layout(p).IndexMd {
-			return file
-		}
-	}
-	return RenderedFile{}
 }
 func generateDomainDocs(p renderInputs, _ topic.Corpus, _ map[string]bool) ([]RenderedFile, error) {
 	plan, err := outputPlan(p)

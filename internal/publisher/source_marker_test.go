@@ -39,7 +39,6 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 		"docs/pitfalls.md":                ".awf/docs/pitfalls/*.md",
 		"docs/pitfalls/fixture.md":        ".awf/docs/pitfalls/fixture.md",
 		"docs/pitfalls/second-kind.md":    ".awf/docs/pitfalls/second-kind.md",
-		"docs/decisions/INDEX.md":         "derived:authored-adr-corpus",
 		"docs/config-reference.md":        "derived:configspec derived:project-configuration",
 		"docs/domains/rendering.md":       ".awf/topics/metadata/rendering/*.yaml .awf/topics/parts/rendering/*/current-state.md",
 		"docs/topics/rendering/index.md":  ".awf/topics/metadata/rendering/*.yaml .awf/topics/parts/rendering/*/current-state.md",
@@ -80,8 +79,6 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 	for _, path := range []string{
 		"AGENTS.md",
 		"docs/working-with-awf.md",
-		"docs/decisions/README.md",
-		"docs/decisions/template.md",
 		".claude/skills/example-implementing/SKILL.md",
 		".pi/skills/example-implementing/SKILL.md",
 		".claude/agents/reviewer.md",

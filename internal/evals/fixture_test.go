@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -47,8 +48,12 @@ func checkProject(p *project.ProjectState, ctx context.Context) ([]manifest.Drif
 	if err != nil {
 		return nil, err
 	}
+	adrs, err := adr.LoadCorpus(filepath.Join(p.Root(), config.DocsDir, "decisions"))
+	if err != nil {
+		return nil, err
+	}
 	semantics := project.OperationSemantics{
-		ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
+		ADRs: adrs, Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
 		EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(),
 	}
 	report, err := project.BuildCheckReport(p, cfg, nil, ctx, prepared.Plan(), semantics)

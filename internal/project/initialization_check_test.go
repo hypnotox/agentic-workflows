@@ -4,31 +4,10 @@ import (
 	"bytes"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
-
-// A first adoption whose decisions dir carries two ADRs with the same number
-// fails at corpus load: duplicate identity has one home (ADR-0202 item 4), so
-// the refusal precedes every consumer rather than being re-derived by each.
-func TestInitializeReportSurfacesDuplicateADRIdentity(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	for _, name := range []string{"0001-alpha.md", "0001-beta.md"} {
-		testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", name),
-			testsupport.ADR("Accepted", testsupport.WithDate("2026-07-13"),
-				testsupport.WithTitle("0001: A"), testsupport.WithBody("## Context\nx\n")))
-	}
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err == nil ||
-		!strings.Contains(err.Error(), "ADR number 0001 is declared by more than one file") {
-		t.Fatalf("expected duplicate ADR identity to fail the corpus load, got %v", err)
-	}
-}
 
 func TestInitializeReportAcceptsBrownfieldGovernedRecord(t *testing.T) {
 	root := scaffold(t, sampleYAML)

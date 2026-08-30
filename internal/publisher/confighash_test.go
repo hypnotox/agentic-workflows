@@ -146,7 +146,7 @@ func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	const tid = "adr-readme/README.md.tmpl"
+	const tid = "docs/architecture.md.tmpl"
 	src, err := templates.FS.ReadFile(tid)
 	if err != nil {
 		t.Fatal(err)
@@ -168,12 +168,12 @@ func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) 
 		}
 	}
 	sc := config.Sidecar{}
-	plain, err := renderTarget(renderInputsForTest(p), "adr-readme", "", tid, projectCatalog(renderInputsForTest(p)).Docs["adr-readme"].Sections, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "out.md", map[string]bool{})
+	plain, err := renderTarget(renderInputsForTest(p), "docs", "architecture", tid, projectCatalog(renderInputsForTest(p)).Docs["architecture"].Sections, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "out.md", map[string]bool{})
 	if err != nil {
 		t.Fatal(err)
 	}
 	testConfig(p).Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	active, err := renderTarget(renderInputsForTest(p), "adr-readme", "", tid, projectCatalog(renderInputsForTest(p)).Docs["adr-readme"].Sections, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "out.md", map[string]bool{})
+	active, err := renderTarget(renderInputsForTest(p), "docs", "architecture", tid, projectCatalog(renderInputsForTest(p)).Docs["architecture"].Sections, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "out.md", map[string]bool{})
 	if err != nil {
 		t.Fatal(err)
 	}

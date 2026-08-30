@@ -213,34 +213,3 @@ func TestMaintainableCodeGuideRetainsDoctrineOwnership(t *testing.T) {
 		}
 	}
 }
-
-// invariant: rendering/catalog-and-targets:adr-singleton-section-parity (TestAdrSingletonSectionParity)
-func TestAdrSingletonSectionParity(t *testing.T) {
-	cat := catalog.Standard
-	lay := testLayout()
-	for _, sg := range plainSingletons(cat) {
-		src, err := fs.ReadFile(templates.FS, sg.tid)
-		if err != nil {
-			t.Fatalf("read %s: %v", sg.tid, err)
-		}
-		var markers []string
-		for _, s := range parseSections(string(src)) {
-			if s.IsSection {
-				markers = append(markers, s.Name)
-			}
-		}
-		wantSections := sg.sections(cat)
-		if strings.Join(markers, ",") != strings.Join(wantSections, ",") {
-			t.Errorf("%s markers %v != catalog sections %v", sg.tid, markers, wantSections)
-		}
-		asm, parts := assemble(parseSections(string(src)))
-		out, err := render.Execute(asm, map[string]any{
-			"prefix": "awf", "vars": map[string]any{}, "layout": lay, "data": map[string]any{}}, parts, "test")
-		if err != nil {
-			t.Fatalf("render %s: %v", sg.tid, err)
-		}
-		if strings.Contains(out, "<no value>") {
-			t.Errorf("%s: <no value> leaked", sg.tid)
-		}
-	}
-}

@@ -272,14 +272,14 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	mutate("CLAUDE.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.TemplateHash = "x"; e.ConfigHash = "x" })
 	// Output moved, real hashes unmoved → a non-hashed input.
 	mutate(".awf/efforts/.gitignore", func(e *manifest.Entry) { e.OutputHash = "x" })
-	// Output moved on a generated index (no hashes by design) → regenerated.
-	mutate("docs/decisions/INDEX.md", func(e *manifest.Entry) { e.OutputHash = "x" })
+	// Output moved on a regeneration-checked document → regenerated.
+	mutate("docs/config-reference.md", func(e *manifest.Entry) { e.OutputHash = "x" })
 	// No prior entry → added.
 	delete(lock.Files, "docs/workflow.md")
 	if err := lock.Save(lockPath(p.Root())); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"AGENTS.md", ".claude/skills/example-debugging/SKILL.md", "CLAUDE.md", ".awf/efforts/.gitignore", "docs/decisions/INDEX.md", "docs/workflow.md"} {
+	for _, path := range []string{"AGENTS.md", ".claude/skills/example-debugging/SKILL.md", "CLAUDE.md", ".awf/efforts/.gitignore", "docs/config-reference.md", "docs/workflow.md"} {
 		if err := os.WriteFile(filepath.Join(root, path), []byte("stale output\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -294,64 +294,11 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 		{Path: ".claude/skills/example-debugging/SKILL.md", Cause: "config"},
 		{Path: "AGENTS.md", Cause: "template"},
 		{Path: "CLAUDE.md", Cause: "template+config"},
-		{Path: "docs/decisions/INDEX.md", Cause: "regenerated"},
+		{Path: "docs/config-reference.md", Cause: "regenerated"},
 		{Path: "docs/workflow.md", Cause: "added"},
 	}
 	if !slices.Equal(changes, want) {
 		t.Errorf("changes = %v\nwant %v (path-sorted; untouched files silent)", changes, want)
-	}
-}
-
-// invariant: rendering/singletons-and-payloads:adr-system-singletons-rendered (TestSyncReportBacksUpForeignIndexNotManaged)
-// invariant: rendering/singletons-and-payloads:plain-singleton-via-renderkind (TestSyncReportBacksUpForeignIndexNotManaged)
-// invariant: rendering/doc-outputs:working-with-awf-mandatory (TestSyncReportBacksUpForeignIndexNotManaged)
-func TestSyncReportBacksUpForeignIndexNotManaged(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	lay := layout(renderInputsForTest(p))
-	// Plant a foreign ADR index with hand content before the first sync (no lock yet),
-	// so its path is absent from the prior lock and therefore foreign.
-	foreign := filepath.Join(root, lay.IndexMd)
-	if err := os.MkdirAll(filepath.Dir(foreign), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(foreign, []byte("hand index\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	backups, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version})
-	if err != nil {
-		t.Fatalf("InitializeReport: %v", err)
-	}
-	var got *Backup
-	for i := range backups {
-		if backups[i].Path == lay.IndexMd {
-			got = &backups[i]
-		}
-	}
-	// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestSyncReportBacksUpForeignIndexNotManaged)
-	if got == nil {
-		t.Fatalf("foreign INDEX.md not backed up; backups=%#v", backups)
-	}
-	if !got.Index {
-		t.Errorf("INDEX.md backup must be flagged Index=true")
-	}
-	if b, _ := os.ReadFile(filepath.Join(root, got.Bak)); string(b) != "hand index\n" {
-		t.Errorf("backup = %q, want original hand content", b)
-	}
-	// A path recorded in the prior lock is awf-managed: a second sync backs up
-	// nothing and prunes nothing.
-	again, _, pruned, err := syncReportProject(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(again) != 0 {
-		t.Errorf("re-sync of awf-managed output must not back up, got %#v", again)
-	}
-	if len(pruned) != 0 {
-		t.Errorf("re-sync of awf-managed output must not prune, got %v", pruned)
 	}
 }
 

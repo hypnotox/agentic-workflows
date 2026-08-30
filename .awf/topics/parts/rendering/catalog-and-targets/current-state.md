@@ -2,11 +2,6 @@ The catalog package holds the compile-time descriptor set for every artifact kin
 
 ## Claims
 
-### `invariant: adr-singleton-section-parity`
-
-Each ADR-system singleton's catalog section list equals the awf:section markers declared in its template, and the singleton renders with no unresolved-variable placeholder.
-Backing: test
-
 ### `invariant: built-in-runtime-targets`
 
 The built-in runtime target registry contains exactly `claude` and `pi` in deterministic `KnownTargets` order. Descriptor-driven rendering remains generic rather than branching on the two names.

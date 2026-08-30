@@ -85,7 +85,7 @@ For command flags and daily use, see [docs/working-with-awf.md](docs/working-wit
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl -->
 ## Document map
 
-- **Decision records:** [docs/decisions/README.md](docs/decisions/README.md), durable project decisions and authoring guidance.
+- **Decision records:** `docs/decisions/`, durable project decisions.
 - **Authoring AGENTS.md:** [docs/agents-md-standard.md](docs/agents-md-standard.md), layout, content, and rules for the agent guide
 - **Configuration Reference:** [docs/config-reference.md](docs/config-reference.md), every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state
 - **Documentation Standard:** [docs/doc-standard.md](docs/doc-standard.md), how-to-write rules for all awf-managed prose

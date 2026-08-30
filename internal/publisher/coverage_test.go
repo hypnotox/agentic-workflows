@@ -74,28 +74,6 @@ func TestOpenRejectsUnknownAgentsDocSection(t *testing.T) {
 	}
 }
 
-func TestOpenRejectsMalformedAdrReadmeSidecar(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
-		"adr-readme.yaml": "bogusUnknownField: true\n",
-	})
-	if _, err := Open(testContext(t), root); err == nil {
-		t.Fatal("expected Open to fail on a malformed adr-readme sidecar")
-	}
-}
-
-func TestOpenRejectsUnknownAdrReadmeSection(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
-		"adr-readme.yaml": "sections:\n  not-a-real-section:\n    drop: true\n",
-	})
-	_, err := Open(testContext(t), root)
-	if err == nil {
-		t.Fatal("expected Open to reject an undeclared adr-readme section")
-	}
-	if !strings.Contains(err.Error(), "not-a-real-section") {
-		t.Errorf("error should mention the offending section, got: %v", err)
-	}
-}
-
 // --- validateFrontmatter direct cases ---
 
 func TestValidateFrontmatter(t *testing.T) {
@@ -163,7 +141,6 @@ func TestRenderAllSurfacesMalformedSidecars(t *testing.T) {
 		{"agents", "prefix: example\nintegrationBranch: main\n", "agents/reviewer.yaml"},
 		{"docs", "prefix: example\nintegrationBranch: main\n", "docs/architecture.yaml"},
 		{"agents-doc", "prefix: example\nintegrationBranch: main\n", "agents-doc.yaml"},
-		{"adr-readme", "prefix: example\nintegrationBranch: main\n", "adr-readme.yaml"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -194,7 +171,6 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 	}{
 		{"doc", "prefix: example\nintegrationBranch: main\n", ".awf/docs/parts/architecture/overview.md"},
 		{"agents-doc", "prefix: example\nintegrationBranch: main\n", ".awf/parts/agents-doc/identity.md"},
-		{"adr-readme", "prefix: example\nintegrationBranch: main\n", ".awf/parts/adr-readme/intro.md"},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -259,19 +235,6 @@ func TestArtifactConfigHashUnreadablePart(t *testing.T) {
 }
 
 // --- resolvedDocs: malformed docs sidecar (direct) ---
-
-func TestSyncFailsOnMalformedADR(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-bad.md"),
-		"---\nstatus: [unterminated\n---\n# ADR-0001: Bad\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := syncProject(p); err == nil {
-		t.Fatal("expected Sync to fail generating the ADR index from a malformed ADR")
-	}
-}
 
 // --- Sync: MkdirAll and WriteFile IO errors via path squatting ---
 
@@ -421,54 +384,6 @@ func TestCheckReportsMissingRenderedFile(t *testing.T) {
 	}
 }
 
-func TestCheckFailsOnMalformedADRIndex(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := syncProject(p); err != nil {
-		t.Fatal(err)
-	}
-	// Introduce a malformed ADR; Check regenerates the index and fails.
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-bad.md"),
-		"---\nstatus: [unterminated\n---\n# ADR-0001: Bad\n")
-	if _, err := checkProject(p, testContext(t)); err == nil {
-		t.Fatal("expected Check to fail regenerating the index from a malformed ADR")
-	}
-}
-
-func TestCheckReportsMissingActiveMD(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	adrBody := testsupport.ADR("Accepted", testsupport.WithDate("2026-06-25"), testsupport.WithTags("x"),
-		testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n"))
-	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", "0001-first.md"), adrBody)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := syncProject(p); err != nil {
-		t.Fatal(err)
-	}
-	// Delete the generated INDEX.md: Check reports it missing.
-	if err := os.Remove(filepath.Join(root, "docs", "decisions", "INDEX.md")); err != nil {
-		t.Fatal(err)
-	}
-	drift, err := checkProject(p, testContext(t))
-	if err != nil {
-		t.Fatal(err)
-	}
-	found := false
-	for _, d := range drift {
-		if strings.HasSuffix(d.Path, "decisions/INDEX.md") && d.Kind == "missing" {
-			found = true
-		}
-	}
-	if !found {
-		t.Errorf("expected missing drift for INDEX.md, got %#v", drift)
-	}
-}
-
 // --- scaffold: collectVars read error (direct) ---
 
 func TestCollectVarsReadError(t *testing.T) {
@@ -537,32 +452,5 @@ func TestCheckDeadRefsAbsoluteAndEscapingTargets(t *testing.T) {
 	}
 	if !dead["../../outside.md"] {
 		t.Errorf("root-escaping target not flagged dead (stat'd outside the repo): %#v", drift)
-	}
-}
-
-// --- NewADR ---
-
-func TestProjectNewADR(t *testing.T) {
-	root := gitScaffold(t, defaultFixtureBranch)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	// docs/decisions/template.md is a rendered singleton (ADR-0021) - it only
-	// exists on disk after a sync, unlike CheckInvariants/Audit above which read
-	// hand-written fixture ADRs directly.
-	if err := syncProject(p); err != nil {
-		t.Fatal(err)
-	}
-	path, err := newADRProject(p, testContext(t), "My Plan Title")
-	if err != nil {
-		t.Fatalf("NewADR: %v", err)
-	}
-	want := filepath.Join(root, "docs", "decisions", "0001-my-plan-title.md")
-	if path != want {
-		t.Errorf("NewADR path = %q, want %q", path, want)
-	}
-	if _, err := os.Stat(path); err != nil {
-		t.Errorf("created file not found: %v", err)
 	}
 }

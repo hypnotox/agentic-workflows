@@ -12,7 +12,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
@@ -54,8 +53,6 @@ const (
 	ArtifactTopicMetadata = outputplan.ArtifactTopicMetadata
 	// ArtifactClaimPart identifies an authored current-state claim part.
 	ArtifactClaimPart = outputplan.ArtifactClaimPart
-	// ArtifactDecisionRecord identifies an architecture decision record.
-	ArtifactDecisionRecord = outputplan.ArtifactDecisionRecord
 	// ArtifactManagedOutput identifies an existing managed output input.
 	ArtifactManagedOutput = outputplan.ArtifactManagedOutput
 	// ArtifactProtocolDescriptor identifies a runtime protocol descriptor.
@@ -229,7 +226,7 @@ func filesystemProjectBoundary(dir string) bool {
 
 // buildOutputDeclarations enumerates deterministic producer declarations without
 // rendering or materializing the selected tree.
-func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader, adrs adr.Corpus) ([]OutputDeclaration, error) {
+func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader) ([]OutputDeclaration, error) {
 	pitfalls, err := loadPitfallCorpusFrom(read)
 	if err != nil {
 		return nil, err
@@ -502,11 +499,6 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			add(config.DocsDir+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, declaredInputs)
 		}
 	}
-	decisionInputs := []OutputInput{}
-	for _, record := range adrs.All() {
-		decisionInputs = append(decisionInputs, OutputInput{Path: config.DocsDir + "/decisions/" + record.Filename, Role: ArtifactDecisionRecord})
-	}
-	add(config.DocsDir+"/decisions/INDEX.md", "", "generated-index", inputs("", decisionInputs...))
 	for _, unit := range conditionalUnits() {
 		if !unit.enabled(cfg) {
 			continue
@@ -535,9 +527,8 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 				}
 			}
 		case cat.Docs["config-reference"].TID:
-			decisionIndex := config.DocsDir + "/decisions/INDEX.md"
 			for _, candidate := range decls {
-				if candidate.Path != decls[i].Path && candidate.Path != decisionIndex {
+				if candidate.Path != decls[i].Path {
 					decls[i].Dependencies = append(decls[i].Dependencies, candidate.Path)
 				}
 			}
@@ -608,7 +599,7 @@ func declaredPolicy(kind string, regen bool) OutputPolicy {
 	switch kind {
 	case "skills", "agents":
 		policy.ValidateFrontmatter, policy.ScanReferences, policy.ScanSkillReferences = true, true, true
-	case "docs", "agents-doc", "adr-readme", "doc-standard", "agents-md-standard", "working-with-awf", "pi-runtime-reference", "workflow", "architecture", "development", "glossary", "pitfalls", "roadmap", "testing", "releasing", "domains", "topics":
+	case "docs", "agents-doc", "doc-standard", "agents-md-standard", "working-with-awf", "pi-runtime-reference", "workflow", "architecture", "development", "glossary", "pitfalls", "roadmap", "testing", "releasing", "domains", "topics":
 		policy.ScanReferences, policy.ScanSkillReferences = true, true
 	}
 	return policy
@@ -707,20 +698,18 @@ func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]t
 // OutputPlan compiles all output producers. Generated nodes are constructed in
 // dependency order; config reference observes ordinary/domain metadata but is
 // deliberately excluded from its own input.
-// OutputPlan derives the ADR corpus, the topic corpus, and the effective skill
-// set at its own entry and threads them to every producer that needs one. An
-// operation that already derived them enters through outputPlan instead, so one
-// lifecycle call performs each derivation exactly once.
+// OutputPlan derives the topic corpus and effective skill set once and threads them
+// to every producer that needs them.
 func outputPlan(p renderInputs) (*OutputPlan, error) {
-	corpus, pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
+	pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return nil, err
 	}
-	return outputPlanWithPitfalls(p, corpus, pitfalls, topics, eff)
+	return outputPlanWithPitfalls(p, pitfalls, topics, eff)
 }
 
-func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
-	declarationInventory, err := buildOutputDeclarations(p.cfg, projectCatalog(p), p.targets(), projectTreeReader(p), corpus)
+func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
+	declarationInventory, err := buildOutputDeclarations(p.cfg, projectCatalog(p), p.targets(), projectTreeReader(p))
 	if err != nil {
 		return nil, err
 	}
@@ -803,10 +792,6 @@ func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.
 		if err := add(f, f.Declarer, topicDeps[f.Path]...); err != nil {
 			return nil, err
 		}
-	}
-	index := generateIndexMD(p, corpus)
-	if err := add(index, "generated-index"); err != nil {
-		return nil, err
 	}
 	domains, err := generateDomainDocs(p, topics, eff)
 	if err != nil {

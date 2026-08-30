@@ -9,7 +9,6 @@ import (
 
 func layout(p renderInputs) Layout {
 	d := config.DocsDir
-	dec := d + "/decisions"
 	docs := map[string]string{}
 	singletons := map[string]string{}
 	if projectCatalog(p) != nil {
@@ -20,17 +19,15 @@ func layout(p renderInputs) Layout {
 			}
 		}
 	}
-	return Layout{DocsDir: d, ADRDir: dec, IndexMd: dec + "/INDEX.md", Docs: docs, Singletons: singletons, DomainsDir: d + "/domains"}
+	return Layout{DocsDir: d, Docs: docs, Singletons: singletons, DomainsDir: d + "/domains"}
 }
 
-// invariant: rendering/doc-outputs:layout-derivation (TestLayoutUsesFixedDocsRootAndFullCatalog)
 // invariant: rendering/doc-outputs:docs-root-fixed (TestLayoutUsesFixedDocsRootAndFullCatalog)
 func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 	cfg := &config.Config{}
 	p := testState(cfg)
 	l := layout(newRenderInputs(p, cfg, nil))
-	if l.DocsDir != config.DocsDir || l.ADRDir != "docs/decisions" ||
-		l.IndexMd != "docs/decisions/INDEX.md" {
+	if l.DocsDir != config.DocsDir {
 		t.Errorf("layout = %+v", l)
 	}
 	// invariant: rendering/doc-outputs:domains-dir-given (TestLayoutUsesFixedDocsRootAndFullCatalog)
@@ -60,11 +57,7 @@ func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 	tm := l.templateMap()
 	wantTM := map[string]string{
 		"docsDir":                "docs",
-		"adrDir":                 "docs/decisions",
-		"indexMd":                "docs/decisions/INDEX.md",
 		"domainsDir":             "docs/domains",
-		"adrReadme":              "docs/decisions/README.md",
-		"adrTemplate":            "docs/decisions/template.md",
 		"workflowRef":            "docs/workflow.md",
 		"docStandard":            "docs/doc-standard.md",
 		"agentsMdStandard":       "docs/agents-md-standard.md",
@@ -79,11 +72,11 @@ func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 	if got, ok := tm["docs"].(map[string]any); !ok || got["architecture"] != "docs/architecture.md" || got["debugging"] != "docs/debugging.md" {
 		t.Errorf("templateMap[docs] = %v", tm["docs"])
 	}
-	// 5 fixed dir keys + docs + 8 mandatory-singleton keys = 14 (agents-doc has
-	// no TemplateKey and is excluded; removed plan singletons no longer contribute
-	// layout keys, while the generated config reference remains layout-exposed).
-	if len(tm) != 14 {
-		t.Errorf("templateMap has %d keys, want 14", len(tm))
+	// Three fixed keys plus the seven catalog-derived singleton paths. agents-doc
+	// has no TemplateKey and is excluded; the generated config reference remains
+	// layout-exposed even though it is not a plain rendered singleton.
+	if len(tm) != 10 {
+		t.Errorf("templateMap has %d keys, want 10", len(tm))
 	}
 	if got := docOutPath(renderInputsForTest(p), "architecture"); got != "docs/architecture.md" {
 		t.Errorf("docOutPath = %q", got)

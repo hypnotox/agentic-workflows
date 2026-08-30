@@ -29,7 +29,7 @@ You are a developer on {{ with .prefix }}`{{ . }}`{{ else }}this project{{ end }
 <!-- Authoring: see agents-md-standard.md for one terse cross-cutting imperative per rule. -->
 Hard rules every change must respect:
 
-- **Append-only decisions.** Preserve decision history; change current-state claims forward. See `{{ .layout.adrDir }}/`.
+- **Append-only decisions.** Preserve decision history; change current-state claims forward. See `docs/decisions/`.
 - **Docs travel with the change.** Update reality and its documentation together.
 - **Stage and gate each commit.** Stage the complete transaction; run `./awf check staged` and {{ with .vars.gateCmd }}`{{ . }}`{{ else }}the project's gate{{ end }}. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
 {{- range .data.invariants }}
@@ -75,7 +75,7 @@ Evaluate continuity independently; when durable continuity materially helps, use
 <!-- awf:section document-map -->
 ## Document map
 
-- **Decision records:** [{{ .layout.adrReadme }}]({{ .layout.adrReadme }}), durable project decisions and authoring guidance.
+- **Decision records:** `docs/decisions/`, durable project decisions.
 {{ range .mandatoryDocs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{ range .docs }}- **{{ .title }}:** [{{ .path }}]({{ .path }}), {{ .desc }}
 {{ end }}{{- range .data.docMap }}- **{{ .path }}:** [{{ .path }}]({{ .path }}){{ with .desc }}, {{ . }}{{ end }}

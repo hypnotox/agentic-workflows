@@ -3,10 +3,8 @@ package publisher
 import (
 	"fmt"
 	"maps"
-	"path"
 	"slices"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
@@ -35,32 +33,28 @@ func (p renderInputs) catalog() *catalog.Catalog { return p.selected }
 
 func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
 
-func deriveAuthoritySemantics(p renderInputs) (adr.Corpus, topic.Corpus, error) {
-	corpus, err := adr.LoadCorpusFromTree(p.read, path.Join(config.DocsDir, "decisions"))
-	if err != nil {
-		return adr.Corpus{}, topic.Corpus{}, err
-	}
+func deriveAuthoritySemantics(p renderInputs) (topic.Corpus, error) {
 	topics, err := topic.LoadCorpusFromReader(p.read, p.cfg)
 	if err != nil {
-		return adr.Corpus{}, topic.Corpus{}, err
+		return topic.Corpus{}, err
 	}
-	return corpus, topics, nil
+	return topics, nil
 }
 
-func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
-	corpus, topics, err := deriveAuthoritySemantics(p)
+func deriveOperationStateWithPitfalls(p renderInputs) (pitfall.Corpus, topic.Corpus, map[string]bool, error) {
+	topics, err := deriveAuthoritySemantics(p)
 	if err != nil {
-		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
+		return pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
 	pitfalls, err := loadPitfallCorpus(p)
 	if err != nil {
-		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
+		return pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
 	eff, err := effectiveSkills(p)
 	if err != nil {
-		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
+		return pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
-	return corpus, pitfalls, topics, eff, nil
+	return pitfalls, topics, eff, nil
 }
 
 // Publisher is the sole output-plan construction and rendering coordinator.
@@ -71,7 +65,6 @@ type Publisher struct{ inputs renderInputs }
 type Preparation struct {
 	publisher *Publisher
 	plan      outputplan.Plan
-	adrs      adr.Corpus
 	pitfalls  pitfall.Corpus
 	topics    topic.Corpus
 	skills    map[string]bool
@@ -92,11 +85,11 @@ func New(state *projectstate.ProjectState, cfg *config.Config, read ProjectTreeR
 
 // Prepare derives one operation universe and constructs exactly one immutable plan.
 func (p *Publisher) Prepare() (Preparation, error) {
-	adrs, pitfalls, topics, skills, err := deriveOperationStateWithPitfalls(p.inputs)
+	pitfalls, topics, skills, err := deriveOperationStateWithPitfalls(p.inputs)
 	if err != nil {
 		return Preparation{}, err
 	}
-	built, err := outputPlanWithPitfalls(p.inputs, adrs, pitfalls, topics, skills)
+	built, err := outputPlanWithPitfalls(p.inputs, pitfalls, topics, skills)
 	if err != nil {
 		return Preparation{}, err
 	}
@@ -108,7 +101,7 @@ func (p *Publisher) Prepare() (Preparation, error) {
 	if err != nil {
 		return Preparation{}, err
 	}
-	return Preparation{publisher: p, plan: freezePlan(built), adrs: adrs, pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), generated: generated, glossary: glossary}, nil
+	return Preparation{publisher: p, plan: freezePlan(built), pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), generated: generated, glossary: glossary}, nil
 }
 
 // Plan derives exactly one immutable plan for this operation.
@@ -119,9 +112,6 @@ func (p *Publisher) Plan() (outputplan.Plan, error) {
 
 // Plan returns the one immutable plan constructed for this operation.
 func (p Preparation) Plan() outputplan.Plan { return p.plan }
-
-// ADRs returns a defensive ADR corpus derived from the selected operation tree.
-func (p Preparation) ADRs() adr.Corpus { return p.adrs.Clone() }
 
 // Pitfalls returns a defensive pitfall corpus derived from the selected operation tree.
 func (p Preparation) Pitfalls() pitfall.Corpus { return clonePitfallCorpus(p.pitfalls) }

@@ -15,8 +15,6 @@ import (
 // doc collection in templateMap (ADR-0061).
 type Layout struct {
 	DocsDir    string
-	ADRDir     string
-	IndexMd    string
 	Docs       map[string]string // catalog name -> output path (inv: layout-docs-full-catalog)
 	Singletons map[string]string // template key -> output path
 	DomainsDir string
@@ -24,7 +22,6 @@ type Layout struct {
 
 func layout(p renderInputs) Layout {
 	d := config.DocsDir
-	dec := d + "/decisions"
 	// Docs maps every catalog document to its unconditional rendered output path.
 	docs := map[string]string{}
 	singletons := map[string]string{}
@@ -38,8 +35,6 @@ func layout(p renderInputs) Layout {
 	}
 	return Layout{
 		DocsDir:    d,
-		ADRDir:     dec,
-		IndexMd:    dec + "/INDEX.md",
 		Docs:       docs,
 		Singletons: singletons,
 		DomainsDir: d + "/domains", // inv: domains-dir-given
@@ -58,8 +53,6 @@ func (l Layout) templateMap() map[string]any {
 	}
 	m := map[string]any{
 		"docsDir":    l.DocsDir,
-		"adrDir":     l.ADRDir,
-		"indexMd":    l.IndexMd,
 		"docs":       docs,
 		"domainsDir": l.DomainsDir,
 	}

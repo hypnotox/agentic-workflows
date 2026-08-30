@@ -75,6 +75,14 @@ func TestNewADRIsBranchAware(t *testing.T) {
 			if err := syncProject(p); err != nil {
 				t.Fatal(err)
 			}
+			decisions := filepath.Join(root, "docs", "decisions")
+			if err := os.MkdirAll(decisions, 0o755); err != nil {
+				t.Fatal(err)
+			}
+			template := "---\nformat: current-state-v4\nstatus: Proposed\ndate: YYYY-MM-DD\n---\n# ADR-NNNN: Title\n\n## Status history\n\n- YYYY-MM-DD: Proposed\n"
+			if err := os.WriteFile(filepath.Join(decisions, "template.md"), []byte(template), 0o644); err != nil {
+				t.Fatal(err)
+			}
 			path, err := newADRProject(p, testContext(t), "Branch Aware Title")
 			if err != nil {
 				t.Fatalf("NewADR: %v", err)

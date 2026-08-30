@@ -36,7 +36,7 @@ func TestRunSyncSyncError(t *testing.T) {
 	}
 }
 
-func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
+func TestSyncPreservesUnmanagedDecisionIndex(t *testing.T) {
 	root := t.TempDir()
 	awf := filepath.Join(root, ".awf")
 	if err := os.MkdirAll(awf, 0o755); err != nil {
@@ -45,12 +45,12 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(awf, "config.yaml"), []byte(minimalYAML), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	// Foreign ADR index present before any sync (no lock yet).
 	adrDir := filepath.Join(root, "docs", "decisions")
 	if err := os.MkdirAll(adrDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(adrDir, "INDEX.md"), []byte("hand index\n"), 0o644); err != nil {
+	index := filepath.Join(adrDir, "INDEX.md")
+	if err := os.WriteFile(index, []byte("hand index\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := (&manifest.Lock{AWFVersion: project.Version, SchemaVersion: migrate.Current(), Files: map[string]manifest.Entry{"prior": {}}}).Save(config.LockPath(root)); err != nil {
@@ -60,9 +60,15 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 	if code := runFrom(root, []string{"awf", "render"}, &out, &errb); code != 0 {
 		t.Fatalf("sync: %s", errb.String())
 	}
-	const indexTakeoverPrefix = "status: completed\n\nmutation:\n  changes:\n    backups:\n      docs/decisions/INDEX.md to docs/decisions/INDEX.md.awf-bak\n    outputs:\n"
-	if !strings.HasPrefix(out.String(), indexTakeoverPrefix) {
-		t.Errorf("index takeover lost its backup report:\n%s", out.String())
+	got, err := os.ReadFile(index)
+	if err != nil || string(got) != "hand index\n" {
+		t.Fatalf("unmanaged decision index changed: %q, %v", got, err)
+	}
+	if strings.Contains(out.String(), "docs/decisions/INDEX.md") {
+		t.Fatalf("render reported unmanaged decision index activity:\n%s", out.String())
+	}
+	if _, err := os.Stat(index + ".awf-bak"); !os.IsNotExist(err) {
+		t.Fatalf("render backed up an unmanaged decision index: %v", err)
 	}
 	for _, want := range []string{
 		"added .claude/agents/implementer.md",
@@ -71,10 +77,9 @@ func TestSyncReportsIndexOwnershipTakeover(t *testing.T) {
 		"added .pi/skills/example-brainstorming/SKILL.md",
 		"added docs/architecture.md",
 		"added docs/pitfalls.md",
-		"awf now generates docs/decisions/INDEX.md",
 	} {
 		if !strings.Contains(out.String(), want) {
-			t.Errorf("index takeover full-catalog output missing %q:\n%s", want, out.String())
+			t.Errorf("full-catalog output missing %q:\n%s", want, out.String())
 		}
 	}
 }

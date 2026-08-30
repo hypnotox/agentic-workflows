@@ -21,11 +21,6 @@ Backing: test
 The layout's domains directory is computed as `docs/domains` beneath the fixed documentation root.
 Backing: test
 
-### `invariant: layout-derivation`
-
-The decisions directory and ADR index file derive structurally from the fixed `docs` root as `docs/decisions` and `docs/decisions/INDEX.md`.
-Backing: test
-
 ### `invariant: docs-root-fixed`
 
 The documentation root is exactly `docs`, fixed in the binary rather than read from configuration.
@@ -85,7 +80,7 @@ Backing: test
 
 ### `invariant: opaque-doc-source-guidance`
 
-Opaque generated documentation carries one compact reader-facing `awf:source` marker for topic pages and indexes, domain navigation, glossary, the pitfall index and each exact-source pitfall leaf, the ADR index, config reference, and target bridges. Section-overridable standard docs and AGENTS.md retain their `awf:edit` guidance without duplication; authored ADRs and plans remain banner-free. Marker payloads guide readers and are not exhaustive machine dependencies.
+Opaque generated documentation carries one compact reader-facing `awf:source` marker for topic pages and indexes, domain navigation, glossary, the pitfall index and each exact-source pitfall leaf, config reference, and target bridges. Section-overridable standard docs and AGENTS.md retain their `awf:edit` guidance without duplication; authored decision records remain banner-free. Marker payloads guide readers and are not exhaustive machine dependencies.
 Backing: test
 
 ### `invariant: layout-docs-profile-projection`

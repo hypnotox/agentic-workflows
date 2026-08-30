@@ -111,19 +111,10 @@ func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p)); err == nil {
+	if _, _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p)); err == nil {
 		t.Fatal("malformed topic corpus accepted")
 	}
 
-	adrRoot := topicProject(t)
-	testsupport.WriteFile(t, filepath.Join(adrRoot, "docs/decisions/0001-topic.md"), "---\nstatus: [bad\n---\n")
-	withBadADR, err := Open(testContext(t), adrRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, _, _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(withBadADR)); err == nil {
-		t.Fatal("malformed ADR corpus accepted by topic loader")
-	}
 }
 
 func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {

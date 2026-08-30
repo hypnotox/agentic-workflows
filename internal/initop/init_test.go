@@ -274,7 +274,11 @@ func TestRunPostPublicationFailuresPresentCompletePublisherAndScaffoldEffects(t 
 				if !releaseFailure {
 					return nil, want
 				}
-				return project.AdvisoryNotes(state, cfg, prepared.Plan(), projectSemantics(prepared))
+				semantics, err := projectSemantics(state.Root(), prepared)
+				if err != nil {
+					return nil, err
+				}
+				return project.AdvisoryNotes(state, cfg, prepared.Plan(), semantics)
 			}
 			release := func(lease *filesystem.Lease) error {
 				err := lease.Release()

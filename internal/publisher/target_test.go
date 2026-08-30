@@ -662,9 +662,14 @@ func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
 	for _, rel := range planned {
 		set[rel] = true
 	}
-	for _, want := range []string{"CLAUDE.md", "AGENTS.md", "docs/decisions/INDEX.md", "docs/domains/rendering.md"} {
+	for _, want := range []string{"CLAUDE.md", "AGENTS.md", "docs/domains/rendering.md"} {
 		if !set[want] {
 			t.Errorf("PlannedOutputs missing %q; got %v", want, planned)
+		}
+	}
+	for _, historical := range []string{"docs/decisions/0001-engine.md", "docs/decisions/INDEX.md", "docs/decisions/README.md", "docs/decisions/template.md"} {
+		if set[historical] {
+			t.Errorf("historical decision path %q remains publisher-managed", historical)
 		}
 	}
 }

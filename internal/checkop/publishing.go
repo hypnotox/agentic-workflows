@@ -2,7 +2,9 @@ package checkop
 
 import (
 	"context"
+	"path/filepath"
 
+	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -21,12 +23,16 @@ func operationPreparation(state *project.ProjectState, cfg *config.Config) (publ
 	return preparePublisher(composePublisher(state, cfg))
 }
 
-func projectSemantics(prepared publisher.Preparation) project.OperationSemantics {
+func projectSemantics(root string, prepared publisher.Preparation) (project.OperationSemantics, error) {
+	corpus, err := adr.LoadCorpus(filepath.Join(root, config.DocsDir, "decisions"))
+	if err != nil {
+		return project.OperationSemantics{}, err
+	}
 	return project.OperationSemantics{
-		ADRs: prepared.ADRs(), Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
+		ADRs: corpus, Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
 		EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(),
 		Glossary: prepared.Glossary(),
-	}
+	}, nil
 }
 
 func stagedDriftResult(ctx context.Context, root string) (checkresult.Result, error) {

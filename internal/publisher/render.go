@@ -11,7 +11,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -86,7 +85,6 @@ func projectData(p renderInputs, sc config.Sidecar, eff map[string]bool) map[str
 		"data":                 nonNil(sc.Data),
 		"layout":               layout(p).templateMap(),
 		"version":              p.version,
-		"adrFormat":            adr.CurrentFormatMarker(),
 		"skills":               eff,
 		"commitScopes":         commitScopesDisplay(p),
 		"integrationBranch":    p.cfg.IntegrationBranch,
@@ -881,20 +879,6 @@ func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus, eff map[string
 		out = append(out, rf)
 	}
 	return out, nil
-}
-
-// generateIndexMD renders the ADR INDEX for the project's decisions directory
-// (ADR-0135 item 8). It always produces a file: In flight and History sections,
-// each with a placeholder line when empty, so the document-map link always
-// resolves (ADR-0020 Decision 6 - partial-item supersedence of ADR-0005/ADR-0006).
-func generateIndexMD(p renderInputs, corpus adr.Corpus) RenderedFile {
-	content := adr.RenderIndexMD(corpus)
-	content = injectSourceMarker(injectBanner(content, ""), []string{"derived:authored-adr-corpus"})
-	inputs := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}}
-	for _, record := range corpus.All() {
-		inputs = append(inputs, OutputInput{Path: layout(p).ADRDir + "/" + record.Filename, Role: ArtifactDecisionRecord})
-	}
-	return RenderedFile{Path: layout(p).IndexMd, Content: content, RegenChecked: true, Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, ConsumedInputs: normalizeOutputInputs(inputs)}
 }
 
 // generateDomainDocs renders one content-only doc per declared domain

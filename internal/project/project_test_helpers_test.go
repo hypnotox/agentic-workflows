@@ -24,10 +24,6 @@ func scaffold(t *testing.T, configYAML string) string {
 func testLayout() map[string]any {
 	return map[string]any{
 		"docsDir":                "docs",
-		"adrDir":                 "docs/decisions",
-		"indexMd":                "docs/decisions/INDEX.md",
-		"adrReadme":              "docs/decisions/README.md",
-		"adrTemplate":            "docs/decisions/template.md",
 		"docs":                   map[string]any{},
 		"workflowRef":            "docs/workflow.md",
 		"docStandard":            "docs/doc-standard.md",

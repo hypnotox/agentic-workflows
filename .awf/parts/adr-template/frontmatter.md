@@ -1,6 +1,0 @@
----
-format: current-state-v4
-status: Proposed
-date: YYYY-MM-DD
----
-# ADR-NNNN: Title

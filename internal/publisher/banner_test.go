@@ -1,8 +1,6 @@
 package publisher
 
 import (
-	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -197,28 +195,5 @@ func TestInjectBannerResidentGitignore(t *testing.T) {
 				t.Errorf("gitignore contains an HTML comment: %q", got)
 			}
 		})
-	}
-}
-
-// TestIndexMdCarriesCanonicalBanner requires generateIndexMD to call
-// injectBanner rather than return adr.RenderIndexMD's content as-is, so
-// INDEX.md's banner matches every other rendered artifact's canonical
-// bannerText.
-func TestIndexMdCarriesCanonicalBanner(t *testing.T) {
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: []\n", nil)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	if err := syncProject(p); err != nil {
-		t.Fatalf("Sync: %v", err)
-	}
-	got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "INDEX.md"))
-	if err != nil {
-		t.Fatalf("read INDEX.md: %v", err)
-	}
-	want := "<!-- " + bannerText + " -->\n"
-	if !strings.HasPrefix(string(got), want) {
-		t.Fatalf("INDEX.md banner = %q, want prefix %q", got[:min(60, len(got))], want)
 	}
 }

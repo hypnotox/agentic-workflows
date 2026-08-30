@@ -160,28 +160,6 @@ func TestRenderAllRendersFullCatalogForBothTargets(t *testing.T) {
 	}
 }
 
-// invariant: rendering/sync-and-drift:sync-always-writes-active-md (TestSyncRendersPlaceholderIndexMDWithoutADRs)
-func TestSyncRendersPlaceholderIndexMDWithoutADRs(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	if err := syncProject(p); err != nil {
-		t.Fatalf("Sync: %v", err)
-	}
-	got, err := os.ReadFile(filepath.Join(root, "docs", "decisions", "INDEX.md"))
-	if err != nil {
-		t.Fatalf("expected a placeholder INDEX.md when no ADRs exist: %v", err)
-	}
-	if !strings.Contains(string(got), "No decisions recorded yet") {
-		t.Errorf("expected placeholder index, got:\n%s", got)
-	}
-	if drift, err := checkProject(p, testContext(t)); err != nil || len(drift) != 0 {
-		t.Errorf("expected clean check with no ADRs, got drift=%#v err=%v", drift, err)
-	}
-}
-
 // invariant: rendering/guide-and-doc-templates:document-map-lists-mandatory-docs (TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally)
 func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")

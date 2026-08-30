@@ -54,11 +54,10 @@ document beside itself as `.awf-bak` (with a numbered suffix if needed) before r
 Section-overridable catalog docs and `AGENTS.md` use their `awf:edit` pointers.
 Topic pages name their metadata-and-claim-part pair, while indexes and domain navigation name those
 family globs. Glossary names its sidecar and `derived:awf-standard-vocabulary`; the pitfall index
-names `.awf/docs/pitfalls/*.md`, while each pitfall leaf names its exact authored source. The ADR
-index names `derived:authored-adr-corpus`; the config reference names `derived:configspec` and
-`derived:project-configuration`; target bridges name `AGENTS.md`. Authored ADRs and plans are
-banner-free. For any source change, edit the authority, run `./awf render`, run `./awf check`, and
-commit the regenerated outputs and lock together.
+names `.awf/docs/pitfalls/*.md`, while each pitfall leaf names its exact authored source. The config
+reference names `derived:configspec` and `derived:project-configuration`; target bridges name
+`AGENTS.md`. Authored decision records are banner-free. For any source change, edit the authority,
+run `./awf render`, run `./awf check`, and commit the regenerated outputs and lock together.
 
 To change one section, drop a **convention part** at `.awf/<kind>/parts/<target>/<section>.md` (for a
 doc, `.awf/docs/parts/<name>/<section>.md`; for an always-on singleton,

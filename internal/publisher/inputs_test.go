@@ -9,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/glossary"
@@ -159,8 +158,8 @@ func TestPublisherStagedTreeOwnsADRAndTopicDerivation(t *testing.T) {
 	if err != nil {
 		t.Fatalf("working-tree authority leaked into selected-tree planning: %v", err)
 	}
-	if len(prepared.ADRs().All()) != 1 || len(prepared.Topics().All()) != 1 {
-		t.Fatalf("selected semantic universe = %d ADRs, %d topics", len(prepared.ADRs().All()), len(prepared.Topics().All()))
+	if len(prepared.Topics().All()) != 1 {
+		t.Fatalf("selected topic universe = %d", len(prepared.Topics().All()))
 	}
 }
 
@@ -253,16 +252,6 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	records := []adr.ADR{{
-		Number: "0001", Slug: "immutable", Domains: []string{"rendering"}, Tags: []string{"legacy"},
-		Related: []int{2}, Sections: map[string]string{"Decision": "before"},
-		Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "rendering/immutable:stable", Slug: "stable"}},
-		History:    []adr.HistoryEvent{{Date: "2026-08-21", Status: "Implemented", Operations: []adr.Operation{{Verb: adr.OpAdd, ID: "rendering/immutable:stable"}}}},
-	}}
-	prepared.adrs, err = adr.NewCorpus(records)
-	if err != nil {
-		t.Fatal(err)
-	}
 	prepared.pitfalls = pitfall.New([]pitfall.Entry{{
 		Slug: "immutable", Domains: []string{"rendering"}, Source: []byte("source"),
 	}})
@@ -272,18 +261,9 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 		Merged:   []glossary.Record{{Term: "merged", Meaning: "meaning", Domains: []string{"rendering"}}},
 		Domains:  []string{"rendering"},
 	}
-	beforeADRs, beforePitfalls, beforeTopics := prepared.ADRs(), prepared.Pitfalls(), prepared.Topics()
+	beforePitfalls, beforeTopics := prepared.Pitfalls(), prepared.Topics()
 	beforeSkills, beforePlan := prepared.EffectiveSkills(), prepared.Plan()
 	beforeGlossary := prepared.Glossary()
-
-	projectedADRs := prepared.ADRs().All()
-	projectedADRs[0].Domains[0] = "mutated"
-	projectedADRs[0].Tags[0] = "mutated"
-	projectedADRs[0].Related[0] = 99
-	projectedADRs[0].Sections["Decision"] = "mutated"
-	projectedADRs[0].Operations[0].ID = "mutated"
-	projectedADRs[0].History[0].Status = "mutated"
-	projectedADRs[0].History[0].Operations[0].ID = "mutated"
 
 	projectedPitfalls := prepared.Pitfalls().All()
 	projectedPitfalls[0].Domains[0] = "mutated"
@@ -334,7 +314,6 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 	}
 
 	for name, values := range map[string][2]any{
-		"ADRs":            {prepared.ADRs(), beforeADRs},
 		"Pitfalls":        {prepared.Pitfalls(), beforePitfalls},
 		"Topics":          {prepared.Topics(), beforeTopics},
 		"EffectiveSkills": {prepared.EffectiveSkills(), beforeSkills},

@@ -26,7 +26,7 @@ func TestBuildOutputDeclarationsCoversTargetAndMetadataEdges(t *testing.T) {
 	}
 	targets := []Target{{Name: "one", Outputs: []TargetOutput{{Path: "shared", TemplateID: "template", Inputs: []TargetOutputInput{{Path: "same", Role: ArtifactConfig}, {Path: "same", Role: ArtifactTemplate}}}}}, {Name: "two", Outputs: []TargetOutput{{Path: "shared", TemplateID: "template"}}}}
 	read := memoryProjectReader{".awf/topics/metadata/note.txt": []byte("ignored")}
-	decls, err := buildOutputDeclarations(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, targets, read, mustCorpus())
+	decls, err := buildOutputDeclarations(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, targets, read)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestBuildOutputDeclarationsCoversTargetAndMetadataEdges(t *testing.T) {
 	}
 
 	unknown := []Target{{Name: "bad", Outputs: []TargetOutput{{Path: "missing", RequiresSkill: "absent"}}}}
-	if _, err := buildOutputDeclarations(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, unknown, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
+	if _, err := buildOutputDeclarations(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, unknown, read); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target requirement error = %v", err)
 	}
 
@@ -51,7 +51,7 @@ func TestBuildOutputDeclarationsCoversTargetAndMetadataEdges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := buildOutputDeclarations(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, nil, badSidecar, mustCorpus()); err == nil || !strings.Contains(err.Error(), "domains/d.yaml") {
+	if _, err := buildOutputDeclarations(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, nil, badSidecar); err == nil || !strings.Contains(err.Error(), "domains/d.yaml") {
 		t.Fatalf("domain sidecar error = %v", err)
 	}
 }
@@ -63,7 +63,7 @@ func TestBuildOutputDeclarationsPropagatesCatalogSidecarReadFault(t *testing.T) 
 		t.Fatal(err)
 	}
 	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{"implementing": {}}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
-	if _, err := buildOutputDeclarations(cfg, cat, []Target{{Name: "test"}}, read, mustCorpus()); err == nil || !strings.Contains(err.Error(), "read fault") {
+	if _, err := buildOutputDeclarations(cfg, cat, []Target{{Name: "test"}}, read); err == nil || !strings.Contains(err.Error(), "read fault") {
 		t.Fatalf("declaration read error = %v", err)
 	}
 }

@@ -134,8 +134,8 @@ func TestEmptyInitRendersCoherently(t *testing.T) {
 	if strings.Contains(checkOut.String(), "dead-skill-reference") {
 		t.Errorf("curated init render has dead skill references:\n%s", checkOut.String())
 	}
-	if _, err := os.Stat(filepath.Join(root, "docs/decisions/template.md")); err != nil {
-		t.Fatalf("default init omitted the standard decision template: %v", err)
+	if _, err := os.Stat(filepath.Join(root, "docs/decisions/template.md")); !os.IsNotExist(err) {
+		t.Fatalf("default init retained managed decision scaffolding: %v", err)
 	}
 	cfg, err := os.ReadFile(filepath.Join(root, ".awf", "config.yaml"))
 	if err != nil || strings.Contains(string(cfg), "profile:") {

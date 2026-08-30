@@ -31,11 +31,6 @@ Backing: test
 A change to an artifact's catalog default data changes that artifact's lock configHash, so `awf check` reports the artifact stale exactly as it would for a template change.
 Backing: test
 
-### `invariant: check-active-md-stale`
-
-For Full, awf check regenerates the ADR status index at docs/decisions/INDEX.md from current ADR frontmatter and reports divergent on-disk bytes as stale drift. Core has no managed ADR index.
-Backing: test
-
 ### `invariant: check-invalid-frontmatter`
 
 awf check reports an invalid-frontmatter drift entry for an on-disk skill or agent file that is otherwise in sync but whose frontmatter is missing, unparseable, or has an empty name or description; a clean synced tree reports no such entry, and at most one drift entry is reported per path.
@@ -68,7 +63,7 @@ Backing: test
 
 ### `invariant: regeneration-checked-attribute`
 
-The files excluded from the frozen-output-hash comparison are exactly those a first-class RegenChecked attribute marks on the rendered-file model; the generated index, the config reference, and the domain docs carry it, as does every file containing an in-place-editable section, replacing the former hardcoded path list.
+The files excluded from the frozen-output-hash comparison are exactly those a first-class RegenChecked attribute marks on the rendered-file model; the config reference and domain docs carry it, as does every file containing an in-place-editable section, replacing the former hardcoded path list.
 Backing: test
 
 ### `invariant: residue-exemptions-pinned-three`
@@ -89,11 +84,6 @@ Backing: test
 ### `invariant: staged-drift-rendered-output`
 
 `awf check staged drift` renders from the staged config and compares staged generated outputs for index membership, stale content, and hand edits. An absent staged output or lock reports blocking `untracked` drift without consulting working-tree bytes; an invalid staged lock remains an operational failure.
-Backing: test
-
-### `invariant: sync-always-writes-active-md`
-
-awf render writes the historical decision index at docs/decisions/INDEX.md, recording existing decisions and otherwise rendering a placeholder.
 Backing: test
 
 ### `invariant: sync-mutations-root-confined`
