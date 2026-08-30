@@ -20,6 +20,12 @@ query a single version or a range.
 
 - Add non-interactive `awf edit <kind> <name> <part>` and `awf reset <kind> <name> <part>` commands for semantically resolved convention parts and configured local-document bodies, with complete candidate validation, automatic rendering, and explicit partial-effect recovery.
 
+### Others
+
+- Candidate measurements on Linux amd64 with Go 1.26.0 and a warm build cache put `./x gate` at 1.148-1.400 seconds after a 6.192-second first sample. The audited baseline's differently composed fast gate plus affected feedback was 3.820-3.927 seconds, so no numerical speedup is claimed. Maintained Go production moved from 290 files and 1,905,231 bytes to 257 files and 1,419,905 bytes; Go test sources moved from 422 files and 4,263,651 bytes to 347 files and 2,868,927 bytes. The permanent plan corpus moved from 223 files and 7,061,587 bytes to none.
+
+- The latest audited baseline CI used 30 jobs, 4m51 wall time, and 45.9 runner-minutes. Replacement hosted CI has not run for this local candidate, so replacement wall time and runner-minutes remain unavailable rather than estimated.
+
 ## [0.43.0] - 2026-08-29
 
 ### Breaking changes
