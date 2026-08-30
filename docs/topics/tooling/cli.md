@@ -14,7 +14,7 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 ### `invariant: semantic-artifact-authoring`
 
 `awf edit sidecar <kind> <name> <field>` accepts exactly one scalar or JSON whole/list mode, and reset removes one supported leaf. The command resolves closed semantic kinds and capability-valid leaf fields, validates its complete candidate before source publication, and reports committed source and publisher effects through the authoring transaction.
-Origin: ADR-semantic-artifact-authoring-commands
+Origin: ADR-0321
 Backing: test
 
 ### `invariant: init-describe-read-only`

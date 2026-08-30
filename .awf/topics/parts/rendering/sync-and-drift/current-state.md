@@ -12,7 +12,7 @@ Backing: test
 ### `invariant: authoring-sync-transaction`
 
 A semantic part edit or reset acquires the complete project lease before mutable authority reads, observes the selected source identity, and validates one candidate overlay through both configuration-tree and project-tree readers before any source effect. It then confines mutation to that observed source, reloads committed authority, and invokes ordinary leased synchronization. Pre-source refusal preserves source, output, and lock bytes; a later failure reports source, setup, publisher, and release effects with residue-first recovery and no rollback claim.
-Origin: ADR-semantic-artifact-authoring-commands
+Origin: ADR-0321
 Backing: test
 
 ### `invariant: awf-bak-flagged`

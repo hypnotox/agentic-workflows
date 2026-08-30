@@ -14,7 +14,7 @@ These packages load, validate, and describe the .awf config tree and the anchore
 ### `invariant: sidecar-authoring-roundtrip`
 
 Sidecar leaf authoring mutates YAML nodes through configuration-owned two-space encoding, preserves unrelated ordering and comments, compares list entries structurally, and removes empty ancestor mappings and a final empty sidecar. Scalar modes write strings while JSON modes retain one complete structured JSON value.
-Origin: ADR-semantic-artifact-authoring-commands
+Origin: ADR-0321
 Backing: test
 
 ### `rule: config-expresses-repo-facts-only`

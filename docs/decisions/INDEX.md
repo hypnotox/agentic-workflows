@@ -2,7 +2,7 @@
 <!-- awf:source derived:authored-adr-corpus -->
 ## In flight
 
-- [ADR-semantic-artifact-authoring-commands: Semantic Artifact Authoring Commands](semantic-artifact-authoring-commands.md) (Implementing)
+- [ADR-0321: Semantic Artifact Authoring Commands](0321-semantic-artifact-authoring-commands.md) (Implementing)
 
 ## History
 

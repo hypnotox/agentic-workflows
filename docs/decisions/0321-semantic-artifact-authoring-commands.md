@@ -4,7 +4,7 @@ slug: semantic-artifact-authoring-commands
 status: Implementing
 date: 2026-08-29
 ---
-# ADR-semantic-artifact-authoring-commands: Semantic Artifact Authoring Commands
+# ADR-0321: Semantic Artifact Authoring Commands
 
 
 ## Context
