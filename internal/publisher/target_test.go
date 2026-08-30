@@ -683,6 +683,8 @@ func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 }
 
 // invariant: rendering/pi-workflows:pi-implement-role-artifact (TestPiImplementRoleArtifact)
+// invariant: rendering/pi-workflows:pi-implementation-bounded-concurrency (TestPiImplementRoleArtifact)
+// invariant: rendering/workflow-skill-templates:implementation-route-adaptive (TestPiImplementRoleArtifact)
 func TestPiImplementRoleArtifact(t *testing.T) {
 	src := renderPiExtensionFile(t, "awf-subagents/index.ts")
 	for _, want := range []string{
@@ -693,13 +695,18 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"has no instruction body; run ./awf render.",
 		"parseFrontmatter",
 		"const verified = state.before.available && after.available",
-		"const changed = verified && state.before.head !== after.head",
+		"MAX_IMPLEMENTATION_CONCURRENCY = 4",
+		"concurrency: MAX_IMPLEMENTATION_CONCURRENCY",
+		"canonical disjoint write sets",
+		"const headChanged = verified && state.before.head !== after.head",
+		"const indexChanged = verified && state.before.indexTree !== after.indexTree",
 		"const failure = !verified",
 		"commitVerification: verified ? \"verified\" : \"unavailable\"",
 		"commitVerification: COMMIT_VERIFICATION_SCHEMA",
-		"Implementation changed HEAD",
-		"restore the recorded before-run HEAD",
-		"before redispatch",
+		`["write-tree"]`,
+		"Implementation changed protected Git state",
+		"recover only the offending commit or staged paths",
+		"preserving sibling and unrelated edits before redispatch",
 		"Implementation verification unavailable",
 		"resolveVerificationCheckout",
 		`requested.startsWith("@") ? requested.slice(1) : requested`,
@@ -711,7 +718,7 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		"administrative backlink",
 		"same repository as the project root",
 		"snapshot(pi, verificationCheckout)",
-		"selected HEAD could not be compared before and after",
+		"selected HEAD or index could not be compared before and after",
 		"invocationCheckout",
 		"cwd: verificationCheckout",
 	} {
@@ -729,5 +736,19 @@ func TestPiImplementRoleArtifact(t *testing.T) {
 		if strings.Contains(implementer, piOnly) {
 			t.Errorf("generic implementer role gained Pi-only verification metadata %q", piOnly)
 		}
+	}
+	for _, want := range []string{"possibly running beside independent siblings", "Do not mutate an unassigned shared path", "HEAD and index are unchanged"} {
+		if !strings.Contains(implementer, want) {
+			t.Errorf("implementer concurrency contract missing %q", want)
+		}
+	}
+	skill := renderSkillGolden(t, "implementing", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
+	for _, want := range []string{"dependency-independent, canonical disjoint write sets", "ambiguous, overlapping, shared, global, generated, or current-state path", "Use at most four children", "let already-running siblings settle", "Preserve successful sibling and unrelated edits"} {
+		if !strings.Contains(skill, want) {
+			t.Errorf("implementing skill concurrency contract missing %q", want)
+		}
+	}
+	if strings.Contains(src, "exclusiveParentBatch") {
+		t.Error("bounded implementation profile retained coarse parent-batch exclusivity")
 	}
 }

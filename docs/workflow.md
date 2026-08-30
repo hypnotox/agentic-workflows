@@ -73,7 +73,7 @@ Decomposition preserves parent-owned focused evidence for each fresh unit, and t
 - Work without continuity need carries no effort or memory.
 - Existing efforts resume under fixed identity only inside their outcome, with one user-managed writer and report-only readers.
 - A distinct active effort is never silently reused. Keep it resumable or transfer necessary context before inspected safe cleanup and archival finish.
-- The implementation parent owns integration, staging, commits, verification, and review judgment. Divergent integration activates review before topology removal.
+- The implementation parent owns integration, staging, commits, verification, and review judgment. Shared-worktree children run concurrently only for dependency-independent canonical disjoint write sets; ambiguous, dependent, overlapping, or shared work remains sequential or parent-owned. Divergent integration activates review before topology removal.
 
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl#working-memory -->

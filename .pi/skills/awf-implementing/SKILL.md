@@ -14,7 +14,7 @@ Implement only an approved or otherwise settled outcome. Select the smallest eff
 <!-- awf:template-source templates/skills/implementing/SKILL.md.tmpl -->
 ## Ownership and dispatch
 
-Parallel work is allowed only for dependency-independent, canonical disjoint write sets. Assign each child a bounded unit and paths; it may mutate only those paths in the shared worktree. The parent alone owns effort memory, plans, shared/global/generated/current-state files, integration, index, commits, review, and final verification. Children cannot change commits, index, or topology. Sequence work whenever one unit establishes another's contract, representation, generated output, or verification surface.
+Parallel work is allowed only for dependency-independent, canonical disjoint write sets. Resolve every assigned path against the selected checkout before dispatch; an ambiguous, overlapping, shared, global, generated, or current-state path makes the work sequential or parent-owned. Assign each child one bounded unit and its complete path set. The parent alone owns effort memory, plans, shared/global/generated/current-state files, integration, index, commits, review, and final verification. Children cannot change commits, index, or topology. Sequence work whenever one unit establishes another's contract, representation, generated output, or verification surface. Use at most four children in one wave.
 
 <!-- awf:template-source templates/skills/implementing/SKILL.md.tmpl#procedure -->
 <!-- awf:edit procedure: default; create .awf/skills/parts/implementing/procedure.md to override -->
@@ -25,7 +25,7 @@ Orient enough to identify current and target owners, applicable decisions and cl
 
 Inventory affected paths and contracts before and after the change. Run focused feedback while iterating and the strongest practical oracle for the altered behavior; never weaken an assertion, fixture, golden, or oracle to hide failure. Update a fixture or generated expectation only when its new value is correct, and say why. Reconcile the represented current state and generated ownership through their owners rather than using a test-shaped production design.
 
-On failure, diagnose and correct the cause while preserving unrelated work. Do not blind reset, restore, clean, or stash. If safe completion is impossible inside the assigned boundary, report the narrow blocker with evidence.
+On failure, let already-running siblings settle, stop dispatching new units, and inventory the complete checkout plus every assigned write set. Preserve successful sibling and unrelated edits. Recover only the offending paths with explicit native operations; do not blind reset, restore, clean, or stash. If safe completion is impossible inside the assigned boundary, report the narrow blocker with evidence.
 
 <!-- awf:template-source templates/skills/implementing/SKILL.md.tmpl#review-handoff -->
 <!-- awf:edit review-handoff: default; create .awf/skills/parts/implementing/review-handoff.md to override -->

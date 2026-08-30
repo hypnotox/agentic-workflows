@@ -21,11 +21,10 @@ Backing: test
 Every governed retained Pi extension file carries the ts-nocheck directive on the line immediately after the provenance banner, and the host harness deterministically strips that exact directive from every copied extension TypeScript file after source copy and before strict compilation.
 Backing: test
 
-### `invariant: pi-implementation-batch-exclusivity`
+### `invariant: pi-implementation-bounded-concurrency`
 
-The implementation profile declares one active call and fail-closed parent-batch exclusivity, so it cannot share a parent tool batch with siblings. Pi-tools owns enforcement of that declaration, cancellation, queueing, and execution confinement; awf retains the profile declaration and commit-policy hooks.
-Backing: unbacked
-Verify: Inspect the generated implementation profile declaration and confirm its active-call cap is one and parent-batch exclusivity remains fail-closed under the Pi runtime.
+The implementation profile admits at most four active calls and omits parent-batch exclusivity. One batch may contain only dependency-independent implementation units whose canonical write sets are explicit and disjoint in the same selected checkout; dependent, overlapping, ambiguous, shared, global, generated, and current-state work remains sequential or parent-owned. Pi-tools owns scheduling, cancellation, queueing, and execution confinement, while awf owns the bounded profile declaration, selected-checkout Git policy, and workflow guidance.
+Backing: test
 
 ### `invariant: pi-native-workflow-skills`
 
@@ -50,7 +49,7 @@ Backing: test
 
 ### `invariant: pi-structured-exploration-contract`
 
-The generated adapter atomically registers four closed-schema profiles with optional exact model routing: premise checking, exploration, combined report-only review, and commit-disabled implementation. The review profile has no artifact-kind argument and uses the shared `review` preference role. Implementation alone accepts optional `verificationCheckout`; preparation validates and caches one canonical accessible descendant checkout as both child CWD and unchanged-HEAD identity, while omission retains root/root. This does not confine deliberately targeted paths or move the parent session. Exploration requires task, breadth, and detail and declares ten active calls; premise checking and review also declare ten, while implementation declares one and parent-batch exclusivity.
+The generated adapter atomically registers four closed-schema profiles with optional exact model routing: premise checking, exploration, combined report-only review, and commit-disabled implementation. The review profile has no artifact-kind argument and uses the shared `review` preference role. Implementation alone accepts optional `verificationCheckout`; preparation validates and caches one canonical accessible descendant checkout as both child CWD and unchanged-HEAD-and-index identity, while omission retains root/root. This does not confine deliberately targeted paths or move the parent session. Exploration, premise checking, and review each declare ten active calls; implementation declares four and no parent-batch exclusivity.
 Backing: test
 
 ### `invariant: pi-subagent-model-preferences`
@@ -70,7 +69,7 @@ Backing: test
 
 ### `invariant: pi-implement-role-artifact`
 
-The generated adapter builds the implementation profile prompt from the rendered commit-disabled implementer agent at its `.pi/agents/` path through the shared loader and strips frontmatter. Preparation resolves and caches the validated checkout before dispatch, returns it as child CWD, and before and after Git snapshots use that same identity. Any changed or unverifiable selected HEAD fails closed with the checkout and explicit `verificationCheckout` retry repair. The generic implementer role contract carries no Pi-only checkout-routing duty.
+The generated adapter builds the implementation profile prompt from the rendered commit-disabled implementer agent at its `.pi/agents/` path through the shared loader and strips frontmatter. Preparation resolves and caches the validated checkout before dispatch, returns it as child CWD, and before and after Git snapshots use that same identity. Any changed or unverifiable selected HEAD or index fails closed without reverting the worktree and directs the parent to recover only the offending Git state while preserving sibling and unrelated edits. The generic implementer role contract carries no Pi-only checkout-routing duty.
 Backing: test
 
 ### `invariant: pi-role-contract-loader`

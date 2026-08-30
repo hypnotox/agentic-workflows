@@ -11,8 +11,7 @@ Verify: Render both supported targets, inspect the repository-context skill plus
 ### `invariant: implementation-route-adaptive`
 
 The rendered `implementing` skill lets the parent choose inline work, one child, sequential children, or a bounded same-worktree parallel wave from dependency and write-set evidence. Parallel mutation is limited to dependency-independent units with canonical disjoint write sets; the parent retains shared and generated files, staging, commits, integration, and final verification. Every child is commit-disabled, preserves unrelated work, and returns changed files, exact checks, deviations, blockers, and checkout state.
-Backing: unbacked
-Verify: Inspect the implementing skill and implementer agent, then confirm ambiguous dependencies or overlapping/shared paths select sequential execution while disjoint units permit a bounded wave and keep parent-owned transaction duties explicit.
+Backing: test
 
 ### `invariant: risk-based-review`
 
