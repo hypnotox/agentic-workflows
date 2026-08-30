@@ -48,7 +48,7 @@ Tools in `go.mod`'s `tool` block resolve through `go tool`; do not install them 
 ## Dependencies
 | Dependency | Role |
 |---|---|
-| `gopkg.in/yaml.v3` | Strict `KnownFields` parsing and comment-preserving `.awf/`, ADR, and frontmatter mutation. |
+| `gopkg.in/yaml.v3` | Strict `KnownFields` parsing and comment-preserving `.awf/` and frontmatter mutation. |
 | `github.com/go-git/go-git/v5` with `go-billy/v5` | In-process backend of `internal/git`; native Git is the other backend for control roots, refs, worktrees, and working-tree truth. Only `internal/git` may use either, with `internal/testsupport/gitfixture` as the test exception. |
 | `golang.org/x/mod` | SemVer comparison for the binary-version gate (ADR-0039). |
 | `github.com/bmatcuk/doublestar/v4` | Anchored path glob matching in `internal/pathglob` (ADR-0077). |

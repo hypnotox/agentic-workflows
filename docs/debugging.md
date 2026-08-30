@@ -28,7 +28,7 @@ Run `./awf check repo drift` and follow its repair hint. Edit the owning `.awf/`
 
 ### Current-state refusal
 
-Run `./awf check repo state`, then query the affected path with `./awf resolve topic <affected-path>`. Use the reported qualified topic with `./awf read topic <domain>/<topic>`; change active claims only through their ADR lifecycle.
+Run `./awf check repo state`, then query the affected path with `./awf resolve topic <affected-path>`. Use the reported qualified topic with `./awf read topic <domain>/<topic>`; edit the owning topic source and reconcile its evidence with repository reality.
 
 ### Binary-version refusal
 

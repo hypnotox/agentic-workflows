@@ -11,7 +11,7 @@ Generated files are owned by awf. Edit `.awf/`, then render and check. See [work
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
 ## Daily commands
 
-- `awf init`: scaffold `.awf/` and render the selected governance footprint into the current project.
+- `awf init`: scaffold `.awf/` and render the standard workflow footprint into the current project.
 - `./awf render`: re-render managed artifacts from `.awf/` and update `.awf/awf.lock`.
 - `./awf check`: confirm the rendered tree and repository checks are clean.
 - `./awf upgrade`: apply pending configuration migrations and re-render after upgrading awf.

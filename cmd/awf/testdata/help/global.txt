@@ -5,7 +5,7 @@ help:
     awf <command> [flags]
   commands:
     commands:
-      init | Scaffold .awf/ and render the selected governance footprint
+      init | Scaffold .awf/ and render the standard workflow footprint
       render | Re-render after a template or config change
       edit | Replace one semantically identified artifact part
       reset | Restore one semantically identified artifact part

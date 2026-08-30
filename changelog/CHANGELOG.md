@@ -10,6 +10,8 @@ query a single version or a range.
 
 ### Breaking changes
 
+- Replace machine-managed ADR and parsed-plan lifecycles with plain append-only decision records, current-state authority, and opaque effort-local operational plans. Awf now renders one standard footprint with a lean skill and agent catalog, risk-based review, and no profile or workflow-neighbor selection.
+
 - Remove exact coverage ledgers and directives, mutation and performance qualification tools, the local full gate, duplicated CI shards, and the separate release-configuration status. Local feedback is focused and `CI / gate` is the single repository verdict; archive verification moves to the release workflow.
 
 ### Features

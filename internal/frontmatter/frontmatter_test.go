@@ -7,7 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
-// invariant: adr-system/frontmatter:frontmatter-split (TestSplitWellFormed)
+// invariant: rendering/frontmatter:frontmatter-split (TestSplitWellFormed)
 func TestSplitWellFormed(t *testing.T) {
 	in := "---\nname: x\ndesc: y\n---\nbody here\n"
 	yamlBlock, body, found := frontmatter.Split([]byte(in))
@@ -22,7 +22,7 @@ func TestSplitWellFormed(t *testing.T) {
 	}
 }
 
-// invariant: adr-system/frontmatter:frontmatter-split (TestSplitNoFrontmatter)
+// invariant: rendering/frontmatter:frontmatter-split (TestSplitNoFrontmatter)
 func TestSplitNoFrontmatter(t *testing.T) {
 	in := "# heading\nno frontmatter\n"
 	yamlBlock, body, found := frontmatter.Split([]byte(in))

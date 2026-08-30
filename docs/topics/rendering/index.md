@@ -7,6 +7,7 @@
 - [Catalog and targets](catalog-and-targets.md): The compile-time catalog and the tool-agnostic target seam.
 - [Companion scripts](companion-scripts.md): Rendered companion script contracts: bootstrap, upgrade, runner, hook payloads.
 - [Doc outputs](doc-outputs.md): Generated documentation outputs: domain and topic docs, layout, pitfalls, stubs, skill references.
+- [Frontmatter parsing](frontmatter.md): How authored-document frontmatter is split and validated.
 - [Guide and doc templates](guide-and-doc-templates.md): Agent-guide and documentation template contracts.
 - [Inplace and placeholders](inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
 - [Pi runtime](pi-runtime.md): The Pi runtime floor and its boundaries.

@@ -29,12 +29,12 @@ Backing: test
 
 ### `invariant: closed-config-tree`
 
-Every filesystem entry under .awf outside the selected governance footprint's claimed-path model is reported by awf check as orphaned drift, with owned resident roots exempt.
+Every filesystem entry under .awf outside the standard footprint's claimed-path model is reported by awf check as orphaned drift, with owned resident roots exempt.
 Backing: test
 
 ### `invariant: drift-source-set`
 
-Each rendered file's stored ConfigHash projects only that file's effective inputs and selected governance footprint, so awf check reports it stale only when those inputs changed. A sidecar or part matching no selected artifact or target is an orphan.
+Each rendered file's stored ConfigHash projects only that file's effective inputs and standard footprint, so awf check reports it stale only when those inputs changed. A sidecar or part matching no catalog artifact or target is an orphan.
 Backing: test
 
 ### `invariant: managed-output-attribution`

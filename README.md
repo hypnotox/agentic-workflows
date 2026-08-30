@@ -75,11 +75,9 @@ awf check
 awf list
 ```
 
-`awf init` creates a Core `.awf/` tree and renders the workflow. Use `awf init --profile full`
-to add durable decisions, current-state authority, and workflow-audit governance. Both footprints use the
-same correctness, autonomy, maintainability, and review-quality bar. Existing repositories upgrade
-explicitly to Full. Commit both the source tree and its rendered outputs. After changing
-`.awf/`, render and check again:
+`awf init` creates the standard `.awf/` tree and renders the workflow, including durable
+decision guidance and current-state authority. Commit both the source tree and its rendered outputs.
+After changing `.awf/`, render and check again:
 
 ```sh
 awf render
@@ -99,10 +97,9 @@ collision. `awf init --force` first saves each replaced file as `<path>.awf-bak`
 └── parts/...                      └── docs/
 ```
 
-Core includes the operational workflow: brainstorming, implementation, testing, review, efforts,
-and managed worktrees. Full adds durable decisions, current-state authority, and workflow audit.
-An optional operational plan is an unparsed `scratch/plan.md` inside its effort, not permanent project authority. These governance footprints select artifacts,
-not different standards of rigor or autonomy.
+The standard footprint includes brainstorming, implementation, testing, risk-based review,
+durable decisions, current-state authority, efforts, and managed worktrees. An optional operational
+plan is an unparsed `scratch/plan.md` inside its effort, not permanent project authority.
 
 ```mermaid
 flowchart LR
@@ -129,7 +126,7 @@ Punctuation findings are advisory Warnings with zero exit.
 <!-- awf:clispec-commands:start -->
 | Command | Purpose |
 |---|---|
-| `awf init [flags]` | Scaffold .awf/ and render the selected governance footprint |
+| `awf init [flags]` | Scaffold .awf/ and render the standard workflow footprint |
 | `awf render` | Re-render after a template or config change |
 | `awf edit <kind> <name> <part> --content <text>` | Replace one semantically identified artifact part |
 | `awf reset <kind> <name> <part>` | Restore one semantically identified artifact part |

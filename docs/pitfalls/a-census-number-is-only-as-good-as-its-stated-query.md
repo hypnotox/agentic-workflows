@@ -3,7 +3,7 @@
 <!-- awf:template-source templates/pitfalls/entry.md.tmpl -->
 # A census number is only as good as its stated query
 
-**Domains:** adr-system
+**Domains:** decisions, tooling
 
 When a durable record cites a count or closed vocabulary, state the query that produced it:
 population, tool, and exclusions. Prefer parsed syntax to textual patterns for an "all X"

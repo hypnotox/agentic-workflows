@@ -16,8 +16,8 @@ awf-managed docs orient and link; they do not restate. Each fact lives in the si
 
 - **Terse.** Managed docs are read repeatedly; every word is a recurring cost. Use the shortest phrasing that stays precise.
 - **Glossary entries are terser still.** One sentence stating what the thing is; a second only when a contrast or boundary is load-bearing. Do not restate what the term's own words already say. An over-long entry raises a non-failing advisory.
-- **Linter-rules out of prose.** State a tooling-enforced rule once and cite the ADR that owns it; do not narrate the mechanism. The agent meets the check regardless.
-- **Reference, don't restate.** Link an ADR by id for rationale instead of reproducing it: one source of truth per fact.
+- **Linter-rules out of prose.** State a tooling-enforced rule once and point to its current-state owner; do not narrate the mechanism. The agent meets the check regardless.
+- **Reference, don't restate.** Link a decision record for durable rationale instead of reproducing it: one source of truth per fact.
 - **No editorializing or dating.** Write the rule, not its history or a judgement of it.
 - **Prefer count-free prose.** Name a changing set or its selection rule instead of stating its current count. When an exact count is essential, state the query that produces it and reverify it whenever the source population changes.
 - **Punctuation restraint.** Prefer ordinary punctuation and sentence structure. In every tracked text file, an en dash is prohibited and each blank-line-delimited paragraph may contain at most two em dashes. Both the single-codepoint and three-period forms of ellipsis are permitted, as are all curly quotes. Use a path-and-codepoint exemption only for a quotation, frozen record, or text that discusses a guarded character.
@@ -61,7 +61,7 @@ Topic pages name their metadata-and-claim-part pair, while indexes and domain na
 family globs. Glossary names its sidecar and `derived:awf-standard-vocabulary`; the pitfall index
 names `.awf/docs/pitfalls/*.md`, while each pitfall leaf names its exact authored source. The config
 reference names `derived:configspec` and `derived:project-configuration`; target bridges name
-`AGENTS.md`. Authored decision records are banner-free. For any source change, edit the authority,
+`AGENTS.md`. Authored decision records are banner-free, unparsed Markdown. For any source change, edit the authority,
 run `./awf render`, run `./awf check`, and commit the regenerated outputs and lock together.
 
 To change one section, drop a **convention part** at `.awf/<kind>/parts/<target>/<section>.md` (for a

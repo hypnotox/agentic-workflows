@@ -1,9 +1,7 @@
 audit:
   allowedScopes:
-    - name: adr
-      meaning: ADR markdown documents
-    - name: adr-system
-      meaning: the ADR machinery code (INDEX.md generation, lifecycle)
+    - name: decisions
+      meaning: durable decision records
     - name: awf
       meaning: genuinely cross-cutting / repo-meta work, the umbrella of last resort
     - name: code-design
@@ -17,7 +15,7 @@ audit:
     - name: tooling
       meaning: CLI, audit/gate, coverage, CI, ./x, changelog, evals
 domains:
-  - adr-system
+  - decisions
   - config
   - invariants
   - rendering

@@ -33,14 +33,8 @@ data:
     - term: authoring comment
       meaning: "A whole-line `<!-- awf:comment ... -->` in a template default or convention part, stripped at ingestion."
       domains: [rendering]
-    - term: claim provenance
-      meaning: "Links tying a claim to its ADR history: required `Origin:` and optional ordered `Revised-by:`. They aid navigation, not authority."
-      domains: [invariants]
-    - term: State changes
-      meaning: "An ADR's operation declaration, with each operation frozen once an Applied event references it: `None.` or add, update, and remove entries naming qualified claim ids. Each batch travels with its claim mutations."
-      domains: [adr-system]
     - term: current-state topic
-      meaning: "A domain-owned document whose metadata and authored part define claims read by `awf read topic`, `awf resolve topic`, and `awf check`. Its claims, not ADRs, are current authority."
+      meaning: "A domain-owned document whose metadata and authored part define claims read by `awf read topic`, `awf resolve topic`, and `awf check`. Its claims, not decision history, are current authority."
       domains: [invariants]
     - term: source marker
       meaning: "An informational `awf:source` comment on generated documentation that points to reader-facing authorities without defining an edit boundary or dependency list."
@@ -52,20 +46,11 @@ data:
       meaning: "An exploration breadth limit that starts with the cheapest targeted lookup, widens only on evidence, and reports exhaustion."
       domains: [rendering]
     - term: claim
-      meaning: "One globally identified normative unit of a current-state topic: a rule or invariant heading, prose, and canonical metadata. Its `<domain>/<topic>:<slug>` identity is targeted by markers and operations."
+      meaning: "One globally identified normative unit of a current-state topic: a rule or invariant heading, prose, and canonical metadata. Its `<domain>/<topic>:<slug>` identity is targeted by proof markers and focused reads."
       domains: [invariants]
-    - term: absorbing tombstone
-      meaning: "The semantics of an applied claim remove: the qualified id is absent, and later-integrated concurrent updates remain dominated history."
-      domains: [adr-system]
-    - term: dominated operation
-      meaning: "An applied update absorbed by an applied remove: retained as history but establishing no current claim or authority."
-      domains: [adr-system]
-    - term: application batch
-      meaning: "One implicit terminal application or explicit Applied event containing a nonempty, duplicate-free unordered set of not-yet-applied operations. Its identity is its position in the owning ADR history."
-      domains: [adr-system]
-    - term: decision index
-      meaning: "The generated decisions index listing in-flight ADRs by number, title, and status and terminal ADRs as compact history. It does not infer currentness or render supersession chains."
-      domains: [adr-system]
+    - term: decision record
+      meaning: "An append-only Markdown record of a load-bearing choice that should outlive implementation. It preserves rationale without determining current state."
+      domains: [decisions]
     - term: topic coverage
       meaning: "The per-domain check that current-state topics describe owned paths. Global topics apply everywhere but cover only explicit paths in their domain; error and fan-out warning ranks are fixed."
       domains: [invariants]
@@ -103,8 +88,6 @@ data:
     - term: prose knob
       meaning: "A prohibited catalog var descriptor that only tunes rendered prose; prose customization uses convention parts. Functional values drive commands, enforced identifiers, or executed paths."
       domains: [config]
-    - term: linked-plan review freshness
-      meaning: "The rule that ordinary full plan review verifies every parsed plan-level `adrs:` link, and substantive ADR corrections settle through ADR review before linked Proposed plans and landed-phase assurance renew."
     - term: seed-on-introduction
       meaning: "The convention that a release adding a catalog var descriptor ships a one-time migration seed, keeping later absence a reliable deletion signal."
       domains: [config]
@@ -115,7 +98,7 @@ data:
       meaning: "The per-file cause printed when `awf render` changes a rendered file against the previous lock: `template`, `config`, `template+config`, `internal`, `regenerated`, or `added`."
       domains: [rendering]
     - term: template source residue
-      meaning: "awf-specific content surviving in shipped prose: a concrete ADR citation or repo-identity literal outside the pinned exemption list."
+      meaning: "awf-specific content surviving in shipped prose: a concrete historical decision citation or repo-identity literal outside the pinned exemption list."
       domains: [rendering]
     - term: trust-bearing file
       meaning: "A file trusted without re-derivation: the lock or migration-rewritten authored `config.yaml`. It is written atomically, and an unreadable present lock is always an error."
@@ -174,12 +157,9 @@ data:
     - term: continuity notice
       meaning: "A routine checkpoint's informational one-line summary of the completed phase and immediate next action; it does not stop autonomous continuation."
       domains: [rendering]
-    - term: pending ADR
-      meaning: "A reviewable and implementable decision record identified by a retained slug before integration assigns its number."
-      domains: [adr-system]
     - term: integration branch
-      meaning: "The configured branch for finished-work integration, where ADR authoring allocates numbers; elsewhere authoring produces pending records numbered during integration."
-      domains: [config, adr-system]
+      meaning: "The configured branch that receives completed managed-worktree efforts."
+      domains: [config, tooling]
     - term: retrospective
-      meaning: "The terminal workflow step after settled review and managed-topology removal that records durable lessons and finishes the effort last."
+      meaning: "The terminal workflow step after assurance and managed-topology removal that records durable lessons and finishes the effort last."
       domains: [rendering]

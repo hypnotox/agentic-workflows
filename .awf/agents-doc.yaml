@@ -13,17 +13,11 @@ data:
         - cmd: ./awf new pitfall "<Title>"
           desc: scaffold one authored pitfall source without rendering
     invariants:
-        - ref: ADR-0001, ADR-0045
-          text: '**Publication-safe templates.** Keep unset interpolation coherent and token-free.'
+        - text: '**Publication-safe templates.** Keep unset interpolation coherent and token-free.'
         - text: '**`awf check` is the drift oracle.** After `.awf/` edits run `./x render && ./x check`; commit generated outputs with their sources.'
         - kind: scopes
-        - ref: ADR-0134
-          text: '**Backed invariants.** Declare and prove current-state invariants; see the current-state contract.'
-        - ref: ADR-replace-plain-punctuation-ban-with-punctuation-restraint
-          text: '**Punctuation restraint.** Prefer ordinary punctuation; punctuation findings are advisory Warnings with zero exit. En dashes remain prohibited and paragraphs use at most two em dashes. Ellipses and curly quotes are permitted; see the prose gate contract.'
-        - ref: ADR-0158, ADR-0175
-          text: '**No memory citation.** Never cite concrete effort memory paths in durable records.'
-        - ref: ADR-0063
-          text: '**Dead-code gate.** Keep production code reachable from a `main`.'
+        - text: '**Backed invariants.** Declare and prove current-state invariants; see the current-state contract.'
+        - text: '**Punctuation restraint.** Prefer ordinary punctuation; punctuation findings are advisory Warnings with zero exit. En dashes remain prohibited and paragraphs use at most two em dashes. Ellipses and curly quotes are permitted; see the prose gate contract.'
+        - text: '**No memory citation.** Never cite concrete effort memory paths in durable records.'
+        - text: '**Dead-code gate.** Keep production code reachable from a `main`.'
         - kind: gated-commands
-          ref: ADR-0039

@@ -39,7 +39,7 @@ The repository extraction target has one semantic owner per concern. `ProjectSta
 
 ### `rule: repository-boundary-values`
 
-Boundaries carry immutable loaded facts; semantic ADR, topic, plan, output-declaration, policy, finding, and operation-result values; owner-produced presentation documents; and immutable semantic snapshots such as `snapshot.Tree`. Git-native objects, mutable repository or index state, filesystem handles and metadata, temporary publication paths, template parse state, and other mechanism representations remain inside their mechanism boundary. `ProjectState` exposes no mutable configuration, catalog, map, or slice aliases as public state.
+Boundaries carry immutable loaded facts; semantic topic, output-declaration, policy, finding, and operation-result values; owner-produced presentation documents; and immutable semantic snapshots such as `snapshot.Tree`. Git-native objects, mutable repository or index state, filesystem handles and metadata, temporary publication paths, template parse state, and other mechanism representations remain inside their mechanism boundary. `ProjectState` exposes no mutable configuration, catalog, map, or slice aliases as public state.
 
 ### `invariant: dependency-composition-commit-classification`
 

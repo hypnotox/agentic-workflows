@@ -8,66 +8,40 @@
 ## Ideas
 Pursue these outcomes in order:
 
-1. Expose only phase-relevant tools during each workflow phase.
-2. Expand the task-skill set to cover pull request preparation, third-party review, security review, refactor execution, and dependency upgrades.
-3. Publish the standard as a versioned, discoverable artifact with an examples gallery.
-4. Audit this repository's overrides and retain only the project-specific differences from template defaults.
-5. Replace prose inventories of bounded code-design candidates with a static-state inventory command. Keep the retired `awf doctor` name unavailable unless a distinct meaning is established.
+1. Publish the standard as a versioned, discoverable artifact with an examples gallery.
+2. Audit this repository's overrides and retain only the project-specific differences from template defaults.
+3. Replace prose inventories of bounded code-design candidates with a static-state inventory command. Keep the retired `awf doctor` name unavailable unless a distinct meaning is established.
 
 
 <!-- awf:template-source templates/docs/roadmap.md.tmpl#deferred -->
 <!-- awf:edit deferred: from .awf/docs/parts/roadmap/deferred.md -->
 <!-- awf:template-source templates/docs/roadmap.md.tmpl -->
 ## Deferred
-## Concurrent same-checkout batch helpers
-
-Design same-checkout helpers only after scope enforcement, incidental-write and failure attribution, and deterministic integration are specified. Worktree-isolated and patch-producing workers remain outside the current workflow contract.
-
 ## Structured context results
 
-Revisit a structured context result only when a demonstrated consumer can define its contract. ADR-0165 removed speculative JSON rather than retain a hidden path census.
+Revisit a structured context result only when a demonstrated consumer can define its contract. The current focused text projections remain sufficient.
 
 ## Verify-line tightenings
 
-The `code-design/outcome-modeling:actionable-outcome-protocol` and `code-design/package-composition:package-owns-one-sentence` Verify lines still need the tightenings raised during ADR-0199 and ADR-0200 review. Apply them with the next ADR that updates those claims because an applied claim requires an update operation and one ADR cannot add and update the same claim.
+The `code-design/outcome-modeling:actionable-outcome-protocol` and `code-design/package-composition:package-owns-one-sentence` Verify lines still need tighter evidence. Apply the improvements with the next change to either claim.
 
 ## Init collision over-refusal
 
 The init collision probe conservatively refuses artifacts that a `--set` trim would deselect. Revisit this accepted behavior only after an adopter reports it as a problem.
 
-## The rationale site a token cannot address
+## Decomposing `internal/project`
 
-`docs/decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md` has `refines: ADR-0034#1` in Decision before any column-0 numbered item, so it parses with `CarrierItem: 0` and has no rationale site. ADR-0129 Decision 2 requires each claim's addressable justification. Repair requires either forbidden content movement in an Implemented ADR or a section-scoped model that weakens the guarantee; `awf check` is silent because the token is not invalid. The related bare `item N` citation shape (ADR-0131 Decision 2 records its measurement) raises the same question of frozen-prose structure.
-
-## Mechanically catching a commit that does not contain what it claims
-
-Concurrent sessions produced mismatched commit content and messages three times. On 2026-07-19 a described ADR amendment was absent, leaving a proof marker asserting the opposite; no gate detects it. Prose failed three times and review focus is rung 3. Consider a `cmd/repoaudit` range rule: a message naming an ADR with an authoring verb (amends, narrows, reopens, flips, implements) must touch that ADR. It is repo discipline, not shipped `awf audit`, and advisory accommodates verb-detection false positives. Also consider the inverse: changed files unaccounted for in the message, catching `git add -A` cross-effort sweeps. Deferred for a new rule and focused behavior tests.
-
-## A direct first-stamp ADR flip can smuggle unreviewed section content
-
-Since ADR-0188, post-first-stamp status flips are content-pure: a post-Accepted amendment appends its own Amended event in a separate commit. A direct Proposed flip can establish the first stamp over unreviewed content and immediately freeze it. The 0154 effort directly Implemented while adding a forward-only resolution clause, caught only by review. Consider an advisory `awf audit` rule for this shape. It needs a decision because audit rules ship; active-pitfalls remains manual.
-
-## Decomposing the `internal/project` god object
-
-ADR-0195's empirical cluster map, verified cycles, and per-symbol coupling census supported extracting resident-root policy and anchoring into `internal/resident`, while `code-design/dependency-composition` owns generic dependency direction. Still open: a future package-cohesion pattern owning `receiver-reads-owned-state` (methods read a receiver field; otherwise take parameters), and any further core decomposition. ADR-0195 accepted both as future effort rather than silent scope.
+Resident-root policy and anchoring have moved into `internal/resident`, while `code-design/dependency-composition` owns generic dependency direction. Still open are a future package-cohesion pattern for methods that do not read receiver state and any further core decomposition justified by measured coupling.
 
 ## The rendered pre-commit payload validates the worktree, not the staged slice
 
-A partial staging can leave a drift-inconsistent staged subset while the worktree passes pre-commit, landing broken HEAD. Commit a85bd6a triggered a 2026-07-15 repo-local checkout-index check, but ADR-0048's shipped payload still checks worktree. A language-agnostic fix is temporary checkout-index execution of pinned `./awf check`, read-only and safer than `git stash --keep-index`. It changes ADR-0048's minimal inert payload and adds per-commit latency for a power-user case; needs an ADR. User decision on 2026-07-15: repo-local now, standard recorded.
+A partial staging can leave a drift-inconsistent staged subset while the worktree passes pre-commit, landing broken HEAD. The repository-local hook uses a checkout-index check, but the shipped payload still checks the worktree. A language-agnostic fix needs a safe temporary-index execution design and an explicit latency tradeoff.
 
 ## Live-agent outcome evals
 
-ADR-0053 and ADR-0054 shipped deterministic fixture evals for handoffs and skill parity. Live-agent golden-task outcome evals (ADR-0017's original framing) remain cost-prohibitive; revisit only with a concrete budget and scoring harness.
-
-## Partial-amendment back-pointer check
-
-When an ADR cites a specific Decision item as a partial amendment, the cited ADR's `related:` should name the citer. ADR-0065 missed ADR-0079 and ADR-0093 missed ADR-0024; retrospective caught both. Detection needs citation-prose heuristics, focused behavior tests, and handling for non-amending citation false positives. Defer to a focused effort; ADR-0188's amendable lifecycle may change the best design.
+Deterministic fixture evaluations cover handoffs and skill parity. Live-agent golden-task outcome evaluations remain cost-prohibitive; revisit only with a concrete budget and scoring harness.
 
 ## Unmanaged Go `t.TempDir` directories survive abrupt process death
 
 Managed TestMain homes are bounded under a recoverable root, but arbitrary Go `t.TempDir` paths survive abrupt death. The manager deliberately excludes them; any broader cleanup policy requires a separate safety decision.
-
-## Windows removal completed
-
-Windows production, test, cross-build, and release support was removed. Linux and Darwin remain the supported platforms.
 

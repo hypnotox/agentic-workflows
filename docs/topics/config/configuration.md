@@ -18,11 +18,11 @@ Backing: test
 
 ### `rule: config-expresses-repo-facts-only`
 
-Configuration records repository facts, including the selected closed governance footprint under the required `profile` key. Other awf behavior preferences and transitional adoption differences remain fixed in awf; additive `localDocs` records repository-specific document metadata without selecting standard artifacts.
+Configuration records repository facts. Workflow preferences and transitional adoption differences remain fixed in awf; additive `localDocs` records repository-specific document metadata without selecting standard artifacts.
 
 ### `invariant: no-artifact-selection-surface`
 
-The live config schema exposes no selection of individual skills, agents, docs, targets, or docsDir fields and no sidecar local field; strict parsing rejects every retired field. The required profile selects one closed footprint, while `localDocs` only declares additive outputs.
+The live config schema exposes no profile or selection of individual skills, agents, docs, targets, or docsDir fields and no sidecar local field; strict parsing rejects every retired field. `localDocs` only declares additive outputs.
 Backing: test
 
 ### `invariant: local-doc-declarations`

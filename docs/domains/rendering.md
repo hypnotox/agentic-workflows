@@ -12,7 +12,7 @@ Pi renders native discoverable skills and the subagent extension. Workflow templ
 
 The topic producer renders each valid pair to `docs/topics/<domain>/<topic>.md`, emits a title-and-summary-sorted `docs/topics/<domain>/index.md`, and adds compact topic navigation to the owning domain page. Generated output follows the normal manifest, drift, and prune lifecycle. Staged drift renders from the staged config and compares against the staged output tree; its intentionally narrow result includes only stale and hand-edited rendered outputs, leaving every other repository drift kind outside that transition check.
 
-The render engine overlays authored convention parts onto embedded templates with publication-safe missing-key rendering. Resident-root policy lives in `internal/resident` as the single production home of the root table, the resident path and kind predicates, and the anchoring `Roots` value the render core consumes; template identity derives only from the catalog and the kind-descriptor, singleton, and target declaration tables (ADR-0195). Catalog workflow metadata provides kind, purpose, trigger, and optional advisory neighbors. Every catalog skill is independently discoverable; advisory neighbors do not create required transitions.
+The render engine overlays authored convention parts onto embedded templates with publication-safe missing-key rendering. Resident-root policy lives in `internal/resident` as the single production home of the root table, the resident path and kind predicates, and the anchoring `Roots` value the render core consumes; template identity derives only from the catalog and the kind-descriptor, singleton, and target declaration tables. Catalog workflow metadata provides each artifact's kind, purpose, and trigger. Every catalog skill is independently discoverable; no neighbor graph creates required transitions.
 
 The catalog-derived mandatory Maintainable Code Design guide renders as an extensible plain singleton with a document-map artifact.
 
@@ -32,6 +32,7 @@ Pi rendering governs the retained subagent and effort extension outputs through 
 - [Catalog and targets](../topics/rendering/catalog-and-targets.md): The compile-time catalog and the tool-agnostic target seam.
 - [Companion scripts](../topics/rendering/companion-scripts.md): Rendered companion script contracts: bootstrap, upgrade, runner, hook payloads.
 - [Doc outputs](../topics/rendering/doc-outputs.md): Generated documentation outputs: domain and topic docs, layout, pitfalls, stubs, skill references.
+- [Frontmatter parsing](../topics/rendering/frontmatter.md): How authored-document frontmatter is split and validated.
 - [Guide and doc templates](../topics/rendering/guide-and-doc-templates.md): Agent-guide and documentation template contracts.
 - [Inplace and placeholders](../topics/rendering/inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
 - [Pi runtime](../topics/rendering/pi-runtime.md): The Pi runtime floor and its boundaries.

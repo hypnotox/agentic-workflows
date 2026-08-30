@@ -169,10 +169,10 @@ func helpItems(label string, items []HelpItem) (presentation.RecordGroup, error)
 // `awf help` order, the usage line, gated-command list, and bounded README command projection.
 var Commands = []Command{
 	{
-		Name: "init", Summary: "Scaffold .awf/ and render the selected governance footprint",
+		Name: "init", Summary: "Scaffold .awf/ and render the standard workflow footprint",
 		BoolFlags: []string{"--force", "--describe"}, ValueFlags: []string{"--set", "--answers"},
 		Repeatable: []string{"--set"}, MaxPos: 0, Gating: Ungated,
-		Help: Help{Usage: []string{"awf init [flags]"}, Description: "Scaffold a .awf/ config tree and render the selected governance footprint into the project.", Options: []HelpItem{{Name: "--force", Description: "overwrite colliding files, backing each up to <path>.awf-bak"}, {Name: "--describe", Description: "print the fillable value descriptors as JSON and exit"}, {Name: "--set", Description: "k=v      set a value non-interactively (repeatable)"}, {Name: "--answers", Description: "FILE read values from a JSON/YAML answers file: a flat key→value map of descriptor keys (see --describe)"}}},
+		Help: Help{Usage: []string{"awf init [flags]"}, Description: "Scaffold a .awf/ config tree and render the standard workflow footprint into the project.", Options: []HelpItem{{Name: "--force", Description: "overwrite colliding files, backing each up to <path>.awf-bak"}, {Name: "--describe", Description: "print the fillable value descriptors as JSON and exit"}, {Name: "--set", Description: "k=v      set a value non-interactively (repeatable)"}, {Name: "--answers", Description: "FILE read values from a JSON/YAML answers file: a flat key→value map of descriptor keys (see --describe)"}}},
 	},
 	{
 		Name: "render", Summary: "Re-render after a template or config change",
@@ -208,12 +208,12 @@ var Commands = []Command{
 	{
 		Name: "check", Summary: "Verify the repository and staged universes",
 		MaxPos: -1, Gating: Gated,
-		Help: Help{Usage: []string{"awf check", "awf check repo [subcommand]", "awf check staged [subcommand]", "awf check commit-policy <revision-or-range>..."}, Description: "Bare check runs both universes. The repo universe checks drift, profile-applicable authority,", Details: []string{"and the opt-in scans; the staged universe validates the HEAD-to-index transition.", "Outside a Git repository bare check runs the repo universe and reports that the", "staged universe is unavailable."}},
+		Help: Help{Usage: []string{"awf check", "awf check repo [subcommand]", "awf check staged [subcommand]", "awf check commit-policy <revision-or-range>..."}, Description: "Bare check runs both universes. The repo universe checks drift, current-state authority,", Details: []string{"prose, and memory; the staged universe validates the HEAD-to-index transition.", "Outside a Git repository bare check runs the repo universe and reports that the", "staged universe is unavailable."}},
 		Children: []Command{
 			{Name: "commit-policy", Summary: "Verify exact commit provenance for explicit targets", MinPos: 1, MaxPos: -1,
 				Help: Help{Usage: []string{"awf check commit-policy <revision-or-range>..."}, Description: "Verify every unique commit reachable from explicit targets after the configured baseline. An absent policy reports one disabled-policy note and succeeds.", Positionals: []HelpItem{{Name: "<revision-or-range>", Description: "commit revision or range to verify"}}}},
 			{Name: "repo", Summary: "Verify repository properties", MaxPos: -1,
-				Help: Help{Usage: []string{"awf check repo [subcommand]"}, Description: "Run the repository universe: drift, profile-applicable authority, prose, and memory checks."},
+				Help: Help{Usage: []string{"awf check repo [subcommand]"}, Description: "Run the repository universe: drift, current-state authority, prose, and memory checks."},
 				Children: []Command{
 					{Name: "drift", Summary: "Report stale or hand-edited rendered output", MaxPos: 0,
 						Help: Help{Usage: []string{"awf check repo drift"}, Description: "Re-render in memory and report stale or hand-edited output."}},

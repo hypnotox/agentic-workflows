@@ -11,16 +11,13 @@
 <!-- awf:template-source templates/docs/glossary.md.tmpl -->
 | Term | Meaning |
 |---|---|
-| absorbing tombstone | The semantics of an applied claim remove: the qualified id is absent, and later-integrated concurrent updates remain dominated history. |
 | actionable outcome protocol | A closed result model that states observed state, retry-sensitive changes, and ordered executable remedies; it carries a cause only when observation failed. |
 | adaptive maximum | An exploration breadth limit that starts with the cheapest targeted lookup, widens only on evidence, and reports exhaustion. |
 | anchored glob | awf's glob dialect, where a pattern matches a full slash-separated repo-relative path: `*.go` is top-level, `**/*.go` any depth, and `cmd/**` a subtree. |
-| application batch | One implicit terminal application or explicit Applied event containing a nonempty, duplicate-free unordered set of not-yet-applied operations. Its identity is its position in the owning ADR history. |
 | authoring comment | A whole-line `<!-- awf:comment ... -->` in a template default or convention part, stripped at ingestion. |
 | check-in | A deliberate stop naming the issue, options, recommendation, and blocked next action for the user. It differs from a continuity notice; a mandatory approval check-in is its unconditional approval subtype. |
 | checker-cmd idiom | A repository-only gate or release checker with a thin `main` that exits a unit-tested `run(args, stdout, stderr) int` seam. |
-| claim | One globally identified normative unit of a current-state topic: a rule or invariant heading, prose, and canonical metadata. Its `<domain>/<topic>:<slug>` identity is targeted by markers and operations. |
-| claim provenance | Links tying a claim to its ADR history: required `Origin:` and optional ordered `Revised-by:`. They aid navigation, not authority. |
+| claim | One globally identified normative unit of a current-state topic: a rule or invariant heading, prose, and canonical metadata. Its `<domain>/<topic>:<slug>` identity is targeted by proof markers and focused reads. |
 | claimed-path model | The allowlist of paths permitted under `.awf/`, derived from config, catalog, and output-plan write files, excluding owned resident roots. Unclaimed content is drift reported at its topmost directory. |
 | command spec | One CLI command-table entry defining a command's name, flags, positional bounds, gating, help text, and subcommands. |
 | composition root | The outermost boundary that selects volatile mechanisms and explicitly constructs their consumers. It is not a service locator, dependency bag, or owner of consumer policy. |
@@ -28,11 +25,10 @@
 | configspec | The compile-time adopter-facing authority with one entry per adopter-settable config key, sidecar field, and data key; var entries derive from catalog descriptors. |
 | continuity notice | A routine checkpoint's informational one-line summary of the completed phase and immediate next action; it does not stop autonomous continuation. |
 | contract suite | A backend-agnostic test that pins a seam entrypoint's answers rather than its implementation. Cancellation, error-identity, and isolation suites are separate cross-cutting suites. |
-| current-state topic | A domain-owned document whose metadata and authored part define claims read by `awf read topic`, `awf resolve topic`, and `awf check`. Its claims, not ADRs, are current authority. |
-| decision index | The generated decisions index listing in-flight ADRs by number, title, and status and terminal ADRs as compact history. It does not infer currentness or render supersession chains. |
+| current-state topic | A domain-owned document whose metadata and authored part define claims read by `awf read topic`, `awf resolve topic`, and `awf check`. Its claims, not decision history, are current authority. |
+| decision record | An append-only Markdown record of a load-bearing choice that should outlive implementation. It preserves rationale without determining current state. |
 | deletion-as-acknowledgement | The var three-state model: set is configured, present-but-empty is the seeded to-do, and absent is a deliberate permanent decline. |
 | domain paths | A domain's `paths:`-declared anchored-glob file territory, which bounds topic ownership, path resolution, and coverage. |
-| dominated operation | An applied update absorbed by an applied remove: retained as history but establishing no current claim or authority. |
 | drift | Divergence between a generated file and what the config would produce now, or between a declaration and reality. The check command is the oracle, and drift fails it. |
 | effort | One active slugged unit of continuity, owning a working-memory file when multi-step work, likely continuation, coordination, delegation, or durable observations make continuity materially useful. Work without that need uses none. |
 | effort archive | The ignored machine-local `.awf/effort-archive/` root where finish preserves complete residents as `<uuid>-<slug>`. Archives are unmanaged, non-authoritative, and manually disposable. |
@@ -42,13 +38,11 @@
 | git seam | The `internal/git` package is the single home of Git access, exposing one semantic entrypoint per capability independent of its backend. |
 | global test seam | A package-level variable reassigned by tests. New seams of this form are banned; existing ones are conversion candidates. |
 | grab-bag home | A production package or file named for a topical pile, such as util, common, helpers, or misc; new production code and deliberate conversions may not create one. |
-| integration branch | The configured branch for finished-work integration, where ADR authoring allocates numbers; elsewhere authoring produces pending records numbered during integration. |
+| integration branch | The configured branch that receives completed managed-worktree efforts. |
 | invariant backing | The ledger-not-proof model: `Backing: test` requires a text-matched proof marker but does not prove the test asserts the claim; `Backing: unbacked` forbids a marker and requires `Verify:`. |
-| linked-plan review freshness | The rule that ordinary full plan review verifies every parsed plan-level `adrs:` link, and substantive ADR corrections settle through ADR review before linked Proposed plans and landed-phase assurance renew. |
 | managed effort worktree | The checkout an effort creates alongside itself, on its own branch, as the default place its work executes. Integrated and removed explicitly when the effort finishes. |
 | mandatory approval check-in | The pre-artifact stop for explicit brainstorming outline approval when a material decision is unresolved. Effort creation is not an approval boundary. |
 | operation-owned derivation | A value derived during and threaded through one operation rather than cached on a longer-lived value. |
-| pending ADR | A reviewable and implementable decision record identified by a retained slug before integration assigns its number. |
 | pitfall entry | One path-derived authored Markdown source under `.awf/docs/pitfalls/`, created with `awf new pitfall <title>`; deleting it retires the entry through render pruning. |
 | pitfall publications | The compact generated `docs/pitfalls.md` metadata index and same-slug generated leaves, derived from authored pitfall sources. |
 | presentation ownership | The package owning a result model also owns its human rendering; a command binary owns argument parsing, renderer selection, and exit mapping. |
@@ -60,7 +54,7 @@
 | regeneration-derived document | A managed document recomputed from repository or catalog state rather than only its template and sidecar. |
 | resident root | A directory inside the config tree holding local machine-owned state rather than rendered output, so the closed-tree sweep leaves it alone instead of reporting it as a stray. |
 | resident-root policy | The `internal/resident` package is the single home for resident-root paths, kinds, anchoring, collisions, and uninstall. |
-| retrospective | The terminal workflow step after settled review and managed-topology removal that records durable lessons and finishes the effort last. |
+| retrospective | The terminal workflow step after assurance and managed-topology removal that records durable lessons and finishes the effort last. |
 | Roots anchoring value | The construction input that combines tracked and resident output roots and resolves anchored output paths. |
 | routine checkpoint | The autonomous boundary that validates effort ownership, updates memory, and classifies whether user attention is required. |
 | safe resumable point | A durable checkpoint whose immediate successor can start independently. |
@@ -69,10 +63,9 @@
 | sidecar-derived doc | The computed-document model where a render transform derives content from an artifact's sidecar before rendering and config hashing. Unlike regeneration, it does not derive from repository state outside the sidecar. |
 | single home | A policy or mechanism consumed by multiple packages has exactly one implementation in its owning package. |
 | source marker | An informational `awf:source` comment on generated documentation that points to reader-facing authorities without defining an edit boundary or dependency list. |
-| State changes | An ADR's operation declaration, with each operation frozen once an Applied event references it: `None.` or add, update, and remove entries naming qualified claim ids. Each batch travels with its claim mutations. |
 | stub | Must-replace starter content: a section default with the `stub` attribute or a convention part with a whole-line `<!-- awf:stub -->` marker. |
 | sync provenance line | The per-file cause printed when `awf render` changes a rendered file against the previous lock: `template`, `config`, `template+config`, `internal`, `regenerated`, or `added`. |
-| template source residue | awf-specific content surviving in shipped prose: a concrete ADR citation or repo-identity literal outside the pinned exemption list. |
+| template source residue | awf-specific content surviving in shipped prose: a concrete historical decision citation or repo-identity literal outside the pinned exemption list. |
 | topic coverage | The per-domain check that current-state topics describe owned paths. Global topics apply everywhere but cover only explicit paths in their domain; error and fan-out warning ranks are fixed. |
 | trigger table | The catalog-derived guide row for each skill, pairing its prefixed name with its one-line trigger. |
 | trust-bearing file | A file trusted without re-derivation: the lock or migration-rewritten authored `config.yaml`. It is written atomically, and an unreadable present lock is always an error. |

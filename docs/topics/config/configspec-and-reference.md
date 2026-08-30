@@ -47,7 +47,7 @@ Backing: test
 
 ### `invariant: configspec-key-parity`
 
-The hand-authored table of config and sidecar key descriptions is matched by reflection against the config and sidecar struct fields in both directions, including the required profile field. Each entry supplies a non-empty type, default, description, and availability clause.
+The hand-authored table of config and sidecar key descriptions is matched by reflection against the config and sidecar struct fields in both directions. Each entry supplies a non-empty type, default, description, and availability clause.
 Backing: test
 
 ### `invariant: configspec-var-derivation`

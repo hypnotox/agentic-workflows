@@ -5,7 +5,7 @@
 
 The embedded template source and its rendered content contracts.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf read topic rendering/templates --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf read topic rendering/templates --coverage` for current applicable and owned paths and marker sites.
 
 The templates tree holds the embedded skill, agent, doc, and adapter template source. The claims below capture the current template-content contracts.
 
@@ -50,9 +50,9 @@ Backing: test
 
 ### `invariant: decision-artifact-routing`
 
-ADR Decision items own only commitments explicitly accepted by the user before authoring, stated as the narrowest durable semantics that preserve the approved decision and remain meaningful after implementation; current-state claims own active rules and invariants; plans and direct execution own implementation detail; and effort memory owns unsettled or transient working context. Relatedness, usefulness, repository facts, and architectural reasoning do not authorize another commitment, and a suggestion stays outside the ADR until accepted. ADR review applies the post-implementation and counterfactual tests semantically, treats a misplaced implementation directive as a reasoned finding, and accepts a mechanism only when the record explains why that mechanism itself is load-bearing. Authoring guidance preserves scaffold-emitted ADR frontmatter, objective rendering checks enforce publication contracts without inferring prose meaning, and terminal ADR bodies remain unchanged.
+Decision records preserve only load-bearing choices that should outlive implementation and were accepted before authoring; current-state claims own active rules and invariants; direct execution and effort-local plans own implementation detail; and effort memory owns unsettled or transient context. New records are plain accepted date-slug Markdown with Context, Decision, and Consequences. Historical numbered records remain append-only bytes rather than live authority.
 Backing: unbacked
-Verify: For each new or amended ADR and its linked plan, compare every Decision item with its user-consent evidence; confirm it was accepted before insertion, states the narrowest semantics that preserve the accepted decision, and does not promote implementation detail. Apply the post-implementation and counterfactual tests; confirm any retained mechanism was accepted as load-bearing and the record explains why it is load-bearing, scaffold-emitted frontmatter was preserved, and no terminal ADR body was retrofitted.
+Verify: Compare each new decision with its consent evidence, confirm it records a load-bearing choice rather than implementation choreography, and verify its accepted date-slug filename and Context, Decision, and Consequences sections. Confirm current rules remain in current-state topics and existing numbered decision files were not rewritten.
 
 ### `invariant: source-embed-parity`
 

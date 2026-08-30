@@ -6,7 +6,7 @@
 <!-- awf:template-source templates/docs/pitfalls.md.tmpl#prepend -->
 <!-- awf:edit prepend: from .awf/docs/parts/pitfalls/prepend.md -->
 
-This guide contains only current hazards that require human judgment or action beyond what a deterministic guard and its diagnostic reliably provide. Remove an entry once the system prevents the failure or explains its complete recovery; preserve historical rationale in the owning test, implementation, current-state documentation, ADR, or Git history instead.
+This guide contains only current hazards that require human judgment or action beyond what a deterministic guard and its diagnostic reliably provide. Remove an entry once the system prevents the failure or explains its complete recovery; preserve historical rationale in the owning test, implementation, current-state documentation, decision record, or Git history instead.
 
 
 <!-- awf:template-source templates/docs/pitfalls.md.tmpl -->
@@ -14,17 +14,14 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 
 | Pitfall | Domains |
 | --- | --- |
-| [\`adr\.ADR\.Title\` already carries the \`ADR\-NNNN\: \` prefix](pitfalls/adr-adr-title-already-carries-the-adr-nnnn-prefix.md) | adr\-system |
-| [A census number is only as good as its stated query](pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md) | adr\-system |
+| [A census number is only as good as its stated query](pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md) | decisions\, tooling |
 | [A faked collaborator makes both the fixtures and the assertion vocabulary unfalsifiable](pitfalls/a-faked-collaborator-makes-both-the-fixtures-and-the-assertion-vocabulary-unfalsifiable.md) | rendering\, tooling |
-| [A future code\-fence marker must account for Linguist aliases](pitfalls/a-future-code-fence-marker-must-account-for-linguist-aliases.md) | adr\-system |
 | [A future non\-catalog render singleton still has hand\-wired fan\-out](pitfalls/a-future-non-catalog-render-singleton-still-has-hand-wired-fan-out.md) | rendering |
 | [A milestone\-time check must not double as an every\-commit test](pitfalls/a-milestone-time-check-must-not-double-as-an-every-commit-test.md) | tooling |
 | [A new output language needs an exercised real render target](pitfalls/a-new-output-language-needs-an-exercised-real-render-target.md) | rendering |
 | [A plan editing a catalog template or default under\-enumerates the render fan\-out](pitfalls/a-plan-editing-a-catalog-template-or-default-under-enumerates-the-render-fan-out.md) | rendering |
 | [A proof marker does not prove every clause in its invariant claim](pitfalls/a-proof-marker-does-not-prove-every-clause-in-its-invariant-claim.md) | invariants |
 | [A prose\-contract test proves only the clauses whose literals occur for one reason](pitfalls/a-prose-contract-test-proves-only-the-clauses-whose-literals-occur-for-one-reason.md) | rendering\, invariants |
-| [A scripted sweep over ADR prose can silently unmake the structure it edits](pitfalls/a-scripted-sweep-over-adr-prose-can-silently-unmake-the-structure-it-edits.md) | adr\-system |
 | [A staged\-symlink fixture needs a real blob\, a gitlink does not](pitfalls/a-staged-symlink-fixture-needs-a-real-blob-a-gitlink-does-not.md) | tooling |
 | [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md) | invariants\, rendering |
 | [Ad hoc compound mutations still need target read\-back](pitfalls/ad-hoc-compound-mutations-still-need-target-read-back.md) | Unassigned |
@@ -36,18 +33,17 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md) | tooling |
 | [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md) | tooling |
 | [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md) | rendering |
-| [Link ADRs by their on\-disk filename\, never by constructing one from the title](pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md) | adr\-system |
-| [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md) | tooling\, adr\-system |
+| [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md) | tooling |
 | [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md) | tooling |
 | [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md) | rendering |
 | [Pin the Go toolchain when preview compilers break lint](pitfalls/pin-the-go-toolchain-when-preview-compilers-break-lint.md) | tooling |
-| [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md) | invariants\, adr\-system\, tooling |
-| [Raw\-byte ADR surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md) | config |
+| [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md) | invariants\, tooling |
+| [Raw\-byte historical\-record surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md) | config |
 | [Raw\-byte offsets go stale the moment an earlier pass edits the file](pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md) | config |
 | [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md) | rendering |
 | [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md) | rendering\, tooling |
 | [Resolve review ranges from Git rather than transcribing SHAs](pitfalls/resolve-review-ranges-from-git-rather-than-transcribing-shas.md) | Unassigned |
-| [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md) | rendering\, adr\-system |
+| [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md) | rendering |
 | [Reuse the repository boundary for new filesystem walks](pitfalls/reuse-the-repository-boundary-for-new-filesystem-walks.md) | tooling |
 | [Scope a claim to the command\'s actual input](pitfalls/scope-a-claim-to-the-command-s-actual-input.md) | invariants |
 | [Sidecar \`data\` is not placeholder\-substituted\, drop \`\{\{\=awf\:\.\.\.\}\}\` escapes when converting a part](pitfalls/sidecar-data-is-not-placeholder-substituted-drop-awf-escapes-when-converting-a-part.md) | rendering |
@@ -56,23 +52,16 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 
 ## By domain
 
-### adr\-system
-
-- [\`adr\.ADR\.Title\` already carries the \`ADR\-NNNN\: \` prefix](pitfalls/adr-adr-title-already-carries-the-adr-nnnn-prefix.md)
-- [A census number is only as good as its stated query](pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md)
-- [A future code\-fence marker must account for Linguist aliases](pitfalls/a-future-code-fence-marker-must-account-for-linguist-aliases.md)
-- [A scripted sweep over ADR prose can silently unmake the structure it edits](pitfalls/a-scripted-sweep-over-adr-prose-can-silently-unmake-the-structure-it-edits.md)
-- [Link ADRs by their on\-disk filename\, never by constructing one from the title](pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md)
-- [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md)
-- [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md)
-- [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md)
-
 ### config
 
-- [Raw\-byte ADR surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md)
+- [Raw\-byte historical\-record surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md)
 - [Raw\-byte offsets go stale the moment an earlier pass edits the file](pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md)
 - [Use absolute generations for historical migration shapes](pitfalls/use-absolute-generations-for-historical-migration-shapes.md)
 - [When retiring a config key\, handle historical writers](pitfalls/when-retiring-a-config-key-handle-historical-writers.md)
+
+### decisions
+
+- [A census number is only as good as its stated query](pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md)
 
 ### invariants
 
@@ -102,6 +91,7 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 
 ### tooling
 
+- [A census number is only as good as its stated query](pitfalls/a-census-number-is-only-as-good-as-its-stated-query.md)
 - [A faked collaborator makes both the fixtures and the assertion vocabulary unfalsifiable](pitfalls/a-faked-collaborator-makes-both-the-fixtures-and-the-assertion-vocabulary-unfalsifiable.md)
 - [A milestone\-time check must not double as an every\-commit test](pitfalls/a-milestone-time-check-must-not-double-as-an-every-commit-test.md)
 - [A staged\-symlink fixture needs a real blob\, a gitlink does not](pitfalls/a-staged-symlink-fixture-needs-a-real-blob-a-gitlink-does-not.md)

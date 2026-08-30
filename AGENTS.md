@@ -40,14 +40,14 @@ Hard rules every change must respect:
 - **Append-only decisions.** Preserve decision history; change current-state claims forward. See `docs/decisions/`.
 - **Docs travel with the change.** Update reality and its documentation together.
 - **Stage and gate each commit.** Stage the complete transaction; run `./awf check staged` and `./x gate`. A wired pre-commit hook enforces both; run them manually only in a clone without wired hooks.
-- **Publication-safe templates.** Keep unset interpolation coherent and token-free. (ADR-0001, ADR-0045)
+- **Publication-safe templates.** Keep unset interpolation coherent and token-free.
 - **`awf check` is the drift oracle.** After `.awf/` edits run `./x render && ./x check`; commit generated outputs with their sources.
 - **Conventional Commits.** One concern per commit; stage explicitly, no `git add -A`.
-- **Backed invariants.** Declare and prove current-state invariants; see the current-state contract. (ADR-0134)
-- **Punctuation restraint.** Prefer ordinary punctuation; punctuation findings are advisory Warnings with zero exit. En dashes remain prohibited and paragraphs use at most two em dashes. Ellipses and curly quotes are permitted; see the prose gate contract. (ADR-replace-plain-punctuation-ban-with-punctuation-restraint)
-- **No memory citation.** Never cite concrete effort memory paths in durable records. (ADR-0158, ADR-0175)
-- **Dead-code gate.** Keep production code reachable from a `main`. (ADR-0063)
-- **Binary-version gate.** Use a current binary for gated commands; see the command reference. (ADR-0039)
+- **Backed invariants.** Declare and prove current-state invariants; see the current-state contract.
+- **Punctuation restraint.** Prefer ordinary punctuation; punctuation findings are advisory Warnings with zero exit. En dashes remain prohibited and paragraphs use at most two em dashes. Ellipses and curly quotes are permitted; see the prose gate contract.
+- **No memory citation.** Never cite concrete effort memory paths in durable records.
+- **Dead-code gate.** Keep production code reachable from a `main`.
+- **Binary-version gate.** Use a current binary for gated commands; see the command reference.
 
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl#workflow -->
 <!-- awf:edit workflow: default; create .awf/parts/agents-doc/workflow.md to override -->

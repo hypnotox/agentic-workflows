@@ -1,5 +1,6 @@
 paths:
   - internal/glossarycheck/**
+  - internal/frontmatter/**
   - internal/outputplan/**
   - internal/publisher/**
   - .pi/extensions/**

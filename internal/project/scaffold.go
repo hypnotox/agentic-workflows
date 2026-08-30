@@ -22,8 +22,8 @@ import (
 func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]byte, error) {
 	cat := catalog.CompleteView().Catalog()
 
-	// Collect referenced var names from every selected catalog template family - not only
-	// the core ones - so an opt-in target added later renders without <no value>.
+	// Collect referenced var names from every selected catalog template family so an
+	// opt-in target added later renders without <no value>.
 	varSet := map[string]bool{}
 	for _, kind := range []string{"skills", "agents", "docs"} {
 		d, _ := descriptorByPlural(kind)
@@ -34,14 +34,13 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 		}
 	}
 	// Plain singletons (workflow, doc-standard, agents-md-standard included) always
-	// render - their vars must be seeded even though they left cat.Docs (ADR-0043).
+	// render, so their vars must be seeded.
 	for _, sg := range plainSingletons(cat) {
 		if err := collectVars(templates.FS, sg.tid, varSet); err != nil {
 			return nil, err
 		}
 	}
-	// Hook payloads render by default (ADR-0048) - seed their vars (commitGateCmd)
-	// so an init prompt answer is not silently dropped.
+	// Hook payloads render by default, so their vars must be seeded.
 	for _, name := range hookNames {
 		if err := collectVars(templates.FS, hookTID(name), varSet); err != nil {
 			return nil, err
@@ -54,8 +53,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 		seeded[v] = vars[v] // resolved value, or "" for an absent/unresolved var
 	}
 	// A non-empty resolved commitScopes answer becomes the audit block; an empty
-	// answer writes nothing - nil audit.allowedScopes = accept any (ADR-0017,
-	// ADR-0051 Decision 2).
+	// answer writes nothing, so nil audit.allowedScopes accepts any.
 	var auditBlk *config.SkeletonAudit
 	if len(scopes) > 0 {
 		auditBlk = &config.SkeletonAudit{AllowedScopes: scopes}
@@ -64,8 +62,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 		Prefix: prefix,
 		// The default integration branch a fresh project starts on. It is
 		// written, never defaulted in code, so an adopter sees and can change
-		// the branch name the ADR scaffold and the pending-record block key
-		// off (ADR-0202 Decision 6).
+		// the branch name the scaffold and pending-record block key use.
 		IntegrationBranch: "main",
 		Vars:              seeded,
 		Audit:             auditBlk,

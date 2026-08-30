@@ -34,7 +34,7 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 <!-- awf:edit data-flow: from .awf/docs/parts/architecture/data-flow.md -->
 <!-- awf:template-source templates/docs/architecture.md.tmpl -->
 ## Data flow
-Commands load `.awf/` once, compose immutable `ProjectState` with the concrete config tree and Git handle required by one focused operation, then render its result or map its error. `internal/currentstatecoord` selects each operation's immutable working, staged, parent, or numbering universe and invokes the existing semantic owners. Focused topic and ADR reads consume the working authority corpus; path resolution combines that corpus with the working inventory, while its uncovered form reports paths outside configured domain territory. Publisher builds the neutral output plan used by rendering, drift, generated-output checks, and staged output preparation. `.awf/awf.lock` records each render transaction. Working and staged checks load separate authority snapshots; audit reads selected history through `internal/git`. Effort residents remain local and unmanaged by rendering.
+Commands load `.awf/` once, compose immutable `ProjectState` with the concrete config tree and Git handle required by one focused operation, then render its result or map its error. `internal/currentstatecoord` selects each operation's immutable working or staged universe and invokes the existing semantic owners. Focused topic reads consume the working authority corpus; path resolution combines that corpus with the working inventory, while its uncovered form reports paths outside configured domain territory. Publisher builds the neutral output plan used by rendering, drift, generated-output checks, and staged output preparation. `.awf/awf.lock` records each render transaction. Working and staged checks load separate authority snapshots; audit reads selected history through `internal/git`. Effort residents remain local and unmanaged by rendering.
 
 The dependency direction is `cmd/awf` to focused application operations, then to immutable project state and domain services, then to semantic Git, snapshot, filesystem, publication, and rendering mechanisms. Command code parses, composes, invokes, renders owner-produced results, selects streams, and maps exits. State, domain, and mechanism owners do not depend back on application or command coordination. The [dependency-composition topic](topics/code-design/dependency-composition.md) owns the detailed extraction owners, forbidden reverse edges, and boundary values.
 
@@ -45,7 +45,7 @@ The dependency direction is `cmd/awf` to focused application operations, then to
 ## Key dependencies
 | Dependency | Role |
 |---|---|
-| `gopkg.in/yaml.v3` | Strict configuration and ADR frontmatter parsing. |
+| `gopkg.in/yaml.v3` | Strict configuration and authored-document frontmatter parsing. |
 | `text/template` | Rendering. |
 | `github.com/go-git/go-git/v5` and Git | Git seam backends. |
 | `github.com/bmatcuk/doublestar/v4` | Anchored repository-path globs. |

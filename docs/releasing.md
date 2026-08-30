@@ -14,7 +14,7 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
    ./awf audit <previous-tag>..HEAD
    ```
 
-   The audit is advisory but must be clean. The required range starts at the previous tag and includes the commits being shipped, including stale-ADR authorization replay for schema-31-and-later merges. Local hooks are optional preflight. Before tagging, require the pushed `main` commit's complete CI run to succeed; the tag workflow consumes those exact-revision conclusions and verifies publication identity.
+   The audit is advisory but must be clean. The required range starts at the previous tag and includes every commit being shipped. Local hooks are optional preflight. Before tagging, require the pushed `main` commit's complete CI run to succeed; the tag workflow consumes those exact-revision conclusions and verifies publication identity.
 
 2. Set `internal/project/VERSION` to the target `MAJOR.MINOR.PATCH` with its standing newline. Promote `changelog/CHANGELOG.md`'s entries: rename `## [Unreleased]` to `## [0.2.0] - YYYY-MM-DD`, then add a new empty `## [Unreleased]` above it. Entries are grouped by adopter-facing effect: Breaking changes, Features, Bug fixes, or Others.
 

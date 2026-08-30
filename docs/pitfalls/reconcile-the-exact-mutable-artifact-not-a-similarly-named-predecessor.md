@@ -5,16 +5,11 @@
 
 **Domains:** rendering, tooling
 
-An implementation-review settlement was told to reconcile one mutable plan but edited an
-older, similarly themed Implemented plan instead. The change both misplaced the new Notes
-entry and regressed the historical plan to Proposed; render and the repository gates stayed green
-because each file remained structurally valid. Earlier in the same effort, ADR and plan
-scaffolds had also landed in the wrong checkout before immediate cleanup. Repeated path
-plausibility is not identity proof.
+A helper once edited an older, similarly themed plan instead of the active effort's scratch
+plan. Earlier in the same effort, authored artifacts also landed in the wrong checkout before
+immediate cleanup. Repeated path plausibility is not identity proof, and a green render or gate
+does not prove that a valid edit reached the intended artifact.
 
-Before mutating or accepting a report about an ADR, plan, memory, or managed-worktree file,
-resolve the exact path from the active effort and review evidence, verify its current identity
-and lifecycle state, and inspect the actual changed-path list. For terminal settlements,
-confirm that the intended mutable plan received the Notes update and that unrelated terminal
-artifacts retained their status. A green render or gate does not prove that a valid edit
-reached the intended artifact.
+Before mutating or accepting a report about an effort plan, memory, or managed-worktree file,
+resolve the exact path from the active effort, verify its identity and selected checkout, and
+inspect the actual changed-path list.

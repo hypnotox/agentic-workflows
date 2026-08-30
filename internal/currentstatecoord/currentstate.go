@@ -1,4 +1,4 @@
-// Package currentstatecoord coordinates current-state transition operations over explicitly selected immutable repository universes.
+// Package currentstatecoord coordinates current-state operations over explicitly selected immutable repository universes.
 package currentstatecoord
 
 import (
@@ -46,7 +46,7 @@ func classifyCurrentState(report CurrentStateReport) (CurrentStateReport, error)
 const propertyCurrentCoverage checkresult.Property = "current-state-coverage"
 
 // workingState is one loaded working-tree current-state universe: the parsed
-// ADR/topic view, the Tree it came from, and the lock.
+// topic view, the Tree it came from, and the lock.
 // It is the shared substrate for CheckCurrentState, keeping the loaded corpus,
 // tree, lock, and config in one working-tree universe.
 type workingState struct {
@@ -56,7 +56,7 @@ type workingState struct {
 	Cfg    *config.Config
 }
 
-// workingCurrentState loads the working-tree ADR/topic view and recorded gaps.
+// workingCurrentState loads the working-tree topic view and recorded lock authority.
 func workingCurrentState(root string, repo *awfgit.Repo, ctx context.Context) (workingState, error) {
 	tree, err := workingTree(root, repo, ctx)
 	if errors.Is(err, awfgit.ErrNotARepository) {
@@ -91,7 +91,7 @@ func CheckWorking(root string, repo *awfgit.Repo, ctx context.Context) (CurrentS
 	return classifyCurrentState(report)
 }
 
-// CheckStagedRoot validates the staged current-state transition without opening
+// CheckStagedRoot validates staged current state without opening
 // working-tree project configuration. The staged command must remain operable
 // when a valid adopted index deliberately deletes or lacks the working config.
 func CheckStagedRoot(ctx context.Context, root string) (CurrentStateReport, error) {
@@ -185,9 +185,7 @@ func optionalLockFromTree(tree *snapshot.Tree) (*manifest.Lock, bool, error) {
 	return lock, true, nil
 }
 
-// validateLockTransition preserves the remaining first-adoption identity. A
-// schema-31 migration is the only accepted lock-shape change: compatibility
-// routing input is parsed from the old side and discarded in the new lock.
+// validateLockTransition preserves first-adoption and immutable lock identity.
 func validateLockTransition(beforeTree, afterTree *snapshot.Tree, before, after *manifest.Lock) error {
 	if _, hasConfig := afterTree.Lookup(config.DirName + "/config.yaml"); !hasConfig {
 		return errors.New("partial staged .awf authority: awf.lock requires .awf/config.yaml; restore it or delete .awf deliberately to re-adopt")
@@ -207,7 +205,7 @@ func validateLockTransition(beforeTree, afterTree *snapshot.Tree, before, after 
 }
 
 // loadTreeCurrentState loads the current-state view from tree, parsing config
-// from that same tree so the load is single-universe (ADR-0135). The returned
+// from that same tree so the load is single-universe. The returned
 // config is nil, with no error, when the tree carries no .awf/config.yaml: a
 // pre-adoption or empty universe a caller may treat as an empty side.
 func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock) (currentstate.Loaded, *config.Config, error) {
@@ -228,7 +226,7 @@ func loadTreeCurrentState(root string, tree *snapshot.Tree, lock *manifest.Lock)
 
 // configFromTree parses and validates configuration from exactly the selected
 // immutable tree. Semantic consumers that hand the tree to Publisher use this
-// selection without independently loading ADR, topic, or plan corpora.
+// selection without independently loading topic authority.
 func configFromTree(root string, tree *snapshot.Tree, lock *manifest.Lock) (*config.Config, bool, error) {
 	cfgFile, ok := tree.Lookup(config.DirName + "/config.yaml")
 	if !ok {

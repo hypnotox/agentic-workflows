@@ -1,1 +1,0 @@
-Read the explicit paths named above, nearby tests, and relevant project documentation before widening the search. When discovery or a structural question exists, use CodeGraph; keep exact-known-file and genuinely trivial lookup inline. Then run `./awf resolve topic <paths>` and `./awf read topic <domain>/<topic>[:<claim>]` for applicable normative authority.

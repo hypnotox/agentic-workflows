@@ -5,7 +5,7 @@
 
 How sync and check detect and report: drift hash inputs, attribution, backups, residue, pruning, cleanup, and current-state coverage and fan-out evaluation.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/generatedcheck/**`, `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf read topic rendering/sync-and-drift --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/generatedcheck/**`, `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf read topic rendering/sync-and-drift --coverage` for current applicable and owned paths and marker sites.
 
 How awf render and awf check detect and report drift: per-file config-hash inputs, managed-output attribution and provenance, foreign-file backups, residue scanning, ancestor pruning, and uninstall cleanup.
 
@@ -38,12 +38,12 @@ Backing: test
 
 ### `invariant: closed-config-tree`
 
-Every filesystem entry under .awf outside the selected governance footprint's claimed-path model is reported by awf check as orphaned drift, with owned resident roots exempt.
+Every filesystem entry under .awf outside the standard footprint's claimed-path model is reported by awf check as orphaned drift, with owned resident roots exempt.
 Backing: test
 
 ### `invariant: drift-source-set`
 
-Each rendered file's stored ConfigHash projects only that file's effective inputs and selected governance footprint, so awf check reports it stale only when those inputs changed. A sidecar or part matching no selected artifact or target is an orphan.
+Each rendered file's stored ConfigHash projects only that file's effective inputs and standard footprint, so awf check reports it stale only when those inputs changed. A sidecar or part matching no catalog artifact or target is an orphan.
 Backing: test
 
 ### `invariant: managed-output-attribution`
