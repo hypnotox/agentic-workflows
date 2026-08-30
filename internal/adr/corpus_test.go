@@ -5,7 +5,6 @@ import (
 	"go/ast"
 	"go/token"
 	"go/types"
-	"os"
 	"path/filepath"
 	"slices"
 	"strconv"
@@ -621,7 +620,6 @@ func TestLoadCorpusHydratesGovernedRecords(t *testing.T) {
 // corpus below is built with its ADRs out of numeric order, carries two
 // updates whose corpus order is descending, and the claim's applied
 // operations must still resolve as 0001, then 0002 and 0003, then 0005.
-// invariant: invariants/current-state-authority:provenance-ordered-by-adr-number (TestClaimOperationHistoryOrdersByADRNumber)
 func TestClaimOperationHistoryOrdersByADRNumber(t *testing.T) {
 	claimID := "tooling/query:removed"
 	record := func(number, title, status, verb string) adr.ADR {
@@ -728,27 +726,6 @@ func TestCorpusAbsentADR(t *testing.T) {
 	// vacuously over an empty corpus.
 	if _, ok := c.ByNumber("0001"); !ok {
 		t.Error("ByNumber did not resolve the present ADR")
-	}
-}
-
-// TestAuditSharesADRParser enforces ADR-0130 item 5: internal/audit reads git
-// blobs rather than the working tree, so it cannot take a Corpus - but it takes
-// the bytes seam, and declares no frontmatter struct of its own. The duplication
-// the ADR removed was the parser and the schema, not the loading strategy.
-// invariant: adr-system/adr-lifecycle:audit-shares-adr-parser (TestAuditSharesADRParser)
-func TestAuditSharesADRParser(t *testing.T) {
-	data, err := os.ReadFile(filepath.Join("..", "audit", "audit.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	body := string(data)
-	for _, banned := range []string{`yaml:"status"`, `yaml:"domains"`, `yaml:"supersedes"`, `yaml:"related"`} {
-		if strings.Contains(body, banned) {
-			t.Errorf("internal/audit declares its own ADR frontmatter field %s; parse through adr.ParseBytes instead (ADR-0130 item 5)", banned)
-		}
-	}
-	if !strings.Contains(body, "adr.ParseBytes(") {
-		t.Error("internal/audit no longer calls adr.ParseBytes - has the shared seam moved?")
 	}
 }
 

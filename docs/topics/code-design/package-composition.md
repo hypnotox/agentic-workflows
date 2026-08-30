@@ -23,7 +23,6 @@ section of the Maintainable Code Design guide.
 A new or deliberately converted package states what it owns in one sentence in its
 package doc comment, the `cmd/*` mains included; a package whose ownership cannot be
 stated in one sentence is signalling a split or a merge, not exemption.
-Origin: ADR-0200
 Backing: unbacked
 Verify: For each added or converted package, read its package doc comment and confirm one sentence names the concern the package owns; a comment that needs two sentences to say what the package is for fails.
 ### `invariant: no-grab-bag-homes`
@@ -32,14 +31,11 @@ A new or deliberately converted production package or production file is named f
 one concern it owns, never as a topical grab-bag such as `util`, `common`, `helpers`, or
 `misc`, or a file playing that role inside a package; package-internal test helper files
 stay legal.
-Origin: ADR-0200
 Backing: unbacked
 Verify: For each added or renamed production package or file, confirm the name states one owned concern and the content matches it; a production name that only groups leftovers fails, while a *_test.go helper file passes.
 ### `invariant: export-earns-consumer`
 
 A new or deliberately converted exported symbol declared by a production package ships with an outside-package production consumer in the same green transaction; an `export_test.go` seam stays legal and a black-box `_test` package does not earn that production export. An exported symbol declared by a dedicated shared test-support package under `internal/testsupport/**` instead ships with an outside-package test consumer in the same green transaction, and a compile-only reference does not count. Composition capabilities remain governed by `code-design/dependency-composition:concrete-first-consumer`, and exported error identities remain governed by `code-design/outcome-modeling:consumed-identity` including its documented-consumer escape hatch.
-Origin: ADR-0200
-Revised-by: ADR-0215
 Backing: unbacked
 Verify: For each new or deliberately converted export, classify its declaring package; trace an outside-package production consumer for a production-package export or a real outside-package test consumer for a dedicated `internal/testsupport/**` export in the same commit, then apply the named composition-capability or error-identity specialization where relevant.
 ### `invariant: exported-symbols-documented`
@@ -48,6 +44,5 @@ A new or deliberately converted exported declaration carries a doc comment; the 
 kinds are exported package-level functions, types, constants, and variables, and methods
 on exported types, auxiliary and DTO types reachable from an exported API included, while
 exported struct fields and interface methods stay outside the claim.
-Origin: ADR-0200
 Backing: unbacked
 Verify: For each added or converted exported declaration of a bound kind in the diff, confirm a leading doc comment exists; a bare exported declaration fails.

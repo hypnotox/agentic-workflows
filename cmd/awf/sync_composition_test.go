@@ -149,7 +149,6 @@ func TestSyncCompositionAndCallers(t *testing.T) {
 		{file: "sync.go", owner: "runSyncPrinting", name: "SyncLeased"}:                              1,
 		{file: "upgrade.go", owner: "upgradeSyncMutationLeased", name: "OpenForOperation"}:           1,
 		{file: "upgrade.go", owner: "upgradeSyncMutationLeased", name: "SyncLeased"}:                 1,
-		{file: "adr.go", owner: "runADR", name: "SyncLeased"}:                                        1,
 	}
 	assertSyncCompositionCalls(t, syncCompositionCalls(loadSyncCompositionPackage(t, nil)), want)
 

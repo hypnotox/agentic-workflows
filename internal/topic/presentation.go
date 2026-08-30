@@ -12,9 +12,6 @@ import (
 // validation and text rendering.
 func (result QueryResult) Detail() presentation.Detail {
 	fields := []presentation.Field{topicLiteralField("identity", result.Kind+" "+result.ID)}
-	if result.HistoricalOnly {
-		fields = append(fields, topicField("historical-only", "no active claim"))
-	}
 	sections := []presentation.Section{}
 	if result.Title != "" {
 		sections = append(sections, topicSection("topic", topicField("title", result.Title), topicField("summary", result.Summary)))
@@ -29,27 +26,6 @@ func (result QueryResult) Detail() presentation.Detail {
 			nodes = append(nodes, topicSection("claim", append([]presentation.Node{topicLiteralField("identity", claim.ID)}, claimNodes...)...))
 		}
 		sections = append(sections, topicSection("claims", nodes...))
-	}
-	if result.History != nil {
-		nodes := make([]presentation.Node, 0, len(result.History))
-		for _, history := range result.History {
-			historyNodes := []presentation.Node{topicLiteralField("identity", history.ClaimID)}
-			if history.LegacyBaseline {
-				historyNodes = append(historyNodes, topicField("origin", "legacy baseline not retained in active authority"))
-			} else if history.Origin != nil {
-				historyNodes = append(historyNodes, topicField("origin", historyText(*history.Origin)))
-			}
-			for _, revision := range history.RevisedBy {
-				historyNodes = append(historyNodes, topicField("revised-by", historyText(revision)))
-			}
-			if history.RemovedBy != nil {
-				historyNodes = append(historyNodes, topicField("removed-by", historyText(*history.RemovedBy)))
-			}
-			nodes = append(nodes, topicSection("claim", historyNodes...))
-		}
-		if len(nodes) > 0 {
-			sections = append(sections, topicSection("history", nodes...))
-		}
 	}
 	if result.References != nil {
 		nodes := make([]presentation.Node, 0, len(result.References))
@@ -84,13 +60,10 @@ func (result QueryResult) Detail() presentation.Detail {
 func StaticReferenceDetail() presentation.Detail {
 	return presentation.Detail{
 		Fields:   []presentation.Field{topicField("topic", "static not inside an awf project")},
-		Sections: []presentation.Section{topicSection("reference", topicField("description", "Query active current-state topics and claims. Use history for direct ADR history, references for direct claim IDs, and coverage for scope and marker sites."))},
+		Sections: []presentation.Section{topicSection("reference", topicField("description", "Query active current-state topics and claims. Use references for direct claim IDs and coverage for scope and marker sites."))},
 	}
 }
 
-func historyText(history ADRHistory) string {
-	return fmt.Sprintf("ADR-%s | %s | %s", history.Number, history.Status, history.Title)
-}
 func topicList(items []string) string {
 	if len(items) == 0 {
 		return "none"

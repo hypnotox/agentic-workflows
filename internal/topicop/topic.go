@@ -17,8 +17,8 @@ import (
 
 // Input is the syntax-level topic selection supplied by the command parser.
 type Input struct {
-	Selector                      string
-	History, References, Coverage bool
+	Selector             string
+	References, Coverage bool
 }
 
 // LoadProject opens the command-selected project inputs as immutable state.
@@ -52,7 +52,7 @@ func Run(ctx context.Context, root string, input Input, load LoadProject, gate G
 	if err != nil {
 		return presentation.Detail{}, err
 	}
-	result, err := currentstatecoord.QueryTopic(state.Root(), repo, ctx, input.Selector, topic.QueryOptions{History: input.History, References: input.References, Coverage: input.Coverage})
+	result, err := currentstatecoord.QueryTopic(state.Root(), repo, ctx, input.Selector, topic.QueryOptions{References: input.References, Coverage: input.Coverage})
 	if err != nil {
 		return presentation.Detail{}, err
 	}

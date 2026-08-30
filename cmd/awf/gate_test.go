@@ -167,10 +167,6 @@ func TestNewGatesInHandler(t *testing.T) {
 	_ = ctx
 	root := gateFixture(t, "0.4.0", migrate.Current()+1)
 	var out bytes.Buffer
-	// invariant: tooling/cli:adr-new-version-gated (TestNewGatesInHandler)
-	if err := runNew(ctx, root, "adr", []string{"x"}, &out); err == nil {
-		t.Error("runNew: expected gate error on ahead schema")
-	}
 	if err := runNew(ctx, root, "plan", []string{"x"}, &out); err == nil {
 		t.Error("runNew plan: expected gate error on ahead schema")
 	}

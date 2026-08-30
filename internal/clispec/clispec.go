@@ -234,8 +234,8 @@ var Commands = []Command{
 						Help: Help{Usage: []string{"awf check staged state"}, Description: "Validate the HEAD-to-index current-state transition."}},
 					{Name: "drift", Summary: "Compare staged config with staged rendered output", MaxPos: 0,
 						Help: Help{Usage: []string{"awf check staged drift"}, Description: "Report stale or hand-edited rendered output in the staged tree."}},
-					{Name: "commit", Summary: "Validate one commit message and profile-applicable merge authorization, blocking", MaxPos: 1, StateExempt: true,
-						Help: Help{Usage: []string{"awf check staged commit [<FILE>]"}, Description: "Validate one commit message against shared commit rules and any profile-applicable", Details: []string{"merge authorization. Reads FILE (the path a commit-msg hook passes as $1) or", "stdin and cleans it git-style. Merge and autosquash subjects are exempt only", "from Conventional Commits. A refusal leaves the staged index, message, and merge", "state unchanged so correcting the message and rerunning git commit finishes the", "existing merge. awf installs no hook; wire this into your own commit-msg hook", "(the always-rendered inert .awf/hooks/commit-msg.sh payload runs it once wired)."}, Positionals: []HelpItem{{Name: "[<FILE>]", Description: "commit message file; reads stdin when omitted"}}}},
+					{Name: "commit", Summary: "Validate one commit message against shared commit rules, blocking", MaxPos: 1, StateExempt: true,
+						Help: Help{Usage: []string{"awf check staged commit [<FILE>]"}, Description: "Validate one commit message against shared commit rules. Reads FILE (the path a commit-msg hook passes as $1) or stdin and cleans it git-style.", Details: []string{"Merge and autosquash subjects are exempt only from Conventional Commits. awf installs no hook; wire this into your own commit-msg hook", "(the always-rendered inert .awf/hooks/commit-msg.sh payload runs it once wired)."}, Positionals: []HelpItem{{Name: "[<FILE>]", Description: "commit message file; reads stdin when omitted"}}}},
 				},
 			},
 		},
@@ -248,10 +248,8 @@ var Commands = []Command{
 		Children: []Command{
 			{Name: "plan", Summary: "Read one exact plan phase or task projection", MinPos: 2, MaxPos: 2, FullOnly: true,
 				Help: Help{Usage: []string{"awf read plan <plan> <P[.T]>"}, Description: "Resolve <plan> as an exact filename or exact filename stem under the configured", Details: []string{"plans directory. P selects a complete phase; P.T selects one task plus its phase", "closure. Plan-v2 always includes task-scoped Decisions and phase outcomes; plan-v1", "retains its original closure. Selectors are canonical positive integers, and failures", "list available exact plan names or selectors."}, Positionals: []HelpItem{{Name: "<plan>", Description: "exact plan filename or filename stem"}, {Name: "<P[.T]>", Description: "canonical positive phase or phase.task selector"}}}},
-			{Name: "topic", Summary: "Read one topic or claim authority projection", BoolFlags: []string{"--history", "--references", "--coverage"}, MinPos: 1, MaxPos: 1, FullOnly: true,
-				Help: Help{Usage: []string{"awf read topic <domain>/<topic>[:<claim>] [flags]"}, Description: "Read active topic or claim authority with optional direct history, references, and coverage.", Positionals: []HelpItem{{Name: "<domain>/<topic>[:<claim>]", Description: "current-state topic or claim identifier"}}, Options: []HelpItem{{Name: "--history", Description: "add direct ADR history"}, {Name: "--references", Description: "add direct claim references"}, {Name: "--coverage", Description: "add ownership and marker coverage"}}}},
-			{Name: "adr", Summary: "Read lifecycle and operation progress for one ADR", MinPos: 1, MaxPos: 1, FullOnly: true,
-				Help: Help{Usage: []string{"awf read adr <identity>"}, Description: "Read an ADR lifecycle status, operation progress, and linked plans.", Positionals: []HelpItem{{Name: "<identity>", Description: "ADR number or retained slug identity"}}}},
+			{Name: "topic", Summary: "Read one topic or claim authority projection", BoolFlags: []string{"--references", "--coverage"}, MinPos: 1, MaxPos: 1, FullOnly: true,
+				Help: Help{Usage: []string{"awf read topic <domain>/<topic>[:<claim>] [flags]"}, Description: "Read active topic or claim authority with optional direct references and coverage.", Positionals: []HelpItem{{Name: "<domain>/<topic>[:<claim>]", Description: "current-state topic or claim identifier"}}, Options: []HelpItem{{Name: "--references", Description: "add direct claim references"}, {Name: "--coverage", Description: "add ownership and marker coverage"}}}},
 		},
 	},
 	{
@@ -309,14 +307,6 @@ var Commands = []Command{
 		},
 	},
 	{
-		Name: "adr", Summary: "ADR lifecycle operations", MaxPos: 0, Gating: Gated, FullOnly: true,
-		Help: Help{Usage: []string{"awf adr <subcommand>"}, Description: "Perform an ADR lifecycle operation that the corpus, not the author, owns."},
-		Children: []Command{
-			{Name: "number", Summary: "Number pending ADRs at integration", MinPos: 0, MaxPos: -1,
-				Help: Help{Usage: []string{"awf adr number [<slug>...]"}, Description: "Number pending ADRs after merging the integration branch in and before merging", Details: []string{"back. Bare invocation numbers a single pending ADR; several pending ADRs require", "an explicit list naming every pending slug, in the intended add-before-revise", "order."}, Positionals: []HelpItem{{Name: "<slug>", Description: "ADR filename slug, without number or extension"}}}},
-		},
-	},
-	{
 		Name: "list", Summary: "Show the catalog and configured domain inventory",
 		MaxPos: 1, Gating: Gated,
 		Help: Help{Usage: []string{"awf list [<kind>]"}, Description: "Show catalog artifacts and configured domains without selection state.", Positionals: []HelpItem{{Name: "<kind>", Description: "artifact kind"}}},
@@ -327,30 +317,24 @@ var Commands = []Command{
 		Help: Help{Usage: []string{"awf config [<key-or-var>]"}, Description: "Print the configuration reference: every config key, var, sidecar field, and", Details: []string{"data key with descriptions, defaults, and availability. Inside an awf project", "the output adds live state (current values and which catalog artifacts consume", "each var). Outside one, a static catalog-wide reference prints.", "With an argument, print just that entry (a config key path like", "audit.allowedScopes, a var name like gateCmd, a sidecar field like", "sidecar.dataDefaults, or a data key name)."}, Positionals: []HelpItem{{Name: "<key-or-var>", Description: "config key, var, sidecar field, or data key"}}},
 	},
 	{
-		Name: "new", Summary: "Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall, doc}",
+		Name: "new", Summary: "Scaffold a new artifact: kind in {plan, topic, domain, pitfall, doc}",
 		MaxPos: -1, Gating: GatedInHandler,
 		Help: Help{
 			Usage:       []string{"awf new <kind> <args>"},
-			Description: "Scaffold a new artifact. The kind is adr, plan, topic, domain, pitfall, or doc.",
+			Description: "Scaffold a new artifact. The kind is plan, topic, domain, pitfall, or doc.",
 			Positionals: []HelpItem{
 				{Name: "<kind>", Description: "artifact kind"},
 				{Name: "<args>", Description: "arguments required by the selected kind"},
 			},
 			Examples: []string{
-				"awf new adr \"Some Decision Title\"",
 				"awf new plan \"Some Plan Title\"",
 				"awf new topic <domain> \"Some Topic Title\"",
 				"awf new domain <name>",
 				"awf new pitfall \"Some Durable Hazard\"",
 				"awf new doc runbooks/api-v2 \"How to operate API v2\" --title \"API v2\"",
 			},
-			Related: []string{"awf adr number"},
 		},
 		Children: []Command{
-			{
-				Name: "adr", Summary: "Scaffold a new ADR", MinPos: 1, MaxPos: -1, FullOnly: true,
-				Help: Help{Usage: []string{"awf new adr <title>..."}, Description: "Scaffold a new ADR under docs/decisions from the rendered template, with its", Details: []string{"date and title heading filled in. The identity depends on the branch: on the", "configured integrationBranch the record gets the next sequential number", "(NNNN-<slug>.md), and anywhere else it is written as a pending record named", "<slug>.md, which awf adr number numbers at integration time.", "The title must not slugify to a reserved name (readme, index, template), to a", "slug already used in the corpus, or to something opening with four digits and a", "hyphen, which would read as a number."}, Positionals: []HelpItem{{Name: "<title>", Description: "human-readable artifact title"}}},
-			},
 			{
 				Name: "plan", Summary: "Scaffold a new plan", MinPos: 1, MaxPos: -1, FullOnly: true,
 				Help: Help{Usage: []string{"awf new plan <title>..."}, Description: "Scaffold a new plan under docs/plans, date-prefixed (no sequential number),", Details: []string{"from the rendered plans template with its date and title heading filled in."}, Positionals: []HelpItem{{Name: "<title>", Description: "human-readable artifact title"}}},

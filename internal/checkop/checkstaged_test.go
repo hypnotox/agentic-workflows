@@ -8,7 +8,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
-	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -177,7 +176,6 @@ func TestCollectCheckStagedRoutesOrdinaryCurrentStateOwnerResults(t *testing.T) 
 			OwnerResult:        ownerResult,
 			PlanResult:         planResult,
 			PlanNotes:          []string{"mutated compatibility plan warning"},
-			Provisional:        []currentstate.Introduction{{Identity: "mutated-compatibility-information"}},
 		}, nil
 	}
 	present := dependencies.present
@@ -282,37 +280,5 @@ func TestCollectCheckStagedRoutesTypedPlanWarningsOnce(t *testing.T) {
 	}
 	if strings.Contains(stdout.String(), "legacy-plan-note-must-not-route") {
 		t.Fatalf("legacy PlanNotes routed staged warning policy: %q", stdout.String())
-	}
-}
-
-func TestCollectCheckStagedRetainsStateFailureWhenDriftCategoryMappingFails(t *testing.T) {
-	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML})
-	driftFailure := errors.New("drift category mapping failed")
-	dependencies := productionCheckStagedDependencies()
-	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
-		return currentStateReportForTest(t, project.CurrentStateReport{Static: []currentstate.Finding{{Message: "state-failure-sentinel"}}}), nil
-	}
-	dependencies.driftRoot = func(context.Context, string) (checkresult.Result, error) { return checkresult.New(nil, nil) }
-	dependencies.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
-		if check == "staged drift" {
-			return repositorycheck.Presentation{}, driftFailure
-		}
-		if evidence {
-			return repositorycheck.PresentEvidence(result, check)
-		}
-		return repositorycheck.Present(result, check)
-	}
-	collection, err := collectCheckStagedSelectionWith(context.Background(), root, planNoteSink{}, true, true, dependencies)
-	if err != nil {
-		t.Fatalf("collection error = %v, want retained operational failures", err)
-	}
-	if len(collection.failures) != 1 || collection.failures[0].Error() != "check staged state failed" {
-		t.Fatalf("state failures = %v, want staged state failure", collection.failures)
-	}
-	if len(collection.presentation.Errors) == 0 {
-		t.Fatal("state errors were discarded")
-	}
-	if len(collection.operational) != 1 || !errors.Is(collection.operational[0], driftFailure) {
-		t.Fatalf("operational failures = %v, want drift category failure", collection.operational)
 	}
 }

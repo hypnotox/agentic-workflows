@@ -5,63 +5,48 @@ This topic governs dependencies introduced by new work and seams deliberately co
 ### `invariant: outer-composition`
 
 A new or deliberately converted volatile dependency is selected explicitly at the outermost layer with enough production knowledge; its policy consumer receives the selected semantic dependency and does not discover it through a service locator, universal dependency bag, or mutable package global.
-Origin: ADR-0178
 Backing: unbacked
 Verify: For each changed constructor and executable wiring site, trace production selection to the outermost knowledgeable layer and confirm no prohibited discovery mechanism supplies the dependency.
 ### `invariant: consumer-owned-contracts`
 
 When substitution is needed around a shared concrete implementation, the consumer declares the smallest cohesive structural interface locally and names its dependency for the semantic operation it needs. The provider exports the concrete implementation and neutral values its mechanism yields, never a universal consumer interface. Consumer-local helpers and values may translate the imported capability into readable business policy but never reimplement the shared concern; a direct concrete dependency remains legal when substitution is unnecessary.
-Origin: ADR-0178
-Revised-by: ADR-0216
 Backing: unbacked
 Verify: For each changed dependency boundary, inspect the provider's exported surface, the consumer-local interface and helpers, and production wiring; confirm the interface is the consumer's narrow cohesive view, policy remains local, no provider-owned universal interface or function-field renaming layer appears, and a direct concrete dependency is used when no substitution boundary is needed.
 ### `invariant: mechanism-adapters`
 
 A mechanism adapter remains outside the policy package it serves, translates mechanism-specific values and errors at that boundary, and does not absorb policy owned by the consumer.
-Origin: ADR-0178
 Backing: unbacked
 Verify: Inspect every changed adapter's package direction, returned values, errors, and decisions; confirm mechanism representation stops at the boundary and policy stays with the consumer.
 ### `invariant: direct-injection-first`
 
 A one-operation dependency is injected as a function and an immutable input as a value; an interface is introduced only for a cohesive multi-operation behavioral contract with domain meaning, and a required dependency never silently defaults.
-Origin: ADR-0178
 Backing: unbacked
 Verify: Inspect changed constructor parameters and nil handling, and reject an interface, hidden production default, or test-only production indirection that is not required by the consumer contract.
 ### `invariant: concrete-first-consumer`
 
 Every new production composition capability lands in the same green transaction as exactly one named concrete production first consumer. A composition capability exported by a dedicated shared test-support package under `internal/testsupport/**` instead lands with exactly one named outside-package test first consumer. In either case the consumer uses the whole introduced capability, and no adapter, constructor field, interface method, option, helper, fault operation, or other composition surface is added only for anticipated reuse.
-Origin: ADR-0178
-Revised-by: ADR-0215
 Backing: unbacked
 Verify: For each newly exported or shared composition symbol, classify its declaring package, trace the corresponding production or outside-package test caller in the same commit, confirm exactly one named first consumer uses the whole introduced capability, and reject every introduced member without that consumer use.
 ### `invariant: repository-layer-direction`
 
 Repository coordination follows one direction: `cmd/awf` composes and invokes focused application operations; application operations consume immutable project state, domain services, and only the semantic mechanisms they need; domain and state owners consume lower semantic Git, snapshot, filesystem, atomic-publication, and rendering mechanisms. `Loader` constructs `ProjectState`; application operations may invoke `Publisher`, `RepositoryChecker`, and `CurrentStateCoordinator`; `RepositoryChecker` consumes individual checker results without owning their policy. No internal package imports `cmd/awf`; project state, domain, checker, and mechanism owners never import application coordination; `ProjectState` never imports `Loader`; and individual check owners never import `RepositoryChecker`. Foundational mechanism chains from snapshot to Git and from filesystem to atomic file publication remain legal.
-Origin: ADR-0296
-Revised-by: ADR-0320
 Backing: unbacked
 Verify: Inspect changed owner imports against the complete direction above; run `TestRepositoryLayerDirection` for the cheap foundational-mechanism reversals that have focused mechanical protection.
 
 ### `rule: repository-extraction-owners`
 
 The repository extraction target has one semantic owner per concern. `ProjectState` owns immutable loaded facts; `Loader` owns opening and validation; `Publisher` owns output planning, rendering coordination, backup decisions, and publishing; `RepositoryChecker` owns policy-free ordered aggregation; `CurrentStateCoordinator` owns ADR and topic transition coordination; focused application operations own command-level use cases; and `cmd/awf` owns parse, compose, invoke, result rendering, stream choice, and exit mapping. Individual check policy stays with its concern owner: `GeneratedOutputChecker` for generated-output conformance, `ReferenceChecker` for managed references, `PlanChecker` for plans, `PitfallChecker` for pitfalls, `GlossaryChecker` for glossary validation, `ConfigurationChecker` for configuration and command-spec consistency, `CurrentStateCoordinator` for current-state validity, `internal/prosegate` for punctuation, `internal/memorycite` for memory citations, `internal/commitpolicy` for commit authorization, and `internal/audit` for advisory repository analysis. These are semantic owners, not a prescribed file inventory or extraction order.
-Origin: ADR-0296
-Revised-by: ADR-0320
 
 ### `rule: repository-boundary-values`
 
 Boundaries carry immutable loaded facts; semantic ADR, topic, plan, output-declaration, policy, finding, and operation-result values; owner-produced presentation documents; and immutable semantic snapshots such as `snapshot.Tree`. Git-native objects, mutable repository or index state, filesystem handles and metadata, temporary publication paths, template parse state, and other mechanism representations remain inside their mechanism boundary. `ProjectState` exposes no mutable configuration, catalog, map, or slice aliases as public state.
-Origin: ADR-0296
 
 ### `invariant: dependency-composition-commit-classification`
 
 Code-design authority and cross-package code-structure work uses the `code-design` scope, and a structural change uses the existing `refactor` type rather than a `refactor` scope.
-Origin: ADR-0178
-Revised-by: ADR-0180, ADR-0210
 Backing: unbacked
 Verify: Compare `.awf/config.yaml` with the rendered scope tables, confirm no `refactor` scope exists, and run `./awf check staged commit` against the planned code-design subjects.
 ### `invariant: sync-project-loader-wiring`
 
 Top-level render, initialized render, and every existing post-mutation render reach project opening through the one Loader composed by the `runSync` family; `project.Open` remains a transitional compatibility wrapper with no new caller.
-Origin: ADR-0178
 Backing: test

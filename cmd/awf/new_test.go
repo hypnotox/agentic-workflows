@@ -48,27 +48,6 @@ func TestNewOwnerWrappersRejectUsageAndMalformedRepository(t *testing.T) {
 	}
 }
 
-func TestRunNewScaffoldsADR(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	var out bytes.Buffer
-	if err := runNew(ctx, root, "adr", []string{"My", "New", "Title"}, &out); err != nil {
-		t.Fatalf("runNew: %v", err)
-	}
-	want := filepath.Join(root, "docs", "decisions", "0001-my-new-title.md")
-	got := strings.TrimSpace(out.String())
-	if got != "status: created: "+want {
-		t.Errorf("runNew printed %q, want created status for %q", got, want)
-	}
-	data, err := os.ReadFile(want)
-	if err != nil {
-		t.Errorf("created file not found: %v", err)
-	} else if !strings.Contains(string(data), "format: current-state-v4\nslug: my-new-title\n") {
-		t.Errorf("activated scaffold is not V4 with its frozen slug:\n%s", data)
-	}
-}
-
 // invariant: tooling/cli:cli-creation-and-inventory (TestRunNewDocScaffoldsLocalDocument)
 func TestRunNewDocScaffoldsLocalDocument(t *testing.T) {
 	t.Run("derived title", func(t *testing.T) {
@@ -171,18 +150,6 @@ func assertLocalDocs(t *testing.T, root string, want config.LocalDocs) {
 	}
 	if !slices.Equal(cfg.LocalDocs, want) {
 		t.Fatalf("localDocs = %#v, want %#v", cfg.LocalDocs, want)
-	}
-}
-
-func TestRunNewADRError(t *testing.T) {
-	ctx := testContext(t)
-	_ = ctx
-	root := scaffoldProject(t)
-	if err := newADR(ctx, root, nil, io.Discard); err == nil {
-		t.Fatal("expected missing-title usage error")
-	}
-	if err := runNew(ctx, root, "adr", []string{"!!!"}, os.Stdout); err == nil {
-		t.Fatal("expected NewADR error for an all-punctuation title")
 	}
 }
 
@@ -408,11 +375,6 @@ func TestRunNewPlanRefusesExisting(t *testing.T) {
 func TestRunNewDispatch(t *testing.T) {
 	root := scaffoldProject(t)
 	var out, errb bytes.Buffer
-	if code := runFrom(root, []string{"awf", "new", "adr", "Some", "Title"}, &out, &errb); code != 0 {
-		t.Fatalf("expected exit 0, got %d (%s)", code, errb.String())
-	}
-	out.Reset()
-	errb.Reset()
 	if code := runFrom(root, []string{"awf", "new", "pitfall", "One Complete Title"}, &out, &errb); code != 0 {
 		t.Fatalf("pitfall dispatch: exit %d (%s)", code, errb.String())
 	}

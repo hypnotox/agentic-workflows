@@ -20,7 +20,7 @@ func helpText(c Command) string {
 	return strings.Join(parts, " ")
 }
 
-func TestCheckCommitSpecDescribesProfileApplicableAuthorization(t *testing.T) {
+func TestCheckCommitSpecDescribesSharedPolicy(t *testing.T) {
 	check, ok := Lookup("check")
 	if !ok {
 		t.Fatal("missing check")
@@ -33,10 +33,10 @@ func TestCheckCommitSpecDescribesProfileApplicableAuthorization(t *testing.T) {
 	if !ok {
 		t.Fatal("missing check staged commit")
 	}
-	if !strings.Contains(commit.Summary, "profile-applicable merge authorization") {
+	if !strings.Contains(commit.Summary, "shared commit rules") {
 		t.Fatalf("summary = %q", commit.Summary)
 	}
-	for _, text := range []string{"shared commit rules", "profile-applicable", "unchanged", "git commit"} {
+	for _, text := range []string{"shared commit rules", "Conventional Commits"} {
 		if !strings.Contains(helpText(commit), text) {
 			t.Errorf("help missing %q", text)
 		}
@@ -97,7 +97,7 @@ func TestConfigurationSurfaceGrammar(t *testing.T) {
 	for _, child := range newCommand.Children {
 		children = append(children, child.Name)
 	}
-	if got, want := strings.Join(children, ","), "adr,plan,topic,domain,doc,pitfall"; got != want {
+	if got, want := strings.Join(children, ","), "plan,topic,domain,doc,pitfall"; got != want {
 		t.Fatalf("new children = %q, want %q", got, want)
 	}
 }
@@ -444,11 +444,11 @@ func TestLookup(t *testing.T) {
 	if !ok {
 		t.Fatal("Lookup(new) missing")
 	}
-	if len(newCmd.Children) != 6 {
-		t.Errorf("new has %d children, want 6", len(newCmd.Children))
+	if len(newCmd.Children) != 5 {
+		t.Errorf("new has %d children, want 5", len(newCmd.Children))
 	}
-	if _, ok := newCmd.Child("adr"); !ok {
-		t.Error("new.Child(adr) missing")
+	if _, ok := newCmd.Child("adr"); ok {
+		t.Error("retired new.Child(adr) remains")
 	}
 	if _, ok := newCmd.Child("plan"); !ok {
 		t.Error("new.Child(plan) missing")
@@ -517,7 +517,7 @@ func TestLookup(t *testing.T) {
 // GatedCommandNames is the exact published gated set, in table order - the
 // non-Ungated commands, a group contributing only its own token.
 func TestGatedCommandNames(t *testing.T) {
-	want := []string{"render", "edit", "reset", "check", "read", "resolve", "audit", "effort", "adr", "list", "config", "new", "remove"}
+	want := []string{"render", "edit", "reset", "check", "read", "resolve", "audit", "effort", "list", "config", "new", "remove"}
 	got := GatedCommandNames()
 	if len(got) != len(want) {
 		t.Fatalf("GatedCommandNames() = %v, want %v", got, want)

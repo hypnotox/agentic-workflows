@@ -55,13 +55,13 @@ func assertVersionFixtureUnchanged(t *testing.T, root string, before map[string]
 // invariant: config/migrations-and-locks:schema-min-version (TestSchemaMinimumVersionAuthority)
 // invariant: tooling/cli:single-version-authority (TestSchemaMinimumVersionAuthority)
 func TestSchemaMinimumVersionAuthority(t *testing.T) {
-	if got := minVersionBySchema; len(got) != 2 || got[migrate.LiveSchemaFloor] != "0.39.0" || got[migrate.Current()] != "0.40.0" {
+	if got := minVersionBySchema; len(got) != 3 || got[migrate.LiveSchemaFloor] != "0.39.0" || got[migrate.Current()] != "0.43.0" {
 		t.Fatalf("live schema minimums = %#v", got)
 	}
 	if err := ValidateSchemaMinimumVersion(migrate.Current(), Version); err != nil {
 		t.Fatalf("current schema minimum: %v", err)
 	}
-	if err := ValidateSchemaMinimumVersion(migrate.Current(), "0.38.9"); err == nil || !strings.Contains(err.Error(), "requires awf 0.40.0") {
+	if err := ValidateSchemaMinimumVersion(migrate.Current(), "0.42.9"); err == nil || !strings.Contains(err.Error(), "requires awf 0.43.0") {
 		t.Fatalf("old binary minimum error = %v", err)
 	}
 	if err := ValidateSchemaMinimumVersion(migrate.LiveSchemaFloor-1, Version); err == nil || !strings.Contains(err.Error(), "no minimum") {
@@ -77,7 +77,7 @@ func TestVersionAuthority(t *testing.T) {
 		name, raw, exposed, want string
 		schema                   int
 	}{
-		{"valid", "0.40.0\n", "0.40.0", "", migrate.Current()},
+		{"valid", "0.43.0\n", "0.43.0", "", migrate.Current()},
 		{"missing newline", "0.39.0", "0.39.0", "canonical version file", migrate.Current()},
 		{"extra newline", "0.39.0\n\n", "0.39.0", "canonical version file", migrate.Current()},
 		{"prefixed version", "v0.39.0\n", "v0.39.0", "canonical semantic version", migrate.Current()},

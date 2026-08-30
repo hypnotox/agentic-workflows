@@ -14,10 +14,9 @@ help:
       resolve | Resolve lexical paths to current-state authority
       audit | Report workflow-conformance findings over a commit range (advisory)
       effort | Manage slugged repository-local efforts
-      adr | ADR lifecycle operations
       list | Show the catalog and configured domain inventory
       config | Describe config keys and vars (live state inside a project)
-      new | Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall, doc}
+      new | Scaffold a new artifact: kind in {plan, topic, domain, pitfall, doc}
       remove | Remove a configured domain
       upgrade | Migrate the .awf/ config tree or recover an interrupted upgrade
       uninstall | Remove awf's generated files (keeps .awf/)
@@ -42,12 +41,11 @@ help:
       staged:
         state | Report staged current-state transition findings
         drift | Compare staged config with staged rendered output
-        commit | Validate one commit message and profile-applicable merge authorization, blocking
+        commit | Validate one commit message against shared commit rules, blocking
     read:
       commands:
         plan | Read one exact plan phase or task projection
         topic | Read one topic or claim authority projection
-        adr | Read lifecycle and operation progress for one ADR
     resolve:
       commands:
         topic | Resolve topic authority for paths or the whole repository
@@ -69,12 +67,8 @@ help:
         attach | Attach or take over an advisory activity claim
         heartbeat | Heartbeat an owned advisory activity claim
         detach | Detach an owned advisory activity claim
-    adr:
-      commands:
-        number | Number pending ADRs at integration
     new:
       commands:
-        adr | Scaffold a new ADR
         plan | Scaffold a new plan
         topic | Scaffold paired current-state topic inputs
         domain | Create a configured domain

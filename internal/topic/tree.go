@@ -6,7 +6,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -33,7 +32,7 @@ const (
 // LoadCorpusFromReader loads retained topic authority first, then streams each
 // selected marker source through the scanner so aggregate source bytes never
 // become part of one materialized snapshot.
-func LoadCorpusFromReader(read TreeReader, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
+func LoadCorpusFromReader(read TreeReader, cfg *config.Config) (Corpus, error) {
 	paths, err := read.Paths("")
 	if err != nil {
 		return Corpus{}, err
@@ -59,7 +58,7 @@ func LoadCorpusFromReader(read TreeReader, cfg *config.Config, adrs adr.Corpus) 
 	if err != nil {
 		return Corpus{}, err
 	}
-	corpus, err := corpusFromTreeFiles(tree, scannableTreeFiles(tree), cfg, adrs)
+	corpus, err := corpusFromTreeFiles(tree, scannableTreeFiles(tree), cfg)
 	if err != nil {
 		return Corpus{}, err
 	}
@@ -80,9 +79,9 @@ func authorityInputPath(path string, domainSidecars map[string]bool) bool {
 // LoadCorpusFromTree parses the complete current-state topic corpus from an
 // immutable snapshot. It retains domain ownership and marker validation for
 // callers that need the complete repository projection.
-func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
+func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config) (Corpus, error) {
 	files := scannableTreeFiles(tree)
-	c, err := corpusFromTreeFiles(tree, files, cfg, adrs)
+	c, err := corpusFromTreeFiles(tree, files, cfg)
 	if err != nil {
 		return Corpus{}, err
 	}
@@ -94,7 +93,7 @@ func LoadCorpusFromTree(tree *snapshot.Tree, cfg *config.Config, adrs adr.Corpus
 	return c, nil
 }
 
-func corpusFromTreeFiles(tree *snapshot.Tree, files []snapshot.File, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
+func corpusFromTreeFiles(tree *snapshot.Tree, files []snapshot.File, cfg *config.Config) (Corpus, error) {
 	metadata, parts, err := authorityEntriesFromTreeFiles(files)
 	if err != nil {
 		return Corpus{}, err
@@ -107,18 +106,18 @@ func corpusFromTreeFiles(tree *snapshot.Tree, files []snapshot.File, cfg *config
 		}
 		domainPaths[d] = paths
 	}
-	return assembleCorpus(metadata, parts, cfg.Domains, domainPaths, adrs)
+	return assembleCorpus(metadata, parts, cfg.Domains, domainPaths)
 }
 
 // LoadAuthorityCorpusFromFiles parses the reduced topic authority from the
 // supplied snapshot files. Historical selections use this exact byte-fed core
 // without materializing a complete Tree.
-func LoadAuthorityCorpusFromFiles(files []snapshot.File, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
+func LoadAuthorityCorpusFromFiles(files []snapshot.File, cfg *config.Config) (Corpus, error) {
 	metadata, parts, err := authorityEntriesFromTreeFiles(files)
 	if err != nil {
 		return Corpus{}, err
 	}
-	return assembleCorpus(metadata, parts, cfg.Domains, nil, adrs)
+	return assembleCorpus(metadata, parts, cfg.Domains, nil)
 }
 
 func scannableTreeFiles(tree *snapshot.Tree) []snapshot.File {

@@ -7,9 +7,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
@@ -22,9 +19,6 @@ import (
 func ResolveTopics(root string, repo *awfgit.Repo, ctx context.Context, paths []string) (presentation.Detail, error) {
 	ws, err := workingCurrentState(root, repo, ctx)
 	if err != nil {
-		return presentation.Detail{}, err
-	}
-	if err := validateAuthority(ws); err != nil {
 		return presentation.Detail{}, err
 	}
 	sections := make([]presentation.Section, 0, len(paths))
@@ -60,9 +54,6 @@ func ResolveTopics(root string, repo *awfgit.Repo, ctx context.Context, paths []
 func UncoveredPaths(root string, repo *awfgit.Repo, ctx context.Context) (presentation.Detail, error) {
 	ws, err := workingCurrentState(root, repo, ctx)
 	if err != nil {
-		return presentation.Detail{}, err
-	}
-	if err := validateAuthority(ws); err != nil {
 		return presentation.Detail{}, err
 	}
 	generated := map[string]bool{}
@@ -170,112 +161,6 @@ func authorityAncestors(path string) []string {
 	return out
 }
 
-// ReadADR reports one parsed ADR's status, canonical operation progress, and
-// plans that link it from the same working authority universe.
-func ReadADR(root string, repo *awfgit.Repo, ctx context.Context, identity string) (presentation.Detail, error) {
-	ws, err := workingCurrentState(root, repo, ctx)
-	if err != nil {
-		return presentation.Detail{}, err
-	}
-	if err := validateAuthority(ws); err != nil {
-		return presentation.Detail{}, err
-	}
-	record, ok := ws.Loaded.Corpus.ByIdentity(identity)
-	if !ok {
-		return presentation.Detail{}, fmt.Errorf("ADR-%s not found", identity)
-	}
-	progress, err := record.OperationProgress()
-	if err != nil {
-		return presentation.Detail{}, err
-	}
-	plans, drift, err := plansFromTree(ws.Tree, config.DocsDir)
-	if err != nil {
-		return presentation.Detail{}, err
-	}
-	if len(drift) != 0 {
-		diagnostics := make([]string, len(drift))
-		for i, finding := range drift {
-			diagnostics[i] = finding.Path + ": " + finding.Detail
-		}
-		slices.Sort(diagnostics)
-		return presentation.Detail{}, fmt.Errorf("parse linked plans: %s", strings.Join(diagnostics, "; "))
-	}
-	linked := []string{}
-	for _, p := range plans {
-		for _, link := range p.ADRs {
-			linkedRecord, found := ws.Loaded.Corpus.ByIdentity(link.Identity())
-			if found && linkedRecord.Identity() == record.Identity() {
-				linked = append(linked, p.Filename)
-				break
-			}
-		}
-	}
-	identityField, err := authorityLiteralField("identity", "ADR-"+record.Identity())
-	if err != nil {
-		return presentation.Detail{}, err
-	}
-	statusField, err := authorityField("status", record.Status)
-	if err != nil {
-		return presentation.Detail{}, err
-	}
-	appliedItems, err := authorityItems("applied", formatApplied(progress.Applied))
-	if err != nil {
-		return presentation.Detail{}, err
-	}
-	remainingItems, err := authorityItems("remaining", formatOperations(progress.Remaining))
-	if err != nil {
-		return presentation.Detail{}, err
-	}
-	canceledItems, err := authorityItems("canceled", formatOperations(progress.Canceled))
-	if err != nil {
-		return presentation.Detail{}, err
-	}
-	linkedItems, err := authorityItems("linked-plans", linked)
-	if err != nil {
-		return presentation.Detail{}, err
-	}
-	section, err := presentation.NewSection("adr", identityField, statusField, appliedItems, remainingItems, canceledItems, linkedItems)
-	if err != nil {
-		return presentation.Detail{}, err
-	}
-	query, err := authorityField("query", "ADR")
-	if err != nil {
-		return presentation.Detail{}, err
-	}
-	return presentation.Detail{Fields: []presentation.Field{query}, Sections: []presentation.Section{section}}, nil
-}
-
-func validateAuthority(ws workingState) error {
-	findings := currentStateMessages(ws.Loaded.ADRs, ws.Loaded.Topics.All())
-	if len(findings) != 0 {
-		return fmt.Errorf("current-state validation failed: %s", strings.Join(findings, "; "))
-	}
-	return nil
-}
-func currentStateMessages(adrs []adr.ADR, topics []topic.Topic) []string {
-	// Keep validation at the coordinator boundary shared by authority queries.
-	// QueryTopic has the same existing validation until its later consolidation.
-	findings := []string{}
-	for _, finding := range currentstate.Check(adrs, topics) {
-		findings = append(findings, finding.Message)
-	}
-	return findings
-}
-
-func formatOperations(operations []adr.Operation) []string {
-	out := make([]string, len(operations))
-	for i, op := range operations {
-		out[i] = string(op.Verb) + " " + op.ID
-	}
-	return out
-}
-func formatApplied(operations []adr.AppliedOperation) []string {
-	out := make([]string, len(operations))
-	for i, op := range operations {
-		out[i] = string(op.Operation.Verb) + " " + op.Operation.ID
-	}
-	return out
-}
 func authorityField(label, text string) (presentation.Field, error) {
 	value, err := presentation.Prose(text)
 	if err != nil {

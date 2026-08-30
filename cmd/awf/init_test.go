@@ -16,7 +16,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
-	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 // readConfig returns the scaffolded .awf/config.yaml under root.
@@ -368,91 +367,6 @@ func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
 			}
 			if out.Len() != 0 {
 				t.Fatalf("ambiguous first adoption wrote output: %q", out.String())
-			}
-		})
-	}
-}
-
-func TestInitFirstADRChecksClean(t *testing.T) {
-	testInitFirstADRChecksClean(t)
-}
-
-func testInitFirstADRChecksClean(t *testing.T) {
-	ctx := testContext(t)
-	for _, tc := range []struct {
-		name       string
-		legacy     []string
-		nextNumber int
-	}{
-		{name: "fresh", nextNumber: 1},
-		{name: "brownfield", legacy: []string{"0001-old.md", "0003-old.md"}, nextNumber: 4},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			repo := gitfixture.InitRepo(t)
-			root := repo.Root()
-			gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-			for _, name := range tc.legacy {
-				testsupport.WriteFile(t, filepath.Join(root, "docs/decisions", name), testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle(name[:4]+": Old")))
-			}
-			// The gateCmd answer keeps the scaffold's enabled hooks singleton
-			// valid for the post-init syncs (ADR-0156 Decision 5).
-			if err := runInit(ctx, root, false, false, []string{"profile=full", "gateCmd=make gate"}, "", io.Discard); err != nil {
-				t.Fatal(err)
-			}
-
-			gitfixture.AddAll(t, repo)
-			gitfixture.Commit(t, repo, "initialize", nil)
-			// The scaffold writes integrationBranch: main while a go-git
-			// fixture starts on master; put the checkout on the branch the
-			// scaffolded config names, so `new adr` takes the numbered path
-			// this test is about (ADR-0202 item 5).
-			gitfixture.NativeBranch(t, repo, "main")
-			gitfixture.NativeCheckout(t, repo, "main")
-			if err := runNew(ctx, root, "adr", []string{"First", "Current"}, io.Discard); err != nil {
-				t.Fatal(err)
-			}
-			want := fmt.Sprintf("%04d-", tc.nextNumber)
-			entries, err := os.ReadDir(filepath.Join(root, "docs/decisions"))
-			if err != nil {
-				t.Fatal(err)
-			}
-			var created string
-			for _, entry := range entries {
-				if strings.HasPrefix(entry.Name(), want) {
-					created = filepath.Join(root, "docs/decisions", entry.Name())
-				}
-			}
-			if created == "" {
-				t.Fatalf("new ADR not created at next number %d", tc.nextNumber)
-			}
-			body, err := os.ReadFile(created)
-			if err != nil {
-				t.Fatal(err)
-			}
-			text := string(body)
-			// Scaffolding uses the activation registry's current format, so a new
-			// record is V3 with its slug key regardless of existing ADR numbers.
-			if !strings.Contains(text, "format: current-state-v4\n") {
-				t.Fatalf("new ADR at next number %d is not current-state-v4", tc.nextNumber)
-			}
-			start, end := strings.Index(text, "## State changes\n"), strings.Index(text, "## Consequences\n")
-			if start < 0 || end < 0 || end <= start {
-				t.Fatal("scaffold lacks state-change section")
-			}
-			text = text[:start] + "## State changes\n\nNone.\n\n" + text[end:]
-			history := strings.Index(text, "## Status history\n")
-			if history < 0 {
-				t.Fatal("scaffold lacks status history")
-			}
-			text = text[:history] + "## Status history\n\n- 2026-07-21: Proposed\n"
-			if err := os.WriteFile(created, []byte(text), 0o644); err != nil {
-				t.Fatal(err)
-			}
-			if err := runSync(ctx, root, io.Discard); err != nil {
-				t.Fatal(err)
-			}
-			if err := runCheckRepo(ctx, root, io.Discard); err != nil {
-				t.Fatalf("repo check: %v", err)
 			}
 		})
 	}

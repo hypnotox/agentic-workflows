@@ -37,6 +37,7 @@ var Version = strings.TrimSuffix(versionFile, "\n")
 var minVersionBySchema = map[int]string{
 	46: "0.39.0",
 	47: "0.40.0",
+	48: "0.43.0",
 }
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a

@@ -12,7 +12,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
@@ -41,8 +40,6 @@ currentState:
 	}
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-scheduling.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0001: Scheduling origin"), testsupport.WithDomains("schedule"), testsupport.WithBody("## Decision\n\n1. Scheduling.\n")))
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0002-revision.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0002: Scheduling revision"), testsupport.WithDomains("schedule"), testsupport.WithBody("## Decision\n\n1. Revise scheduling.\n")))
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0003-update-active.md"), topicV1ADR(t, "0003", "Update active claim", "- update `schedule/contracts:deterministic-order`"))
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0004-remove-old.md"), topicV1ADR(t, "0004", "Remove legacy claim", "- remove `schedule/contracts:removed`"))
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/schedule/contracts.yaml"), "title: Scheduling\nsummary: Current scheduling contracts.\npaths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/schedule/contracts/current-state.md"), `Scheduling contracts.
 
@@ -50,13 +47,10 @@ currentState:
 
 ### `+"`rule: deterministic-order`"+`
 Jobs use deterministic order.
-Origin: ADR-0001
-Revised-by: ADR-0003
 References: schedule/related:direct
 
 ### `+"`invariant: stable-output`"+`
 Output remains stable.
-Origin: ADR-0001
 Backing: test
 `)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/schedule/related.yaml"), "title: Related\nsummary: Related scheduling contracts.\napplies: global\n")
@@ -66,7 +60,6 @@ Backing: test
 
 ### `+"`rule: direct`"+`
 A direct neighbor.
-Origin: ADR-0001
 References: schedule/contracts:stable-output
 `)
 	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule.go"), "package schedule\n// state: schedule/contracts:deterministic-order\n")
@@ -74,51 +67,11 @@ References: schedule/contracts:stable-output
 	return root
 }
 
-func topicV1ADR(t *testing.T, number, title, operation string) string {
-	t.Helper()
-	build := func(status, history string) string {
-		return "---\nformat: current-state-v1\nstatus: " + status + "\ndate: 2026-07-21\n---\n" +
-			"# ADR-" + number + ": " + title + "\n\n" +
-			"## Context\n\nContext.\n\n## Decision\n\n1. Change state.\n\n" +
-			"## State changes\n\n" + operation + "\n\n## Consequences\n\nConsequence.\n\n" +
-			"## Alternatives Considered\n\nNone.\n\n## Status history\n\n" + history + "\n"
-	}
-	proposed, err := adr.ParseV1(number+"-query.md", []byte(build("Proposed", "- 2026-07-20: Proposed")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	digest := adr.ContentDigest(proposed.Sections)
-	return build("Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digest)
-}
-
-func TestRunTopicHistoricalOnlyHumanText(t *testing.T) {
-	ctx := testContext(t)
-	root := topicCmdFixture(t)
-	claimID := "schedule/contracts:removed"
-	if err := runReadTopic(ctx, root, claimID, false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
-		t.Fatalf("default removed-claim query = %v", err)
-	}
-	var out bytes.Buffer
-	if err := runReadTopic(ctx, root, claimID, true, true, true, &out); err != nil {
-		t.Fatal(err)
-	}
-	for _, want := range []string{"identity: claim " + claimID, "historical-only: no active claim", "origin: legacy baseline not retained in active authority", "removed-by: ADR-0004 | Implemented | Remove legacy claim"} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("historical output missing %q:\n%s", want, out.String())
-		}
-	}
-	for _, absent := range []string{"incoming:", "coverage:", "backing:"} {
-		if strings.Contains(out.String(), absent) {
-			t.Errorf("historical output fabricated %q", absent)
-		}
-	}
-}
-
 func TestRunTopicHumanTextAndFlags(t *testing.T) {
 	ctx := testContext(t)
 	root := topicCmdFixture(t)
 	var defaults bytes.Buffer
-	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, false, &defaults); err != nil {
+	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, &defaults); err != nil {
 		t.Fatal(err)
 	}
 	for _, want := range []string{"identity: topic schedule/contracts", "title: Scheduling", "identity: schedule/contracts:deterministic-order", "backing: test"} {
@@ -127,18 +80,17 @@ func TestRunTopicHumanTextAndFlags(t *testing.T) {
 		}
 	}
 	for _, tc := range []struct {
-		name                          string
-		history, references, coverage bool
-		want                          string
+		name                 string
+		references, coverage bool
+		want                 string
 	}{
-		{"history", true, false, false, "revised-by: ADR-0003 | Implemented | Update active claim"},
-		{"references", false, true, false, "outgoing: schedule/related:direct"},
-		{"coverage", false, false, true, "marker: internal/schedule_test.go:2 | invariant"},
-		{"combined", true, true, true, "selector-rule: both domain and topic selectors must match"},
+		{"references", true, false, "outgoing: schedule/related:direct"},
+		{"coverage", false, true, "marker: internal/schedule_test.go:2 | invariant"},
+		{"combined", true, true, "selector-rule: both domain and topic selectors must match"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			var out bytes.Buffer
-			if err := runReadTopic(ctx, root, "schedule/contracts", tc.history, tc.references, tc.coverage, &out); err != nil {
+			if err := runReadTopic(ctx, root, "schedule/contracts", tc.references, tc.coverage, &out); err != nil {
 				t.Fatal(err)
 			}
 			if !strings.Contains(out.String(), tc.want) {
@@ -147,7 +99,7 @@ func TestRunTopicHumanTextAndFlags(t *testing.T) {
 		})
 	}
 	var claim bytes.Buffer
-	if err := runReadTopic(ctx, root, "schedule/contracts:stable-output", false, false, false, &claim); err != nil || !strings.Contains(claim.String(), "identity: claim schedule/contracts:stable-output") || strings.Contains(claim.String(), "deterministic-order") {
+	if err := runReadTopic(ctx, root, "schedule/contracts:stable-output", false, false, &claim); err != nil || !strings.Contains(claim.String(), "identity: claim schedule/contracts:stable-output") || strings.Contains(claim.String(), "deterministic-order") {
 		t.Fatalf("claim output: %v\n%s", err, claim.String())
 	}
 }
@@ -193,23 +145,6 @@ func TestPrintTopicPreservesLiteralIdentities(t *testing.T) {
 	}
 }
 
-func TestPrintTopicHistoryText(t *testing.T) {
-	result := topic.QueryResult{Kind: "topic", ID: "d/t", Claims: []topic.QueryClaim{}, History: []topic.ClaimHistory{{ClaimID: "d/t:x", Origin: &topic.ADRHistory{Number: "0001", Title: "Origin", Status: "Implemented"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Title: "Revision", Status: "Implementing"}}, RemovedBy: &topic.ADRHistory{Number: "0003", Title: "Removal", Status: "Abandoned"}}}}
-	var out bytes.Buffer
-	if err := printTopicDetail(&out, result.Detail()); err != nil {
-		t.Fatal(err)
-	}
-	const historyGolden = "identity: topic d/t\n\nhistory:\n  claim:\n    identity: d/t:x\n    origin: ADR-0001 | Implemented | Origin\n    revised-by: ADR-0002 | Implementing | Revision\n    removed-by: ADR-0003 | Abandoned | Removal\n"
-	if out.String() != historyGolden {
-		t.Fatalf("history output = %q, want %q", out.String(), historyGolden)
-	}
-	for _, want := range []string{"history:", "origin: ADR-0001 | Implemented | Origin", "revised-by: ADR-0002 | Implementing | Revision", "removed-by: ADR-0003 | Abandoned | Removal"} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("missing %q:\n%s", want, out.String())
-		}
-	}
-}
-
 type failOnWrite struct {
 	failAt int
 	calls  int
@@ -231,7 +166,6 @@ func TestPrintTopicPropagatesEveryHumanWriteFailure(t *testing.T) {
 	base := topic.QueryResult{
 		Kind: "topic", ID: "schedule/contracts", Title: "Scheduling", Summary: "Summary.",
 		Claims:     []topic.QueryClaim{{ID: "schedule/contracts:stable", Type: topic.Invariant, Prose: "Stable.", Backing: topic.Unbacked, Verify: "Inspect."}},
-		History:    []topic.ClaimHistory{{ClaimID: "schedule/contracts:stable", Origin: &topic.ADRHistory{Number: "0001", Status: "Implemented", Title: "Origin"}, RevisedBy: []topic.ADRHistory{{Number: "0002", Status: "Implemented", Title: "Revision"}}}},
 		References: []topic.ClaimReferences{{ClaimID: "schedule/contracts:stable", Incoming: []string{}, Outgoing: []string{"schedule/other:claim"}}},
 		Coverage:   &topic.QueryCoverage{Applicability: topic.TopicApplicability{DomainPaths: []string{"internal/**"}, TopicPaths: []string{"internal/schedule*"}, ApplicablePaths: []string{"internal/schedule.go"}, OwnedPaths: []string{"internal/schedule.go"}, MarkerSites: []topic.MarkerSite{}}},
 	}
@@ -277,14 +211,14 @@ func TestPrintTopicOptionalHumanFields(t *testing.T) {
 func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
-	if err := runReadTopic(ctx, t.TempDir(), "bad", false, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "expected <domain>/<topic>") {
+	if err := runReadTopic(ctx, t.TempDir(), "bad", false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "expected <domain>/<topic>") {
 		t.Fatalf("syntax error = %v", err)
 	}
 	var out bytes.Buffer
-	if err := runReadTopic(ctx, t.TempDir(), "schedule/contracts", false, false, false, &out); err != nil {
+	if err := runReadTopic(ctx, t.TempDir(), "schedule/contracts", false, false, &out); err != nil {
 		t.Fatalf("static = %v", err)
 	}
-	const staticGolden = "topic: static not inside an awf project\n\nreference:\n  description: Query active current-state topics and claims. Use history for direct ADR history, references for direct claim IDs, and coverage for scope and marker sites.\n"
+	const staticGolden = "topic: static not inside an awf project\n\nreference:\n  description: Query active current-state topics and claims. Use references for direct claim IDs and coverage for scope and marker sites.\n"
 	if out.String() != staticGolden {
 		t.Fatalf("static output = %q, want %q", out.String(), staticGolden)
 	}
@@ -292,11 +226,11 @@ func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf"), []byte("file"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, false, io.Discard); err == nil {
+	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, io.Discard); err == nil {
 		t.Fatal("stat fault accepted")
 	}
 	root = gateFixture(t, "99.0.0", migrate.Current())
-	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, false, io.Discard); err == nil {
+	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, io.Discard); err == nil {
 		t.Fatal("version gate accepted ahead lock")
 	}
 	root = t.TempDir()
@@ -305,11 +239,11 @@ func TestRunTopicStaticSyntaxGateAndErrors(t *testing.T) {
 	if err := lock.Save(filepath.Join(root, ".awf/awf.lock")); err != nil {
 		t.Fatal(err)
 	}
-	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, false, io.Discard); err == nil {
+	if err := runReadTopic(ctx, root, "schedule/contracts", false, false, io.Discard); err == nil {
 		t.Fatal("open error hidden")
 	}
 	root = topicCmdFixture(t)
-	if err := runReadTopic(ctx, root, "schedule/missing", true, false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
+	if err := runReadTopic(ctx, root, "schedule/missing", false, false, io.Discard); err == nil || !strings.Contains(err.Error(), "not found") {
 		t.Fatalf("missing topic = %v", err)
 	}
 }
@@ -338,6 +272,7 @@ func TestReadTopicJSONIsRejectedBySpecAndDriver(t *testing.T) {
 	}
 }
 
+// invariant: tooling/authority-queries:authority-query-read-only (TestRunReadTopicDispatchAndReadOnly)
 func TestRunReadTopicDispatchAndReadOnly(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -370,9 +305,9 @@ func TestRunReadTopicDispatchAndReadOnly(t *testing.T) {
 	fixture := gitfixture.At(root)
 	gitfixture.NativeAdd(t, fixture, ".")
 	beforeTree, beforeIndex := digestFiles(t, root), gitfixture.NativeWriteTree(t, fixture)
-	for _, args := range [][]string{{"schedule/contracts"}, {"schedule/contracts:stable-output"}, {"schedule/contracts", "--history", "--references", "--coverage"}} {
+	for _, args := range [][]string{{"schedule/contracts"}, {"schedule/contracts:stable-output"}, {"schedule/contracts", "--references", "--coverage"}} {
 		var out bytes.Buffer
-		if err := runReadTopic(ctx, root, args[0], strings.Contains(strings.Join(args, " "), "--history"), strings.Contains(strings.Join(args, " "), "--references"), strings.Contains(strings.Join(args, " "), "--coverage"), &out); err != nil {
+		if err := runReadTopic(ctx, root, args[0], strings.Contains(strings.Join(args, " "), "--references"), strings.Contains(strings.Join(args, " "), "--coverage"), &out); err != nil {
 			t.Fatal(err)
 		}
 	}

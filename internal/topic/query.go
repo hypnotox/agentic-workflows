@@ -4,28 +4,24 @@ import (
 	"fmt"
 	"slices"
 	"strings"
-
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 )
 
 // QueryOptions selects independent detail projections for a current-state query.
 type QueryOptions struct {
-	History, References, Coverage bool
+	References, Coverage bool
 }
 
 // QueryResult is the single deterministic semantic model used by human and JSON
 // presentation. Optional detail blocks are nil unless their corresponding flag
 // was requested.
 type QueryResult struct {
-	Kind           string            `json:"kind"`
-	ID             string            `json:"id"`
-	Title          string            `json:"title,omitempty"`
-	Summary        string            `json:"summary,omitempty"`
-	Claims         []QueryClaim      `json:"claims"`
-	History        []ClaimHistory    `json:"history,omitempty"`
-	References     []ClaimReferences `json:"references,omitempty"`
-	Coverage       *QueryCoverage    `json:"coverage,omitempty"`
-	HistoricalOnly bool              `json:"historicalOnly,omitempty"`
+	Kind       string            `json:"kind"`
+	ID         string            `json:"id"`
+	Title      string            `json:"title,omitempty"`
+	Summary    string            `json:"summary,omitempty"`
+	Claims     []QueryClaim      `json:"claims"`
+	References []ClaimReferences `json:"references,omitempty"`
+	Coverage   *QueryCoverage    `json:"coverage,omitempty"`
 }
 
 type QueryClaim struct {
@@ -34,20 +30,6 @@ type QueryClaim struct {
 	Prose   string    `json:"prose"`
 	Backing Backing   `json:"backing"`
 	Verify  string    `json:"verify,omitempty"`
-}
-
-type ADRHistory struct {
-	Number string `json:"number"`
-	Title  string `json:"title"`
-	Status string `json:"status"`
-}
-
-type ClaimHistory struct {
-	ClaimID        string       `json:"claimId"`
-	Origin         *ADRHistory  `json:"origin,omitempty"`
-	LegacyBaseline bool         `json:"legacyBaseline,omitempty"`
-	RevisedBy      []ADRHistory `json:"revisedBy"`
-	RemovedBy      *ADRHistory  `json:"removedBy,omitempty"`
 }
 
 type ClaimReferences struct {
@@ -61,9 +43,9 @@ type QueryCoverage struct {
 }
 
 // Query resolves one active topic or claim and assembles only the requested
-// direct detail. A qualified removed claim resolves only when History is set;
-// it never traverses references or constructs tombstone state.
-func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions, currentPaths []string) (QueryResult, error) {
+// direct detail. Missing claims are not found; topic authority retains no
+// historical or tombstone projection.
+func Query(c Corpus, selector string, opts QueryOptions, currentPaths []string) (QueryResult, error) {
 	topicID, claimID, err := ParseSelector(selector)
 	if err != nil {
 		return QueryResult{}, err
@@ -77,18 +59,6 @@ func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions, curren
 	if claimID != "" {
 		claim, found := c.ByClaimID(claimID)
 		if !found {
-			if opts.History {
-				operations, historical := adrs.ClaimOperationHistory(claimID)
-				if historical {
-					history, complete := presentationHistory(claimID, operations)
-					if complete {
-						return QueryResult{
-							Kind: "claim", ID: claimID, Claims: []QueryClaim{}, HistoricalOnly: true,
-							History: []ClaimHistory{history},
-						}, nil
-					}
-				}
-			}
 			return QueryResult{}, fmt.Errorf("current-state claim %q not found", claimID)
 		}
 		result.Kind, result.ID, result.Title, result.Summary = "claim", claimID, "", ""
@@ -100,25 +70,6 @@ func Query(c Corpus, adrs adr.Corpus, selector string, opts QueryOptions, curren
 			backing = ExplicitNoBacking
 		}
 		result.Claims = append(result.Claims, QueryClaim{ID: claim.ID, Type: claim.Type, Prose: claim.Prose, Backing: backing, Verify: claim.Verify})
-	}
-	if opts.History {
-		result.History = make([]ClaimHistory, 0, len(claims))
-		for _, claim := range claims {
-			if operations, ok := adrs.ClaimOperationHistory(claim.ID); ok {
-				if history, complete := presentationHistory(claim.ID, operations); complete {
-					result.History = append(result.History, history)
-					continue
-				}
-			}
-			origin, _ := adrs.ByIdentity(claim.Origin)
-			originHistory := historyADR(origin)
-			h := ClaimHistory{ClaimID: claim.ID, Origin: &originHistory, RevisedBy: []ADRHistory{}}
-			for _, reference := range claim.RevisedBy {
-				revision, _ := adrs.ByIdentity(reference)
-				h.RevisedBy = append(h.RevisedBy, historyADR(revision))
-			}
-			result.History = append(result.History, h)
-		}
 	}
 	if opts.References {
 		result.References = make([]ClaimReferences, 0, len(claims))
@@ -152,36 +103,6 @@ func ParseSelector(selector string) (topicID, claimID string, err error) {
 		return selector, "", nil
 	}
 	return "", "", fmt.Errorf("invalid topic selector %q: expected <domain>/<topic> or <domain>/<topic>:<claim>", selector)
-}
-
-func historyADR(a adr.ADR) ADRHistory {
-	identity := a.Identity()
-	return ADRHistory{Number: identity, Title: strings.TrimPrefix(a.Title, "ADR-"+identity+": "), Status: a.Status}
-}
-
-func presentationHistory(claimID string, history adr.ClaimOperationHistory) (ClaimHistory, bool) {
-	result := ClaimHistory{ClaimID: claimID, LegacyBaseline: history.LegacyBaseline, RevisedBy: []ADRHistory{}}
-	if history.Origin != nil {
-		origin := operationADR(*history.Origin)
-		result.Origin = &origin
-	} else if !history.LegacyBaseline {
-		return ClaimHistory{}, false
-	}
-	for _, revision := range history.RevisedBy {
-		result.RevisedBy = append(result.RevisedBy, operationADR(revision))
-	}
-	if history.RemovedBy != nil {
-		removed := operationADR(*history.RemovedBy)
-		result.RemovedBy = &removed
-	}
-	return result, true
-}
-
-func operationADR(record adr.OperationRecord) ADRHistory {
-	return ADRHistory{
-		Number: record.Identity, Title: strings.TrimPrefix(record.Title, "ADR-"+record.Identity+": "),
-		Status: record.Status,
-	}
 }
 
 func nonNil[S ~[]E, E any](in S) S {

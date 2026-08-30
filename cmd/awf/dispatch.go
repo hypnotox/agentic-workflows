@@ -164,14 +164,9 @@ func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]ha
 				}
 				return handlerFailure(runReadPlan(c.ctx, c.root, c.inv.positionals, c.stdout))
 			case "topic":
-				return handlerFailure(runReadTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--history"], c.inv.bools["--references"], c.inv.bools["--coverage"], c.stdout))
-			case "adr":
-				if err := gate(c.ctx, c.root); err != nil {
-					return handlerFailure(err)
-				}
-				return handlerFailure(runReadADR(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
+				return handlerFailure(runReadTopic(c.ctx, c.root, firstPos(c.inv.positionals), c.inv.bools["--references"], c.inv.bools["--coverage"], c.stdout))
 			default:
-				return handlerFailure(&usageErr{"usage: awf read <plan|topic|adr>"})
+				return handlerFailure(&usageErr{"usage: awf read <plan|topic>"})
 			}
 		},
 		"resolve": func(c *cmdCtx) handlerResult {
@@ -188,7 +183,6 @@ func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]ha
 			c.retainLease = func(value func() error) { release = value }
 			return handlerFailureHeld(runEffort(c, openEffortComposition), release)
 		},
-		"adr": func(c *cmdCtx) handlerResult { return handlerFailure(runADR(c)) },
 		"list": func(c *cmdCtx) handlerResult {
 			return handlerFailure(runList(c.ctx, c.root, firstPos(c.inv.positionals), c.stdout))
 		},
@@ -203,6 +197,9 @@ func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]ha
 			kind, args := c.sub, c.inv.positionals
 			if kind == "" && len(args) > 0 {
 				kind, args = args[0], args[1:]
+			}
+			if kind == "adr" {
+				return handlerFailure(&usageErr{fmt.Sprintf("unknown kind %q (want: plan, topic, domain, pitfall, doc)", kind)})
 			}
 			if kind == localDocumentKind {
 				var title *string

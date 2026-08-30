@@ -13,7 +13,6 @@ import (
 // identification and on nothing else: another branch, a detached HEAD, and a
 // tree with no readable repository all pass, because an indeterminate answer is
 // not evidence that the record is in the wrong place (ADR-0202 item 7).
-// invariant: adr-system/adr-lifecycle:pending-blocked-from-integration-branch (TestCheckPendingADRsFiresOnlyOnPositiveIdentification)
 func TestCheckPendingADRsFiresOnlyOnPositiveIdentification(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
@@ -69,7 +68,6 @@ func TestCheckPendingADRsFiresOnlyOnPositiveIdentification(t *testing.T) {
 // The block reaches awf check, not just its own helper. Without this the whole
 // check could be unwired from Check and every helper-level test above would
 // still pass.
-// invariant: adr-system/adr-lifecycle:pending-blocked-from-integration-branch (TestCheckReportsPendingADROnIntegrationBranch)
 func TestCheckReportsPendingADROnIntegrationBranch(t *testing.T) {
 	root := gitScaffold(t, defaultFixtureBranch)
 	p, err := Open(testContext(t), root)
@@ -105,7 +103,6 @@ func TestCheckReportsPendingADROnIntegrationBranch(t *testing.T) {
 // itself errors. Removing the control directory under a live handle is the way
 // to produce it; the block must stay silent rather than report a record it has
 // no evidence is misplaced.
-// invariant: adr-system/adr-lifecycle:pending-blocked-from-integration-branch (TestCheckPendingADRsSilentOnProbeFailure)
 func TestCheckPendingADRsSilentOnProbeFailure(t *testing.T) {
 	root := gitScaffold(t, defaultFixtureBranch)
 	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/still-pending.md"), pendingADRFixture("still-pending"))

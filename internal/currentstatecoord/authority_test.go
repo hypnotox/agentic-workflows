@@ -10,6 +10,8 @@ import (
 // The focused census retains contextq's topmost-directory semantics without
 // importing its context result model: owned file descendants stop a collapse,
 // while no owned descendant permits root collapse.
+// invariant: invariants/current-state-authority:uncovered-lists-unowned (TestAuthorityCensusTopmostCollapseAndIndependentExclusions)
+// invariant: tooling/authority-queries:unowned-path-census (TestAuthorityCensusTopmostCollapseAndIndependentExclusions)
 func TestAuthorityCensusTopmostCollapseAndIndependentExclusions(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: "owned/live.go", Mode: snapshot.Regular},

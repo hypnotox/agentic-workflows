@@ -142,14 +142,6 @@ func TestHelpSubcommandDispatch(t *testing.T) {
 	if !strings.Contains(out.String(), "command: awf render") {
 		t.Errorf("render help: %s", out.String())
 	}
-	out.Reset()
-	errb.Reset()
-	if code := run([]string{"awf", "help", "new", "adr"}, &out, &errb); code != 0 {
-		t.Fatal(code)
-	}
-	if !strings.Contains(out.String(), "command: awf new adr") {
-		t.Errorf("child help: %s", out.String())
-	}
 }
 
 func TestHelpRejectsUnknownChildrenRecursively(t *testing.T) {

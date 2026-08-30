@@ -53,17 +53,16 @@ func v1Scaffold() string {
 		"## Status history\n\n- 2026-07-20: Proposed\n"
 }
 
-// ruleTopicPart is a one-claim current-state part whose rule cites an Implemented
-// Origin ADR, so the provenance graph accepts it.
-func ruleTopicPart(origin string) string {
-	return "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-" + origin + "\n"
+// ruleTopicPart is a one-claim current-state part using topic-only claim grammar.
+func ruleTopicPart() string {
+	return "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\n"
 }
 
 const loadCfgBody = "prefix: test\ndomains: [alpha]\n"
 
 // TestLoadFromTreeAssembles loads a mixed legacy/v1 decisions set plus one topic
-// from a single tree, proving the ADR walk, the v1 route, and topic assembly all
-// read the same universe. It also proves non-ADR and nested decision files are
+// from a single tree, proving the ADR walk and topic assembly load independently
+// from the same snapshot. It also proves non-ADR and nested decision files are
 // skipped.
 func TestLoadFromTreeSkipsSymlinkADR(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{{Path: "docs/decisions/0001-first.md", Mode: snapshot.Regular, Bytes: []byte(legacyADR())}, {Path: "docs/decisions/0002-link.md", Mode: snapshot.Symlink, Bytes: []byte("../bad")}})
@@ -87,7 +86,7 @@ func TestLoadFromTreeAssembles(t *testing.T) {
 		"docs/decisions/README.md":                     "# Index\n",
 		"docs/decisions/nested/0009-ignored.md":        legacyADR(),
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart(),
 	})
 	got, err := currentstate.LoadFromTree(tree, loadCfg(t))
 	if err != nil {
@@ -159,7 +158,7 @@ func TestLoadFromTreeTopicError(t *testing.T) {
 }
 
 // TestLoadUniverseFromSelectionMatchesPolicyProjection proves the sparse
-// authority selection yields the same transition universe as the complete-tree
+// authority selection yields the same passive loading projection as the complete-tree
 // reduced parser, while malformed marker sources remain outside its boundary.
 func TestLoadUniverseFromSelectionMatchesPolicyProjection(t *testing.T) {
 	cfg, err := config.Parse("/nonexistent", []byte(loadCfgBody+"currentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"))
@@ -169,7 +168,7 @@ func TestLoadUniverseFromSelectionMatchesPolicyProjection(t *testing.T) {
 	files := map[string]string{
 		"docs/decisions/0001-first.md":                 legacyADR(),
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart(),
 		"internal/proof_test.go":                       "package internal\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
 	}
 	complete := treeFrom(t, files)
@@ -206,7 +205,7 @@ func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
 	valid := treeFrom(t, map[string]string{
 		"docs/decisions/0001-first.md":                 legacyADR(),
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart(),
 		".awf/domains/alpha.yaml":                      "paths: [\"internal/**\"]\n",
 		"internal/proof_test.go":                       "package internal\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
 	})
@@ -214,12 +213,11 @@ func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
 	if err == nil {
 		t.Fatal("full loader accepted malformed marker source")
 	}
-	// The policy projection retains exactly the transition inputs that a valid
-	// full view would expose: records, source bytes, and assembled topics.
+	// The passive projection retains records, source bytes, and assembled topics.
 	clean := treeFrom(t, map[string]string{
 		"docs/decisions/0001-first.md":                 legacyADR(),
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+		".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart(),
 		".awf/domains/alpha.yaml":                      "paths: [\"internal/**\"]\n",
 	})
 	full, err := currentstate.LoadFromTree(clean, cfg)
@@ -238,13 +236,13 @@ func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
 		{
 			"docs/decisions/0001-first.md":                 legacyADR(),
 			".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-			".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+			".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart(),
 			".awf/domains/alpha.yaml":                      "unknown: [\n",
 		},
 		{
 			"docs/decisions/0001-first.md":                 legacyADR(),
 			".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-			".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+			".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart(),
 			"internal/proof_test.go":                       "package internal\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
 		},
 	} {
@@ -260,21 +258,16 @@ func TestLoadUniverseFromTreeMatchesPolicyProjection(t *testing.T) {
 		"topic metadata": {
 			"docs/decisions/0001-first.md":                 legacyADR(),
 			".awf/topics/metadata/alpha/one.yaml":          "title: [\n",
-			".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("0001"),
+			".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart(),
 		},
 		"topic part": {
 			"docs/decisions/0001-first.md":        legacyADR(),
 			".awf/topics/metadata/alpha/one.yaml": "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
 		},
-		"claim provenance": {
-			"docs/decisions/0001-first.md":                 legacyADR(),
-			".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-			".awf/topics/parts/alpha/one/current-state.md": ruleTopicPart("9999"),
-		},
 		"claim reference": {
 			"docs/decisions/0001-first.md":                 legacyADR(),
 			".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-			".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: r`\nRule.\nOrigin: ADR-0001\nReferences: alpha/missing:r\n",
+			".awf/topics/parts/alpha/one/current-state.md": "Intro.\n\n## Claims\n\n### `rule: r`\nRule.\nReferences: alpha/missing:r\n",
 		},
 	} {
 		t.Run(name, func(t *testing.T) {

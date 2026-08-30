@@ -346,7 +346,6 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 	projectedTopics.DomainPaths["rendering"][0] = "mutated"
 	allTopics := projectedTopics.All()
 	allTopics[0].Metadata.Paths[0] = "mutated"
-	allTopics[0].Claims[0].RevisedBy = append(allTopics[0].Claims[0].RevisedBy, "mutated")
 	allTopics[0].Claims[0].References = append(allTopics[0].Claims[0].References, "mutated")
 
 	projectedSkills := prepared.EffectiveSkills()

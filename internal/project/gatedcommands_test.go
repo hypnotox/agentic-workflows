@@ -12,7 +12,6 @@ import (
 
 // invariant: tooling/cli:gated-commands-generated (TestRequireCapabilityRefusesCoreFullOnlyCommands)
 // invariant: tooling/audit-commands:audit-full-profile-only (TestRequireCapabilityRefusesCoreFullOnlyCommands)
-// invariant: tooling/authority-queries:authority-query-full-profile-only (TestRequireCapabilityRefusesCoreFullOnlyCommands)
 func TestRequireCapabilityRefusesCoreFullOnlyCommands(t *testing.T) {
 	var fullOnly []string
 	var visit func(prefix string, commands []clispec.Command)

@@ -40,8 +40,6 @@ func (w *mutatingWriter) Write(p []byte) (int, error) {
 }
 
 // invariant: tooling/cli:check-universe-groups (TestRunCheckCleanThenDirty)
-// invariant: adr-system/plan-artifacts:plan-v2-assignment-advisories (TestRunCheckCleanThenDirty)
-
 func TestRunCheckCleanThenDirty(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -55,66 +53,6 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	}
 	if strings.Contains(clean.String(), "check staged commit") {
 		t.Errorf("bare check must not aggregate staged commit:\n%s", clean.String())
-	}
-
-	planPath := "docs/plans/2026-08-03-check-v2.md"
-	validPlan := readCommandV2Plan
-	artifactRoot := syncedGitProjectFiles(t, checkYAML, map[string]string{
-		planPath:                    validPlan,
-		"docs/decisions/fixture.md": readCommandV4ADRFor(t, "fixture", "Fixture decisions", "`decision: first` First exact Decision block."),
-		"docs/decisions/context.md": readCommandV4ADRFor(t, "context", "Context decisions", "`decision: second` Second exact Decision block."),
-		"docs/decisions/third.md":   readCommandV4ADRFor(t, "third", "Third decisions", "`decision: third` Third unselected Decision block."),
-	})
-	var proposedFirst, proposedSecond bytes.Buffer
-	if err := runCheck(ctx, artifactRoot, &proposedFirst); err != nil {
-		t.Fatalf("Proposed plan advisories must stay green: %v\n%s", err, proposedFirst.String())
-	}
-	if err := runCheck(ctx, artifactRoot, &proposedSecond); err != nil {
-		t.Fatalf("repeat Proposed plan check: %v\n%s", err, proposedSecond.String())
-	}
-	proposedNote := "advisory | 2026-08-03-check-v2.md Decision third:third has no Applying assignment\n"
-	if proposedFirst.String() != proposedSecond.String() || strings.Count(proposedFirst.String(), proposedNote) != 1 {
-		t.Fatalf("Proposed plan assignment advisories must deterministically join the repo universe without failing; first=%q second=%q", proposedFirst.String(), proposedSecond.String())
-	}
-
-	brokenPlan := strings.Replace(validPlan, "fixture:first", "missing:first", 1)
-	testsupport.WriteFile(t, filepath.Join(artifactRoot, planPath), brokenPlan)
-	var workingBroken bytes.Buffer
-	if err := runCheck(ctx, artifactRoot, &workingBroken); err == nil || !strings.Contains(workingBroken.String(), planPath) || !strings.Contains(workingBroken.String(), "ADR not found") {
-		t.Fatalf("broken working plan reference must block the repo aggregate: err=%v output=%q", err, workingBroken.String())
-	}
-
-	repo := gitfixture.At(artifactRoot)
-	gitfixture.Stage(t, repo, map[string]string{planPath: brokenPlan})
-	// Deliberately restore only the working tree. The staged aggregate must use
-	// the index rather than borrowing this unstaged repair.
-	testsupport.WriteFile(t, filepath.Join(artifactRoot, planPath), validPlan)
-	var stagedBroken bytes.Buffer
-	if err := runCheck(ctx, artifactRoot, &stagedBroken); err == nil || !strings.Contains(stagedBroken.String(), planPath) || !strings.Contains(stagedBroken.String(), "ADR not found") {
-		t.Fatalf("staged broken plan reference must block aggregate despite working repair: err=%v output=%q", err, stagedBroken.String())
-	}
-
-	implementedRoot := syncedGitProjectFiles(t, checkYAML, map[string]string{
-		planPath:                    strings.Replace(validPlan, "status: Proposed", "status: Implemented", 1),
-		"docs/decisions/fixture.md": readCommandV4ADRFor(t, "fixture", "Fixture decisions", "`decision: first` First exact Decision block."),
-		"docs/decisions/context.md": readCommandV4ADRFor(t, "context", "Context decisions", "`decision: second` Second exact Decision block."),
-		"docs/decisions/third.md":   readCommandV4ADRFor(t, "third", "Third decisions", "`decision: third` Third unselected Decision block."),
-	})
-	var implemented bytes.Buffer
-	if err := runCheck(ctx, implementedRoot, &implemented); err != nil {
-		t.Fatalf("Implemented plan check: %v\n%s", err, implemented.String())
-	}
-	if strings.Contains(implemented.String(), "2026-08-03-check-v2.md Decision") || strings.Contains(implemented.String(), "no outcome assignment") {
-		t.Fatalf("Implemented plan must be silent in plan assignment advisories: %q", implemented.String())
-	}
-
-	// An index status regression cannot make terminal history mutable again,
-	// even when the working tree restores the Implemented source.
-	gitfixture.Stage(t, gitfixture.At(implementedRoot), map[string]string{planPath: validPlan})
-	testsupport.WriteFile(t, filepath.Join(implementedRoot, planPath), strings.Replace(validPlan, "status: Proposed", "status: Implemented", 1))
-	var stagedProposed bytes.Buffer
-	if err := runCheck(ctx, implementedRoot, &stagedProposed); err == nil || !strings.Contains(stagedProposed.String(), "frozen history") {
-		t.Fatalf("staged Implemented regression must fail closed: %v\n%s", err, stagedProposed.String())
 	}
 
 	// Hand-edit the rendered skill.
@@ -322,7 +260,7 @@ func coverageFiles() map[string]string {
 // rule: claim, not an invariant: claim - an invariant would additionally demand a
 // Backing: line and a proof marker in a testGlobs file the fixture cannot supply.
 func fanoutFiles() map[string]string {
-	const part = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n"
+	const part = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\n"
 	return map[string]string{
 		".awf/domains/alpha.yaml":                      "paths:\n  - internal/**\n",
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths:\n  - internal/**\n",

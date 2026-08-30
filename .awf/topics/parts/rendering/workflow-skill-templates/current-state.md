@@ -5,255 +5,189 @@ Workflow-chain and task-skill template contracts: chain ordering, exploration an
 ### `invariant: using-awf-transaction-home`
 
 The rendered `using-awf` support skill is selected when a generated-tree edit, render, drift repair, or upgrade begins, not while only investigating or planning possible generated-tree work. It is the transaction home for generated-tree maintenance: `.awf/` is the source, rendered outputs are never hand-edited, source edits run through render and check before the source, rendered outputs, and lock are staged together and the gate runs, drift findings provide repair hints, and upgrades run the bootstrap script followed by the residue sweep. It points configuration keys to `docs/config-reference.md` and detailed commands to `docs/working-with-awf.md` without carrying either reference's content.
-Origin: ADR-0246
-Revised-by: ADR-0274
 Backing: test
 
 ### `invariant: writing-docs-delegation`
 
 The rendered `writing-docs` support skill is selected when project-documentation authoring begins, not merely because documentation may need a later update. It selects the single document that owns a fact, reads `docs/doc-standard.md` before writing, references rather than restates other owned detail, and carries the document in the commit that makes the fact true. File edits invoke `using-awf`; the skill points to but does not restate the documentation standard or generated-tree transaction.
-Origin: ADR-0246
-Revised-by: ADR-0274
 Backing: test
 
 ### `invariant: protected-contract-over-route`
 
 The protected-contract doctrine has exactly one authored definition, in the shared `protected-contract` partial: the workflow governs a change's protected contract, being the requested outcome, the explicitly settled durable choices, the material scope, the externally observable behaviour, the compatibility and safety constraints, the required verification strength, the prohibited shortcuts, and every constraint an active project rule places on one of these, while everything else about how the change is carried out is a route the implementation owner may choose and revise. Precedence is decided per constraint rather than per rule, so one rule may be protected in its protected clauses and subordinate in its route clauses. Both governance footprints carry the same definition and quality bar. The rendered workflow document carries it by rendering that partial; the rendered agent guide carries only its thesis sentence, in a paragraph linking that document, and no other rendered surface carries the thesis or either defining clause.
-Origin: ADR-0286
-Revised-by: ADR-0292
 Backing: test
 
 ### `invariant: strongest-practical-durable-oracle`
 
 The heading-free `durable-oracle` partial is the single authored home of the strongest-practical durable-oracle rule for every behaviour-changing fix. It makes an automated regression test observed red then green the normal preferred path; permits the strongest safe reproducible alternative only with a concrete reason automated red-first is impractical; orders deterministic reproduction, direct contract or invariant tests, scripted recorded manual verification, and the strongest safely retained evidence as guidance rather than mechanical choreography; preserves or improves verification strength; and forbids weakened expected behaviour, weakened verification, and symptom patches. Bugfix, TDD, debugging, testing documentation, and code review project the rule in both profiles and both supported runtimes; Full additionally projects it to plan writing and plan review. Deterministic contract and scenario tests prove the single home, exact consumer partition, ordinary deterministic, environment-specific, race, destructive-migration, automation-unavailable, and weakened-output dispositions, clause sensitivity, and coherent configured and empty-data rendering.
-Origin: ADR-0291
 Backing: test
 
 ### `invariant: plan-flexibility`
 
 The shared `plan-flexibility` partial is the single authored home of plan-specific route authority in Full. It points to the workflow document's protected-contract rule, treats the plan as the best known route at authoring time, permits commit-capable owners to revise recorded route detail while that contract holds, and requires Proposed-plan reconciliation only for material instructions another phase or reviewer can rely on. It preserves helper confinement and sends protected-contract changes through the ordinary material-decision boundary. Full plan documentation, authoring, review, execution, plan-reviewer, implementer, and code-reviewer surfaces project the rule in both runtimes; Core remains plan-free and carries no plan-governance projection. Deterministic scenarios prove permitted route revisions, protected-contract stops, cross-owner reconciliation, optional batch examples, the consumer partition, and coherent empty-data rendering.
-Origin: ADR-0287
 Backing: test
 
 ### `invariant: independent-workflow-escalation`
 
 Workflow intake independently evaluates brainstorming, continuity, grounding, and implementation review in both governance footprints; Full additionally evaluates ADR and plan governance. Continuity is evaluated when brainstorming begins and whenever relevant facts change. Brainstorming solely owns proportionate outline approval, and its boundary is an unresolved material decision rather than the act of mutating production code, so a routine change whose protected contract is already settled proceeds without an approval stop whatever kind of file it touches.
-Origin: ADR-0243
-Revised-by: ADR-0265, ADR-0278, ADR-0286, ADR-0292, ADR-0305
 Backing: test
 
 ### `invariant: bounded-exploration-reporting`
 
 The rendered exploration guidance and the rendered explorer agent define adaptive breadth and grounded reporting, keep refinement sequential, and permit independent information needs to run concurrently, while Pi's per-call suffix supplies the selected breadth and report detail and makes Pi queue above ten active children in FIFO and abort-aware order.
-Origin: ADR-0148
-Revised-by: ADR-0179
 Backing: test
 
 ### `invariant: cross-runtime-exploration-dispatch`
 
 The core exploring skill renders for every target with one semantic breadth-and-detail protocol; the Pi target uses its awf-owned subagent_explore tool while non-Pi targets are directed to the named explorer agent as a generic target-native fresh-context exploration subagent, with no Pi tool name leaking into their output.
-Origin: ADR-0148
-Revised-by: ADR-0179
 Backing: test
 
 ### `invariant: implementer-context-grounding`
 
 Full guidance uses CodeGraph when source discovery or a structural question exists, then uses focused `./awf resolve topic`, `./awf read topic`, and `./awf read adr` commands for normative authority. Core remains coherent with project documentation, source, tests, and history where those commands are unavailable; exact-known-file and genuinely trivial lookups stay inline.
-Origin: ADR-0155
-Revised-by: ADR-0165, ADR-0174, ADR-0187, ADR-0197, ADR-0243, ADR-0255, ADR-0271, ADR-0278, ADR-0320
 Backing: test
 
 ### `invariant: repository-awf-invocation`
 
 Every rendered agent-facing executable awf instruction invokes the unconditional repository-root `./awf` wrapper. Product and CLI grammar, and bootstrap or wrapper PATH resolution, remain bare `awf` where they describe rather than invoke the repository command.
-Origin: ADR-0271
 Backing: test
 
 ### `invariant: mandatory-approval-boundaries`
 
 In both governance footprints, effort-workflow autonomously creates or resumes when continuity fires. Brainstorming may begin effort-free, but continuing after its first settled material decision requires ownership before proceeding further; a single-decision brainstorm may remain effort-free only when no independent continuity need fires. Brainstorming stops for explicit pre-artifact outline approval when an unresolved material decision fires it. Full ADR review continues to linked-plan handling; Core has no ADR or plan governance artifacts.
-Origin: ADR-0152
-Revised-by: ADR-0160, ADR-0167, ADR-0222, ADR-0226, ADR-0232, ADR-0240, ADR-0243, ADR-0265, ADR-0266, ADR-0278, ADR-0286, ADR-0292, ADR-0305
 Backing: test
 
 ### `invariant: authority-guided-implementation-autonomy`
 
 The shared implementation-autonomy partial serves selected implementation consumers in both governance footprints. It requires authority-preserving reasoned correction, diagnosis before escalation, approved-boundary preservation, required verification, and no weakened oracle or unrelated cleanup; Full adds its governance-specific closure without changing the autonomy bar.
-Origin: ADR-0240
-Revised-by: ADR-0248, ADR-0249, ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: authority-guided-review-remediation`
 
 The shared review spine remains the semantic home of finding classification for selected review workflows. The shared concrete-maintainability contract makes implementation and plan dispatchers reject risk-free preferences before classification, choose authority-preserving clean local remedies autonomously, and route a genuinely new material choice or changed approved boundary through brainstorming independently of severity; only a true authority deviation is user-decision. Full adds ADR and plan review governance without changing implementation review quality, while ADR review remains outside the concrete-risk threshold.
-Origin: ADR-0245
-Revised-by: ADR-0255, ADR-0264, ADR-0265, ADR-0278, ADR-0289, ADR-0292
 Backing: test
 
 ### `invariant: memory-checkpoint-chain-coverage`
 
 Checkpoint guidance never creates an effort and remains capability-neutral: it owns persistence, eligibility, reorientation, truthful fresh-boundary logging, cancellation and failure disposition, retained-context judgment, and target-native continuation, not a target tool or session evidence source. It prohibits handoff after late creation until owned memory is initialized from retained evidence with current outcome, settled decisions and required provenance/Record evidence, relevant observations, phase, and next action; missing exact user evidence is reconfirmed rather than reconstructed. Effort-backed checkpoints validate one immutable slug and primary-root-relative `.awf/efforts/<slug>/memory.md`, accept canonical YAML identity, continue in the managed worktree when present, and run exactly one structured memory update as the sole writer while separately appending decisions and observations. Effort-free work omits persistence. Fresh-boundary logging follows only an actual fresh-session boundary; task headings and projections never create checkpoint authority. Every checkpoint points to the workflow document for repository precedence, the one-writer contract, and the full protocol.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
-Origin: ADR-0148
-Revised-by: ADR-0149, ADR-0152, ADR-0160, ADR-0164, ADR-0166, ADR-0167, ADR-0175, ADR-0186, ADR-0189, ADR-0197, ADR-0209, ADR-0213, ADR-0218, ADR-0219, ADR-0222, ADR-0243, ADR-0293, ADR-0303, ADR-0305
 Backing: test
 
 ### `invariant: unified-effort-workflow-coverage`
 
 Catalog-derived tests render applicable effort workflows for every selected target and prove continuity is independently evaluated at brainstorming entry and when relevant facts change, while effort-free single-decision brainstorming remains available. `effort-workflow` is the sole lifecycle owner in both governance footprints; Full adds deferred governance closure.
-Origin: ADR-0175
-Revised-by: ADR-0187, ADR-0197, ADR-0218, ADR-0222, ADR-0225, ADR-0226, ADR-0243, ADR-0266, ADR-0278, ADR-0292, ADR-0305
 Backing: test
 
 ### `invariant: effort-workflow`
 
 Core `effort-workflow` is the selectable cross-target lifecycle owner when durable continuity materially helps or an effort resumes or finishes. It creates or resumes before further brainstorming after the first settled material decision, initializes late-created memory before handoff, and preserves fixed title and slug: refinements stay owned while material drift creates a resumable fixed-identity successor, transfers still-valid context, then closes the obsolete effort through existing topology safety and finish/archive lifecycle. It owns the operational lifecycle without ADR or plan authority; Full adds deferred artifact closure.
-Origin: ADR-0218
-Revised-by: ADR-0225, ADR-0243, ADR-0266, ADR-0278, ADR-0305
 Backing: test
 
 ### `invariant: memory-log-consumer-coverage`
 
 The shared review spine carries the consent-adherence check. Effort-backed review briefs paste available user-provenance entries verbatim, including `Record:` blocks; effort-free ADR review briefs paste the explicitly approved design summary from the current conversation. Missing evidence never permits inferred consent, and repository facts do not substitute for it. Effort-free plan and implementation review omit memory evidence without fabricating consensus and retain their workflow-defined scope. Retrospective consumes effort observations and decisions only for effort-backed work.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
-Origin: ADR-0186
-Revised-by: ADR-0197, ADR-0243, ADR-0255, ADR-0264
 Backing: test
 
 ### `invariant: workflow-transitions-advisory`
 
 Rendered workflow skills describe catalog relationships only as recommendations. Any catalog skill may be used when its purpose fits, while controls within a selected skill remain mandatory.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
-Origin: ADR-0167
-Revised-by: ADR-0243, ADR-0251
 Backing: test
 
 ### `invariant: phase-transaction-ownership`
 
 A recorded plan phase is the current route grouping for one independently green coherent implementation transaction with inline or delegated execution; the parent may regroup that route before execution while landed closing commits and review evidence retain their exact scope. Every implementation child is commit-disabled and runs only bounded focused checks; the parent owns integration, explicit staging, the staged check, every commit, the fast gate, and terminal exhaustive verification. In Pi branches, a child whose task intentionally operates in a supplied managed worktree passes that path as `verificationCheckout`, omits it for root work, and keeps actual mutation paths explicit; the validated checkout is both child Pi CWD and unchanged-HEAD identity, while parent mutations remain explicitly path-targeted because alignment is not confinement and no Pi-only wording leaks into other targets. Each child returns a closed completed or stopped receipt identifying scope, canonical checkout, start and end Git and worktree state, changed paths, exact focused commands and results, whether each result ran after the last mutation to every overlapping path, completed and remaining work, deviations, blockers, and applicable generated-output or fixture evidence. The parent independently inventories the checkout, rejects out-of-boundary writes, confirms unchanged HEAD and the reported end state, and reuses only explicitly final-state focused results while checkout identity, relevant authority, and overlapping paths remain unchanged; it reruns non-final results, lost or unverifiable evidence and later overlapping mutation invalidate the affected receipt, and no receipt replaces a gate. Delegated phase review returns structured coverage evidence: exact parent-owned phase-closing commit, complete phase scope and reviewed range, verification results, verbatim deviation report, and unreviewed settlement. The parent owns transient evidence and validates branch-tip freshness; evidence loss after context loss, session replacement, or effort-free continuation, or unverifiable freshness, falls back to ordinary terminal review, while divergence, changed authority, reasoned post-review fixes, or material mutation invalidates affected coverage and requires renewed review. Fresh single-phase assurance reviews only unreviewed settlement/integration; multi-phase assurance focuses cross-phase, settlements, and integration. Complete-range `./awf audit` always remains, including settlement commits. Shipped adopter templates never name awf's repository-local audit; self-hosted convention parts add it only to this repository's rendered skills.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
-Origin: ADR-0166
-Revised-by: ADR-0213, ADR-0217, ADR-0243, ADR-0255, ADR-0260, ADR-0271, ADR-0282, ADR-0287, ADR-0309, ADR-0317
 Backing: test
 
 ### `invariant: semantic-owner-assurance-decomposition`
 
 Before assigning or reviewing broad implementation work, the parent identifies semantic owners and separates independently verifiable owners into distinct implementation, settlement, and assurance units; work stays together when its cross-owner composition is itself one coherent transaction or protected contract. Repeated findings of the same underlying semantic concern or violated contract across separable owners identify an oversized assurance boundary independently of severity, reviewer lens, remediation classification, or numeric and elapsed-time proxies. The parent partitions finite remaining scope, gives genuinely fresh transactions ordinary bounded review, settles residual findings from the originating sole verify pass without another reviewer dispatch, retains focused owner evidence, and covers composed effects plus the complete range in terminal assurance. The shared semantic-owner partial is the single authored home projected through implementation assignment, phase execution, implementation review, code review, and workflow guidance in both governance footprints and supported runtimes; unrelated blockers remain separately routed under implementation autonomy, and empty-data rendering stays coherent.
-Origin: ADR-0318
 Backing: test
 
 ### `invariant: plan-task-detail-modes`
 
 The rendered plan-authoring skill, plan reviewer, implementation-plans README, and plan template require change-specific observable outcomes, authority links, material boundaries, actual ordering dependencies, focused evidence, and confinement where ambiguity or helpers require it. They retain typed Applying, Context, execution mode, phase close, Advances, Completes, and necessary Paths while treating Latitude, batch kind, Representative, and Edge as optional aids; batches require Paths and deterministic Post-check but not example fields, and historical grammar remains accepted. The parent may resolve authority-determined local symbols, child/test structure, necessary omitted paths, and other recorded route detail inside the protected contract, while commit-disabled implementation children remain confined. Their plan-v2 vocabulary defines contiguous `Applying:` and `Context:` task fields as nonempty JSON string arrays that are omitted rather than written as `[]`, uses numeric or retained pending ADR identities with V4 stable Decision slugs, requires slugged `dod:` Definition-of-done bullets, and assigns outcome contribution and final ownership through nonempty phase `Advances:` and `Completes:` arrays. Review checks substantive Applying coverage, Context misuse, and final Completes ownership while treating Proposed-plan coverage findings as advisory and historical Decision prose as distinct from current-state authority. Task projections keep their scope notice, Phase close, Advances, and Completes as phase-owner context without transferring task-helper authority. The surfaces also define contiguous task fields for exactness, spikes, batches, affected paths, and deterministic post-checks; require `Paths:` whenever scope is ambiguous, always including a batch; require `Post-check:` for every batch and every glob or pathspec scope; preserve the no-placeholder boundary for implementation tasks; forbid conditional and optional tasks; require one coherent green parent-owned transaction and an inline or subagent-driven execution mode per phase; and keep any helper partition exhaustive, path-disjoint, shared-file-safe, and command-confined. A spike is question-only, records its answer in Notes, cannot own a phase, and sequences dependent work into a later phase. Every surface renders coherently with empty variables.
-Origin: ADR-0148
-Revised-by: ADR-0157, ADR-0166, ADR-0211, ADR-0217, ADR-0255, ADR-0287, ADR-0303, ADR-0317
 Backing: test
 
 ### `invariant: reviewers-report-only`
 
 The rendered reviewer agent templates and the shared review spine instruct the reviewer only to read, run its lenses, and report findings; none contains a directive to apply fixes, commit, or loop a re-review.
-Origin: ADR-0148
 Backing: test
 
 ### `invariant: skill-prose-tool-agnostic`
 
 Every rendered skill and agent body is free of runtime tool-name tokens; a case-insensitive, word-anchored scan rejects subagent_type, the phrase subagent type, agent tool, skill tool, AskUserQuestion, the backticked-agent prompt phrasing, and the backticked or phrased file-operation tool names for write, edit, and read, while plain action verbs and the shell grep stay allowed.
-Origin: ADR-0148
 Backing: test
 
 ### `invariant: workflow-chain-adr-before-plan`
 
 The rendered workflow.md workflow-chain string presents the ADR step before the plan step.
-Origin: ADR-0148
-Revised-by: ADR-0157
 Backing: test
 
 ### `invariant: linked-plan-review-freshness`
 
 Ordinary full plan review resolves and verifies every ADR in parsed plan-level `adrs:` and ADR review consumes the deterministic typed reverse association rather than modification time or session inference. A substantive ADR amendment or review correction invalidates every linked Proposed plan's prior review: ADR review settles first, then each affected plan receives ordinary full review. A plan correction that would contradict linked authority returns to ADR amendment and review first. After implementation starts, completed affected phases are inventoried and implementation assurance is renewed wherever the changed decision can affect landed work before progression.
-Origin: ADR-0255
 Backing: test
 
 ### `invariant: clean-integration`
 
 One heading-free shared partial is the sole operative home for proportional clean integration. It points to the maintainable-code-design guide as canonical doctrine and requires applicable design, planning, implementation, and review consumers to determine the current and target owner, narrowest clean integration point, bounded enabling refactor, practical obsolete-path removal or migration, moving verification surfaces, and reasoned residual debt. Necessary bounded enabling work stays inside scope unless it creates a durable choice, increases risk, changes external behavior, or expands the requested outcome. The rule preserves YAGNI, rejects unrelated cleanup, speculative flexibility, and test-shaped production design, and renders the same doctrine coherently through every applicable Core and Full Pi and Claude consumer.
-Origin: ADR-0288
-Revised-by: ADR-0292
 Backing: test
 
 ### `invariant: concrete-maintainability-review`
 
 One heading-free shared partial is the sole operative owner of concrete maintainability-review admissibility and evidence. Code reviewer, plan reviewer, reviewing-impl, and reviewing-plan each include it exactly once; it renders the same implementation review-quality bar coherently for applicable Core and Full Pi and Claude consumers. It admits only findings with semantic owner, affected location, concrete risk, smallest clean remediation, and existing classification, maps those through the unchanged six-field schema while severity remains informational, rejects risk-free aesthetic preferences as non-admissible, preserves clean local autonomy and one verify pass, and routes a changed approved boundary through brainstorming independently of severity. ADR review and AF-013 severity separation remain outside the contract.
-Origin: ADR-0289
-Revised-by: ADR-0292
 Backing: test
 
 ### `invariant: maintainable-code-stage-coverage`
 
 Brainstorming, TDD, direct execution, inline and delegated plan execution, plan writing and review, implementation review, and bug fixing apply the shared clean-integration rule while retaining concise stage-specific obligations. Full-only plan consumers remain absent from Core.
-Origin: ADR-0168
-Revised-by: ADR-0232, ADR-0278, ADR-0288
 Backing: test
 
 ### `invariant: maintainable-code-subagent-contract`
 
 Every scoped implementation brief carries only the task-relevant semantic boundaries and ownership, representations and translation points, dependency direction, clean-integration and preparatory-refactor decisions, prohibited bolt-on shortcuts, validation expectations, and any reasoned residual debt; the commit-disabled implementation child makes authority-preserving reasoned detail revisions with a structured receipt without becoming a second planner, broadening scope, or performing unrelated cleanup. The parent may add a necessary omitted path and records it only when another owner or reviewer can rely on that material revision, while a child reports but never modifies an unassigned path. Inline plan execution extracts the same context and applies the shared clean-integration rule for its current task.
-Origin: ADR-0168
-Revised-by: ADR-0240, ADR-0248, ADR-0287, ADR-0288, ADR-0317
 Backing: test
 
 ### `invariant: deliberate-subagent-model-selection`
 
 Every final governed subagent dispatch retains its operative smallest-reliable-tier and escalation rule: Pi omits the model field for configured role routing and overrides deliberately with an exact tier reference; other targets select a target-native model where supported and otherwise visibly use the harness default. Generic rendered guidance contains no Pi tool name, provider-specific model reference, price, context limit, or registry catalog, and every affected template renders coherently with empty variables. The full semantic small, standard, and large tier definition occurs exactly once in docs/working-with-awf.md, while AGENTS.md does not duplicate it.
-Origin: ADR-0173
-Revised-by: ADR-0190, ADR-0241
 Backing: test
 
 ### `invariant: implementer-role-contract`
 
 The rendered implementer agent body states one commit-disabled implementation-child authority, that the dispatched task is the complete scope, that the agent guide's invariants and commands bind while its skill catalog and chain routing do not, that focused checks must not be weakened, that no interactive channel exists so escalation is a returned receipt, and that children never stage, commit, run fast gates, or perform terminal exhaustive verification while the parent owns those procedures. Its closed completed or stopped receipt identifies assigned scope, canonical checkout, start and end HEAD and worktree state, changed paths, exact focused commands and actual results, whether each result ran after the last mutation to every overlapping path, completed and remaining work, deviations, separately routed blockers, and applicable generated-output or fixture evidence. It applies the shared clean-integration rule inside the dispatched boundary. The parent may add a necessary omitted path inside the authority-guided boundary instead of stopping for path omission alone; an implementation child never modifies an unassigned path and reports the need for parent resolution. Only an explicitly final-state focused result is reusable; the parent reruns non-final results. Completed means the assigned implementation and focused feedback finished, not that a commit or terminal verification exists; stopped reserves persistent verification failure or a narrow authority, outcome, scope, ambiguity, or safety boundary while retaining the shared inventory and closed two-outcome contract. The subagent-driven-development and executing-plans skills name that agent in every dispatch branch, and their parent-facing imperatives for raising concerns, preserving the plan's settled design, running focused authority reads when Full supports them, and inventorying batch returns each carry an explicit subject. The body renders coherently with unset data and carries no runtime tool-name token.
-Origin: ADR-0177
-Revised-by: ADR-0179, ADR-0232, ADR-0240, ADR-0248, ADR-0287, ADR-0288, ADR-0317, ADR-0320
 Backing: test
 
 ### `invariant: maintainable-code-review-lenses`
 
 Plan review checks that protected structural choices and necessary enabling refactors are explicit, dependency-ordered where a protected property requires it, bounded, approved or durably dispositioned when larger, and verifiable without treating recorded route choreography as authority; code review checks cohesion, coupling, dependency direction, representation leakage, duplicated policy, testability, needless indirection, protected-contract conformance, and coherent transactions rather than literal planned phase grouping. The shared concrete-maintainability contract admits an implementation or plan finding only with semantic owner, affected location, concrete risk, smallest clean remediation, and the existing classification, mapped through `issue`, `location`, `suggested_fix`, and `classification`; severity remains informational. Both apply the shared clean-integration rule and explicit one-home ownership, obsolete-path, dependency-direction, representation-boundary, and residual-debt lenses. ADR review applies the structural lens only when a decision changes a semantic model, representation, ownership, module, or package boundary, dependency direction, or comparable structural contract, and remains outside the concrete-risk threshold. All reviewer agents remain report-only. Plan and code review flag unapproved or unjustified machinery and do not demand additions merely because more abstraction, cleanup, testing, or validation is imaginable.
-Origin: ADR-0168
-Revised-by: ADR-0232, ADR-0287, ADR-0288, ADR-0289
 Backing: test
 
 ### `invariant: explorer-and-grounding-role-contracts`
 
 The explorer remains the report-only owner of one bounded repository information need. The unchanged grounding-checker remains report-only and verifies factual premises, unstated assumptions, altitude, convention fit, and confidence from its brief. The reusable grounding support skill owns guide-first orientation, focused authority reads in Full, self-contained brief construction, target-native checker dispatch, and mechanical/reasoned/user-decision finding classification from any invoking workflow; it is advisory, single-pass, effort-noncreating, and never a chain prerequisite. Brainstorming refers to grounding conditionally but does not own or directly dispatch the checker. Generic rendered bodies contain no runtime-specific tool name.
 This claim reflects independent trigger judgment and the single-home effort lifecycle.
-Origin: ADR-0179
-Revised-by: ADR-0187, ADR-0243, ADR-0320
 Backing: test
 
 ### `invariant: orienting-single-home`
 
 The orienting support skill is selected for fresh work, effort resume, handoff takeover, or a widened working set, not exact-known-file inspection. It is the single orientation home: discovery and structural questions use CodeGraph, exact-known-file and genuinely trivial lookup stay inline, Core uses AGENTS.md, project docs, source, tests, and history, and Full adds focused current-state authority reads.
-Origin: ADR-0187
-Revised-by: ADR-0274, ADR-0278, ADR-0320
 Backing: test
 
 ### `invariant: semantic-rendering-review`
 
 Every enabled target keeps contradictory-fragment, concept-preserving paraphrase, and intentional literal-placeholder checks without a universal language validator. The implementation phase owner owns focused generated-prose meaning review and completion evidence naming inspected output boundaries and result; plan review inspects the requirement and any evidence already available, while code review inspects the completed implementation evidence. Empty-data output remains coherent.
-Origin: ADR-0235
-Revised-by: ADR-0255
 Backing: test
 
 ### `invariant: plan-review-before-first-commit`
 
 The report-only plan reviewer reads an explicit newly written plan path from a selected working-tree snapshot before its first commit. Mechanical corrections leave no durable ledger; substantive reasoned or user-decided findings and dispositions appear in Notes, the single verify-pass bound remains, and one settled initial plan commit follows. Later substantive corrections remain separate gated commits.
-Origin: ADR-0255
 Backing: test
 
 ### `invariant: closed-workflow-profiles`
 
 Core and Full are closed governance footprints of one workflow. Core includes the complete operational workflow without unavailable focused-authority commands; Full adds ADR, plan, current-state authority reads, and audit capabilities. Both footprints use the same correctness, autonomy, maintainability, protected-contract, clean-integration, and implementation review-quality bar.
-Origin: ADR-0278
-Revised-by: ADR-0292, ADR-0320
 Backing: test

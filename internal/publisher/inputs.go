@@ -48,7 +48,7 @@ func deriveAuthoritySemantics(p renderInputs) (adr.Corpus, topic.Corpus, error) 
 	if err != nil {
 		return adr.Corpus{}, topic.Corpus{}, err
 	}
-	topics, err = topic.LoadCorpusFromReader(p.read, p.cfg, corpus)
+	topics, err = topic.LoadCorpusFromReader(p.read, p.cfg)
 	if err != nil {
 		return adr.Corpus{}, topic.Corpus{}, err
 	}

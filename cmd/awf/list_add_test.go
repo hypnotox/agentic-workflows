@@ -46,9 +46,6 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 		lockAfterDomain := mustReadCLIFile(t, filepath.Join(root, ".awf", "awf.lock"))
 		pitfallsBefore := mustReadCLIFile(t, filepath.Join(root, "docs", "pitfalls.md"))
 
-		if err := runNew(ctx, root, "adr", []string{"Dispatch", "ADR"}, io.Discard); err != nil {
-			t.Fatalf("dispatch adr: %v", err)
-		}
 		if err := runNew(ctx, root, "plan", []string{"Dispatch", "Plan"}, io.Discard); err != nil {
 			t.Fatalf("dispatch plan: %v", err)
 		}
@@ -60,7 +57,6 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 		}
 
 		for _, pattern := range []string{
-			filepath.Join(root, "docs", "decisions", "*-dispatch-adr.md"),
 			filepath.Join(root, "docs", "plans", "*-dispatch-plan.md"),
 			filepath.Join(root, ".awf", "domains", "parts", "payments", "current-state.md"),
 			filepath.Join(root, ".awf", "topics", "metadata", "payments", "dispatch-topic.yaml"),

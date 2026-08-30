@@ -1,113 +1,84 @@
-These packages read git history, build immutable tree snapshots, and audit workflow conformance over commit ranges. From schema generation 31, audit replays the shared cleaned-message authorization parser and exact incoming-parent qualification for committed merges, while pre-epoch merges and non-merges remain outside that replay. The claims below capture the current audit and snapshot contracts.
+These packages read git history, build immutable tree snapshots, and audit retained repository conventions over commit ranges. The claims below capture the current audit and snapshot contracts.
 
 ## Claims
 
 ### `invariant: audit-advisories-always-run`
 
 The plain-punctuation and uncommitted-changes rules always evaluate; plain-punctuation emits Warning findings only for rising punctuation-restraint violations, and uncommitted-changes emits an Error.
-Origin: ADR-0253
-Revised-by: ADR-0256, ADR-0290
 Backing: test
 
 ### `invariant: audit-thresholds-fixed`
 
 Audit fixes the Conventional Commits subject limit at 72, the plan diff threshold at 400, the accepted type set at build, chore, ci, docs, feat, fix, perf, refactor, revert, style, and test, and the dependency-manifest set at the nineteen built-in language-agnostic globs.
-Origin: ADR-0253
 Backing: test
 
 ### `invariant: audit-history-operation-owned`
 
-One `awf audit` invocation walks its requested commit range exactly once, feeds each rich commit through audit-owned incremental rule accumulators, and retains only grouped findings and compact graph metadata after the visitor returns. Deterministic interleaved transition and stale-merge replay shares alias-aware revision entries and cached load errors; each required revision outcome derives at most once, source evidence and parsed universes are released after their final scheduled consumers, and logical heavy-state high-water is bounded by the live unique dependency frontier. No cache survives the invocation or lives on Project.
-Origin: ADR-0221
-Revised-by: ADR-0238
-Backing: test
+One `awf audit` invocation walks its requested commit range exactly once, feeds each commit through audit-owned rule accumulators, and retains only findings and compact graph metadata after the visitor returns. No cache survives the invocation or lives on Project.
+Backing: unbacked
+Verify: Inspect `internal/audit` operation construction and range walking to confirm one invocation owns all accumulators and caches and that no state is stored on Project or package globals.
 
 ### `invariant: audit-history-policy-projection`
 
-Historical transition and stale-merge replay derive only committed configuration and schema boundaries, ADR records and source bytes, and topic definitions and claims. Marker indexes, test-glob backing, coverage paths, and domain ownership sidecars stay owned by repository and staged checks; malformed bytes exclusive to those omitted projections do not create historical findings or failures. An in-range revision proven not to change this authority reuses its first-parent state, with merge relevance derived separately from first-parent paths and ambiguous evidence forcing a reload.
-Origin: ADR-0221
+Historical audit decoding reads only committed configuration, schema boundaries, decision records, and source bytes needed by retained audit rules. Marker indexes, test-glob backing, coverage paths, and domain ownership sidecars stay owned by repository and staged checks.
 Backing: test
 
 ### `invariant: audit-cancellation-propagates`
 
-When range collection, committed evidence, revision derivation, transition replay, stale-merge replay, or the live cleanliness read returns context cancellation or deadline expiry, `awf audit` aborts and preserves that error identity. It never converts context termination into a finding, retries the canceled derivation, or continues to later audit work; non-context transition load failures remain advisory.
-Origin: ADR-0221
-Backing: test
+When range collection, committed evidence, historical decoding, or the live cleanliness read returns context cancellation or deadline expiry, `awf audit` aborts and preserves that error identity. It never converts context termination into a finding or continues to later audit work.
+Backing: unbacked
+Verify: Inject cancellation at each audit-owned range, historical-read, and live-cleanliness seam and confirm the returned error matches the injected context error and later seams are not called.
 
 ### `invariant: sparse-snapshot-explicit-selection`
 
 Historical audit enumerates committed path and mode metadata without reading blob contents, then reads only its exact authority selection into an immutable snapshot Selection that is type-distinct from a complete snapshot Tree. Selected reads fail on an unsafe, duplicate, missing, outside-project, or unsupported requested path; full-tree consumers cannot treat an unselected path as repository absence, and current and staged checks retain complete snapshots.
-Origin: ADR-0221
 Backing: test
 
 ### `invariant: audit-adr-status-cochange`
 
 awf audit raises an Error finding when a range commit adds a current-state-v1 ADR or changes its status without also changing `docs/decisions/INDEX.md`, and raises none when the same change co-changes the index. Legacy-format ADR transitions are outside this rule.
-Origin: ADR-0017
-Revised-by: ADR-0137
 Backing: test
 
 ### `invariant: audit-conventional-commits`
 
 awf audit raises an Error finding for a range commit whose subject is not a well-formed Conventional Commit, carries a type outside the fixed Conventional Commits set or a scope outside the configured scope list, or exceeds the fixed 72-character subject limit; a conforming commit raises none.
-Origin: ADR-0017
-Revised-by: ADR-0253
 Backing: test
 
 ### `invariant: audit-dependency-warn`
 
 awf audit raises a Warning finding, never an Error, when a dependency-manifest file changed somewhere on the branch but no ADR file changed on the branch.
-Origin: ADR-0017
 Backing: test
 
 ### `invariant: audit-empty-range-clean`
 
 awf audit over a branch with no commits beyond its base yields zero findings.
-Origin: ADR-0017
 Backing: test
 
 ### `invariant: audit-plain-punctuation`
 
 awf audit compares old and new text for each non-generated Markdown file under the documentation root and emits a Warning when the en-dash count or total em-dash excess rises. Total em-dash excess sums each blank-line-delimited paragraph's count beyond two. The finding names the file and risen measures in sorted order; permitted ellipses, curly quotes, and restrained em dashes are silent, as are unchanged or falling measures, generated paths, and paths outside the documentation root.
-Origin: ADR-0117
-Revised-by: ADR-0253, ADR-0290
 Backing: test
 
 ### `invariant: audit-plan-threshold-warn`
 
 awf audit raises a Warning finding when the branch-aggregate count of non-generated changed lines exceeds the fixed threshold of 400 but no file under the plans directory was touched.
-Origin: ADR-0017
-Revised-by: ADR-0253
 Backing: test
 
 ### `invariant: audit-uncommitted-changes`
 
 When the working tree is dirty, audit always emits a single Error finding whose detail tallies the tracked-change and untracked-file counts.
-Origin: ADR-0025
-Revised-by: ADR-0253
 Backing: test
 
 ### `invariant: commit-gate-shared-rule`
 
-The Conventional Commits subject check is defined once as a single shared function. Both the audit range loop and the check staged commit command call that function, so neither re-implements the subject regex, the allowed type and scope lists, or the subject-length limit, and a subject the audit rejects is rejected identically by the commit gate.
-Origin: ADR-0036
-Revised-by: ADR-0159, ADR-0210
+The Conventional Commits subject check is defined once in the commit-message package. Audit and the command-local commit hook call that shared policy rather than reimplementing its grammar.
 Backing: test
 
 ### `invariant: repo-audit-error-exit`
 
 The repo-local audit tool exits non-zero only when it reports at least one error finding. An infrastructure failure such as a failing merge-base lookup produces an error finding and exit code 1, while warning-only and clean runs exit zero.
-Origin: ADR-0073
-Backing: test
-
-### `invariant: stale-merge-trailer-replay`
-
-For a merge whose result tree is at or after the intrinsic-format schema generation, `awf audit` derives the merge-time current authoring format from the shared activation registry and replays the shared cleaned-message parser and incoming-parent qualification against the result, first parent, and every incoming parent. It reports an Error for malformed reserved trailers or an older-format import lacking its complete authorization pair, while pre-epoch merges, historical non-merges, valid or redundant pairs, and true fast-forwards produce no stale-merge authorization finding.
-Origin: ADR-0206
 Backing: test
 
 ### `rule: managed-history-decode-horizon`
 
 Audit owns read-only decoding of managed schemas 3 through its explicit horizon 47, including represented pre-31 lock routing fields. A pre-.awf revision is empty; malformed, partial, or out-of-horizon authority refuses with recovery direction and is never promoted to live authority.
-Origin: ADR-0297
-Revised-by: ADR-0303, ADR-0320

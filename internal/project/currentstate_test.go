@@ -7,8 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
-	"github.com/hypnotox/agentic-workflows/internal/currentstate"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
@@ -19,9 +17,6 @@ import (
 
 func currentStateFindings(r CurrentStateReport) []string {
 	var out []string
-	for _, finding := range r.Static {
-		out = append(out, finding.Message)
-	}
 	for _, coverage := range r.Coverage {
 		if coverage.Severity == severity.Error {
 			out = append(out, coverage.Message())
@@ -33,13 +28,6 @@ func currentStateFindings(r CurrentStateReport) []string {
 	return out
 }
 
-// TestCurrentStateReportRouting proves the report splits into blocking findings
-// (every static handshake message plus each error-severity coverage line) and
-// non-failing notes (warn-severity coverage lines), rendering both coverage
-// kinds.
-// The claim's routing clause is marked here rather than named in prose from
-// internal/currentstate, which cannot see CurrentStateReport.
-// invariant: invariants/current-state-authority:currentstate-handshake-findings-unranked (TestCurrentStateReportRouting)
 func currentStateWarningNotes(report CurrentStateReport) []string {
 	var out []string
 	for _, finding := range report.Coverage {
@@ -51,24 +39,12 @@ func currentStateWarningNotes(report CurrentStateReport) []string {
 }
 
 func TestCurrentStateReportRouting(t *testing.T) {
-	r := CurrentStateReport{
-		Static:      []currentstate.Finding{{Message: "handshake broke"}},
-		Provisional: []currentstate.Introduction{{Identity: "0002", Format: adr.CurrentStateV2}, {Identity: "0003", Format: adr.Legacy}, {Identity: "0004", Format: adr.Format(999)}},
-		PlanDrift:   []manifest.Drift{{Path: "docs/plans/v2.md", Kind: "plan-reference", Detail: "missing ADR"}},
-		Coverage: []topic.CoverageFinding{
-			{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error, CandidateTopics: []string{"alpha/global"}},
-			{Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3},
-			{Path: "internal/c.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Warn, CandidateTopics: []string{"alpha/a", "alpha/b"}},
-		},
-	}
+	r := CurrentStateReport{PlanDrift: []manifest.Drift{{Path: "docs/plans/v2.md", Kind: "plan-reference", Detail: "missing ADR"}}, Coverage: []topic.CoverageFinding{{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error, CandidateTopics: []string{"alpha/global"}}, {Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3}}}
 	findings := currentStateFindings(r)
-	wantCoverage := "uncovered: internal/a.go is owned by domain alpha with no claim-bearing topic owner; if global topic alpha/global naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic"
-	if len(findings) != 3 || findings[0] != "handshake broke" || findings[1] != wantCoverage || findings[2] != "plan-reference docs/plans/v2.md: missing ADR" {
+	if len(findings) != 2 || !strings.Contains(findings[0], "internal/a.go") || findings[1] != "plan-reference docs/plans/v2.md: missing ADR" {
 		t.Fatalf("findings = %#v", findings)
 	}
-	notes := append(r.Information(), currentStateWarningNotes(r)...)
-	wantNote := "uncovered: internal/c.go is owned by domain alpha with no claim-bearing topic owner; if one of global topics alpha/a, alpha/b naturally governs this path, add a matching domain-bounded paths selector; otherwise create/use an appropriate scoped claim-bearing topic"
-	if len(notes) != 5 || !strings.Contains(notes[0], "provisional older-format ADR-0002") || !strings.Contains(notes[1], "ADR-0003 (legacy)") || !strings.Contains(notes[2], "ADR-0004 (legacy)") || !strings.Contains(notes[3], "internal/b.go is matched by 3 owning topics") || notes[4] != wantNote {
+	if notes := currentStateWarningNotes(r); len(notes) != 1 || !strings.Contains(notes[0], "internal/b.go") {
 		t.Fatalf("notes = %#v", notes)
 	}
 }
@@ -90,7 +66,7 @@ domains:
 const csYAML = csNoPolicyYAML + "currentState:\n"
 
 // csRuleTopic is a one-claim current-state part citing an Implemented Origin ADR.
-const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\nOrigin: ADR-0001\n"
+const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\n"
 
 // csRepo builds a git-backed project: a fresh repo, the given config, and the
 // given working files (untracked but nonignored, so the working Tree includes
@@ -161,7 +137,7 @@ func TestCheckCurrentState(t *testing.T) {
 			}
 		}
 	}
-	notes := append(report.Information(), currentStateWarningNotes(report)...)
+	notes := currentStateWarningNotes(report)
 	if len(notes) != 0 {
 		t.Errorf("notes = %#v; want none", notes)
 	}

@@ -109,7 +109,6 @@ func NewPendingFileForTest(dir, title string) (string, error) {
 	return filepath.Join(dir, filepath.FromSlash(path)), nil
 }
 
-// invariant: adr-system/adr-lifecycle:adr-new-no-overwrite (TestScaffoldRecordConfinedRefusesParentSwap)
 func TestScaffoldRecordConfinedRefusesParentSwap(t *testing.T) {
 	root := t.TempDir()
 	decisions := filepath.Join(root, "docs", "decisions")

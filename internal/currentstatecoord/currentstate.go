@@ -9,7 +9,6 @@ import (
 	"slices"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -25,44 +24,56 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-// CurrentStateReport is the routed outcome of a current-state check over one
-// snapshot: the static ADR-to-claim handshake findings (all blocking), staged
-// older-format introductions awaiting commit-message evidence, and the
-// coverage/fan-out findings, which carry ranks fixed in code rather than
-// configured - coverage at error, fan-out at warn (ADR-0183). Findings and Notes
-// split the report into blocking lines and non-failing note lines so the command
-// layer never re-derives the routing.
+// CurrentStateReport is the retained current-state outcome. Coverage and fan-out
+// are the only live current-state findings; plan fields remain while staged plan
+// artifact checks still use this coordinator.
 type CurrentStateReport struct {
-	Static      []currentstate.Finding
-	Provisional []currentstate.Introduction
-	Coverage    []topic.CoverageFinding
-	PlanDrift   []manifest.Drift
-	PlanNotes   []string
-	// PlanResult retains PlanChecker classification while PlanDrift and
-	// PlanNotes remain compatibility projections.
-	PlanResult checkresult.Result
-	// CurrentResult and PlanArtifactResult retain disjoint typed partitions for
-	// command presentation. OwnerResult is their immutable aggregate. Legacy
-	// slices remain compatibility projections.
+	Coverage           []topic.CoverageFinding
+	PlanDrift          []manifest.Drift
+	PlanNotes          []string
+	PlanResult         checkresult.Result
 	CurrentResult      checkresult.Result
 	PlanArtifactResult checkresult.Result
 	OwnerResult        checkresult.Result
 }
 
-// Information returns unranked provisional introductions. They are not
-// findings because the staged boundary lacks definitive merge-parent and
-// message evidence; every independently derivable finding remains blocking.
-func (r CurrentStateReport) Information() []string {
-	out := make([]string, 0, len(r.Provisional))
-	for _, introduction := range r.Provisional {
-		marker := adr.FormatMarker(introduction.Format)
-		if marker == "" {
-			marker = "legacy"
-		}
-		out = append(out, fmt.Sprintf("provisional older-format ADR-%s (%s) requires commit-msg qualification", introduction.Identity, marker))
+// Result returns the coverage/fan-out and residual plan-artifact result.
+func (r CurrentStateReport) Result() checkresult.Result { return r.OwnerResult }
+
+// classifyCurrentState preserves the report partitions required by the check
+// presenter. The current-state partition derives only from coverage and fan-out.
+func classifyCurrentState(report CurrentStateReport) (CurrentStateReport, error) {
+	findings := make([]checkresult.Finding, 0, len(report.Coverage))
+	for _, coverage := range report.Coverage {
+		findings = append(findings, checkresult.Finding{Rank: coverage.Severity, Property: propertyCurrentCoverage, Evidence: checkresult.Evidence{Kind: "current-state", Detail: coverage.Message()}})
 	}
-	return out
+	current, err := checkresult.New(findings, nil)
+	if err != nil {
+		return CurrentStateReport{}, err
+	}
+	planFindings := make([]checkresult.Finding, 0, len(report.PlanDrift)+len(report.PlanResult.Findings()))
+	for _, drift := range report.PlanDrift {
+		planFindings = append(planFindings, checkresult.Finding{Rank: severity.Error, Property: propertyPlanArtifact, Evidence: checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: fmt.Sprintf("%s %s: %s", drift.Kind, drift.Path, drift.Detail)}})
+	}
+	planFindings = append(planFindings, report.PlanResult.Findings()...)
+	planArtifact, err := checkresult.New(planFindings, report.PlanResult.Information())
+	if err != nil {
+		return CurrentStateReport{}, err
+	}
+	all := append(current.Findings(), planArtifact.Findings()...)
+	info := append(current.Information(), planArtifact.Information()...)
+	owner, err := checkresult.New(all, info)
+	if err != nil {
+		return CurrentStateReport{}, err
+	}
+	report.CurrentResult, report.PlanArtifactResult, report.OwnerResult = current, planArtifact, owner
+	return report, nil
 }
+
+const (
+	propertyCurrentCoverage checkresult.Property = "current-state-coverage"
+	propertyPlanArtifact    checkresult.Property = "plan-artifact-validity"
+)
 
 // workingState is one loaded working-tree current-state universe: the parsed
 // ADR/topic view, the Tree it came from, and the lock.
@@ -109,9 +120,7 @@ func CheckWorking(root string, repo *awfgit.Repo, ctx context.Context) (CurrentS
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-	report := CurrentStateReport{
-		Static: currentstate.Check(ws.Loaded.ADRs, ws.Loaded.Topics.All()),
-	}
+	report := CurrentStateReport{}
 	report.Coverage = topic.EvaluateCoverage(ws.Loaded.Topics, eligiblePaths(ws.Tree, ws.Lock), coveragePolicy(ws.Cfg.CurrentState))
 	return classifyCurrentState(report)
 }
@@ -152,36 +161,12 @@ func CheckStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentSt
 	if err := validateLockTransition(beforeTree, afterTree, beforeLock, afterLock); err != nil {
 		return CurrentStateReport{}, err
 	}
-	before, _, err := loadTreeCurrentState(root, beforeTree, beforeLock)
-	if err != nil {
-		return CurrentStateReport{}, err
-	}
+	// The passive ADR corpus is loaded only because residual plan checks use it.
 	after, afterCfg, err := loadTreeCurrentState(root, afterTree, afterLock)
 	if err != nil {
 		return CurrentStateReport{}, err
 	}
-
-	// A merge integrates a branch whose commits were each validated as they were
-	// authored, so the pair carries several steps at once and takes the aggregate
-	// contract (ADR-0182). Provenance decides this, not the shape of the diff.
-	// A checkout whose control root cannot be safely resolved, a symlinked .git
-	// being the reachable case, is treated as not merging rather than failing the
-	// check. The seam's index read follows the symlink and succeeds, so propagating
-	// the refusal here would break a staged check that worked before merge
-	// detection existed. Falling back selects the stricter authored-commit
-	// contract, which can refuse a legitimate merge but can never wrongly accept.
-	merging, err := awfgit.MergeInProgress(root)
-	if err != nil {
-		merging = false
-	}
-	mode := currentstate.AuthoredCommit
-	if merging {
-		mode = currentstate.MergeAggregate
-	}
-	report := CurrentStateReport{
-		Static:      currentstate.CheckPair(before.Universe(), after.Universe(), mode),
-		Provisional: currentstate.OlderIntroductions(before.Universe(), after.Universe(), adr.CurrentFormat()),
-	}
+	report := CurrentStateReport{}
 	report.Coverage = topic.EvaluateCoverage(after.Topics, eligiblePaths(afterTree, afterLock), coveragePolicy(afterCfg.CurrentState))
 	beforePlans, beforePlanDrift, err := plansFromTree(beforeTree, config.DocsDir)
 	if err != nil {
@@ -211,83 +196,7 @@ func CheckStaged(root string, repo *awfgit.Repo, ctx context.Context) (CurrentSt
 	if err != nil { // coverage-ignore: staged semantic owners supplied validated nonempty evidence
 		return CurrentStateReport{}, err
 	}
-	appendStagedPlanResult(&classified, planResult)
 	return classified, nil
-}
-
-const (
-	propertyCurrentState    checkresult.Property = "current-state-authority"
-	propertyCurrentCoverage checkresult.Property = "current-state-coverage"
-	propertyPlanArtifact    checkresult.Property = "plan-artifact-validity"
-)
-
-// Result returns the completed owner-classified result captured by the
-// current-state coordinator. Compatibility slices cannot change it afterward.
-func (r CurrentStateReport) Result() checkresult.Result {
-	return r.OwnerResult
-}
-
-// classifyCurrentState stores the compatibility projection produced by the
-// current-state coordinator's narrow result adapter.
-func classifyCurrentState(report CurrentStateReport) (CurrentStateReport, error) {
-	current, planArtifact, result, err := currentStateResult(report)
-	if err != nil {
-		return CurrentStateReport{}, err
-	}
-	report.CurrentResult = current
-	report.PlanArtifactResult = planArtifact
-	report.OwnerResult = result
-	return report, nil
-}
-
-func currentStateResult(report CurrentStateReport) (checkresult.Result, checkresult.Result, checkresult.Result, error) {
-	var currentFindings []checkresult.Finding
-	for _, finding := range report.Static {
-		currentFindings = append(currentFindings, checkresult.Finding{Rank: severity.Error, Property: propertyCurrentState, Evidence: checkresult.Evidence{Kind: "current-state", Detail: finding.Message}})
-	}
-	for _, coverage := range report.Coverage {
-		currentFindings = append(currentFindings, checkresult.Finding{Rank: coverage.Severity, Property: propertyCurrentCoverage, Evidence: checkresult.Evidence{Kind: "current-state", Detail: coverage.Message()}})
-	}
-	var currentInformation []checkresult.Information
-	for _, message := range report.Information() {
-		currentInformation = append(currentInformation, checkresult.Information{Evidence: checkresult.Evidence{Kind: "current-state", Detail: message}})
-	}
-	current, err := checkresult.New(currentFindings, currentInformation)
-	if err != nil {
-		return checkresult.Result{}, checkresult.Result{}, checkresult.Result{}, err
-	}
-
-	var planFindings []checkresult.Finding
-	for _, drift := range report.PlanDrift {
-		planFindings = append(planFindings, checkresult.Finding{Rank: severity.Error, Property: propertyPlanArtifact, Evidence: checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: fmt.Sprintf("%s %s: %s", drift.Kind, drift.Path, drift.Detail)}})
-	}
-	for _, finding := range report.PlanResult.Findings() {
-		if finding.Rank == severity.Error {
-			finding.Evidence.Detail = fmt.Sprintf("%s %s: %s", finding.Evidence.Kind, finding.Evidence.Path, finding.Evidence.Detail)
-		}
-		planFindings = append(planFindings, finding)
-	}
-	planArtifact, err := checkresult.New(planFindings, report.PlanResult.Information())
-	if err != nil { // coverage-ignore: partitions copy only validated owner results and fixed nonempty parser evidence
-		return checkresult.Result{}, checkresult.Result{}, checkresult.Result{}, err
-	}
-	findings := append(current.Findings(), planArtifact.Findings()...)
-	information := append(current.Information(), planArtifact.Information()...)
-	result, err := checkresult.New(findings, information)
-	if err != nil { // coverage-ignore: aggregation copies only validated immutable partitions
-		return checkresult.Result{}, checkresult.Result{}, checkresult.Result{}, err
-	}
-	return current, planArtifact, result, nil
-}
-
-func appendStagedPlanResult(report *CurrentStateReport, result checkresult.Result) {
-	for _, finding := range result.Findings() {
-		if finding.Rank == severity.Error {
-			report.PlanDrift = append(report.PlanDrift, manifest.Drift{Kind: finding.Evidence.Kind, Path: finding.Evidence.Path, Detail: finding.Evidence.Detail})
-		} else {
-			report.PlanNotes = append(report.PlanNotes, finding.Evidence.Detail)
-		}
-	}
 }
 
 // plansFromTree parses only regular plan files from one immutable universe.

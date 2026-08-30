@@ -140,10 +140,9 @@ Punctuation findings are advisory Warnings with zero exit.
 | `awf resolve topic <path>...` | Resolve lexical paths to current-state authority |
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over a commit range (advisory) |
 | `awf effort <subcommand>` | Manage slugged repository-local efforts |
-| `awf adr <subcommand>` | ADR lifecycle operations |
 | `awf list [<kind>]` | Show the catalog and configured domain inventory |
 | `awf config [<key-or-var>]` | Describe config keys and vars (live state inside a project) |
-| `awf new <kind> <args>` | Scaffold a new artifact: kind in {adr, plan, topic, domain, pitfall, doc} |
+| `awf new <kind> <args>` | Scaffold a new artifact: kind in {plan, topic, domain, pitfall, doc} |
 | `awf remove domain <name>` | Remove a configured domain |
 | `awf upgrade [--recover]` | Migrate the .awf/ config tree or recover an interrupted upgrade |
 | `awf uninstall` | Remove awf's generated files (keeps .awf/) |
@@ -151,7 +150,7 @@ Punctuation findings are advisory Warnings with zero exit.
 | `awf version` | Print the awf version |
 <!-- awf:clispec-commands:end -->
 
-Use `awf read topic <domain>/<topic>[:<claim>]` and `awf read adr <identity>` for focused authority. Use `awf resolve topic <path>...` for lexical path ownership and `awf resolve topic --uncovered` for the whole-repository unowned-path census. A path with no authority reports `none` successfully; `awf check` remains the enforcement oracle.
+Use `awf read topic <domain>/<topic>[:<claim>]` for focused authority. Use `awf resolve topic <path>...` for lexical path ownership and `awf resolve topic --uncovered` for the whole-repository unowned-path census. A path with no authority reports `none` successfully; `awf check` remains the enforcement oracle.
 
 Run `awf help` for complete usage. See
 [Working with awf](docs/working-with-awf.md) for configuration, overrides, upgrades,

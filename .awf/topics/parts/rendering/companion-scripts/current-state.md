@@ -5,69 +5,54 @@ Rendered companion script contracts: the bootstrap and upgrade scripts, the comm
 ### `invariant: bootstrap-checksum`
 
 The rendered `.awf/bootstrap.sh` performs a SHA-256 checksum verification of the downloaded archive before it installs the binary, so the download is always integrity-checked ahead of use.
-Origin: ADR-0148
-Revised-by: ADR-0267
 Backing: test
 
 ### `invariant: bootstrap-env-override`
 
 The rendered bootstrap script's version assignment is the default-expansion form AWF_VERSION set to the pattern that prefers a pre-set AWF_VERSION and otherwise expands to the rendering binary's version, so an environment override wins and, absent one, the script resolves exactly the version of the binary that rendered it.
-Origin: ADR-0148
 Backing: test
 
 ### `invariant: bootstrap-local-first`
 
 The rendered bootstrap installer probes for an awf binary already on PATH before downloading anything. When a local binary reports exactly the pinned target version, the script uses it and exits before reaching any download step.
-Origin: ADR-0148
 Backing: test
 
 ### `invariant: bootstrap-stdout-path-only`
 
 The rendered bootstrap installer writes only the resolved binary path to standard output. Every diagnostic line is a comment or is redirected to standard error, so nothing but the binary path reaches standard output.
-Origin: ADR-0148
 Backing: test
 
 ### `invariant: hook-payloads-fallback-safe`
 
 With checkCmd, gateCmdFull, and commitGateCmd all unset, every rendered hook payload is a runnable script whose awf-verb commands resolve through the always-rendered `./awf` wrapper, carrying no inline resolution shim and no unresolved-value token; the pre-commit payload consumes only the configured aggregate check and required project gate.
-Origin: ADR-0148
-Revised-by: ADR-0156, ADR-0158, ADR-0210, ADR-0253
 Backing: test
 
 ### `invariant: runner-pure-forwarder`
 
 The always-rendered wrapper at the repo-root path `awf` contains no per-verb dispatch and no in-place-editable region: it resolves one awf invocation and execs it with all arguments forwarded verbatim.
-Origin: ADR-0156
-Revised-by: ADR-0253
 Backing: test
 
 ### `invariant: runner-render-publication-safe`
 
 The runner template renders leak-free under empty data, producing no unresolved token and no stray section or marker residue, like every other awf template.
-Origin: ADR-0148
 Backing: test
 
 ### `invariant: runner-resolution-pinned-first`
 
 The standard rendered wrapper resolves the bootstrap-pinned binary when `.awf/bootstrap.sh` exists and falls back to PATH `awf` otherwise. Repository-specific execution semantics replace the `runner-body` convention part; no invocation var participates in resolution.
-Origin: ADR-0156
-Revised-by: ADR-0271
 Backing: test
 
 ### `invariant: runner-wrapper-rendered`
 
 A full render emits exactly one wrapper file at the repo-root path `awf`.
-Origin: ADR-0253
 Backing: test
 
 ### `invariant: upgrade-delegates-fetch`
 
 The rendered `.awf/upgrade.sh` obtains the binary only by invoking `.awf/bootstrap.sh` with AWF_VERSION set; it performs no release-asset download and no checksum of its own, and its single direct network call is the latest-tag redirect probe against releases/latest.
-Origin: ADR-0148
 Backing: test
 
 ### `invariant: upgrade-exec-final`
 
 The rendered `.awf/upgrade.sh` hands off with exec of the fetched binary running upgrade as its final statement, so the shell process is replaced before `awf upgrade` re-renders the script in place.
-Origin: ADR-0148
 Backing: test

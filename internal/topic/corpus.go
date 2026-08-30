@@ -5,8 +5,6 @@ import (
 	"path/filepath"
 	"slices"
 	"strings"
-
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 )
 
 type Corpus struct {
@@ -45,12 +43,11 @@ func recordMeta(metadata map[string]metaEntry, id TopicID, entry metaEntry) erro
 }
 
 // assembleCorpus builds a Corpus without its marker index from already-read
-// topic metadata and parts, the configured domains, their ownership globs, and
-// the ADR corpus for provenance validation. It performs identity pairing,
-// domain-ownership, claim-uniqueness, Implemented-provenance, and reference-graph
-// validation, so the filesystem and snapshot loaders share one authority over
-// every rule that does not depend on how the bytes were read.
-func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, domains []string, domainPaths map[string][]string, adrs adr.Corpus) (Corpus, error) {
+// topic metadata and parts, the configured domains, and their ownership globs.
+// It performs identity pairing, domain-ownership, claim-uniqueness, and
+// reference-graph validation, so the filesystem and snapshot loaders share one
+// authority over every rule that does not depend on how the bytes were read.
+func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, domains []string, domainPaths map[string][]string) (Corpus, error) {
 	ids := make([]string, 0, len(metadata)+len(parts))
 	seen := map[string]bool{}
 	for id := range metadata {
@@ -98,33 +95,6 @@ func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, d
 				return Corpus{}, fmt.Errorf("duplicate full claim ID %q", cl.ID)
 			}
 			c.byClaim[cl.ID] = cl
-			provenance := append([]string{cl.Origin}, cl.RevisedBy...)
-			for k, num := range provenance {
-				// Provenance resolves by identity: the grammar accepts a pending
-				// ADR-<slug> reference, so a number-keyed lookup would refuse to
-				// load any corpus whose claims cite one.
-				a, ok := adrs.ByIdentity(num)
-				if !ok {
-					return Corpus{}, fmt.Errorf("claim %s cites missing ADR-%s", cl.ID, num)
-				}
-				if !a.IsGoverned() {
-					if !a.IsImplemented() {
-						return Corpus{}, fmt.Errorf("claim %s cites ADR-%s with status %q; legacy provenance must be Implemented", cl.ID, num, a.Status)
-					}
-					continue
-				}
-				verb := adr.OpUpdate
-				if k == 0 {
-					verb = adr.OpAdd
-				}
-				progress, _, err := adrs.OperationProgress(num)
-				if err != nil {
-					return Corpus{}, fmt.Errorf("claim %s cites invalid ADR-%s application: %w", cl.ID, num, err)
-				}
-				if !hasAppliedOperation(progress, verb, cl.ID) {
-					return Corpus{}, fmt.Errorf("claim %s cites ADR-%s without an applied %s operation", cl.ID, num, verb)
-				}
-			}
 		}
 	}
 	for _, t := range c.all {
@@ -148,15 +118,6 @@ func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, d
 		slices.Sort(c.outgoing[k])
 	}
 	return c, nil
-}
-
-func hasAppliedOperation(progress adr.OperationProgress, verb adr.OpVerb, id string) bool {
-	for _, applied := range progress.Applied {
-		if applied.Operation.Verb == verb && applied.Operation.ID == id {
-			return true
-		}
-	}
-	return false
 }
 
 // Clone returns a fully independent semantic corpus projection.
@@ -196,7 +157,6 @@ func cloneTopic(value Topic) Topic {
 	value.Metadata.Paths = slices.Clone(value.Metadata.Paths)
 	value.Claims = slices.Clone(value.Claims)
 	for i := range value.Claims {
-		value.Claims[i].RevisedBy = slices.Clone(value.Claims[i].RevisedBy)
 		value.Claims[i].References = slices.Clone(value.Claims[i].References)
 	}
 	return value
@@ -222,7 +182,6 @@ func (c Corpus) ByClaimID(id string) (Claim, bool) {
 		return Claim{}, false
 	}
 	value := *cl
-	value.RevisedBy = slices.Clone(value.RevisedBy)
 	value.References = slices.Clone(value.References)
 	return value, true
 }

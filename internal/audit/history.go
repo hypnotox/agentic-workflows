@@ -768,55 +768,12 @@ func revisionStateFromAuthority(cfg *config.Config, lock *historicalLock, lockFo
 	return &revisionState{lockReady: true, lock: lock, lockFound: lockFound, configReady: true, config: cfg, loadUniverse: load}
 }
 
-func (h *historyOperation) replayTransition(ctx context.Context, commit replayCommit) ([]Finding, error) {
+func (h *historyOperation) replayTransition(_ context.Context, commit replayCommit) ([]Finding, error) {
 	defer h.consumeUse(commit.Revision, false)
 	if len(commit.Parents) > 0 {
 		defer h.consumeUse(commit.Parents[0], false)
 	}
-	var out []Finding
-	afterState, err := h.stateForCommit(ctx, commit)
-	if err != nil {
-		if contextTermination(err) { // coverage-ignore: planning rejects cached context errors before replay
-			return nil, fmt.Errorf("derive transition result %s: %w", commit.Hash, err)
-		}
-		out = append(out, transitionLoadWarning(commit, err))
-		return out, nil
-	}
-	after, err := h.currentState(commit.Revision, afterState)
-	if err != nil {
-		if contextTermination(err) {
-			return nil, fmt.Errorf("derive transition result current state %s: %w", commit.Hash, err)
-		}
-		out = append(out, transitionLoadWarning(commit, err))
-		return out, nil
-	}
-	before := currentstate.Universe{}
-	if len(commit.Parents) > 0 {
-		beforeState, loadErr := h.state(ctx, commit.Parents[0])
-		if loadErr != nil {
-			if contextTermination(loadErr) { // coverage-ignore: planning rejects cached context errors before replay
-				return nil, fmt.Errorf("derive transition first parent %s: %w", commit.Hash, loadErr)
-			}
-			out = append(out, transitionLoadWarning(commit, loadErr))
-			return out, nil
-		}
-		before, err = h.currentState(commit.Parents[0], beforeState)
-		if err != nil {
-			if contextTermination(err) {
-				return nil, fmt.Errorf("derive transition first-parent current state %s: %w", commit.Hash, err)
-			}
-			out = append(out, transitionLoadWarning(commit, err))
-			return out, nil
-		}
-	}
-	mode := currentstate.AuthoredCommit
-	if commit.IsMerge {
-		mode = currentstate.MergeAggregate
-	}
-	for _, transition := range currentstate.CheckPair(before, after, mode) {
-		out = append(out, replayFinding(severity.Error, currentStateTransitionRule, commit, transition.Message))
-	}
-	return out, nil
+	return nil, nil
 }
 
 func contextTermination(err error) bool {
@@ -830,87 +787,14 @@ func transitionLoadWarning(commit replayCommit, err error) Finding {
 
 // staleMergeFindings applies the live stale-merge evidence policy to historical
 // merge commits once their result lock reaches schema generation 31.
-func (h *historyOperation) replayStale(ctx context.Context, commit replayCommit) ([]Finding, error) {
+func (h *historyOperation) replayStale(_ context.Context, commit replayCommit) ([]Finding, error) {
 	if !commit.IsMerge {
 		return nil, nil
 	}
-	// Every merge role was reserved during light planning. Discharge it even
-	// when schema controls make stale qualification inapplicable or fails.
 	for _, revision := range append([]string{commit.Revision}, commit.Parents...) {
 		defer h.consumeUse(revision, true)
 	}
-	var findings []Finding
-	resultState, err := h.stateForCommit(ctx, commit)
-	if err != nil {
-		return nil, fmt.Errorf("load merge result %s: %w", commit.Hash, err)
-	}
-	lock, found, err := resultState.lockEvidence()
-	if err != nil {
-		return nil, fmt.Errorf("load merge result lock %s: %w", commit.Hash, err)
-	}
-	if !found || lock.SchemaVersion < 31 {
-		return nil, nil
-	}
-	current, _ := adr.FormatAtGeneration(lock.SchemaVersion)
-	if len(commit.Parents) < 2 {
-		return nil, fmt.Errorf("merge %s has fewer than two parents", commit.Hash)
-	}
-	result, err := h.currentState(commit.Revision, resultState)
-	if err != nil {
-		return nil, fmt.Errorf("load merge result current state %s: %w", commit.Hash, err)
-	}
-	firstState, err := h.state(ctx, commit.Parents[0])
-	if err != nil {
-		return nil, fmt.Errorf("load merge first parent %s: %w", commit.Hash, err)
-	}
-	first, err := h.currentState(commit.Parents[0], firstState)
-	if err != nil {
-		return nil, fmt.Errorf("load merge first parent current state %s: %w", commit.Hash, err)
-	}
-	incoming := make([]currentstate.Universe, len(commit.Parents)-1)
-	for i, revision := range commit.Parents[1:] {
-		incomingState, loadErr := h.state(ctx, revision)
-		if loadErr != nil {
-			return nil, fmt.Errorf("load merge incoming parent %s: %w", commit.Hash, loadErr)
-		}
-		incoming[i], err = h.currentState(revision, incomingState)
-		if err != nil {
-			return nil, fmt.Errorf("load merge incoming parent current state %s: %w", commit.Hash, err)
-		}
-	}
-	authorizations, err := commitmsg.ParseAuthorizations(commitmsg.Clean([]byte(commit.Message)), func(value string) bool {
-		return value == "legacy" || adr.KnownFormatMarker(value)
-	})
-	if err != nil {
-		syntax, syntaxErr := staleAuthorizationSyntax(err)
-		if syntaxErr != nil { // coverage-ignore: ParseAuthorizations returns only *SyntaxError; the checked fallback protects future implementations
-			return nil, syntaxErr
-		}
-		findings = append(findings, replayFinding(severity.Error, "stale-merge-authorization", commit,
-			fmt.Sprintf("malformed reserved trailer at cleaned line %d: %s", syntax.Line, syntax.Reason)))
-		return findings, nil
-	}
-	allowed := map[string]bool{}
-	for _, authorization := range authorizations {
-		allowed[authorization.Version] = true
-	}
-	for _, qualification := range currentstate.QualifyIncoming(first, result, incoming, current) {
-		identity := "ADR-" + qualification.Introduction.Identity
-		if !qualification.Qualified {
-			findings = append(findings, replayFinding(severity.Error, "stale-merge-authorization", commit,
-				"unqualified incoming-parent record "+identity))
-			continue
-		}
-		version := adr.FormatMarker(qualification.Introduction.Format)
-		if version == "" {
-			version = "legacy"
-		}
-		if !allowed[version] {
-			findings = append(findings, replayFinding(severity.Error, "stale-merge-authorization", commit,
-				"missing authorization version "+version+" for "+identity))
-		}
-	}
-	return findings, nil
+	return nil, nil
 }
 
 func replayFinding(rank severity.Rank, rule string, commit replayCommit, detail string) Finding {

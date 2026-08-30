@@ -34,8 +34,6 @@ each independently executable and render through central `Steps` as `step 1: ...
 and so on, and a cause present exactly when the condition observes a failed call.
 When no axis moved, the steps address only the condition; when any axis moved, the steps
 address the residue before retrying.
-Origin: ADR-0199
-Revised-by: ADR-0234
 Backing: unbacked
 Verify: For each changed outcome site, check the category against the vocabulary, the condition's tense against observed state, each changed axis against what the operation could move, rendering through central Steps with independently executable numbered entries, and the remedy against the movement rule: condition-only steps when nothing moved, residue-first steps when anything did.
 ### `invariant: typed-outcome-for-caller-branching`
@@ -44,7 +42,6 @@ A cause a caller must branch on in new or deliberately converted code is a disti
 type or sentinel, exported when the branching caller sits outside the defining package,
 carrying `Unwrap` when it wraps a cause, and matched with `errors.Is` or `errors.As`;
 production control flow never branches on message substrings.
-Origin: ADR-0199
 Backing: unbacked
 Verify: For each changed branching site, confirm the branch tests identity through errors.Is or errors.As on a declared type or sentinel, and that no substring match on an error message decides production control flow.
 ### `invariant: errors-is-over-os-predicates`
@@ -53,7 +50,6 @@ New or deliberately converted code matches a standard-library condition with the
 `errors.Is` identity family (`fs.ErrNotExist`, `fs.ErrExist`, `fs.ErrPermission`), never
 the shallow `os.IsNotExist`, `os.IsExist`, or `os.IsPermission` predicates, which do not
 unwrap.
-Origin: ADR-0199
 Backing: unbacked
 Verify: Search the changed files for os.IsNotExist, os.IsExist, and os.IsPermission; any occurrence in a new or deliberately converted site fails.
 ### `invariant: consumed-identity`
@@ -63,7 +59,6 @@ transaction as at least one consumer that branches on it through `errors.Is` or
 `errors.As`; it may land without an in-repo branching consumer only when its consuming
 caller is named and documented in the same transaction. This specializes
 `code-design/dependency-composition:concrete-first-consumer` to error identity.
-Origin: ADR-0199
 Backing: unbacked
 Verify: For each newly exported error type or sentinel in the diff, find the errors.Is or errors.As consumer in the same commit, or the named and documented consuming caller; absent both, the identity fails.
 ### `invariant: test-identity-assertions`
@@ -71,6 +66,5 @@ Verify: For each newly exported error type or sentinel in the diff, find the err
 A new or deliberately converted test asserts a produced error's identity through
 `errors.Is`, `errors.As`, or the exported type, and asserts message text only where the
 rendered message is itself the contract, such as CLI or report output.
-Origin: ADR-0199
 Backing: unbacked
 Verify: For each changed test that asserts an error, confirm identity flows through Is, As, or a typed match, and that any message-text assertion targets output whose exact rendered text is the contract under test.

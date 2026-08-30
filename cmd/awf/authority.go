@@ -9,18 +9,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
-func runReadADR(ctx context.Context, root, identity string, stdout io.Writer) error {
-	state, _, repo, err := openProjectOperation(ctx, root)
-	if err != nil {
-		return err
-	}
-	detail, err := currentstatecoord.ReadADR(state.Root(), repo, ctx, identity)
-	if err != nil {
-		return err
-	}
-	return printAuthorityDetail(stdout, detail)
-}
-
 func runResolveTopic(ctx context.Context, root string, paths []string, uncovered bool, stdout io.Writer) error {
 	if uncovered && len(paths) != 0 {
 		return &usageErr{"usage: awf resolve topic --uncovered"}

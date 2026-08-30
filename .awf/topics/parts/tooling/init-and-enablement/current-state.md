@@ -5,49 +5,39 @@ How awf adopts and initializes a project with explicit answers, safe collision h
 ### `invariant: explicit-answers-win`
 
 A value supplied to awf init via --set or --answers is written verbatim into the scaffolded config and suppresses any prompt for that key, regardless of whether stdin is a terminal.
-Origin: ADR-0148
 Backing: test
 
 ### `invariant: init-bootstrap-default-on`
 
 `awf init` scaffolds `bootstrap.enabled: true`; no CLI command changes that repository fact.
-Origin: ADR-0254
 Backing: test
 
 ### `invariant: init-collision-guard`
 
 Before writing anything, `awf init` pre-flights every path it would create and, if any already exists, writes nothing and reports the offending paths; `awf init --force` backs up each colliding file to `<path>.awf-bak` and overwrites.
-Origin: ADR-0148
 Backing: test
 
 ### `invariant: init-force-backs-up`
 
 Running init with --force copies every colliding non-managed file to <path>.awf-bak before any managed output overwrites it, and reports the backup on stdout.
-Origin: ADR-0148
 Backing: test
 
 ### `invariant: init-noninteractive-default`
 
 awf init with non-terminal stdin and no --set or --answers seeds every selected-governance-footprint var empty, writes no invariants config, and writes the default `profile: core` selection.
-Origin: ADR-0148
-Revised-by: ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: init-prompts-enabled-vars`
 
 Interactive awf init prompts for the governance footprint and vars referenced by that footprint's unconditional catalog and singleton templates; the seeded config carries that selected var union as empty keys.
-Origin: ADR-0148
-Revised-by: ADR-0251, ADR-0278, ADR-0292
 Backing: test
 
 ### `invariant: init-unborn-head-supported`
 
 Working-state assembly uses an empty committed baseline only when HEAD is specifically unborn, allowing init and check to consume eligible working files while every other repository, reference, and object error remains a failure.
-Origin: ADR-0148
 Backing: test
 
 ### `invariant: init-profile-default-core`
 
 Fresh initialization writes profile: core by default and accepts an explicit profile: full answer.
-Origin: ADR-0278
 Backing: test

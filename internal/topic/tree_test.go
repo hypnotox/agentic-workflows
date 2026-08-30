@@ -7,7 +7,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -37,11 +36,6 @@ func parseCfg(t *testing.T, body string) *config.Config {
 	return cfg
 }
 
-// oneImplementedADR is the provenance corpus every fixture claim cites.
-func oneImplementedADR() adr.Corpus {
-	return mustCorpus([]adr.ADR{{Number: "0001", Status: "Implemented"}})
-}
-
 // TestLoadCorpusFromTreeValidWithoutCurrentState covers the snapshot loader's
 // nil-currentState marker path, a configured domain whose sidecar is absent
 // (owning no paths), and the happy assembly path.
@@ -59,7 +53,7 @@ func TestLoadCorpusFromTreeSkipsSymlinkInputs(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	corpus, err := LoadCorpusFromTree(tree, cfg, adr.Corpus{})
+	corpus, err := LoadCorpusFromTree(tree, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,9 +65,9 @@ func TestLoadCorpusFromTreeSkipsSymlinkInputs(t *testing.T) {
 func TestLoadCorpusFromTreeValidWithoutCurrentState(t *testing.T) {
 	tree := treeFrom(t, map[string]string{
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-		".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+		".awf/topics/parts/alpha/one/current-state.md": rulePart("r", ""),
 	})
-	c, err := LoadCorpusFromTree(tree, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"), oneImplementedADR())
+	c, err := LoadCorpusFromTree(tree, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,7 +81,7 @@ func TestLoadCorpusFromTreeSkipsResidentMarkerSources(t *testing.T) {
 		".awf/effort-archive/old_test.go": "// invariant: unknown/topic:claim (TestOld)\nfunc TestOld() {}\n",
 	})
 	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"**/*_test.go\"]\n      marker: //\n  testGlobs: [\"**/*_test.go\"]\n")
-	if _, err := LoadCorpusFromTree(tree, cfg, oneImplementedADR()); err != nil {
+	if _, err := LoadCorpusFromTree(tree, cfg); err != nil {
 		t.Fatalf("resident marker source entered immutable-tree scan: %v", err)
 	}
 }
@@ -95,12 +89,12 @@ func TestLoadCorpusFromTreeSkipsResidentMarkerSources(t *testing.T) {
 func TestLoadCorpusFromTreeSkipsNestedAdoptedProjectMarkers(t *testing.T) {
 	tree := treeFrom(t, map[string]string{
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-		".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+		".awf/topics/parts/alpha/one/current-state.md": rulePart("r", ""),
 		"examples/nested/.awf/config.yaml":             "prefix: nested\nintegrationBranch: main\n",
 		"examples/nested/internal/x_test.go":           "// invariant: nested/model:unknown\n",
 	})
 	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"**/*_test.go\"]\n      marker: //\n  testGlobs: [\"**/*_test.go\"]\n")
-	c, err := LoadCorpusFromTree(tree, cfg, oneImplementedADR())
+	c, err := LoadCorpusFromTree(tree, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -110,7 +104,7 @@ func TestLoadCorpusFromTreeSkipsNestedAdoptedProjectMarkers(t *testing.T) {
 }
 
 func TestLoadCorpusFromTreeErrors(t *testing.T) {
-	invariantPart := "Intro.\n\n## Claims\n\n### `invariant: stable`\nStable.\nOrigin: ADR-0001\nBacking: test\n"
+	invariantPart := "Intro.\n\n## Claims\n\n### `invariant: stable`\nStable.\nBacking: test\n"
 	currentStateCfg := "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"
 	for _, tc := range []struct {
 		name    string
@@ -123,7 +117,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
 			files: map[string]string{
 				".awf/topics/metadata/alpha/one.yaml":          "title: [unterminated\n",
-				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", ""),
 			},
 			wantErr: "parse topic metadata",
 		},
@@ -132,8 +126,8 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 			cfg:  "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n",
 			files: map[string]string{
 				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
-				".awf/topics/parts/alpha/current-state.md":     rulePart("r", "0001", ""),
+				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", ""),
+				".awf/topics/parts/alpha/current-state.md":     rulePart("r", ""),
 			},
 			wantErr: "invalid topic part path",
 		},
@@ -143,7 +137,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 			files: map[string]string{
 				".awf/domains/alpha.yaml":                      "bogusField: 1\n",
 				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", ""),
 			},
 			wantErr: "parse domain sidecar alpha",
 		},
@@ -153,7 +147,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 			files: map[string]string{
 				".awf/domains/alpha.yaml":                      "paths: ['']\n",
 				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", ""),
 			},
 			wantErr: "domain sidecar alpha paths",
 		},
@@ -163,7 +157,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 			files: map[string]string{
 				".awf/domains/alpha.yaml":                      "paths: [internal/**, internal/**]\n",
 				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", ""),
 			},
 			wantErr: "domain sidecar alpha paths",
 		},
@@ -173,7 +167,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 			files: map[string]string{
 				".awf/domains/alpha.yaml":                      "paths: ['[']\n",
 				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", ""),
 			},
 			wantErr: "domain sidecar alpha paths",
 		},
@@ -190,7 +184,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 			cfg:  currentStateCfg,
 			files: map[string]string{
 				".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+				".awf/topics/parts/alpha/one/current-state.md": rulePart("r", ""),
 				"internal/x_test.go":                           "package x\n// invariant: alpha/one:ghost (TestGhost)\nfunc TestGhost() {}\n",
 			},
 			wantErr: "unknown claim ID",
@@ -206,7 +200,7 @@ func TestLoadCorpusFromTreeErrors(t *testing.T) {
 		},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			_, err := LoadCorpusFromTree(treeFrom(t, tc.files), parseCfg(t, tc.cfg), oneImplementedADR())
+			_, err := LoadCorpusFromTree(treeFrom(t, tc.files), parseCfg(t, tc.cfg))
 			if err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 				t.Fatalf("got %v, want error containing %q", err, tc.wantErr)
 			}
@@ -260,10 +254,9 @@ func TestLoadCorpusFromTreeLoadsFilesystemFixture(t *testing.T) {
 	testsupport.WriteAwfConfig(t, root, "prefix: test\nintegrationBranch: main\ndomains: [alpha, beta]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/alpha.yaml"), "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/beta.yaml"), "paths: [\"pkg/**\"]\n")
-	testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/0001-x.md"), testsupport.ADR("Implemented", testsupport.WithTitle("0001: X"), testsupport.WithBody("## Decision\n\n1. X.\n")))
 	writeTopic(t, root, "alpha", "one", "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-		"Intro.\n\n## Claims\n\n### `invariant: stable`\nStable.\nOrigin: ADR-0001\nBacking: test\n")
-	writeTopic(t, root, "beta", "two", "title: Two\nsummary: T.\napplies: global\n", rulePart("g", "0001", ""))
+		"Intro.\n\n## Claims\n\n### `invariant: stable`\nStable.\nBacking: test\n")
+	writeTopic(t, root, "beta", "two", "title: Two\nsummary: T.\napplies: global\n", rulePart("g", ""))
 	// A proof marker under testGlobs backs the test-backed invariant, so the
 	// backing contract passes and the marker index is non-empty in both loaders.
 	testsupport.WriteFile(t, filepath.Join(root, "internal/pkg/x_test.go"), "package pkg\n// invariant: alpha/one:stable (TestStable)\nfunc TestStable() {}\n")
@@ -275,12 +268,8 @@ func TestLoadCorpusFromTreeLoadsFilesystemFixture(t *testing.T) {
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	adrs, err := adr.LoadCorpus(filepath.Join(root, "docs/decisions"))
-	if err != nil {
-		t.Fatal(err)
-	}
 
-	treeCorpus, err := LoadCorpusFromTree(treeFromDir(t, root), cfg, adrs)
+	treeCorpus, err := LoadCorpusFromTree(treeFromDir(t, root), cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -294,14 +283,14 @@ func TestLoadCorpusFromTreeLoadsFilesystemFixture(t *testing.T) {
 func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
 	files := map[string]string{
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
-		".awf/topics/parts/alpha/one/current-state.md": rulePart("r", "0001", ""),
+		".awf/topics/parts/alpha/one/current-state.md": rulePart("r", ""),
 		".awf/domains/alpha.yaml":                      "unknown: [\n",
 		"internal/invalid_test.go":                     "package invalid\n// invariant: alpha/one:missing (TestMissing)\nfunc TestMissing() {}\n",
 	}
 	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n")
 	tree := treeFrom(t, files)
 
-	got, err := LoadAuthorityCorpusFromFiles(tree.List(), cfg, oneImplementedADR())
+	got, err := LoadAuthorityCorpusFromFiles(tree.List(), cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -311,7 +300,7 @@ func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
 	if got.DomainPaths != nil || len(got.Markers.All()) != 0 {
 		t.Fatalf("reduced corpus retained omitted projections: paths=%#v markers=%#v", got.DomainPaths, got.Markers.All())
 	}
-	if _, err := LoadCorpusFromTree(tree, cfg, oneImplementedADR()); err == nil ||
+	if _, err := LoadCorpusFromTree(tree, cfg); err == nil ||
 		!strings.Contains(err.Error(), "parse domain sidecar alpha") {
 		t.Fatalf("full corpus accepted malformed domain sidecar: %v", err)
 	}
@@ -320,7 +309,7 @@ func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
 		".awf/topics/parts/alpha/one/current-state.md": files[".awf/topics/parts/alpha/one/current-state.md"],
 		".awf/domains/alpha.yaml":                      files[".awf/domains/alpha.yaml"],
 	})
-	if _, err := LoadCorpusFromTree(bothMalformed, cfg, oneImplementedADR()); err == nil ||
+	if _, err := LoadCorpusFromTree(bothMalformed, cfg); err == nil ||
 		strings.Contains(err.Error(), "domain sidecar") {
 		t.Fatalf("full corpus changed metadata-before-sidecar error precedence: %v", err)
 	}
@@ -329,7 +318,7 @@ func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
 		".awf/topics/parts/alpha/one/current-state.md": files[".awf/topics/parts/alpha/one/current-state.md"],
 		"internal/invalid_test.go":                     files["internal/invalid_test.go"],
 	})
-	if _, err := LoadCorpusFromTree(markerOnly, cfg, oneImplementedADR()); err == nil ||
+	if _, err := LoadCorpusFromTree(markerOnly, cfg); err == nil ||
 		!strings.Contains(err.Error(), "unknown claim ID") {
 		t.Fatalf("full corpus accepted malformed proof marker: %v", err)
 	}
@@ -376,7 +365,7 @@ func (r *streamingMarkerReader) ReadLines(_ string, maxLineBytes int, visit func
 }
 
 func TestLoadCorpusFromReaderPropagatesReadFailure(t *testing.T) {
-	_, err := LoadCorpusFromReader(readerForLoadCorpusTest{paths: []string{".awf/topics/metadata/alpha/one.yaml"}, readErr: os.ErrPermission}, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"), oneImplementedADR())
+	_, err := LoadCorpusFromReader(readerForLoadCorpusTest{paths: []string{".awf/topics/metadata/alpha/one.yaml"}, readErr: os.ErrPermission}, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"))
 	if err == nil || !strings.Contains(err.Error(), "permission denied") {
 		t.Fatalf("LoadCorpusFromReader error = %v", err)
 	}
@@ -390,7 +379,7 @@ func TestLoadCorpusFromReaderStreamsLargeLogicalMarkerSources(t *testing.T) {
 		lineBytes:    1 << 10,
 	}
 	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: ['**/*.go']\n      marker: //\n")
-	if _, err := LoadCorpusFromReader(reader, cfg, oneImplementedADR()); err != nil {
+	if _, err := LoadCorpusFromReader(reader, cfg); err != nil {
 		t.Fatal(err)
 	}
 	if reader.materialized != 0 || reader.passes != len(reader.paths) {
@@ -403,7 +392,7 @@ func TestLoadCorpusFromReaderReadsOnlySemanticInputs(t *testing.T) {
 	for _, path := range []string{"large.out", ".awf/effort-archive/large.go"} {
 		t.Run(path, func(t *testing.T) {
 			reader := readerForLoadCorpusTest{paths: []string{path}, readErr: os.ErrPermission}
-			if _, err := LoadCorpusFromReader(reader, cfg, oneImplementedADR()); err != nil {
+			if _, err := LoadCorpusFromReader(reader, cfg); err != nil {
 				t.Fatalf("LoadCorpusFromReader read non-input %q: %v", path, err)
 			}
 		})
@@ -413,7 +402,7 @@ func TestLoadCorpusFromReaderReadsOnlySemanticInputs(t *testing.T) {
 func TestLoadCorpusFromReaderRejectsDuplicateSelectedPaths(t *testing.T) {
 	const path = ".awf/topics/metadata/alpha/one.yaml"
 	reader := readerForLoadCorpusTest{paths: []string{path, path}, files: map[string][]byte{path: []byte("x")}}
-	if _, err := LoadCorpusFromReader(reader, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"), oneImplementedADR()); err == nil {
+	if _, err := LoadCorpusFromReader(reader, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n")); err == nil {
 		t.Fatal("duplicate selected paths were accepted")
 	}
 }

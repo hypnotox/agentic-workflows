@@ -38,7 +38,7 @@ func writeProjectTopic(t *testing.T, root, slug, title, applies string) {
 func writeProjectTopicDomain(t *testing.T, root, domain, slug, title, applies string) {
 	t.Helper()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata", domain, slug+".yaml"), "title: "+title+"\nsummary: Current "+title+" contracts.\n"+applies)
-	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts", domain, slug, "current-state.md"), "<!-- awf:comment author note -->\nAuthored raw {{ .value }}.\n\n## Claims\n\n### `rule: stable`\nStable behavior.\nOrigin: ADR-0001\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts", domain, slug, "current-state.md"), "<!-- awf:comment author note -->\nAuthored raw {{ .value }}.\n\n## Claims\n\n### `rule: stable`\nStable behavior.\n")
 }
 func topicProject(t *testing.T) string {
 	t.Helper()
@@ -448,77 +448,6 @@ func queryV1ADR(t *testing.T, number, title, operation string) string {
 	return build("Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digest)
 }
 
-func TestQueryTopicHistoricalOnlyUsesCutoffAwareWorkingSnapshot(t *testing.T) {
-	claimID := "rendering/contracts:removed"
-	p := csRepo(t, topicProjectConfig, map[string]string{
-		".awf/domains/rendering.yaml":                            "paths: [\"internal/**\"]\n",
-		".awf/topics/metadata/rendering/contracts.yaml":          "title: Contracts\nsummary: Current contracts.\npaths: [\"internal/**\"]\n",
-		".awf/topics/parts/rendering/contracts/current-state.md": "Contracts.\n\n## Claims\n",
-		"docs/decisions/0002-remove.md":                          queryV1ADR(t, "0002", "Remove legacy claim", "- remove `"+claimID+"`"),
-	})
-	lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 46, Files: map[string]manifest.Entry{"prior": {}}}
-	if err := lock.Save(lockFile(p.Root())); err != nil {
-		t.Fatal(err)
-	}
-
-	if _, err := queryTopicProject(p, testContext(t), claimID, topic.QueryOptions{}); err == nil || !strings.Contains(err.Error(), "not found") {
-		t.Fatalf("default removed-claim query = %v", err)
-	}
-	got, err := queryTopicProject(p, testContext(t), claimID, topic.QueryOptions{History: true, References: true, Coverage: true})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if !got.HistoricalOnly || got.ID != claimID || got.Claims == nil || len(got.Claims) != 0 || len(got.History) != 1 || !got.History[0].LegacyBaseline || got.History[0].Origin != nil || got.History[0].RemovedBy == nil {
-		t.Fatalf("historical-only query = %#v", got)
-	}
-	if got.References != nil || got.Coverage != nil {
-		t.Fatalf("historical-only query fabricated details = %#v", got)
-	}
-}
-
-func TestQueryTopicRejectsInvalidHistoricalInterpretation(t *testing.T) {
-	claimID := "rendering/contracts:removed"
-	for _, tc := range []struct {
-		name string
-		adrs map[string]string
-		want string
-	}{
-		{
-			name: "absent add-only",
-			adrs: map[string]string{"docs/decisions/0002-add.md": queryV1ADR(t, "0002", "Add absent claim", "- add `"+claimID+"`")},
-			want: "has no active claim",
-		},
-		{
-			name: "add after remove",
-			adrs: map[string]string{
-				"docs/decisions/0002-add.md":    queryV1ADR(t, "0002", "Add claim", "- add `"+claimID+"`"),
-				"docs/decisions/0003-remove.md": queryV1ADR(t, "0003", "Remove claim", "- remove `"+claimID+"`"),
-				"docs/decisions/0004-readd.md":  queryV1ADR(t, "0004", "Reuse removed claim id", "- add `"+claimID+"`"),
-			},
-			want: "add after its remove",
-		},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			files := map[string]string{
-				".awf/domains/rendering.yaml":                            "paths: [\"internal/**\"]\n",
-				".awf/topics/metadata/rendering/contracts.yaml":          "title: Contracts\nsummary: Current contracts.\npaths: [\"internal/**\"]\n",
-				".awf/topics/parts/rendering/contracts/current-state.md": "Contracts.\n\n## Claims\n",
-			}
-			for path, content := range tc.adrs {
-				files[path] = content
-			}
-			p := csRepo(t, topicProjectConfig, files)
-			lock := &manifest.Lock{AWFVersion: Version, SchemaVersion: 46, Files: map[string]manifest.Entry{"prior": {}}}
-			if err := lock.Save(lockFile(p.Root())); err != nil {
-				t.Fatal(err)
-			}
-			if _, err := queryTopicProject(p, testContext(t), claimID, topic.QueryOptions{History: true}); err == nil || !strings.Contains(err.Error(), tc.want) {
-				t.Fatalf("QueryTopic error = %v; want %q", err, tc.want)
-			}
-		})
-	}
-}
-
 func TestQueryTopicLoadErrors(t *testing.T) {
 	badADRRoot := scaffoldFiles(t, "prefix: example\nprofile: full\nintegrationBranch: main\ndomains: []\n", nil)
 	testsupport.WriteFile(t, filepath.Join(badADRRoot, "docs/decisions/0001-bad.md"), "---\nstatus: [\n---\n")
@@ -584,11 +513,9 @@ currentState:
 
 ### `+"`rule: deterministic-order`"+`
 Scheduling order is deterministic.
-Origin: ADR-0001
 
 ### `+"`invariant: stable-output`"+`
 Scheduling output is stable.
-Origin: ADR-0001
 Backing: test
 `)
 	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule.go"), "package schedule\n// state: schedule/contracts:deterministic-order\n")
@@ -641,8 +568,8 @@ Backing: test
 		}
 		return string(output)
 	}
-	human := runQuery("schedule/contracts", "--history", "--references", "--coverage")
-	for _, value := range []string{"title: Scheduling", "summary: Current scheduling contracts.", "identity: schedule/contracts:deterministic-order", "prose: Scheduling output is stable.", "origin: ADR-0001 | Implemented | Scheduling contracts", "marker: internal/schedule_test.go:2"} {
+	human := runQuery("schedule/contracts", "--references", "--coverage")
+	for _, value := range []string{"title: Scheduling", "summary: Current scheduling contracts.", "identity: schedule/contracts:deterministic-order", "prose: Scheduling output is stable.", "marker: internal/schedule_test.go:2"} {
 		if !strings.Contains(human, value) {
 			t.Errorf("topic text missing %q:\n%s", value, human)
 		}

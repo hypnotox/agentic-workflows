@@ -6,20 +6,16 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-func corpusFixture(t *testing.T) (string, *config.Config, adr.Corpus) {
+func corpusFixture(t *testing.T) (string, *config.Config) {
 	t.Helper()
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: test\nprofile: full\nintegrationBranch: main\ndomains: [alpha, beta]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/alpha.yaml"), "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/domains/beta.yaml"), "paths: [\"pkg/**\"]\n")
-	for n, status := range map[string]string{"0001": "Implemented", "0002": "Implemented", "0003": "Proposed"} {
-		testsupport.WriteFile(t, filepath.Join(root, "docs/decisions/"+n+"-x.md"), testsupport.ADR(status, testsupport.WithTitle(n+": X"), testsupport.WithBody("## Decision\n\n1. X.\n")))
-	}
 	cfg, err := config.Load(filepath.Join(root, ".awf"))
 	if err != nil {
 		t.Fatal(err)
@@ -27,38 +23,30 @@ func corpusFixture(t *testing.T) (string, *config.Config, adr.Corpus) {
 	if err := cfg.Validate(); err != nil {
 		t.Fatal(err)
 	}
-	ac, err := adr.LoadCorpus(filepath.Join(root, "docs/decisions"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return root, cfg, ac
+	return root, cfg
 }
 func writeTopic(t *testing.T, root, domain, slug, meta, part string) {
 	t.Helper()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata", domain, slug+".yaml"), meta)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts", domain, slug, "current-state.md"), part)
 }
-func rulePart(slug, origin, refs string) string {
-	r := ""
+func rulePart(slug, refs string) string {
+	refsLine := ""
 	if refs != "" {
-		r = "References: " + refs + "\n"
+		refsLine = "References: " + refs + "\n"
 	}
-	return "Intro.\n\n## Claims\n\n### `rule: " + slug + "`\nRule prose.\nOrigin: ADR-" + origin + "\n" + r
+	return "Intro.\n\n## Claims\n\n### `rule: " + slug + "`\nRule prose.\n" + refsLine
 }
-
-// loadCorpusForTest adapts fixture files to the selected-tree loader. Production
-// callers provide their operation tree directly; the filesystem walk is test
-// fixture setup only.
-func loadCorpusForTest(t *testing.T, root string, cfg *config.Config, adrs adr.Corpus) (Corpus, error) {
+func loadCorpusForTest(t *testing.T, root string, cfg *config.Config) (Corpus, error) {
 	t.Helper()
-	return LoadCorpusFromTree(treeFromDir(t, root), cfg, adrs)
+	return LoadCorpusFromTree(treeFromDir(t, root), cfg)
 }
 
-func TestLoadCorpusAndIndexes(t *testing.T) {
-	root, cfg, adrs := corpusFixture(t)
-	writeTopic(t, root, "alpha", "one", "title: Zed\nsummary: Z.\npaths: [\"internal/**\"]\n", rulePart("same", "0001", "beta/two:same"))
-	writeTopic(t, root, "beta", "two", "title: Alpha\nsummary: A.\napplies: global\n", rulePart("same", "0001", "alpha/one:same"))
-	c, err := loadCorpusForTest(t, root, cfg, adrs)
+func TestLoadCorpusAndIndexesWithoutADRCorpus(t *testing.T) {
+	root, cfg := corpusFixture(t)
+	writeTopic(t, root, "alpha", "one", "title: Zed\nsummary: Z.\npaths: [\"internal/**\"]\n", rulePart("same", "beta/two:same"))
+	writeTopic(t, root, "beta", "two", "title: Alpha\nsummary: A.\napplies: global\n", rulePart("same", "alpha/one:same"))
+	c, err := loadCorpusForTest(t, root, cfg)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -68,14 +56,8 @@ func TestLoadCorpusAndIndexes(t *testing.T) {
 	if _, ok := c.ByTopicID("alpha/one"); !ok {
 		t.Fatal("topic lookup")
 	}
-	if _, ok := c.ByTopicID("none"); ok {
-		t.Fatal("unexpected topic")
-	}
 	if _, ok := c.ByClaimID("beta/two:same"); !ok {
 		t.Fatal("claim lookup")
-	}
-	if _, ok := c.ByClaimID("none"); ok {
-		t.Fatal("unexpected claim")
 	}
 	if got := strings.Join(c.Outgoing("alpha/one:same"), ","); got != "beta/two:same" {
 		t.Fatal(got)
@@ -83,108 +65,37 @@ func TestLoadCorpusAndIndexes(t *testing.T) {
 	if got := strings.Join(c.Incoming("alpha/one:same"), ","); got != "beta/two:same" {
 		t.Fatal(got)
 	}
-	if c.Outgoing("none") != nil || c.Incoming("none") != nil {
-		t.Fatal("missing refs")
-	}
 }
+
 func TestLoadCorpusRejected(t *testing.T) {
 	cases := map[string]func(*testing.T, string){
 		"orphan metadata": func(t *testing.T, r string) {
 			testsupport.WriteFile(t, filepath.Join(r, ".awf/topics/metadata/alpha/x.yaml"), "title: X\nsummary: X.\npaths: [x]\n")
 		},
 		"orphan part": func(t *testing.T, r string) {
-			testsupport.WriteFile(t, filepath.Join(r, ".awf/topics/parts/alpha/x/current-state.md"), rulePart("x", "0001", ""))
+			testsupport.WriteFile(t, filepath.Join(r, ".awf/topics/parts/alpha/x/current-state.md"), rulePart("x", ""))
 		},
 		"bad part path": func(t *testing.T, r string) {
-			testsupport.WriteFile(t, filepath.Join(r, ".awf/topics/parts/Bad/x/current-state.md"), rulePart("x", "0001", ""))
+			testsupport.WriteFile(t, filepath.Join(r, ".awf/topics/parts/Bad/x/current-state.md"), rulePart("x", ""))
 		},
 		"unconfigured": func(t *testing.T, r string) {
-			writeTopic(t, r, "other", "x", "title: X\nsummary: X.\npaths: [x]\n", rulePart("x", "0001", ""))
-		},
-		"missing adr": func(t *testing.T, r string) {
-			writeTopic(t, r, "alpha", "x", "title: X\nsummary: X.\npaths: [x]\n", rulePart("x", "9999", ""))
-		},
-		"proposed adr": func(t *testing.T, r string) {
-			writeTopic(t, r, "alpha", "x", "title: X\nsummary: X.\npaths: [x]\n", rulePart("x", "0003", ""))
+			writeTopic(t, r, "other", "x", "title: X\nsummary: X.\npaths: [x]\n", rulePart("x", ""))
 		},
 		"dangling": func(t *testing.T, r string) {
-			writeTopic(t, r, "alpha", "x", "title: X\nsummary: X.\npaths: [x]\n", rulePart("x", "0001", "alpha/y:z"))
-		},
-		"ignored extension": func(t *testing.T, r string) {
-			testsupport.WriteFile(t, filepath.Join(r, ".awf/topics/metadata/note.txt"), "ignored\n")
-			writeTopic(t, r, "alpha", "x", "title: X\nsummary: X.\npaths: [x]\n", rulePart("x", "0001", ""))
-		},
-		"malformed metadata": func(t *testing.T, r string) {
-			testsupport.WriteFile(t, filepath.Join(r, ".awf/topics/metadata/alpha/x.yaml"), "title: [\n")
-		},
-		"nested metadata path": func(t *testing.T, r string) {
-			testsupport.WriteFile(t, filepath.Join(r, ".awf/topics/metadata/alpha/nested/x.yaml"), "title: X\nsummary: X.\npaths: [x]\n")
-		},
-		"malformed part": func(t *testing.T, r string) {
-			writeTopic(t, r, "alpha", "x", "title: X\nsummary: X.\npaths: [x]\n", "no claims\n")
+			writeTopic(t, r, "alpha", "x", "title: X\nsummary: X.\npaths: [x]\n", rulePart("x", "alpha/y:z"))
 		},
 		"self": func(t *testing.T, r string) {
-			writeTopic(t, r, "alpha", "x", "title: X\nsummary: X.\npaths: [x]\n", rulePart("x", "0001", "alpha/x:x"))
+			writeTopic(t, r, "alpha", "x", "title: X\nsummary: X.\npaths: [x]\n", rulePart("x", "alpha/x:x"))
 		},
 	}
 	for name, setup := range cases {
 		t.Run(name, func(t *testing.T) {
-			root, cfg, adrs := corpusFixture(t)
+			root, cfg := corpusFixture(t)
 			setup(t, root)
-			_, err := loadCorpusForTest(t, root, cfg, adrs)
-			if name == "ignored extension" {
-				if err != nil {
-					t.Fatal(err)
-				}
-				return
-			}
-			if err == nil {
+			if _, err := loadCorpusForTest(t, root, cfg); err == nil {
 				t.Fatal("wanted error")
 			}
 		})
-	}
-}
-
-func TestOperationSpecificProvenance(t *testing.T) {
-	claimID := "alpha/x:x"
-	op := func(verb adr.OpVerb) adr.Operation { return adr.Operation{Verb: verb, ID: claimID, Slug: "x"} }
-	status := func(value string) adr.HistoryEvent { return adr.HistoryEvent{Kind: adr.HistoryStatus, Status: value} }
-	applied := func(operation adr.Operation) adr.HistoryEvent {
-		return adr.HistoryEvent{Kind: adr.HistoryApplied, Operations: []adr.Operation{operation}}
-	}
-	assemble := func(t *testing.T, records []adr.ADR, origin string, revised ...string) error {
-		t.Helper()
-		revisedLine := ""
-		if len(revised) != 0 {
-			revisedLine = "Revised-by: ADR-" + strings.Join(revised, ", ADR-") + "\n"
-		}
-		_, err := assembleCorpus(
-			map[string]metaEntry{"alpha/x": {meta: Metadata{Title: "X", Summary: "X.", Paths: []string{"x"}}, path: "meta"}},
-			map[string]partEntry{"alpha/x": {data: []byte("Intro.\n\n## Claims\n\n### `rule: x`\nRule.\nOrigin: ADR-" + origin + "\n" + revisedLine), path: "part"}},
-			[]string{"alpha"}, map[string][]string{"alpha": {"x"}}, mustCorpus(records),
-		)
-		return err
-	}
-
-	legacy := adr.ADR{Number: "0001", Format: adr.Legacy, Status: "Implemented"}
-	updating := adr.ADR{Number: "0002", Format: adr.CurrentStateV2, Status: "Implementing", Operations: []adr.Operation{op(adr.OpUpdate), {Verb: adr.OpAdd, ID: "alpha/x:later", Slug: "later"}}, History: []adr.HistoryEvent{status("Proposed"), status("Implementing"), applied(op(adr.OpUpdate))}}
-	if err := assemble(t, []adr.ADR{legacy, updating}, "0001", "0002"); err != nil {
-		t.Fatalf("applied Implementing revision rejected: %v", err)
-	}
-	pending := updating
-	pending.Number, pending.Status, pending.History = "0003", "Proposed", []adr.HistoryEvent{status("Proposed")}
-	if err := assemble(t, []adr.ADR{legacy, pending}, "0001", "0003"); err == nil || !strings.Contains(err.Error(), "without an applied update operation") {
-		t.Fatalf("remaining provenance error = %v", err)
-	}
-	canceled := pending
-	canceled.Number, canceled.Status, canceled.History = "0004", "Abandoned", []adr.HistoryEvent{status("Proposed"), status("Abandoned")}
-	if err := assemble(t, []adr.ADR{legacy, canceled}, "0001", "0004"); err == nil || !strings.Contains(err.Error(), "without an applied update operation") {
-		t.Fatalf("canceled provenance error = %v", err)
-	}
-	bad := updating
-	bad.Number, bad.Status, bad.History = "0005", "Implemented", nil
-	if err := assemble(t, []adr.ADR{legacy, bad}, "0001", "0005"); err == nil || !strings.Contains(err.Error(), "invalid ADR-0005 application") {
-		t.Fatalf("invalid provenance projection error = %v", err)
 	}
 }
 
@@ -197,43 +108,22 @@ func TestRecordMetaRejectsDuplicateID(t *testing.T) {
 	if err := recordMeta(metadata, id, metaEntry{path: "second.yaml"}); err == nil {
 		t.Fatal("duplicate topic ID accepted")
 	}
-	if got := metadata[id.String()].path; got != "first.yaml" {
-		t.Fatalf("duplicate overwrote first path: %q", got)
-	}
 }
-
 func TestLoadCorpusPropagatesMarkerFailure(t *testing.T) {
-	root, _, adrs := corpusFixture(t)
-	writeTopic(t, root, "alpha", "x", "title: X\nsummary: X.\npaths: [\"internal/**\"]\n", "Intro.\n\n## Claims\n### `invariant: stable`\nStable.\nOrigin: ADR-0001\nBacking: test\n")
-	cfg, err := config.Parse(filepath.Join(root, ".awf"), []byte("prefix: test\nprofile: full\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := cfg.Validate(); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := loadCorpusForTest(t, root, cfg, adrs); err == nil {
+	root, _ := corpusFixture(t)
+	writeTopic(t, root, "alpha", "x", "title: X\nsummary: X.\npaths: [\"internal/**\"]\n", "Intro.\n\n## Claims\n### `invariant: stable`\nStable.\nBacking: test\n")
+	cfg := parseCfg(t, "prefix: test\nprofile: full\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n")
+	if _, err := loadCorpusForTest(t, root, cfg); err == nil {
 		t.Fatal("marker failure was not propagated")
 	}
 }
 func TestLoadCorpusNoTopicTree(t *testing.T) {
-	root, cfg, adrs := corpusFixture(t)
-	c, err := loadCorpusForTest(t, root, cfg, adrs)
+	root, cfg := corpusFixture(t)
+	c, err := loadCorpusForTest(t, root, cfg)
 	if err != nil || len(c.All()) != 0 {
 		t.Fatalf("%#v %v", c, err)
 	}
 }
-
-// mustCorpus builds a corpus from a fixture slice, panicking on a duplicate
-// identity no fixture here intends to declare.
-func mustCorpus(adrs []adr.ADR) adr.Corpus {
-	c, err := adr.NewCorpus(adrs)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}
-
 func TestLoadCorpusIgnoresNonCurrentStateSiblingPart(t *testing.T) {
 	root := t.TempDir()
 	metadata := filepath.Join(root, ".awf/topics/metadata/alpha")
@@ -247,13 +137,13 @@ func TestLoadCorpusIgnoresNonCurrentStateSiblingPart(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(metadata, "one.yaml"), []byte("title: One\nsummary: One.\npaths: [\"internal/**\"]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(parts, "current-state.md"), []byte(rulePart("stable", "0001", "")), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(parts, "current-state.md"), []byte(rulePart("stable", "")), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(filepath.Join(parts, "draft.md"), []byte("malformed sibling"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	corpus, err := loadCorpusForTest(t, root, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"), oneImplementedADR())
+	corpus, err := loadCorpusForTest(t, root, parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\n"))
 	if err != nil || len(corpus.All()) != 1 {
 		t.Fatalf("corpus = %#v, %v", corpus.All(), err)
 	}

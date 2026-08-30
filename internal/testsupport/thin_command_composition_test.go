@@ -199,10 +199,9 @@ func commandRoutes() map[string]commandRoute {
 		{"check staged", "check", "runCheckStaged", []string{"github.com/hypnotox/agentic-workflows/internal/checkop.Run"}, false},
 		{"check staged state", "check", "runCheckStagedState", []string{"github.com/hypnotox/agentic-workflows/internal/checkop.Run"}, false},
 		{"check staged drift", "check", "runCheckStagedDrift", []string{"github.com/hypnotox/agentic-workflows/internal/checkop.Run"}, false},
-		{"check staged commit", "check", "runCommitGateWithDependencies", []string{"github.com/hypnotox/agentic-workflows/internal/commitgateop.RunWithDependencies"}, false},
+		{"check staged commit", "check", "runCommitGateWithDependencies", []string{"github.com/hypnotox/agentic-workflows/internal/audit.CheckConventionalCommit", "github.com/hypnotox/agentic-workflows/internal/audit.ConventionalCommitDocument", "github.com/hypnotox/agentic-workflows/internal/audit.Resolve"}, false},
 		{"read plan", "read", "runReadPlan", []string{"github.com/hypnotox/agentic-workflows/internal/currentstatecoord.ReadPlan"}, false},
 		{"read topic", "read", "runReadTopic", []string{"github.com/hypnotox/agentic-workflows/internal/topicop.Run"}, false},
-		{"read adr", "read", "runReadADR", []string{"github.com/hypnotox/agentic-workflows/internal/currentstatecoord.ReadADR"}, false},
 		{"resolve topic", "resolve", "runResolveTopic", []string{"github.com/hypnotox/agentic-workflows/internal/currentstatecoord.NormalizeAuthorityPath", "github.com/hypnotox/agentic-workflows/internal/currentstatecoord.ResolveTopics", "github.com/hypnotox/agentic-workflows/internal/currentstatecoord.UncoveredPaths"}, false},
 		{"audit", "audit", "runAudit", []string{"github.com/hypnotox/agentic-workflows/internal/audit.RunConfigured"}, false},
 		{"effort new", "effort", "runEffort", []string{"github.com/hypnotox/agentic-workflows/internal/effortop.New"}, false},
@@ -217,12 +216,10 @@ func commandRoutes() map[string]commandRoute {
 		{"effort activity attach", "effort", "runEffort", []string{"github.com/hypnotox/agentic-workflows/internal/effortop.AttachActivity"}, false},
 		{"effort activity heartbeat", "effort", "runEffort", []string{"github.com/hypnotox/agentic-workflows/internal/effortop.HeartbeatActivity"}, false},
 		{"effort activity detach", "effort", "runEffort", []string{"github.com/hypnotox/agentic-workflows/internal/effortop.DetachActivity"}, false},
-		{"adr number", "adr", "runADR", []string{"github.com/hypnotox/agentic-workflows/internal/currentstatecoord.NumberPendingADRsLeased"}, false},
 		{"list", "list", "runList", []string{"github.com/hypnotox/agentic-workflows/internal/project.BuildListDocument"}, false},
 		{"config", "config", "runConfig", []string{"github.com/hypnotox/agentic-workflows/internal/configop.Run"}, false},
 		{"edit sidecar", "edit", "runSidecarAuthoring", []string{"github.com/hypnotox/agentic-workflows/internal/authoringop.Run"}, false},
 		{"reset sidecar", "reset", "runSidecarAuthoring", []string{"github.com/hypnotox/agentic-workflows/internal/authoringop.Run"}, false},
-		{"new adr", "new", "newADR", []string{"github.com/hypnotox/agentic-workflows/internal/project.NewADRLeased"}, false},
 		{"new plan", "new", "newPlan", []string{"github.com/hypnotox/agentic-workflows/internal/project.NewPlanLeased"}, false},
 		{"new topic", "new", "newTopic", []string{"github.com/hypnotox/agentic-workflows/internal/topicop.CreateLeased"}, false},
 		{"new domain", "new", "runNewDomain", []string{"github.com/hypnotox/agentic-workflows/internal/domainop.AddLeased"}, false},
@@ -376,7 +373,7 @@ func unexpectedRouteEvasions(path string, evasions []string) []string {
 	// Numbering and upgrade supply Publisher synchronization as a concrete
 	// callback dependency while their focused operation retains lifecycle and
 	// recovery ownership. The callback cannot satisfy either route operation.
-	if path != "adr number" && path != "upgrade" {
+	if path != "upgrade" {
 		return evasions
 	}
 	out := evasions[:0]
@@ -505,7 +502,7 @@ func verifyNewRuntimeRoutes(t *testing.T, pkg *packages.Package, routes map[stri
 			continue
 		}
 		kind := newCaseKind(clause.List[0])
-		if kind == "doc" {
+		if kind == "doc" || kind == "adr" {
 			continue
 		}
 		routeContract, ok := routes["new "+kind]
@@ -821,7 +818,7 @@ func semanticOwnerPackages() map[string]bool {
 	const module = "github.com/hypnotox/agentic-workflows/internal/"
 	owners := map[string]bool{}
 	for _, name := range []string{
-		"audit", "changelog", "checkop", "commitgateop", "configop", "currentstatecoord",
+		"audit", "changelog", "checkop", "configop", "currentstatecoord",
 		"domainop", "effort", "effortop", "initop", "localdocop",
 		"project", "publisher", "repositorycheck", "resident", "topicop", "upgrade", "worktree",
 	} {

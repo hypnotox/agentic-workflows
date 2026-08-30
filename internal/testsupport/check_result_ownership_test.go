@@ -55,39 +55,6 @@ func TestOrdinaryCheckProducerCensus(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:check-severity-by-protected-property (TestStagedPlanResultTypedRouteCensus)
-func TestStagedPlanResultTypedRouteCensus(t *testing.T) {
-	root := testsupport.RepoRoot(t)
-	cases := []struct {
-		path, function string
-		want           map[string]int
-	}{
-		{"internal/currentstatecoord/currentstate.go", "currentStateResult", map[string]int{"PlanResult": 2}},
-		{"internal/checkop/checkrepo.go", "presentCurrentStateReport", map[string]int{"CurrentResult": 1, "PlanArtifactResult": 1}},
-	}
-	for _, tc := range cases {
-		file, err := parser.ParseFile(token.NewFileSet(), filepath.Join(root, tc.path), nil, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		fn := functionDeclarations(file)[tc.function]
-		if fn == nil {
-			t.Fatalf("%s is absent from %s", tc.function, tc.path)
-		}
-		got := map[string]int{}
-		ast.Inspect(fn.Body, func(node ast.Node) bool {
-			selector, ok := node.(*ast.SelectorExpr)
-			if ok && (selector.Sel.Name == "PlanResult" || selector.Sel.Name == "PlanNotes" || selector.Sel.Name == "CurrentResult" || selector.Sel.Name == "PlanArtifactResult") {
-				got[selector.Sel.Name]++
-			}
-			return true
-		})
-		if !reflect.DeepEqual(got, tc.want) {
-			t.Errorf("%s:%s typed plan route selectors = %v, want %v", tc.path, tc.function, got, tc.want)
-		}
-	}
-}
-
 // invariant: tooling/cli:check-severity-by-protected-property (TestProducerRankPropertyCensus)
 func TestProducerRankPropertyCensus(t *testing.T) {
 	root := testsupport.RepoRoot(t)
@@ -99,9 +66,8 @@ func TestProducerRankPropertyCensus(t *testing.T) {
 		`internal/plancheck/plancheck.go:finding:rank|property`,
 		`internal/project/check.go:advisoryResultsWithState:severity.Warn|propertyHeuristic`,
 		`internal/project/check.go:pendingADRResult:severity.Error|propertyAuthority`,
-		`internal/currentstatecoord/currentstate.go:currentStateResult:coverage.Severity|propertyCurrentCoverage`,
-		`internal/currentstatecoord/currentstate.go:currentStateResult:severity.Error|propertyCurrentState`,
-		`internal/currentstatecoord/currentstate.go:currentStateResult:severity.Error|propertyPlanArtifact`,
+		`internal/currentstatecoord/currentstate.go:classifyCurrentState:coverage.Severity|propertyCurrentCoverage`,
+		`internal/currentstatecoord/currentstate.go:classifyCurrentState:severity.Error|propertyPlanArtifact`,
 		`internal/prosegate/prosegate.go:Result:severity.Warn|"prose-restraint"`,
 		`internal/referencecheck/referencecheck.go:finding:severity.Error|property`,
 		`internal/glossarycheck/glossarycheck.go:errorFinding:severity.Error|PropertyCorrectness`,
@@ -486,49 +452,3 @@ func assertImportsExclude(t *testing.T, relative string, content []byte, forbidd
 // TestAuthorityOperationProductionRouteCensus keeps application authority
 // preparation at the coordinator. Project retains only direct compatibility
 // adapters for supported callers; commands must not route through them.
-func TestAuthorityOperationProductionRouteCensus(t *testing.T) {
-	const (
-		coordinatorImport = "github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
-		projectImport     = "github.com/hypnotox/agentic-workflows/internal/project"
-	)
-	production := []struct {
-		path, function, legacy string
-	}{
-		{"cmd/awf/adr.go", "NumberPendingADRsLeased", "NumberPendingADRs"},
-		{"cmd/awf/read.go", "ReadPlan", "ReadPlan"},
-		{"cmd/awf/commitgate.go", "CheckCommitAuthorization", "CheckCommitAuthorization"},
-	}
-	root := testsupport.RepoRoot(t)
-	for _, route := range production {
-		source, err := os.ReadFile(filepath.Join(root, route.path))
-		if err != nil {
-			t.Fatal(err)
-		}
-		file := parseRouteSource(t, route.path, source)
-		if got := importedRouteCount(t, file, coordinatorImport, route.function); got != 1 {
-			t.Errorf("%s coordinator route %s count = %d, want 1", route.path, route.function, got)
-		}
-		if got := importedRouteCount(t, file, projectImport, route.legacy); got != 0 {
-			t.Errorf("%s retains %d legacy project %s route(s)", route.path, got, route.legacy)
-		}
-	}
-
-	projectFiles, err := filepath.Glob(filepath.Join(root, "internal", "project", "*.go"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, path := range projectFiles {
-		if strings.HasSuffix(path, "_test.go") {
-			continue
-		}
-		source, err := os.ReadFile(path)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, operation := range []string{"NumberPendingADRs", "ReadPlan", "CheckCommitAuthorization"} {
-			if strings.Contains(string(source), operation) {
-				t.Errorf("%s retains obsolete project authority operation %s", filepath.Base(path), operation)
-			}
-		}
-	}
-}

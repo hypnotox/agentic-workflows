@@ -10,7 +10,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/commitmsg"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
@@ -96,7 +95,7 @@ func writeADR(t *testing.T, root, name, body string) {
 func writeProjectTopic(t *testing.T, root string) {
 	t.Helper()
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering", "contracts.yaml"), "title: Contracts\nsummary: Current Contracts contracts.\npaths: [\"internal/**\"]\n")
-	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering", "contracts", "current-state.md"), "<!-- awf:comment author note -->\nAuthored raw {{ .value }}.\n\n## Claims\n\n### `rule: stable`\nStable behavior.\nOrigin: ADR-0001\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering", "contracts", "current-state.md"), "<!-- awf:comment author note -->\nAuthored raw {{ .value }}.\n\n## Claims\n\n### `rule: stable`\nStable behavior.\n")
 }
 func topicProject(t *testing.T) string {
 	t.Helper()
@@ -263,24 +262,6 @@ func advisoryNotesProject(state *ProjectState) ([]string, error) {
 func checkCurrentStateProject(state *ProjectState, ctx context.Context) (CurrentStateReport, error) {
 	return currentstatecoord.CheckWorking(state.Root(), testRepo(state), ctx)
 }
-func numberPendingADRsProject(state *ProjectState, slugs []string) (currentstatecoord.NumberingReport, error) {
-	return numberPendingADRsWithPublisherProject(state, slugs, func(lease *filesystem.Lease) (currentstatecoord.PublicationOutcome, error) {
-		return publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).SyncLeased(context.Background(), lease)
-	})
-}
-
-func numberPendingADRsWithPublisherProject(state *ProjectState, slugs []string, publish func(*filesystem.Lease) (currentstatecoord.PublicationOutcome, error)) (currentstatecoord.NumberingReport, error) {
-	ctx := context.Background()
-	lease, err := filesystem.AcquireProjectLease(ctx, state.Root(), awfgit.ProjectResidentRoot(ctx, state.Root()))
-	if err != nil {
-		return currentstatecoord.NumberingReport{}, err
-	}
-	report, numberErr := currentstatecoord.NumberPendingADRsLeased(state.Root(), slugs, func() (currentstatecoord.PublicationOutcome, error) {
-		return publish(lease)
-	}, lease)
-	return report, errors.Join(numberErr, lease.Release())
-}
-
 func newADRProject(state *ProjectState, ctx context.Context, title string) (result string, returnErr error) {
 	lease, err := filesystem.AcquireTrackedLease(ctx, state.Root())
 	if err != nil {
@@ -317,9 +298,6 @@ func auditProject(state *ProjectState, ctx context.Context, base, head string) (
 		IndexMd:        docsDir + "/decisions/INDEX.md",
 		PlansDir:       docsDir + "/plans",
 	})
-}
-func checkCommitAuthorizationProject(state *ProjectState, ctx context.Context, msg commitmsg.Message) (currentstatecoord.CommitAuthorizationResult, error) {
-	return currentstatecoord.CheckCommitAuthorization(state.Root(), testRepo(state), ctx, msg)
 }
 func readPlanProject(state *ProjectState, name, selector string) ([]byte, error) {
 	return currentstatecoord.ReadPlan(state.Root(), name, selector)

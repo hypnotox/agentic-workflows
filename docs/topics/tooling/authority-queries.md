@@ -7,42 +7,31 @@ Read-only commands that expose current-state and ADR authority without duplicati
 
 **Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/authoringop/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/coverage/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testperformance/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-performance.json`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `cmd/awf/**`, `internal/clispec/**`, `internal/currentstatecoord/**`, `internal/topicop/**`. Both domain and topic selectors must match. Run `awf read topic tooling/authority-queries --coverage` for current applicable and owned paths and marker sites.
 
-Read-only authority queries expose current-state topics and ADR lifecycle progress without owning code discovery or enforcement.
+Read-only authority queries expose current-state topics without owning code discovery or enforcement.
 
 ## Claims
 
 ### `invariant: authority-read-projections`
 
-`awf read topic` preserves the active topic, history, references, coverage, proof-site, and ADR parser projections, while `awf read adr` reports lifecycle status, canonical operation progress, and parsed linked plans.
-Origin: ADR-0320
+`awf read topic` exposes the active topic, references, coverage, proof sites, and selectors without historical-decision or plan projections.
 Backing: test
 
 ### `invariant: path-topic-resolution`
 
 `awf resolve topic` lexically normalizes repository-relative proposed or existing paths and deterministically reports owning domains and applicable topics, including explicit absence.
-Origin: ADR-0320
 Backing: test
 
 ### `invariant: unowned-path-census`
 
 `awf resolve topic --uncovered` is a whole-repository informational census that accepts no positional roots and collapses unowned paths to topmost directories.
-Origin: ADR-0320
 Backing: test
 
 ### `invariant: authority-query-read-only`
 
 Focused authority queries are read-only and leave enforcement to `awf check`.
-Origin: ADR-0320
-Backing: test
-
-### `invariant: authority-query-full-profile-only`
-
-Focused authority queries require the Full governance profile.
-Origin: ADR-0320
 Backing: test
 
 ### `invariant: codegraph-navigation-boundary`
 
-CodeGraph is the documented owner of structural source discovery, architecture, callers, dependencies, and impact analysis; Git selects changed paths. Full workflow guidance uses `awf resolve topic`, `awf read topic`, and `awf read adr` only for focused normative authority, without a parallel awf navigation fallback.
-Origin: ADR-0320
+CodeGraph owns structural source discovery, architecture, callers, dependencies, and impact analysis; Git selects changed paths; `awf resolve topic` and `awf read topic` expose focused normative authority.
 Backing: test
