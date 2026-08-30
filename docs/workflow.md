@@ -183,6 +183,8 @@ The allowed commit scopes are stored once in `audit.allowedScopes` and enforced 
 
 | scope | use it for |
 |---|---|
+| `adr` | historical decision-record commits |
+| `adr-system` | historical decision-system commits |
 | `decisions` | durable decision records |
 | `awf` | genuinely cross-cutting / repo-meta work, the umbrella of last resort |
 | `code-design` | code-design authority and cross-package code structure |
