@@ -21,10 +21,10 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	for _, want := range []string{
 		"optional client-side preflight",
 		"These checks do not gate remote updates by themselves.",
-		"ruleset `main` (ID `18766557`)",
-		"with no bypass actors, it requires signed commits, blocks non-fast-forward updates and deletion",
-		"currently requires the GitHub Actions checks `CI / gate` and the retired `CI / release-config` on the exact candidate revision",
-		"`release tags` ruleset (ID `21631403`)",
+		"ruleset `main` (ID `18766557`) is the final remote control for publishing `main`",
+		"requires signed commits and blocks non-fast-forward updates and deletion, but has no required-status rule",
+		"`CI / gate` is therefore definitive post-push assurance rather than a pre-update requirement on `main`",
+		"`release tags` ruleset (ID `21631403`) requires `CI / gate` and the retired `CI / release-config`",
 		"before `refs/tags/v*` can be created or updated",
 		"One aggregate `CI / gate` result is the definitive hosted verdict.",
 	} {
@@ -35,7 +35,8 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	for _, stale := range []string{
 		"GitHub branch protection is the final publication boundary.",
 		"CI is the enforcement backstop",
-		"does not require CI status checks before accepting an update",
+		"currently requires the GitHub Actions checks `CI / gate` and the retired `CI / release-config`",
+		"release tags` ruleset (ID `21631403`) currently requires the same app-bound checks",
 	} {
 		if strings.Contains(workflow, stale) {
 			t.Errorf("self-hosted workflow retains stale remote-policy claim %q", stale)

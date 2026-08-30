@@ -60,4 +60,4 @@ Backing: test
 
 ### `rule: hosted-main-acceptance-settings`
 
-The live GitHub rulesets still require `CI / gate` and the retired `CI / release-config` status. Repository owners must update those remote rules to require only `CI / gate`; repository files do not claim that remote change has occurred.
+The live GitHub `main` ruleset requires signed commits and blocks deletion and non-fast-forward updates, but has no required-status rule. `CI / gate` is definitive post-push assurance for `main`; release-tag status requirements are owned separately by the changelog-and-release topic.

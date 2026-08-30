@@ -196,11 +196,38 @@ func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 	}{
 		{"missing aggregate gate", func(ci, _ map[string]any) { delete(workflowJobs(ci), "gate") }},
 		{"missing Linux dependency", func(ci, _ map[string]any) { workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"macos", "pi"} }},
+		{"missing Linux behavior", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["linux"]), "Exhaustive Go behavior")["run"] = "true"
+		}},
+		{"missing Linux gate", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["linux"]), "Build, blocking lint, version, and pins")["run"] = "true"
+		}},
+		{"missing Linux repository check", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["linux"]), "Drift, current state, and repository scans")["run"] = "true"
+		}},
+		{"missing macOS safety", func(ci, _ map[string]any) {
+			workflowStep(workflowMap(workflowJobs(ci)["macos"]), "Filesystem, publication, Git, effort, and worktree safety")["run"] = "true"
+		}},
+		{"missing strict Pi behavior", func(ci, _ map[string]any) {
+			workflowExactRunStep(workflowJobs(ci)["pi"], "./x pi-test run")["run"] = "true"
+		}},
 		{"missing exact CI verification", func(_, release map[string]any) {
 			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify bridge readiness and exact CI conclusion")["run"] = "true"
 		}},
 		{"missing tag identity", func(_, release map[string]any) {
 			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify checkout and tag identity")["run"] = "true"
+		}},
+		{"missing version identity", func(_, release map[string]any) {
+			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify tag matches project.Version")["run"] = "true"
+		}},
+		{"missing main ancestry", func(_, release map[string]any) {
+			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify tagged commit is on main")["run"] = "true"
+		}},
+		{"missing verify curated notes", func(_, release map[string]any) {
+			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Prepare release notes from the curated changelog")["run"] = "true"
+		}},
+		{"missing publish curated notes", func(_, release map[string]any) {
+			workflowStep(workflowMap(workflowJobs(release)["publish"]), "Prepare release notes from the curated changelog")["run"] = "true"
 		}},
 		{"publication loses verification dependency", func(_, release map[string]any) { delete(workflowMap(workflowJobs(release)["publish"]), "needs") }},
 	} {
@@ -581,6 +608,9 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 		problems = append(problems, "CI name")
 	}
 	ciJobs, releaseJobs := workflowJobs(ci), workflowJobs(release)
+	runEquals := func(job map[string]any, step, want string) bool {
+		return strings.TrimSpace(stringValue(workflowStep(job, step)["run"])) == strings.TrimSpace(want)
+	}
 	for _, name := range []string{"linux", "macos", "pi", "gate"} {
 		job, ok := ciJobs[name]
 		if !ok {
@@ -592,6 +622,26 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 			problems = append(problems, "CI checkout exact SHA: "+name)
 		}
 	}
+	linux, macos, pi := workflowMap(ciJobs["linux"]), workflowMap(ciJobs["macos"]), workflowMap(ciJobs["pi"])
+	for _, required := range []struct {
+		job  map[string]any
+		step string
+		run  string
+		name string
+	}{
+		{linux, "Exhaustive Go behavior", "./x test", "Linux behavior"},
+		{linux, "Build, blocking lint, version, and pins", "./x gate", "Linux gate"},
+		{linux, "Drift, current state, and repository scans", "./x check", "Linux repository check"},
+		{macos, "Filesystem, publication, Git, effort, and worktree safety", "go test -count=1 ./internal/filesystem ./internal/filepublication ./internal/git ./internal/effort ./internal/worktree", "macOS safety"},
+	} {
+		if !runEquals(required.job, required.step, required.run) {
+			problems = append(problems, required.name)
+		}
+	}
+	if countExactRun(pi, "./x pi-test run") != 1 {
+		problems = append(problems, "strict Pi behavior")
+	}
+
 	gate := workflowMap(ciJobs["gate"])
 	if gate["name"] != "gate" {
 		problems = append(problems, "stable aggregate conclusion")
@@ -608,9 +658,6 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 	}
 
 	verify, publish := workflowMap(releaseJobs["verify"]), workflowMap(releaseJobs["publish"])
-	runEquals := func(job map[string]any, step, want string) bool {
-		return strings.TrimSpace(stringValue(workflowStep(job, step)["run"])) == strings.TrimSpace(want)
-	}
 	if !runEquals(verify, "Verify bridge readiness and exact CI conclusion", `go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"`) {
 		problems = append(problems, "exact CI verification")
 	}
@@ -619,6 +666,31 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 [ "$(git rev-parse "${GITHUB_REF_NAME}^{}")" = "$candidate" ]`
 	if !runEquals(verify, "Verify checkout and tag identity", tagIdentity) {
 		problems = append(problems, "release checkout and tag identity")
+	}
+	const versionMatch = `tag="${GITHUB_REF_NAME#v}"
+want="$(go run ./cmd/awf version | awk '
+  /^version: [^[:space:]()]+( \([^[:cntrl:]]+\))?$/ {
+    if (found) { bad = 1; exit }
+    found = 1
+    value = substr($0, 10)
+    sub(/ \(.*/, "", value)
+    next
+  }
+  { bad = 1; exit }
+  END { if (!bad && found == 1) print value; else exit 1 }
+')"
+[ "$tag" = "$want" ]`
+	if !runEquals(verify, "Verify tag matches project.Version", versionMatch) {
+		problems = append(problems, "release version identity")
+	}
+	const mainAncestry = `git fetch origin main
+git merge-base --is-ancestor HEAD origin/main`
+	if !runEquals(verify, "Verify tagged commit is on main", mainAncestry) {
+		problems = append(problems, "release main ancestry")
+	}
+	const curatedNotes = `go run ./cmd/awf changelog --version "${GITHUB_REF_NAME#v}" > "${RUNNER_TEMP}/release-notes.md"`
+	if !runEquals(verify, "Prepare release notes from the curated changelog", curatedNotes) || !runEquals(publish, "Prepare release notes from the curated changelog", curatedNotes) {
+		problems = append(problems, "curated release notes")
 	}
 	if countExactRun(verify, "go run ./cmd/releasecheck --verify-archives dist") != 1 || countActionArgs(verify, "goreleaser/goreleaser-action@", "release --snapshot --clean") != 1 {
 		problems = append(problems, "release-only snapshot archive validation")
