@@ -129,15 +129,24 @@ func meaningfulRetiredValue(value *yaml.Node) bool {
 }
 
 type retiredWorkflowArtifact struct {
-	sections map[string]bool
+	sections        map[string]bool
+	currentSections map[string]bool
 }
 
-func retiredSections(names ...string) retiredWorkflowArtifact {
+func sectionSet(names ...string) map[string]bool {
 	sections := make(map[string]bool, len(names))
 	for _, name := range names {
 		sections[name] = true
 	}
-	return retiredWorkflowArtifact{sections: sections}
+	return sections
+}
+
+func retiredSections(names ...string) retiredWorkflowArtifact {
+	return retiredWorkflowArtifact{sections: sectionSet(names...)}
+}
+
+func partiallyRetiredSections(current []string, retired ...string) retiredWorkflowArtifact {
+	return retiredWorkflowArtifact{sections: sectionSet(retired...), currentSections: sectionSet(current...)}
 }
 
 // retiredWorkflowArtifacts is the frozen schema-48 artifact and section set.
@@ -166,18 +175,18 @@ var retiredWorkflowArtifacts = map[string]map[string]retiredWorkflowArtifact{
 	},
 }
 
-// retiredWorkflowPartSections records schema-48 sections removed from artifact
-// identities that remain live under a new contract. Their sidecars remain live;
-// only overrides at these retired section paths are migration-owned.
-var retiredWorkflowPartSections = map[string]map[string]retiredWorkflowArtifact{
+// retainedWorkflowArtifacts records schema-48 sections removed from artifact
+// identities that remain live under a new contract. Current section overrides
+// survive while retired sidecar fields and parts are classified explicitly.
+var retainedWorkflowArtifacts = map[string]map[string]retiredWorkflowArtifact{
 	"skills": {
-		"brainstorming": retiredSections("preamble", "when-to-invoke", "example-clarifying-questions", "design-sections", "no-spec-rule", "terminal-step", "definitions", "anti-patterns"),
-		"using-awf":     retiredSections("procedure"),
-		"debugging":     retiredSections("symptom-list", "debugging-surfaces", "test-isolation", "oracle-invariant", "devdb-note", "red-flags", "memory-checkpoint"),
+		"brainstorming": partiallyRetiredSections([]string{"procedure"}, "preamble", "when-to-invoke", "example-clarifying-questions", "design-sections", "no-spec-rule", "terminal-step", "definitions", "anti-patterns"),
+		"using-awf":     partiallyRetiredSections([]string{"generated-documents", "upgrades"}, "procedure"),
+		"debugging":     partiallyRetiredSections([]string{"oracle-and-handoff"}, "symptom-list", "debugging-surfaces", "test-isolation", "oracle-invariant", "devdb-note", "red-flags", "memory-checkpoint"),
 	},
 	"agents": {
-		"explorer":    retiredSections("identity", "single-need", "breadth", "report-detail", "grounding-and-outcomes", "report-discipline"),
-		"implementer": retiredSections("identity", "task-scope", "guide-authority", "green-obligation", "escalation", "return-schema"),
+		"explorer":    partiallyRetiredSections([]string{"scope", "report"}, "identity", "single-need", "breadth", "report-detail", "grounding-and-outcomes", "report-discipline"),
+		"implementer": partiallyRetiredSections([]string{"authority", "work", "receipt"}, "identity", "task-scope", "guide-authority", "green-obligation", "escalation", "return-schema"),
 	},
 }
 
@@ -223,7 +232,7 @@ func retireWorkflowArtifacts(_ context.Context, tree *ProposedTree, changes *Cha
 				if err != nil {
 					return nil, fmt.Errorf("read %s: %w", sourcePath, err)
 				}
-				if strings.TrimSpace(string(source)) != "{{=awf:sectionDefault}}" {
+				if !bytes.Equal(source, []byte("{{=awf:sectionDefault}}\n")) {
 					return nil, fmt.Errorf("%s has a meaningful retired part replacement for section %s; reconcile it before upgrade", sourcePath, section)
 				}
 				mutations = append(mutations, FileMutation{Path: sourcePath, Remove: true})
@@ -232,7 +241,7 @@ func retireWorkflowArtifacts(_ context.Context, tree *ProposedTree, changes *Cha
 		}
 	}
 	for _, kind := range []string{"agents", "skills"} {
-		names := retiredWorkflowPartSections[kind]
+		names := retainedWorkflowArtifacts[kind]
 		orderedNames := make([]string, 0, len(names))
 		for name := range names {
 			orderedNames = append(orderedNames, name)
@@ -240,6 +249,23 @@ func retireWorkflowArtifacts(_ context.Context, tree *ProposedTree, changes *Cha
 		slices.Sort(orderedNames)
 		for _, name := range orderedNames {
 			artifact := names[name]
+			sidecar := config.DirName + "/" + kind + "/" + name + ".yaml"
+			if source, mode, err := tree.Read(sidecar); err == nil {
+				updated, remove, changed, err := retireRetainedWorkflowSidecar(source, artifact)
+				if err != nil {
+					return nil, fmt.Errorf("%s has a meaningful retired override: %w; reconcile it before upgrade", sidecar, err)
+				}
+				if remove {
+					mutations = append(mutations, FileMutation{Path: sidecar, Remove: true})
+					changes.Add("removed default retired " + sidecar)
+				} else if changed {
+					mutations = append(mutations, FileMutation{Path: sidecar, Content: updated, Mode: mode})
+					changes.Add("removed default retired fields from " + sidecar)
+				}
+			} else if !errors.Is(err, fs.ErrNotExist) {
+				return nil, fmt.Errorf("read %s: %w", sidecar, err)
+			}
+
 			partsRoot := config.DirName + "/" + kind + "/parts/" + name
 			paths, err := tree.Paths(partsRoot)
 			if err != nil {
@@ -257,7 +283,7 @@ func retireWorkflowArtifacts(_ context.Context, tree *ProposedTree, changes *Cha
 				if err != nil {
 					return nil, fmt.Errorf("read %s: %w", sourcePath, err)
 				}
-				if strings.TrimSpace(string(source)) != "{{=awf:sectionDefault}}" {
+				if !bytes.Equal(source, []byte("{{=awf:sectionDefault}}\n")) {
 					return nil, fmt.Errorf("%s has a meaningful retired part replacement for section %s; reconcile it before upgrade", sourcePath, section)
 				}
 				mutations = append(mutations, FileMutation{Path: sourcePath, Remove: true})
@@ -270,17 +296,8 @@ func retireWorkflowArtifacts(_ context.Context, tree *ProposedTree, changes *Cha
 }
 
 func validateDefaultRetiredSidecar(source []byte, artifact retiredWorkflowArtifact) error {
-	var sidecar config.Sidecar
-	decoder := yaml.NewDecoder(bytes.NewReader(source))
-	decoder.KnownFields(true)
-	if err := decoder.Decode(&sidecar); err != nil {
-		return err
-	}
-	var trailing yaml.Node
-	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
-		if err == nil {
-			return errors.New("multiple YAML documents")
-		}
+	sidecar, _, err := decodeRetiredWorkflowSidecar(source)
+	if err != nil {
 		return err
 	}
 	if len(sidecar.Data) != 0 {
@@ -303,6 +320,77 @@ func validateDefaultRetiredSidecar(source []byte, artifact retiredWorkflowArtifa
 		return errors.New("paths declares adopter-owned territory")
 	}
 	return nil
+}
+
+func retireRetainedWorkflowSidecar(source []byte, artifact retiredWorkflowArtifact) ([]byte, bool, bool, error) {
+	sidecar, mapping, err := decodeRetiredWorkflowSidecar(source)
+	if err != nil {
+		return nil, false, false, err
+	}
+	if len(sidecar.Data) != 0 {
+		return nil, false, false, errors.New("data may affect the schema-48 artifact")
+	}
+	for key, keep := range sidecar.DataDefaults {
+		if !keep {
+			return nil, false, false, fmt.Errorf("dataDefaults.%s may disable a schema-48 default", key)
+		}
+	}
+	if len(sidecar.Paths) != 0 {
+		return nil, false, false, errors.New("paths declares adopter-owned territory")
+	}
+
+	keptSections := make(map[string]config.SectionOverride)
+	retiredFound := false
+	for section, override := range sidecar.Sections {
+		switch {
+		case artifact.currentSections[section]:
+			keptSections[section] = override
+		case artifact.sections[section]:
+			if override.Drop {
+				return nil, false, false, fmt.Errorf("sections.%s.drop removes schema-48 content", section)
+			}
+			retiredFound = true
+		default:
+			return nil, false, false, fmt.Errorf("sections.%s is not a known schema-48 or current section", section)
+		}
+	}
+
+	defaultFields := mappingValue(mapping, "data") != nil || mappingValue(mapping, "dataDefaults") != nil || mappingValue(mapping, "paths") != nil
+	if len(keptSections) == 0 {
+		return nil, true, true, nil
+	}
+	if !retiredFound && !defaultFields {
+		return append([]byte(nil), source...), false, false, nil
+	}
+	updated, err := yaml.Marshal(config.Sidecar{Sections: keptSections})
+	if err != nil {
+		return nil, false, false, err
+	}
+	return updated, false, true, nil
+}
+
+func decodeRetiredWorkflowSidecar(source []byte) (config.Sidecar, *yaml.Node, error) {
+	var sidecar config.Sidecar
+	decoder := yaml.NewDecoder(bytes.NewReader(source))
+	decoder.KnownFields(true)
+	if err := decoder.Decode(&sidecar); err != nil {
+		return config.Sidecar{}, nil, err
+	}
+	var trailing yaml.Node
+	if err := decoder.Decode(&trailing); !errors.Is(err, io.EOF) {
+		if err == nil {
+			return config.Sidecar{}, nil, errors.New("multiple YAML documents")
+		}
+		return config.Sidecar{}, nil, err
+	}
+	var document yaml.Node
+	if err := yaml.Unmarshal(source, &document); err != nil {
+		return config.Sidecar{}, nil, err
+	}
+	if len(document.Content) == 0 || document.Content[0].Kind != yaml.MappingNode {
+		return sidecar, nil, nil
+	}
+	return sidecar, document.Content[0], nil
 }
 
 func retiredPartSection(root, path string, sections map[string]bool) (string, bool) {
