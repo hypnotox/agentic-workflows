@@ -43,4 +43,3 @@ Pi rendering governs the retained subagent and effort extension outputs through 
 - [Sync and drift](../topics/rendering/sync-and-drift.md): How sync and check detect and report: drift hash inputs, attribution, backups, residue, pruning, cleanup, and current-state coverage and fan-out evaluation.
 - [Templates](../topics/rendering/templates.md): The embedded template source and its rendered content contracts.
 - [Workflow skill templates](../topics/rendering/workflow-skill-templates.md): Workflow-chain and task-skill template contracts.
-

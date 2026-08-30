@@ -37,20 +37,14 @@ var doubleBacktickRe = regexp.MustCompile("(^|[^`])``([^`]|$)")
 var doubleBacktickExempt = map[string]bool{}
 
 // TestCatalogTemplatesDegradeLeakFree renders every catalog skill and agent
-// template under empty adopter data (full awf-given layout, RequiresDoc doc
-// seeded) and fails on leak residue, on skill-reference residue outside the
-// artifact's RequiresSkills declaration, and on stale declarations or
-// exemptions. The artifact set derives from catalog.Standard, never a hand
-// list (ADR-0080).
+// template under empty adopter data and fails on rendering leaks. The artifact
+// set derives from catalog.Standard, never a hand list.
 // invariant: rendering/templates:catalog-template-sweep (TestCatalogTemplatesDegradeLeakFree)
 func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 	cat := catalog.Standard
-	sweep := func(tid, requiresDoc string) {
+	sweep := func(tid string) {
 		t.Run(tid, func(t *testing.T) {
 			layout := testLayout()
-			if requiresDoc != "" {
-				layout["docs"] = map[string]any{requiresDoc: "docs/" + requiresDoc + ".md"}
-			}
 			data := map[string]any{
 				"prefix": "example",
 				"vars":   map[string]any{},
@@ -59,9 +53,6 @@ func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 				"layout": layout,
 			}
 			out := renderGolden(t, tid, data)
-			// Declarations are exact: undeclared reference residue and stale
-			// RequiresSkills entries both fail (ADR-0080 Decision 2).
-			// invariant: rendering/catalog-and-targets:requires-skills-exact (TestCatalogTemplatesDegradeLeakFree)
 			found := map[string]bool{}
 			for _, m := range skillRefRe.FindAllString(out, -1) {
 				name := strings.TrimPrefix(m, "example-")
@@ -69,9 +60,6 @@ func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 					continue // prose or section-name token, not a skill reference
 				}
 				found[name] = true
-				// Workflow-profile neighbors are advisory and are not structural
-				// requirements. Only artifact references declared in RequiresSkills
-				// are checked by the catalog sweep.
 			}
 			// Standard workflow relationships are intentionally not required to
 			// appear as unconditional rendered references.
@@ -84,11 +72,11 @@ func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 			}
 		})
 	}
-	for name, spec := range cat.Skills {
-		sweep(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name), spec.RequiresDoc)
+	for name := range cat.Skills {
+		sweep(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name))
 	}
 	for name := range cat.Agents {
-		sweep(fmt.Sprintf("agents/%s.md.tmpl", name), "")
+		sweep(fmt.Sprintf("agents/%s.md.tmpl", name))
 	}
 }
 

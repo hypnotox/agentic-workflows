@@ -85,7 +85,7 @@ When sequencing, coordination, or resumability materially helps, the parent may 
 
 - Its immutable slug is the command identity, resident directory, worktree path, and branch suffix; it always owns `.awf/efforts/<slug>/memory.md`.
 
-- Creation makes a managed worktree at `.awf/worktrees/<slug>/` by default and reports the path; execution continues there, with `--no-worktree` as the explicit exception that keeps the invoking checkout.
+- Creation makes a managed worktree at `.awf/worktrees/<slug>/` and reports the path; execution continues there.
 
 - The owned memory stays under the primary checkout: the literal `.awf/efforts/<slug>/memory.md` spelling is primary-root-relative, and effort commands print a resolvable absolute path from anywhere else.
 

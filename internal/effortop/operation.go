@@ -18,12 +18,12 @@ import (
 // AcquireMutationLease is the sole effort application-composition policy for
 // resident and dual-root mutation transactions. Command code supplies only the
 // parsed operation shape and holds the returned capability through rendering.
-func AcquireMutationLease(ctx context.Context, root, subcommand string, noWorktree bool) (*filesystem.Lease, error) {
+func AcquireMutationLease(ctx context.Context, root, subcommand string) (*filesystem.Lease, error) {
 	if !mutates(subcommand) {
 		return nil, nil
 	}
 	residentRoot := awfgit.ProjectResidentRoot(ctx, root)
-	if needsProjectLease(subcommand, noWorktree) {
+	if needsProjectLease(subcommand) {
 		return filesystem.AcquireProjectLease(ctx, root, residentRoot)
 	}
 	return filesystem.AcquireResidentLease(ctx, residentRoot)
@@ -38,27 +38,17 @@ func mutates(subcommand string) bool {
 	}
 }
 
-func needsProjectLease(subcommand string, noWorktree bool) bool {
+func needsProjectLease(subcommand string) bool {
 	switch subcommand {
-	case "finish", "worktree", "integrate":
+	case "new", "finish", "worktree", "integrate":
 		return true
-	case "new":
-		return !noWorktree
 	default:
 		return false
 	}
 }
 
-// New creates an effort resident and, unless excluded, its managed worktree.
-func New(ctx context.Context, service *effort.Service, manager *worktree.Manager, input effort.NewInput, base string, noWorktree bool) (presentation.Document, error) {
-	if noWorktree {
-		record, err := service.New(ctx, input)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		absent := worktree.Result{Condition: "no managed worktree", NextAction: "continue the effort in " + service.InvokingRoot()}
-		return newDocument(record, absent)
-	}
+// New creates an effort resident and its managed worktree.
+func New(ctx context.Context, service *effort.Service, manager *worktree.Manager, input effort.NewInput, base string) (presentation.Document, error) {
 	record, result, err := manager.NewEffort(ctx, input, base)
 	if err != nil {
 		return presentation.Document{}, err

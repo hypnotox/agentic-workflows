@@ -199,6 +199,30 @@ func TestDomainDocRendersTopicNavigation(t *testing.T) {
 	if !strings.Contains(out, "[Contracts](../topics/rendering/contracts.md)") || strings.Contains(out, "## Decisions") {
 		t.Fatalf("domain doc:\n%s", out)
 	}
+	assertSingleFinalNewline(t, out)
+}
+
+func TestDomainDocWithoutTopicsHasSingleFinalNewline(t *testing.T) {
+	root := scaffoldFiles(t, domainCfg, nil)
+	p, err := Open(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	out := readDomainDoc(t, root, "rendering")
+	if !strings.Contains(out, "_No current-state topics are recorded for this domain._") {
+		t.Fatalf("domain doc:\n%s", out)
+	}
+	assertSingleFinalNewline(t, out)
+}
+
+func assertSingleFinalNewline(t *testing.T, text string) {
+	t.Helper()
+	if !strings.HasSuffix(text, "\n") || strings.HasSuffix(text, "\n\n") {
+		t.Fatalf("document must end in exactly one newline: %q", text)
+	}
 }
 
 func hasDrift(drift []manifest.Drift, path, kind string) bool {

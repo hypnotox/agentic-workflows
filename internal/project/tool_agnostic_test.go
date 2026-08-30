@@ -36,16 +36,13 @@ func TestSkillProseToolAgnostic(t *testing.T) {
 		regexp.MustCompile(`(?i)\bvia (write|edit|read)\b`),
 		regexp.MustCompile(`(?i)\b(write|edit|read) (tool|calls?)\b`),
 	}
-	scan := func(tid, requiresDoc string) {
+	scan := func(tid string) {
 		t.Helper()
 		src, err := fs.ReadFile(templates.FS, tid)
 		if err != nil {
 			t.Fatalf("read %s: %v", tid, err)
 		}
 		docs := map[string]any{}
-		if requiresDoc != "" {
-			docs[requiresDoc] = "docs/" + requiresDoc + ".md"
-		}
 		workflowRef := "AGENTS.md"
 		if wp, ok := docs["workflow"]; ok {
 			workflowRef = wp.(string)
@@ -69,10 +66,10 @@ func TestSkillProseToolAgnostic(t *testing.T) {
 			}
 		}
 	}
-	for name, spec := range cat.Skills {
-		scan(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name), spec.RequiresDoc)
+	for name := range cat.Skills {
+		scan(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name))
 	}
 	for name := range cat.Agents {
-		scan(fmt.Sprintf("agents/%s.md.tmpl", name), "")
+		scan(fmt.Sprintf("agents/%s.md.tmpl", name))
 	}
 }

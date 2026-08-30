@@ -119,10 +119,6 @@ func (s *Service) New(ctx context.Context, input NewInput) (Record, error) {
 	return record, nil
 }
 
-// InvokingRoot reports the checkout the service was opened from, so callers
-// can name where execution continues when no managed worktree is created.
-func (s *Service) InvokingRoot() string { return s.paths.roots.InvokingRoot }
-
 func (s *Service) List() ([]Record, error) { return s.store.list() }
 
 func (s *Service) Show(slug string) (Record, error) { return s.store.load(slug) }

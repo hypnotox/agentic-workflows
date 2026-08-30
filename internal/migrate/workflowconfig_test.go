@@ -79,6 +79,143 @@ func TestRetireWorkflowConfigMigrationPreservesModeAndDoesNotWrite(t *testing.T)
 	}
 }
 
+func TestRetiredWorkflowArtifactsUseFrozenSchema48IdentitySet(t *testing.T) {
+	var got []string
+	for kind, artifacts := range retiredWorkflowArtifacts {
+		for name := range artifacts {
+			got = append(got, kind+"/"+name)
+		}
+	}
+	slices.Sort(got)
+	want := []string{
+		"agents/adr-reviewer", "agents/code-reviewer", "agents/grounding-checker",
+		"skills/adr-lifecycle", "skills/bugfix", "skills/executing-direct", "skills/exploring", "skills/grounding", "skills/orienting", "skills/proposing-adr", "skills/refactor-coupling-audit", "skills/retrospective", "skills/reviewing-adr", "skills/reviewing-impl", "skills/roadmap-graduation", "skills/tdd", "skills/writing-docs",
+	}
+	if !slices.Equal(got, want) {
+		t.Fatalf("retired artifacts = %v, want %v", got, want)
+	}
+}
+
+func TestRetireWorkflowArtifactsRemovesOnlyDefaultEquivalentState(t *testing.T) {
+	root := schema48WorkflowRoot(t)
+	files := map[string]string{
+		".awf/skills/grounding.yaml":                        "data: {}\ndataDefaults: {unused: true}\nsections:\n  notes: {drop: false}\npaths: []\n",
+		".awf/agents/adr-reviewer.yaml":                     "{}\n",
+		".awf/skills/parts/grounding/notes.md":              "  {{=awf:sectionDefault}}\n",
+		".awf/skills/parts/debugging/debugging-surfaces.md": "{{=awf:sectionDefault}}\n",
+		".awf/skills/parts/debugging/oracle-and-handoff.md": "current section override\n",
+	}
+	for path, body := range files {
+		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(path)), body)
+	}
+	_, _, mutations, err := Build(context.Background(), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	var removed []string
+	for _, mutation := range mutations {
+		if mutation.Remove {
+			removed = append(removed, mutation.Path)
+		}
+	}
+	want := []string{".awf/agents/adr-reviewer.yaml", ".awf/skills/grounding.yaml", ".awf/skills/parts/debugging/debugging-surfaces.md", ".awf/skills/parts/grounding/notes.md"}
+	if !slices.Equal(removed, want) {
+		t.Fatalf("removed = %v, want %v", removed, want)
+	}
+	for path, body := range files {
+		got, readErr := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		if readErr != nil || string(got) != body {
+			t.Fatalf("Build mutated %s: %q, %v", path, got, readErr)
+		}
+	}
+}
+
+func TestRetireWorkflowArtifactsRefusesMeaningfulOrUnknownSidecars(t *testing.T) {
+	cases := map[string]string{
+		"data":             "data: {value: custom}\n",
+		"default-disabled": "dataDefaults: {value: false}\n",
+		"section-dropped":  "sections: {notes: {drop: true}}\n",
+		"unknown-section":  "sections: {other: {drop: false}}\n",
+		"paths":            "paths: [src/**]\n",
+		"unknown-field":    "custom: value\n",
+		"malformed":        "sections: [\n",
+		"multiple-docs":    "{}\n---\n{}\n",
+	}
+	for name, source := range cases {
+		t.Run(name, func(t *testing.T) {
+			root := schema48WorkflowRoot(t)
+			path := filepath.Join(root, ".awf", "skills", "grounding.yaml")
+			testsupport.WriteFile(t, path, source)
+			_, _, mutations, err := Build(context.Background(), root)
+			if err == nil || !strings.Contains(err.Error(), ".awf/skills/grounding.yaml has a meaningful retired override") {
+				t.Fatalf("mutations=%#v err=%v, want retired-override refusal", mutations, err)
+			}
+			got, readErr := os.ReadFile(path)
+			if readErr != nil || string(got) != source {
+				t.Fatalf("refusal mutated source: %q, %v", got, readErr)
+			}
+		})
+	}
+}
+
+func TestRetireWorkflowArtifactsRefusesMeaningfulOrUnknownParts(t *testing.T) {
+	cases := map[string]string{
+		"notes.md":       "",
+		"procedure.md":   "custom body\n",
+		"unknown.md":     "{{=awf:sectionDefault}}\n",
+		"notes/extra.md": "{{=awf:sectionDefault}}\n",
+		"notes.txt":      "{{=awf:sectionDefault}}\n",
+	}
+	for rel, source := range cases {
+		t.Run(strings.ReplaceAll(rel, "/", "-"), func(t *testing.T) {
+			root := schema48WorkflowRoot(t)
+			path := filepath.Join(root, ".awf", "skills", "parts", "grounding", filepath.FromSlash(rel))
+			testsupport.WriteFile(t, path, source)
+			_, _, mutations, err := Build(context.Background(), root)
+			if err == nil || !strings.Contains(err.Error(), "reconcile it before upgrade") {
+				t.Fatalf("mutations=%#v err=%v, want part refusal", mutations, err)
+			}
+			got, readErr := os.ReadFile(path)
+			if readErr != nil || string(got) != source {
+				t.Fatalf("refusal mutated source: %q, %v", got, readErr)
+			}
+		})
+	}
+}
+
+func TestRetireWorkflowArtifactsRefusesDogfoodOverrides(t *testing.T) {
+	cases := map[string]string{
+		".awf/agents/adr-reviewer.yaml":                         "data: {focusItems: [custom]}\n",
+		".awf/agents/code-reviewer.yaml":                        "data: {focusItems: [custom]}\n",
+		".awf/skills/proposing-adr.yaml":                        "dataDefaults: {adrTriggers: false}\n",
+		".awf/skills/refactor-coupling-audit.yaml":              "sections: {category-4-codegen: {drop: true}}\n",
+		".awf/skills/tdd.yaml":                                  "data: {testSurfaces: [custom]}\n",
+		".awf/skills/parts/bugfix/pitfalls-check.md":            "custom\n",
+		".awf/skills/parts/debugging/debugging-surfaces.md":     "custom\n",
+		".awf/skills/parts/retrospective/procedure.md":          "custom\n",
+		".awf/skills/parts/reviewing-impl/run-audit.md":         "custom\n",
+		".awf/skills/parts/roadmap-graduation/failure-modes.md": "custom\n",
+	}
+	for rel, source := range cases {
+		t.Run(strings.ReplaceAll(rel, "/", "-"), func(t *testing.T) {
+			root := schema48WorkflowRoot(t)
+			testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(rel)), source)
+			_, _, mutations, err := Build(context.Background(), root)
+			if err == nil || !strings.Contains(err.Error(), "reconcile it before upgrade") {
+				t.Fatalf("mutations=%#v err=%v, want dogfood override refusal", mutations, err)
+			}
+		})
+	}
+}
+
+func schema48WorkflowRoot(t *testing.T) string {
+	t.Helper()
+	root := t.TempDir()
+	writeLock(t, root, 48)
+	testsupport.WriteFile(t, config.ConfigPath(root), "prefix: example\nprofile: full\nintegrationBranch: main\nvars: {gateCmd: make gate}\n")
+	return root
+}
+
 func TestConfigBytesForGenerationChainsWorkflowConfigRetirement(t *testing.T) {
 	source := []byte("prefix: example\nprofile: full\nintegrationBranch: main\ntags: {old: metadata}\nvars: {gateCmd: make gate, gateCmdFull: \"\"}\n")
 	got, err := ConfigBytesForGeneration(LiveSchemaFloor, source)

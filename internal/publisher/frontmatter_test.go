@@ -23,16 +23,13 @@ func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 	// required doc - mirroring the suppression guarantee (a doc-gated skill renders
 	// only when its doc is enabled, so its unguarded .layout.docs.<doc> resolves;
 	// non-gated skills must render cleanly with no docs enabled, guards omitting).
-	check := func(tid, requiresDoc string) {
+	check := func(tid string) {
 		t.Helper()
 		src, err := fs.ReadFile(templates.FS, tid)
 		if err != nil {
 			t.Fatalf("read %s: %v", tid, err)
 		}
 		docs := map[string]any{}
-		if requiresDoc != "" {
-			docs[requiresDoc] = "docs/" + requiresDoc + ".md"
-		}
 		workflowRef := "AGENTS.md"
 		if wp, ok := docs["workflow"]; ok {
 			workflowRef = wp.(string)
@@ -69,7 +66,7 @@ func TestAllTemplatesProduceValidFrontmatter(t *testing.T) {
 			t.Errorf("%s: <no value> leaked into frontmatter", tid)
 		}
 	}
-	for name, spec := range cat.Skills {
-		check(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name), spec.RequiresDoc)
+	for name := range cat.Skills {
+		check(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name))
 	}
 }

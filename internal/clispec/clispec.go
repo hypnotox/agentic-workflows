@@ -262,12 +262,12 @@ var Commands = []Command{
 	{
 		Name: "effort", Summary: "Manage slugged repository-local efforts",
 		MaxPos: 0, Gating: Gated,
-		Help: Help{Usage: []string{"awf effort <subcommand>"}, Description: "Create, inspect, archive, integrate, and remove immutable slugged efforts, which get a managed worktree by default."},
+		Help: Help{Usage: []string{"awf effort <subcommand>"}, Description: "Create, inspect, archive, integrate, and remove immutable slugged efforts, which always begin with a managed worktree."},
 		Children: []Command{
-			{Name: "new", Summary: "Create an effort with a managed worktree by default",
-				BoolFlags: []string{"--no-worktree"}, ValueFlags: []string{"--slug", "--base"},
-				MinPos: 1, MaxPos: 1,
-				Help: Help{Usage: []string{"awf effort new --slug <slug> <outcome-title> [--no-worktree] [--base <ref>]"}, Description: "Create schema-2 effort state with owned memory and a managed worktree by default.", Details: []string{"The immutable canonical slug is supplied independently of the single outcome title. Flags may appear before or after that positional. An optional scratch directory is opaque and never scaffolded or managed.", "The worktree uses the invoking checkout HEAD by default; --no-worktree keeps execution in the invoking checkout and rejects --base. A worktree failure deletes only its identity-matched resident when managed topology is proven absent."}, Positionals: []HelpItem{{Name: "<outcome-title>", Description: "single effort outcome title"}}, Options: []HelpItem{{Name: "--slug", Description: "<slug> immutable canonical slug of 1 through 32 bytes"}, {Name: "--base", Description: "<ref> base revision for the managed worktree"}, {Name: "--no-worktree", Description: "keep execution in the invoking checkout"}}}},
+			{Name: "new", Summary: "Create an effort with a managed worktree",
+				ValueFlags: []string{"--slug", "--base"},
+				MinPos:     1, MaxPos: 1,
+				Help: Help{Usage: []string{"awf effort new --slug <slug> <outcome-title> [--base <ref>]"}, Description: "Create schema-2 effort state with owned memory and a managed worktree.", Details: []string{"The immutable canonical slug is supplied independently of the single outcome title. Flags may appear before or after that positional. An optional scratch directory is opaque and never scaffolded or managed.", "The worktree uses the invoking checkout HEAD by default. A worktree failure deletes only its identity-matched resident when managed topology is proven absent."}, Positionals: []HelpItem{{Name: "<outcome-title>", Description: "single effort outcome title"}}, Options: []HelpItem{{Name: "--slug", Description: "<slug> immutable canonical slug of 1 through 32 bytes"}, {Name: "--base", Description: "<ref> base revision for the managed worktree"}}}},
 
 			{Name: "list", Summary: "List efforts by slug", MaxPos: 0,
 				Help: Help{Usage: []string{"awf effort list"}, Description: "List every usable active effort in slug order."}},

@@ -10,6 +10,5 @@ _Describe where this domain stands today: the shape it has settled into, the loa
 
 {{ if .data.topics.Topics }}[All topics]({{ .data.topics.IndexLink }})
 
-{{ range .data.topics.Topics }}- [{{ .Title }}]({{ .Link }}): {{ .Summary }}
-{{ end }}{{ else }}_No current-state topics are recorded for this domain._
-{{ end }}
+{{ range $index, $topic := .data.topics.Topics }}{{ if $index }}
+{{ end }}- [{{ $topic.Title }}]({{ $topic.Link }}): {{ $topic.Summary }}{{ end }}{{ else }}_No current-state topics are recorded for this domain._{{ end }}

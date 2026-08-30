@@ -21,4 +21,3 @@ The ledger proves that a named test declares responsibility for a claim; it does
 
 - [Current-state authority](../topics/invariants/current-state-authority.md): How current-state claims are loaded, checked, and transitioned as the sole active authority.
 - [Topics and markers](../topics/invariants/topics-and-markers.md): How topic inputs, claims, and proof markers are parsed and resolved, and how coverage evaluation selects its checks.
-

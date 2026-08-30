@@ -77,8 +77,8 @@ func TestPersisted63ByteEffortRemainsOperable(t *testing.T) {
 // invariant: tooling/cli:effort-command-contract (TestEffortNewExplicitSlugGrammarAndFlagCombinations)
 func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 	for _, args := range [][]string{
-		{"effort", "new", "--slug", "ordered-input", "Ordered title", "--no-worktree"},
-		{"effort", "new", "Ordered title", "--no-worktree", "--slug", "ordered-input"},
+		{"effort", "new", "--slug", "ordered-input", "Ordered title"},
+		{"effort", "new", "Ordered title", "--slug", "ordered-input"},
 		{"effort", "new", "--slug", "ordered-input", "--base", "HEAD", "Ordered title"},
 		{"effort", "new", "Ordered title", "--base", "HEAD", "--slug", "ordered-input"},
 	} {
@@ -121,7 +121,8 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 		args []string
 		want string
 	}{
-		{[]string{"effort", "new", "--json", "--slug", "json-new", "JSON new", "--no-worktree"}, "condition: awf: awf new: unknown flag \"--json\"\n"},
+		{[]string{"effort", "new", "--json", "--slug", "json-new", "JSON new"}, "condition: awf: awf new: unknown flag \"--json\"\n"},
+		{[]string{"effort", "new", "--slug", "no-worktree", "No worktree", "--no-worktree"}, "condition: awf: awf new: unknown flag \"--no-worktree\"\n"},
 		{[]string{"effort", "list", "--json"}, "condition: awf: awf list: unknown flag \"--json\"\n"},
 		{[]string{"effort", "show", "ordered-input", "--json"}, "condition: awf: awf show: unknown flag \"--json\"\n"},
 	} {
@@ -130,8 +131,8 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 			t.Fatalf("%q code=%d stdout=%q stderr=%q want=%q", test.args, code, stdout, stderr, test.want)
 		}
 	}
-	code, stdout, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "readable", "Readable contract", "--no-worktree")
-	newWant := "status: no managed worktree\n\nmutation:\n  identity:\n    effort: readable\n    title: Readable contract\n    memory: .awf/efforts/readable/memory.md\n  next actions:\n    step 1: continue the effort in " + root + "\n"
+	code, stdout, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "readable", "Readable contract")
+	newWant := "status: managed worktree added for readable\n\nmutation:\n  identity:\n    effort: readable\n    title: Readable contract\n    memory: .awf/efforts/readable/memory.md\n    worktree: " + filepath.Join(root, ".awf", "worktrees", "readable") + "\n    branch: awf/readable\n  changes:\n    completed:\n      managed path\n      git registration\n      branch\n  next actions:\n    step 1: continue the effort in " + filepath.Join(root, ".awf", "worktrees", "readable") + "\n"
 	if code != 0 || stderr != "" || stdout != newWant {
 		t.Fatalf("readable new code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
@@ -148,7 +149,7 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 		}
 	}
 	overlong := strings.Repeat("s", 33)
-	code, stdout, stderr = runEffortCLI(t, root, "effort", "new", "--slug", overlong, "Overlong slug", "--no-worktree")
+	code, stdout, stderr = runEffortCLI(t, root, "effort", "new", "--slug", overlong, "Overlong slug")
 	overlongRefusal := "condition: explicit effort slug \"" + overlong + "\" is invalid\nstate: input\ncause: slug must contain 1-32 bytes\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: provide a different canonical value with `--slug`\n"
 	if code != 1 || stdout != "" || stderr != overlongRefusal {
 		t.Fatalf("33-byte slug code=%d stdout=%q stderr=%q", code, stdout, stderr)
@@ -201,7 +202,7 @@ func TestEffortMemoryAndActivityCLIContract(t *testing.T) {
 	}
 
 	root := commandRepo(t)
-	code, _, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "demo", "Demo", "--no-worktree")
+	code, _, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "demo", "Demo")
 	if code != 0 {
 		t.Fatalf("new: %d %s", code, stderr)
 	}
@@ -348,7 +349,7 @@ func TestEffortActivityGrammarHelpers(t *testing.T) {
 // invariant: tooling/cli:effort-command-contract (TestMemoryCommandHumanProtocolAndStdinBoundaries)
 func TestMemoryCommandHumanProtocolAndStdinBoundaries(t *testing.T) {
 	root := commandRepo(t)
-	code, _, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "memory-cli", "Memory CLI", "--no-worktree")
+	code, _, stderr := runEffortCLI(t, root, "effort", "new", "--slug", "memory-cli", "Memory CLI")
 	if code != 0 || stderr != "" {
 		t.Fatalf("new code=%d stderr=%q", code, stderr)
 	}
@@ -697,7 +698,7 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 	for _, c := range []*cmdCtx{
 		{sub: "memory", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}},
 		{sub: "memory update", inv: invocation{bools: map[string]bool{}, values: map[string]string{}}},
-		{sub: "new", inv: invocation{bools: map[string]bool{"--no-worktree": true}, values: map[string]string{"--base": "HEAD"}}},
+		{sub: "new", inv: invocation{bools: map[string]bool{}, values: map[string]string{"--base": "HEAD"}}},
 		{sub: "worktree", inv: invocation{positionals: []string{"add"}, bools: map[string]bool{}, values: map[string]string{}}},
 		{sub: "worktree", inv: invocation{positionals: []string{"remove", "x"}, bools: map[string]bool{}, values: map[string]string{"--base": "HEAD"}}},
 		{sub: "worktree", inv: invocation{positionals: []string{"other", "x"}, bools: map[string]bool{}, values: map[string]string{}}},
@@ -729,10 +730,11 @@ func TestEffortOutputAndGrammarBranches(t *testing.T) {
 		t.Fatal("invalid readable memory result accepted")
 	}
 	for _, args := range [][]string{
-		{"effort", "new", "--slug", "command-branches", "Command branches", "--no-worktree"},
+		{"effort", "new", "--slug", "command-branches", "Command branches"},
 		{"effort", "show", "command-branches"},
 		{"effort", "list"},
 		{"effort", "memory", "update", "command-branches", "--phase", "one", "--next", "two"},
+		{"effort", "worktree", "remove", "command-branches"},
 		{"effort", "finish", "command-branches"},
 	} {
 		code, _, stderr := runEffortCLI(t, root, args...)
@@ -772,17 +774,15 @@ func TestEffortPublicTextProtocol(t *testing.T) {
 		}
 		return stdout
 	}
-	if got, want := run("effort", "new", "--slug", "public-output", "Public output", "--no-worktree"), fmt.Sprintf("status: no managed worktree\n\nmutation:\n  identity:\n    effort: public-output\n    title: Public output\n    memory: .awf/efforts/public-output/memory.md\n  next actions:\n    step 1: continue the effort in %s\n", root); got != want {
+	if got, want := run("effort", "new", "--slug", "public-output", "Public output"), fmt.Sprintf("status: managed worktree added for public-output\n\nmutation:\n  identity:\n    effort: public-output\n    title: Public output\n    memory: .awf/efforts/public-output/memory.md\n    worktree: %s\n    branch: awf/public-output\n  changes:\n    completed:\n      managed path\n      git registration\n      branch\n  next actions:\n    step 1: continue the effort in %s\n", filepath.Join(root, ".awf", "worktrees", "public-output"), filepath.Join(root, ".awf", "worktrees", "public-output")); got != want {
 		t.Fatalf("initial new output = %q, want %q", got, want)
 	}
-	managed := filepath.Join(root, ".awf", "worktrees", "public-output")
 	for _, test := range []struct {
 		args []string
 		want string
 	}{
 		{[]string{"effort", "list"}, "effort list:\n  efforts:\n    public-output: Public output\n"},
 		{[]string{"effort", "show", "public-output"}, "slug: public-output\ntitle: Public output\nmemory: .awf/efforts/public-output/memory.md\n"},
-		{[]string{"effort", "worktree", "add", "public-output"}, fmt.Sprintf("status: managed worktree added for public-output\n\nmutation:\n  identity:\n    worktree: %s\n    branch: awf/public-output\n  changes:\n    completed:\n      managed path\n      git registration\n      branch\n  next actions:\n    step 1: continue the effort in %s\n", managed, managed)},
 		{[]string{"effort", "integrate", "public-output"}, "status: effort tip is already integrated into the target\n\nmutation:\n  next actions:\n    step 1: run `awf effort worktree remove public-output` after terminal review is settled\n"},
 		{[]string{"effort", "worktree", "remove", "public-output"}, "status: managed worktree topology is absent\n\nmutation:\n  changes:\n    completed:\n      managed path\n      git registration\n      branch\n  next actions:\n    step 1: continue to retrospective, then finish the effort\n"},
 		{[]string{"effort", "finish", "public-output"}, ""},
@@ -810,7 +810,6 @@ func TestRunEffortFailureDispatches(t *testing.T) {
 		return &cmdCtx{ctx: testContext(t), root: root, sub: sub, inv: invocation{positionals: positions, bools: map[string]bool{"--json": true}, values: map[string]string{}}, stdout: &bytes.Buffer{}}
 	}
 	newCtx := ctx("new", "Duplicate")
-	newCtx.inv.bools["--no-worktree"] = true
 	newCtx.inv.values["--slug"] = "duplicate"
 	if err := runEffort(newCtx, openEffortComposition); err != nil {
 		t.Fatal(err)

@@ -50,7 +50,7 @@ help:
         topic | Resolve topic authority for paths or the whole repository
     effort:
       commands:
-        new | Create an effort with a managed worktree by default
+        new | Create an effort with a managed worktree
         list | List efforts by slug
         show | Show one effort
         finish | Finish and archive one effort

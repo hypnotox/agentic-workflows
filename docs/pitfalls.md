@@ -40,7 +40,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [Port a stale branch before merging a breaking marker grammar](pitfalls/port-a-stale-branch-before-merging-a-breaking-marker-grammar.md) | invariants\, tooling |
 | [Raw\-byte historical\-record surgery must bound every scan to the frontmatter window](pitfalls/raw-byte-adr-surgery-must-bound-every-scan-to-the-frontmatter-window.md) | config |
 | [Raw\-byte offsets go stale the moment an earlier pass edits the file](pitfalls/raw-byte-offsets-go-stale-the-moment-an-earlier-pass-edits-the-file.md) | config |
-| [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md) | rendering |
 | [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md) | rendering\, tooling |
 | [Resolve review ranges from Git rather than transcribing SHAs](pitfalls/resolve-review-ranges-from-git-rather-than-transcribing-shas.md) | Unassigned |
 | [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md) | rendering |
@@ -84,7 +83,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [An ordered\-phrase assertion cannot reach a site ahead of its first anchor](pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md)
 - [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md)
 - [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md)
-- [Recheck closure assertions after changing catalog edges](pitfalls/recheck-closure-assertions-after-changing-catalog-edges.md)
 - [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md)
 - [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md)
 - [Sidecar \`data\` is not placeholder\-substituted\, drop \`\{\{\=awf\:\.\.\.\}\}\` escapes when converting a part](pitfalls/sidecar-data-is-not-placeholder-substituted-drop-awf-escapes-when-converting-a-part.md)

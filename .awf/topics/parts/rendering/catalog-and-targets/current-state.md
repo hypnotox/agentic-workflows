@@ -27,11 +27,6 @@ Backing: test
 The catalog exposes no invariants-marker or invariants-globs var descriptor; the comment-marker mapping reaches configuration only through currentState.sources.
 Backing: test
 
-### `invariant: requires-skills-exact`
-
-Every standard skill and agent has empty `RequiresSkills`; conditional capability selection never becomes a structural workflow edge.
-Backing: test
-
 ### `invariant: skill-section-parity`
 
 For every catalog skill and agent, the set of awf:section markers in its template source equals the sections list its catalog entry declares, as order-independent set equality, so a section rename cannot half-land with a blank-path provenance pointer.

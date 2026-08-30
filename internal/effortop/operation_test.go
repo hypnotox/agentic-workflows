@@ -65,7 +65,7 @@ func TestRunCoordinatesResidentAndTopologyOwners(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	document, err := New(ctx, service, manager, effort.NewInput{Slug: "operation", Title: "Operation owned new"}, "", false)
+	document, err := New(ctx, service, manager, effort.NewInput{Slug: "operation", Title: "Operation owned new"}, "")
 	if err != nil {
 		t.Fatal(err)
 	}

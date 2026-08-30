@@ -66,7 +66,7 @@ func TestEffortRefusalLeaseCoversDiagnosticWrite(t *testing.T) {
 	root := commandRepo(t)
 	t.Chdir(root)
 	var stdout bytes.Buffer
-	result := newRunner(os.Getwd, os.Stdin, func() bool { return false }).handlers["effort"](&cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"too long"}, bools: map[string]bool{"--no-worktree": true}, values: map[string]string{"--slug": strings.Repeat("s", 33)}}, stdout: &stdout})
+	result := newRunner(os.Getwd, os.Stdin, func() bool { return false }).handlers["effort"](&cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"too long"}, bools: map[string]bool{}, values: map[string]string{"--slug": strings.Repeat("s", 33)}}, stdout: &stdout})
 	if result.err == nil || result.release == nil {
 		t.Fatalf("result = %#v, want held typed refusal", result)
 	}

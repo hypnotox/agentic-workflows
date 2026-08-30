@@ -52,14 +52,6 @@ func TestEffortNewReportsDefaultAndOptedOutWorktrees(t *testing.T) {
 		t.Fatal("managed branch absent")
 	}
 
-	absent := runNewEffortCommand(t, root, "opted-out", "Opted out", map[string]bool{"--no-worktree": true})
-	wantAbsent := "status: no managed worktree\n\nmutation:\n  identity:\n    effort: opted-out\n    title: Opted out\n    memory: .awf/efforts/opted-out/memory.md\n  next actions:\n    step 1: continue the effort in " + root + "\n"
-	if absent != wantAbsent {
-		t.Fatalf("--no-worktree text =\n%q\nwant\n%q", absent, wantAbsent)
-	}
-	if _, err := os.Lstat(filepath.Join(root, ".awf", "worktrees", "opted-out")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("--no-worktree created topology: %v", err)
-	}
 }
 
 // invariant: tooling/effort-management:default-worktree-creation (TestEffortNewBasesTheManagedBranchOnTheNamedRef)
@@ -108,20 +100,6 @@ func TestEffortNewRollsBackOrRetainsPerProvenTopology(t *testing.T) {
 	}
 }
 
-// invariant: tooling/effort-management:default-worktree-creation (TestEffortNewRejectsBaseWithoutAWorktree)
-func TestEffortNewRejectsBaseWithoutAWorktree(t *testing.T) {
-	root := commandRepo(t)
-	var out bytes.Buffer
-	ctx := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Invalid CLI"}, bools: map[string]bool{"--no-worktree": true}, values: map[string]string{"--slug": "invalid-cli", "--base": "HEAD"}}, stdout: &out}
-	err := runEffort(ctx, openEffortComposition)
-	if err == nil || !strings.Contains(err.Error(), "--base is invalid with --no-worktree") {
-		t.Fatalf("--no-worktree --base error = %v", err)
-	}
-	if _, statErr := os.Lstat(filepath.Join(root, ".awf", "efforts", "invalid-cli")); !errors.Is(statErr, os.ErrNotExist) {
-		t.Fatalf("refused creation published a resident: %v", statErr)
-	}
-}
-
 func effortWorktreeBranchExists(t *testing.T, root, slug string) bool {
 	t.Helper()
 	return gitfixture.NativeRevisionExists(t, gitfixture.At(root), "refs/heads/awf/"+slug)
@@ -131,7 +109,10 @@ func TestEffortWorktreeCLIComposition(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
 	root := commandRepo(t)
-	runNewEffortCommand(t, root, "cli-worktree", "CLI worktree", map[string]bool{"--no-worktree": true})
+	runNewEffortCommand(t, root, "cli-worktree", "CLI worktree", map[string]bool{})
+	if err := runEffort(&cmdCtx{ctx: testContext(t), root: root, sub: "worktree", inv: invocation{positionals: []string{"remove", "cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &bytes.Buffer{}}, openEffortComposition); err != nil {
+		t.Fatal(err)
+	}
 	var output bytes.Buffer
 	add := &cmdCtx{ctx: testContext(t), root: root, sub: "worktree", inv: invocation{positionals: []string{"add", "cli-worktree"}, bools: map[string]bool{}, values: map[string]string{}}, stdout: &output}
 	if err := runEffort(add, openEffortComposition); err != nil {

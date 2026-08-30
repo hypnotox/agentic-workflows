@@ -21,4 +21,3 @@ Frozen migrations preserve supported historical inputs without reintroducing the
 - [Configuration](../topics/config/configuration.md): The .awf config tree schema, its serialization, and the anchored path-glob dialect.
 - [Migrations and locks](../topics/config/migrations-and-locks.md): Config schema-generation migrations and the awf.lock manifest.
 - [Validation](../topics/config/validation.md): Config-tree validation rules: names, globs, targets, and anchoring.
-

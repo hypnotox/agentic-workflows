@@ -115,7 +115,7 @@ func runEffort(c *cmdCtx, compose composeEffort) (returnErr error) {
 		}
 		editRequest = &request
 	}
-	lease, err := effortop.AcquireMutationLease(c.ctx, c.root, c.sub, c.inv.bools["--no-worktree"])
+	lease, err := effortop.AcquireMutationLease(c.ctx, c.root, c.sub)
 	if err != nil {
 		return err
 	}
@@ -138,7 +138,7 @@ func runEffort(c *cmdCtx, compose composeEffort) (returnErr error) {
 	var document presentation.Document
 	switch c.sub {
 	case "new":
-		document, err = effortop.New(c.ctx, service, manager, effort.NewInput{Slug: c.inv.values["--slug"], Title: selected}, c.inv.values["--base"], c.inv.bools["--no-worktree"])
+		document, err = effortop.New(c.ctx, service, manager, effort.NewInput{Slug: c.inv.values["--slug"], Title: selected}, c.inv.values["--base"])
 	case "list":
 		document, err = effortop.List(service)
 	case "show":
@@ -239,9 +239,6 @@ func validateEffortGrammar(c *cmdCtx) error {
 	if c.sub == "new" {
 		if _, ok := c.inv.values["--slug"]; !ok {
 			return &usageErr{"awf effort new: --slug is required"}
-		}
-		if c.inv.bools["--no-worktree"] && c.inv.values["--base"] != "" {
-			return &usageErr{"awf effort new: --base is invalid with --no-worktree"}
 		}
 		return nil
 	}

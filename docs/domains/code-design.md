@@ -24,4 +24,3 @@ The code-design domain is the sole domain owner of its selectors, including `int
 - [Single home](../topics/code-design/single-home.md): One implementation per shared concern, protected from verification-driven forks.
 - [State ownership](../topics/code-design/state-ownership.md): What a value owns, and where state derived during one operation lives.
 - [Test design](../topics/code-design/test-design.md): How Go tests assert (error identity aside) and how they obtain controlled dependencies without new global seams.
-

@@ -11,40 +11,24 @@ import (
 // per-target configuration (the domain doc). Data carries the artifact's
 // default render data; sidecars override it per top-level key (ADR-0045).
 type TargetSpec struct {
-	Sections []string `yaml:"sections"`
-	// RequiresSkills names the catalog skills this artifact's template references
-	// unconditionally - rendered into its output even when the referenced skill is
-	// not enabled (deliberate chain coupling; the agent guide's "disable them as a
-	// unit"). Declarations are exact: the template test sweep fails on an
-	// undeclared unconditional reference AND on a stale entry (ADR-0080). Data,
-	// not gated validation - promoting it to enable/disable pairing UX is deferred.
-	RequiresSkills []string       `yaml:"requiresSkills"`
-	Data           map[string]any `yaml:"data"`
+	Sections []string       `yaml:"sections"`
+	Data     map[string]any `yaml:"data"`
 }
 
 // AgentSpec declares an output-format-neutral agent. Name is literal while
 // Description is a normally rendered template fragment; the instruction body
 // comes from the section-rendered agent template.
 type AgentSpec struct {
-	Name           string
-	Description    string
-	Sections       []string       `yaml:"sections"`
-	RequiresSkills []string       `yaml:"requiresSkills"`
-	Data           map[string]any `yaml:"data"`
+	Name        string
+	Description string
+	Sections    []string       `yaml:"sections"`
+	Data        map[string]any `yaml:"data"`
 }
 
-// SkillSpec declares a skill's render sections and relationship metadata.
-// RequiresDoc and RequiresAgent preserve catalog declarations used by frozen
-// migrations and workflow-reference checks; neither selects the render set.
-// Data carries the artifact's default render data; sidecars override it per
-// top-level key (ADR-0045).
+// SkillSpec declares a skill's render sections and default data.
 type SkillSpec struct {
-	Sections      []string `yaml:"sections"`
-	RequiresDoc   string   `yaml:"requiresDoc"`
-	RequiresAgent string   `yaml:"requiresAgent"`
-	// RequiresSkills: see TargetSpec.RequiresSkills (ADR-0080).
-	RequiresSkills []string       `yaml:"requiresSkills"`
-	Data           map[string]any `yaml:"data"`
+	Sections []string       `yaml:"sections"`
+	Data     map[string]any `yaml:"data"`
 }
 
 // DocEntry is one entry in the unified doc collection. Every entry renders;
@@ -152,17 +136,14 @@ func cloneCatalog(src *Catalog) *Catalog {
 		Vars:      slices.Clone(src.Vars),
 	}
 	out.DomainDoc.Sections = slices.Clone(src.DomainDoc.Sections)
-	out.DomainDoc.RequiresSkills = slices.Clone(src.DomainDoc.RequiresSkills)
 	out.DomainDoc.Data = cloneData(src.DomainDoc.Data)
 	for name, spec := range out.Skills {
 		spec.Sections = slices.Clone(spec.Sections)
-		spec.RequiresSkills = slices.Clone(spec.RequiresSkills)
 		spec.Data = cloneData(spec.Data)
 		out.Skills[name] = spec
 	}
 	for name, spec := range out.Agents {
 		spec.Sections = slices.Clone(spec.Sections)
-		spec.RequiresSkills = slices.Clone(spec.RequiresSkills)
 		spec.Data = cloneData(spec.Data)
 		out.Agents[name] = spec
 	}

@@ -16,4 +16,3 @@ Decision records under `docs/decisions/` are append-only historical Markdown. aw
 [All topics](../topics/decisions/index.md)
 
 - [Decision records](../topics/decisions/records.md): The repository's plain durable decision-history boundary.
-
