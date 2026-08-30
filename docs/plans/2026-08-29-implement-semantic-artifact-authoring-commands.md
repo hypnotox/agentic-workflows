@@ -2,7 +2,7 @@
 format: plan-v2
 date: 2026-08-29
 adrs: [semantic-artifact-authoring-commands]
-status: Proposed
+status: Implemented
 ---
 # Plan: Implement Semantic Artifact Authoring Commands
 
@@ -126,3 +126,96 @@ Apply the plan-flexibility rule above when recording deviations. Delegated owner
 - Phase 3 review settlement: remove every structurally equal authored list member in one operation so removal is retry-idempotent, and let unchanged source operations continue through committed-authority reload and ordinary synchronization so retries repair existing output or lock drift without rewriting YAML. Centralize part and sidecar result presentation behind one CLI execution helper, and distribute claim markers across the deterministic grammar, resolution, candidate-refusal, partial-effect, YAML preservation, structured-value, and pruning oracles. These corrections follow the approved ADR directly; the review's `user-decision` labels did not identify an authority conflict or changed durable boundary.
 - Phase 3 verify-pass settlement: decode JSON with `UseNumber`, construct numeric YAML nodes from their exact tokens, and compare YAML structures without a binary64 conversion so accepted large integers retain their value and list identity. The prior settlement subject remains an accurate concise description of its semantic concern; implementation-review procedure forbids amending landed implementation commits, and the commit audit accepted it.
 - Terminal verification correction: the exhaustive typed command-composition census failed closed because its explicit production-route model omitted the new `edit sidecar` and `reset sidecar` leaves even though runtime routing and focused CLI tests were green. Add both leaves to the census with `runSidecarAuthoring` and `authoringop.Run`; the focused red failure and green rerun retain the terminal oracle rather than bypass it.
+
+### Terminal reconciliation
+Implementation range: ffd6d1936bd00017bde7e79a7f9dc0a728e3209e..f70eb4448924568cf1ac8a4640e86628b4f1fa05
+Touched paths:
+- ".awf/awf.lock"
+- ".awf/docs/parts/architecture/components.md"
+- ".awf/domains/tooling.yaml"
+- ".awf/parts/working-with-awf/commands.md"
+- ".awf/parts/working-with-awf/config-and-overrides.md"
+- ".awf/topics/metadata/tooling/cli.yaml"
+- ".awf/topics/parts/config/configuration/current-state.md"
+- ".awf/topics/parts/rendering/inplace-and-placeholders/current-state.md"
+- ".awf/topics/parts/rendering/sync-and-drift/current-state.md"
+- ".awf/topics/parts/tooling/cli/current-state.md"
+- ".claude/skills/awf-using-awf/SKILL.md"
+- ".claude/skills/awf-writing-docs/SKILL.md"
+- ".pi/skills/awf-using-awf/SKILL.md"
+- ".pi/skills/awf-writing-docs/SKILL.md"
+- "README.md"
+- "changelog/CHANGELOG.md"
+- "cmd/awf/authoring.go"
+- "cmd/awf/authoring_test.go"
+- "cmd/awf/dispatch.go"
+- "cmd/awf/global_help_test.go"
+- "cmd/awf/testdata/help/global.txt"
+- "coverage-baseline.json"
+- "coverage-review.json"
+- "docs/architecture.md"
+- "docs/decisions/0321-semantic-artifact-authoring-commands.md"
+- "docs/decisions/INDEX.md"
+- "docs/decisions/semantic-artifact-authoring-commands.md"
+- "docs/doc-standard.md"
+- "docs/plans/2026-08-29-implement-semantic-artifact-authoring-commands.md"
+- "docs/topics/config/configuration.md"
+- "docs/topics/rendering/inplace-and-placeholders.md"
+- "docs/topics/rendering/sync-and-drift.md"
+- "docs/topics/tooling/audit-and-snapshots.md"
+- "docs/topics/tooling/audit-commands.md"
+- "docs/topics/tooling/authority-queries.md"
+- "docs/topics/tooling/changelog-and-release.md"
+- "docs/topics/tooling/cli.md"
+- "docs/topics/tooling/commit-policy.md"
+- "docs/topics/tooling/effort-management.md"
+- "docs/topics/tooling/evaluations.md"
+- "docs/topics/tooling/file-publication.md"
+- "docs/topics/tooling/filesystem-access.md"
+- "docs/topics/tooling/git-access.md"
+- "docs/topics/tooling/init-and-enablement.md"
+- "docs/topics/tooling/project-license.md"
+- "docs/topics/tooling/quality-gates.md"
+- "docs/topics/tooling/test-infrastructure.md"
+- "docs/topics/tooling/upgrade-runtime.md"
+- "docs/working-with-awf.md"
+- "internal/authoringop/authoring.go"
+- "internal/authoringop/authoring_test.go"
+- "internal/authoringop/outcome.go"
+- "internal/authoringop/resolver.go"
+- "internal/authoringop/resolver_test.go"
+- "internal/authoringop/sidecar_test.go"
+- "internal/clispec/clispec.go"
+- "internal/clispec/clispec_test.go"
+- "internal/config/config.go"
+- "internal/config/edit.go"
+- "internal/config/edit_test.go"
+- "internal/filesystem/handle.go"
+- "internal/filesystem/handle_test.go"
+- "internal/project/VERSION"
+- "internal/project/authoring_workflow_template_test.go"
+- "internal/project/kind.go"
+- "internal/project/loader_test.go"
+- "internal/project/project.go"
+- "internal/publisher/inplace.go"
+- "internal/publisher/inplace_test.go"
+- "internal/publisher/output_plan.go"
+- "internal/publisher/output_plan_unix_test.go"
+- "internal/publisher/render.go"
+- "internal/testsupport/thin_command_composition_test.go"
+- "internal/topic/markers.go"
+- "internal/topic/markers_test.go"
+- "internal/topic/tree.go"
+- "internal/topic/tree_test.go"
+- "templates/docs/doc-standard.md.tmpl"
+- "templates/docs/working-with-awf.md.tmpl"
+- "templates/skills/using-awf/SKILL.md.tmpl"
+- "templates/skills/writing-docs/SKILL.md.tmpl"
+- "x"
+Material deviations:
+- Phase 2 expanded the declared path set to include the clispec-derived global-help golden and the `x` package census required by existing generated-help and gate ownership.
+- Phase 3 parent completion broadened the delegated oracle set and resolved mandatory catalog documents through their existing root singleton sidecars rather than creating inert parallel sidecars.
+- Review settlement made duplicate removal fully retry-idempotent, preserved ordinary synchronization on unchanged source, centralized result presentation, and retained exact JSON numbers without binary64 conversion.
+- Terminal verification added the missing sidecar leaves to the exhaustive typed command-composition census and reconciled reviewed coverage identities under the canonical policy workflow.
+- Terminal review aligned exact and over-bound marker scanning and corrected local-document authority and guidance from a nonexistent end marker to the actual pointer-through-end-of-file boundary.
+- The unpublished branch was rebased so the EOF claim correction and its required Reapplied ADR-0321 event remain one independently auditable authored transition.

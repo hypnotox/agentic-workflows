@@ -1,7 +1,7 @@
 ---
 format: current-state-v4
 slug: semantic-artifact-authoring-commands
-status: Implementing
+status: Implemented
 date: 2026-08-29
 ---
 # ADR-0321: Semantic Artifact Authoring Commands
@@ -123,3 +123,4 @@ authoring and awf validation.
 - 2026-08-29: Applied; operations: update `rendering/inplace-and-placeholders:local-doc-body-inline`, add `rendering/sync-and-drift:authoring-sync-transaction`
 - 2026-08-29: Applied; operations: add `tooling/cli:semantic-artifact-authoring`, add `config/configuration:sidecar-authoring-roundtrip`
 - 2026-08-30: Reapplied; operations: update `rendering/inplace-and-placeholders:local-doc-body-inline`
+- 2026-08-30: Implemented; content-sha256: 3556b3006f1c1afe354aea299e19101a6e99b3bf8ef195fa9567f36ccdca64c3
