@@ -11,7 +11,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -433,13 +432,3 @@ func (r configReaderAdapter) ReadFile(p string) ([]byte, bool) {
 	return b, ok
 }
 func (r configReaderAdapter) Paths(prefix string) []string { return nil }
-
-// mustCorpus builds a corpus from fixture records that carry no duplicate
-// identity, so the construction error the seam returns cannot occur here.
-func mustCorpus() adr.Corpus {
-	c, err := adr.NewCorpus(nil)
-	if err != nil {
-		panic(err)
-	}
-	return c
-}

@@ -191,9 +191,6 @@ func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]ha
 			if kind == "" && len(args) > 0 {
 				kind, args = args[0], args[1:]
 			}
-			if kind == "adr" {
-				return handlerFailure(&usageErr{fmt.Sprintf("unknown kind %q (want: plan, topic, domain, pitfall, doc)", kind)})
-			}
 			if kind == localDocumentKind {
 				var title *string
 				if value, present := c.inv.values["--title"]; present {

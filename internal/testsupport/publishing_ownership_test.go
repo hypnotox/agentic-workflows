@@ -142,15 +142,6 @@ func TestPublishingConsumerPlanIdentity(t *testing.T) {
 		t.Errorf("publishing consumer call graph changed:\n got %#v\nwant %#v", byFunction, expected)
 	}
 
-	// The check and advisory consumers must derive temporary project semantics
-	// from the same local preparation whose plan they pass onward.
-	for _, rel := range []string{"internal/checkop/checkrepo.go", "internal/initop/init.go"} {
-		source := readProduction(t, root, rel)
-		if strings.Count(source, "projectSemantics(state.Root(), prepared)") != 1 ||
-			strings.Count(source, "prepared.Plan(), semantics") != 1 {
-			t.Errorf("%s does not reuse one preparation for plan and semantics", rel)
-		}
-	}
 	initSource := readProduction(t, root, "internal/initop/init.go")
 	for route, want := range map[string]int{
 		"composed.Prepare()":         1,
@@ -333,7 +324,7 @@ func TestPublishingPlanningOwnership(t *testing.T) {
 	// lower check, advisory, and staged policy only consume neutral
 	// plans or direct semantic values and cannot reconstruct planning policy.
 	checkSource := readProduction(t, root, "internal/project/check.go")
-	for _, forbidden := range []string{"adr.LoadCorpus(", "topic.LoadCorpus(", "plan.ParseDir(", "publisher."} {
+	for _, forbidden := range []string{"topic.LoadCorpus(", "plan.ParseDir(", "publisher."} {
 		if strings.Contains(checkSource, forbidden) {
 			t.Errorf("project check/advisory re-derives operation authority through %q", forbidden)
 		}
@@ -347,7 +338,7 @@ func TestPublishingPlanningOwnership(t *testing.T) {
 			t.Errorf("Publisher preparation lost selected-tree/single-plan clause %q", required)
 		}
 	}
-	for _, forbidden := range []string{"RenderResidentMarker", "adr.LoadCorpusFromTree(p.read", "adr.LoadCorpus(decisionsDir", "topic.LoadCorpus(p.root"} {
+	for _, forbidden := range []string{"RenderResidentMarker", "topic.LoadCorpus(p.root"} {
 		if strings.Contains(publisherSource, forbidden) {
 			t.Errorf("Publisher retains parallel or working-tree planning path %q", forbidden)
 		}

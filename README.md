@@ -165,7 +165,7 @@ check` in CI. Enable `.awf/bootstrap.sh` to use the repository-pinned awf releas
 - [Workflow](docs/workflow.md): the development workflow and commit discipline
 - [Configuration reference](docs/config-reference.md): all configuration keys and variables
 - [Architecture](docs/architecture.md): system structure and dependencies
-- [ADR guide](docs/decisions/README.md): decision format and lifecycle
+- `docs/decisions/`: append-only historical decision records
 - [Development](docs/development.md): contributing setup and project commands
 
 ## Status

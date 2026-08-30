@@ -224,15 +224,9 @@ func TestCatalogIsAdopterFacing(t *testing.T) {
 
 func TestBehaviourPackagesAreAdopterFacing(t *testing.T) {
 	// Regression: the allowlist covered the catalog and the schema but not the
-	// packages that decide what the shipped commands answer, so a real
-	// adopter-visible change slipped it. An authority query began reporting an
-	// in-flight decision record as frozen, fixed in internal/adr and
-	// internal/project, and this rule stayed silent because neither root was
-	// listed. Each root is asserted separately: one shared case would pass
-	// while the others stayed missing.
+	// packages that decide what the shipped commands answer. Each root is
+	// asserted separately so one shared case cannot mask a missing prefix.
 	for _, path := range []string{
-		"internal/adr/status.go",
-		"internal/project/context_adr.go",
 		"internal/render/render.go",
 		"internal/effort/service.go",
 		"internal/worktree/manager.go",

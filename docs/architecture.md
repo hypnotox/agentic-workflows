@@ -19,9 +19,9 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 - `internal/checkresult`: owns immutable ranked findings with explicit protected properties and separately unranked information.
 - `internal/repositorycheck`: the policy-free RepositoryChecker preserves explicit owner-result order and compatibility projections without preparing inputs or inferring classification.
 - `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving bounded compatibility adapters and unrelated project operations.
-- `internal/currentstatecoord`: focused application operations select immutable working or staged universes, coordinate ADR, topic, plan, current-state authority, and staged output preparation, and return semantic results without absorbing domain or commit-authorization policy.
-- Focused operation packages: `internal/initop`, `internal/checkop`, `internal/topicop`, `internal/effortop`, `internal/commitgateop`, `internal/domainop`, `internal/localdocop`, and `internal/authoringop` own bounded command use cases above their semantic mechanisms. `internal/authoringop` resolves semantic part identities, validates a complete candidate tree, publishes one confined source, and composes ordinary leased synchronization.
-- `internal/adr`, `internal/currentstate`, and `internal/plan`: decision, active-authority, and plan models.
+- `internal/currentstatecoord`: focused application operations select immutable working or staged universes for topic authority, current-state checks, and staged output preparation.
+- Focused operation packages: `internal/initop`, `internal/checkop`, `internal/configop`, `internal/topicop`, `internal/effortop`, `internal/domainop`, `internal/localdocop`, and `internal/authoringop` own bounded command use cases above their semantic mechanisms. `internal/authoringop` resolves semantic part identities, validates a complete candidate tree, publishes one confined source, and composes ordinary leased synchronization.
+- `internal/topic` and `internal/currentstate`: live-authority parsing and checks.
 - `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
 - `internal/git`: the sole semantic Git seam.
 - `internal/snapshot` and `internal/filesystem`: immutable input and confined filesystem boundaries; snapshot keeps live path-and-mode inventory distinct from selected content bytes.

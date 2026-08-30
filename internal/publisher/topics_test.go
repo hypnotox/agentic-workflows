@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -422,46 +421,6 @@ func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 		t.Fatalf("sweep: %#v", drift)
 	}
 }
-func queryV1ADR(t *testing.T, number, title, operation string) string {
-	t.Helper()
-	build := func(status, history string) string {
-		return "---\nformat: current-state-v1\nstatus: " + status + "\ndate: 2026-07-21\n---\n" +
-			"# ADR-" + number + ": " + title + "\n\n" +
-			"## Context\n\nContext.\n\n## Decision\n\n1. Change state.\n\n" +
-			"## State changes\n\n" + operation + "\n\n## Consequences\n\nConsequence.\n\n" +
-			"## Alternatives Considered\n\nNone.\n\n## Status history\n\n" + history + "\n"
-	}
-	proposed, err := adr.ParseV1(number+"-query.md", []byte(build("Proposed", "- 2026-07-20: Proposed")))
-	if err != nil {
-		t.Fatal(err)
-	}
-	digest := adr.ContentDigest(proposed.Sections)
-	return build("Implemented", "- 2026-07-20: Proposed\n- 2026-07-21: Implemented; content-sha256: "+digest)
-}
-
-func TestQueryTopicLoadErrors(t *testing.T) {
-	badADRRoot := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: []\n", nil)
-	testsupport.WriteFile(t, filepath.Join(badADRRoot, "docs/decisions/0001-bad.md"), "---\nstatus: [\n---\n")
-	p, err := Open(testContext(t), badADRRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := queryTopicProject(p, testContext(t), "schedule/contracts", topic.QueryOptions{}); err == nil {
-		t.Fatal("QueryTopic accepted malformed ADR corpus")
-	}
-
-	badTopicRoot := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: [schedule]\n", map[string]string{"domains/schedule.yaml": "paths: [\"internal/**\"]\n"})
-	writeADR(t, badTopicRoot, "0001-scheduling.md", testsupport.ADR("Implemented", testsupport.WithDomains("schedule")))
-	testsupport.WriteFile(t, filepath.Join(badTopicRoot, ".awf/topics/metadata/schedule/contracts.yaml"), "title: Contracts\n")
-	p, err = Open(testContext(t), badTopicRoot)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := queryTopicProject(p, testContext(t), "schedule/contracts", topic.QueryOptions{}); err == nil {
-		t.Fatal("QueryTopic accepted malformed topic corpus")
-	}
-}
-
 func TestTopicSubstrateEndToEnd(t *testing.T) {
 	root := scaffoldFiles(t, `prefix: example
 integrationBranch: main

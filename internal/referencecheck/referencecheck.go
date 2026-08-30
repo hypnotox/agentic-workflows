@@ -2,7 +2,6 @@
 package referencecheck
 
 import (
-	"fmt"
 	"path/filepath"
 	"regexp"
 	"strings"
@@ -53,37 +52,6 @@ func Check(plan outputplan.Plan, prefix string, effectiveSkills map[string]bool,
 				}
 				seen[name] = true
 				findings = append(findings, finding(PropertyCorrectness, "dead-skill-reference", output.Path(), prefix+"-"+name))
-			}
-		}
-	}
-	return checkresult.New(findings, nil)
-}
-
-// ADR is the semantic ADR projection consumed by related-link validation.
-type ADR struct {
-	Number, Filename string
-	Related          []int
-}
-
-func ADRRelated(adrs []ADR) (checkresult.Result, error) {
-	var findings []checkresult.Finding
-	for _, a := range adrs {
-		for _, n := range a.Related {
-			found := false
-			for _, candidate := range adrs {
-				if candidate.Number == fmt.Sprintf("%04d", n) {
-					found = true
-					break
-				}
-			}
-			if !found {
-				findings = append(findings, finding(PropertyAuthority, "adr-related-link", "docs/decisions/"+a.Filename, fmt.Sprintf("ADR-%s: ADR-%04d", a.Number, n)))
-			}
-		}
-		for i := 1; i < len(a.Related); i++ {
-			if a.Related[i] < a.Related[i-1] {
-				findings = append(findings, finding(PropertyAuthority, "adr-related-order", "docs/decisions/"+a.Filename, fmt.Sprintf("ADR-%s: related: descends at %d after %d; the array is ascending", a.Number, a.Related[i], a.Related[i-1])))
-				break
 			}
 		}
 	}

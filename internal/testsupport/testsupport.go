@@ -63,8 +63,8 @@ func WriteAwfConfig(t testing.TB, root, yamlContent string) {
 // the original value via t.Cleanup. Covers the swapGetwd/swapHasGoMod/
 // forceNonInteractive-shaped idiom: a *T package-private seam variable
 // reassigned for one test, in the same package as the test. Does not cover
-// internal/adr's swapNow, an external-test-package accessor of a different
-// shape (ADR-0044 Context). Serves the existing seam census only: minting a
+// an external-test-package accessor of a different shape (ADR-0044 Context).
+// Serves the existing seam census only: minting a
 // new package-level swap variable is banned for new work by
 // code-design/test-design (no-new-global-seams).
 func SwapVar[T any](t *testing.T, seam *T, val T) {
@@ -124,11 +124,11 @@ func WithDomains(domains ...string) ADROption { return func(o *adrOpts) { o.doma
 // heading.
 func WithBody(body string) ADROption { return func(o *adrOpts) { o.body = body } }
 
-// ADR builds a ---delimited ADR frontmatter fixture as a raw string: a status
+// ADR builds a ---delimited historical Markdown fixture as a raw string: a status
 // field plus any of date/tags/domains
 // supplied via opts, a "# ADR-<title>" heading, and an optional trailing body. It intentionally
-// does not import internal/adr and marshal its real frontmatter struct -
-// doing so would break this package's zero-internal-deps invariant (see
+// does not marshal a production parser representation - doing so would break
+// this package's zero-internal-deps invariant (see
 // ADR-0044's Consequences).
 func ADR(status string, opts ...ADROption) string {
 	o := adrOpts{title: "0001: T"}

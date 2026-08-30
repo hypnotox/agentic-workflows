@@ -83,5 +83,5 @@ Backing: test
 
 ### `invariant: no-active-tag-system`
 
-The live config schema exposes no `tags` key, authored pitfall metadata exposes no `tags:` field, and strict decoding rejects both retired surfaces after migration; frozen legacy ADR tags remain parseable history.
+The live config schema exposes no `tags` key, and strict decoding rejects the retired field after migration.
 Backing: test

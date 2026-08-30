@@ -7,10 +7,8 @@ import (
 	_ "embed"
 	"errors"
 	"fmt"
-	"path/filepath"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
@@ -319,42 +317,4 @@ func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
 
 func lockPath(root string) string {
 	return config.LockPath(root)
-}
-
-// onIntegrationBranch reports whether this checkout is positively identified as
-// sitting on the configured integration branch. Every indeterminate outcome -
-// no repository, a probe failure, a detached HEAD - reports false rather than an
-// error, because both consumers must degrade to the safe answer instead of
-// failing: the scaffold writes a pending record, and the pending-record check
-// stays silent (ADR-0202 item 7). A detached HEAD needs no separate test: the
-// seam reports it as an empty branch name, and integrationBranch is validated
-// non-empty, so the comparison cannot match.
-func onIntegrationBranch(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Context) bool {
-	repo, err := gitRepo(root, repo)
-	if err != nil {
-		return false
-	}
-	branch, err := repo.CurrentBranch(ctx)
-	if err != nil {
-		return false
-	}
-	return branch == cfg.IntegrationBranch
-}
-
-// newADRLeased keeps branch-aware identity allocation at project while ADR
-// corpus, template, destination, and publication access stay on the selected
-// root handle. The caller's tracked lease covers the whole operation.
-func newADRLeased(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, title string, lease *filesystem.Lease, files *filesystem.Handle) (string, error) {
-	decisions := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
-	var path string
-	var err error
-	if !onIntegrationBranch(root, cfg, repo, ctx) {
-		path, err = adr.NewPendingFileLeased(root, lease, files, decisions, title)
-	} else {
-		path, err = adr.NewFileLeased(root, lease, files, decisions, title)
-	}
-	if err != nil {
-		return "", err
-	}
-	return filepath.Join(root, filepath.FromSlash(path)), nil
 }

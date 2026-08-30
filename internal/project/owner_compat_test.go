@@ -5,7 +5,6 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -92,19 +91,6 @@ func checkDeadSkillRefs(p renderInputs, files []RenderedFile, effective map[stri
 	}
 	return compatibilityDrift(result)
 }
-func checkADRRelatedLinks(corpus adr.Corpus) []manifest.Drift {
-	adrs := corpus.All()
-	values := make([]referencecheck.ADR, len(adrs))
-	for i, item := range adrs {
-		values[i] = referencecheck.ADR{Number: item.Number, Filename: item.Filename, Related: item.Related}
-	}
-	result, err := referencecheck.ADRRelated(values)
-	if err != nil {
-		panic(err)
-	}
-	return compatibilityDrift(result)
-}
-
 func checkGeneratedTracking(nested bool, repo *awfgit.Repo, ctx context.Context, op *OutputPlan) (checkresult.Result, []string, error) {
 	var paths generatedcheck.IndexPaths
 	if repo != nil {

@@ -899,7 +899,6 @@ func TestRunCheckStagedError(t *testing.T) {
 }
 
 func TestRunCheckErrorPaths(t *testing.T) {
-	ctx := testContext(t)
 	t.Run("stale-schema", func(t *testing.T) {
 		root := t.TempDir()
 		claude := filepath.Join(root, ".claude")
@@ -915,18 +914,5 @@ func TestRunCheckErrorPaths(t *testing.T) {
 			t.Errorf("expected the driver to refuse check on stale schema, got %d", code)
 		}
 	})
-	t.Run("check-error-malformed-adr", func(t *testing.T) {
-		// A malformed ADR makes Project.CheckReport (INDEX.md generation) error.
-		root := scaffoldProject(t)
-		adrDir := filepath.Join(root, "docs", "decisions")
-		if err := os.MkdirAll(adrDir, 0o755); err != nil {
-			t.Fatal(err)
-		}
-		if err := os.WriteFile(filepath.Join(adrDir, "0001-x.md"), []byte("---\n: : bad yaml : :\n---\n"), 0o644); err != nil {
-			t.Fatal(err)
-		}
-		if err := runCheck(ctx, root, io.Discard); err == nil {
-			t.Error("expected check error on a malformed ADR")
-		}
-	})
+
 }

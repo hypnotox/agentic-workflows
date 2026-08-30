@@ -2,7 +2,6 @@ package publisher
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -11,11 +10,9 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
-	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -83,9 +80,6 @@ func csRepo(t *testing.T, cfg string, files map[string]string) *ProjectState {
 	testsupport.WriteAwfConfig(t, repo.Root(), cfg)
 	if err := (&manifest.Lock{AWFVersion: Version, SchemaVersion: 46, Files: map[string]manifest.Entry{}}).Save(lockFile(repo.Root())); err != nil {
 		t.Fatal(err)
-	}
-	if _, ok := files["docs/decisions/0001-first.md"]; !ok {
-		files["docs/decisions/0001-first.md"] = testsupport.ADR("Implemented", testsupport.WithDate("2026-06-25"), testsupport.WithTitle("0001: First"), testsupport.WithBody("## Context\nx\n## Consequences\nc\n"))
 	}
 	for rel, body := range files {
 		testsupport.WriteFile(t, filepath.Join(repo.Root(), rel), body)
@@ -336,29 +330,8 @@ func mustDeriveSkills(t *testing.T, state *ProjectState) map[string]bool {
 	}
 	return out
 }
-func newADRProject(state *ProjectState, ctx context.Context, title string) (result string, returnErr error) {
-	repo, err := awfgit.Open(state.Root())
-	if err != nil {
-		return "", err
-	}
-	lease, err := filesystem.AcquireTrackedLease(ctx, state.Root())
-	if err != nil {
-		return "", err
-	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-	files, err := filesystem.Open(state.Root())
-	if err != nil {
-		return "", err
-	}
-	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
-	return project.NewADRLeased(state.Root(), testConfig(state), repo, ctx, title, lease, files)
-}
 func projectOperationSemantics(prepared Preparation) project.OperationSemantics {
-	corpus, err := adr.LoadCorpusFromTree(NewFilesystemReader(prepared.publisher.inputs.root()), filepath.ToSlash(filepath.Join(config.DocsDir, "decisions")))
-	if err != nil {
-		panic(err)
-	}
-	return project.OperationSemantics{ADRs: corpus, Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
+	return project.OperationSemantics{Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
 }
 func checkReportProject(state *ProjectState, ctx context.Context) (project.CheckReport, error) {
 	cfg := testConfig(state)

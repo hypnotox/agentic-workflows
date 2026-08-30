@@ -157,8 +157,8 @@ func acquire(ctx context.Context, requests []leaseRequest) (*Lease, error) {
 			_ = lease.Release()
 			return nil, err
 		}
-		// Preserve the ADR lock key protocol: a scope picks its cache directory;
-		// the physical-root key remains the SHA-256 of the canonical root.
+		// A scope picks its cache directory; the physical-root key remains the
+		// SHA-256 of the canonical root.
 		key := fmt.Sprintf("%x", sha256.Sum256([]byte(identity.root)))
 		lock := flock.New(filepath.Join(cache, key+".lock"))
 		for {

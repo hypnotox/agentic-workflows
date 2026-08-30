@@ -108,11 +108,10 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 			if err != nil {
 				return project.CheckReport{}, err
 			}
-			semantics, err := projectSemantics(state.Root(), prepared)
-			if err != nil {
-				return project.CheckReport{}, err
-			}
-			return project.BuildCheckReport(state, cfg, repo, ctx, prepared.Plan(), semantics)
+			return project.BuildCheckReport(state, cfg, repo, ctx, prepared.Plan(), project.OperationSemantics{
+				Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(),
+				GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary(),
+			})
 		},
 		currentState: func(ctx context.Context, root string, repo *awfgit.Repo) (currentstatecoord.CurrentStateReport, error) {
 			return currentstatecoord.CheckWorking(root, repo, ctx)

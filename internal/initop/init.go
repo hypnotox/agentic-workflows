@@ -11,7 +11,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
@@ -61,11 +60,10 @@ type releaseLeaseFunc func(*filesystem.Lease) error
 // outcome. Rendering and protocol selection remain with the command.
 func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error) {
 	return runWithDependencies(ctx, input, loadProject, gate, func(state *project.ProjectState, cfg *config.Config, prepared publisher.Preparation) ([]string, error) {
-		semantics, err := projectSemantics(state.Root(), prepared)
-		if err != nil {
-			return nil, err
-		}
-		return project.AdvisoryNotes(state, cfg, prepared.Plan(), semantics)
+		return project.AdvisoryNotes(state, cfg, prepared.Plan(), project.OperationSemantics{
+			Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(),
+			GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary(),
+		})
 	}, (*filesystem.Lease).Release)
 }
 
@@ -99,11 +97,6 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 	configExists := statErr == nil
 	_, lockStatErr := os.Stat(lockPath)
 	lockExists := lockStatErr == nil
-	if !configExists && !lockExists {
-		if _, err := adr.LoadCorpus(filepath.Join(root, "docs", "decisions")); err != nil {
-			return initspec.Outcome{}, fmt.Errorf("validate first-adoption ADR corpus: %w", err)
-		}
-	}
 	if !input.Force {
 		collisions, err := probeCollisions(ctx, root, loadProject)
 		if err != nil {
@@ -216,18 +209,6 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 
 func composePublisher(state *project.ProjectState, cfg *config.Config) *publisher.Publisher {
 	return publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version)
-}
-
-func projectSemantics(root string, prepared publisher.Preparation) (project.OperationSemantics, error) {
-	corpus, err := adr.LoadCorpus(filepath.Join(root, config.DocsDir, "decisions"))
-	if err != nil {
-		return project.OperationSemantics{}, err
-	}
-	return project.OperationSemantics{
-		ADRs: corpus, Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
-		EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(),
-		Glossary: prepared.Glossary(),
-	}, nil
 }
 
 type scaffoldFilesystem interface {

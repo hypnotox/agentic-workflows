@@ -14,7 +14,7 @@ Backing: test
 
 ### `invariant: cli-creation-and-inventory`
 
-The CLI lists fixed catalog inventory and never selects individual catalog membership. Full creates authored ADRs, plans, topics, and domains; both governance footprints retain pitfalls and additive local documents, while the selected footprint controls rendered membership. Every selected-checkout creation takes its transaction lease before authority or destination planning, exclusively creates authored inputs through the confined filesystem boundary, and reports a complete result or every committed effect with recovery guidance.
+The CLI lists the fixed catalog inventory and never selects individual catalog membership. `awf new` creates topics, domains, pitfalls, and additive local documents. Every selected-checkout creation takes its transaction lease before authority or destination planning, exclusively creates authored inputs through the confined filesystem boundary, and reports a complete result or every committed effect with recovery guidance.
 Backing: test
 
 ### `invariant: pitfall-scaffold`

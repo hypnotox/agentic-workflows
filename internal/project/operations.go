@@ -3,9 +3,7 @@ package project
 import (
 	"context"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
@@ -22,7 +20,6 @@ func operationInputs(state *ProjectState, cfg *config.Config) renderInputs {
 // OperationSemantics carries Publisher's direct semantic derivation to residual
 // project consumers without coupling project to application coordination.
 type OperationSemantics struct {
-	ADRs            adr.Corpus
 	Pitfalls        pitfall.Corpus
 	Topics          topic.Corpus
 	EffectiveSkills map[string]bool
@@ -43,13 +40,6 @@ func BuildCheckReport(state *ProjectState, cfg *config.Config, repo *awfgit.Repo
 // BuildListDocument renders the requested project inventory.
 func BuildListDocument(state *ProjectState, cfg *config.Config, kindFilter string) (presentation.Document, error) {
 	return listDocument(cfg, state.catalog(), kindFilter)
-}
-
-// NewADRLeased scaffolds one branch-aware ADR through the caller-held
-// selected-root capability. The caller retains its tracked lease through
-// presentation.
-func NewADRLeased(root string, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, title string, lease *filesystem.Lease, files *filesystem.Handle) (string, error) {
-	return newADRLeased(root, cfg, repo, ctx, title, lease, files)
 }
 
 // NewPitfall scaffolds one authored pitfall beneath root.

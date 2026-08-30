@@ -10,9 +10,7 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configcheck"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -186,12 +184,12 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 	if err := configcheck.ValidateCommandWiring(p.cfg); err != nil {
 		return CheckReport{}, err
 	}
-	corpus, pitfalls, eff := semantics.ADRs, semantics.Pitfalls, semantics.EffectiveSkills
+	pitfalls, eff := semantics.Pitfalls, semantics.EffectiveSkills
 	glossaryResults, err := glossarycheck.Evaluate(semantics.Glossary)
 	if err != nil {
 		return CheckReport{}, err
 	}
-	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, eff, semantics.GeneratedOutput, op, glossaryResults)
+	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, pitfalls, eff, semantics.GeneratedOutput, op, glossaryResults)
 	if err != nil {
 		return CheckReport{}, err
 	}
@@ -214,7 +212,7 @@ const (
 	propertyHeuristic       checkresult.Property = "heuristic-quality"
 )
 
-func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus, pitfalls pitfall.Corpus, eff map[string]bool, generatedInput generatedcheck.AdditionalInput, op *OutputPlan, glossaryResult checkresult.Result) (repositorycheck.Slot, []repositorycheck.Slot, checkresult.Result, error) {
+func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, pitfalls pitfall.Corpus, eff map[string]bool, generatedInput generatedcheck.AdditionalInput, op *OutputPlan, glossaryResult checkresult.Result) (repositorycheck.Slot, []repositorycheck.Slot, checkresult.Result, error) {
 	var indexPaths generatedcheck.IndexPaths
 	if repo != nil {
 		indexPaths = repo.IndexPaths
@@ -285,31 +283,12 @@ func referenceResult(p renderInputs, op outputplan.Plan, effective map[string]bo
 	}
 	return referencecheck.Check(op, p.cfg.Prefix, effective, known, func(path string) bool { _, err := os.Stat(filepath.Join(p.root(), path)); return err == nil })
 }
-func adrRelatedResult(corpus adr.Corpus) (checkresult.Result, error) {
-	adrs := corpus.All()
-	values := make([]referencecheck.ADR, len(adrs))
-	for i, a := range adrs {
-		values[i] = referencecheck.ADR{Number: a.Number, Filename: a.Filename, Related: a.Related}
-	}
-	return referencecheck.ADRRelated(values)
-}
 
 // Result adapters preserve owner-classified results for ordinary CheckReport
 // composition. Legacy helpers remain available to direct callers without
 // changing the normal composition boundary.
 func pitfallResult(p renderInputs, pitfalls pitfall.Corpus) (checkresult.Result, error) {
 	return pitfallcheck.Check(p.cfg.Domains, pitfalls)
-}
-func pendingADRResult(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus) checkresult.Result {
-	var findings []checkresult.Finding
-	for _, drift := range checkPendingADRs(p, repo, ctx, corpus) {
-		findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: propertyAuthority, Evidence: checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: drift.Detail}})
-	}
-	result, err := checkresult.New(findings, nil)
-	if err != nil {
-		return checkresult.Result{}
-	}
-	return result
 }
 func advisoryResultsWithState(p renderInputs, op *OutputPlan, glossaryResult checkresult.Result) (checkresult.Result, error) {
 	advisories := advisoryNotesWithState(p, op, glossaryResult)
@@ -327,31 +306,4 @@ func advisoryResultsWithState(p renderInputs, op *OutputPlan, glossaryResult che
 		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "advisory", Detail: note}})
 	}
 	return checkresult.New(findings, information)
-}
-
-// checkPendingADRs refuses a slug-identified pending record on the integration
-// branch. Numbering happens at integration, so a pending record that reached
-// the integration branch was never numbered, and every `ADR-<slug>` provenance
-// reference it left behind resolves to nothing.
-//
-// The block fires only on a positive branch identification (ADR-0202 item 7):
-// a detached HEAD, another branch, or an unreadable repository emits nothing,
-// because an indeterminate answer is not evidence that the record is in the
-// wrong place. That deliberately leaves automated detached-HEAD runs to the
-// branch-independent duplicate-identity check, which is the real corruption
-// backstop; this check exists to make the missing numbering step visible where
-// it is actually owed.
-func checkPendingADRs(p renderInputs, repo *awfgit.Repo, ctx context.Context, corpus adr.Corpus) []manifest.Drift {
-	if !onIntegrationBranch(p.root(), p.cfg, repo, ctx) {
-		return nil
-	}
-	rel := filepath.ToSlash(filepath.Join(config.DocsDir, "decisions"))
-	var drift []manifest.Drift
-	for _, a := range corpus.All() {
-		if a.Number != "" {
-			continue
-		}
-		drift = append(drift, manifest.Drift{Path: rel + "/" + a.Filename, Kind: "pending-adr-on-integration-branch", Detail: a.Slug})
-	}
-	return drift
 }

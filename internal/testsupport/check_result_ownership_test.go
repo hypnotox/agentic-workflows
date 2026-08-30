@@ -62,7 +62,6 @@ func TestProducerRankPropertyCensus(t *testing.T) {
 		`internal/memorycite/memorycite.go:Result:severity.Error|"effort-memory-citation"`,
 		`internal/pitfallcheck/pitfallcheck.go:finding:severity.Error|PropertyCorrectness`,
 		`internal/project/check.go:advisoryResultsWithState:severity.Warn|propertyHeuristic`,
-		`internal/project/check.go:pendingADRResult:severity.Error|propertyAuthority`,
 		`internal/currentstatecoord/currentstate.go:classifyCurrentState:coverage.Severity|propertyCurrentCoverage`,
 		`internal/prosegate/prosegate.go:Result:severity.Warn|"prose-restraint"`,
 		`internal/referencecheck/referencecheck.go:finding:severity.Error|property`,

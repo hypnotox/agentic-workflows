@@ -8,12 +8,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
-	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
@@ -226,12 +224,8 @@ func syncReportProject(state *ProjectState) ([]Backup, []Change, []string, error
 func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup, []Change, []string, error) {
 	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Initialize(seed))
 }
-func preparedSemantics(state *ProjectState, prepared publisher.Preparation) (OperationSemantics, error) {
-	corpus, err := adr.LoadCorpus(filepath.Join(state.Root(), config.DocsDir, "decisions"))
-	if err != nil {
-		return OperationSemantics{}, err
-	}
-	return OperationSemantics{ADRs: corpus, Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}, nil
+func preparedSemantics(_ *ProjectState, prepared publisher.Preparation) (OperationSemantics, error) {
+	return OperationSemantics{Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}, nil
 }
 func checkReportProject(state *ProjectState, ctx context.Context) (CheckReport, error) {
 	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()
@@ -271,19 +265,6 @@ func advisoryNotesProject(state *ProjectState) ([]string, error) {
 
 func checkCurrentStateProject(state *ProjectState, ctx context.Context) (CurrentStateReport, error) {
 	return currentstatecoord.CheckWorking(state.Root(), testRepo(state), ctx)
-}
-func newADRProject(state *ProjectState, ctx context.Context, title string) (result string, returnErr error) {
-	lease, err := filesystem.AcquireTrackedLease(ctx, state.Root())
-	if err != nil {
-		return "", err
-	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-	files, err := filesystem.Open(state.Root())
-	if err != nil {
-		return "", err
-	}
-	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
-	return NewADRLeased(state.Root(), testConfig(state), testRepo(state), ctx, title, lease, files)
 }
 func newPitfallProject(state *ProjectState, title string) (presentation.Document, error) {
 	return NewPitfall(state.Root(), title)

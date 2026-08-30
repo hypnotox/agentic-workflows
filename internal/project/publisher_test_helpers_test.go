@@ -2,9 +2,7 @@ package project
 
 import (
 	"context"
-	"path/filepath"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
@@ -30,15 +28,14 @@ func outputPlan(p renderInputs) (*OutputPlan, error) {
 	plan, err := testPublisher(p).Plan()
 	return &plan, err
 }
-func deriveOperationStateWithPitfalls(p renderInputs) (adr.Corpus, pitfall.Corpus, topic.Corpus, map[string]bool, error) {
+func deriveOperationStateWithPitfalls(p renderInputs) (pitfall.Corpus, topic.Corpus, map[string]bool, error) {
 	prepared, err := testPublisher(p).Prepare()
 	if err != nil {
-		return adr.Corpus{}, pitfall.Corpus{}, topic.Corpus{}, nil, err
+		return pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
-	corpus, err := adr.LoadCorpus(filepath.Join(p.root(), config.DocsDir, "decisions"))
-	return corpus, prepared.Pitfalls(), prepared.Topics(), prepared.EffectiveSkills(), err
+	return prepared.Pitfalls(), prepared.Topics(), prepared.EffectiveSkills(), nil
 }
-func outputPlanWithPitfalls(p renderInputs, _ adr.Corpus, _ pitfall.Corpus, _ topic.Corpus, _ map[string]bool) (*OutputPlan, error) {
+func outputPlanWithPitfalls(p renderInputs, _ pitfall.Corpus, _ topic.Corpus, _ map[string]bool) (*OutputPlan, error) {
 	return outputPlan(p)
 }
 func generateDomainDocs(p renderInputs, _ topic.Corpus, _ map[string]bool) ([]RenderedFile, error) {

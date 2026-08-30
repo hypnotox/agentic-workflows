@@ -23,9 +23,9 @@ Backing: test
 
 ### `invariant: claim-id-qualified`
 
-Every parsed rule and invariant has the unique identity <domain>/<topic>:<local-slug>; claim references and proof markers resolve through that identity, while Origin and Revised-by resolve through the ADR corpus.
+Every parsed rule and invariant has the unique identity <domain>/<topic>:<local-slug>; claim references and proof markers resolve through that identity.
 Backing: unbacked
-Verify: Topic corpus tests exercise duplicate local slugs across different and identical topics plus valid and dangling claim and ADR references.
+Verify: Topic corpus tests exercise duplicate local slugs across different and identical topics plus valid and dangling claim references.
 
 ### `invariant: coverage-evaluation-selects-checks`
 

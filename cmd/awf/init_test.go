@@ -319,38 +319,6 @@ func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 	}
 }
 
-func TestInitRejectsAmbiguousBrownfieldAuthority(t *testing.T) {
-	ctx := testContext(t)
-	for _, tc := range []struct {
-		name  string
-		files map[string]string
-	}{
-		{"malformed", map[string]string{"docs/decisions/0001-bad.md": "---\nstatus: [bad\n---\n"}},
-		{"duplicate", map[string]string{
-			"docs/decisions/0001-one.md": testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: One")),
-			"docs/decisions/0001-two.md": testsupport.ADR("Accepted", testsupport.WithDate("2026-07-21"), testsupport.WithTitle("0001: Two")),
-		}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := t.TempDir()
-			for path, body := range tc.files {
-				testsupport.WriteFile(t, filepath.Join(root, path), body)
-			}
-			before := snapshotTree(t, root)
-			var out bytes.Buffer
-			if err := runInit(ctx, root, false, false, nil, "", &out); err == nil {
-				t.Fatal("expected refusal")
-			}
-			if after := snapshotTree(t, root); after != before {
-				t.Fatal("ambiguous first adoption mutated the repository tree")
-			}
-			if out.Len() != 0 {
-				t.Fatalf("ambiguous first adoption wrote output: %q", out.String())
-			}
-		})
-	}
-}
-
 func TestInitCollisionProbeOpenError(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: [bad\n")

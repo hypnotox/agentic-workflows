@@ -98,11 +98,11 @@ func TestCheckReportBuildsOneOutputPlan(t *testing.T) {
 	}
 	expectedTrackingPaths := func(p *ProjectState) []string {
 		t.Helper()
-		corpus, pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
+		pitfalls, topics, effective, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 		if err != nil {
 			t.Fatal(err)
 		}
-		op, err := outputPlanWithPitfalls(renderInputsForTest(p), corpus, pitfalls, topics, effective)
+		op, err := outputPlanWithPitfalls(renderInputsForTest(p), pitfalls, topics, effective)
 		if err != nil {
 			t.Fatal(err)
 		}

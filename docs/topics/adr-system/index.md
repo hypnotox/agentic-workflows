@@ -3,5 +3,4 @@
 <!-- awf:template-source templates/topics/index.md.tmpl -->
 # adr-system topics
 
-- [ADR lifecycle and parsing](adr-lifecycle.md): How ADR records are parsed, identified, and moved through their lifecycle states.
 - [Frontmatter parsing](frontmatter.md): How document frontmatter is split and validated.

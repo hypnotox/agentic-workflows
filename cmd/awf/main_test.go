@@ -46,7 +46,7 @@ func containsLine(s, line string) bool {
 
 // TestHandlerRegistryParity asserts the handler registry and the clispec table
 // name exactly the same top-level commands - no command without a handler, no
-// handler without a command. Group children (new/adr...) are not separate keys.
+// handler without a command. Group children are not separate keys.
 // invariant: tooling/cli:cli-runner-instance-ownership (TestRunnerInstancesOwnProcessDependencies)
 func TestRunnerInstancesOwnProcessDependencies(t *testing.T) {
 	firstRoot, secondRoot := t.TempDir(), t.TempDir()

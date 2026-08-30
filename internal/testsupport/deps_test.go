@@ -66,7 +66,6 @@ var foundationalMechanismRoots = []string{
 }
 
 var higherLayerImports = []string{
-	repositoryModule + "/internal/adr",
 	repositoryModule + "/internal/currentstate",
 	repositoryModule + "/internal/plan",
 	repositoryModule + "/internal/project",
@@ -228,7 +227,6 @@ func TestRepositoryLayerDirection(t *testing.T) {
 		wantErr    bool
 	}{
 		{name: "mechanism to project", path: "internal/render/render.go", source: "package render\nimport \"github.com/hypnotox/agentic-workflows/internal/project\"", violations: 1},
-		{name: "mechanism to domain", path: "internal/filepublication/publication.go", source: "package filepublication\nimport \"github.com/hypnotox/agentic-workflows/internal/adr\"", violations: 1},
 		{name: "snapshot to git", path: "internal/snapshot/tree.go", source: "package snapshot\nimport \"github.com/hypnotox/agentic-workflows/internal/git\""},
 		{name: "filesystem to publication", path: "internal/filesystem/handle.go", source: "package filesystem\nimport \"github.com/hypnotox/agentic-workflows/internal/filepublication\""},
 		{name: "lower state to project", path: "internal/projectstate/state.go", source: "package projectstate\nimport \"github.com/hypnotox/agentic-workflows/internal/project\"", violations: 1},
@@ -261,7 +259,6 @@ func TestRepositoryLayerDirection(t *testing.T) {
 }
 
 var currentStateLowerOwnerRoots = []string{
-	"internal/adr",
 	"internal/currentstate",
 	"internal/git",
 	"internal/projectstate",

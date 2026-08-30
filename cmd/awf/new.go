@@ -20,8 +20,6 @@ const localDocumentKind = "doc"
 // runNew scaffolds one of the surviving authored artifacts.
 func runNew(ctx context.Context, root, kind string, args []string, stdout io.Writer) error {
 	switch {
-	case kind == "adr":
-		return newADR(ctx, root, args, stdout)
 	case kind == "topic":
 		return newTopic(ctx, root, args, stdout)
 	case kind == "pitfall":
@@ -34,36 +32,8 @@ func runNew(ctx context.Context, root, kind string, args []string, stdout io.Wri
 		}
 		return runNewDomain(ctx, root, args[0], stdout)
 	default:
-		return &usageErr{fmt.Sprintf("unknown kind %q (want: adr, topic, domain, pitfall, doc)", kind)}
+		return &usageErr{fmt.Sprintf("unknown kind %q (want: topic, domain, pitfall, doc)", kind)}
 	}
-}
-
-func newADR(ctx context.Context, root string, titleWords []string, stdout io.Writer) (returnErr error) {
-	if len(titleWords) == 0 {
-		return &usageErr{"usage: awf new adr <title>"}
-	}
-	lease, err := filesystem.AcquireTrackedLease(ctx, root)
-	if err != nil {
-		return err
-	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-	if err := gate(ctx, root); err != nil {
-		return err
-	}
-	state, cfg, repo, err := openProjectOperation(ctx, root)
-	if err != nil {
-		return err
-	}
-	files, err := filesystem.Open(state.Root())
-	if err != nil {
-		return err
-	}
-	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
-	path, err := project.NewADRLeased(state.Root(), cfg, repo, ctx, strings.Join(titleWords, " "), lease, files)
-	if err != nil {
-		return err
-	}
-	return writeStatus(stdout, "created: "+path)
 }
 
 func newDoc(ctx context.Context, root string, args []string, title *string, stdout io.Writer) (returnErr error) {
