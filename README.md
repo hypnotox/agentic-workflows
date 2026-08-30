@@ -1,7 +1,7 @@
 # agentic-workflows
 
 [![CI](https://github.com/hypnotox/agentic-workflows/actions/workflows/ci.yml/badge.svg)](https://github.com/hypnotox/agentic-workflows/actions/workflows/ci.yml)
-[![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](go.mod)
+[![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go&logoColor=white)](go.mod)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-pre--1.0-orange.svg)](#status)
 
@@ -59,7 +59,7 @@ extract it, and place `awf` on your `PATH`. Linux tarballs carry portable
 restricted rootless user namespace can extract them without mapping the release
 builder's account.
 
-To install from source with Go 1.26 or later:
+To install from source with Go 1.27 or later:
 
 ```sh
 go install github.com/hypnotox/agentic-workflows/cmd/awf@latest

@@ -306,8 +306,8 @@
     "docs/development.md": {
       "templateId": "docs/development.md.tmpl",
       "templateHash": "sha256:e99876e3d365ba66edef46749bfa80a81deb82810ccd660f00857e40bf26b108",
-      "configHash": "sha256:8a3cf42ae5cc9916a90681cb7537412c654adfe710fed6c5a375b7a14db4e8d0",
-      "outputHash": "sha256:4595cdba744537188a60686f64817dc657222f2383f418946a079a066e9cfc99"
+      "configHash": "sha256:c9f3bd14e6eba8094e47f3ff97f48710695097cd605cc78ab5afc2246d8a47f4",
+      "outputHash": "sha256:86df82034d753a71106a4c5f49880ab98542be234a6a080c8258eea2751f1af1"
     },
     "docs/doc-standard.md": {
       "templateId": "docs/doc-standard.md.tmpl",
