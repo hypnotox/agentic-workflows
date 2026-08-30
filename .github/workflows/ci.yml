@@ -127,8 +127,16 @@ jobs:
           [ "$(go env GOOS)" = linux ]
           [ "$(go env GOARCH)" = amd64 ]
           [ "$(git rev-parse HEAD)" = "$CANDIDATE_SHA" ]
-      - name: Complete Go behavior
-        run: ./x test
+      - name: Complete Go behavior with calibration timing
+        run: ./x test-full-linux calibrate --artifact "$RUNNER_TEMP/awf-full-linux-timing-v1.json"
+      - name: Upload full Linux calibration timing
+        if: ${{ always() }}
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: full-linux-timing-linux-amd64-${{ env.CANDIDATE_SHA }}-attempt-${{ github.run_attempt }}
+          path: ${{ runner.temp }}/awf-full-linux-timing-v1.json
+          if-no-files-found: error
+          retention-days: 30
       - name: Build, blocking lint, version, and pins
         run: ./x gate
       - name: Selected release-archive behavior

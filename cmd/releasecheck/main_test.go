@@ -210,7 +210,10 @@ func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 			step["run"] = strings.Replace(stringValue(step["run"]), `if .outcome == "widened" then`, `if .outcome == "widened-without-lanes" then`, 1)
 		}},
 		{"missing complete Go behavior", func(c, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(c)["linux"]), "Complete Go behavior")["run"] = "true"
+			workflowStep(workflowMap(workflowJobs(c)["linux"]), "Complete Go behavior with calibration timing")["run"] = "true"
+		}},
+		{"missing calibration timing artifact", func(c, _ map[string]any) {
+			workflowMap(workflowStep(workflowMap(workflowJobs(c)["linux"]), "Upload full Linux calibration timing")["with"])["name"] = "foreign-timing"
 		}},
 		{"missing Linux gate", func(c, _ map[string]any) {
 			workflowStep(workflowMap(workflowJobs(c)["linux"]), "Build, blocking lint, version, and pins")["run"] = "true"
@@ -525,7 +528,7 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 	for _, required := range []struct {
 		step, condition, run string
 	}{
-		{"Complete Go behavior", "", "./x test"},
+		{"Complete Go behavior with calibration timing", "", `./x test-full-linux calibrate --artifact "$RUNNER_TEMP/awf-full-linux-timing-v1.json"`},
 		{"Build, blocking lint, version, and pins", "", "./x gate"},
 		{"Selected release-archive behavior", "${{ github.event_name == 'pull_request' && needs.selection.outputs.release_archive == 'true' }}", "go test -count=1 ./cmd/releasecheck"},
 		{"Selected render and repository checks", "${{ github.event_name != 'pull_request' || needs.selection.outputs.render_template == 'true' }}", "./x check && ./x render && git diff --exit-code"},
@@ -534,6 +537,15 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 		if stringValue(step["if"]) != required.condition || strings.TrimSpace(stringValue(step["run"])) != required.run {
 			problems = append(problems, required.step)
 		}
+	}
+	calibrationUpload := workflowStep(linux, "Upload full Linux calibration timing")
+	calibrationWith := workflowMap(calibrationUpload["with"])
+	if stringValue(calibrationUpload["if"]) != "${{ always() }}" ||
+		!strings.HasPrefix(stringValue(calibrationUpload["uses"]), "actions/upload-artifact@") ||
+		calibrationWith["name"] != "full-linux-timing-linux-amd64-${{ env.CANDIDATE_SHA }}-attempt-${{ github.run_attempt }}" ||
+		calibrationWith["path"] != "${{ runner.temp }}/awf-full-linux-timing-v1.json" ||
+		calibrationWith["if-no-files-found"] != "error" || calibrationWith["retention-days"] != 30 {
+		problems = append(problems, "full Linux calibration timing artifact")
 	}
 	prSafety := workflowStep(macos, "Filesystem, publication, Git, effort, and worktree safety")
 	const prSafetyRun = `temp_root="$(cd "$RUNNER_TEMP" && pwd -P)"
