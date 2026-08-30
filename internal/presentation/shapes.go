@@ -34,7 +34,7 @@ func (c Collection) Document() (Document, error) {
 		return Document{}, err
 	}
 	status, err := NewField("status", statusValue)
-	if err != nil { // coverage-ignore: Prose validated status and the fixed label is grammar-valid
+	if err != nil {
 		return Document{}, err
 	}
 	categories := make([]Node, 0, len(c.Categories))
@@ -60,7 +60,7 @@ func (c Collection) Document() (Document, error) {
 		return NewDocument(status)
 	}
 	section, err := NewSection("collection", categories...)
-	if err != nil { // coverage-ignore: each record group was validated above
+	if err != nil {
 		return Document{}, err
 	}
 	return NewDocument(status, section)
@@ -82,7 +82,7 @@ func (r Report) Document() (Document, error) {
 		return Document{}, err
 	}
 	status, err := NewField("status", statusValue)
-	if err != nil { // coverage-ignore: Prose validated status and the fixed label is grammar-valid
+	if err != nil {
 		return Document{}, err
 	}
 	nodes := []Node{status}
@@ -119,7 +119,7 @@ func (r Report) Document() (Document, error) {
 			children = append(children, group)
 		}
 		section, err := NewSection("findings", children...)
-		if err != nil { // coverage-ignore: RecordGroup construction validated every child
+		if err != nil {
 			return Document{}, err
 		}
 		nodes = append(nodes, section)
@@ -144,7 +144,7 @@ func (d Diagnostic) Document() (Document, error) {
 		return Document{}, err
 	}
 	condition, err := NewField("condition", conditionValue)
-	if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+	if err != nil {
 		return Document{}, err
 	}
 	nodes := []Node{condition}
@@ -154,7 +154,7 @@ func (d Diagnostic) Document() (Document, error) {
 			return Document{}, err
 		}
 		state, err := NewField("state", stateValue)
-		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err != nil {
 			return Document{}, err
 		}
 		nodes = append(nodes, state)
@@ -165,7 +165,7 @@ func (d Diagnostic) Document() (Document, error) {
 			return Document{}, err
 		}
 		cause, err := NewField("cause", causeValue)
-		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err != nil {
 			return Document{}, err
 		}
 		nodes = append(nodes, cause)
@@ -187,7 +187,7 @@ func (d Diagnostic) Document() (Document, error) {
 	}
 	if len(children) > 0 {
 		section, err := NewSection("diagnostic", children...)
-		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err != nil {
 			return Document{}, err
 		}
 		nodes = append(nodes, section)
@@ -218,7 +218,7 @@ func (m Mutation) Document() (Document, error) {
 		return Document{}, err
 	}
 	status, err := NewField("status", statusValue)
-	if err != nil { // coverage-ignore: Prose returned a validated value and status is a fixed grammar-valid label
+	if err != nil {
 		return Document{}, err
 	}
 	children := []Node{}
@@ -239,7 +239,7 @@ func (m Mutation) Document() (Document, error) {
 			changeNodes = append(changeNodes, list)
 		}
 		changes, err := NewSection("changes", changeNodes...)
-		if err != nil { // coverage-ignore: each NewList succeeded, so the fixed changes section has valid children
+		if err != nil {
 			return Document{}, err
 		}
 		children = append(children, changes)
@@ -262,7 +262,7 @@ func (m Mutation) Document() (Document, error) {
 		return NewDocument(status)
 	}
 	section, err := NewSection("mutation", children...)
-	if err != nil { // coverage-ignore: every child was constructed above, so the fixed mutation section is valid
+	if err != nil {
 		return Document{}, err
 	}
 	return NewDocument(status, section)

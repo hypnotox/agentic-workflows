@@ -54,11 +54,11 @@ func ParseStrict(content []byte, out any) (body []byte, found bool, err error) {
 		return body, true, fmt.Errorf("parse frontmatter: %w", err)
 	}
 	var extra any
-	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) { // coverage-ignore: Split ends the block at the first exact delimiter, so a second YAML document cannot remain inside it
-		if err != nil { // coverage-ignore: the first decode consumed the complete delimiter-bounded YAML block
+	if err := dec.Decode(&extra); !errors.Is(err, io.EOF) {
+		if err != nil {
 			return body, true, fmt.Errorf("parse frontmatter: %w", err)
 		}
-		return body, true, errors.New("parse frontmatter: multiple YAML documents") // coverage-ignore: see delimiter argument above
+		return body, true, errors.New("parse frontmatter: multiple YAML documents")
 	}
 	return body, true, nil
 }

@@ -7,7 +7,7 @@
 
 An implementation-review settlement was told to reconcile one mutable plan but edited an
 older, similarly themed Implemented plan instead. The change both misplaced the new Notes
-entry and regressed the historical plan to Proposed; render and the full gate stayed green
+entry and regressed the historical plan to Proposed; render and the repository gates stayed green
 because each file remained structurally valid. Earlier in the same effort, ADR and plan
 scaffolds had also landed in the wrong checkout before immediate cleanup. Repeated path
 plausibility is not identity proof.

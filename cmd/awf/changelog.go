@@ -48,7 +48,7 @@ func runChangelog(version, since, rng string, stdout io.Writer) error {
 		return writeChangelogPayloads(stdout, payloads)
 	default:
 		payload, err := changelog.Embedded()
-		if err != nil { // coverage-ignore: the compiled embedded changelog asset is fixed
+		if err != nil {
 			return err
 		}
 		return writeChangelogPayload(stdout, payload)

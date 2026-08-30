@@ -140,7 +140,7 @@ func (r filesystemProjectReader) Entries(prefix string) ([]generatedcheck.TreeEn
 			return nil
 		}
 		rel, e := filepath.Rel(r.root, p)
-		if e != nil { // coverage-ignore: WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform
+		if e != nil {
 			return e
 		}
 		out = append(out, generatedcheck.TreeEntry{Path: filepath.ToSlash(rel), Directory: d.IsDir()})
@@ -190,7 +190,7 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 			return nil
 		}
 		rel, e := filepath.Rel(r.root, p)
-		if e != nil { // coverage-ignore: p is always rooted at r.root, so Rel cannot fail
+		if e != nil {
 			return e
 		}
 		// A root gitfile identifies the invoking linked checkout and is metadata,
@@ -286,7 +286,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			return nil, fmt.Errorf("read template %s: %w", tid, err)
 		}
 		expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
-		if err != nil { // coverage-ignore: embedded templates are validated by the production render path and focused include tests
+		if err != nil {
 			return nil, fmt.Errorf("render %s: %w", tid, err)
 		}
 		seen := map[string]bool{}
@@ -325,7 +325,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			tid := mustDescriptor("skills").templateID(cat, name)
 			sections := cat.Skills[name].Sections
 			input, err := markdownInputs(tid, append([]OutputInput{{Path: ".awf/skills/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("skills", name, sections, sc.Sections)...)...)
-			if err != nil { // coverage-ignore: catalog skill template IDs and embedded sources are validated static authority
+			if err != nil {
 				return nil, err
 			}
 			add(t.SkillPath(cfg.Prefix, name), tid, t.Name, input)
@@ -340,7 +340,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			input := inputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections, sc.Sections)...)...)
 			if t.AgentDialect == MarkdownAgentDialect {
 				input, err = markdownInputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections, sc.Sections)...)...)
-				if err != nil { // coverage-ignore: catalog agent template IDs and embedded sources are validated static authority
+				if err != nil {
 					return nil, err
 				}
 			}
@@ -358,7 +358,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			declaredInputs := inputs(o.TemplateID)
 			if o.Encoder == MarkdownAgentDialect {
 				declaredInputs, err = markdownInputs(o.TemplateID)
-				if err != nil { // coverage-ignore: validated target-output descriptors own embedded Markdown template identities; markdownInputs error propagation is covered through enabled bridge declarations
+				if err != nil {
 					return nil, err
 				}
 			}
@@ -431,14 +431,14 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		// when the output is still absent, exactly as the renderer does.
 		outPath := config.DocsDir + "/" + local.Name + ".md"
 		declaredInputs, err := markdownInputs(localDocTID, OutputInput{Path: outPath, Role: ArtifactManagedOutput})
-		if err != nil { // coverage-ignore: localDocTID is a closed embedded Markdown identity, validated by the template census
+		if err != nil {
 			return nil, err
 		}
 		add(outPath, localDocTID, "local-doc:"+local.Name, declaredInputs)
 	}
 	for _, entry := range pitfalls.All() {
 		declaredInputs, err := markdownInputs(pitfallEntryTID, OutputInput{Path: entry.SourcePath, Role: ArtifactAuthoredData})
-		if err != nil { // coverage-ignore: the pitfall entry descriptor owns one validated embedded Markdown template identity
+		if err != nil {
 			return nil, err
 		}
 		add(config.DocsDir+"/pitfalls/"+entry.Slug+".md", pitfallEntryTID, "pitfall:"+entry.Slug, declaredInputs)
@@ -462,7 +462,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		domainTID := mustDescriptor("domains").templateID(cat, d)
 		declaredInputs, err := markdownInputs(domainTID, authored...)
-		if err != nil { // coverage-ignore: the domain descriptor owns one validated embedded template identity
+		if err != nil {
 			return nil, err
 		}
 		add(config.DocsDir+"/domains/"+d+".md", domainTID, "generated-domain", declaredInputs)
@@ -477,7 +477,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
 		declaredInputs, err := markdownInputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
-		if err != nil { // coverage-ignore: topicTID is a validated compile-time embedded identity
+		if err != nil {
 			return nil, err
 		}
 		add(config.DocsDir+"/topics/"+id+".md", topicTID, "topic:"+id, declaredInputs)
@@ -485,7 +485,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 	for _, d := range cfg.Domains {
 		topicInputs := []OutputInput{}
 		indexMetadata, err := read.Paths(".awf/topics/metadata/" + d + "/")
-		if err != nil { // coverage-ignore: the same domain metadata enumeration succeeded earlier in this declaration pass
+		if err != nil {
 			return nil, err
 		}
 		for _, p := range indexMetadata {
@@ -496,7 +496,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		}
 		if len(topicInputs) > 0 {
 			declaredInputs, err := markdownInputs(topicIndexTID, topicInputs...)
-			if err != nil { // coverage-ignore: topicIndexTID is a validated compile-time embedded identity
+			if err != nil {
 				return nil, err
 			}
 			add(config.DocsDir+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, declaredInputs)
@@ -671,15 +671,15 @@ func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]t
 				return nil, fmt.Errorf("read template %s: %w", o.TemplateID, err)
 			}
 			expanded, err := render.ExpandIncludes(string(src), templates.FS)
-			if err != nil { // coverage-ignore: embedded target-output templates are include-well-formed; render package tests own malformed includes
+			if err != nil {
 				return nil, fmt.Errorf("render %s: %w", o.TemplateID, err)
 			}
 			stripped, err := render.StripAuthoringComments(expanded)
-			if err != nil { // coverage-ignore: embedded target-output templates have well-formed authoring comments; render package tests malformed input
+			if err != nil {
 				return nil, fmt.Errorf("render %s: %w", o.TemplateID, err)
 			}
 			configHash, err := artifactConfigHash(p, stripped, config.Sidecar{}, nil, eff, t)
-			if err != nil { // coverage-ignore: no target output has parts and its descriptor projection is marshalable
+			if err != nil {
 				return nil, err
 			}
 			templateInput := []byte(expanded)
@@ -735,7 +735,7 @@ func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.
 	if err != nil {
 		return nil, err
 	}
-	if err := validateLiveTemplates(p); err != nil { // coverage-ignore: renderAllBase already resolved every live identity; TestValidateLiveTemplatesRejectsMissingTargetTemplate proves the defensive check
+	if err := validateLiveTemplates(p); err != nil {
 		return nil, err
 	}
 	plan := &OutputPlan{Declarations: declarationInventory}
@@ -771,7 +771,7 @@ func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.
 		if f.Path == config.DocsDir+"/pitfalls.md" {
 			deps = pitfallSourcePaths(pitfalls)
 		}
-		// coverage-ignore: base output paths are unique by renderAllBase's precondition.
+
 		if err := add(f, f.TemplateID, deps...); err != nil {
 			return nil, err
 		}
@@ -786,12 +786,12 @@ func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.
 		}
 	}
 	pitfallLeaves, err := generatePitfallLeaves(p, pitfalls, eff)
-	if err != nil { // coverage-ignore: the same embedded leaf template and validated corpus are closed inputs here
+	if err != nil {
 		return nil, err
 	}
 	for _, f := range pitfallLeaves {
 		slug := strings.TrimSuffix(strings.TrimPrefix(f.Path, config.DocsDir+"/pitfalls/"), ".md")
-		if err := add(f, f.Declarer, pitfall.SourceDir+"/"+slug+".md"); err != nil { // coverage-ignore: validated unique slugs derive unique leaf paths
+		if err := add(f, f.Declarer, pitfall.SourceDir+"/"+slug+".md"); err != nil {
 			return nil, err
 		}
 	}
@@ -805,15 +805,15 @@ func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.
 		}
 	}
 	index := generateIndexMD(p, corpus)
-	if err := add(index, "generated-index"); err != nil { // coverage-ignore: generated INDEX.md has a reserved unique path.
+	if err := add(index, "generated-index"); err != nil {
 		return nil, err
 	}
 	domains, err := generateDomainDocs(p, topics, eff)
-	if err != nil { // coverage-ignore: renderTarget cannot fail here: .data.domain/.data.topics are always set and the domain template is compile-time embedded
+	if err != nil {
 		return nil, err
 	}
 	for _, f := range domains {
-		if err := add(f, "generated-domain"); err != nil { // coverage-ignore: validated domain names produce distinct paths.
+		if err := add(f, "generated-domain"); err != nil {
 			return nil, err
 		}
 	}
@@ -825,7 +825,7 @@ func outputPlanWithPitfalls(p renderInputs, corpus adr.Corpus, pitfalls pitfall.
 		for _, f := range inputs {
 			deps = append(deps, f.Path)
 		}
-		// coverage-ignore: config reference has a reserved unique path.
+
 		if err := add(*cref, "generated-config-reference", deps...); err != nil {
 			return nil, err
 		}

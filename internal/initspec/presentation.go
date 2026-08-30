@@ -26,15 +26,15 @@ func (o Outcome) Document() (presentation.Document, error) {
 		configAction = "kept and re-rendered"
 	}
 	action, err := presentation.Prose(configAction)
-	if err != nil { // coverage-ignore: fixed nonempty prose contains no forbidden line break
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	pathField, err := presentation.NewField("config", configPath)
-	if err != nil { // coverage-ignore: Literal validated the value and config is a fixed grammar-valid label
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	actionField, err := presentation.NewField("config action", action)
-	if err != nil { // coverage-ignore: Prose validated the value and config-action is a fixed grammar-valid label
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	identity := append([]presentation.Field{pathField, actionField}, o.Sync.Identity...)
@@ -42,7 +42,7 @@ func (o Outcome) Document() (presentation.Document, error) {
 	notes := append([]presentation.Value(nil), o.Sync.Notes...)
 	if o.IgnoredAnswers {
 		value, valueErr := presentation.Prose("--set/--answers values were ignored; edit .awf/config.yaml instead")
-		if valueErr != nil { // coverage-ignore: fixed nonempty prose contains no forbidden line break
+		if valueErr != nil {
 			return presentation.Document{}, valueErr
 		}
 		notes = append(notes, value)

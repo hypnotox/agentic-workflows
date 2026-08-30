@@ -308,7 +308,7 @@ func (c *CommitPolicyConfig) UnmarshalYAML(node *yaml.Node) error {
 			if value.Kind != yaml.ScalarNode || value.Tag != "!!bool" {
 				return errors.New("commitPolicy.requireSignedCommits must be a boolean scalar")
 			}
-			if err := value.Decode(&c.RequireSignedCommits); err != nil { // coverage-ignore: a yaml bool scalar is fully decoded by yaml.v3 after the kind and tag check above
+			if err := value.Decode(&c.RequireSignedCommits); err != nil {
 				return fmt.Errorf("commitPolicy.requireSignedCommits must be a boolean scalar: %w", err)
 			}
 		case "allowedSigners":
@@ -668,7 +668,7 @@ func ParseTree(awfDir string, b []byte, read TreeReader) (*Config, error) {
 	}
 
 	var source yaml.Node
-	if err := yaml.Unmarshal(b, &source); err != nil { // coverage-ignore: the strict decoder accepted the same YAML bytes above
+	if err := yaml.Unmarshal(b, &source); err != nil {
 		return nil, fmt.Errorf("parse config presence: %w", err)
 	}
 	// yaml.v3 does not dispatch a slice decoder for an explicit null. Inspect
@@ -778,7 +778,7 @@ func (c *Config) ReadPart(kind, artifact, section string) ([]byte, bool, error) 
 // ReadPartPath reads a consumed absolute part path through the selected reader.
 func (c *Config) ReadPartPath(full string) ([]byte, error) {
 	rel, err := filepath.Rel(c.root, full)
-	if err != nil { // coverage-ignore: selected config root and consumed part paths are absolute paths on the same volume
+	if err != nil {
 		return nil, err
 	}
 	if c.filesystem {

@@ -53,7 +53,7 @@ func AppendLocalDoc(src []byte, doc LocalDoc) ([]byte, error) {
 		return nil, err
 	}
 	document, root, err := parseMapping(src)
-	if err != nil { // coverage-ignore: Parse accepted the same YAML mapping immediately above
+	if err != nil {
 		return nil, err
 	}
 	value, index := mapValue(root, "localDocs")
@@ -65,12 +65,12 @@ func AppendLocalDoc(src []byte, doc LocalDoc) ([]byte, error) {
 	if value == nil {
 		root.Content = append(root.Content, strScalar("localDocs"), &yaml.Node{Kind: yaml.SequenceNode, Tag: "!!seq", Content: []*yaml.Node{entry}})
 	} else {
-		if value.Kind != yaml.SequenceNode { // coverage-ignore: strict Parse rejects every non-sequence localDocs value before node mutation
+		if value.Kind != yaml.SequenceNode {
 			return nil, errors.New("config: localDocs must be a sequence")
 		}
 		for _, item := range value.Content {
 			var existing LocalDoc
-			if err := item.Decode(&existing); err != nil { // coverage-ignore: strict Parse decoded every existing item immediately above
+			if err := item.Decode(&existing); err != nil {
 				return nil, fmt.Errorf("config: malformed localDocs: %w", err)
 			}
 			if existing.Name == doc.Name {
@@ -82,11 +82,11 @@ func AppendLocalDoc(src []byte, doc LocalDoc) ([]byte, error) {
 		value.Content = append(value.Content, entry)
 	}
 	out, err := encode(document)
-	if err != nil { // coverage-ignore: decoded yaml.Node trees contain only encoder-supported values
+	if err != nil {
 		return nil, err
 	}
 	parsed, err := Parse("", out)
-	if err != nil { // coverage-ignore: encoding a strict parsed config plus scalar entry cannot fail strict parsing
+	if err != nil {
 		return nil, err
 	}
 	if err := parsed.Validate(); err != nil {
@@ -155,7 +155,7 @@ func encode(v any) ([]byte, error) {
 	var buf bytes.Buffer
 	enc := yaml.NewEncoder(&buf)
 	enc.SetIndent(2)
-	if err := enc.Encode(v); err != nil { // coverage-ignore: encode receives a Skeleton or a yaml.Node decoded from valid YAML; only unrepresentable Go types (chan/func) fail, which neither holds
+	if err := enc.Encode(v); err != nil {
 		return nil, err
 	}
 	_ = enc.Close()

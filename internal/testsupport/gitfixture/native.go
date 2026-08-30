@@ -36,7 +36,7 @@ func InitNativeObjectFormat(t *testing.T, root, format string) Fixture {
 	if unsupported {
 		t.Skipf("installed Git lacks %s repositories: %v: %s", format, err, output)
 	}
-	if err != nil { // coverage-ignore: init into a writable fixture directory fails only on a permission fault a test cannot trigger
+	if err != nil {
 		t.Fatalf("git init: %v: %s", err, output)
 	}
 	f := Fixture{root: root}
@@ -115,15 +115,15 @@ func NativeSSHKey(t *testing.T) (string, string) {
 	t.Helper()
 	path := t.TempDir() + "/signing-key"
 	command := exec.Command("ssh-keygen", "-q", "-t", "ed25519", "-N", "", "-f", path)
-	if output, err := command.CombinedOutput(); err != nil { // coverage-ignore: requires a missing or broken test dependency
+	if output, err := command.CombinedOutput(); err != nil {
 		t.Fatalf("ssh-keygen: %v: %s", err, output)
 	}
 	body, err := os.ReadFile(path + ".pub")
-	if err != nil { // coverage-ignore: ssh-keygen just created the public key
+	if err != nil {
 		t.Fatalf("read SSH public key: %v", err)
 	}
 	fields := strings.Fields(string(body))
-	if len(fields) < 2 { // coverage-ignore: ssh-keygen emits an algorithm and base64 record
+	if len(fields) < 2 {
 		t.Fatalf("malformed SSH public key: %q", body)
 	}
 	return path, strings.Join(fields[:2], " ")
@@ -170,7 +170,7 @@ func NativeRevParse(t *testing.T, f Fixture, rev string) string {
 func NativeCatFile(t *testing.T, f Fixture, objectType, rev string) []byte {
 	t.Helper()
 	output, err := runNativeBytes(f, nil, "cat-file", objectType, rev)
-	if err != nil { // coverage-ignore: the caller names an object it just created
+	if err != nil {
 		t.Fatalf("git cat-file %s %s: %v\n%s", objectType, rev, err, output)
 	}
 	return output
@@ -180,7 +180,7 @@ func NativeCatFile(t *testing.T, f Fixture, objectType, rev string) []byte {
 func NativeHashObject(t *testing.T, f Fixture, objectType string, body []byte) string {
 	t.Helper()
 	output, err := runNativeBytes(f, body, "hash-object", "-t", objectType, "-w", "--stdin")
-	if err != nil { // coverage-ignore: hashing valid bytes into a writable fixture object database cannot fail
+	if err != nil {
 		t.Fatalf("git hash-object: %v\n%s", err, output)
 	}
 	return strings.TrimSpace(string(output))
@@ -209,7 +209,7 @@ func NativeRevisionExists(t *testing.T, f Fixture, rev string) bool {
 	if errors.As(err, &exit) && exit.ExitCode() == 1 {
 		return false
 	}
-	// coverage-ignore: rev-parse --verify --quiet answers a resolvable revision with 0 and an unresolvable one with 1; any other exit needs a broken fixture or a missing git binary, which reds the suite by other means
+
 	t.Fatalf("git rev-parse --verify --quiet %s: %v\n%s", rev, err, output)
 	return false
 }
@@ -282,7 +282,7 @@ func NativeWorktreeRemove(t *testing.T, f Fixture, path string) {
 func mustNative(t *testing.T, f Fixture, args ...string) string {
 	t.Helper()
 	output, err := runNative(f, args...)
-	if err != nil { // coverage-ignore: an invocation the caller asserts succeeds fails only on a broken fixture, which reds the suite by other means
+	if err != nil {
 		t.Fatalf("git %v: %v\n%s", args, err, output)
 	}
 	return output

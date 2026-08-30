@@ -28,7 +28,7 @@ func runAudit(ctx context.Context, root, rangeArg string, stdout io.Writer) erro
 		return presentAuditRefusal(err)
 	}
 	document, err := outcome.Report.Document()
-	if err != nil { // coverage-ignore: the audit mapping has already validated every shape
+	if err != nil {
 		return err
 	}
 	if err := presentation.Render(stdout, document); err != nil {

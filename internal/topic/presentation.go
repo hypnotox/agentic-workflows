@@ -77,13 +77,13 @@ func presentationTopicItems(label string, items []string) presentation.Node {
 	values := make([]presentation.Value, 0, len(items))
 	for _, item := range items {
 		value, err := topicLiteral(item)
-		if err != nil { // coverage-ignore: topic query items are parsed single-line identities
+		if err != nil {
 			panic(err)
 		}
 		values = append(values, value)
 	}
 	list, err := presentation.NewList(label, values...)
-	if err != nil { // coverage-ignore: this mapper owns the literal label and supplies nonempty validated values
+	if err != nil {
 		panic(err)
 	}
 	return list
@@ -92,29 +92,29 @@ func topicValue(text string) (presentation.Value, error)   { return presentation
 func topicLiteral(text string) (presentation.Value, error) { return presentation.Literal(text) }
 func topicField(label, text string) presentation.Field {
 	value, err := topicValue(text)
-	if err != nil { // coverage-ignore: topic parser values cannot contain invalid presentation whitespace
+	if err != nil {
 		panic(err)
 	}
 	field, err := presentation.NewField(label, value)
-	if err != nil { // coverage-ignore: this mapper owns each literal label
+	if err != nil {
 		panic(err)
 	}
 	return field
 }
 func topicLiteralField(label, text string) presentation.Field {
 	value, err := topicLiteral(text)
-	if err != nil { // coverage-ignore: topic query identities are parsed single-line values
+	if err != nil {
 		panic(err)
 	}
 	field, err := presentation.NewField(label, value)
-	if err != nil { // coverage-ignore: this mapper owns each literal label
+	if err != nil {
 		panic(err)
 	}
 	return field
 }
 func topicSection(label string, nodes ...presentation.Node) presentation.Section {
 	section, err := presentation.NewSection(label, nodes...)
-	if err != nil { // coverage-ignore: every call supplies at least one mapped node
+	if err != nil {
 		panic(err)
 	}
 	return section

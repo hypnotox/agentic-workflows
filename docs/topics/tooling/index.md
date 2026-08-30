@@ -4,7 +4,7 @@
 # tooling topics
 
 - [Audit and snapshots](audit-and-snapshots.md): Workflow-conformance auditing and the immutable git snapshot layer.
-- [Audit commands](audit-commands.md): The advisory audit surfaces: audit, repoaudit, mutants.
+- [Audit commands](audit-commands.md): The advisory audit surfaces: audit and repoaudit.
 - [Authority Queries](authority-queries.md): Read-only commands that expose current-state and ADR authority without duplicating code navigation.
 - [CLI](cli.md): Command dispatch and the behaviour of the awf command surfaces.
 - [Changelog and release](changelog-and-release.md): The changelog pipeline and release-notes contracts.
@@ -16,6 +16,6 @@
 - [Git access](git-access.md): The one semantic git seam - entrypoints, backends, and their pinned contracts.
 - [Initialization](init-and-enablement.md): Project adoption and initialization behavior.
 - [Project license](project-license.md): The repository license text, public references, and packaged-license contract.
-- [Quality gates](quality-gates.md): Coverage, prose, working-memory citations, and the command-runner gate machinery.
+- [Quality gates](quality-gates.md): Focused local feedback, repository checks, and the aggregate CI gate.
 - [Test infrastructure](test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
 - [Upgrade runtime](upgrade-runtime.md): The supported live-schema migration and journaled recovery runtime.

@@ -92,7 +92,7 @@ func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
 		}
 		value, _ := presentation.Prose("change: " + change)
 		field, err := presentation.NewField("migration", value)
-		if err != nil { // coverage-ignore: the fixed label and Prose-validated value cannot violate the field grammar
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		changed = append(changed, field)
@@ -113,7 +113,7 @@ func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
 	steps := make([]presentation.Value, 0, len(stepTexts))
 	for _, text := range stepTexts {
 		value, err := presentation.Prose(text)
-		if err != nil { // coverage-ignore: stepTexts is a closed set of fixed nonempty prose literals
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		steps = append(steps, value)

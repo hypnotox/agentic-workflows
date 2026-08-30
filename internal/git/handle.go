@@ -51,7 +51,7 @@ type Repo struct {
 // checkout exists.
 func Open(root string) (*Repo, error) {
 	absolute, err := filepath.Abs(root)
-	if err != nil { // coverage-ignore: Abs fails only when the process working directory is unavailable
+	if err != nil {
 		return nil, err
 	}
 	repo, err := openTolerant(absolute)
@@ -67,14 +67,14 @@ func Open(root string) (*Repo, error) {
 // are scoped to that subtree exactly as a command invoked there expects.
 func OpenContaining(start string) (*Repo, string, error) {
 	absolute, err := filepath.Abs(start)
-	if err != nil { // coverage-ignore: Abs fails only when the process working directory is unavailable
+	if err != nil {
 		return nil, "", err
 	}
 	for candidate := absolute; ; candidate = filepath.Dir(candidate) {
 		repo, openErr := openTolerant(candidate)
 		if openErr == nil {
 			prefix, relErr := filepath.Rel(candidate, absolute)
-			if relErr != nil { // coverage-ignore: both paths are absolute and share the same volume
+			if relErr != nil {
 				return nil, "", relErr
 			}
 			if prefix == "." {
@@ -173,11 +173,11 @@ func (r *Repo) ChangedPaths(ctx context.Context, staged bool, rangeSpec string) 
 	set := map[string]bool{}
 	if staged {
 		wt, err := r.repo.Worktree()
-		if err != nil { // coverage-ignore: a bare / worktree-less repo is outside awf's intended use
+		if err != nil {
 			return nil, opaqueError(err)
 		}
 		status, err := wt.Status()
-		if err != nil { // coverage-ignore: Status on a healthy worktree we just opened does not fail
+		if err != nil {
 			return nil, opaqueError(err)
 		}
 		for path, st := range status {
@@ -202,7 +202,7 @@ func (r *Repo) ChangedPaths(ctx context.Context, staged bool, rangeSpec string) 
 			return nil, opaqueError(err)
 		}
 		changes, err := object.DiffTree(fromTree, toTree)
-		if err != nil { // coverage-ignore: diffing two resolved trees does not fail
+		if err != nil {
 			return nil, opaqueError(err)
 		}
 		for _, ch := range changes {
@@ -318,16 +318,16 @@ func (r *Repo) WorkingPaths(ctx context.Context) ([]string, error) {
 		}
 	}
 	wt, err := r.repo.Worktree()
-	if err != nil { // coverage-ignore: awf operates on non-bare adopted worktrees
+	if err != nil {
 		return nil, opaqueError(err)
 	}
 	wt.Excludes = globalExcludePatterns()
 	status, err := wt.Status()
-	if err != nil { // coverage-ignore: status on the healthy worktree just opened does not fail
+	if err != nil {
 		return nil, opaqueError(err)
 	}
 	patterns, err := gitignore.ReadPatterns(wt.Filesystem, nil)
-	if err != nil { // coverage-ignore: Status read the same worktree immediately above; failure requires a concurrent filesystem fault
+	if err != nil {
 		return nil, opaqueError(err)
 	}
 	patterns = append(globalExcludePatterns(), patterns...)
@@ -344,7 +344,7 @@ func (r *Repo) WorkingPaths(ctx context.Context) ([]string, error) {
 		switch {
 		case state.Worktree == gogit.Deleted || os.IsNotExist(diskErr):
 			delete(set, path)
-		case diskErr != nil: // coverage-ignore: status returned the path; only a concurrent filesystem fault can make Lstat fail otherwise
+		case diskErr != nil:
 			return nil, diskErr
 		default:
 			set[path] = true
@@ -438,7 +438,7 @@ func (r *Repo) resolveCommit(rev string) (*object.Commit, error) {
 		return nil, opaqueWrap(fmt.Sprintf("resolve %q", rev), err)
 	}
 	commit, err := r.repo.CommitObject(*hash)
-	if err != nil { // coverage-ignore: ResolveRevision accepts only commitish revisions; the non-commit-object test proves blobs refuse before this lookup
+	if err != nil {
 		return nil, opaqueWrap(fmt.Sprintf("commit %q", rev), err)
 	}
 	return commit, nil
@@ -620,11 +620,11 @@ func (r *Repo) RangeBlobs(ctx context.Context, rev string) (before, after []Inde
 		return nil, nil, opaqueWrap(fmt.Sprintf("resolve %q", rev), err)
 	}
 	c, err := r.repo.CommitObject(*h)
-	if err != nil { // coverage-ignore: a hash ResolveRevision just returned points at a real object
+	if err != nil {
 		return nil, nil, opaqueWrap(fmt.Sprintf("commit %q", rev), err)
 	}
 	curTree, err := c.Tree()
-	if err != nil { // coverage-ignore: a resolved commit always yields its tree
+	if err != nil {
 		return nil, nil, opaqueError(err)
 	}
 	if after, err = blobsOfTree(ctx, curTree, r.prefix); err != nil {
@@ -639,7 +639,7 @@ func (r *Repo) RangeBlobs(ctx context.Context, rev string) (before, after []Inde
 			return nil, nil, opaqueError(perr)
 		}
 		parentTree, perr := parent.Tree()
-		if perr != nil { // coverage-ignore: a valid parent commit's tree resolves
+		if perr != nil {
 			return nil, nil, opaqueError(perr)
 		}
 		if before, perr = blobsOfTree(ctx, parentTree, r.prefix); perr != nil {

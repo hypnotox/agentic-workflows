@@ -33,11 +33,9 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [An attribute\-filtered pinned\-set test exempts every other attribute value](pitfalls/an-attribute-filtered-pinned-set-test-exempts-every-other-attribute-value.md) | tooling |  |
 | [An ordered\-phrase assertion cannot reach a site ahead of its first anchor](pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md) | rendering\, invariants |  |
 | [An ordering proof written against the log proves nothing](pitfalls/an-ordering-proof-written-against-the-log-proves-nothing.md) | tooling\, invariants | ADR-0175 |
-| [Check the Open boundary before ignoring an assembly error](pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md) | tooling | ADR-0012, ADR-0092, ADR-0102 |
 | [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md) | tooling |  |
 | [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md) | tooling |  |
 | [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md) | rendering |  |
-| [Keep SSH alive through long pre\-push gates](pitfalls/keep-ssh-alive-through-long-pre-push-gates.md) | tooling |  |
 | [Link ADRs by their on\-disk filename\, never by constructing one from the title](pitfalls/link-adrs-by-their-on-disk-filename-never-by-constructing-one-from-the-title.md) | adr\-system |  |
 | [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md) | tooling\, adr\-system | ADR-0202 |
 | [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md) | tooling |  |
@@ -110,10 +108,8 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [An ad hoc post\-check can still overrun the change\'s scope](pitfalls/an-ad-hoc-post-check-can-still-overrun-the-change-s-scope.md)
 - [An attribute\-filtered pinned\-set test exempts every other attribute value](pitfalls/an-attribute-filtered-pinned-set-test-exempts-every-other-attribute-value.md)
 - [An ordering proof written against the log proves nothing](pitfalls/an-ordering-proof-written-against-the-log-proves-nothing.md)
-- [Check the Open boundary before ignoring an assembly error](pitfalls/check-the-open-boundary-before-ignoring-an-assembly-error.md)
 - [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md)
 - [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md)
-- [Keep SSH alive through long pre\-push gates](pitfalls/keep-ssh-alive-through-long-pre-push-gates.md)
 - [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md)
 - [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md)
 - [Pin the Go toolchain when preview compilers break lint](pitfalls/pin-the-go-toolchain-when-preview-compilers-break-lint.md)

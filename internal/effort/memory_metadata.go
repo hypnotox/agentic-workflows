@@ -246,7 +246,7 @@ func encodeMemoryDocument(metadata MemoryMetadata, updated *yaml.Node, body []by
 		mapping.Content = append(mapping.Content, memoryScalar("updated"), updated)
 	}
 	encoded, err := yaml.Marshal(mapping)
-	if err != nil { // coverage-ignore: yaml.Marshal of a mapping node of parsed and scalar-only values cannot fail
+	if err != nil {
 		return nil, fmt.Errorf("encode memory YAML: %w", err)
 	}
 	return append(append([]byte("---\n"), encoded...), append([]byte("---\n"), body...)...), nil

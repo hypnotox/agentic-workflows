@@ -28,7 +28,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 	for _, kind := range []string{"skills", "agents", "docs"} {
 		d, _ := descriptorByPlural(kind)
 		for _, name := range d.poolNames(cat) {
-			if err := collectVars(templates.FS, d.templateID(cat, name), varSet); err != nil { // coverage-ignore: every catalog name has a backing template in the embedded FS, so collectVars cannot fail
+			if err := collectVars(templates.FS, d.templateID(cat, name), varSet); err != nil {
 				return nil, err
 			}
 		}
@@ -36,14 +36,14 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 	// Plain singletons (workflow, doc-standard, agents-md-standard included) always
 	// render - their vars must be seeded even though they left cat.Docs (ADR-0043).
 	for _, sg := range plainSingletons(cat) {
-		if err := collectVars(templates.FS, sg.tid, varSet); err != nil { // coverage-ignore: every plainSingletons entry has a backing template in the embedded FS, so collectVars cannot fail
+		if err := collectVars(templates.FS, sg.tid, varSet); err != nil {
 			return nil, err
 		}
 	}
 	// Hook payloads render by default (ADR-0048) - seed their vars (commitGateCmd)
 	// so an init prompt answer is not silently dropped.
 	for _, name := range hookNames {
-		if err := collectVars(templates.FS, hookTID(name), varSet); err != nil { // coverage-ignore: every hookNames entry has a backing template in the embedded FS, so collectVars cannot fail
+		if err := collectVars(templates.FS, hookTID(name), varSet); err != nil {
 			return nil, err
 		}
 	}
@@ -71,7 +71,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 		Audit:             auditBlk,
 		Bootstrap:         &config.BootstrapConfig{Enabled: true},
 	})
-	if err != nil { // coverage-ignore: MarshalSkeleton serializes an in-memory struct; it cannot fail on this input
+	if err != nil {
 		return nil, err
 	}
 	return out, nil
@@ -138,11 +138,11 @@ func (e *PitfallScaffoldCleanupError) Diagnostic() (presentation.Diagnostic, err
 	changed := make([]presentation.Field, 0, 2)
 	for _, label := range []string{"authored source", "cleanup residue"} {
 		value, err := presentation.Prose("yes")
-		if err != nil { // coverage-ignore: fixed nonempty prose is valid
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		field, err := presentation.NewField(label, value)
-		if err != nil { // coverage-ignore: fixed labels and validated values are valid
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		changed = append(changed, field)
@@ -205,11 +205,11 @@ func loadPitfallScaffoldCorpus(tree pitfallScaffoldFilesystem) (pitfall.Corpus, 
 // PitfallScaffoldDocument maps a created source path to the CLI presentation grammar.
 func PitfallScaffoldDocument(sourcePath string) (presentation.Document, error) {
 	statusValue, err := presentation.Prose("pitfall created")
-	if err != nil { // coverage-ignore: fixed status prose is valid
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	status, err := presentation.NewField("status", statusValue)
-	if err != nil { // coverage-ignore: fixed label and validated value are valid
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	pathValue, err := presentation.Literal(sourcePath)
@@ -217,7 +217,7 @@ func PitfallScaffoldDocument(sourcePath string) (presentation.Document, error) {
 		return presentation.Document{}, err
 	}
 	authoredPath, err := presentation.NewField("authored path", pathValue)
-	if err != nil { // coverage-ignore: fixed label and validated value are valid
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	return presentation.NewDocument(status, authoredPath)
@@ -239,16 +239,16 @@ func neededVarsFromFS(fsys fs.FS) (map[string]bool, error) {
 			}
 		}
 	}
-	if err := collectVars(fsys, cat.Docs["agents-doc"].TID, varSet); err != nil { // coverage-ignore: the agents-doc template is always embedded
+	if err := collectVars(fsys, cat.Docs["agents-doc"].TID, varSet); err != nil {
 		return nil, err
 	}
 	for _, sg := range plainSingletons(cat) {
-		if err := collectVars(fsys, sg.tid, varSet); err != nil { // coverage-ignore: every plainSingletons entry has a backing embedded template
+		if err := collectVars(fsys, sg.tid, varSet); err != nil {
 			return nil, err
 		}
 	}
 	for _, name := range hookNames {
-		if err := collectVars(fsys, hookTID(name), varSet); err != nil { // coverage-ignore: every hookNames entry has a backing embedded template
+		if err := collectVars(fsys, hookTID(name), varSet); err != nil {
 			return nil, err
 		}
 	}

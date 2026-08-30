@@ -5,7 +5,7 @@
 
 The changelog pipeline and release-notes contracts.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/authoringop/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/coverage/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testperformance/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-performance.json`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `internal/changelog/**`. Both domain and topic selectors must match. Run `awf read topic tooling/changelog-and-release --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/authoringop/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `internal/changelog/**`. Both domain and topic selectors must match. Run `awf read topic tooling/changelog-and-release --coverage` for current applicable and owned paths and marker sites.
 
 The changelog package parses and validates the changelog and release-notes pipeline. The claims below capture the current changelog and release contracts.
 
@@ -43,7 +43,7 @@ Backing: test
 
 ### `invariant: release-gate-on-tag`
 
-The release workflow verifies successful exact-SHA CI conclusions, checkout and tag identity, origin/main ancestry, the release version, and curated notes before its needs-bound credential-bearing GoReleaser publish step. The stable CI release-configuration conclusion owns production snapshot construction and portability validation; the tag workflow does not repeat full repository assurance.
+The release workflow verifies the successful exact-SHA `CI / gate` conclusion, checkout and tag identity, origin/main ancestry, the release version, curated notes, and production snapshot archive integrity before its needs-bound credential-bearing GoReleaser publish step. It does not repeat repository test or lint assurance.
 Backing: test
 
 ### `invariant: release-platforms`
@@ -53,7 +53,7 @@ Backing: test
 
 ### `rule: hosted-release-protection`
 
-The live GitHub `release tags` ruleset applies to `refs/tags/v*` with no bypass actor and requires GitHub Actions checks `CI / gate` and `CI / release-config` on the exact tagged revision before the ref can be created or updated.
+The live GitHub `release tags` ruleset still requires `CI / gate` and the retired `CI / release-config` status on the exact tagged revision. Repository owners must remove the retired status requirement before the simplified workflow can publish tags.
 
 ### `invariant: release-notes-from-changelog`
 

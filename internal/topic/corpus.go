@@ -91,7 +91,7 @@ func assembleCorpus(metadata map[string]metaEntry, parts map[string]partEntry, d
 		c.byTopic[t.ID.String()] = t
 		for j := range t.Claims {
 			cl := &t.Claims[j]
-			if _, ok := c.byClaim[cl.ID]; ok { // coverage-ignore: one canonical pair owns each path-derived topic ID, and local duplicates fail ParsePart
+			if _, ok := c.byClaim[cl.ID]; ok {
 				return Corpus{}, fmt.Errorf("duplicate full claim ID %q", cl.ID)
 			}
 			c.byClaim[cl.ID] = cl

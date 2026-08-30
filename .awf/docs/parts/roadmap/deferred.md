@@ -14,17 +14,13 @@ The `code-design/outcome-modeling:actionable-outcome-protocol` and `code-design/
 
 The init collision probe conservatively refuses artifacts that a `--set` trim would deselect. Revisit this accepted behavior only after an adopter reports it as a problem.
 
-## Mechanically detecting a nominal invariant proof
-
-`invariant-proof-exercises-its-claim` failed to prevent three sessions of partial proof markers; the last shipped roughly nine and hid a real defect behind a green gate. `internal/migrate/dropworkflowtelemetry_test.go` marks `workflow-telemetry-config-migration` but only pins current schema generation, not generation 21 removing two resident roots. The reviewer item was strengthened but remains rung 3 and probabilistic. Consider mutation testing through existing `cmd/mutants` and the deterministic gremlins recipe: mutating a claimed clause leaves a nominal marker green. Decide whether a scoped, gate-wired subset can be fast and deterministic enough; full runs are slow and advisory. Needs an ADR if blocking.
-
 ## The rationale site a token cannot address
 
 `docs/decisions/0057-sandboxed-placeholder-substitution-in-convention-parts.md` has `refines: ADR-0034#1` in Decision before any column-0 numbered item, so it parses with `CarrierItem: 0` and has no rationale site. ADR-0129 Decision 2 requires each claim's addressable justification. Repair requires either forbidden content movement in an Implemented ADR or a section-scoped model that weakens the guarantee; `awf check` is silent because the token is not invalid. The related bare `item N` citation shape (ADR-0131 Decision 2 records its measurement) raises the same question of frozen-prose structure.
 
 ## Mechanically catching a commit that does not contain what it claims
 
-Concurrent sessions produced mismatched commit content and messages three times. On 2026-07-19 a described ADR amendment was absent, leaving a proof marker asserting the opposite; no gate detects it. Prose failed three times and review focus is rung 3. Consider a `cmd/repoaudit` range rule: a message naming an ADR with an authoring verb (amends, narrows, reopens, flips, implements) must touch that ADR. It is repo discipline, not shipped `awf audit`, and advisory accommodates verb-detection false positives. Also consider the inverse: changed files unaccounted for in the message, catching `git add -A` cross-effort sweeps. Deferred for a new rule and 100% tests.
+Concurrent sessions produced mismatched commit content and messages three times. On 2026-07-19 a described ADR amendment was absent, leaving a proof marker asserting the opposite; no gate detects it. Prose failed three times and review focus is rung 3. Consider a `cmd/repoaudit` range rule: a message naming an ADR with an authoring verb (amends, narrows, reopens, flips, implements) must touch that ADR. It is repo discipline, not shipped `awf audit`, and advisory accommodates verb-detection false positives. Also consider the inverse: changed files unaccounted for in the message, catching `git add -A` cross-effort sweeps. Deferred for a new rule and focused behavior tests.
 
 ## A direct first-stamp ADR flip can smuggle unreviewed section content
 
@@ -33,10 +29,6 @@ Since ADR-0188, post-first-stamp status flips are content-pure: a post-Accepted 
 ## Decomposing the `internal/project` god object
 
 ADR-0195's empirical cluster map, verified cycles, and per-symbol coupling census supported extracting resident-root policy and anchoring into `internal/resident`, while `code-design/dependency-composition` owns generic dependency direction. Still open: a future package-cohesion pattern owning `receiver-reads-owned-state` (methods read a receiver field; otherwise take parameters), and any further core decomposition. ADR-0195 accepted both as future effort rather than silent scope.
-
-## A `coverage-ignore` the profile records as executed is a false ignore
-
-The review item and manual rule failed across eight false exclusions. A guarded ignored body recorded as EXECUTED is mechanically false: `cmd/covercheck` already has profile and ignore data, so fail blocks both ignored and counted. The 2026-07-30 sweep found EIGHT current sites, seven predating that session. The work includes the rule, 100% tests, and judgment across eight sites whether to delete each exclusion or cover its branch. Decide in one effort whether it begins as error or warning and whether `./x audit-local`'s `coverage-ignore-added` advisory remains complementary.
 
 ## The rendered pre-commit payload validates the worktree, not the staged slice
 
@@ -48,7 +40,7 @@ ADR-0053 and ADR-0054 shipped deterministic fixture evals for handoffs and skill
 
 ## Partial-amendment back-pointer check
 
-When an ADR cites a specific Decision item as a partial amendment, the cited ADR's `related:` should name the citer. ADR-0065 missed ADR-0079 and ADR-0093 missed ADR-0024; retrospective caught both. Detection needs citation-prose heuristics, 100% tests, and handles non-amending citation false positives. Defer to a focused effort; ADR-0188's amendable lifecycle may change the best design.
+When an ADR cites a specific Decision item as a partial amendment, the cited ADR's `related:` should name the citer. ADR-0065 missed ADR-0079 and ADR-0093 missed ADR-0024; retrospective caught both. Detection needs citation-prose heuristics, focused behavior tests, and handling for non-amending citation false positives. Defer to a focused effort; ADR-0188's amendable lifecycle may change the best design.
 
 ## Unmanaged Go `t.TempDir` directories survive abrupt process death
 

@@ -1,5 +1,5 @@
 title: Audit commands
-summary: "The advisory audit surfaces: audit, repoaudit, mutants."
+summary: "The advisory audit surfaces: audit and repoaudit."
 paths:
   - cmd/**
   - internal/clispec/**

@@ -59,7 +59,7 @@ func MergeHeads(projectRoot string) ([]string, error) {
 // of being masked by continuing upward.
 func containingGitDir(projectRoot string) (string, error) {
 	abs, err := filepath.Abs(projectRoot)
-	if err != nil { // coverage-ignore: Abs fails only when the process working directory is unavailable
+	if err != nil {
 		return "", err
 	}
 	for candidate := abs; ; candidate = filepath.Dir(candidate) {

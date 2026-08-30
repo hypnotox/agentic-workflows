@@ -43,7 +43,7 @@ func (r filesystemProjectReader) Entries(prefix string) ([]generatedcheck.TreeEn
 			return nil
 		}
 		rel, e := filepath.Rel(r.root, p)
-		if e != nil { // coverage-ignore: WalkDir supplies paths rooted beneath r.root, so Rel cannot fail on a supported platform
+		if e != nil {
 			return e
 		}
 		out = append(out, generatedcheck.TreeEntry{Path: filepath.ToSlash(rel), Directory: d.IsDir()})
@@ -75,7 +75,7 @@ func (r filesystemProjectReader) Paths(prefix string) ([]string, error) {
 		}
 		if !d.IsDir() {
 			rel, e := filepath.Rel(r.root, p)
-			if e != nil { // coverage-ignore: WalkDir supplies a path under r.root, so Rel cannot fail on a supported platform
+			if e != nil {
 				return e
 			}
 			out = append(out, filepath.ToSlash(rel))

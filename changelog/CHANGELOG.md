@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Remove exact coverage ledgers and directives, mutation and performance qualification tools, the local full gate, duplicated CI shards, and the separate release-configuration status. Local feedback is focused and `CI / gate` is the single repository verdict; archive verification moves to the release workflow.
+
 ### Features
 
 - Add `awf edit sidecar <kind> <name> <field>` and matching reset commands for capability-valid typed sidecar leaves, including idempotent authored-list changes and automatic rendering.

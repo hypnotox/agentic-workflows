@@ -1,4 +1,4 @@
-The advisory audit surfaces: awf audit, repoaudit, and mutants reporting.
+The advisory audit surfaces are awf audit and the repository-local repoaudit.
 
 ## Claims
 
@@ -25,11 +25,6 @@ Backing: test
 ### `invariant: audit-warn-exit-zero`
 
 The awf audit command returns success with a zero exit status when all of its findings are Warning severity, and returns a non-zero exit status when any single finding is Error severity.
-Backing: test
-
-### `invariant: mutants-missing-report-errors`
-
-The mutants command exits non-zero for a nonexistent report path and never prints no survived mutants for one, while a present-but-empty report file reports no survivors with exit 0.
 Backing: test
 
 ### `invariant: repoaudit-requires-explicit-range`

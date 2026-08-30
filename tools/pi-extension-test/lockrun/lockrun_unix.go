@@ -12,7 +12,7 @@ import (
 	"syscall"
 )
 
-func main() { os.Exit(run(os.Args)) } // coverage-ignore: os.Exit wrapper; run is unit-tested.
+func main() { os.Exit(run(os.Args)) }
 
 func run(args []string) int {
 	if len(args) < 3 {
@@ -25,7 +25,7 @@ func run(args []string) int {
 		return 1
 	}
 	defer lock.Close()
-	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil { // coverage-ignore: a valid local file only fails for a kernel or filesystem fault.
+	if err := syscall.Flock(int(lock.Fd()), syscall.LOCK_EX); err != nil {
 		fmt.Fprintf(os.Stderr, "pi-extension-test: acquire lock: %v\n", err)
 		return 1
 	}
@@ -57,7 +57,7 @@ func run(args []string) int {
 			}
 			return exitErr.ExitCode()
 		}
-		fmt.Fprintf(os.Stderr, "pi-extension-test: wait for worker: %v\n", err) // coverage-ignore: Wait returns only ExitError after a successfully started command.
+		fmt.Fprintf(os.Stderr, "pi-extension-test: wait for worker: %v\n", err)
 		return 1
 	}
 	return 0

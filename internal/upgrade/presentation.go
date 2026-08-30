@@ -36,7 +36,7 @@ func (o Outcome) FailureDiagnostic(condition string, cause error) (presentation.
 		return presentation.Diagnostic{}, err
 	}
 	steps, err := upgradeRemedies(len(changed) > 0)
-	if err != nil { // coverage-ignore: closed remedy literals are presentation-valid
+	if err != nil {
 		return presentation.Diagnostic{}, err
 	}
 	return presentation.Diagnostic{
@@ -78,7 +78,7 @@ func journalFields(evidence []Evidence) ([]presentation.Field, error) {
 	fields := make([]presentation.Field, 0, len(values))
 	for _, value := range values {
 		field, err := presentation.NewField(journalLabel, value)
-		if err != nil { // coverage-ignore: journalLabel is fixed grammar-valid and value is validated
+		if err != nil {
 			return nil, err
 		}
 		fields = append(fields, field)
@@ -98,7 +98,7 @@ func upgradeRemedies(changed bool) ([]presentation.Value, error) {
 	steps := make([]presentation.Value, 0, len(texts))
 	for _, text := range texts {
 		value, err := presentation.Prose(text)
-		if err != nil { // coverage-ignore: closed remedy literals are presentation-valid
+		if err != nil {
 			return nil, err
 		}
 		steps = append(steps, value)

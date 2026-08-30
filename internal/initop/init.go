@@ -118,7 +118,7 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 			return initspec.Outcome{}, errors.New("pre-tracking authority: restore a supported permanent .awf/awf.lock from version control before initializing")
 		}
 		state, err := lock.AuthorityState()
-		if err != nil { // coverage-ignore: LoadOptional parsed and validated this unchanged lock immediately above
+		if err != nil {
 			return initspec.Outcome{}, fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", err)
 		}
 		if state != manifest.AuthorityPermanent {
@@ -139,7 +139,7 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 
 	if !configExists {
 		contents, err := project.ScaffoldConfig(filepath.Base(root), vars, scopes)
-		if err != nil { // coverage-ignore: ScaffoldConfig renders a static template over a dir basename; cannot fail in practice
+		if err != nil {
 			return initspec.Outcome{}, err
 		}
 		handle, openErr := filesystem.Open(root)
@@ -174,11 +174,11 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 		return failScaffold(err)
 	}
 	collisions, err := prepared.InitCollisions()
-	if err != nil { // coverage-ignore: preparation validated every planned path; failure now requires an unportable root-confined filesystem fault
+	if err != nil {
 		return failScaffold(err)
 	}
-	if len(collisions) > 0 && !input.Force { // coverage-ignore: the non-force probe plans the same full catalog; force makes this condition false
-		return failScaffold(collisionRefusal(collisions)) // coverage-ignore: the identical pre-prompt probe makes this path unreachable
+	if len(collisions) > 0 && !input.Force {
+		return failScaffold(collisionRefusal(collisions))
 	}
 	if err := gate(ctx, root); err != nil {
 		return failScaffold(err)
@@ -197,7 +197,7 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 		return failScaffold(err)
 	}
 	mutation, err := result.Mutation()
-	if err != nil { // coverage-ignore: typed Publisher results and fixed presentation grammar make this mapping failure unreachable
+	if err != nil {
 		return publisherPartialOutcome(initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}, scaffold, result, err)
 	}
 	advisories, err := advisoryNotes(state, cfg, prepared)
@@ -317,7 +317,7 @@ func publisherPartialOutcome(base initspec.Outcome, scaffold scaffoldCommit, res
 	}
 	if scaffold.committed() {
 		values, valueErr := scaffoldEffectValues(scaffold.configCommitted, scaffold.createdDir, scaffold.residue)
-		if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break
+		if valueErr != nil {
 			base.Status = "initialization partially committed"
 			base.Sync = mutation
 			return base, &PartialError{Outcome: base, Cause: errors.Join(cause, valueErr)}
@@ -333,14 +333,14 @@ func scaffoldEffectValues(configRemains, dirRemains bool, residue []string) ([]p
 	values := make([]presentation.Value, 0, 2+len(residue))
 	if configRemains {
 		value, err := presentation.Literal("config-created " + filepath.ToSlash(filepath.Join(config.DirName, "config.yaml")) + "; recovery: retain it and rerun awf init --force, or remove it only after restoring the pre-init tree")
-		if err != nil { // coverage-ignore: fixed path and prose contain no line break
+		if err != nil {
 			return nil, err
 		}
 		values = append(values, value)
 	}
 	if dirRemains {
 		value, err := presentation.Literal("directory-created " + config.DirName + "; recovery: remove only if empty after restoring the pre-init tree")
-		if err != nil { // coverage-ignore: fixed path and prose contain no line break
+		if err != nil {
 			return nil, err
 		}
 		values = append(values, value)
@@ -357,7 +357,7 @@ func scaffoldEffectValues(configRemains, dirRemains bool, residue []string) ([]p
 
 func scaffoldPartialOutcome(cfgPath string, configRemains, dirRemains bool, residue []string, cause error) (initspec.Outcome, error) {
 	values, valueErr := scaffoldEffectValues(configRemains, dirRemains, residue)
-	if valueErr != nil { // coverage-ignore: fixed paths and prose contain no line break
+	if valueErr != nil {
 		return initspec.Outcome{}, errors.Join(cause, valueErr)
 	}
 	mutation := presentation.Mutation{Status: "partially committed"}
@@ -385,28 +385,28 @@ func probeCollisions(ctx context.Context, root string, loadProject LoadProject) 
 		return composePublisher(state, cfg).InitCollisions()
 	}
 	tmp, err := os.MkdirTemp("", "awf-init-probe-*")
-	if err != nil { // coverage-ignore: MkdirTemp fails only on an unwritable TMPDIR, which a test cannot trigger portably
+	if err != nil {
 		return nil, err
 	}
 	defer os.RemoveAll(tmp)
 	scaffold, err := project.ScaffoldConfig(filepath.Base(root), nil, nil)
-	if err != nil { // coverage-ignore: ScaffoldConfig over the embedded catalog cannot fail at runtime
+	if err != nil {
 		return nil, err
 	}
 	cfgPath := config.ConfigPath(tmp)
-	if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil { // coverage-ignore: a fresh temp dir's child MkdirAll fails only on a permission fault root bypasses
+	if err := os.MkdirAll(filepath.Dir(cfgPath), 0o755); err != nil {
 		return nil, err
 	}
-	if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil { // coverage-ignore: post-MkdirAll write into a fresh temp dir cannot fail in practice
+	if err := os.WriteFile(cfgPath, scaffold, 0o644); err != nil {
 		return nil, err
 	}
 	loader := project.NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, selected string) string { return selected })
 	state, cfg, err := loader.OpenForOperation(ctx, tmp)
-	if err != nil { // coverage-ignore: a freshly-scaffolded default config always opens
+	if err != nil {
 		return nil, err
 	}
 	prepared, err := composePublisher(state, cfg).Prepare()
-	if err != nil { // coverage-ignore: rendering the embedded catalog over a fresh scaffold in an empty tree cannot fail
+	if err != nil {
 		return nil, err
 	}
 	return resident.CollisionsAt(root, prepared.Plan().Paths())

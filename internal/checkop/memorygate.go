@@ -13,7 +13,7 @@ import (
 func memoryCheckResult(cfg *config.Config, tree *snapshot.Tree) (checkresult.Result, error) {
 	findings := memoryFindings(cfg, tree)
 	result, err := memorycite.Result(findings)
-	if err != nil { // coverage-ignore: Scan constructs every finding with fixed nonempty evidence
+	if err != nil {
 		return checkresult.Result{}, err
 	}
 	return result, memoryFindingError(findings)

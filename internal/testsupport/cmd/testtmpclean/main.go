@@ -11,7 +11,7 @@ import (
 
 type cleanerFunc func(testsupport.CleanupMode, io.Writer) error
 
-func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, testsupport.CleanTestTemps)) } // coverage-ignore: process exit belongs only to the command boundary
+func main() { os.Exit(run(os.Args[1:], os.Stdout, os.Stderr, testsupport.CleanTestTemps)) }
 
 func run(args []string, stdout, stderr io.Writer, clean cleanerFunc) int {
 	mode := testsupport.CleanupStale

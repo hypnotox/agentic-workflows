@@ -29,7 +29,7 @@ func renderGlossary(t *testing.T, root string) string {
 		}
 	}
 	t.Fatal("no rendered glossary in RenderAll output")
-	return "" // coverage-ignore: t.Fatal never returns
+	return ""
 }
 
 // The rendered table is ordered case-insensitively by term regardless of the

@@ -20,7 +20,7 @@ func publishAtomic(tempPath, path string, expected *fileIdentity) error {
 	if mismatch == nil {
 		return nil
 	}
-	if rollbackErr := unix.RenamexNp(tempPath, path, unix.RENAME_SWAP); rollbackErr != nil { // coverage-ignore: requires a second namespace race or kernel fault during immediate rollback
+	if rollbackErr := unix.RenamexNp(tempPath, path, unix.RENAME_SWAP); rollbackErr != nil {
 		return errors.Join(mismatch, fmt.Errorf("restore unexpected destination at %s after refused publication: %w", path, rollbackErr))
 	}
 	return publicationIdentityRefusal(mismatch)
@@ -38,7 +38,7 @@ func removeAtomic(tempPath, path string, expected *fileIdentity) error {
 		}
 		return os.Remove(path)
 	}
-	if rollbackErr := unix.RenamexNp(tempPath, path, unix.RENAME_SWAP); rollbackErr != nil { // coverage-ignore: requires a second namespace race or kernel fault during immediate rollback
+	if rollbackErr := unix.RenamexNp(tempPath, path, unix.RENAME_SWAP); rollbackErr != nil {
 		return errors.Join(publicationIdentityRefusal(mismatch), fmt.Errorf("restore unexpected destination at %s after refused removal: %w", path, rollbackErr))
 	}
 	return publicationIdentityRefusal(mismatch)

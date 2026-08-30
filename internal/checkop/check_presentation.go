@@ -57,11 +57,11 @@ func checkReport(warningNotes, informationNotes []string, projected repositorych
 		status = "warnings"
 	}
 	value, err := presentation.Literal(fmt.Sprintf("%d errors, %d warnings, %d information", len(errorRecords), len(warningRecords), len(informationRecords)))
-	if err != nil { // coverage-ignore: the fixed decimal-only summary format always satisfies Literal's grammar
+	if err != nil {
 		return presentation.Report{}, err
 	}
 	summary, err := presentation.NewField("findings", value)
-	if err != nil { // coverage-ignore: the fixed grammar-valid findings label receives the validated Literal value
+	if err != nil {
 		return presentation.Report{}, err
 	}
 	output := []presentation.ReportCategory{}
@@ -81,7 +81,7 @@ func advisoryRecords(notes []string) ([]presentation.Record, error) {
 	records := make([]presentation.Record, 0, len(notes))
 	for _, note := range notes {
 		check, err := presentation.Prose("advisory")
-		if err != nil { // coverage-ignore: the fixed nonempty advisory literal is normalized by Prose before validation
+		if err != nil {
 			return nil, err
 		}
 		detail, err := presentation.Prose(note)
@@ -89,7 +89,7 @@ func advisoryRecords(notes []string) ([]presentation.Record, error) {
 			return nil, err
 		}
 		record, err := presentation.NewRecord(check, detail)
-		if err != nil { // coverage-ignore: both Record values were validated by Prose immediately above
+		if err != nil {
 			return nil, err
 		}
 		records = append(records, record)

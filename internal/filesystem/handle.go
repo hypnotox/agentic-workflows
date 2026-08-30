@@ -86,11 +86,11 @@ func (h *Handle) Walk(subtree string, visit func(path string, info fs.FileInfo) 
 		return nil
 	}
 	err = fs.WalkDir(h.root.FS(), subtree, func(path string, entry fs.DirEntry, walkErr error) error {
-		if walkErr != nil { // coverage-ignore: permission controls are execution-identity-dependent; otherwise an underlying WalkDir error requires a concurrent filesystem change
+		if walkErr != nil {
 			return fmt.Errorf("filesystem: walk %q: %w", path, walkErr)
 		}
 		info, err := entry.Info()
-		if err != nil { // coverage-ignore: permission controls are execution-identity-dependent; otherwise this requires a concurrent filesystem change
+		if err != nil {
 			return fmt.Errorf("filesystem: walk-info %q: %w", path, err)
 		}
 		descend, err := visit(path, info)
@@ -212,46 +212,46 @@ func (h *Handle) ReplaceExpected(destination string, expected *ExpectedIdentity,
 	var file *os.File
 	for range 100 {
 		var token [16]byte
-		if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam
+		if _, err := rand.Read(token[:]); err != nil {
 			return fmt.Errorf("filesystem: name replacement temporary for %q: %w", destination, err)
 		}
 		temporary = path.Join(path.Dir(destination), ".awf-atomic-"+hex.EncodeToString(token[:]))
 		var err error
 		file, err = h.root.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-		if errors.Is(err, fs.ErrExist) { // coverage-ignore: a collision requires predicting the cryptographically random temporary name before this operation
-			continue // coverage-ignore: a collision requires predicting the cryptographically random temporary name before this operation
+		if errors.Is(err, fs.ErrExist) {
+			continue
 		}
 		if err != nil {
 			return fmt.Errorf("filesystem: create replacement temporary for %q: %w", destination, err)
 		}
 		break
 	}
-	if file == nil { // coverage-ignore: exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle
-		return fmt.Errorf("filesystem: create replacement temporary for %q: temporary name collisions exhausted", destination) // coverage-ignore: exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle
+	if file == nil {
+		return fmt.Errorf("filesystem: create replacement temporary for %q: temporary name collisions exhausted", destination)
 	}
 	defer func() {
-		if file != nil { // coverage-ignore: this remains non-nil only after a local temporary write storage fault
-			returnErr = errors.Join(returnErr, file.Close()) // coverage-ignore: a second close failure after a replacement write failure requires a second storage fault
+		if file != nil {
+			returnErr = errors.Join(returnErr, file.Close())
 		}
 		if temporary != "" {
-			if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) { // coverage-ignore: the concrete root can fault here only through a concurrent namespace change or storage fault
-				returnErr = errors.Join(returnErr, fmt.Errorf("filesystem: remove replacement temporary %q: %w", temporary, err)) // coverage-ignore: the concrete root can fault here only through a concurrent namespace change or storage fault
+			if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				returnErr = errors.Join(returnErr, fmt.Errorf("filesystem: remove replacement temporary %q: %w", temporary, err))
 			}
 		}
 	}()
-	if n, err := file.Write(contents); err != nil { // coverage-ignore: writing a locally-created regular temporary requires a storage fault
-		return fmt.Errorf("filesystem: write replacement temporary for %q: %w", destination, err) // coverage-ignore: writing a locally-created regular temporary requires a storage fault
-	} else if n != len(contents) { // coverage-ignore: os.File.Write returns a non-nil error when it writes fewer bytes than requested
-		return fmt.Errorf("filesystem: write replacement temporary for %q: %w", destination, io.ErrShortWrite) // coverage-ignore: os.File.Write returns a non-nil error when it writes fewer bytes than requested
+	if n, err := file.Write(contents); err != nil {
+		return fmt.Errorf("filesystem: write replacement temporary for %q: %w", destination, err)
+	} else if n != len(contents) {
+		return fmt.Errorf("filesystem: write replacement temporary for %q: %w", destination, io.ErrShortWrite)
 	}
-	if err := file.Chmod(mode); err != nil { // coverage-ignore: chmod of a newly-created regular temporary requires a storage fault
-		return fmt.Errorf("filesystem: set replacement mode for %q: %w", destination, err) // coverage-ignore: chmod of a newly-created regular temporary requires a storage fault
+	if err := file.Chmod(mode); err != nil {
+		return fmt.Errorf("filesystem: set replacement mode for %q: %w", destination, err)
 	}
-	if err := file.Sync(); err != nil { // coverage-ignore: syncing a locally-created regular temporary requires a storage fault
-		return fmt.Errorf("filesystem: sync replacement temporary for %q: %w", destination, err) // coverage-ignore: syncing a locally-created regular temporary requires a storage fault
+	if err := file.Sync(); err != nil {
+		return fmt.Errorf("filesystem: sync replacement temporary for %q: %w", destination, err)
 	}
-	if err := file.Close(); err != nil { // coverage-ignore: closing a locally-created regular temporary after a successful sync requires a storage fault
-		return fmt.Errorf("filesystem: close replacement temporary for %q: %w", destination, err) // coverage-ignore: closing a locally-created regular temporary after a successful sync requires a storage fault
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("filesystem: close replacement temporary for %q: %w", destination, err)
 	}
 	file = nil
 	consumed, err := exchangeExpected(h.root, temporary, destination, expected, false, false)
@@ -316,7 +316,7 @@ func (h *Handle) RetireExpected(destination string, expected *ExpectedIdentity) 
 		}
 		break
 	}
-	if temporary == "" { // coverage-ignore: random collision exhaustion is not practical
+	if temporary == "" {
 		return fmt.Errorf("filesystem: create retirement temporary for %q: collisions exhausted", destination)
 	}
 	defer func() {
@@ -335,8 +335,8 @@ func (h *Handle) RetireExpected(destination string, expected *ExpectedIdentity) 
 		}
 		return fmt.Errorf("filesystem: retire %q: %w", destination, err)
 	}
-	if !consumed { // coverage-ignore: a successful expected exchange always consumes the temporary
-		return fmt.Errorf("filesystem: retire %q: expected mutation was not committed", destination) // coverage-ignore: platform helpers cannot report success without consumption
+	if !consumed {
+		return fmt.Errorf("filesystem: retire %q: expected mutation was not committed", destination)
 	}
 	residue := temporary
 	if err := h.root.RemoveAll(residue); err != nil {
@@ -376,7 +376,7 @@ func (h *Handle) RemoveExpected(destination string, expected *ExpectedIdentity) 
 	created := false
 	for range 100 {
 		var token [16]byte
-		if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam
+		if _, err := rand.Read(token[:]); err != nil {
 			return fmt.Errorf("filesystem: name removal temporary for %q: %w", destination, err)
 		}
 		temporary = path.Join(path.Dir(destination), ".awf-remove-"+hex.EncodeToString(token[:]))
@@ -386,14 +386,14 @@ func (h *Handle) RemoveExpected(destination string, expected *ExpectedIdentity) 
 			var file *os.File
 			file, returnErr = h.root.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
 			if returnErr == nil {
-				if closeErr := file.Close(); closeErr != nil { // coverage-ignore: closing a newly-created empty regular file requires a storage fault
-					removeErr := h.root.Remove(temporary)                                                                              // coverage-ignore: cleanup after a close storage fault requires the same unportable fault source
-					return fmt.Errorf("filesystem: close removal temporary for %q: %w", destination, errors.Join(closeErr, removeErr)) // coverage-ignore: closing a newly-created empty regular file requires a storage fault
+				if closeErr := file.Close(); closeErr != nil {
+					removeErr := h.root.Remove(temporary)
+					return fmt.Errorf("filesystem: close removal temporary for %q: %w", destination, errors.Join(closeErr, removeErr))
 				}
 			}
 		}
-		if errors.Is(returnErr, fs.ErrExist) { // coverage-ignore: collision requires predicting a cryptographically random temporary
-			continue // coverage-ignore: collision requires predicting a cryptographically random temporary
+		if errors.Is(returnErr, fs.ErrExist) {
+			continue
 		}
 		if returnErr != nil {
 			return fmt.Errorf("filesystem: create removal temporary for %q: %w", destination, returnErr)
@@ -401,8 +401,8 @@ func (h *Handle) RemoveExpected(destination string, expected *ExpectedIdentity) 
 		created = true
 		break
 	}
-	if !created { // coverage-ignore: exhausting random temporary names is not practically triggerable
-		return fmt.Errorf("filesystem: create removal temporary for %q: collisions exhausted", destination) // coverage-ignore: exhausting random temporary names is not practically triggerable
+	if !created {
+		return fmt.Errorf("filesystem: create removal temporary for %q: collisions exhausted", destination)
 	}
 	defer func() {
 		if temporary != "" {
@@ -504,11 +504,11 @@ func (h *Handle) ReadWithMode(path string) ([]byte, fs.FileMode, error) {
 	if readErr != nil {
 		return nil, 0, fmt.Errorf("filesystem: read %q: %w", path, errors.Join(readErr, closeErr))
 	}
-	if statErr != nil { // coverage-ignore: stat on a successfully read confined regular file requires a storage fault
-		return nil, 0, fmt.Errorf("filesystem: read %q: %w", path, errors.Join(statErr, closeErr)) // coverage-ignore: stat on a successfully read confined regular file requires a storage fault
+	if statErr != nil {
+		return nil, 0, fmt.Errorf("filesystem: read %q: %w", path, errors.Join(statErr, closeErr))
 	}
-	if closeErr != nil { // coverage-ignore: close after a successful confined read requires a storage fault
-		return nil, 0, fmt.Errorf("filesystem: read %q: %w", path, closeErr) // coverage-ignore: close after a successful confined read requires a storage fault
+	if closeErr != nil {
+		return nil, 0, fmt.Errorf("filesystem: read %q: %w", path, closeErr)
 	}
 	return contents, info.Mode().Perm(), nil
 }

@@ -82,7 +82,7 @@ func Show(service *effort.Service, slug string) (presentation.Document, error) {
 		return presentation.Document{}, err
 	}
 	detail, err := record.Detail()
-	if err != nil { // coverage-ignore: production composition resolves control roots first, rejecting line breaks before absolute resident paths can reach presentation
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	return detail.Document()
@@ -95,7 +95,7 @@ func Finish(ctx context.Context, service *effort.Service, slug string) (presenta
 		return presentation.Document{}, err
 	}
 	mutation, err := result.FinishMutation(slug)
-	if err != nil { // coverage-ignore: production composition resolves control roots first, rejecting line breaks before absolute archive paths can reach presentation
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	return mutation.Document()

@@ -9,16 +9,7 @@ import (
 )
 
 func testPolicy() Policy {
-	return Policy{
-		Version: 1,
-		MetaSuites: []SuitePolicy{{
-			ID:      "composition",
-			Package: "./cmd/meta",
-			Tests:   []string{"TestRegistry", "TestArchitecture"},
-		}},
-		SharedPathPatterns:  []string{"templates/**", "*.json", "x", "tools/**"},
-		GeneratedGoPatterns: []string{"*_generated.go"},
-	}
+	return Policy{Version: 1, SmokePackages: []string{"./cmd/meta"}, SharedPathPatterns: []string{"templates/**", "*.json", "x", "tools/**"}, GeneratedGoPatterns: []string{"*_generated.go"}}
 }
 
 func testGraph() graph {
@@ -45,13 +36,7 @@ func TestSelectPathsConservativelyClosesAffectedPackages(t *testing.T) {
 	if !reflect.DeepEqual(got, want) {
 		t.Fatalf("packages = %#v, want %#v", got, want)
 	}
-	if len(result.Suites) != 0 {
-		t.Fatalf("suite duplicated full package: %#v", result.Suites)
-	}
-	if wantTests := []string{"TestArchitecture", "TestRegistry"}; !reflect.DeepEqual(result.Packages[0].RequiredTests, wantTests) {
-		t.Fatalf("meta package required tests = %#v, want %#v", result.Packages[0].RequiredTests, wantTests)
-	}
-	if wantReasons := []string{"contains-suite:composition:declared-meta-suite", "reverse-dependent:./internal/leaf"}; !reflect.DeepEqual(result.Packages[0].Reasons, wantReasons) {
+	if wantReasons := []string{"global-smoke", "reverse-dependent:./internal/leaf"}; !reflect.DeepEqual(result.Packages[0].Reasons, wantReasons) {
 		t.Fatalf("meta package reasons = %#v, want %#v", result.Packages[0].Reasons, wantReasons)
 	}
 	for _, pkg := range result.Packages {
@@ -63,24 +48,16 @@ func TestSelectPathsConservativelyClosesAffectedPackages(t *testing.T) {
 
 func TestChangedTestPackageDoesNotPropagateAsProduction(t *testing.T) {
 	result := selectPaths(testPolicy(), testGraph(), []string{"internal/leaf/leaf_test.go"})
-	if len(result.Packages) != 1 || result.Packages[0].Path != "./internal/leaf" || len(result.Suites) != 1 {
-		t.Fatalf("result = %#v", result)
-	}
-	if !reflect.DeepEqual(result.Suites[0].Reasons, []string{"declared-meta-suite"}) {
-		t.Fatalf("suite reasons = %#v", result.Suites[0].Reasons)
+	got := []string{result.Packages[0].Path, result.Packages[1].Path}
+	if want := []string{"./cmd/meta", "./internal/leaf"}; !reflect.DeepEqual(got, want) {
+		t.Fatalf("packages = %#v, want %#v", got, want)
 	}
 }
 
-func TestDirectSuitePackageRunsFullyWithoutDuplicateSuite(t *testing.T) {
+func TestDirectSmokePackageRunsOnce(t *testing.T) {
 	result := selectPaths(testPolicy(), testGraph(), []string{"cmd/meta/main.go"})
-	if len(result.Packages) != 1 || result.Packages[0].Path != "./cmd/meta" || len(result.Suites) != 0 {
+	if len(result.Packages) != 1 || result.Packages[0].Path != "./cmd/meta" || !reflect.DeepEqual(result.Packages[0].Reasons, []string{"changed-package:cmd/meta/main.go", "global-smoke"}) {
 		t.Fatalf("result = %#v", result)
-	}
-	if !reflect.DeepEqual(result.Packages[0].Reasons, []string{"changed-package:cmd/meta/main.go", "contains-suite:composition:declared-meta-suite"}) {
-		t.Fatalf("reasons = %#v", result.Packages[0].Reasons)
-	}
-	if !reflect.DeepEqual(result.Packages[0].RequiredTests, []string{"TestArchitecture", "TestRegistry"}) {
-		t.Fatalf("required tests = %#v", result.Packages[0].RequiredTests)
 	}
 }
 
@@ -104,7 +81,7 @@ func TestSelectPathsWidensDeletedOrUnownedGoPackage(t *testing.T) {
 	if result.Outcome != "widened" || !reflect.DeepEqual(result.Reasons, []string{"unowned-go-change:removed/package.go"}) {
 		t.Fatalf("result = %#v", result)
 	}
-	if len(result.Packages) != len(testGraph().packages) || len(result.Suites) != 0 {
+	if len(result.Packages) != len(testGraph().packages) {
 		t.Fatalf("widened targets = %#v", result)
 	}
 }
@@ -134,11 +111,11 @@ func TestSharedChangeRecognizesTemplatesConfigurationToolingGeneratedAndBuildTag
 
 func TestSelectEmptyAndRejectsInvalidPath(t *testing.T) {
 	result, err := Select(context.Background(), t.TempDir(), testPolicy(), nil)
-	if err != nil || result.Outcome != "empty" || !reflect.DeepEqual(result.Reasons, []string{"no-relevant-changes"}) || result.Suites == nil {
+	if err != nil || result.Outcome != "empty" || !reflect.DeepEqual(result.Reasons, []string{"no-relevant-changes"}) {
 		t.Fatalf("empty = %#v, %v", result, err)
 	}
 	result, err = Select(context.Background(), t.TempDir(), testPolicy(), []string{"../outside.go"})
-	if err == nil || result.Outcome != "refused" || result.Suites == nil {
+	if err == nil || result.Outcome != "refused" {
 		t.Fatalf("invalid = %#v, %v", result, err)
 	}
 	result, err = Select(context.Background(), t.TempDir(), testPolicy(), []string{"missing.go"})
@@ -204,11 +181,8 @@ func TestDiscoverUnionsSupportedPlatformDependencies(t *testing.T) {
 	for _, pkg := range result.Packages {
 		got = append(got, pkg.Path)
 	}
-	if want := []string{"./internal/darwin", "./internal/leaf"}; !reflect.DeepEqual(got, want) {
+	if want := []string{"./cmd/meta", "./internal/darwin", "./internal/leaf"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("platform union packages = %#v, want %#v; result=%#v", got, want, result)
-	}
-	if len(result.Suites) != 1 || result.Suites[0].ID != "composition" {
-		t.Fatalf("platform union suites = %#v", result.Suites)
 	}
 }
 
@@ -229,26 +203,24 @@ func TestRepositoryPolicySelectsRepresentativeCommonChange(t *testing.T) {
 	for _, pkg := range result.Packages {
 		gotPackages = append(gotPackages, pkg.Path)
 	}
-	if want := []string{"./cmd/testselection", "./internal/testselection"}; !reflect.DeepEqual(gotPackages, want) {
+	if want := []string{"./cmd/awf", "./cmd/testselection", "./internal/testselection"}; !reflect.DeepEqual(gotPackages, want) {
 		t.Fatalf("packages = %#v, want %#v; result=%#v", gotPackages, want, result)
 	}
-	if len(result.Suites) != 1 || result.Suites[0].ID != "awf-composition" || !reflect.DeepEqual(result.Suites[0].Reasons, []string{"declared-meta-suite"}) {
-		t.Fatalf("suites = %#v", result.Suites)
-	}
+
 }
 
 func TestLoadRejectsUnsupportedOrIncompletePolicy(t *testing.T) {
 	path := filepath.Join(t.TempDir(), "policy.json")
 	bodies := []string{
-		`{"version":2,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
-		`{"version":1,"meta_suites":[],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
-		`{"version":1,"meta_suites":[{"id":"meta","package":"./...","tests":["TestMeta"]}],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
-		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["not-a-test"]}],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
-		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"],"unknown":true}`,
-		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"shared_path_patterns":[],"generated_go_patterns":["*.gen.go"]}`,
-		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"shared_path_patterns":[""],"generated_go_patterns":["*.gen.go"]}`,
-		`{"version":1,"meta_suites":[{"id":"meta","package":"./cmd/meta","tests":["TestMeta"]}],"shared_path_patterns":["["] ,"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":2,"smoke_packages":["./cmd/meta"],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1,"smoke_packages":[],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1,"smoke_packages":["./..."],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1,"smoke_packages":["./cmd/meta","./cmd/meta"],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1,"smoke_packages":["./cmd/meta"],"shared_path_patterns":["x"],"generated_go_patterns":["*.gen.go"],"unknown":true}`,
+		`{"version":1,"smoke_packages":["./cmd/meta"],"shared_path_patterns":[],"generated_go_patterns":["*.gen.go"]}`,
+		`{"version":1,"smoke_packages":["./cmd/meta"],"shared_path_patterns":[""],"generated_go_patterns":["*.gen.go"]}`,
 	}
+
 	for _, body := range bodies {
 		if err := os.WriteFile(path, []byte(body), 0o644); err != nil {
 			t.Fatal(err)

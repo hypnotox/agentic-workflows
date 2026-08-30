@@ -69,15 +69,15 @@ func InitRepo(t testing.TB) Fixture {
 func InitRepoAt(t testing.TB, root string) Fixture {
 	t.Helper()
 	repo, err := git.PlainInit(root, false)
-	if err != nil { // coverage-ignore: PlainInit into an existing writable directory fails only on a permission fault a test cannot trigger
+	if err != nil {
 		t.Fatalf("init: %v", err)
 	}
 	cfg, err := repo.Storer.Config()
-	if err != nil { // coverage-ignore: a repository just initialized by go-git always carries readable local config
+	if err != nil {
 		t.Fatalf("read fixture config: %v", err)
 	}
 	cfg.Raw.Section("maintenance").SetOption("auto", maintenanceAutoValue)
-	if err := repo.Storer.SetConfig(cfg); err != nil { // coverage-ignore: writing local config in a writable fixture directory fails only on a permission fault a test cannot trigger
+	if err := repo.Storer.SetConfig(cfg); err != nil {
 		t.Fatalf("disable fixture auto-maintenance: %v", err)
 	}
 	return Fixture{root: root}
@@ -111,7 +111,7 @@ func Add(t testing.TB, f Fixture, paths ...string) {
 // repository root.
 func AddAll(t testing.TB, f Fixture) {
 	t.Helper()
-	if err := worktree(t, f).AddWithOptions(&git.AddOptions{All: true}); err != nil { // coverage-ignore: staging a readable fixture worktree wholesale fails only on a permission fault a test cannot trigger
+	if err := worktree(t, f).AddWithOptions(&git.AddOptions{All: true}); err != nil {
 		t.Fatalf("add all: %v", err)
 	}
 }
@@ -149,7 +149,7 @@ func Commit(t testing.TB, f Fixture, msg string, write map[string]string, remove
 	stageInto(t, wt, f.root, write)
 	removeFrom(t, wt, remove)
 	h, err := wt.Commit(msg, &git.CommitOptions{Author: Sig, Committer: Sig})
-	if err != nil { // coverage-ignore: Commit with a valid signature and staged tree cannot fail
+	if err != nil {
 		t.Fatalf("commit: %v", err)
 	}
 	return h.String()
@@ -168,7 +168,7 @@ func Merge(t testing.TB, f Fixture, msg string, parents ...string) string {
 		Author:            Sig,
 		Committer:         Sig,
 	})
-	if err != nil { // coverage-ignore: Commit with valid parents and signature on a healthy worktree cannot fail
+	if err != nil {
 		t.Fatalf("merge commit: %v", err)
 	}
 	return h.String()
@@ -189,11 +189,11 @@ func Graft(t testing.TB, f Fixture, msg, treeFrom string, parents ...string) str
 	}
 	repo := open(t, f)
 	encoded := repo.Storer.NewEncodedObject()
-	if err := commit.Encode(encoded); err != nil { // coverage-ignore: encoding a commit built from resolved fixture hashes cannot fail
+	if err := commit.Encode(encoded); err != nil {
 		t.Fatalf("encode graft: %v", err)
 	}
 	h, err := repo.Storer.SetEncodedObject(encoded)
-	if err != nil { // coverage-ignore: storing an encoded object into the fixture's own object database cannot fail
+	if err != nil {
 		t.Fatalf("store graft: %v", err)
 	}
 	return h.String()
@@ -203,7 +203,7 @@ func Graft(t testing.TB, f Fixture, msg, treeFrom string, parents ...string) str
 func TreeHash(t testing.TB, f Fixture, rev string) string {
 	t.Helper()
 	commit, err := open(t, f).CommitObject(plumbing.NewHash(rev))
-	if err != nil { // coverage-ignore: reading back a commit the fixture just wrote cannot fail
+	if err != nil {
 		t.Fatalf("commit object %s: %v", rev, err)
 	}
 	return commit.TreeHash.String()
@@ -218,7 +218,7 @@ func CheckoutNewBranch(t testing.TB, f Fixture, name, at string) {
 		Branch: plumbing.NewBranchReferenceName(name),
 		Create: true,
 	}
-	if err := worktree(t, f).Checkout(options); err != nil { // coverage-ignore: creating a branch at a commit the fixture just wrote cannot fail
+	if err := worktree(t, f).Checkout(options); err != nil {
 		t.Fatalf("checkout -b %s: %v", name, err)
 	}
 }
@@ -229,11 +229,11 @@ func appendIndexEntry(t testing.TB, f Fixture, entry *indexformat.Entry) {
 	t.Helper()
 	repo := open(t, f)
 	idx, err := repo.Storer.Index()
-	if err != nil { // coverage-ignore: reading the index of a healthy fixture repository cannot fail
+	if err != nil {
 		t.Fatalf("read index: %v", err)
 	}
 	idx.Entries = append(idx.Entries, entry)
-	if err := repo.Storer.SetIndex(idx); err != nil { // coverage-ignore: writing back an index just read cannot fail
+	if err := repo.Storer.SetIndex(idx); err != nil {
 		t.Fatalf("write index: %v", err)
 	}
 }
@@ -251,7 +251,7 @@ func stageInto(t testing.TB, wt *git.Worktree, root string, write map[string]str
 func addAll(t testing.TB, wt *git.Worktree, paths []string) {
 	t.Helper()
 	for _, name := range paths {
-		if _, err := wt.Add(name); err != nil { // coverage-ignore: Add of a path the caller asserts exists cannot fail in a test fixture
+		if _, err := wt.Add(name); err != nil {
 			t.Fatalf("add %s: %v", name, err)
 		}
 	}
@@ -261,7 +261,7 @@ func addAll(t testing.TB, wt *git.Worktree, paths []string) {
 func removeFrom(t testing.TB, wt *git.Worktree, names []string) {
 	t.Helper()
 	for _, name := range names {
-		if _, err := wt.Remove(name); err != nil { // coverage-ignore: Remove of a path the caller asserts is tracked cannot fail in a test fixture
+		if _, err := wt.Remove(name); err != nil {
 			t.Fatalf("remove %s: %v", name, err)
 		}
 	}
@@ -271,10 +271,10 @@ func removeFrom(t testing.TB, wt *git.Worktree, names []string) {
 func writeUnder(t testing.TB, root, name, content string, mode os.FileMode) {
 	t.Helper()
 	full := filepath.Join(root, name)
-	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil { // coverage-ignore: MkdirAll under a fresh t.TempDir() fails only on a permission fault a test cannot trigger
+	if err := os.MkdirAll(filepath.Dir(full), 0o755); err != nil {
 		t.Fatalf("mkdir %s: %v", name, err)
 	}
-	if err := os.WriteFile(full, []byte(content), mode); err != nil { // coverage-ignore: writing into the repo's own worktree dir fails only on a permission fault a test cannot trigger
+	if err := os.WriteFile(full, []byte(content), mode); err != nil {
 		t.Fatalf("write %s: %v", name, err)
 	}
 }
@@ -283,7 +283,7 @@ func writeUnder(t testing.TB, root, name, content string, mode os.FileMode) {
 func open(t testing.TB, f Fixture) *git.Repository {
 	t.Helper()
 	repo, err := git.PlainOpen(f.root)
-	if err != nil { // coverage-ignore: opening a repository the fixture itself created cannot fail
+	if err != nil {
 		t.Fatalf("open %s: %v", f.root, err)
 	}
 	return repo
@@ -293,7 +293,7 @@ func open(t testing.TB, f Fixture) *git.Repository {
 func worktree(t testing.TB, f Fixture) *git.Worktree {
 	t.Helper()
 	wt, err := open(t, f).Worktree()
-	if err != nil { // coverage-ignore: Worktree() on a non-bare fixture repository cannot fail
+	if err != nil {
 		t.Fatalf("worktree: %v", err)
 	}
 	return wt

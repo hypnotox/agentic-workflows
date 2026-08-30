@@ -152,7 +152,7 @@ func headTreeAndLock(repo *awfgit.Repo, ctx context.Context) (*snapshot.Tree, *m
 		return nil, nil, awfgit.ErrNotARepository
 	}
 	has, err := repo.HeadExists(ctx)
-	if err != nil { // coverage-ignore: IndexTree already opened the same containing repository in CheckStaged; only a concurrent repository removal can fail here
+	if err != nil {
 		return nil, nil, err
 	}
 	if !has {
@@ -160,7 +160,7 @@ func headTreeAndLock(repo *awfgit.Repo, ctx context.Context) (*snapshot.Tree, *m
 		return tree, nil, err
 	}
 	tree, err := snapshot.CommitTree(ctx, repo, "HEAD")
-	if err != nil { // coverage-ignore: HEAD resolved by HeadExists just above; CommitTree fails only on a mid-read repository fault
+	if err != nil {
 		return nil, nil, err
 	}
 	lock, found, err := optionalLockFromTree(tree)

@@ -18,7 +18,7 @@ import (
 func runInitWithProjectLoader(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, promptInput io.Reader, interactive bool, stdout io.Writer, loadProject initop.LoadProject, compatibilityGate initop.Gate) error {
 	if describe {
 		out, err := initspec.Describe(catalog.Standard.Vars)
-		if err != nil { // coverage-ignore: descriptors marshal to JSON; cannot fail
+		if err != nil {
 			return err
 		}
 		return writeInitDescriptorProtocol(stdout, out)

@@ -79,7 +79,7 @@ func residentNameLiteral(names map[string]bool, lit *ast.BasicLit) bool {
 		return false
 	}
 	value, err := strconv.Unquote(lit.Value)
-	if err != nil { // coverage-ignore: a parsed STRING literal always unquotes
+	if err != nil {
 		return false
 	}
 	value = strings.Trim(value, "/")

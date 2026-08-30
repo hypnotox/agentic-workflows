@@ -1,6 +1,4 @@
-These packages and the command runner enforce the deterministic quality gates: coverage, prose punctuation, working-memory citations, and the gate tiers. The claims below capture the current gate contracts.
-
-The Pi host lane enforces 100% statement, line, function, and branch coverage for every generated Pi extension without reachable-branch ignores.
+The command runner, hosted workflows, and repository checks provide focused local feedback and one aggregate CI verdict.
 
 ## Claims
 
@@ -9,69 +7,24 @@ The Pi host lane enforces 100% statement, line, function, and branch coverage fo
 The prose and memory-citation repository checks always scan, retain their configured exemption lists, and expose no disabled state or enablement key.
 Backing: test
 
-### `invariant: coverage-raw-identity-ratchet`
-
-The full gate deterministically partitions every top-level Go proving unit into isolated, contention-qualified slices, collects whole-`coverpkg` set profiles, and feeds their canonical OR-merged union to `coverage-baseline.json`. The merger rejects malformed headers, mixed modes, ambiguous paths, conflicting statement counts, and empty shards; policy then requires the complete reviewed universe digest. Every raw uncovered block is identified by module-relative file, exact span, and statement count, and any identity absent from the repository baseline or an applicable one of the six exact critical selectors blocks. Covered identities disappear on regeneration, while additions and moved spans require stored reasons, so an unrelated removal or aggregate-count swap cannot authorize a regression. Raw and filtered percentages remain reports only.
-Backing: test
-
-### `invariant: coverage-ignore-admission`
-
-The canonical baseline inventories production and test `coverage-ignore` directives separately. Every retained production directive has explicit evidence and exactly one admitted class: directly tested process-exit seam, revalidated impossible state, safely uninducible deterministic fault, or platform-only branch. Its static unmeasured ledger contains exactly the two Darwin publication rollback directives and never claims that the Linux profile measured them.
-Backing: test
-
-### `invariant: coverage-executed-ignore-errors`
-
-Coverage policy evaluation canonically OR-merges duplicate exact profile blocks, matches directives to guarded-body entry positions, and exits nonzero if any measured ignored guarded body has a positive execution count.
-Backing: test
-
-### `invariant: covercheck-mutation-regression`
-
-The full gate selects an exact `cmd/covercheck` owned-path change from the preserved local staged candidate or a validated explicit range union and runs the pinned, hermetic whole-target mutation blocker; missing, malformed, or unavailable selection evidence runs rather than skips it. The blocker requires the whole-repository preflight, package-test and dependency censuses, dry-to-actual exact identity equality, complete timeout-free trusted reports, and only killed or independently reviewed equivalent survivors. Mutation remains advisory outside that owned path.
-Backing: test
-
-### `invariant: coverage-ignore-reason`
-
-A `// coverage-ignore` marker carrying no non-empty reason makes the coverage checker fail rather than silently dropping the marked block; the reason text is mandatory.
-Backing: test
-
-### `invariant: covered-profile-honors-ignores`
-
-The filtered coverprofile emitted by internal/coverage contains a block if and only if that block is not coverage-ignore-d under the same directive interpretation used by the raw-identity policy, so filtered Codecov reporting and policy diagnostics never diverge on what ignored means. The filtered percentage is informational rather than a blocking threshold.
-Backing: test
-
-### `invariant: deadcode-gate`
-
-The full gate runs deadcode without the -test flag over ./... and fails on any reported unreachable function outside internal/testsupport/; cmd/deadcodecheck ignores exactly that path prefix and exits non-zero on every other finding.
-Backing: test
-
 ### `invariant: memory-citation-gate`
 
-The check repo memory command reports every concrete `.awf/efforts/<slug>/memory.md` reference in scannable staged decision and plan text and exits non-zero on any finding outside memoryCite.exemptions; check staged commit applies the same slash-or-backslash detector to the git-cleaned message body without exemptions. Prose, links, code spans, and normalized relative spellings are detected without reading resident files, while the bare `.awf/efforts/` directory and an angle-bracket slug placeholder pass.
-Backing: test
-
-### `invariant: mutants-timeout-untrusted`
-
-The mutation-report checker exits non-zero when any mutation in its input JSON has status TIMED OUT, signalling an untrustworthy run; otherwise it reports exactly the surviving (LIVED) mutants, dropping NOT COVERED and every other status, and treats a missing or empty input file as an empty run with no survivors.
+The check repo memory command reports every concrete `.awf/efforts/<slug>/memory.md` reference in scannable staged decision text and exits nonzero on any finding outside memoryCite.exemptions; check staged commit applies the same slash-or-backslash detector to the git-cleaned message body without exemptions. Prose, links, code spans, and normalized relative spellings are detected without reading resident files, while the bare `.awf/efforts/` directory and an angle-bracket slug placeholder pass.
 Backing: test
 
 ### `invariant: gate-tier-cadence`
 
-`./x gate` is the static-analysis-only fast commit tier: version validation, one native build, blocking lint including its vet analysis, and workflow pin validation. `./x test-affected` is separate fail-closed behavioral feedback for iteration. `./x gate full` remains terminal assurance and adds complete native Go and Pi behavior, coverage policy, standalone vet, advisory analysis, dead-code analysis, four Linux/Darwin release cross-builds, and exact-universe-selected covercheck mutation. Full verification uses the staged candidate locally or explicit range union remotely; uncertainty runs mutation conservatively.
+`./x gate` is the fast commit tier: version validation, one native build, blocking lint including its vet analysis, and workflow pin validation. `./x test-affected` is separate fail-closed behavioral feedback. Complete Go and Pi behavior runs in CI and at terminal implementation verification rather than through a second local gate tier.
 Backing: test
 
 ### `invariant: affected-package-feedback`
 
-`./x test-affected` reads complete staged, working-tree, or explicit-range change evidence and reports deterministic selected targets and reasons before executing them without coverage. It runs changed package owners, every production reverse dependent, test-only importing packages, and declared exact-name meta-suites through bounded isolated workers; a suite runs separately only when its complete owner package is not already selected, and otherwise the full package run must emit execution evidence for every declared proving unit. Shared generators, templates, configuration, tooling, generated or build-tagged Go, deleted ownership, malformed evidence, unavailable packages, and unknown paths widen to the full Go universe or refuse explicitly. The fast gate and terminal full gate remain unchanged.
+`./x test-affected` reads complete staged, working-tree, or explicit-range change evidence and reports deterministic selected targets and reasons before executing them without coverage. It runs changed package owners, production reverse dependents, test-only importing packages, and a small declared package smoke set through bounded isolated workers. Shared generators, templates, configuration, tooling, generated or build-tagged Go, deleted ownership, malformed evidence, unavailable packages, and unknown paths widen to the full Go universe or refuse explicitly.
 Backing: test
-
-
-### `rule: verification-performance-contract`
-
-`test-performance.json` is the canonical versioned qualification record for fast, common-local, ordinary-full, exceptional mutation, and hosted critical-path workloads. It declares complete reference environments, cache and sample preparation, landed baselines, unchanged minimums and stronger targets, component evidence, and achieved observations. `./x test-performance validate` refuses malformed records and unlike environment evidence without rewriting the record; `./x test-performance report` renders human or machine evidence from the same observations. Wall-clock samples are qualification evidence rather than flaky correctness assertions, while schema, identity, workload, and component-regression failures block qualification.
 
 ### `invariant: pi-extension-container-gate`
 
-The full gate wires a complete pinned-host-Node Pi-extension lane. NVM selects exact v24.19.0 locally without downloading, while an explicit CI control accepts the same exact setup-node runtime after exact-version validation. An atomically attributable checkout-local manager and worker-group lock serializes dependency preparation and the complete lane, recovering only when both recorded owners are gone; `npm ci --ignore-scripts` publishes a reusable tree only after success under a labeled, length-framed fingerprint of the pin, manifests, exact Node/npm versions, OS, and architecture. Every run uses a narrow temporary copy with only Pi extensions, agents, skills, harness inputs, and minimal metadata, links that tree, and leaves operator-local Pi state untouched. The commit gate does not run this behavioral lane, and the full gate never derives its execution from staged-path classification.
+The pinned-host-Node Pi-extension lane uses the declared Node version and a checkout-local dependency tree, runs against a narrow temporary copy, and leaves operator-local Pi state untouched. The commit gate does not run this behavioral lane; CI and explicit `./x pi-test run` do.
 Backing: test
 
 ### `invariant: prose-gate-refuses-without-git`
@@ -81,13 +34,14 @@ Backing: test
 
 ### `invariant: prose-gate-tracked-file-scan`
 
-The prose scanner examines every tracked text file without language-specific comment detection, reports a Warning for every en dash and each blank-line-delimited paragraph containing three or more em dashes, and exits zero for findings. It permits ellipses and curly quotes, silently skips files that are not valid UTF-8, and orders findings by path, codepoint, and paragraph. A configured path-and-codepoint exemption, with an optional exact whole-file count, suppresses its guarded character before paragraph evaluation; exemptions for formerly guarded ellipses and curly quotes remain accepted as inert compatibility input. Inability to read or scan the declared corpus remains an Error with nonzero exit because verification is unavailable.
+The prose scanner examines every tracked text file without language-specific comment detection, reports a Warning for every en dash and each blank-line-delimited paragraph containing three or more em dashes, and exits zero for findings. It permits ellipses and curly quotes, silently skips files that are not valid UTF-8, and orders findings by path, codepoint, and paragraph. A configured path-and-codepoint exemption, with an optional exact whole-file count, suppresses its guarded character before paragraph evaluation. Inability to read or scan the declared corpus remains an Error with nonzero exit.
 Backing: test
 
 ### `invariant: gate-severity-by-protected-property`
 
-The repository gate exits nonzero for version or schema incompatibility, required test loss, raw-identity or critical-selector coverage regression, false or unsupported ignore evidence, full-tier-selected `cmd/covercheck` mutation regression, build failure, concrete defect lint, unreachable production code, workflow pin failure, and any checker execution or configuration failure because they protect correctness, safety, authority, or reproducibility. Its separate advisory lint lane reports style, wording, formatting, preferred idiom, speculative performance, possible cohesion, and heuristic maintainability findings as visible Warning output with successful exit. Every enabled lint rule belongs to exactly one classified lane before it runs.
-Backing: test
+The repository gate exits nonzero for version or schema incompatibility, build failure, concrete defect lint, workflow pin failure, and checker execution or configuration failure. Advisory lint reports style, wording, formatting, preferred idiom, speculative performance, possible cohesion, and heuristic maintainability findings as visible Warning output with successful exit.
+Backing: unbacked
+Verify: Inspect `x`, `.golangci.yml`, and `.golangci-advisory.yml`; blocking commands must propagate failure and advisory lint must use a zero issues exit code without hiding execution failures.
 
 ### `invariant: testsupport-zero-internal-deps`
 
@@ -96,14 +50,14 @@ Backing: test
 
 ### `invariant: workflow-actions-sha-pinned`
 
-The pincheck gate exits non-zero when any remote uses: reference under .github/workflows is not pinned to a full 40-hex commit SHA (repo-local ./ refs exempt, docker:// refs digest-pinned) or when a goreleaser-action version input is not an exact semver version.
+The pincheck gate exits non-zero when any remote uses: reference under .github/workflows is not pinned to a full 40-hex commit SHA or when a goreleaser-action version input is not an exact semver version.
 Backing: test
 
 ### `invariant: exact-revision-repository-acceptance`
 
-Repository wiring keeps stable `CI / gate` and `CI / release-config` jobs for one exact revision. The gate conclusion requires native Linux coverage shards and canonical policy, native macOS shards, Pi behavior, analysis and cross-builds, and separately selected mutation. Release configuration constructs one snapshot and validates those same bytes. The release workflow verifies both stable conclusions for the exact release SHA before the credential-bearing publish job.
+Repository wiring exposes one stable `CI / gate` conclusion for the exact revision. It aggregates exhaustive Linux behavior, build, lint, state and drift checks, strict Pi behavior, and targeted macOS safety. The release workflow verifies that exact conclusion before constructing and validating snapshot archives and before its credential-bearing publish job.
 Backing: test
 
 ### `rule: hosted-main-acceptance-settings`
 
-The live GitHub `main` ruleset requires the GitHub Actions checks `CI / gate` and `CI / release-config` for the exact candidate revision, permits no bypass actor, and retains deletion, non-fast-forward, and signed-commit protections.
+The live GitHub rulesets still require `CI / gate` and the retired `CI / release-config` status. Repository owners must update those remote rules to require only `CI / gate`; repository files do not claim that remote change has occurred.

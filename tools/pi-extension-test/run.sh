@@ -128,6 +128,5 @@ NODE
     --include='.pi/extensions/awf-effort/index.ts' \
     --include='.pi/extensions/awf-effort/client.ts' \
     --exclude='tools/pi-extension-test/tests/*.ts' \
-    --check-coverage --statements=100 --lines=100 --functions=100 --branches=100 \
     node --import tsx --test --experimental-test-isolation=none tools/pi-extension-test/tests/*.test.ts
 )

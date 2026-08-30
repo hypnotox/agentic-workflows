@@ -23,7 +23,7 @@ func openProjectOperation(ctx context.Context, root string) (*project.ProjectSta
 		return nil, nil, nil, err
 	}
 	load := func(dir string) (*config.Config, error) {
-		if dir != config.RootDir(root) { // coverage-ignore: Loader.OpenForOperation requests exactly the selected root's config directory
+		if dir != config.RootDir(root) {
 			return nil, fmt.Errorf("unexpected config root %q", dir)
 		}
 		return cfg, nil

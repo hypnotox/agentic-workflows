@@ -13,7 +13,7 @@ Use the failing output to choose the next inspection:
 | Transaction state | `git status --short` and `git diff` |
 | Generated drift | `./awf check repo drift` |
 | Current-state authority | `./awf check repo state`, then `./awf resolve topic <affected-path>` and `./awf read topic <domain>/<topic>` |
-| Code failure | `./x test`; use `./x gate full` for terminal verification |
+| Code failure | `./x test`; use `./x test` for complete Go verification |
 
 Take `<affected-path>` from the refusal and the qualified topic from the resolution output. See [Working with awf](working-with-awf.md), [Testing](testing.md), and [Development](development.md) for owned procedure.
 
@@ -36,7 +36,7 @@ Use the repository `./awf` wrapper. If it still refuses, update the pinned awf b
 
 ### Red gate
 
-Run `./x test` for a Go failure, the narrowest relevant command while iterating, and `./x gate full` only at the terminal verification boundary. Fix the first failing stage or revert the change; do not weaken the check.
+Run `./x test` for a Go failure, the narrowest relevant command while iterating. Fix the first failing stage or revert the change; do not weaken the check.
 ### Upgrade recovery and triage
 
 With bootstrap enabled, `bash .awf/upgrade.sh` upgrades to the newest release and `bash .awf/upgrade.sh <version>` selects an exact version. The script checksum-verifies its bootstrap handoff, runs `./awf upgrade`, and re-pins bootstrap. To trial a release without repinning, run `AWF_VERSION=<version> bash .awf/bootstrap.sh` and use the printed binary.

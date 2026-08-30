@@ -2,7 +2,6 @@
 package main
 
 import (
-	"bytes"
 	"context"
 	"encoding/json"
 	"flag"
@@ -11,8 +10,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
-	"sort"
 	"strconv"
 	"strings"
 	"sync"
@@ -23,7 +20,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testselection"
 )
 
-func main() { // coverage-ignore: os.Exit wrapper; run is unit-tested
+func main() {
 	os.Exit(run(os.Args, os.Stdout, os.Stderr))
 }
 
@@ -107,9 +104,8 @@ func run(args []string, stdout, stderr io.Writer) int {
 const feedbackWorkers = 2
 
 type testTarget struct {
-	label         string
-	args          []string
-	expectedTests []string
+	label string
+	args  []string
 }
 
 type testRun struct {
@@ -118,21 +114,9 @@ type testRun struct {
 }
 
 func executeSelection(ctx context.Context, root string, result testselection.Result, stdout io.Writer) error {
-	targets := make([]testTarget, 0, len(result.Packages)+len(result.Suites))
+	targets := make([]testTarget, 0, len(result.Packages))
 	for _, pkg := range result.Packages {
-		target := testTarget{label: pkg.Path, args: []string{pkg.Path}}
-		if len(pkg.RequiredTests) > 0 {
-			target.args = []string{"-json", pkg.Path}
-			target.expectedTests = append([]string(nil), pkg.RequiredTests...)
-		}
-		targets = append(targets, target)
-	}
-	for _, suite := range result.Suites {
-		targets = append(targets, testTarget{
-			label:         "suite:" + suite.ID,
-			args:          []string{"-json", "-run", exactPattern(suite.Tests), suite.Package},
-			expectedTests: append([]string(nil), suite.Tests...),
-		})
+		targets = append(targets, testTarget{label: pkg.Path, args: []string{pkg.Path}})
 	}
 	if len(targets) == 0 {
 		return nil
@@ -183,14 +167,6 @@ func executeSelection(ctx context.Context, root string, result testselection.Res
 	return firstErr
 }
 
-func exactPattern(names []string) string {
-	quoted := make([]string, len(names))
-	for index, name := range names {
-		quoted[index] = regexp.QuoteMeta(name)
-	}
-	return "^(" + strings.Join(quoted, "|") + ")$"
-}
-
 var feedbackTemporarySequence atomic.Uint64
 
 func runTarget(ctx context.Context, root string, target testTarget, caches []string) testRun {
@@ -207,37 +183,11 @@ func runTarget(ctx context.Context, root string, target testTarget, caches []str
 	cmd.Dir = root
 	cmd.Env = append(os.Environ(), "HOME="+temporary, "TMPDIR="+temporary, "GOTMPDIR="+temporary, "GOMAXPROCS=1", "GOCACHE="+caches[0], "GOMODCACHE="+caches[1])
 	output, err := cmd.CombinedOutput()
-	if err != nil || len(target.expectedTests) == 0 {
-		return testRun{output: output, err: err}
-	}
-	observed := map[string]bool{}
-	for _, line := range bytes.Split(bytes.TrimSpace(output), []byte("\n")) {
-		var event struct {
-			Action string `json:"Action"`
-			Test   string `json:"Test"`
-		}
-		if err := json.Unmarshal(line, &event); err != nil {
-			return testRun{output: output, err: fmt.Errorf("parse suite execution evidence: %w", err)}
-		}
-		if event.Action == "run" && event.Test != "" {
-			observed[event.Test] = true
-		}
-	}
-	missing := []string{}
-	for _, test := range target.expectedTests {
-		if !observed[test] {
-			missing = append(missing, test)
-		}
-	}
-	if len(missing) > 0 {
-		sort.Strings(missing)
-		return testRun{output: output, err: fmt.Errorf("unavailable proving units: %s", strings.Join(missing, ", "))}
-	}
-	return testRun{output: output}
+	return testRun{output: output, err: err}
 }
 
 func writeRefused(out io.Writer, version int, err error) error {
-	return write(testselection.Result{Version: version, Outcome: "refused", Packages: []testselection.Package{}, Suites: []testselection.Suite{}, Reasons: []string{err.Error()}}, out)
+	return write(testselection.Result{Version: version, Outcome: "refused", Packages: []testselection.Package{}, Reasons: []string{err.Error()}}, out)
 }
 
 func write(result testselection.Result, out io.Writer) error {

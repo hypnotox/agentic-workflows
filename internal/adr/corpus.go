@@ -112,7 +112,7 @@ func LoadCorpus(dir string) (Corpus, error) {
 	}
 	for i, a := range adrs {
 		data, err := os.ReadFile(a.Path)
-		if err != nil { // coverage-ignore: ParseDir just read the same discovered file
+		if err != nil {
 			return Corpus{}, err
 		}
 		parsed, err := ParseRecord(a.Filename, data)
@@ -166,7 +166,7 @@ func (c Corpus) NextIdentity() (int, error) {
 			continue // a pending record holds no numeric identity to succeed
 		}
 		n, err := strconv.Atoi(a.Number)
-		if err != nil { // coverage-ignore: past the numberless guard, Number is the four-digit group FilenameRe captured
+		if err != nil {
 			return 0, err
 		}
 		if n > max {

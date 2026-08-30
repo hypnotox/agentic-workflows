@@ -36,13 +36,13 @@ func (p paths) ensure(root string) error {
 		return fmt.Errorf("create resident root %s: %w", root, err)
 	}
 	info, err := os.Lstat(root)
-	if err != nil { // coverage-ignore: MkdirAll just proved this exact path exists; only a concurrent namespace race can remove it
+	if err != nil {
 		return fmt.Errorf("inspect resident root %s: %w", root, err)
 	}
-	if info.Mode()&os.ModeSymlink != 0 { // coverage-ignore: MkdirAll rejects a symlink leaf and ResidentRoot rejects ancestor symlinks
+	if info.Mode()&os.ModeSymlink != 0 {
 		return &awfgit.HardSafetyError{Category: "symlink", Path: root}
 	}
-	if !info.IsDir() { // coverage-ignore: MkdirAll rejects a non-directory leaf
+	if !info.IsDir() {
 		return &awfgit.HardSafetyError{Category: "file-type", Path: root, Err: fmt.Errorf("mode %s is not a directory", info.Mode())}
 	}
 	if info.Mode().Perm()&0o022 != 0 {
@@ -67,7 +67,7 @@ func (p paths) validate(root string) error {
 	if err != nil {
 		return fmt.Errorf("revalidate resident root %s: %w", root, err)
 	}
-	if filepath.Clean(resolved) != filepath.Clean(root) { // coverage-ignore: the closed mapping returns the same resolved root
+	if filepath.Clean(resolved) != filepath.Clean(root) {
 		return fmt.Errorf("resident root changed from %s to %s", root, resolved)
 	}
 	return nil

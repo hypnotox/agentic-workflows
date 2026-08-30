@@ -140,7 +140,7 @@ func writePrompt(out io.Writer, descriptor catalog.VarDescriptor, options []stri
 		return err
 	}
 	variable, err := presentation.NewField("variable", key)
-	if err != nil { // coverage-ignore: fixed label and validated literal cannot fail
+	if err != nil {
 		return err
 	}
 	descriptionText := descriptor.Description
@@ -149,11 +149,11 @@ func writePrompt(out io.Writer, descriptor catalog.VarDescriptor, options []stri
 	}
 	descriptionValue, err := presentation.Prose(descriptionText)
 	if err != nil {
-		return err // coverage-ignore: empty descriptions become the nonempty fallback above
+		return err
 	}
 	description, err := presentation.NewField("description", descriptionValue)
-	if err != nil { // coverage-ignore: fixed label and validated prose cannot fail
-		return err // coverage-ignore: the fixed label and validated value cannot fail
+	if err != nil {
+		return err
 	}
 	nodes := []presentation.Node{description}
 	if len(options) > 0 {
@@ -165,18 +165,18 @@ func writePrompt(out io.Writer, descriptor catalog.VarDescriptor, options []stri
 			}
 		}
 		list, err := presentation.NewList("options", values...)
-		if err != nil { // coverage-ignore: fixed label and validated values cannot fail
-			return err // coverage-ignore: fixed label and validated option values cannot fail
+		if err != nil {
+			return err
 		}
 		nodes = append(nodes, list)
 	}
 	input, err := presentation.NewSection("input", nodes...)
-	if err != nil { // coverage-ignore: fixed label and validated child nodes cannot fail
-		return err // coverage-ignore: fixed label and validated child nodes cannot fail
+	if err != nil {
+		return err
 	}
 	prelude, err := presentation.NewDocument(variable, input)
-	if err != nil { // coverage-ignore: validated root field and section cannot fail
-		return err // coverage-ignore: validated root field and section cannot fail
+	if err != nil {
+		return err
 	}
 	tailValue, err := presentation.Prose(tail)
 	if err != nil {

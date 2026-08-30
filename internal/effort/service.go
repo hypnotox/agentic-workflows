@@ -162,7 +162,7 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 		if err := s.store.hit("finish.rename"); err != nil {
 			return FinishResult{}, err
 		}
-		if err := moveDirectoryNoReplace(active, tombstone); err != nil { // coverage-ignore: the validated owned active directory and absent UUID reservation make failure a concurrent namespace or storage fault
+		if err := moveDirectoryNoReplace(active, tombstone); err != nil {
 			return FinishResult{}, fmt.Errorf("rename effort %s to finishing reservation: %w", slug, err)
 		}
 		result := newFinishResult(FinishStateReserved, true, s.paths.publicArchivePath(record))
@@ -170,13 +170,13 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 			if err := s.store.hit("finish.root-fsync"); err != nil {
 				return result, partialFinish(result, fmt.Errorf("effort became reserved but source parent sync failed: %w", err), retryFinish(slug))
 			}
-			if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected root-fsync covers this kernel boundary
+			if err := syncDirectory(s.paths.efforts); err != nil {
 				return result, partialFinish(result, fmt.Errorf("sync efforts root after finishing rename: %w", err), retryFinish(slug))
 			}
 			result.SourceSynced = true
 		}
 		return s.archiveReservation(slug, tombstone, result)
-	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
+	} else if !errors.Is(err, os.ErrNotExist) {
 		return FinishResult{}, fmt.Errorf("inspect active effort %s: %w", active, err)
 	}
 	tombstones, err := s.store.findTombstones(slug)
@@ -200,7 +200,7 @@ func (s *Service) validateArchive() error {
 		return refusal(fmt.Sprintf("validate effort archive root: %v; changed bytes: no; next action: run `awf render` and inspect the archive root", err), "effort archive root is unsafe", "archive", err.Error(), []RecoveryAction{{Text: "run `awf render`"}, {Text: "inspect " + s.paths.effortArchive}}, err)
 	}
 	info, err := os.Lstat(s.paths.effortArchive)
-	if err != nil { // coverage-ignore: validateOwnedDirectory just inspected the same inode; failure requires a concurrent namespace race
+	if err != nil {
 		return fmt.Errorf("reinspect effort archive root permissions: %w", err)
 	}
 	if info.Mode().Perm()&0o022 != 0 {
@@ -229,7 +229,7 @@ func (s *Service) requireArchiveDestinationAbsent(record Record, result FinishRe
 			source = filepath.Join(s.paths.efforts, tombstoneName(record))
 		}
 		return partialFinish(result, fmt.Errorf("effort archive destination already exists: %s", destination), archiveCollisionActions(source, destination))
-	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
+	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("inspect archive destination %s: %w", destination, err)
 	}
 	return nil
@@ -278,7 +278,7 @@ func (s *Service) archiveReservation(slug, tombstone string, result FinishResult
 		if err := s.store.hit("finish.archive-parent-fsync"); err != nil {
 			return result, partialFinish(result, fmt.Errorf("archive destination parent sync failed after move: %w", err), archiveInspectionActions(tombstone, destination))
 		}
-		if err := syncDirectory(s.paths.effortArchive); err != nil { // coverage-ignore: injected archive-parent-fsync covers this kernel boundary
+		if err := syncDirectory(s.paths.effortArchive); err != nil {
 			return result, partialFinish(result, fmt.Errorf("sync archive parent after move: %w", err), archiveInspectionActions(tombstone, destination))
 		}
 		result.DestinationSynced = true
@@ -287,7 +287,7 @@ func (s *Service) archiveReservation(slug, tombstone string, result FinishResult
 		if err := s.store.hit("finish.source-parent-fsync"); err != nil {
 			return result, partialFinish(result, fmt.Errorf("efforts source parent sync failed after archive move: %w", err), archiveInspectionActions(tombstone, destination))
 		}
-		if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected source-parent-fsync covers this kernel boundary
+		if err := syncDirectory(s.paths.efforts); err != nil {
 			return result, partialFinish(result, fmt.Errorf("sync efforts parent after archive move: %w", err), archiveInspectionActions(tombstone, destination))
 		}
 		result.SourceSynced = true
@@ -311,7 +311,7 @@ func (s *Service) requireNoManagedTopology(ctx context.Context, slug string) err
 	managed := filepath.Clean(s.paths.managedWorktree(slug))
 	if _, err := os.Lstat(managed); err == nil {
 		return managedTopologyRefusal([]RecoveryAction{{Text: "run `awf effort worktree remove " + slug + "`"}, {Text: "retry `awf effort finish " + slug + "`"}}, "managed worktree path %s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", managed, slug)
-	} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat returns an inode or os.ErrNotExist absent a kernel fault
+	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("inspect managed worktree path %s: %w", managed, err)
 	}
 	registrations, err := s.worktrees(ctx)
@@ -352,7 +352,7 @@ func (s *Service) RollbackCreation(ctx context.Context, identity Record) (Rollba
 	if err := s.store.hit("rollback.rename"); err != nil {
 		return RollbackResult{}, err
 	}
-	if err := moveDirectoryNoReplace(active, reservation); err != nil { // coverage-ignore: identity was just proven and the UUID reservation is absent
+	if err := moveDirectoryNoReplace(active, reservation); err != nil {
 		return RollbackResult{}, fmt.Errorf("reserve failed-creation rollback: %w", err)
 	}
 	result := RollbackResult{Reserved: true, ReservationPath: reservation}
@@ -381,7 +381,7 @@ func (s *Service) RollbackCreation(ctx context.Context, identity Record) (Rollba
 	if err := s.store.hit("rollback.root-fsync"); err != nil {
 		return result, fmt.Errorf("sync efforts parent after rollback reservation: %w", err)
 	}
-	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected rollback.root-fsync covers this kernel boundary
+	if err := syncDirectory(s.paths.efforts); err != nil {
 		return result, fmt.Errorf("sync efforts parent after rollback reservation: %w", err)
 	}
 	if err := s.store.hit("rollback.delete"); err != nil {
@@ -404,7 +404,7 @@ func (s *Service) RollbackCreation(ctx context.Context, identity Record) (Rollba
 	if err := s.store.hit("rollback.delete-fsync"); err != nil {
 		return result, fmt.Errorf("sync efforts parent after rollback deletion: %w", err)
 	}
-	if err := syncDirectory(s.paths.efforts); err != nil { // coverage-ignore: injected rollback.delete-fsync covers this kernel boundary
+	if err := syncDirectory(s.paths.efforts); err != nil {
 		return result, fmt.Errorf("sync efforts parent after rollback deletion: %w", err)
 	}
 	return result, nil

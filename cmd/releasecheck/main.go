@@ -35,7 +35,7 @@ import (
 	"golang.org/x/mod/semver"
 )
 
-func main() { // coverage-ignore: os.Exit wrapper; dispatch is unit-tested
+func main() {
 	os.Exit(dispatch(os.Args[1:], os.DirFS("."), changelogfs.FS, os.Stdout, os.Stderr, http.DefaultClient, "https://api.github.com", os.Getenv))
 }
 
@@ -259,7 +259,7 @@ func verifyRequiredJobs(jobs jobsResponse) error {
 	if jobs.Total != len(jobs.Jobs) {
 		return fmt.Errorf("CI jobs pagination is incomplete")
 	}
-	required := map[string]bool{"gate": false, "release-config": false}
+	required := map[string]bool{"gate": false}
 	for _, job := range jobs.Jobs {
 		if _, ok := required[job.Name]; !ok {
 			continue

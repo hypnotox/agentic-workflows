@@ -47,7 +47,7 @@ type headResolution struct {
 // deeper in the chain, losing the distinction.
 func resolveHead(repo *gogit.Repository) (headResolution, error) {
 	ref, err := repo.Reference(plumbing.HEAD, false)
-	if err != nil { // coverage-ignore: a handle is only returned after go-git has successfully read HEAD from the same storer
+	if err != nil {
 		return headResolution{}, fmt.Errorf("resolve HEAD: %w", err)
 	}
 	seen := map[plumbing.ReferenceName]bool{plumbing.HEAD: true}
@@ -178,15 +178,15 @@ func readBlob(repo *gogit.Repository, hash plumbing.Hash) ([]byte, error) {
 		return nil, err
 	}
 	r, err := blob.Reader()
-	if err != nil { // coverage-ignore: a blob object successfully loaded from go-git's object store always supplies a reader
+	if err != nil {
 		return nil, err
 	}
 	data, readErr := io.ReadAll(r)
 	closeErr := r.Close()
-	if readErr != nil { // coverage-ignore: reads from an in-memory git blob reader do not fail
+	if readErr != nil {
 		return nil, readErr
 	}
-	if closeErr != nil { // coverage-ignore: go-git's read-only blob reader has no close failure
+	if closeErr != nil {
 		return nil, closeErr
 	}
 	return data, nil
@@ -205,15 +205,15 @@ func blobsOfTree(ctx context.Context, tree *object.Tree, prefix string) ([]Index
 			return nil
 		}
 		reader, err := f.Reader()
-		if err != nil { // coverage-ignore: a tree file always supplies its blob reader
+		if err != nil {
 			return err
 		}
 		data, err := io.ReadAll(reader)
 		closeErr := reader.Close()
-		if err != nil { // coverage-ignore: in-memory object readers do not fail
+		if err != nil {
 			return err
 		}
-		if closeErr != nil { // coverage-ignore: in-memory object readers do not fail
+		if closeErr != nil {
 			return closeErr
 		}
 		out = append(out, IndexBlob{Path: path, Bytes: data, Mode: blobModeOf(f.Mode)})
@@ -233,7 +233,7 @@ func treeAt(repo *gogit.Repository, rev string) (*object.Tree, error) {
 		return nil, fmt.Errorf("resolve %q: %w", rev, err)
 	}
 	c, err := repo.CommitObject(*h)
-	if err != nil { // coverage-ignore: a hash ResolveRevision just returned points at a real object
+	if err != nil {
 		return nil, fmt.Errorf("commit %q: %w", rev, err)
 	}
 	return c.Tree()

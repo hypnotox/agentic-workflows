@@ -21,77 +21,33 @@ For a nondeterministic race, stress or invariant evidence may be the strongest p
 <!-- awf:edit gate: from .awf/docs/parts/testing/gate.md -->
 <!-- awf:template-source templates/docs/testing.md.tmpl -->
 ## Gate
-`./x gate` is the static-analysis-only fast commit tier: version validation, one native build, blocking lint including govet, and workflow pin validation. Use focused tests, builds, or lint while editing, then run the separate `./x test-affected` command for fail-closed behavioral feedback. It reports selected changed owners, full production reverse dependents, test-only importers, and declared meta-suites with reasons before bounded execution without coverage. Exact declared units are verified in either their separate suite or an already-selected full owner run; shared or uncertain inputs widen or refuse visibly. `./x gate full` is terminal exhaustive local verification: it runs every top-level Go proving unit once in isolated deterministic slices, canonically merges whole-module set profiles, applies coverage policy, and adds complete Pi behavior, standalone vet, advisory lint, dead-code analysis, four Linux/Darwin release cross-builds, and selected `cmd/covercheck` mutation. The Pi runtime smoke runs without analysis contention; independent analysis and platform stages replay buffered output in stable order after every started stage terminates. A local full run selects mutation from the exact staged candidate, while pre-push supplies one or more exact ranges. Missing or malformed evidence runs mutation conservatively.
+`./x gate` is the fast commit tier: version validation, one native build, blocking lint including govet, and workflow pin validation. Use focused tests while editing and `./x test-affected` for fail-closed behavioral feedback. It selects changed owners, production reverse dependents, test-only importers, and a small global smoke package set. Shared or uncertain inputs widen or refuse visibly.
 
-Hosted CI projects the same fixed shard algorithm into parallel native Linux and macOS jobs. Linux producers attach exact-SHA profile manifests; one aggregator rejects missing, duplicate, foreign, or digest-mismatched evidence before canonical coverage policy and Codecov reporting. Independent Pi, analysis and cross-build, and range-selected mutation jobs feed the stable `CI / gate` conclusion. `CI / release-config` constructs one GoReleaser snapshot and runs the production archive validator against those same bytes. The tag workflow consumes both exact-SHA conclusions instead of repeating full assurance. The Pi lane retains strict type checks and 100% statement, branch, function, and line coverage with descriptor parity.
+Hosted CI runs exhaustive Go behavior, the fast gate, current-state and drift checks, strict Pi behavior, and targeted macOS safety. The aggregate `CI / gate` job is the definitive repository verdict. Release-only snapshot and archive validation stays in the release workflow.
 
-| Gate class | Protected property and exit behavior |
+| Command | Purpose |
 |---|---|
-| Error | Version/schema compatibility, tests, coverage, vet, builds, defect lint, production reachability, and workflow pins protect correctness, safety, authority, or reproducibility and exit nonzero. |
-| Warning | Style, wording, formatting, preferred idiom, speculative performance, possible cohesion, and heuristic maintainability lint remains visible and exits zero. |
-| Information | Skipped-lane and successful operation notes exit zero. |
+| `./x gate [timings]` | Fast static commit feedback. |
+| `./x test [args]` | Complete Go behavior without the Pi host lane. |
+| `./x test-affected [--staged\|--range <base>..<head>]` | Report and run focused affected-package feedback. |
+| `./x pi-test run` | Strict Pi extension behavior. |
+| `./x lint` | Blocking then advisory lint. |
+| `./x deadcode` | Optional whole-program dead-code analysis. |
 
-### Check severity
-
-`awf check` uses the same three visible categories. Error and Warning are the two fixed finding ranks; Information is an unranked note. A complete report exits nonzero exactly when it contains an Error.
-
-| Category | Current checks and protected property |
-|---|---|
-| Error | Invalid config, locks, sidecars, ADRs, plans, topics, frontmatter, and declared references protect correctness and authority. Generated and staged drift, tracking membership, residue, binary/schema compatibility, current-state transitions, memory citations, commit policy, and unavailable required verification protect reproducibility, safety, or authority. |
-| Warning | Prose punctuation, glossary length, plan assignment/detail, current-state fan-out, and guide size are style, readability, cohesion, or review heuristics. They remain visible and exit zero. |
-| Information | Unused or unset render vocabulary, stub content, marker suggestions, tracking or staged-universe availability, non-blocking compatibility, and successful operation notes are optional guidance and exit zero. |
-
-Direct checks retain the same classification as their aggregate. Operational inability to load or scan a declared universe remains an Error even when that universe's produced findings are Warning or Information.
-
-| Command | Use |
-|---|---|
-| `./x gate` | Fast commit verification. |
-| `./x gate timings` | Fast commit verification with elapsed stage timings. |
-| `./x gate full` | Terminal exhaustive verification. |
-| `./x gate full timings` | Terminal verification with elapsed stage timings. |
-| `./x test` | Go suite without the host Pi smoke. |
-| `./x test-affected` | Report and run working-tree affected-package feedback. Use `--staged` or `--range <base>..<head>` for reproducible evidence. |
-| `./x pi-test run` | Pi lane alone. |
-| `./x test-performance validate` | Validate the canonical qualification record without rewriting it. |
-| `./x test-performance report` | Render qualification evidence for people; add `--machine` for JSON. |
-
-### Performance qualification
-
-`test-performance.json` distinguishes the fast gate, common affected-package feedback, ordinary local full verification, exceptional selected mutation, and the hosted critical path. It binds each observation to the complete declared environment and refuses a mismatched identity. Prepare warm samples by running the workload once and retaining the declared Go caches; run `GOTOOLCHAIN=go1.26.4 go clean -testcache` before each cold sample. Capture stage timings with `GOTOOLCHAIN=go1.26.4 ./x gate timings` or `GOTOOLCHAIN=go1.26.4 ./x gate full timings`, record the complete environment and component observations, then run `./x test-performance validate` and `./x test-performance report --machine`. For a package split across concurrent proving-unit slices, `package-total` records its slowest slice. A wall-clock sample is evidence, not a per-run correctness assertion. The ordinary-full component limits pin the landed serial profiled lane, dominant package totals, coverage policy, and Pi smoke; a qualified sample missing one or exceeding its median limit blocks qualification. Unchanged wall targets remain visible evidence.
-
-The gate enables `TestPiRealRuntimeSmoke` once with test caching disabled; `./x test` and verbose direct Go tests explain its omission. The deterministic Pi lane uses a protocol-v2 contract double to prove generated adapter negotiation, native awf skill discovery and routing delivery, and retained effort integration. Its test-only pi-tools v0.3.0 source pin supplies generic recorder seams and one narrow `createSubagentToolkit` lifecycle composition that proves prepared-CWD transport, completed and failed callback traversal, and checkout-isolated invocation state. It neither installs nor pins an adopter pi-tools runtime. Plain-punctuation (`awf check repo prose`) and effort-memory (`awf check repo memory`) scans are hook and CI checks, not gate steps. Commit-provenance tests use native Git, SSH-signed commits, disposable refs and remotes, both `core.hooksPath` forms, and linked worktrees. A red gate blocks the commit: fix the cause or revert.
-
-### Coverage
-
-`./x gate full` is the sole hard coverage gate. `covercheck --merge` rejects malformed, mixed-mode, ambiguous, conflicting, or empty shard inputs and emits one sorted set profile whose execution counts are OR-merged. Policy compares that complete union's exact statement-block identities with `coverage-baseline.json`; covered misses improve the baseline automatically, while additions and moved spans require explicit reviewed reasons. Raw and filtered statement percentages are reports only. Codecov reports line coverage, so its figures cannot equal `go tool cover`'s statement figures (ADR-0065).
-
-| Codecov flag | Meaning |
-|---|---|
-| `raw` | Whole-tree line coverage. |
-| `covered` | Line coverage after `covercheck --emit-filtered` removes `// coverage-ignore` blocks. |
-
-Codecov is informational; exact coverage policy is enforced by `./x gate full` locally and the canonical coverage aggregator behind the hosted `CI / gate` check required for protected `main` and release tags.
-
-### Mutation testing
-
-Coverage proves execution, not useful assertions. Change a condition, comparison, or constant and confirm a test fails; otherwise add the missing assertion.
-
-`./x mutants` (ADR-0066) runs deterministic `gremlins` mutation testing against the production diff from `main`; pass a package, such as `./x mutants ./internal/refs`, for a focused run. It remains advisory. The sole blocking exception is an exact `cmd/covercheck` owned-path change: the full gate selects from its local staged candidate or explicit remote ranges, uncertainty runs the blocker, and the pinned whole-target recipe accepts only killed or independently reviewed exact equivalent mutants from complete timeout-free reports. A timed-out mutant is untrusted. Triage every survivor as a missing assertion or an equivalent mutant.
-
-The strict host lane covers awf's rendered profile contract, routing and Git policy, handshake outcomes, generated-output boundary, retained effort behavior, and the narrow selected-checkout lifecycle composition. General context usage, handoff, subprocess supervision, and progress rendering remain assured by `pi-tools`, not duplicated in awf tests.
+Coverage percentages may be reported by external services but are informational. Tests are retained for behavioral and safety value rather than exact source-line representation.
 
 
 <!-- awf:template-source templates/docs/testing.md.tmpl#tiers -->
 <!-- awf:edit tiers: from .awf/docs/parts/testing/tiers.md -->
 <!-- awf:template-source templates/docs/testing.md.tmpl -->
 ## Tiers and lanes
-awf has two verification tiers. `./x gate` is the fast commit tier; it runs version validation, one native build, blocking lint including govet, and pin validation. `./x gate full` adds complete native Go and Pi behavior, coverage policy, standalone vet, advisory lint, dead-code analysis, four Linux/Darwin cross-builds, and exact-universe-selected mutation. Focused owner checks are the iteration loop. A wired pre-commit hook owns the fast gate and a wired pre-push hook owns the full gate, so instructions do not manually duplicate either hook.
+awf uses focused iteration checks, one fast commit gate, and complete terminal or hosted verification. A wired pre-commit hook owns the fast gate; pre-push remains a focused preflight rather than an exhaustive local duplicate.
 
 
 | Lane | Proves |
 |---|---|
-| Go | Unit, integration, regression, coverage, vet, lint, dead-code, cross-compile, and pin checks. |
-| Pi host | Protocol-v2 profile-contract negotiation, strict TypeScript coverage, adapter policy, generated native skill routing, and effort association. |
+| Go | Unit, integration, regression, build, lint, optional dead-code, and pin checks. |
+| Pi host | Protocol-v2 profile-contract negotiation, strict TypeScript behavior, adapter policy, generated native skill routing, and effort association. |
 | Pi runtime smoke | Generated adapter delivery through a contract double, retained awf effort integration, and narrow selected-checkout lifecycle composition through the test-only pinned pi-tools source. |
 
 A successful capability handshake and final profile registration are the adopter `pi-tools` compatibility test; there is no awf fallback or adopter revision pin. External general context, handoff, subprocess supervision, and rendering mechanics belong to `pi-tools` assurance. The strict lane's test-only pi-tools v0.3.0 source pin records generic Pi API, event, context, UI, model-registry, command, tool, active-tool, and execution seams. It also composes `createSubagentToolkit` narrowly to prove selected prepared-CWD transport, scheduler callback traversal, and invocation isolation without claiming confinement or general pi-tools assurance. The retained 0.84.2 active-tool and file-mutation-queue floor applies only to awf-owned effort integration.
@@ -106,15 +62,15 @@ The release-only interactive Pi smoke is manual verification, not a deterministi
 | Area | Test location and shape |
 |---|---|
 | Go behavior | Focused package tests cover effort/worktree safety, migration, session protocol validation, deterministic joins, resident roots, and real-Git topology. Legacy protocol residents are read-only fixtures. |
-| Pi extension | Container tests cover generated protocol-v2 profile negotiation through a contract double, adapter schemas and policy, model routing, native awf skill delivery, Git audits, retained `using_effort` integration, and narrow selected-checkout lifecycle composition. The test-only pi-tools v0.3.0 source pin supplies generic Pi recordings and `createSubagentToolkit` composition for prepared-CWD transport, callback traversal, and invocation isolation; confinement, subprocess supervision, and general presentation mechanics are not reproduced. |
+| Pi extension | Host tests cover generated protocol-v2 profile negotiation through a contract double, adapter schemas and policy, model routing, native awf skill delivery, Git audits, retained `using_effort` integration, and narrow selected-checkout lifecycle composition. The test-only pi-tools v0.3.0 source pin supplies generic Pi recordings and `createSubagentToolkit` composition for prepared-CWD transport, callback traversal, and invocation isolation; confinement, subprocess supervision, and general presentation mechanics are not reproduced. |
 | Git seam | `internal/git/entrypoints_test.go` derives entrypoints and requires a backend-agnostic contract suite for each. Repo walkers keep Git libraries and subprocesses within `internal/git` and `internal/testsupport/gitfixture`. |
 | Test homes | Five `TestMain` suites use canonical `home-<decimal>` homes, retain Go's default `GOPATH`, and sweep only homes older than 24 hours. Failure to remove the current home fails the suite. |
 
-`TestPiRealRuntimeSmoke` runs only when the gate enables it and without caching. It requires the named selected-checkout lifecycle proof to pass. The Pi association tests cover root attach/detach, fixed relative paths, owner-checked recovery, heartbeat, detached restart cleanup, advisory Remote Pi metadata, capability-gated suffix negotiation, replay, lifecycle clears, ownership loss, and optional-emission degradation. Adapter tests prove successful and failed protocol-v2 negotiation, no-fallback behavior, profile routing delivery, generated role discovery, and the narrow toolkit lifecycle above without testing external context, handoff, subprocess supervision, or presentation internals.
+The CI Pi lane and explicit `./x pi-test run` execute the host suite directly. The Go `TestPiRealRuntimeSmoke` wrapper runs only when `AWF_PI_RUNTIME_SMOKE=1` and otherwise skips to avoid duplicating that suite. It requires the named selected-checkout lifecycle proof to pass. The Pi association tests cover root attach/detach, fixed relative paths, owner-checked recovery, heartbeat, detached restart cleanup, advisory Remote Pi metadata, capability-gated suffix negotiation, replay, lifecycle clears, ownership loss, and optional-emission degradation. Adapter tests prove successful and failed protocol-v2 negotiation, no-fallback behavior, profile routing delivery, generated role discovery, and the narrow toolkit lifecycle above without testing external context, handoff, subprocess supervision, or presentation internals.
 
 ### Parallelism
 
-Run tests concurrently in one process only when their mutable state is independent. The terminal gate may execute deterministic proving-unit slices in separate isolated process homes; package-global seam families remain serial within each process. `t.Setenv` blocks its calling test, not the package, and `internal/worktree` stays in-process serial because package-level filesystem-ownership swaps race.
+Run tests concurrently only when their mutable state is independent. CI may execute independent Go, Pi, and platform lanes in parallel; package-global seam families remain serial within each process. `t.Setenv` blocks its calling test, not the package, and `internal/worktree` stays in-process serial because package-level filesystem-ownership swaps race.
 
 ### Test shape
 

@@ -101,7 +101,7 @@ func (p *Publisher) Prepare() (Preparation, error) {
 		return Preparation{}, err
 	}
 	glossary, err := glossarySemantics(p.inputs)
-	if err != nil { // coverage-ignore: output-plan construction already validated the same glossary input
+	if err != nil {
 		return Preparation{}, err
 	}
 	generated, err := generatedSemantics(p.inputs, topics)
@@ -142,15 +142,15 @@ func (p Preparation) Glossary() glossarycheck.Input { return cloneGlossaryInput(
 
 func glossarySemantics(p renderInputs) (glossarycheck.Input, error) {
 	sc, err := p.cfg.Sidecar("docs", "glossary")
-	if err != nil { // coverage-ignore: project loading already validated the selected sidecar
+	if err != nil {
 		return glossarycheck.Input{}, err
 	}
 	authored, err := glossary.Records(sc.Data["terms"])
-	if err != nil { // coverage-ignore: output-plan glossary transform already validated authored records
+	if err != nil {
 		return glossarycheck.Input{}, err
 	}
 	merged, err := glossary.Merge(withDefaultData(sc, projectCatalog(p).Docs["glossary"].Data, glossary.SpecializedListDataKeys("docs", "glossary")...))
-	if err != nil { // coverage-ignore: output-plan glossary transform already validated the merged records
+	if err != nil {
 		return glossarycheck.Input{}, err
 	}
 	return glossarycheck.Input{Enabled: true, Authored: authored, Merged: merged, Domains: slices.Clone(p.cfg.Domains)}, nil

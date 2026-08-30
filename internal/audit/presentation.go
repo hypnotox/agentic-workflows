@@ -18,11 +18,11 @@ func ConventionalCommitDocument(findings []Finding) (presentation.Document, erro
 		values = append(values, value)
 	}
 	list, err := presentation.NewList("errors", values...)
-	if err != nil { // coverage-ignore: every finding value is validated above and errors is a fixed grammar-valid label
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	section, err := presentation.NewSection("check staged commit", list)
-	if err != nil { // coverage-ignore: the validated List is always an admitted Section child
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	return presentation.NewDocument(section)
@@ -36,7 +36,7 @@ func reportOutcome(findings []Finding, commits int, base, head string) (presenta
 		return presentation.Report{}, false, err
 	}
 	context, err := presentation.NewField("scope", contextValue)
-	if err != nil { // coverage-ignore: the fixed grammar-valid scope label receives the validated Literal value
+	if err != nil {
 		return presentation.Report{}, false, err
 	}
 	contextFields := []presentation.Field{context}
@@ -62,7 +62,7 @@ func reportOutcome(findings []Finding, commits int, base, head string) (presenta
 			}
 		}
 		record, err := presentation.NewRecord(recordValues...)
-		if err != nil { // coverage-ignore: every record element was validated by Prose in the preceding loop
+		if err != nil {
 			return presentation.Report{}, false, err
 		}
 		if finding.Severity == severity.Error {
@@ -82,11 +82,11 @@ func reportOutcome(findings []Finding, commits int, base, head string) (presenta
 		status = "empty"
 	}
 	countValue, err := presentation.Literal(fmt.Sprintf("%d errors, %d warnings", len(errors), len(warnings)))
-	if err != nil { // coverage-ignore: the fixed decimal-only count format always satisfies Literal's grammar
+	if err != nil {
 		return presentation.Report{}, false, err
 	}
 	count, err := presentation.NewField("findings", countValue)
-	if err != nil { // coverage-ignore: the fixed grammar-valid findings label receives the validated Literal value
+	if err != nil {
 		return presentation.Report{}, false, err
 	}
 	categories := []presentation.ReportCategory{}

@@ -64,7 +64,7 @@ func (h Help) Document(command, summary string) (presentation.Document, error) {
 		return presentation.Document{}, err
 	}
 	field, err := presentation.NewField("command", commandValue)
-	if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	summaryValue, err := presentation.Prose(summary)
@@ -72,7 +72,7 @@ func (h Help) Document(command, summary string) (presentation.Document, error) {
 		return presentation.Document{}, err
 	}
 	summaryField, err := presentation.NewField("summary", summaryValue)
-	if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	nodes := []presentation.Node{}
@@ -89,7 +89,7 @@ func (h Help) Document(command, summary string) (presentation.Document, error) {
 			return presentation.Document{}, err
 		}
 		description, err := presentation.NewField("description", descriptionValue)
-		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		nodes = append(nodes, description)
@@ -130,7 +130,7 @@ func (h Help) Document(command, summary string) (presentation.Document, error) {
 		nodes = append(nodes, list)
 	}
 	section, err := presentation.NewSection("help", nodes...)
-	if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	return presentation.NewDocument(field, summaryField, section)
@@ -158,7 +158,7 @@ func helpItems(label string, items []HelpItem) (presentation.RecordGroup, error)
 			return presentation.RecordGroup{}, err
 		}
 		records[i], err = presentation.NewRecord(name, description)
-		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err != nil {
 			return presentation.RecordGroup{}, err
 		}
 	}

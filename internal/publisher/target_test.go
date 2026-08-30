@@ -316,7 +316,7 @@ func assertPiRuntimeSmoke(t *testing.T) {
 
 func TestPiRealRuntimeSmoke(t *testing.T) {
 	if os.Getenv("AWF_PI_RUNTIME_SMOKE") != "1" {
-		t.Skip("Pi host lane skipped; run './x pi-test run' for focused verification or './x gate full' for terminal verification")
+		t.Skip("Pi host lane skipped; run './x pi-test run' for focused verification")
 	}
 	assertPiRuntimeSmoke(t)
 }

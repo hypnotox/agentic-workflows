@@ -169,7 +169,7 @@ func ParseMetadata(metadataRoot, path string, data []byte) (TopicID, Metadata, e
 
 func idFromMetadataPath(metadataRoot, path string) (TopicID, error) {
 	rel, err := filepath.Rel(metadataRoot, path)
-	if err != nil { // coverage-ignore: metadataRoot and discovered paths share the project root and therefore the same volume
+	if err != nil {
 		return TopicID{}, fmt.Errorf("resolve topic metadata path %q: %w", filepath.ToSlash(path), err)
 	}
 	clean := filepath.ToSlash(rel)
@@ -277,10 +277,10 @@ func parseClaim(id TopicID, typ ClaimType, slug string, lines []string) (Claim, 
 	var err error
 	if pos < len(meta) && strings.HasPrefix(meta[pos], "Summary: ") {
 		c.Summary, err = need("Summary: ")
-		if err != nil { // coverage-ignore: the identical prefix guard above makes need succeed
+		if err != nil {
 			return Claim{}, err
 		}
-		if c.Summary == "" || strings.ContainsAny(c.Summary, "\r\n") { // coverage-ignore: line tokenization and metadata recognition reject blank or multiline values before this semantic guard
+		if c.Summary == "" || strings.ContainsAny(c.Summary, "\r\n") {
 			return Claim{}, errors.New("summary must be one nonempty line")
 		}
 		if len([]rune(c.Summary)) > 160 {

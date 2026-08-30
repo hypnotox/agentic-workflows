@@ -116,7 +116,7 @@ func VerifyCommitPolicyAt(ctx context.Context, root string, targets []string) (p
 		return document, outcome, presentationErr
 	}
 	repo, _, err := awfgit.OpenContaining(roots.InvokingRoot)
-	if err != nil { // coverage-ignore: ResolveControlRoots proved this same checkout immediately above; failure requires a concurrent repository-identity race
+	if err != nil {
 		outcome := refused(commitpolicy.LinkedWorktreeFailure, "open invoking worktree", err)
 		document, presentationErr := commitpolicy.Presentation(commitpolicy.Policy{}, outcome)
 		return document, outcome, presentationErr

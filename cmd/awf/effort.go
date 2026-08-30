@@ -53,20 +53,20 @@ func openEffortComposition(ctx context.Context, root string) (effortComposition,
 		return effortComposition{}, err
 	}
 	repo, err := awfgit.Open(roots.InvokingRoot)
-	if err != nil { // coverage-ignore: ResolveControlRoots just proved this path is a checkout; a failed open requires a concurrent repository-identity race
+	if err != nil {
 		return effortComposition{}, err
 	}
 	archiveMarker := func() ([]byte, error) {
 		projectState, cfg, _, err := openProjectOperation(ctx, root)
-		if err != nil { // coverage-ignore: the gated command already loaded this same project; failure requires a concurrent config-tree race
+		if err != nil {
 			return nil, err
 		}
 		prepared, err := operationPreparation(projectState, cfg)
-		if err != nil { // coverage-ignore: the gate already built the same closed output plan; failure requires a concurrent config-tree race
+		if err != nil {
 			return nil, err
 		}
 		rendered, err := prepared.ResidentMarker(string(awfgit.ResidentEffortArchive))
-		if err != nil { // coverage-ignore: the closed resident registry always contributes this marker to the prepared plan
+		if err != nil {
 			return nil, err
 		}
 		return []byte(rendered.Content()), nil
@@ -89,7 +89,7 @@ func openEffortComposition(ctx context.Context, root string) (effortComposition,
 		}
 		return filesystem.Open(residentRoot)
 	}, service)
-	if err != nil { // coverage-ignore: openCheckout just opened this same root above; a second failure requires a concurrent repository-identity race
+	if err != nil {
 		return effortComposition{}, err
 	}
 	return effortComposition{service: service, manager: manager}, nil
@@ -349,7 +349,7 @@ func rejectDuplicateJSONKeys(raw []byte) error {
 					return err
 				}
 				key, ok := keyToken.(string)
-				if !ok { // coverage-ignore: json.Decoder guarantees object member tokens are strings after More
+				if !ok {
 					return errors.New("JSON object key is not a string")
 				}
 				if _, duplicate := seen[key]; duplicate {
@@ -370,7 +370,7 @@ func rejectDuplicateJSONKeys(raw []byte) error {
 			}
 			_, err = decoder.Token()
 			return err
-		default: // coverage-ignore: json.Decoder yields only object or array opening delimiters at a value position
+		default:
 			return fmt.Errorf("unexpected JSON delimiter %q", delim)
 		}
 	}
@@ -583,7 +583,7 @@ func writeEffortMemoryProtocol(out io.Writer, result effort.MemoryOperationResul
 		}
 	}
 	raw, err := json.Marshal(envelope)
-	if err != nil { // coverage-ignore: the closed protocol structs contain only JSON-supported values
+	if err != nil {
 		return err
 	}
 	raw = append(raw, '\n')
@@ -604,7 +604,7 @@ func writeEffortMemoryProtocol(out io.Writer, result effort.MemoryOperationResul
 // It is a closed successful protocol bypass.
 func writeEffortActivityProtocol(out io.Writer, value any) error {
 	raw, err := json.Marshal(value)
-	if err != nil { // coverage-ignore: fixed protocol types cannot fail encoding; writer failures are covered at the shared output boundary
+	if err != nil {
 		return err
 	}
 	raw = append(raw, '\n')

@@ -74,7 +74,7 @@ type confinedBackend struct {
 func (b confinedBackend) openTemporary(destination string) (string, *os.File, error) {
 	for range 100 {
 		var token [16]byte
-		if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam
+		if _, err := rand.Read(token[:]); err != nil {
 			return "", nil, fmt.Errorf("name publication temporary for %s: %w", destination, err)
 		}
 		temporary := path.Join(path.Dir(destination), ".filepublication-"+hex.EncodeToString(token[:])+".tmp")
@@ -112,8 +112,8 @@ func publish(backend publicationBackend, destination string, contents []byte, mo
 		return fmt.Errorf("create publication temporary for %s: %w", destination, err)
 	}
 	defer func() {
-		if file != nil { // coverage-ignore: the deferred close is needed only after a local temporary mode, write, or sync storage fault
-			returnErr = errors.Join(returnErr, file.Close()) // coverage-ignore: closing a locally-created temporary after another storage fault requires a second storage fault
+		if file != nil {
+			returnErr = errors.Join(returnErr, file.Close())
 		}
 		if temporary != "" {
 			if err := backend.remove(temporary); err != nil && !errors.Is(err, os.ErrNotExist) {
@@ -126,19 +126,19 @@ func publish(backend publicationBackend, destination string, contents []byte, mo
 			}
 		}
 	}()
-	if err := file.Chmod(mode); err != nil { // coverage-ignore: chmod of a newly-created regular temporary requires a storage fault
-		return fmt.Errorf("set publication mode for %s: %w", destination, err) // coverage-ignore: chmod of a newly-created regular temporary requires a storage fault
+	if err := file.Chmod(mode); err != nil {
+		return fmt.Errorf("set publication mode for %s: %w", destination, err)
 	}
-	if n, err := file.Write(contents); err != nil { // coverage-ignore: writing a locally-created regular temporary requires a storage fault
-		return fmt.Errorf("write publication temporary for %s: %w", destination, err) // coverage-ignore: writing a locally-created regular temporary requires a storage fault
-	} else if n != len(contents) { // coverage-ignore: os.File.Write returns a non-nil error when it writes fewer bytes than requested
-		return fmt.Errorf("write publication temporary for %s: %w", destination, io.ErrShortWrite) // coverage-ignore: os.File.Write returns a non-nil error when it writes fewer bytes than requested
+	if n, err := file.Write(contents); err != nil {
+		return fmt.Errorf("write publication temporary for %s: %w", destination, err)
+	} else if n != len(contents) {
+		return fmt.Errorf("write publication temporary for %s: %w", destination, io.ErrShortWrite)
 	}
-	if err := file.Sync(); err != nil { // coverage-ignore: syncing a locally-created regular temporary requires a storage fault
-		return fmt.Errorf("sync publication temporary for %s: %w", destination, err) // coverage-ignore: syncing a locally-created regular temporary requires a storage fault
+	if err := file.Sync(); err != nil {
+		return fmt.Errorf("sync publication temporary for %s: %w", destination, err)
 	}
-	if err := file.Close(); err != nil { // coverage-ignore: closing a locally-created regular temporary after successful sync requires a storage fault
-		return fmt.Errorf("close publication temporary for %s: %w", destination, err) // coverage-ignore: closing a locally-created regular temporary after successful sync requires a storage fault
+	if err := file.Close(); err != nil {
+		return fmt.Errorf("close publication temporary for %s: %w", destination, err)
 	}
 	file = nil
 	if err := backend.publishNoReplace(temporary, destination); err != nil {

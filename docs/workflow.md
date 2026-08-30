@@ -206,18 +206,18 @@ Documentation travels with the change that makes it true. When you change behavi
 <!-- awf:edit composing-the-gate: from .awf/parts/workflow/composing-the-gate.md -->
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Composing the gate
-`./x gate` is the fast commit tier and `./x gate full` is terminal exhaustive verification. Run focused checks while iterating; when hooks are wired, do not manually duplicate their matching gate. `./x check` separately checks rendered output and repository policy.
+`./x gate` is the fast commit tier. Run focused checks while iterating and complete behavior at terminal verification or in CI. When hooks are wired, do not manually duplicate their matching gate. `./x check` separately checks rendered output and repository policy.
 
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl#local-hooks -->
 <!-- awf:edit local-hooks: from .awf/parts/workflow/local-hooks.md -->
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Local git hooks
-This repository tracks five optional client-side preflight stubs under `.githooks/`: pre-commit checks `./x check` and the fast `./x gate`; commit-msg checks the final message; pre-merge-commit checks staged state; reference-transaction and pre-push applies commit policy and runs `./x gate full`. `./x render` keeps their payloads current.
+This repository tracks five optional client-side preflight stubs under `.githooks/`: pre-commit checks `./x check` and the fast `./x gate`; commit-msg checks the final message; pre-merge-commit checks staged state; reference-transaction and pre-push apply commit policy and the fast `./x gate`. `./x render` keeps their payloads current.
 
 The stubs resolve the invoking worktree before delegation. A clone may activate them with `git config core.hooksPath .githooks`. Preview policy with `./awf check commit-policy <revision-or-range>...`. These checks do not gate remote updates by themselves.
 
-The active GitHub repository ruleset `main` (ID `18766557`) is the final remote control for publishing `main`: with no bypass actors, it requires signed commits, blocks non-fast-forward updates and deletion, and requires the GitHub Actions checks `CI / gate` and `CI / release-config` on the exact candidate revision. The active `release tags` ruleset (ID `21631403`) requires the same app-bound checks before `refs/tags/v*` can be created or updated. Reverify both live rules with `gh api repos/hypnotox/agentic-workflows/rulesets/<id>` whenever remote policy changes.
+The active GitHub repository ruleset `main` (ID `18766557`) is the final remote control for publishing `main`: with no bypass actors, it requires signed commits, blocks non-fast-forward updates and deletion, and currently requires the GitHub Actions checks `CI / gate` and the retired `CI / release-config` on the exact candidate revision. The active `release tags` ruleset (ID `21631403`) currently requires the same app-bound checks; repository owners must remove the retired status requirement before `refs/tags/v*` can be created or updated. Reverify both live rules with `gh api repos/hypnotox/agentic-workflows/rulesets/<id>` whenever remote policy changes.
 
 `awf check staged commit` validates Conventional Commits and stale-format ADR merge trailers. Correct a refusal and run `git commit`; do not repeat the merge or retrofit an ADR.
 
@@ -226,5 +226,5 @@ The active GitHub repository ruleset `main` (ID `18766557`) is the final remote 
 <!-- awf:edit ci: from .awf/parts/workflow/ci.md -->
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Continuous integration
-Local hooks are optional per-clone preflight. `.github/workflows/ci.yml` runs `./x check`, `./x gate full`, and the repository scans on pushes to `main` and on pull requests. Those runs provide post-push detection and a backstop for bypassed hooks; GitHub does not require their statuses before accepting an update to `main`. Inspect the pushed commit's CI result before treating it as verified.
+Local hooks are optional per-clone preflight. `.github/workflows/ci.yml` runs exhaustive Linux behavior and repository checks, strict Pi behavior, and targeted macOS safety. One aggregate `CI / gate` result is the definitive hosted verdict. Inspect it before treating a pushed commit as verified.
 

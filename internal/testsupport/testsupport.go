@@ -43,10 +43,10 @@ func Context(t testing.TB) context.Context {
 // helper in this package is built from.
 func WriteFile(t testing.TB, path, content string) {
 	t.Helper()
-	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil { // coverage-ignore: MkdirAll under a fresh t.TempDir() fails only on a permission fault a test cannot trigger
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(path, []byte(content), 0o644); err != nil { // coverage-ignore: WriteFile into a dir just created above fails only on a permission fault a test cannot trigger
+	if err := os.WriteFile(path, []byte(content), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }
@@ -163,7 +163,7 @@ func ADR(status string, opts ...ADROption) string {
 func RepoRoot(t *testing.T) string {
 	t.Helper()
 	dir, err := os.Getwd()
-	if err != nil { // coverage-ignore: the test process always has a working directory
+	if err != nil {
 		t.Fatal(err)
 	}
 	for {
@@ -171,7 +171,7 @@ func RepoRoot(t *testing.T) string {
 			return dir
 		}
 		parent := filepath.Dir(dir)
-		if parent == dir { // coverage-ignore: the test tree always sits under a go.mod
+		if parent == dir {
 			t.Fatal("go.mod not found above the test working directory")
 		}
 		dir = parent
@@ -187,11 +187,11 @@ func RepoRoot(t *testing.T) string {
 func WalkRepoFiles(t *testing.T, root string, include func(rel string) bool, fn func(rel string, body []byte)) {
 	t.Helper()
 	err := filepath.WalkDir(root, func(path string, d os.DirEntry, werr error) error {
-		if werr != nil { // coverage-ignore: walking a readable checkout does not fault
+		if werr != nil {
 			return werr
 		}
 		rel, rerr := filepath.Rel(root, path)
-		if rerr != nil { // coverage-ignore: path always sits under root
+		if rerr != nil {
 			return rerr
 		}
 		if d.IsDir() {
@@ -203,7 +203,7 @@ func WalkRepoFiles(t *testing.T, root string, include func(rel string) bool, fn 
 			}
 			if _, serr := os.Lstat(filepath.Join(path, ".git")); serr == nil {
 				return filepath.SkipDir // a nested checkout owns its own files
-			} else if !os.IsNotExist(serr) { // coverage-ignore: repository paths remain statable during a test scan
+			} else if !os.IsNotExist(serr) {
 				return serr
 			}
 			return nil
@@ -213,13 +213,13 @@ func WalkRepoFiles(t *testing.T, root string, include func(rel string) bool, fn 
 			return nil
 		}
 		body, rerr := os.ReadFile(path)
-		if rerr != nil { // coverage-ignore: the walk just listed this regular file
+		if rerr != nil {
 			return rerr
 		}
 		fn(rel, body)
 		return nil
 	})
-	if err != nil { // coverage-ignore: callbacks do not error and the walk cannot fault
+	if err != nil {
 		t.Fatal(err)
 	}
 }

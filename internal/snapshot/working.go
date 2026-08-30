@@ -26,14 +26,14 @@ func WorkingTree(ctx context.Context, repo *git.Repo) (*Tree, error) {
 	for _, p := range paths {
 		full := filepath.Join(root, filepath.FromSlash(p))
 		info, statErr := os.Lstat(full)
-		if statErr != nil { // coverage-ignore: git just enumerated this path; only a concurrent filesystem mutation can make Lstat fail
+		if statErr != nil {
 			return nil, fmt.Errorf("snapshot working stat %s: %w", p, statErr)
 		}
 		mode := Regular
 		var data []byte
 		if info.Mode()&os.ModeSymlink != 0 {
 			target, readErr := os.Readlink(full)
-			if readErr != nil { // coverage-ignore: Lstat just identified this link; only a concurrent mutation can fail Readlink
+			if readErr != nil {
 				return nil, fmt.Errorf("snapshot working readlink %s: %w", p, readErr)
 			}
 			mode, data = Symlink, []byte(target)

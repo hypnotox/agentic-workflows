@@ -77,9 +77,9 @@ type MemoryUpdateInput struct {
 	Preview bool
 }
 
-func (MemoryReadInput) memoryOperation()   {} // coverage-ignore: compile-time-only sealed-interface marker
-func (MemoryEditInput) memoryOperation()   {} // coverage-ignore: compile-time-only sealed-interface marker
-func (MemoryUpdateInput) memoryOperation() {} // coverage-ignore: compile-time-only sealed-interface marker
+func (MemoryReadInput) memoryOperation()   {}
+func (MemoryEditInput) memoryOperation()   {}
+func (MemoryUpdateInput) memoryOperation() {}
 
 // MemoryRange reports the selected complete-document line range.
 type MemoryRange struct {
@@ -309,7 +309,7 @@ func (s *Service) editMemory(input MemoryEditInput) (MemoryOperationResult, erro
 	metadata.Effort = input.Slug
 	metadata.Updated = formatMemoryTime(s.now())
 	encoded, err := encodeMemory(metadata, newBody)
-	if err != nil { // coverage-ignore: fixed scalar-only metadata was validated before encoding
+	if err != nil {
 		return MemoryOperationResult{}, fmt.Errorf("encode edited memory: %w", err)
 	}
 	if len(encoded) > maxMemoryBytes {
@@ -463,11 +463,11 @@ func prepareMemoryUpdate(slug string, doc memoryDocument, update MemoryUpdate, u
 	if updated != nil {
 		metadata.Updated = updated.Value
 	}
-	if validateMemoryMutable(metadata.Phase) != nil || validateMemoryMutable(metadata.Next) != nil { // coverage-ignore: supplied fields are validated and every unrepaired invalid field returned above
+	if validateMemoryMutable(metadata.Phase) != nil || validateMemoryMutable(metadata.Next) != nil {
 		return MemoryMetadata{}, nil, &invalidMemoryUpdate{NextAction: memoryUpdateCommand(slug, doc.invalid)}
 	}
 	encoded, err := encodeMemoryDocument(metadata, updated, doc.body)
-	if err != nil { // coverage-ignore: fixed scalar-only metadata was validated before encoding
+	if err != nil {
 		return MemoryMetadata{}, nil, &invalidMemoryUpdate{NextAction: "inspect the effort memory metadata"}
 	}
 	return metadata, encoded, nil
@@ -646,7 +646,7 @@ func boundedDisplayRows(rows []displayDiffRow, width int) (string, bool) {
 	text, ok := renderSelectedDisplayRows(normalized, selection.selected, width)
 	// Every selection above is reverted unless it already rendered within the bound, so the final
 	// set is one that fit when it was last extended.
-	if !ok || text == "" { // coverage-ignore: the selection is validated as it grows, and one elided changed-row prefix plus omission rows fit far below the fixed 50-KiB bound
+	if !ok || text == "" {
 		return omissionDisplayRow(width) + "\n", true
 	}
 	return text, true

@@ -54,7 +54,7 @@ func (r *Repo) WalkRangeCommits(ctx context.Context, base, head string, visit fu
 		return 0, opaqueWrap(fmt.Sprintf("resolve head %q", head), err)
 	}
 	headCommit, err := r.repo.CommitObject(*headHash)
-	if err != nil { // coverage-ignore: headHash was just resolved; errors only on a corrupt object store
+	if err != nil {
 		return 0, opaqueError(err)
 	}
 	baseHash, err := r.repo.ResolveRevision(plumbing.Revision(base))
@@ -62,7 +62,7 @@ func (r *Repo) WalkRangeCommits(ctx context.Context, base, head string, visit fu
 		return 0, opaqueWrap(fmt.Sprintf("resolve base %q", base), err)
 	}
 	baseCommit, err := r.repo.CommitObject(*baseHash)
-	if err != nil { // coverage-ignore: baseHash was just resolved; errors only on a corrupt object store
+	if err != nil {
 		return 0, opaqueError(err)
 	}
 	bases, err := headCommit.MergeBase(baseCommit)
@@ -221,7 +221,7 @@ func (r *Repo) FileText(ctx context.Context, rev, path string) (text string, fou
 		return "", false, opaqueError(err)
 	}
 	text, err = file.Contents()
-	if err != nil { // coverage-ignore: a valid tree entry's blob contents read back without error
+	if err != nil {
 		return "", false, opaqueError(err)
 	}
 	return text, true, nil
@@ -301,7 +301,7 @@ func toCommit(ctx context.Context, c *object.Commit, prefix string) (Commit, err
 	var parentTree *object.Tree
 	if c.NumParents() > 0 {
 		parent, err := c.Parent(0)
-		if err != nil { // coverage-ignore: unlike the same lookup in RangeBlobs this is unreachable through a range walk, because enumerating the ancestry already failed on the absent object before any commit reached toCommit; a shallow clone errors during iteration, not here
+		if err != nil {
 			return Commit{}, err
 		}
 		parentTree, err = parent.Tree()
@@ -317,7 +317,7 @@ func toCommit(ctx context.Context, c *object.Commit, prefix string) (Commit, err
 		if contextErr := ctx.Err(); contextErr != nil {
 			return Commit{}, contextErr
 		}
-		return Commit{}, err // coverage-ignore: the validated change frontier leaves cancellation as the only reachable diff failure
+		return Commit{}, err
 	}
 	patch, err := changes.PatchContext(ctx)
 	if err != nil {
@@ -332,7 +332,7 @@ func toCommit(ctx context.Context, c *object.Commit, prefix string) (Commit, err
 	}
 	for _, ch := range changes {
 		fc, include, err := toFileChange(ch, parentTree, curTree, stats, prefix)
-		if err != nil { // coverage-ignore: toFileChange fails only on a malformed change
+		if err != nil {
 			return Commit{}, err
 		}
 		if include {
@@ -348,7 +348,7 @@ func mergeTouchesPrefix(ctx context.Context, c *object.Commit, prefix string) (b
 		return false, err
 	}
 	parent, err := c.Parent(0)
-	if err != nil { // coverage-ignore: range iteration already traversed the merge's first parent
+	if err != nil {
 		return false, err
 	}
 	parentTree, err := parent.Tree()
@@ -431,7 +431,7 @@ func validateChangedTreeFrontier(ctx context.Context, before, after *object.Tree
 
 func toFileChange(ch *object.Change, parentTree, curTree *object.Tree, stats map[string]object.FileStat, prefix string) (FileChange, bool, error) {
 	action, err := ch.Action()
-	if err != nil { // coverage-ignore: Action() fails only on a malformed change entry
+	if err != nil {
 		return FileChange{}, false, err
 	}
 	oldPath, oldInside := scopedPath(ch.From.Name, prefix)
@@ -482,7 +482,7 @@ func fileText(tree *object.Tree, name string) string {
 		return ""
 	}
 	s, err := f.Contents()
-	if err != nil { // coverage-ignore: a valid tree entry's blob contents read back without error
+	if err != nil {
 		return ""
 	}
 	return s

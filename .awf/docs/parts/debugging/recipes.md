@@ -12,7 +12,7 @@ Use the repository `./awf` wrapper. If it still refuses, update the pinned awf b
 
 ### Red gate
 
-Run `./x test` for a Go failure, the narrowest relevant command while iterating, and `./x gate full` only at the terminal verification boundary. Fix the first failing stage or revert the change; do not weaken the check.
+Run `./x test` for a Go failure, the narrowest relevant command while iterating. Fix the first failing stage or revert the change; do not weaken the check.
 ### Upgrade recovery and triage
 
 With bootstrap enabled, `bash .awf/upgrade.sh` upgrades to the newest release and `bash .awf/upgrade.sh <version>` selects an exact version. The script checksum-verifies its bootstrap handoff, runs `./awf upgrade`, and re-pins bootstrap. To trial a release without repinning, run `AWF_VERSION=<version> bash .awf/bootstrap.sh` and use the printed binary.

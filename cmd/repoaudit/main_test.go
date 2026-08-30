@@ -2,18 +2,12 @@ package main
 
 import (
 	"context"
-	"encoding/json"
 	"errors"
 	"fmt"
-	"os"
 	"os/exec"
 	"path/filepath"
-	"sort"
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/coverage"
-	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 // fakeGit supplies the repoaudit consumer contract.
@@ -41,16 +35,10 @@ func (f fakeGit) RangeChangedPaths(_ context.Context, a, b string) ([]string, er
 	}
 	return strings.Fields(out), nil
 }
-func (f fakeGit) RangeDiffText(_ context.Context, a, b string) (string, error) {
-	return f.result("-c diff.noprefix=false -c diff.mnemonicprefix=false -c diff.dstPrefix=b/ diff --no-ext-diff -U0 " + a + " " + b + " -- *.go")
-}
 func (f fakeGit) FileText(_ context.Context, rev, path string) (string, bool, error) {
 	key := "show " + rev + ":" + path
 	if result, ok := f[key]; ok {
 		return result.out, result.err == nil, result.err
-	}
-	if path == coverageBaselinePath {
-		return "", false, nil
 	}
 	return "", false, fmt.Errorf("unexpected git call: %s", key)
 }
@@ -348,226 +336,5 @@ func TestNoUnreleasedSection(t *testing.T) {
 	code, out := runFake([]string{"repoaudit", "b..h"}, g)
 	if code != 1 || !strings.Contains(out, "no ## [Unreleased] section") {
 		t.Fatalf("code=%d out=%q", code, out)
-	}
-}
-
-// testMarker assembles the directive form without this test file itself
-// carrying a directive-shaped line (mirrors the rule's own split literal).
-const testMarker = "//" + " coverage-ignore"
-
-func TestCoverageIgnoreAddedWarns(t *testing.T) {
-	// An added directive in a production file warns (exit stays 0 - a warn
-	// only); an added directive in a _test.go and a bare prose mention do not.
-	diff := "+++ b/internal/foo/foo.go\n" +
-		"+\tif err != nil { " + testMarker + ": impossible per X\n" +
-		"+// the trailing coverage-ignore drops the block\n" +
-		"+++ /dev/null\n" +
-		"+\tdeleted := 1 " + testMarker + ": must not attribute to a deleted file\n" +
-		"+++ b/internal/foo/foo_test.go\n" +
-		"+\tx := 1 " + testMarker + ": fixture\n"
-	g := fakeGit{
-		"merge-base b h":       {out: "b\n"},
-		"diff --name-only b h": {out: "docs/x.md\n"},
-		"-c diff.noprefix=false -c diff.mnemonicprefix=false -c diff.dstPrefix=b/ diff --no-ext-diff -U0 b h -- *.go": {out: diff},
-	}
-	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	if code != 0 {
-		t.Fatalf("warn-only run must exit 0, got %d: %q", code, out)
-	}
-	if !strings.Contains(out, "warn    coverage-ignore-added") || !strings.Contains(out, "internal/foo/foo.go") {
-		t.Fatalf("missing warn finding: %q", out)
-	}
-	if !strings.Contains(out, "genuinely untriggerable") {
-		t.Fatalf("missing re-evaluation prompt: %q", out)
-	}
-	if strings.Contains(out, "foo_test.go") {
-		t.Fatalf("test-file directive must not fire: %q", out)
-	}
-	if strings.Count(out, "coverage-ignore-added") != 1 {
-		t.Fatalf("prose mention or test file fired: %q", out)
-	}
-	if strings.Contains(out, "repoaudit: clean") || !strings.Contains(out, "1 warning(s), no errors") {
-		t.Fatalf("warn-only run must summarize warnings, not claim clean: %q", out)
-	}
-}
-
-func TestCoverageIgnoreDiffFails(t *testing.T) {
-	// The rule cannot verify on a git failure - loud Error, like the changelog rule.
-	g := fakeGit{
-		"merge-base b h":       {out: "b\n"},
-		"diff --name-only b h": {out: "docs/x.md\n"},
-		"-c diff.noprefix=false -c diff.mnemonicprefix=false -c diff.dstPrefix=b/ diff --no-ext-diff -U0 b h -- *.go": {err: errors.New("boom")},
-	}
-	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	if code != 1 || !strings.Contains(out, "coverage-ignore-added") || !strings.Contains(out, "git diff b..h failed") {
-		t.Fatalf("code=%d out=%q", code, out)
-	}
-}
-
-func TestCoverageIgnoreCleanRange(t *testing.T) {
-	g := fakeGit{
-		"merge-base b h":       {out: "b\n"},
-		"diff --name-only b h": {out: "docs/x.md\n"},
-		"-c diff.noprefix=false -c diff.mnemonicprefix=false -c diff.dstPrefix=b/ diff --no-ext-diff -U0 b h -- *.go": {out: "+++ b/internal/foo/foo.go\n+\tplain := code()\n"},
-	}
-	code, out := runFake([]string{"repoaudit", "b..h"}, g)
-	if code != 0 || !strings.Contains(out, "repoaudit: clean") {
-		t.Fatalf("code=%d out=%q", code, out)
-	}
-}
-
-func baselineFixture(t *testing.T, admissions ...coverage.MissAdmission) string {
-	t.Helper()
-	roots := map[string][]string{
-		"hard-safety":                 {"cmd/covercheck", "cmd/mutants", "internal/commitpolicy", "internal/coverage", "internal/filepublication"},
-		"state-authority":             {"internal/adr", "internal/currentstate", "internal/currentstatecoord", "internal/topic"},
-		"repository-effort-lifecycle": {"internal/effort", "internal/git", "internal/worktree"},
-		"migration-recovery":          {"internal/config", "internal/migrate", "internal/upgrade"},
-		"publication-application":     {"internal/project", "internal/publisher"},
-		"command-boundary":            {"cmd/awf"},
-	}
-	selectors := make([]coverage.SelectorBaseline, 0, len(roots))
-	for name, selectorRoots := range roots {
-		var misses []coverage.Identity
-		for _, admission := range admissions {
-			for _, root := range selectorRoots {
-				if admission.Identity.File == root || strings.HasPrefix(admission.Identity.File, root+"/") {
-					misses = append(misses, admission.Identity)
-				}
-			}
-		}
-		selectors = append(selectors, coverage.SelectorBaseline{Name: name, Roots: selectorRoots, Misses: misses})
-	}
-	raw, err := coverage.CanonicalBaseline(coverage.Baseline{
-		Version: 1, ModulePath: "example.test", UniverseSHA256: strings.Repeat("0", 64),
-		Repository: admissions, Selectors: selectors,
-	})
-	if err != nil {
-		t.Fatalf("canonical fixture: %v", err)
-	}
-	return string(raw)
-}
-
-func baselineAdmission(file string, line int, reason string) coverage.MissAdmission {
-	return coverage.MissAdmission{Identity: coverage.Identity{
-		File: file, Start: coverage.Position{Line: line, Column: 1},
-		End: coverage.Position{Line: line, Column: 2}, Statements: 1,
-	}, Reason: reason}
-}
-
-func TestCoverageBaselineAddedAndMovedWarnDeterministically(t *testing.T) {
-	old := baselineAdmission("internal/old.go", 1, "old admission")
-	added := baselineAdmission("internal/z.go", 2, "added because reviewed")
-	moved := baselineAdmission("internal/a.go", 3, "moved because reviewed")
-	moved.MovedFrom = &old.Identity
-	g := fakeGit{
-		"merge-base b h":                {out: "b\n"},
-		"show b:coverage-baseline.json": {out: baselineFixture(t, old)},
-		"show h:coverage-baseline.json": {out: baselineFixture(t, added, moved)},
-	}
-	findings := coverageBaselineRule(context.Background(), g, "b", "h", nil)
-	if len(findings) != 2 {
-		t.Fatalf("findings = %#v, want two warnings", findings)
-	}
-	if findings[0].sev != severity.Warn || findings[0].rule != "coverage-baseline-added" || !strings.Contains(findings[0].detail, "internal/a.go:3.1,3.2 1") || !strings.Contains(findings[0].detail, moved.Reason) || !strings.Contains(findings[0].detail, "moved from internal/old.go:1.1,1.2 1") {
-		t.Fatalf("moved finding = %#v", findings[0])
-	}
-	if findings[1].sev != severity.Warn || !strings.Contains(findings[1].detail, "internal/z.go:2.1,2.2 1") || !strings.Contains(findings[1].detail, added.Reason) {
-		t.Fatalf("added finding = %#v", findings[1])
-	}
-}
-
-func TestCoverageBaselineInitialAdmissionsWarn(t *testing.T) {
-	admission := baselineAdmission("internal/new.go", 2, "initial independent review")
-	g := fakeGit{
-		"merge-base b h":                {out: "b\n"},
-		"show h:coverage-baseline.json": {out: baselineFixture(t, admission)},
-	}
-	findings := coverageBaselineRule(context.Background(), g, "b", "h", nil)
-	if len(findings) != 1 || findings[0].sev != severity.Warn || !strings.Contains(findings[0].detail, admission.Reason) {
-		t.Fatalf("initial baseline findings = %#v", findings)
-	}
-}
-
-func TestCoverageBaselineRemovalOnlyIsClean(t *testing.T) {
-	old := baselineAdmission("internal/old.go", 1, "old admission")
-	g := fakeGit{
-		"merge-base b h":                {out: "b\n"},
-		"show b:coverage-baseline.json": {out: baselineFixture(t, old)},
-		"show h:coverage-baseline.json": {out: baselineFixture(t)},
-	}
-	if findings := coverageBaselineRule(context.Background(), g, "b", "h", nil); len(findings) != 0 {
-		t.Fatalf("removal-only findings = %#v", findings)
-	}
-}
-
-func TestBaselineAtAcceptsCanonicalHistoricalRepositoryPolicy(t *testing.T) {
-	raw, err := os.ReadFile(filepath.Join("..", "..", coverageBaselinePath))
-	if err != nil {
-		t.Fatal(err)
-	}
-	var baseline coverage.Baseline
-	if err := json.Unmarshal(raw, &baseline); err != nil {
-		t.Fatal(err)
-	}
-	for _, line := range []int{73, 94} {
-		directive := coverage.Directive{
-			File:       "internal/effort/publication_windows.go",
-			Line:       line,
-			TargetLine: line,
-			Reason:     "historical Windows-only rollback branch",
-		}
-		evidence := "historical Windows-only platform evidence"
-		baseline.ProductionDirectives = append(baseline.ProductionDirectives, coverage.DirectiveAdmission{
-			Directive: directive,
-			Class:     coverage.IgnorePlatformOnly,
-			Evidence:  evidence,
-		})
-		baseline.PlatformDirectives = append(baseline.PlatformDirectives, coverage.PlatformDirective{
-			Directive: directive,
-			Platforms: []string{"windows"},
-			Class:     coverage.IgnorePlatformOnly,
-			Evidence:  evidence,
-		})
-	}
-	sort.Slice(baseline.ProductionDirectives, func(i, j int) bool {
-		left, right := baseline.ProductionDirectives[i].Directive, baseline.ProductionDirectives[j].Directive
-		return left.File < right.File || left.File == right.File && left.Line < right.Line
-	})
-	stale, err := json.MarshalIndent(baseline, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	stale = append(stale, '\n')
-	got, found, err := baselineAt(context.Background(), fakeGit{
-		"show old:coverage-baseline.json": {out: string(stale)},
-	}, "old")
-	if err != nil {
-		t.Fatalf("historical baseline: %v", err)
-	}
-	if !found || len(got.PlatformDirectives) != 4 {
-		t.Fatalf("historical baseline found=%t platform directives=%d", found, len(got.PlatformDirectives))
-	}
-}
-
-func TestCoverageBaselineEvidenceFailuresAreErrors(t *testing.T) {
-	valid := baselineFixture(t)
-	for _, tc := range []struct {
-		name string
-		git  fakeGit
-	}{
-		{name: "read failure", git: fakeGit{"merge-base b h": {out: "b\n"}, "show b:coverage-baseline.json": {out: valid}, "show h:coverage-baseline.json": {err: errors.New("gone")}}},
-		{name: "invalid", git: fakeGit{"merge-base b h": {out: "b\n"}, "show b:coverage-baseline.json": {out: valid}, "show h:coverage-baseline.json": {out: "not json"}}},
-		{name: "removed", git: fakeGit{"merge-base b h": {out: "b\n"}, "show b:coverage-baseline.json": {out: valid}}},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			findings := coverageBaselineRule(context.Background(), tc.git, "b", "h", nil)
-			if len(findings) != 1 || findings[0].sev != severity.Error || findings[0].rule != "coverage-baseline-added" {
-				t.Fatalf("findings = %#v", findings)
-			}
-			if tc.name == "read failure" && !strings.Contains(findings[0].detail, "gone") {
-				t.Fatalf("read failure detail = %q", findings[0].detail)
-			}
-		})
 	}
 }

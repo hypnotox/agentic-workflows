@@ -20,17 +20,17 @@ Separate feedback by purpose rather than calling every check a gate.
 | Feedback class | Trigger | Intended scope |
 |---|---|---|
 | Focused | During editing | The narrowest test, build, or lint command that exercises the changed owner. |
-| Affected | After a coherent edit when supported | Changed owners, dependents, and declared integration or meta-suites selected from explicit change evidence. |
+| Affected | After a coherent edit when supported | Changed owners, dependents, test importers, and declared smoke packages selected from explicit change evidence. |
 | Fast or normal gate | Commit boundary | Deterministic, bounded checks that provide prompt commit feedback. |
-| Full gate | Implementation completion, push, or CI | Exhaustive repository assurance, including slower integration, runtime, platform, coverage, or mutation lanes when applicable. |
+| Terminal or hosted | Implementation completion, push, or CI | Required repository-wide, runtime, or platform assurance omitted from earlier feedback. |
 
-The repository decides the exact commands and lane membership. The fast tier may optimize turnaround, but it must not imply exhaustive behavioral assurance when tests run elsewhere. The full tier owns every required check omitted from earlier feedback. Put generated-runtime and cross-language checks in a consistently enforced tier, never an undocumented manual exception.
+The repository decides the exact commands and lane membership. A fast tier may optimize turnaround, but it must not imply exhaustive behavioral assurance when tests run elsewhere. Put generated-runtime and cross-language checks in a consistently enforced tier, never an undocumented manual exception.
 
 ### Duration and performance
 
-Record representative warm and cold durations for the fast and full tiers when their cost affects workflow. Bind each measurement to the command, toolchain, operating system and architecture, relevant hardware, cache state, concurrency, and sample method. Name dominant stages so a regression can be located instead of treating total wall time as one opaque value.
+Record representative warm and cold durations when command cost affects workflow. Bind each measurement to the command, toolchain, operating system and architecture, relevant hardware, cache state, concurrency, and sample method. Name dominant stages so a regression can be located instead of treating total wall time as one opaque value.
 
-Durations are evidence, not universal correctness assertions. Use repository-specific targets or budgets only when their measurement procedure is reproducible. A slow required lane still needs an explicit trigger and owner; move it to a deliberate full or hosted tier rather than silently skipping it. Document serial-only tests, isolated homes or temporary directories, cache-sensitive behavior, and external dependencies that materially affect timing or reliability.
+Durations are evidence, not universal correctness assertions. Use repository-specific targets or budgets only when their measurement procedure is reproducible. A slow required lane still needs an explicit trigger and owner; move it to a deliberate hosted tier rather than silently skipping it. Document serial-only tests, isolated homes or temporary directories, cache-sensitive behavior, and external dependencies that materially affect timing or reliability.
 <!-- awf:end -->
 
 <!-- awf:section layout stub -->

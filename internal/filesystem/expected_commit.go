@@ -17,8 +17,8 @@ func exchangeExpected(root *os.Root, temporary, destination string, expected *Ex
 	}
 	defer parentRoot.Close()
 	anchor, err := parentRoot.Open(".")
-	if err != nil { // coverage-ignore: the newly opened parent remains live until its deferred close
-		return false, fmt.Errorf("filesystem: open atomic parent anchor %q: %w", parent, err) // coverage-ignore: the newly opened parent remains live until its deferred close
+	if err != nil {
+		return false, fmt.Errorf("filesystem: open atomic parent anchor %q: %w", parent, err)
 	}
 	defer anchor.Close()
 	return exchangeExpectedAnchored(parentRoot, anchor, path.Base(temporary), path.Base(destination), expected, remove, retain)

@@ -37,7 +37,7 @@ type CheckAdvisories struct {
 // AdvisoryNotes returns the non-failing notes derived from one prepared output plan.
 func advisoryNotes(p renderInputs, op *OutputPlan, glossary glossarycheck.Input) ([]string, error) {
 	glossaryResults, err := glossarycheck.Evaluate(glossary)
-	if err != nil { // coverage-ignore: prepared glossary checks are infallible
+	if err != nil {
 		return nil, err
 	}
 	advisories := advisoryNotesWithState(p, op, glossaryResults)
@@ -188,7 +188,7 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 	}
 	corpus, pitfalls, eff := semantics.ADRs, semantics.Pitfalls, semantics.EffectiveSkills
 	glossaryResults, err := glossarycheck.Evaluate(semantics.Glossary)
-	if err != nil { // coverage-ignore: Publisher preparation supplied validated glossary semantics
+	if err != nil {
 		return CheckReport{}, err
 	}
 	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, corpus, pitfalls, eff, semantics.GeneratedOutput, op, glossaryResults)
@@ -196,7 +196,7 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semanti
 		return CheckReport{}, err
 	}
 	advisories, err := advisoryResultsWithState(p, op, glossaryResults)
-	if err != nil { // coverage-ignore: Publisher preparation validated advisory inputs and the output plan is immutable
+	if err != nil {
 		return CheckReport{}, err
 	}
 	return repositorycheck.Compose(repositorycheck.Inputs{
@@ -235,27 +235,27 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, errors.New("no lock (run awf render)")
 	}
 	locked, err := generatedcheck.Locked(p.isNested(), lock, *op, func(path string) ([]byte, error) { return os.ReadFile(p.residentRoots().ResolveOutput(path)) }, tracking)
-	if err != nil { // coverage-ignore: ReferenceChecker has no operational failure path for prepared inputs
+	if err != nil {
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results = append(results, repositorycheck.Slot{Result: locked})
 	generated, err := generatedcheck.Additional(generatedInput, *op)
-	if err != nil { // coverage-ignore: Additional constructs fixed nonempty evidence from immutable prepared semantic values
+	if err != nil {
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results = append(results, repositorycheck.Slot{Result: generated, IncludeInformationInDrift: true})
 	references, err := referenceResult(p, *op, eff)
-	if err != nil { // coverage-ignore: ReferenceChecker constructs fixed valid evidence from prepared output and skill identities
+	if err != nil {
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results = append(results, repositorycheck.Slot{Result: references})
 	pitfallsResult, err := pitfallResult(p, corpus, pitfalls)
-	if err != nil { // coverage-ignore: the operation supplied its validated pitfall corpus
+	if err != nil {
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results = append(results, repositorycheck.Slot{Result: pitfallsResult})
 	withoutWarnings, _, err := repositorycheck.SplitWarnings(glossaryResult)
-	if err != nil { // coverage-ignore: splitting GlossaryChecker's validated immutable result cannot invalidate evidence
+	if err != nil {
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results = append(results, repositorycheck.Slot{Result: withoutWarnings})
@@ -264,7 +264,7 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 
 func trackingFindings(result checkresult.Result) checkresult.Result {
 	tracking, err := checkresult.New(result.Findings(), nil)
-	if err != nil { // coverage-ignore: tracking owner already validates its immutable evidence
+	if err != nil {
 		return checkresult.Result{}
 	}
 	return tracking
@@ -272,7 +272,7 @@ func trackingFindings(result checkresult.Result) checkresult.Result {
 
 func trackingInformation(result checkresult.Result) checkresult.Result {
 	tracking, err := checkresult.New(nil, result.Information())
-	if err != nil { // coverage-ignore: tracking owner already validates its immutable evidence
+	if err != nil {
 		return checkresult.Result{}
 	}
 	return tracking
@@ -306,7 +306,7 @@ func pendingADRResult(p renderInputs, repo *awfgit.Repo, ctx context.Context, co
 		findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: propertyAuthority, Evidence: checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: drift.Detail}})
 	}
 	result, err := checkresult.New(findings, nil)
-	if err != nil { // coverage-ignore: pending ADR evidence is constructed from nonempty corpus records
+	if err != nil {
 		return checkresult.Result{}
 	}
 	return result
@@ -318,7 +318,7 @@ func advisoryResultsWithState(p renderInputs, op *OutputPlan, glossaryResult che
 		findings = append(findings, checkresult.Finding{Rank: severity.Warn, Property: propertyHeuristic, Evidence: checkresult.Evidence{Kind: "advisory", Detail: note}})
 	}
 	guide, err := generatedcheck.GuideSizeAdvisory(*op)
-	if err != nil { // coverage-ignore: GuideSizeAdvisory has no fallible prepared-plan path
+	if err != nil {
 		return checkresult.Result{}, err
 	}
 	findings = append(findings, guide.Findings()...)

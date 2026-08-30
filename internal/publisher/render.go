@@ -208,7 +208,7 @@ func planSections(p renderInputs, kind, artifact string, declared []string, sec 
 			continue
 		}
 		b, exists, err := p.cfg.ReadPart(kind, artifact, s)
-		if err != nil { // coverage-ignore: declaration-first output planning already parses this consumed part in the same operation
+		if err != nil {
 			return nil, err
 		}
 		if exists {
@@ -270,7 +270,7 @@ func templateSourceRootMarker(p renderInputs, tid string) (string, []OutputInput
 		return "", nil, fmt.Errorf("read template %s: %w", tid, err)
 	}
 	expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
-	if err != nil { // coverage-ignore: live embedded templates are include-validated; render package tests own malformed expansion
+	if err != nil {
 		return "", nil, fmt.Errorf("render %s: %w", tid, err)
 	}
 	if err := validateTemplateSources(p, expanded, root); err != nil {
@@ -365,7 +365,7 @@ func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]Ren
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(spec.names)) {
 		sc, err := p.cfg.Sidecar(spec.kind, name)
-		if err != nil { // coverage-ignore: declaration-first planning just parsed this enabled artifact sidecar
+		if err != nil {
 			return nil, err
 		}
 		if spec.defaults != nil {
@@ -503,7 +503,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 					target:      &target,
 					encoder:     targetOutput.Encoder,
 				})
-			if err != nil { // coverage-ignore: targetOutputDeclarations read this same embedded template before render.
+			if err != nil {
 				return nil, err
 			}
 			rf.Policy = targetOutput.Policy
@@ -511,7 +511,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 			rf.DeclarerProjection = targetDescriptorProjection(t)
 			rf.Encoder = targetOutput.Encoder
 			rf.Provenance = targetOutput.Provenance
-			for _, input := range targetOutput.Inputs { // coverage-ignore: validated target outputs cannot carry producer inputs
+			for _, input := range targetOutput.Inputs {
 				rf.ConsumedInputs = append(rf.ConsumedInputs, OutputInput(input))
 			}
 			rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
@@ -520,7 +520,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 	}
 	// agents-doc / AGENTS.md, neutral - once.
 	ad, err := p.cfg.Sidecar("agents-doc", "")
-	if err != nil { // coverage-ignore: declaration-first planning just parsed the agents-doc sidecar
+	if err != nil {
 		return nil, err
 	}
 	ad = withDefaultData(ad, projectCatalog(p).Docs["agents-doc"].Data)
@@ -535,7 +535,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 		return nil, err
 	}
 	for _, name := range slices.Sorted(maps.Keys(projectCatalog(p).Docs)) {
-		if ok, sidecarErr := p.cfg.HasSidecar("docs", name); sidecarErr != nil { // coverage-ignore: declaration-first planning already read every catalog doc sidecar from the same filesystem invocation
+		if ok, sidecarErr := p.cfg.HasSidecar("docs", name); sidecarErr != nil {
 			return nil, sidecarErr
 		} else if ok {
 			rf.ConsumedInputs = append(rf.ConsumedInputs, OutputInput{Path: config.DirName + "/docs/" + name + ".yaml", Role: ArtifactAuthoredData})
@@ -587,7 +587,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 		rf, err := renderTarget(p, unit.kind, "", unit.tid, unit.sections,
 			config.Sidecar{}, projectData(p, config.Sidecar{}, eff), unit.path, eff,
 			&renderOutputOptions{encoder: PlainAgentDialect})
-		if err != nil { // coverage-ignore: conditional units use only fixed embedded templates and validated fixed output paths; renderTarget owns malformed-input error coverage
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, rf)
@@ -596,7 +596,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 	// descendants are local authority and never enter the manifest.
 	for _, name := range resident.RootNames() {
 		rf, err := renderResidentMarker(p, name, eff)
-		if err != nil { // coverage-ignore: resident templates are embedded and registered at startup
+		if err != nil {
 			return nil, err
 		}
 		out = append(out, rf)
@@ -626,11 +626,11 @@ func renderTarget(p renderInputs, kind, artifact, tid string, declared []string,
 		return RenderedFile{}, fmt.Errorf("read template %s: %w", tid, err)
 	}
 	expandedSource, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
-	if err != nil { // coverage-ignore: awf-owned embedded templates never author a missing/nested/section-bearing include, so ExpandIncludes cannot fail through the render pass; its error branches are unit-tested in internal/render
+	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	strippedSource, err := render.StripAuthoringCommentsSource(expandedSource)
-	if err != nil { // coverage-ignore: awf-owned embedded templates never author a malformed awf:comment opener, so the strip cannot fail through the render pass; its error branch is unit-tested in internal/render
+	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	expanded := expandedSource.AuthoredText()
@@ -669,7 +669,7 @@ func renderTarget(p renderInputs, kind, artifact, tid string, declared []string,
 		}
 		consumedInputs = normalizeOutputInputs(consumedInputs)
 	}
-	if err != nil { // coverage-ignore: the producer already parsed the same sidecar and planSections read the same parts in this invocation
+	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	if err := render.CheckSectionDefaultStubs(segs, plan); err != nil {
@@ -677,7 +677,7 @@ func renderTarget(p renderInputs, kind, artifact, tid string, declared []string,
 	}
 	assembledSource, parts := render.AssembleSourceWithTemplateSource(segs, plan, style, provenance)
 	assembled := assembledSource.AuthoredText()
-	if err := render.CheckResidualMarkersSource(assembledSource); err != nil { // coverage-ignore: awf-owned embedded templates are marker-well-formed, so the guard cannot fire through the render pass; its error branches are unit-tested in internal/render
+	if err := render.CheckResidualMarkersSource(assembledSource); err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	stubDefaults, stubParts := render.StubSections(segs, plan)
@@ -694,7 +694,7 @@ func renderTarget(p renderInputs, kind, artifact, tid string, declared []string,
 	} else {
 		content, err = render.Execute(assembled, data, parts, tid)
 	}
-	if err != nil { // coverage-ignore: with raw convention parts (ADR-0034) and always-valid embedded template defaults, render.Execute cannot fail through the render pass; its own parse/execute error branches are unit-tested in internal/render
+	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
 	if options != nil && options.encode != nil {
@@ -720,7 +720,7 @@ func renderTarget(p renderInputs, kind, artifact, tid string, declared []string,
 	if provenance.Root != "" {
 		cfgHash = manifest.Hash([]byte(cfgHash + "\x00templateSourceRoot=" + provenance.Root))
 	}
-	if err != nil { // coverage-ignore: artifactConfigHash only fails on an unreadable consumed part, but planSections above already read every HasPart part, so consumedParts holds only readable paths
+	if err != nil {
 		return RenderedFile{}, err
 	}
 	return RenderedFile{
@@ -763,7 +763,7 @@ func validateTemplateSources(p renderInputs, source render.SourceText, root stri
 				if errors.Is(statErr, fs.ErrNotExist) {
 					break
 				}
-				if statErr != nil { // coverage-ignore: non-absence Lstat failures are OS-dependent and the error-preserving branch is direct
+				if statErr != nil {
 					return fmt.Errorf("read configured template source %s for %s: %w", candidate, span.Source, statErr)
 				}
 				last := i == len(components)-1
@@ -773,7 +773,7 @@ func validateTemplateSources(p renderInputs, source render.SourceText, root stri
 			}
 		}
 		_, ok, err := projectTreeReader(p).ReadFile(candidate)
-		if err != nil { // coverage-ignore: composed working and immutable snapshot readers return absence separately; their I/O failures are tested at reader ownership
+		if err != nil {
 			return fmt.Errorf("read configured template source %s for %s: %w", candidate, span.Source, err)
 		}
 		if !ok {
@@ -803,7 +803,7 @@ func observeRenderInputs(p renderInputs, kind, artifact, tid, outPath string, pl
 	}
 	if kind != "target-output" && kind != targetBridgeKind && kind != "bootstrap" && kind != "hooks" && kind != "runner" && kind != "pitfall-entry" && !resident.IsResidentKind(kind) {
 		has, err := p.cfg.HasSidecar(kind, artifact)
-		if err != nil { // coverage-ignore: render producers parse this sidecar before input observation, and filesystem stat cannot newly fail without a concurrent race
+		if err != nil {
 			return nil, err
 		}
 		if has {
@@ -872,7 +872,7 @@ func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus, eff map[string
 		rf, err := renderTarget(p, "pitfall-entry", entry.Slug, pitfallEntryTID, nil, sc,
 			projectData(p, sc, eff), config.DocsDir+"/pitfalls/"+entry.Slug+".md", eff,
 			&renderOutputOptions{sources: []string{entry.SourcePath}})
-		if err != nil { // coverage-ignore: embedded leaf template and validated typed data cannot fail at this point
+		if err != nil {
 			return nil, err
 		}
 		rf.ConfigHash = manifest.Hash([]byte(rf.ConfigHash + "\x00" + string(entry.Source)))
@@ -915,7 +915,7 @@ func generateDomainDocs(p renderInputs, topics topic.Corpus, eff map[string]bool
 				".awf/topics/metadata/" + name + "/*.yaml",
 				".awf/topics/parts/" + name + "/*/current-state.md",
 			}})
-		if err != nil { // coverage-ignore: .data.domain/.data.topics are always set and the template is embedded, so renderTarget cannot produce <no value> or a read error here
+		if err != nil {
 			return nil, err
 		}
 		for _, currentTopic := range topics.ForDomain(name) {

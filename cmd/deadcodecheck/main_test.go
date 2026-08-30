@@ -11,7 +11,6 @@ type errReader struct{}
 
 func (errReader) Read([]byte) (int, error) { return 0, errors.New("boom") }
 
-// invariant: tooling/quality-gates:deadcode-gate (TestRunFiltersTestsupportOnly)
 func TestRunFiltersTestsupportOnly(t *testing.T) {
 	const j = `[{"Path":"x","Funcs":[
 		{"Name":"Helper","Position":{"File":"internal/testsupport/x.go","Line":10}},

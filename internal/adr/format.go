@@ -529,7 +529,7 @@ func validateV2History(a ADR) error {
 			lastStamp = event.Digest
 			continue
 		}
-		if event.Kind != HistoryStatus { // coverage-ignore: the parser constructs only the four closed event kinds
+		if event.Kind != HistoryStatus {
 			return errors.New("Status history contains an unknown event kind")
 		}
 		if i > 0 && !v2TransitionLegal(current, event.Status) {

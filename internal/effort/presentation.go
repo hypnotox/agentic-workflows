@@ -10,11 +10,11 @@ import (
 
 func unchangedBytes() ([]presentation.Field, error) {
 	value, err := presentation.Prose("no")
-	if err != nil { // coverage-ignore: fixed refusal fact always validates as prose
+	if err != nil {
 		return nil, err
 	}
 	field, err := presentation.NewField("bytes", value)
-	if err != nil { // coverage-ignore: fixed grammar-valid label always validates
+	if err != nil {
 		return nil, err
 	}
 	return []presentation.Field{field}, nil
@@ -35,11 +35,11 @@ func recoverySteps(actions []RecoveryAction) ([]presentation.Value, error) {
 // Diagnostic maps a typed effort refusal into the common readable diagnostic.
 func (e *refusalError) Diagnostic() (presentation.Diagnostic, error) {
 	changed, err := unchangedBytes()
-	if err != nil { // coverage-ignore: unchangedBytes constructs fixed valid presentation facts
+	if err != nil {
 		return presentation.Diagnostic{}, err
 	}
 	steps, err := recoverySteps(e.actions)
-	if err != nil { // coverage-ignore: every internal refusal action is a fixed valid literal
+	if err != nil {
 		return presentation.Diagnostic{}, err
 	}
 	return presentation.Diagnostic{Condition: e.condition, State: e.state, Cause: e.cause, Changed: changed, Steps: steps}, nil
@@ -50,11 +50,11 @@ func (e *managedTopologyError) Diagnostic() (presentation.Diagnostic, error) {
 	changed := make([]presentation.Field, 0, 2)
 	for _, fact := range []struct{ label, value string }{{"active resident", "no"}, {"managed topology", "no"}} {
 		value, err := presentation.Prose(fact.value)
-		if err != nil { // coverage-ignore: fixed nonempty refusal facts always validate as prose
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		field, err := presentation.NewField(fact.label, value)
-		if err != nil { // coverage-ignore: fixed grammar-valid refusal labels always validate
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		changed = append(changed, field)
@@ -74,11 +74,11 @@ func (e *PartialFinishError) Diagnostic() (presentation.Diagnostic, error) {
 		value bool
 	}{{"active resident", e.Result.State == FinishStateActive}, {"finishing reservation", e.Result.State == FinishStateReserved}, {"archived resident", e.Result.State == FinishStateArchived}, {"archive parent sync available", e.Result.DestinationSyncAvailable}, {"archive parent synced", e.Result.DestinationSynced}, {"efforts parent sync available", e.Result.SourceSyncAvailable}, {"efforts parent synced", e.Result.SourceSynced}} {
 		value, err := presentation.Prose(yesNo(fact.value))
-		if err != nil { // coverage-ignore: yesNo always returns a nonempty prose value
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		field, err := presentation.NewField(fact.label, value)
-		if err != nil { // coverage-ignore: fixed grammar-valid finish labels always validate
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		changed = append(changed, field)
@@ -89,7 +89,7 @@ func (e *PartialFinishError) Diagnostic() (presentation.Diagnostic, error) {
 			return presentation.Diagnostic{}, valueErr
 		}
 		field, fieldErr := presentation.NewField("archive", value)
-		if fieldErr != nil { // coverage-ignore: fixed grammar-valid label and confined path are presentation-valid
+		if fieldErr != nil {
 			return presentation.Diagnostic{}, fieldErr
 		}
 		changed = append(changed, field)
@@ -104,11 +104,11 @@ func (e *PartialFinishError) Diagnostic() (presentation.Diagnostic, error) {
 // Diagnostic maps a corrupt resident refusal into the common readable diagnostic.
 func (e *CorruptError) Diagnostic() (presentation.Diagnostic, error) {
 	changed, err := unchangedBytes()
-	if err != nil { // coverage-ignore: unchangedBytes constructs fixed valid presentation facts
+	if err != nil {
 		return presentation.Diagnostic{}, err
 	}
 	steps, err := recoverySteps([]RecoveryAction{{Text: "preserve the resident and inspect it for manual cleanup"}})
-	if err != nil { // coverage-ignore: fixed recovery literal is presentation-valid
+	if err != nil {
 		return presentation.Diagnostic{}, err
 	}
 	return presentation.Diagnostic{Condition: "effort resident is unusable", State: "resident", Cause: fmt.Sprintf("%s: %v", e.Path, e.Err), Changed: changed, Steps: steps}, nil
@@ -141,7 +141,7 @@ func (r Record) presentationFields(slugLabel string) ([]presentation.Field, erro
 			return nil, err
 		}
 		field, err := presentation.NewField(fact.label, value)
-		if err != nil { // coverage-ignore: fixed grammar-valid labels and validated values form valid fields
+		if err != nil {
 			return nil, err
 		}
 		fields = append(fields, field)
@@ -153,11 +153,11 @@ func (r Record) presentationFields(slugLabel string) ([]presentation.Field, erro
 func ListDocument(records []Record) (presentation.Document, error) {
 	if len(records) == 0 {
 		value, err := presentation.Prose("none")
-		if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		field, err := presentation.NewField("efforts", value)
-		if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		return presentation.NewDocument(field)
@@ -165,17 +165,17 @@ func ListDocument(records []Record) (presentation.Document, error) {
 	values := make([]presentation.Value, 0, len(records))
 	for _, record := range records {
 		value, err := presentation.Prose(record.Slug + ": " + record.Title)
-		if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		values = append(values, value)
 	}
 	list, err := presentation.NewList("efforts", values...)
-	if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	section, err := presentation.NewSection("effort list", list)
-	if err != nil { // coverage-ignore: the fixed section label and validated list form a valid root section
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	return presentation.NewDocument(section)
@@ -207,7 +207,7 @@ func (r MemoryOperationResult) MemoryDocument() (presentation.Document, error) {
 			return err
 		}
 		field, err := presentation.NewField(label, value)
-		if err != nil { // coverage-ignore: every caller supplies a fixed grammar-valid label
+		if err != nil {
 			return err
 		}
 		fields = append(fields, field)
@@ -221,15 +221,15 @@ func (r MemoryOperationResult) MemoryDocument() (presentation.Document, error) {
 			return presentation.Document{}, err
 		}
 		if r.Outcome.Cause != "" {
-			if err := add("cause", r.Outcome.Cause, true); err != nil { // coverage-ignore: a nonempty mechanism cause always normalizes to valid prose
+			if err := add("cause", r.Outcome.Cause, true); err != nil {
 				return presentation.Document{}, err
 			}
 		}
-		if err := add("changed memory", yesNo(r.Outcome.ChangedMemory), false); err != nil { // coverage-ignore: fixed label and yes/no literal are constructor-valid
+		if err := add("changed memory", yesNo(r.Outcome.ChangedMemory), false); err != nil {
 			return presentation.Document{}, err
 		}
 		for _, fact := range memoryRefusalPresentationFacts(r) {
-			if err := add(fact.label, fact.value, false); err != nil { // coverage-ignore: fixed labels and integer literals are constructor-valid
+			if err := add(fact.label, fact.value, false); err != nil {
 				return presentation.Document{}, err
 			}
 		}
@@ -240,11 +240,11 @@ func (r MemoryOperationResult) MemoryDocument() (presentation.Document, error) {
 		nodes := fieldsAsNodesForEffort(fields)
 		if len(steps) > 0 {
 			stepNode, err := presentation.NewSteps("steps", steps...)
-			if err != nil { // coverage-ignore: recoverySteps validated every action
+			if err != nil {
 				return presentation.Document{}, err
 			}
 			diagnostic, err := presentation.NewSection("diagnostic", stepNode)
-			if err != nil { // coverage-ignore: fixed labels and validated children are constructor-valid
+			if err != nil {
 				return presentation.Document{}, err
 			}
 			nodes = append(nodes, diagnostic)
@@ -278,7 +278,7 @@ func (r MemoryOperationResult) MemoryDocument() (presentation.Document, error) {
 			{"truncated by", r.Range.TruncatedBy},
 			{"content", strconv.Quote(r.Content)},
 		} {
-			if err := add(fact.label, fact.value, false); err != nil { // coverage-ignore: fixed labels and quoted or typed range literals are constructor-valid
+			if err := add(fact.label, fact.value, false); err != nil {
 				return presentation.Document{}, err
 			}
 		}
@@ -297,7 +297,7 @@ func (r MemoryOperationResult) MemoryDocument() (presentation.Document, error) {
 			{"first changed line", first},
 			{"diff truncated", yesNo(r.Diff.Truncated)},
 		} {
-			if err := add(fact.label, fact.value, false); err != nil { // coverage-ignore: fixed labels and quoted or typed diff literals are constructor-valid
+			if err := add(fact.label, fact.value, false); err != nil {
 				return presentation.Document{}, err
 			}
 		}
@@ -343,7 +343,7 @@ func (r FinishResult) FinishMutation(slug string) (presentation.Mutation, error)
 		return presentation.Mutation{}, err
 	}
 	effortField, err := presentation.NewField("effort", effortValue)
-	if err != nil { // coverage-ignore: validated slug and fixed label are presentation-valid
+	if err != nil {
 		return presentation.Mutation{}, err
 	}
 	archiveValue, err := presentation.Literal(r.ArchivePath)
@@ -351,7 +351,7 @@ func (r FinishResult) FinishMutation(slug string) (presentation.Mutation, error)
 		return presentation.Mutation{}, err
 	}
 	archiveField, err := presentation.NewField("archive", archiveValue)
-	if err != nil { // coverage-ignore: confined archive path and fixed label are presentation-valid
+	if err != nil {
 		return presentation.Mutation{}, err
 	}
 	changed := make([]presentation.Value, 0, 4)
@@ -363,13 +363,13 @@ func (r FinishResult) FinishMutation(slug string) (presentation.Mutation, error)
 			continue
 		}
 		item, err := presentation.Prose(axis.label)
-		if err != nil { // coverage-ignore: fixed labels are presentation-valid
+		if err != nil {
 			return presentation.Mutation{}, err
 		}
 		changed = append(changed, item)
 	}
 	next, err := presentation.Prose("continue without this finished effort; delete the local archive manually when it is no longer useful")
-	if err != nil { // coverage-ignore: fixed prose is presentation-valid
+	if err != nil {
 		return presentation.Mutation{}, err
 	}
 	mutation := presentation.Mutation{Status: "archived", Identity: []presentation.Field{effortField, archiveField}, NextActions: []presentation.Value{next}}
@@ -385,7 +385,7 @@ func (r FinishResult) FinishMutation(slug string) (presentation.Mutation, error)
 			continue
 		}
 		value, err := presentation.Prose(text)
-		if err != nil { // coverage-ignore: fixed platform-limit prose is presentation-valid
+		if err != nil {
 			return presentation.Mutation{}, err
 		}
 		limits = append(limits, value)

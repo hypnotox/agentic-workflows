@@ -203,7 +203,7 @@ func resolveTargets(names []string) ([]Target, error) {
 		if !ok {
 			return nil, fmt.Errorf("unknown target %q (known: %s)", n, strings.Join(KnownTargets(), ", "))
 		}
-		if err := t.validate(); err != nil { // coverage-ignore: built-in registry descriptors are validated by descriptor tests
+		if err := t.validate(); err != nil {
 			return nil, err
 		}
 		out = append(out, cloneTargets([]Target{t})[0])

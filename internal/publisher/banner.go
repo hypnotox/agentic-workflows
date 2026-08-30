@@ -47,7 +47,7 @@ func injectBanner(content, tid string, styles ...render.CommentStyle) string {
 	if strings.HasPrefix(content, "#!") {
 		// Shell/script target: banner as a # comment after the shebang line.
 		nl := strings.IndexByte(content, '\n')
-		if nl < 0 { // coverage-ignore: a rendered shebang script always has a trailing newline body
+		if nl < 0 {
 			return content
 		}
 		return content[:nl+1] + "# " + bannerText + "\n" + rootSymbol + content[nl+1:]

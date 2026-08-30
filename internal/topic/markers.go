@@ -162,7 +162,7 @@ func finalizeMarkerIndex(idx MarkerIndex, corpus Corpus) error {
 		if claim.Type == Invariant && claim.Backing == TestBacking && proofs == 0 {
 			return fmt.Errorf("test-backed invariant %s has no proof marker", id)
 		}
-		if claim.Type == Invariant && claim.Backing == Unbacked && proofs > 0 { // coverage-ignore: resolveMarker rejects an unbacked proof before it can enter the index
+		if claim.Type == Invariant && claim.Backing == Unbacked && proofs > 0 {
 			return fmt.Errorf("unbacked invariant %s must not have a proof marker", id)
 		}
 		sortSites(sites)

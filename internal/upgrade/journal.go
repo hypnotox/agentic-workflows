@@ -273,7 +273,7 @@ func productionJournalOperation() journalOperation {
 		},
 		write: func(root string, j Journal) error {
 			b, err := json.MarshalIndent(j, "", "  ")
-			if err != nil { // coverage-ignore: Journal holds only JSON-representable scalars, slices, and byte content
+			if err != nil {
 				return err
 			}
 			return state.with(root, func(files *filesystem.Handle) error { return files.Replace(JournalRel, append(b, '\n'), 0o644) })
@@ -591,7 +591,7 @@ func committedChanged(j Journal, evidence []Evidence) []Evidence {
 }
 
 func commitTransactionBound(root string, ops []Operation, operation journalOperation) (Outcome, error) {
-	if err := validateOperations(ops); err != nil { // coverage-ignore: the supported-migration planner validated the same set before this call
+	if err := validateOperations(ops); err != nil {
 		return Outcome{}, err
 	}
 	j := Journal{Version: JournalVersion, Phase: phasePrepared, FinalLockSHA256: imageSHA(ops[len(ops)-1].Replacement), Operations: ops}
@@ -703,7 +703,7 @@ func removeChangedPath(changed []Evidence, path string) []Evidence {
 			return append(changed[:i:i], changed[i+1:]...)
 		}
 	}
-	return changed // coverage-ignore: no caller provides a changed set without its path
+	return changed
 }
 
 // Recover applies the journal recovery decision table. It is the only project

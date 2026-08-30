@@ -58,7 +58,7 @@ func scanGitAccess(path string, src []byte) ([]gitAccessFinding, error) {
 	findings := []gitAccessFinding{}
 	for _, imp := range file.Imports {
 		p, err := strconv.Unquote(imp.Path.Value)
-		if err != nil { // coverage-ignore: the parser accepted the file, so every import path is a well-formed quoted string
+		if err != nil {
 			return nil, fmt.Errorf("%s: unquote import %s: %w", path, imp.Path.Value, err)
 		}
 		for _, prefix := range gitLibraryPrefixes {
@@ -139,7 +139,7 @@ func scanExecConstructions(path string, src []byte) ([]execConstruction, error) 
 			if len(node.Args) > commandIndex {
 				if lit, ok := node.Args[commandIndex].(*ast.BasicLit); ok && lit.Kind == token.STRING {
 					construction.Command, err = strconv.Unquote(lit.Value)
-					if err != nil { // coverage-ignore: the parser accepted the literal, so it unquotes
+					if err != nil {
 						return false
 					}
 					construction.Literal = true
@@ -176,7 +176,7 @@ func scanExecConstructions(path string, src []byte) ([]execConstruction, error) 
 				}
 				if lit, literal := kv.Value.(*ast.BasicLit); literal && lit.Kind == token.STRING {
 					construction.Command, err = strconv.Unquote(lit.Value)
-					if err != nil { // coverage-ignore: the parser accepted the literal, so it unquotes
+					if err != nil {
 						return false
 					}
 					construction.Literal = true
@@ -186,7 +186,7 @@ func scanExecConstructions(path string, src []byte) ([]execConstruction, error) 
 		}
 		return true
 	})
-	if err != nil { // coverage-ignore: every parsed string literal unquotes
+	if err != nil {
 		return nil, err
 	}
 	return constructions, nil
@@ -232,7 +232,7 @@ func isExecConstruction(fun ast.Expr, execName string) bool {
 func importLocalName(file *ast.File, importPath string) string {
 	for _, imp := range file.Imports {
 		p, err := strconv.Unquote(imp.Path.Value)
-		if err != nil || p != importPath { // coverage-ignore: the parser accepted every import path in this file
+		if err != nil || p != importPath {
 			continue
 		}
 		if imp.Name != nil {
@@ -251,7 +251,7 @@ func literalString(expr ast.Expr) string {
 		return ""
 	}
 	value, err := strconv.Unquote(lit.Value)
-	if err != nil { // coverage-ignore: the parser accepted this literal, so it unquotes
+	if err != nil {
 		return ""
 	}
 	return value
@@ -284,7 +284,7 @@ func walkGitAccess(t *testing.T, testFiles bool, allowed []string) ([]gitAccessF
 		return !allowedGitAccess(rel, allowed)
 	}, func(rel string, body []byte) {
 		found, err := scanGitAccess(rel, body)
-		if err != nil { // coverage-ignore: every non-allowlisted module file compiles, so it parses
+		if err != nil {
 			t.Fatal(err)
 		}
 		findings = append(findings, found...)

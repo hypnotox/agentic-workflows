@@ -20,29 +20,29 @@ func writeVersion(stdout io.Writer, info *debug.BuildInfo, ok bool) error {
 	line := versionLine(info, ok)
 	if ok && formatProvenance(info) != "" {
 		value, err := presentation.Literal(line)
-		if err != nil { // coverage-ignore: normalized provenance and the fixed version prefix cannot produce an invalid literal
+		if err != nil {
 			return err
 		}
 		field, err := presentation.NewField("version", value)
-		if err != nil { // coverage-ignore: the fixed version label and validated value cannot be invalid
+		if err != nil {
 			return err
 		}
 		document, err := presentation.NewDocument(field)
-		if err != nil { // coverage-ignore: the fixed nonempty field list cannot be invalid
+		if err != nil {
 			return err
 		}
 		return presentation.Render(stdout, document)
 	}
 	value, err := presentation.Prose(line)
-	if err != nil { // coverage-ignore: the fixed version prefix remains nonempty after normalization
+	if err != nil {
 		return err
 	}
 	field, err := presentation.NewField("version", value)
-	if err != nil { // coverage-ignore: the fixed version label and validated value cannot be invalid
+	if err != nil {
 		return err
 	}
 	document, err := presentation.NewDocument(field)
-	if err != nil { // coverage-ignore: the fixed nonempty field list cannot be invalid
+	if err != nil {
 		return err
 	}
 	return presentation.Render(stdout, document)

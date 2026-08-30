@@ -14,7 +14,7 @@ import (
 // adopted tree.
 func StaticConfigReference() (ConfigReference, error) {
 	potential, err := potentialVarConsumersForCatalog()
-	if err != nil { // coverage-ignore: potentialVarConsumersForCatalog reads only embedded templates
+	if err != nil {
 		return ConfigReference{}, err
 	}
 	var ref ConfigReference
@@ -49,7 +49,7 @@ func ConfigReferencePresentation(key string, model *ConfigReference, status stri
 	ref := model
 	if ref == nil {
 		static, err := StaticConfigReference()
-		if err != nil { // coverage-ignore: embedded configspec catalog decoding is validated at build and package-test time
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		ref = &static

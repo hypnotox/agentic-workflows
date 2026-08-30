@@ -19,7 +19,7 @@ import (
 	"gopkg.in/yaml.v3"
 )
 
-func main() { os.Exit(run(os.DirFS(".github/workflows"), os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run is unit-tested
+func main() { os.Exit(run(os.DirFS(".github/workflows"), os.Stdout, os.Stderr)) }
 
 var (
 	commitSHA   = regexp.MustCompile(`^[0-9a-f]{40}$`)

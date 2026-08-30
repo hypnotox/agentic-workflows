@@ -53,16 +53,16 @@ func potentialVarConsumers(cat *catalog.Catalog) (map[string][]string, error) {
 			}
 		}
 	}
-	if err := add(cat.Docs["agents-doc"].TID); err != nil { // coverage-ignore: the agents-doc template is always embedded
+	if err := add(cat.Docs["agents-doc"].TID); err != nil {
 		return nil, err
 	}
 	for _, sg := range plainSingletons(cat) {
-		if err := add(sg.tid); err != nil { // coverage-ignore: every plainSingletons entry has a backing embedded template
+		if err := add(sg.tid); err != nil {
 			return nil, err
 		}
 	}
 	for _, name := range hookNames {
-		if err := add(hookTID(name)); err != nil { // coverage-ignore: every hookNames entry has a backing embedded template
+		if err := add(hookTID(name)); err != nil {
 			return nil, err
 		}
 	}
@@ -264,7 +264,7 @@ func configReferenceRows(p renderInputs, files []RenderedFile) (ConfigReference,
 	var ref ConfigReference
 	classes := configspec.LiveStateClassifications()
 	resolvers := currentValueResolvers(p)
-	if err := validateLiveStateAuthority(classes, resolvers); err != nil { // coverage-ignore: production constructs both fixed authorities together; mutation tests exercise every mismatch in validateLiveStateAuthority directly
+	if err := validateLiveStateAuthority(classes, resolvers); err != nil {
 		return ConfigReference{}, err
 	}
 	for _, e := range configspec.Keys() {
@@ -303,7 +303,7 @@ func configReferenceRows(p renderInputs, files []RenderedFile) (ConfigReference,
 	}
 
 	dataKeys, err := dataKeyRowsTyped(p)
-	if err != nil { // coverage-ignore: dataKeyRowsTyped re-reads sidecars the render pass in outputPlan already read
+	if err != nil {
 		return ConfigReference{}, err
 	}
 	ref.DataKeys = dataKeys
@@ -318,7 +318,7 @@ func configReferenceRows(p renderInputs, files []RenderedFile) (ConfigReference,
 // write files plus the generated domain docs.
 func configReferenceData(p renderInputs, files []RenderedFile) (map[string]any, error) {
 	ref, err := configReferenceRows(p, files)
-	if err != nil { // coverage-ignore: configReferenceRows fails only on the embedded-template and sidecar re-reads its own body already coverage-ignores
+	if err != nil {
 		return nil, err
 	}
 	keyRow := func(r ConfigKeyRow, withCurrent bool) map[string]any {
@@ -389,7 +389,7 @@ func dataKeyRowsTyped(p renderInputs) ([]DataKeyRow, error) {
 			sidecarKind, sidecarName = "agents-doc", ""
 		}
 		sc, err := p.cfg.Sidecar(sidecarKind, sidecarName)
-		if err != nil { // coverage-ignore: these sidecars were already read by the render pass in outputPlan
+		if err != nil {
 			return nil, err
 		}
 		_, hasAuthored := sc.Data[d.Key]
@@ -441,12 +441,12 @@ func dataKeyRowsTyped(p renderInputs) ([]DataKeyRow, error) {
 // generated domain docs).
 func generateConfigReference(p renderInputs, files []RenderedFile, eff map[string]bool) (*RenderedFile, bool, error) {
 	sc, err := p.cfg.Sidecar("config-reference", "")
-	if err != nil { // coverage-ignore: validation already read this sidecar at open
+	if err != nil {
 		return nil, false, err
 	}
 	data := projectData(p, sc, eff)
 	collections, err := configReferenceData(p, files)
-	if err != nil { // coverage-ignore: configReferenceData errors only on faults earlier passes already surfaced
+	if err != nil {
 		return nil, false, err
 	}
 	data["data"] = collections
@@ -481,7 +481,7 @@ func configReferenceModel(p renderInputs) (ConfigReference, error) {
 		return ConfigReference{}, err
 	}
 	dds, err := generateDomainDocs(p, topics, eff)
-	if err != nil { // coverage-ignore: the same producer ran inside outputPlan above over these identical inputs, so a second call cannot newly fail
+	if err != nil {
 		return ConfigReference{}, err
 	}
 	return configReferenceRows(p, slices.Concat(op.writeFiles(), dds))

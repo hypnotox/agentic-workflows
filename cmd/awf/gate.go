@@ -34,7 +34,7 @@ func gate(ctx context.Context, root string) error {
 	if err != nil {
 		return presentGateRefusal(err)
 	}
-	if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil { // coverage-ignore: compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake
+	if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil {
 		return err
 	}
 	lockV, binV, ok, err := lockVsBinary(root)
@@ -57,7 +57,7 @@ func gateStaged(ctx context.Context, root string) error {
 	if err := migrate.CheckLiveGeneration(lock.SchemaVersion); err != nil {
 		return presentGateRefusal(err)
 	}
-	if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil { // coverage-ignore: compile-time schema map and version are exhaustively validated in project tests; this remains fail-closed for a future registration mistake
+	if err := project.ValidateSchemaMinimumVersion(migrate.Current(), awfVersion()); err != nil {
 		return err
 	}
 	lockV, binV, ok := lockVsBinaryLock(lock)

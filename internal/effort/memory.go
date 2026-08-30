@@ -6,7 +6,7 @@ func memorySkeleton(slug string, createdAt time.Time) []byte {
 	metadata, err := encodeMemory(MemoryMetadata{
 		Effort: slug, Phase: "Not started.", Next: "Record the next concrete action.", Updated: formatMemoryTime(createdAt),
 	}, memoryBody())
-	if err != nil { // coverage-ignore: encodeMemory marshals a fixed YAML node of validated literal strings
+	if err != nil {
 		panic(err)
 	}
 	return metadata

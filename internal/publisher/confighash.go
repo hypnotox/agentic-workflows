@@ -91,7 +91,7 @@ func artifactConfigHash(p renderInputs, assembled string, sc config.Sidecar, par
 		proj["commitScopes"] = audit.Resolve(config.AuditScopes(p.cfg.Audit)).AllowedScopes
 	}
 	enc, err := yaml.Marshal(proj)
-	if err != nil { // coverage-ignore: proj holds only YAML-sourced, marshalable values; yaml.Marshal cannot fail here
+	if err != nil {
 		return "", err
 	}
 	return manifest.Hash(enc), nil

@@ -100,7 +100,7 @@ var entrypointSuites = map[string]suite{
 func moduleRoot(t *testing.T) string {
 	t.Helper()
 	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil { // coverage-ignore: Abs fails only when the working directory cannot be resolved, which would fail the test binary first
+	if err != nil {
 		t.Fatal(err)
 	}
 	return root
@@ -112,7 +112,7 @@ func moduleRoot(t *testing.T) string {
 func parseDir(t *testing.T, fset *token.FileSet, dir string, testFiles bool) []*ast.File {
 	t.Helper()
 	entries, err := os.ReadDir(dir)
-	if err != nil { // coverage-ignore: both parsed directories are checked-in package directories
+	if err != nil {
 		t.Fatal(err)
 	}
 	files := []*ast.File{}
@@ -122,7 +122,7 @@ func parseDir(t *testing.T, fset *token.FileSet, dir string, testFiles bool) []*
 			continue
 		}
 		file, err := parser.ParseFile(fset, filepath.Join(dir, name), nil, 0)
-		if err != nil { // coverage-ignore: every file in a compiling package parses
+		if err != nil {
 			t.Fatal(err)
 		}
 		files = append(files, file)
@@ -157,7 +157,7 @@ func seamEntrypoints(t *testing.T) []string {
 
 // receiverTypeName returns the bare type name a method is declared on.
 func receiverTypeName(recv *ast.FieldList) string {
-	if len(recv.List) == 0 { // coverage-ignore: the parser rejects a method with an empty receiver list
+	if len(recv.List) == 0 {
 		return ""
 	}
 	expr := recv.List[0].Type
@@ -165,7 +165,7 @@ func receiverTypeName(recv *ast.FieldList) string {
 		expr = star.X
 	}
 	ident, ok := expr.(*ast.Ident)
-	if !ok { // coverage-ignore: no generic receiver exists in this package
+	if !ok {
 		return ""
 	}
 	return ident.Name
@@ -188,7 +188,7 @@ func testFunctionBodies(t *testing.T, pkgDir string) map[string]string {
 			// emits the function's own name, and a suite named after its
 			// entrypoint would then satisfy a reference check by existing. That
 			// was true of 17 of the registrations below before this narrowed.
-			if err := printer.Fprint(&buf, fset, fn.Body); err != nil { // coverage-ignore: printing a parsed block to an in-memory buffer has no failure a test can provoke
+			if err := printer.Fprint(&buf, fset, fn.Body); err != nil {
 				t.Fatal(err)
 			}
 			bodies[fn.Name.Name] = buf.String()

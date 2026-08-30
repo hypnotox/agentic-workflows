@@ -20,7 +20,7 @@ func generatedSemantics(p renderInputs, topics topic.Corpus) (generatedcheck.Add
 			sections := artifactSections(p.catalog(), kind, name)
 			input.Artifacts = append(input.Artifacts, generatedcheck.Artifact{Kind: kind, Name: name, Sections: slices.Clone(sections)})
 			sidecar, err := p.cfg.Sidecar(kind, name)
-			if err != nil { // coverage-ignore: output-plan construction already parsed this bound operation sidecar before generated semantics are captured
+			if err != nil {
 				return generatedcheck.AdditionalInput{}, err
 			}
 			input.Sidecars = append(input.Sidecars, generatedcheck.SidecarData{Kind: kind, Name: name, Path: ".awf/" + kind + "/" + name + ".yaml", Data: maps.Clone(sidecar.Data)})
@@ -32,7 +32,7 @@ func generatedSemantics(p renderInputs, topics topic.Corpus) (generatedcheck.Add
 	for _, name := range catalog.SingletonKindsFor(p.catalog()) {
 		input.Singletons = append(input.Singletons, generatedcheck.Artifact{Kind: name, Sections: slices.Clone(p.catalog().Docs[name].Sections)})
 		sidecar, err := p.cfg.Sidecar(name, "")
-		if err != nil { // coverage-ignore: output-plan construction already parsed this bound singleton sidecar before generated semantics are captured
+		if err != nil {
 			return generatedcheck.AdditionalInput{}, err
 		}
 		input.Sidecars = append(input.Sidecars, generatedcheck.SidecarData{Kind: name, Path: ".awf/" + name + ".yaml", Data: maps.Clone(sidecar.Data)})

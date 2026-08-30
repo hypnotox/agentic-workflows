@@ -50,7 +50,7 @@ func isTemplateIDLiteral(lit *ast.BasicLit) (string, bool) {
 		return "", false
 	}
 	value, err := strconv.Unquote(lit.Value)
-	if err != nil { // coverage-ignore: a parsed STRING literal always unquotes
+	if err != nil {
 		return "", false
 	}
 	if !strings.HasSuffix(value, ".tmpl") || !strings.Contains(value, "/") {
@@ -122,7 +122,7 @@ func templateIDFindings(root string, pkgs []*packages.Package) (findings []strin
 				}
 				position := pkg.Fset.Position(lit.Pos())
 				rel, err := filepath.Rel(root, position.Filename)
-				if err != nil { // coverage-ignore: every loaded production file lies under the module root
+				if err != nil {
 					rel = position.Filename
 				}
 				rel = filepath.ToSlash(rel)

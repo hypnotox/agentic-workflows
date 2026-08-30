@@ -29,7 +29,7 @@ type deadPackage struct {
 	Funcs []deadFunc `json:"Funcs"`
 }
 
-func main() { os.Exit(run(os.Stdin, os.Stdout, os.Stderr)) } // coverage-ignore: os.Exit wrapper; run() is unit-tested
+func main() { os.Exit(run(os.Stdin, os.Stdout, os.Stderr)) }
 
 func run(stdin io.Reader, stdout, stderr io.Writer) int {
 	data, err := io.ReadAll(stdin)

@@ -63,7 +63,7 @@ func informationResult(notes []string) checkresult.Result {
 		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "repository-check", Detail: note}})
 	}
 	result, err := checkresult.New(nil, information)
-	if err != nil { // coverage-ignore: callers supply only fixed command-owned nonempty notes
+	if err != nil {
 		return checkresult.Result{}
 	}
 	return result
@@ -88,7 +88,7 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 					return nil, nil, err
 				}
 				state, _, openErr := project.NewLoaderWithoutRepository(func(dir string) (*config.Config, error) {
-					if dir != config.RootDir(root) { // coverage-ignore: Loader.Open requests exactly the selected root's config directory
+					if dir != config.RootDir(root) {
 						return nil, fmt.Errorf("unexpected config root %q", dir)
 					}
 					return cfg, nil
@@ -96,7 +96,7 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 				return state, nil, openErr
 			}
 			state, _, openErr := project.NewLoader(func(dir string) (*config.Config, error) {
-				if dir != config.RootDir(root) { // coverage-ignore: Loader.Open requests exactly the selected root's config directory
+				if dir != config.RootDir(root) {
 					return nil, fmt.Errorf("unexpected config root %q", dir)
 				}
 				return cfg, nil
@@ -294,7 +294,7 @@ func repoScannerErrorPrefix(selected []execution.StepID) string {
 			return "check repo memory"
 		}
 	}
-	panic("repo index preparation without a selected scanner") // coverage-ignore: only scanner resolvers request the index requirement
+	panic("repo index preparation without a selected scanner")
 }
 
 // collectCheckRepoWithPlanNotes runs the repository-universe aggregate and owns its version note.

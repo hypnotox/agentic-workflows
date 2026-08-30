@@ -162,11 +162,11 @@ func Compose(input Inputs) (Report, error) {
 	appendSlot(input.TrackingInformation, input.TrackingInformation.IncludeInformationInDrift)
 
 	result, err := checkresult.New(findings, information)
-	if err != nil { // coverage-ignore: aggregation copies only validated owner results
+	if err != nil {
 		return Report{}, fmt.Errorf("finalize owner-classified check results: %w", err)
 	}
 	direct, err := checkresult.New(directFindings, directInformation)
-	if err != nil { // coverage-ignore: the direct projection copies only validated owner evidence
+	if err != nil {
 		return Report{}, fmt.Errorf("finalize direct owner-classified check results: %w", err)
 	}
 	report := Report{
@@ -196,7 +196,7 @@ func SplitWarnings(result checkresult.Result) (withoutWarnings, warnings checkre
 		}
 	}
 	withoutWarnings, err = checkresult.New(nonWarnings, result.Information())
-	if err != nil { // coverage-ignore: splitting a validated immutable result cannot invalidate evidence
+	if err != nil {
 		return checkresult.Result{}, checkresult.Result{}, err
 	}
 	warnings, err = checkresult.New(warningFindings, nil)

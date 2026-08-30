@@ -29,11 +29,11 @@ func ownedByCurrentUser(info os.FileInfo) bool {
 		return true
 	}
 	current, err := user.Current()
-	if err != nil { // coverage-ignore: supported Unix release platforms provide the current process identity
+	if err != nil {
 		return false
 	}
 	currentUID, err := strconv.ParseUint(current.Uid, 10, 64)
-	if err != nil { // coverage-ignore: Unix user databases expose numeric UIDs
+	if err != nil {
 		return false
 	}
 	return uid.Uint() == currentUID
@@ -47,7 +47,7 @@ func platformLstatComponent(path string, requireOwner bool) (os.FileInfo, error)
 	if info.Mode()&os.ModeSymlink != 0 {
 		return nil, &HardSafetyError{Category: "symlink", Path: path}
 	}
-	if requireOwner && !ownedByCurrentUser(info) { // coverage-ignore: exercised only when the test process can create a foreign-owned fixture
+	if requireOwner && !ownedByCurrentUser(info) {
 		return nil, &HardSafetyError{Category: "foreign-owner", Path: path}
 	}
 	return info, nil

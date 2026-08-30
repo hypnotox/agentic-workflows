@@ -70,7 +70,7 @@ data:
       meaning: "The per-domain check that current-state topics describe owned paths. Global topics apply everywhere but cover only explicit paths in their domain; error and fan-out warning ranks are fixed."
       domains: [invariants]
     - term: checker-cmd idiom
-      meaning: "A repo-only gate or release checker with a coverage-ignored `main` that exits a unit-tested `run(args, stdout, stderr) int` seam."
+      meaning: "A repository-only gate or release checker with a thin `main` that exits a unit-tested `run(args, stdout, stderr) int` seam."
       domains: [tooling]
     - term: claimed-path model
       meaning: "The allowlist of paths permitted under `.awf/`, derived from config, catalog, and output-plan write files, excluding owned resident roots. Unclaimed content is drift reported at its topmost directory."

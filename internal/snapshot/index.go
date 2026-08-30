@@ -36,7 +36,7 @@ func NewSelectionFromBlobs(blobs []git.IndexBlob) (*Selection, error) {
 // treeFromBlobs converts Git blobs into an immutable Tree.
 func treeFromBlobs(blobs []git.IndexBlob) (*Tree, error) {
 	files, err := filesFromBlobs(blobs)
-	if err != nil { // coverage-ignore: Repo.IndexBlobs emits only the closed BlobMode set translated by filesFromBlobs
+	if err != nil {
 		return nil, err
 	}
 	return NewTree(files)

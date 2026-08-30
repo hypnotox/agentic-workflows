@@ -17,7 +17,7 @@ func selectionRepository(t *testing.T) string {
 	root := repo.Root()
 	for path, content := range map[string]string{
 		"go.mod":                "module example.test/selection\ngo 1.26\n",
-		"test-selection.json":   `{"version":1,"meta_suites":[{"id":"composition","package":"./cmd/meta","tests":["TestComposition"]}],"shared_path_patterns":["templates/**","*.json","x"],"generated_go_patterns":["*_generated.go"]}`,
+		"test-selection.json":   `{"version":1,"smoke_packages":["./cmd/meta"],"shared_path_patterns":["templates/**","*.json","x"],"generated_go_patterns":["*_generated.go"]}`,
 		"internal/leaf/leaf.go": "package leaf\n",
 		"internal/leaf/leaf_test.go": `package leaf
 import (
@@ -76,13 +76,13 @@ func TestRunEmitsDefaultWorkingTreeSelection(t *testing.T) {
 		t.Fatalf("code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
 	}
 	result := decodeResult(t, stdout.String())
-	if result.Outcome != "selected" || len(result.Packages) != 2 || len(result.Suites) != 1 || result.Suites[0].ID != "composition" {
+	if result.Outcome != "selected" || len(result.Packages) != 3 {
 		t.Fatalf("result = %#v", result)
 	}
 }
 
-// invariant: tooling/quality-gates:affected-package-feedback (TestRunExecutesSelectedPackagesAndDeclaredSuites)
-func TestRunExecutesSelectedPackagesAndDeclaredSuites(t *testing.T) {
+// invariant: tooling/quality-gates:affected-package-feedback (TestRunExecutesSelectedPackagesAndSmoke)
+func TestRunExecutesSelectedPackagesAndSmoke(t *testing.T) {
 	root := selectionRepository(t)
 	path := filepath.Join(root, "internal/leaf/leaf.go")
 	if err := os.WriteFile(path, []byte("package leaf\n// changed\n"), 0o644); err != nil {
@@ -94,46 +94,15 @@ func TestRunExecutesSelectedPackagesAndDeclaredSuites(t *testing.T) {
 	}
 	lines := bytes.SplitN(stdout.Bytes(), []byte("\n"), 2)
 	result := decodeResult(t, string(lines[0]))
-	if result.Outcome != "selected" || len(result.Packages) != 2 || len(result.Suites) != 1 {
+	if result.Outcome != "selected" || len(result.Packages) != 3 {
 		t.Fatalf("result=%#v", result)
 	}
-	if len(lines) != 2 || !bytes.Contains(lines[1], []byte("example.test/selection/internal/leaf")) || !bytes.Contains(lines[1], []byte("example.test/selection/internal/user")) || !bytes.Contains(lines[1], []byte(`"Test":"TestComposition"`)) {
+	if len(lines) != 2 || !bytes.Contains(lines[1], []byte("example.test/selection/internal/leaf")) || !bytes.Contains(lines[1], []byte("example.test/selection/internal/user")) {
 		t.Fatalf("behavioral output=%q", lines[1])
 	}
 	lifecycle, err := os.ReadFile(filepath.Join(root, "cmd", "meta", "lifecycle.log"))
 	if err != nil || string(lifecycle) != "run\n" {
 		t.Fatalf("suite lifecycle = %q, %v", lifecycle, err)
-	}
-}
-
-func TestRunRefusesUnavailableDeclaredSuiteWhenOwnerRunsFully(t *testing.T) {
-	root := selectionRepository(t)
-	if err := os.WriteFile(filepath.Join(root, "cmd", "meta", "main.go"), []byte("package main\n// changed\nfunc main() {}\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "cmd", "meta", "main_test.go"), []byte("package main\nimport (\"os\"; \"testing\")\nfunc TestMain(m *testing.M) { os.Exit(m.Run()) }\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var stdout, stderr bytes.Buffer
-	if code := run([]string{"testselection", "--root", root, "--execute"}, &stdout, &stderr); code != 1 || !bytes.Contains(stderr.Bytes(), []byte("unavailable proving units: TestComposition")) {
-		t.Fatalf("code=%d stdout=%s stderr=%s", code, stdout.String(), stderr.String())
-	}
-}
-
-func TestExecuteSelectionRefusesUnavailableDeclaredSuite(t *testing.T) {
-	root := selectionRepository(t)
-	result := testselection.Result{
-		Version:  1,
-		Outcome:  "selected",
-		Packages: []testselection.Package{},
-		Suites: []testselection.Suite{{
-			ID:      "missing",
-			Package: "./cmd/meta",
-			Tests:   []string{"TestMissing"},
-		}},
-	}
-	if err := executeSelection(t.Context(), root, result, &bytes.Buffer{}); err == nil || !bytes.Contains([]byte(err.Error()), []byte("unavailable proving units: TestMissing")) {
-		t.Fatalf("error = %v", err)
 	}
 }
 

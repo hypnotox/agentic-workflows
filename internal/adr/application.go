@@ -101,7 +101,7 @@ func (a ADR) OperationProgress() (OperationProgress, error) {
 				if op.Verb == OpRemove {
 					return OperationProgress{}, fmt.Errorf("ADR-%s reapplies remove operation `%s`; only add or update may be reapplied", a.Identity(), op.ID)
 				}
-			default: // coverage-ignore: ApplicationBatches emits only Applied or Reapplied kinds
+			default:
 				return OperationProgress{}, fmt.Errorf("ADR-%s has an invalid application batch kind", a.Identity())
 			}
 		}

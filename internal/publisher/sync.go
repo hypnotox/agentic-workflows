@@ -172,7 +172,7 @@ func (r Result) PartialMutation() (presentation.Mutation, error) {
 		values = append(values, value)
 	}
 	next, err := presentation.Prose("apply the listed recovery actions, then rerun awf render")
-	if err != nil { // coverage-ignore: fixed presentation text
+	if err != nil {
 		return presentation.Mutation{}, err
 	}
 	changes := []presentation.MutationChange(nil)
@@ -322,7 +322,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 	files := op.Outputs()
 	for _, f := range files {
 		if f.Policy().ValidateFrontmatter {
-			if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil { // coverage-ignore: rendered catalog skill/agent syntax is template-fixed and cannot be invalid at sync time
+			if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil {
 				return nil, nil, nil, nil, fmt.Errorf("invalid agent artifact in %s: %w", f.Path(), err)
 			}
 		}
@@ -558,8 +558,8 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 		}
 	}
 	lockBytes, err = lock.Marshal()
-	if err != nil { // coverage-ignore: sync constructs only authority-valid lock fields, so marshal failure requires a future representation change
-		return backups, changes, pruned, effects, err // coverage-ignore: sync constructs only authority-valid lock fields, so marshal failure requires a future representation change
+	if err != nil {
+		return backups, changes, pruned, effects, err
 	}
 	if err := filesystems.tracked.ReplaceExpected(lockPath, lockIdentity, lockBytes, 0o644); err != nil {
 		effects, _ = appendCommittedOperationEffects(effects, err, Effect{Kind: "lock-replaced", Path: lockPath, Recovery: "rerun awf render to verify and complete publication"})
@@ -643,7 +643,7 @@ func syncMutation(backups []Backup, changes []Change, pruned []string) (presenta
 		groups = append(groups, presentation.MutationChange{Label: "pruned", Values: values})
 	}
 	next, err := presentation.Prose("continue with the rendered project state")
-	if err != nil { // coverage-ignore: fixed nonempty completion action always validates as prose
+	if err != nil {
 		return presentation.Mutation{}, err
 	}
 	return presentation.Mutation{Status: "completed", Changes: groups, Notes: notes, NextActions: []presentation.Value{next}}, nil

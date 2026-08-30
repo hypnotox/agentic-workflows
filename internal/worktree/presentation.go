@@ -43,11 +43,11 @@ func (e *CreationError) Diagnostic() (presentation.Diagnostic, error) {
 		value bool
 	}{{"effort resident", e.ChangedEffort}} {
 		value, err := presentation.Prose(yesNo(fact.value))
-		if err != nil { // coverage-ignore: yesNo always returns a nonempty prose value
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		field, err := presentation.NewField(fact.label, value)
-		if err != nil { // coverage-ignore: fixed grammar-valid changed-axis labels always validate
+		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
 		changed = append(changed, field)
@@ -181,7 +181,7 @@ func (r Result) Mutation() (presentation.Mutation, error) {
 			return presentation.Mutation{}, err
 		}
 		field, err := presentation.NewField(fact.label, value)
-		if err != nil { // coverage-ignore: typed result values and fixed presentation grammar are validated before this mapping
+		if err != nil {
 			return presentation.Mutation{}, err
 		}
 		identity = append(identity, field)

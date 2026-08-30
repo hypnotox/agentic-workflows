@@ -38,7 +38,7 @@ func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
 		regular := true
 		if current, ok := reader.(filesystemProjectReader); ok {
 			info, err := os.Lstat(filepath.Join(current.root, filepath.FromSlash(source)))
-			if err != nil { // coverage-ignore: Paths just enumerated this same filesystem entry; reaching Lstat failure requires a concurrent removal or IO race
+			if err != nil {
 				return pitfall.Corpus{}, fmt.Errorf("inspect pitfall source %s: %w", source, err)
 			}
 			regular = info.Mode().IsRegular()
@@ -47,7 +47,7 @@ func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
 		if err != nil {
 			return pitfall.Corpus{}, fmt.Errorf("read pitfall source %s: %w", source, err)
 		}
-		if !ok { // coverage-ignore: filesystem Lstat proved presence and snapshot enumeration includes only the same immutable tree
+		if !ok {
 			regular = false
 		}
 		b, err = migrate.PitfallBytesForGeneration(generation, b)

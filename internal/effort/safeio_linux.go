@@ -13,5 +13,5 @@ func linkCount(info os.FileInfo) uint64 {
 	if stat, ok := info.Sys().(*syscall.Stat_t); ok {
 		return platformWidthUint64(stat.Nlink)
 	}
-	return 1 // coverage-ignore: Linux os.FileInfo values carry syscall.Stat_t
+	return 1
 }

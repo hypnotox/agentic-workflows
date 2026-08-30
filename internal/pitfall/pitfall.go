@@ -56,7 +56,7 @@ func (c Corpus) Scaffold(rawTitle string) (Entry, []byte, error) {
 	}
 	entry := Entry{Slug: slug, SourcePath: SourceDir + "/" + slug + ".md", Title: title, Body: scaffoldBody}
 	serialized, err := Serialize(entry)
-	if err != nil { // coverage-ignore: fixed nonempty scaffold body and validated title make serialization infallible
+	if err != nil {
 		return Entry{}, nil, err
 	}
 	return entry, serialized, nil
@@ -307,7 +307,7 @@ func Serialize(e Entry) ([]byte, error) {
 		Related []int    `yaml:"related,omitempty,flow"`
 	}{e.Title, e.Domains, e.Related}
 	y, err := yaml.Marshal(m)
-	if err != nil { // coverage-ignore: the closed metadata struct contains only scalar slices and yaml.Marshal cannot reject it
+	if err != nil {
 		return nil, err
 	}
 	body := e.Body

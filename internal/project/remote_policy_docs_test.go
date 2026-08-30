@@ -23,10 +23,10 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 		"These checks do not gate remote updates by themselves.",
 		"ruleset `main` (ID `18766557`)",
 		"with no bypass actors, it requires signed commits, blocks non-fast-forward updates and deletion",
-		"requires the GitHub Actions checks `CI / gate` and `CI / release-config` on the exact candidate revision",
+		"currently requires the GitHub Actions checks `CI / gate` and the retired `CI / release-config` on the exact candidate revision",
 		"`release tags` ruleset (ID `21631403`)",
 		"before `refs/tags/v*` can be created or updated",
-		"provide post-push detection and a backstop for bypassed hooks",
+		"One aggregate `CI / gate` result is the definitive hosted verdict.",
 	} {
 		if !strings.Contains(workflow, want) {
 			t.Errorf("self-hosted workflow missing remote-policy contract %q", want)
@@ -45,11 +45,11 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	releasing := read("docs/releasing.md")
 	for _, want := range []string{
 		"Local hooks are optional preflight.",
-		"wait for that commit's `CI / gate` and `CI / release-config` checks to succeed",
-		"live GitHub `release tags` ruleset covers `refs/tags/v*` without bypass actors",
-		"requires successful `CI / gate` and `CI / release-config` checks",
+		"wait for that commit's `CI / gate` check to succeed",
+		"live ruleset still requires the retired `CI / release-config` status",
+		"repository owner must update the remote requirement",
 		"needs-bound credential-bearing GoReleaser job",
-		"Production snapshot construction and portability validation belong to the `CI / release-config` job.",
+		"Production snapshot construction and portability validation belong to the read-only release verification job.",
 		"Ordinary local Go tests use synthetic archive fixtures and never invoke GoReleaser.",
 	} {
 		if !strings.Contains(releasing, want) {
@@ -59,12 +59,11 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 
 	testingGuide := read("docs/testing.md")
 	for _, want := range []string{
-		"Codecov is informational",
-		"exact coverage policy is enforced by `./x gate full`",
-		"hosted `CI / gate` check required for protected `main` and release tags",
+		"Coverage percentages may be reported by external services but are informational.",
+		"aggregate `CI / gate` job is the definitive repository verdict",
 	} {
 		if !strings.Contains(testingGuide, want) {
-			t.Errorf("self-hosted testing guidance missing remote-policy contract %q", want)
+			t.Errorf("self-hosted testing guidance missing verification contract %q", want)
 		}
 	}
 	if strings.Contains(testingGuide, "the gate blocks merges") {
@@ -72,8 +71,8 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	}
 }
 
-func TestHostedGatesProvideRestrictedRootlessExtraction(t *testing.T) {
-	body, err := os.ReadFile(filepath.Join(repoRootDir(t), ".github/workflows/ci.yml"))
+func TestReleaseProvidesRestrictedRootlessExtraction(t *testing.T) {
+	release, err := os.ReadFile(filepath.Join(repoRootDir(t), ".github/workflows/release.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -82,18 +81,18 @@ func TestHostedGatesProvideRestrictedRootlessExtraction(t *testing.T) {
 		"unshare --user --map-root-user true",
 		"go run ./cmd/releasecheck --verify-archives dist",
 	} {
-		if !strings.Contains(string(body), want) {
-			t.Errorf("CI release-config does not provide %q", want)
+		if !strings.Contains(string(release), want) {
+			t.Errorf("release verification does not provide %q", want)
 		}
 	}
 
-	release, err := os.ReadFile(filepath.Join(repoRootDir(t), ".github/workflows/release.yml"))
+	ci, err := os.ReadFile(filepath.Join(repoRootDir(t), ".github/workflows/ci.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, stale := range []string{"Gate (full release assurance)", "Drift check (rendered output matches config)", "unshare --user --map-root-user true"} {
-		if strings.Contains(string(release), stale) {
-			t.Errorf("release repeats CI-owned assurance %q", stale)
+	for _, stale := range []string{"release-config", "goreleaser/goreleaser-action", "go run ./cmd/releasecheck --verify-archives"} {
+		if strings.Contains(string(ci), stale) {
+			t.Errorf("CI retains release-only assurance %q", stale)
 		}
 	}
 }

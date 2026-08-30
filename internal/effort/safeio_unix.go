@@ -17,7 +17,7 @@ func ownerOK(info os.FileInfo) bool {
 }
 
 func validatePathOwner(path string, info os.FileInfo, _ *os.File) error {
-	if !ownerOK(info) { // coverage-ignore: exercised only when the test process has privilege to create a foreign-owned fixture
+	if !ownerOK(info) {
 		return safety("foreign-owner", path, nil)
 	}
 	return nil
@@ -31,7 +31,7 @@ func platformLstatRegular(path string) (fileIdentity, error) {
 	if err := validateLeaf(path, info); err != nil {
 		return fileIdentity{}, err
 	}
-	if err := validatePathOwner(path, info, nil); err != nil { // coverage-ignore: requires a foreign-owned fixture created by a privileged test process
+	if err := validatePathOwner(path, info, nil); err != nil {
 		return fileIdentity{}, err
 	}
 	return fileIdentity{info: info}, nil

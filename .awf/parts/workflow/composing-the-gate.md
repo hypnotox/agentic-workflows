@@ -1,1 +1,1 @@
-`./x gate` is the fast commit tier and `./x gate full` is terminal exhaustive verification. Run focused checks while iterating; when hooks are wired, do not manually duplicate their matching gate. `./x check` separately checks rendered output and repository policy.
+`./x gate` is the fast commit tier. Run focused checks while iterating and complete behavior at terminal verification or in CI. When hooks are wired, do not manually duplicate their matching gate. `./x check` separately checks rendered output and repository policy.

@@ -18,7 +18,7 @@
 | application batch | One implicit terminal application or explicit Applied event containing a nonempty, duplicate-free unordered set of not-yet-applied operations. Its identity is its position in the owning ADR history. |
 | authoring comment | A whole-line `<!-- awf:comment ... -->` in a template default or convention part, stripped at ingestion. |
 | check-in | A deliberate stop naming the issue, options, recommendation, and blocked next action for the user. It differs from a continuity notice; a mandatory approval check-in is its unconditional approval subtype. |
-| checker-cmd idiom | A repo-only gate or release checker with a coverage-ignored `main` that exits a unit-tested `run(args, stdout, stderr) int` seam. |
+| checker-cmd idiom | A repository-only gate or release checker with a thin `main` that exits a unit-tested `run(args, stdout, stderr) int` seam. |
 | claim | One globally identified normative unit of a current-state topic: a rule or invariant heading, prose, and canonical metadata. Its `<domain>/<topic>:<slug>` identity is targeted by markers and operations. |
 | claim provenance | Links tying a claim to its ADR history: required `Origin:` and optional ordered `Revised-by:`. They aid navigation, not authority. |
 | claimed-path model | The allowlist of paths permitted under `.awf/`, derived from config, catalog, and output-plan write files, excluding owned resident roots. Unclaimed content is drift reported at its topmost directory. |

@@ -1,8 +1,6 @@
 # agentic-workflows
 
 [![CI](https://github.com/hypnotox/agentic-workflows/actions/workflows/ci.yml/badge.svg)](https://github.com/hypnotox/agentic-workflows/actions/workflows/ci.yml)
-[![coverage: raw](https://img.shields.io/codecov/c/github/hypnotox/agentic-workflows?flag=raw&label=coverage%3A%20raw)](https://codecov.io/gh/hypnotox/agentic-workflows?flags%5B0%5D=raw)
-[![coverage: accountable](https://img.shields.io/codecov/c/github/hypnotox/agentic-workflows?flag=covered&label=coverage%3A%20accountable)](https://codecov.io/gh/hypnotox/agentic-workflows?flags%5B0%5D=covered)
 [![Go](https://img.shields.io/badge/Go-1.26+-00ADD8?logo=go&logoColor=white)](go.mod)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](LICENSE)
 [![Status](https://img.shields.io/badge/status-pre--1.0-orange.svg)](#status)
@@ -13,7 +11,7 @@ check` detects drift.
 
 ## Highlights
 
-- Core and Full governance footprints with one shared correctness, autonomy, maintainability, and review-quality bar
+- One standard governance footprint with durable repository truth and risk-based routing
 - A workflow from clarification through implementation, review, and retrospective
 - Durable decisions for load-bearing choices and effort-local operational plans when sequencing or coordination helps
 - Fresh-context agents for exploration, grounding, implementation, and review
@@ -181,7 +179,6 @@ Current limitations remain explicit:
 - Effort-backed implementation children align with an explicit managed checkout, but parent-session mutation still relies on explicit path targeting and deliberate outside writes are not confined. See [Known Issues](docs/known-issues.md).
 - Release archives and checksums share one publication channel. Exact-revision rulesets and workflow gates do not provide independent provenance; immutable releases and attestations remain deferred.
 - Linux/amd64 runs exhaustive CI; macOS/arm64 runs native Go behavior. Releases contain Linux and Darwin artifacts for amd64 and arm64; Windows is unsupported.
-- The exact-identity coverage ratchet retains a reviewed exception ledger and focused mutation blocker. Coverage-system redesign and broader mutation sampling remain deferred.
 
 Every open repository issue and its completion criteria remains listed in [Known Issues](docs/known-issues.md).
 

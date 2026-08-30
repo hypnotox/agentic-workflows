@@ -40,7 +40,7 @@ func RunConfigured(ctx context.Context, root string, cfg *config.Config, base, h
 		return Outcome{}, err
 	}
 	report, failed, err := reportOutcome(findings, commits, base, head)
-	if err != nil { // coverage-ignore: Run has accepted the grammar-valid range passed from the CLI parser
+	if err != nil {
 		return Outcome{}, err
 	}
 	return Outcome{Report: report, Failed: failed, Commits: commits}, nil

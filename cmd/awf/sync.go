@@ -64,7 +64,7 @@ func finishSyncPrinting(stdout io.Writer, result publisher.Result, syncErr, rele
 		return combined
 	}
 	mutation, err := result.Mutation()
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+	if err != nil {
 		return err
 	}
 	return renderSyncMutation(stdout, mutation)
@@ -84,7 +84,7 @@ func renderPartialSync(stdout io.Writer, syncErr error) error {
 
 func renderSyncMutation(stdout io.Writer, mutation presentation.Mutation) error {
 	document, err := mutation.Document()
-	if err != nil { // coverage-ignore: typed results and fixed presentation grammar make this mapping failure unreachable
+	if err != nil {
 		return err
 	}
 	return presentation.Render(stdout, document)

@@ -22,25 +22,25 @@ func (h *Handle) CreateDirectory(destination string, mode fs.FileMode) (created 
 	createdTemporary := false
 	for range 100 {
 		var token [16]byte
-		if _, err := rand.Read(token[:]); err != nil { // coverage-ignore: the operating-system random source is required by the Go runtime and cannot be faulted through this seam
+		if _, err := rand.Read(token[:]); err != nil {
 			return nil, fmt.Errorf("filesystem: name directory temporary for %q: %w", destination, err)
 		}
 		temporary = path.Join(path.Dir(destination), ".awf-directory-"+hex.EncodeToString(token[:]))
-		if err := h.root.Mkdir(temporary, mode); errors.Is(err, fs.ErrExist) { // coverage-ignore: a collision requires predicting the cryptographically random temporary name before this operation
-			continue // coverage-ignore: a collision requires predicting the cryptographically random temporary name before this operation
+		if err := h.root.Mkdir(temporary, mode); errors.Is(err, fs.ErrExist) {
+			continue
 		} else if err != nil {
 			return nil, fmt.Errorf("filesystem: create directory temporary for %q: %w", destination, err)
 		}
 		createdTemporary = true
 		break
 	}
-	if !createdTemporary { // coverage-ignore: exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle
-		return nil, fmt.Errorf("filesystem: create directory temporary for %q: temporary name collisions exhausted", destination) // coverage-ignore: exhausting 100 cryptographically random temporary names cannot be induced through the concrete production handle
+	if !createdTemporary {
+		return nil, fmt.Errorf("filesystem: create directory temporary for %q: temporary name collisions exhausted", destination)
 	}
 	defer func() {
 		if temporary != "" {
-			if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) { // coverage-ignore: cleanup fails only after a concurrent namespace change or storage fault
-				returnErr = errors.Join(returnErr, fmt.Errorf("filesystem: remove directory temporary %q: %w", temporary, err)) // coverage-ignore: cleanup fails only after a concurrent namespace change or storage fault
+			if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				returnErr = errors.Join(returnErr, fmt.Errorf("filesystem: remove directory temporary %q: %w", temporary, err))
 			}
 		}
 	}()
@@ -66,8 +66,8 @@ func publishDirectoryNoReplace(root *os.Root, temporary, destination string) err
 	}
 	defer parentRoot.Close()
 	anchor, err := parentRoot.Open(".")
-	if err != nil { // coverage-ignore: the newly opened parent remains live until its deferred close
-		return fmt.Errorf("filesystem: open directory publication anchor %q: %w", parent, err) // coverage-ignore: the newly opened parent remains live until its deferred close
+	if err != nil {
+		return fmt.Errorf("filesystem: open directory publication anchor %q: %w", parent, err)
 	}
 	defer anchor.Close()
 	return filepublication.MoveNoReplaceAt(anchor, path.Base(temporary), path.Base(destination))

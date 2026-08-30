@@ -450,7 +450,7 @@ func (r configReaderAdapter) Paths(prefix string) []string { return nil }
 // identity, so the construction error the seam returns cannot occur here.
 func mustCorpus() adr.Corpus {
 	c, err := adr.NewCorpus(nil)
-	if err != nil { // coverage-ignore: fixture records are duplicate-free by construction
+	if err != nil {
 		panic(err)
 	}
 	return c

@@ -41,26 +41,26 @@ func openRegularNoFollow(path string, create bool, mode os.FileMode) (*os.File, 
 		return nil, fileIdentity{}, err
 	}
 	opened, err := file.Stat()
-	if err != nil { // coverage-ignore: the platform opener returned a live descriptor; this branch requires a kernel-level metadata failure
+	if err != nil {
 		return closeOnError(fmt.Errorf("inspect opened file %s: %w", path, err))
 	}
 	if err := validateLeaf(path, opened); err != nil {
 		return closeOnError(err)
 	}
-	if err := validatePathOwner(path, opened, file); err != nil { // coverage-ignore: requires a foreign-owned fixture created by a privileged test process
+	if err := validatePathOwner(path, opened, file); err != nil {
 		return closeOnError(err)
 	}
-	if err := validateOpenedFile(path, file); err != nil { // coverage-ignore: Linux and Darwin use no additional handle validation, so the defensive error path remains unreachable on every supported runtime
+	if err := validateOpenedFile(path, file); err != nil {
 		return closeOnError(err)
 	}
 	resident, err := os.Lstat(path)
-	if err != nil { // coverage-ignore: the no-follow open just proved this name exists; failure requires a concurrent namespace race
+	if err != nil {
 		return closeOnError(fmt.Errorf("re-lstat %s: %w", path, err))
 	}
-	if err := validateLeaf(path, resident); err != nil { // coverage-ignore: changing the validated leaf between adjacent open and lstat calls requires a concurrent namespace race
+	if err := validateLeaf(path, resident); err != nil {
 		return closeOnError(err)
 	}
-	if !os.SameFile(opened, resident) { // coverage-ignore: changing identity between adjacent open and lstat calls requires a concurrent namespace race
+	if !os.SameFile(opened, resident) {
 		return closeOnError(safety("identity", path, errors.New("leaf changed while opening")))
 	}
 	return file, fileIdentity{info: opened}, nil
@@ -91,20 +91,20 @@ func readRegularNoFollowBoundedIdentity(path string, limit int64) ([]byte, fileI
 	}
 	raw, readErr := io.ReadAll(reader)
 	closeErr := file.Close()
-	if readErr != nil { // coverage-ignore: a validated local regular file read fails only on a kernel or storage fault
+	if readErr != nil {
 		return nil, fileIdentity{}, fmt.Errorf("read %s: %w", path, readErr)
 	}
 	if limit >= 0 && int64(len(raw)) > limit {
 		return nil, fileIdentity{}, fmt.Errorf("read %s: exceeds %d byte bound", path, limit)
 	}
-	if closeErr != nil { // coverage-ignore: closing a read-only descriptor after successful ReadAll has no userspace failure trigger
+	if closeErr != nil {
 		return nil, fileIdentity{}, fmt.Errorf("close %s after read: %w", path, closeErr)
 	}
 	resident, err := lstatRegular(path)
-	if err != nil { // coverage-ignore: the leaf was validated immediately before reading; failure requires a concurrent namespace race
+	if err != nil {
 		return nil, fileIdentity{}, err
 	}
-	if !os.SameFile(identity.info, resident.info) { // coverage-ignore: replacing the leaf during a bounded read requires a concurrent namespace race
+	if !os.SameFile(identity.info, resident.info) {
 		return nil, fileIdentity{}, safety("identity", path, errors.New("leaf changed while reading"))
 	}
 	return raw, identity, nil

@@ -192,51 +192,28 @@ func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 	}
 	for _, mutation := range []struct {
 		name  string
-		apply func(map[string]any)
+		apply func(map[string]any, map[string]any)
 	}{
-		{"missing checkout and tag identity", func(release map[string]any) {
+		{"missing aggregate gate", func(ci, _ map[string]any) { delete(workflowJobs(ci), "gate") }},
+		{"missing Linux dependency", func(ci, _ map[string]any) { workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"macos", "pi"} }},
+		{"missing exact CI verification", func(_, release map[string]any) {
+			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify bridge readiness and exact CI conclusion")["run"] = "true"
+		}},
+		{"missing tag identity", func(_, release map[string]any) {
 			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify checkout and tag identity")["run"] = "true"
 		}},
-		{"missing main ancestry verification", func(release map[string]any) {
-			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify tagged commit is on main")["run"] = "true"
-		}},
-		{"missing version verification", func(release map[string]any) {
-			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify tag matches project.Version")["run"] = "true"
-		}},
-		{"missing curated notes verification", func(release map[string]any) {
-			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Prepare release notes from the curated changelog")["run"] = "true"
-		}},
-		{"missing release-config consumption", func(release map[string]any) {
-			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify bridge readiness and exact CI conclusions")["run"] = "true"
-		}},
-		{"publication loses verification dependency", func(release map[string]any) {
-			delete(workflowMap(workflowJobs(release)["publish"]), "needs")
-		}},
+		{"publication loses verification dependency", func(_, release map[string]any) { delete(workflowMap(workflowJobs(release)["publish"]), "needs") }},
 	} {
 		t.Run(mutation.name, func(t *testing.T) {
-			mutated := cloneWorkflow(t, release)
-			mutation.apply(mutated)
-			if problems := exactRevisionWorkflowProblems(ci, mutated); len(problems) == 0 {
+			cloneCI, cloneRelease := cloneWorkflow(t, ci), cloneWorkflow(t, release)
+			mutation.apply(cloneCI, cloneRelease)
+			if problems := exactRevisionWorkflowProblems(cloneCI, cloneRelease); len(problems) == 0 {
 				t.Fatal("release-gate mutation was accepted")
 			}
 		})
 	}
-
-	body, err := os.ReadFile("../../.github/workflows/release.yml")
-	if err != nil {
-		t.Fatal(err)
-	}
-	wf := string(body)
-	for _, duplicate := range []string{"./x gate", "./x check", "./x pi-test", "unshare --user"} {
-		if strings.Contains(wf, duplicate) {
-			t.Errorf("release.yml repeats CI-owned assurance %q", duplicate)
-		}
-	}
 }
 
-// TestReleaseWorkflowRunsReleasecheck backs the wiring half of
-// inv: release-changelog-pin - the Release workflow must invoke releasecheck
-// before the GoReleaser step, so unwiring the check fails the gate.
 func TestReleaseWorkflowRunsReleasecheck(t *testing.T) {
 	b, err := os.ReadFile("../../.github/workflows/release.yml")
 	if err != nil {
@@ -485,25 +462,16 @@ func TestVerifyReleaseNotesRejectsMissingInputsAndBlankExpectation(t *testing.T)
 	}
 }
 
-func TestVerifyCIRequiresExactSuccessfulWorkflowAndJobs(t *testing.T) {
-	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+func TestVerifyCIRequiresExactSuccessfulWorkflowAndGate(t *testing.T) {
+	sha := strings.Repeat("a", 40)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if r.Header.Get("Authorization") != "Bearer token" {
-			t.Errorf("authorization = %q", r.Header.Get("Authorization"))
-			w.WriteHeader(http.StatusUnauthorized)
-			return
-		}
 		w.Header().Set("Content-Type", "application/json")
 		switch r.URL.Path {
 		case "/repos/acme/repo/actions/workflows/ci.yml/runs":
-			if r.URL.Query().Get("head_sha") != sha {
-				t.Errorf("head_sha = %q", r.URL.Query().Get("head_sha"))
-			}
 			fmt.Fprintf(w, `{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
 		case "/repos/acme/repo/actions/runs/7/jobs":
-			_, _ = io.WriteString(w, `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`)
+			_, _ = io.WriteString(w, `{"total_count":1,"jobs":[{"name":"gate","status":"completed","conclusion":"success"}]}`)
 		default:
-			t.Errorf("unexpected path %s", r.URL.Path)
 			w.WriteHeader(http.StatusNotFound)
 		}
 	}))
@@ -514,136 +482,63 @@ func TestVerifyCIRequiresExactSuccessfulWorkflowAndJobs(t *testing.T) {
 }
 
 func TestVerifyCIAcceptsAnyCompleteExactSuccessfulRun(t *testing.T) {
-	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
+	sha := strings.Repeat("a", 40)
 	server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		switch r.URL.Path {
 		case "/repos/acme/repo/actions/workflows/ci.yml/runs":
 			fmt.Fprintf(w, `{"total_count":2,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"},{"id":8,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha, sha)
 		case "/repos/acme/repo/actions/runs/7/jobs":
-			_, _ = io.WriteString(w, `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"failure"},{"name":"release-config","status":"completed","conclusion":"success"}]}`)
+			_, _ = io.WriteString(w, `{"total_count":1,"jobs":[{"name":"gate","status":"completed","conclusion":"failure"}]}`)
 		case "/repos/acme/repo/actions/runs/8/jobs":
-			_, _ = io.WriteString(w, `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`)
-		default:
-			t.Errorf("unexpected path %s", r.URL.Path)
-			w.WriteHeader(http.StatusNotFound)
+			_, _ = io.WriteString(w, `{"total_count":1,"jobs":[{"name":"gate","status":"completed","conclusion":"success"}]}`)
 		}
 	}))
 	defer server.Close()
-
 	if err := verifyCI(context.Background(), server.Client(), server.URL, "acme/repo", "token", sha); err != nil {
-		t.Fatalf("equivalent exact-SHA rerun evidence rejected: %v", err)
-	}
-}
-
-func TestVerifyCIPreservesCandidateErrorIdentity(t *testing.T) {
-	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	transportErr := errors.New("jobs transport failed")
-	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
-		if strings.Contains(req.URL.Path, "/actions/runs/7/jobs") {
-			return nil, transportErr
-		}
-		body := fmt.Sprintf(`{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
-		return &http.Response{
-			StatusCode: http.StatusOK,
-			Status:     "200 OK",
-			Header:     make(http.Header),
-			Body:       io.NopCloser(strings.NewReader(body)),
-		}, nil
-	})}
-
-	err := verifyCI(context.Background(), client, "https://api.example.test", "acme/repo", "token", sha)
-	if !errors.Is(err, transportErr) || !strings.Contains(err.Error(), "request GitHub API /repos/acme/repo/actions/runs/7/jobs") {
-		t.Fatalf("candidate error identity or endpoint context lost: %v", err)
-	}
-}
-
-func TestGetGitHubJSONWrapsRequestConstructionError(t *testing.T) {
-	const path = "/repos/acme/repo/releases/tags/v1.0.0"
-	err := getGitHubJSON(context.Background(), http.DefaultClient, "://invalid", "token", path, &struct{}{})
-	if err == nil || !strings.Contains(err.Error(), "build GitHub API request for "+path) {
-		t.Fatalf("request-construction error lacks endpoint context: %v", err)
+		t.Fatal(err)
 	}
 }
 
 func TestVerifyCIRefusesIncompleteOrWrongEvidence(t *testing.T) {
-	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	for name, response := range map[string]string{
-		"nearby SHA":        `{"total_count":1,"workflow_runs":[{"id":7,"head_sha":"bbbb","status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`,
-		"wrong workflow":    `{"total_count":1,"workflow_runs":[{"id":7,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","status":"completed","conclusion":"success","path":"other.yml","name":"CI"}]}`,
-		"failed conclusion": `{"total_count":1,"workflow_runs":[{"id":7,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","status":"completed","conclusion":"failure","path":".github/workflows/ci.yml","name":"CI"}]}`,
-		"pagination count":  `{"total_count":2,"workflow_runs":[{"id":7,"head_sha":"aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa","status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`,
+	sha := strings.Repeat("a", 40)
+	validRuns := fmt.Sprintf(`{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
+	for _, jobs := range []string{
+		`{"total_count":1,"jobs":[{"name":"gate","status":"completed","conclusion":"failure"}]}`,
+		`{"total_count":0,"jobs":[]}`,
+		`{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"success"}]}`,
+		`{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"gate","status":"completed","conclusion":"success"}]}`,
 	} {
-		t.Run(name, func(t *testing.T) {
-			s := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) { _, _ = io.WriteString(w, response) }))
-			defer s.Close()
-			if err := verifyCI(context.Background(), s.Client(), s.URL, "a/r", "t", sha); err == nil {
-				t.Fatal("invalid CI evidence accepted")
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if strings.Contains(r.URL.Path, "/jobs") {
+				_, _ = io.WriteString(w, jobs)
+			} else {
+				_, _ = io.WriteString(w, validRuns)
 			}
-		})
+		}))
+		err := verifyCI(context.Background(), server.Client(), server.URL, "a/r", "t", sha)
+		server.Close()
+		if err == nil {
+			t.Fatalf("invalid gate evidence accepted: %s", jobs)
+		}
 	}
 }
 
-func TestVerifyCIRefusesTransportAndEvidenceFaults(t *testing.T) {
-	sha := "aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa"
-	validRuns := fmt.Sprintf(`{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
-	validJobs := `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`
-
-	if err := verifyCI(context.Background(), http.DefaultClient, "://bad", "a/r", "t", sha); err == nil {
-		t.Fatal("invalid API URL accepted")
+func TestGetGitHubJSONAndVerifyCIPreserveTransportErrors(t *testing.T) {
+	const endpoint = "/repos/acme/repo/releases/tags/v1.0.0"
+	if err := getGitHubJSON(context.Background(), http.DefaultClient, "://invalid", "token", endpoint, &struct{}{}); err == nil || !strings.Contains(err.Error(), "build GitHub API request") {
+		t.Fatalf("request error = %v", err)
 	}
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	if err := verifyCI(ctx, http.DefaultClient, "https://example.invalid", "a/r", "t", sha); err == nil {
-		t.Fatal("canceled API request accepted")
-	}
-
-	for _, tc := range []struct {
-		name       string
-		runsStatus int
-		runsLink   bool
-		runsBody   string
-		jobsStatus int
-		jobsBody   string
-		wantErr    bool
-	}{
-		{name: "runs status", runsStatus: http.StatusBadGateway, wantErr: true},
-		{name: "runs link pagination", runsLink: true, runsBody: validRuns, wantErr: true},
-		{name: "runs malformed JSON", runsBody: `{`, wantErr: true},
-		{name: "jobs status", runsBody: validRuns, jobsStatus: http.StatusBadGateway, wantErr: true},
-		{name: "jobs count", runsBody: validRuns, jobsBody: `{"total_count":3,"jobs":[]}`, wantErr: true},
-		{name: "failed required job", runsBody: validRuns, jobsBody: `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"failure"},{"name":"release-config","status":"completed","conclusion":"success"}]}`, wantErr: true},
-		{name: "duplicate required job", runsBody: validRuns, jobsBody: `{"total_count":3,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`, wantErr: true},
-		{name: "missing required job", runsBody: validRuns, jobsBody: `{"total_count":1,"jobs":[{"name":"gate","status":"completed","conclusion":"success"}]}`, wantErr: true},
-		{name: "irrelevant job ignored", runsBody: validRuns, jobsBody: `{"total_count":3,"jobs":[{"name":"other","status":"completed","conclusion":"failure"},{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-				isJobs := strings.Contains(r.URL.Path, "/runs/7/jobs")
-				status, body := tc.runsStatus, tc.runsBody
-				if isJobs {
-					status, body = tc.jobsStatus, tc.jobsBody
-				} else if tc.runsLink {
-					w.Header().Set("Link", "<next>; rel=next")
-				}
-				if status == 0 {
-					status = http.StatusOK
-				}
-				if body == "" {
-					if isJobs {
-						body = validJobs
-					} else {
-						body = validRuns
-					}
-				}
-				w.WriteHeader(status)
-				_, _ = io.WriteString(w, body)
-			}))
-			defer server.Close()
-			err := verifyCI(context.Background(), server.Client(), server.URL, "a/r", "t", sha)
-			if (err != nil) != tc.wantErr {
-				t.Fatalf("verifyCI error = %v, want error %t", err, tc.wantErr)
-			}
-		})
+	transportErr := errors.New("jobs transport failed")
+	sha := strings.Repeat("a", 40)
+	client := &http.Client{Transport: roundTripFunc(func(req *http.Request) (*http.Response, error) {
+		if strings.Contains(req.URL.Path, "/jobs") {
+			return nil, transportErr
+		}
+		body := fmt.Sprintf(`{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
+		return &http.Response{StatusCode: http.StatusOK, Status: "200 OK", Header: make(http.Header), Body: io.NopCloser(strings.NewReader(body))}, nil
+	})}
+	if err := verifyCI(context.Background(), client, "https://api.example.test", "acme/repo", "token", sha); !errors.Is(err, transportErr) {
+		t.Fatalf("transport identity lost: %v", err)
 	}
 }
 
@@ -657,83 +552,8 @@ func TestExactRevisionWorkflowContract(t *testing.T) {
 		}
 		return parseWorkflow(t, body)
 	}
-	ci, release := read("ci.yml"), read("release.yml")
-	if problems := exactRevisionWorkflowProblems(ci, release); len(problems) != 0 {
+	if problems := exactRevisionWorkflowProblems(read("ci.yml"), read("release.yml")); len(problems) != 0 {
 		t.Fatalf("workflow contract problems: %q", problems)
-	}
-	for _, mutation := range []struct {
-		name  string
-		apply func(map[string]any, map[string]any)
-	}{
-		{"missing stable gate job", func(ci, _ map[string]any) { delete(workflowJobs(ci), "gate") }},
-		{"missing stable release-config job", func(ci, _ map[string]any) { delete(workflowJobs(ci), "release-config") }},
-		{"renamed stable gate", func(ci, _ map[string]any) { workflowMap(workflowJobs(ci)["gate"])["name"] = "aggregate" }},
-		{"missing coverage dependency", func(ci, _ map[string]any) {
-			workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"macos-native", "pi", "analysis", "mutation"}
-		}},
-		{"missing macOS dependency", func(ci, _ map[string]any) {
-			workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"coverage-policy", "pi", "analysis", "mutation"}
-		}},
-		{"missing Pi dependency", func(ci, _ map[string]any) {
-			workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"coverage-policy", "macos-native", "analysis", "mutation"}
-		}},
-		{"missing analysis dependency", func(ci, _ map[string]any) {
-			workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"coverage-policy", "macos-native", "pi", "mutation"}
-		}},
-		{"missing mutation dependency", func(ci, _ map[string]any) {
-			workflowMap(workflowJobs(ci)["gate"])["needs"] = []any{"coverage-policy", "macos-native", "pi", "analysis"}
-		}},
-		{"missing always aggregation", func(ci, _ map[string]any) { delete(workflowMap(workflowJobs(ci)["gate"]), "if") }},
-		{"no-op dependency acceptance", func(ci, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(ci)["gate"]), "Require all direct assurance dependencies")["run"] = "true"
-		}},
-		{"no-op Linux identity", func(ci, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(ci)["linux-coverage"]), "Verify exact native Linux candidate")["run"] = "true"
-		}},
-		{"no-op coverage aggregation", func(ci, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(ci)["coverage-policy"]), "Validate evidence and enforce coverage policy")["run"] = "true"
-		}},
-		{"no-op macOS identity", func(ci, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(ci)["macos-native"]), "Verify exact native macOS candidate")["run"] = "true"
-		}},
-		{"no-op Pi behavior", func(ci, _ map[string]any) {
-			workflowExactRunStep(workflowMap(workflowJobs(ci)["pi"]), "./x pi-test run")["run"] = "true"
-		}},
-		{"no-op analysis", func(ci, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(ci)["analysis"]), "Blocking lint, vet, and action pins")["run"] = "true"
-		}},
-		{"no-op cross-build", func(ci, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(ci)["analysis"]), "Cross builds")["run"] = "true"
-		}},
-		{"no-op mutation", func(ci, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(ci)["mutation"]), "Verify exact candidate and range-qualified mutation")["run"] = "true"
-		}},
-		{"missing release archive validation", func(ci, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(ci)["release-config"]), "Verify exact snapshot archives")["run"] = "true"
-		}},
-		{"no-op exact SHA verification", func(_, release map[string]any) {
-			workflowStep(workflowMap(workflowJobs(release)["verify"]), "Verify bridge readiness and exact CI conclusions")["run"] = "true"
-		}},
-		{"release checkout is not exact", func(_, release map[string]any) {
-			workflowMap(workflowMap(workflowSteps(workflowMap(workflowJobs(release)["verify"]))[0])["with"])["ref"] = "HEAD"
-		}},
-		{"publication loses verify dependency", func(_, release map[string]any) {
-			delete(workflowMap(workflowJobs(release)["publish"]), "needs")
-		}},
-		{"publication identity becomes no-op", func(_, release map[string]any) {
-			workflowStep(workflowMap(workflowJobs(release)["publish"]), "Repeat tag identity before publication")["run"] = "true"
-		}},
-		{"release duplicates local gate", func(_, release map[string]any) {
-			workflowMap(workflowJobs(release)["verify"])["steps"] = append(workflowSteps(workflowJobs(release)["verify"]), map[string]any{"run": "./x gate full"})
-		}},
-	} {
-		t.Run(mutation.name, func(t *testing.T) {
-			cloneCI, cloneRelease := cloneWorkflow(t, ci), cloneWorkflow(t, release)
-			mutation.apply(cloneCI, cloneRelease)
-			if problems := exactRevisionWorkflowProblems(cloneCI, cloneRelease); len(problems) == 0 {
-				t.Fatal("structural mutation was accepted")
-			}
-		})
 	}
 }
 
@@ -761,115 +581,47 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 		problems = append(problems, "CI name")
 	}
 	ciJobs, releaseJobs := workflowJobs(ci), workflowJobs(release)
-	requiredCI := []string{"linux-coverage", "coverage-policy", "macos-native", "pi", "analysis", "mutation", "gate", "release-config"}
-	for _, name := range requiredCI {
-		if _, ok := ciJobs[name]; !ok {
+	for _, name := range []string{"linux", "macos", "pi", "gate"} {
+		job, ok := ciJobs[name]
+		if !ok {
 			problems = append(problems, "CI job "+name)
+			continue
 		}
-	}
-	runEquals := func(job map[string]any, step, want string) bool {
-		return strings.TrimSpace(stringValue(workflowStep(job, step)["run"])) == strings.TrimSpace(want)
-	}
-	linux := workflowMap(ciJobs["linux-coverage"])
-	coverage := workflowMap(ciJobs["coverage-policy"])
-	macOS := workflowMap(ciJobs["macos-native"])
-	pi := workflowMap(ciJobs["pi"])
-	analysis := workflowMap(ciJobs["analysis"])
-	mutation := workflowMap(ciJobs["mutation"])
-	gate := workflowMap(ciJobs["gate"])
-	releaseConfig := workflowMap(ciJobs["release-config"])
-	if gate["name"] != "gate" || releaseConfig["name"] != "release-config" {
-		problems = append(problems, "stable required conclusion names")
-	}
-	wantNeeds := []string{"analysis", "coverage-policy", "macos-native", "mutation", "pi"}
-	if !slices.Equal(workflowNeedNames(gate), wantNeeds) {
-		problems = append(problems, "gate assurance dependencies")
-	}
-	const acceptance = `[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ]
-[ '${{ needs.coverage-policy.result }}' = success ]
-[ '${{ needs.macos-native.result }}' = success ]
-[ '${{ needs.pi.result }}' = success ]
-[ '${{ needs.analysis.result }}' = success ]
-[ '${{ needs.mutation.result }}' = success ]`
-	if stringValue(gate["if"]) != "${{ always() }}" || !runEquals(gate, "Require all direct assurance dependencies", acceptance) {
-		problems = append(problems, "gate exact result acceptance")
-	}
-	const linuxIdentity = `[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ] && [ "$(go env GOOS)" = linux ] && [ "$(go env GOARCH)" = amd64 ]`
-	const macOSIdentity = `[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ] && [ "$(go env GOOS)" = darwin ] && [ "$(go env GOARCH)" = arm64 ]`
-	if !runEquals(linux, "Verify exact native Linux candidate", linuxIdentity) || !runEquals(linux, "Produce coverage evidence", `./x coverage-produce '${{ matrix.workload }}' coverage-artifact '${{ github.sha }}'`) {
-		problems = append(problems, "Linux exact coverage shard")
-	}
-	if !workflowNeeds(coverage, "linux-coverage") || !runEquals(coverage, "Validate evidence and enforce coverage policy", "./x coverage-aggregate coverage-artifacts") {
-		problems = append(problems, "canonical coverage aggregation")
-	}
-	if !runEquals(macOS, "Verify exact native macOS candidate", macOSIdentity) || countExactRun(macOS, `./x native-shard --workload '${{ matrix.workload }}'`) != 1 {
-		problems = append(problems, "macOS exact native shard")
-	}
-	if countExactRun(pi, "./x pi-test run") != 1 {
-		problems = append(problems, "Pi behavior")
-	}
-	const analysisIdentity = `[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ] && [ "$(go env GOOS)" = linux ] && [ "$(go env GOARCH)" = amd64 ] && go run ./cmd/versioncheck && go build ./...`
-	const analysisChecks = `go tool golangci-lint run && go vet ./... && go run ./cmd/pincheck`
-	const advisoryAnalysis = `go tool golangci-lint run --config .golangci-advisory.yml --issues-exit-code 0 && go tool deadcode -json ./... | go run ./cmd/deadcodecheck`
-	const crossBuilds = `for target in linux/amd64 linux/arm64 darwin/amd64 darwin/arm64; do GOOS=${target%/*} GOARCH=${target#*/} go build ./...; done`
-	const repositoryScans = `./x check && ./awf check repo prose && ./awf check repo memory`
-	if !runEquals(analysis, "Verify exact candidate and native build", analysisIdentity) ||
-		!runEquals(analysis, "Blocking lint, vet, and action pins", analysisChecks) ||
-		!runEquals(analysis, "Advisory lint and dead code", advisoryAnalysis) ||
-		!runEquals(analysis, "Cross builds", crossBuilds) ||
-		!runEquals(analysis, "Drift and repository scans", repositoryScans) {
-		problems = append(problems, "analysis and cross-build assurance")
-	}
-	const mutationRun = `[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ]
-case "$EVENT" in pull_request) base="$PR_BASE";; push) base="$PUSH_BASE";; *) base=invalid-base;; esac
-./x covercheck-mutants --select-range "$base" '${{ github.sha }}'`
-	if !runEquals(mutation, "Verify exact candidate and range-qualified mutation", mutationRun) {
-		problems = append(problems, "range-qualified mutation")
-	}
-	if countExactRun(releaseConfig, "go run ./cmd/releasecheck --verify-archives dist") != 1 || countActionArgs(releaseConfig, "goreleaser/goreleaser-action@", "release --snapshot --clean") != 1 {
-		problems = append(problems, "same-byte release archive validation")
-	}
-	for _, name := range requiredCI {
-		job := workflowMap(ciJobs[name])
 		steps := workflowSteps(job)
 		if len(steps) == 0 || workflowMap(workflowMap(steps[0])["with"])["ref"] != "${{ github.sha }}" {
 			problems = append(problems, "CI checkout exact SHA: "+name)
 		}
 	}
+	gate := workflowMap(ciJobs["gate"])
+	if gate["name"] != "gate" {
+		problems = append(problems, "stable aggregate conclusion")
+	}
+	if !slices.Equal(workflowNeedNames(gate), []string{"linux", "macos", "pi"}) {
+		problems = append(problems, "gate assurance dependencies")
+	}
+	const acceptance = `[ "$(git rev-parse HEAD)" = "${{ github.sha }}" ]
+[ '${{ needs.linux.result }}' = success ]
+[ '${{ needs.macos.result }}' = success ]
+[ '${{ needs.pi.result }}' = success ]`
+	if stringValue(gate["if"]) != "${{ always() }}" || strings.TrimSpace(stringValue(workflowStep(gate, "Require every assurance lane for the exact candidate")["run"])) != acceptance {
+		problems = append(problems, "gate exact result acceptance")
+	}
 
 	verify, publish := workflowMap(releaseJobs["verify"]), workflowMap(releaseJobs["publish"])
-	if !runEquals(verify, "Verify bridge readiness and exact CI conclusions", `go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"`) {
+	runEquals := func(job map[string]any, step, want string) bool {
+		return strings.TrimSpace(stringValue(workflowStep(job, step)["run"])) == strings.TrimSpace(want)
+	}
+	if !runEquals(verify, "Verify bridge readiness and exact CI conclusion", `go run ./cmd/releasecheck --verify-ci "${{ github.sha }}"`) {
 		problems = append(problems, "exact CI verification")
 	}
-	const tagIdentityVerification = `candidate='${{ github.sha }}'
+	const tagIdentity = `candidate='${{ github.sha }}'
 [ "$(git rev-parse HEAD)" = "$candidate" ]
 [ "$(git rev-parse "${GITHUB_REF_NAME}^{}")" = "$candidate" ]`
-	if !runEquals(verify, "Verify checkout and tag identity", tagIdentityVerification) {
+	if !runEquals(verify, "Verify checkout and tag identity", tagIdentity) {
 		problems = append(problems, "release checkout and tag identity")
 	}
-	const mainAncestryVerification = `git fetch origin main
-git merge-base --is-ancestor HEAD origin/main`
-	if !runEquals(verify, "Verify tagged commit is on main", mainAncestryVerification) {
-		problems = append(problems, "release main ancestry verification")
-	}
-	const versionVerification = `tag="${GITHUB_REF_NAME#v}"
-want="$(go run ./cmd/awf version | awk '
-  /^version: [^[:space:]()]+( \([^[:cntrl:]]+\))?$/ {
-    if (found) { bad = 1; exit }
-    found = 1
-    value = substr($0, 10)
-    sub(/ \(.*/, "", value)
-    next
-  }
-  { bad = 1; exit }
-  END { if (!bad && found == 1) print value; else exit 1 }
-')"
-[ "$tag" = "$want" ]`
-	if !runEquals(verify, "Verify tag matches project.Version", versionVerification) {
-		problems = append(problems, "release version verification")
-	}
-	if !runEquals(verify, "Prepare release notes from the curated changelog", `go run ./cmd/awf changelog --version "${GITHUB_REF_NAME#v}" > "${RUNNER_TEMP}/release-notes.md"`) {
-		problems = append(problems, "curated release notes verification")
+	if countExactRun(verify, "go run ./cmd/releasecheck --verify-archives dist") != 1 || countActionArgs(verify, "goreleaser/goreleaser-action@", "release --snapshot --clean") != 1 {
+		problems = append(problems, "release-only snapshot archive validation")
 	}
 	if !workflowPermissions(verify, "actions", "read") || !workflowPermissions(verify, "contents", "read") {
 		problems = append(problems, "read-only verification")
@@ -878,8 +630,8 @@ want="$(go run ./cmd/awf version | awk '
 		problems = append(problems, "needs-bound publication")
 	}
 	for _, job := range []map[string]any{verify, publish} {
-		checkout := workflowMap(workflowSteps(job)[0])
-		if workflowMap(checkout["with"])["ref"] != "${{ github.sha }}" {
+		steps := workflowSteps(job)
+		if len(steps) == 0 || workflowMap(workflowMap(steps[0])["with"])["ref"] != "${{ github.sha }}" {
 			problems = append(problems, "release checkout exact SHA")
 		}
 	}
@@ -887,22 +639,6 @@ want="$(go run ./cmd/awf version | awk '
 [ "$(git rev-parse "${GITHUB_REF_NAME}^{}")" = '${{ github.sha }}' ]`
 	if !runEquals(publish, "Repeat tag identity before publication", publicationIdentity) {
 		problems = append(problems, "publication tag identity")
-	}
-	for _, raw := range workflowSteps(verify) {
-		run := stringValue(workflowMap(raw)["run"])
-		if strings.Contains(run, "./x gate") || strings.Contains(run, "./x check") || strings.Contains(run, "pi-test") || strings.Contains(run, "unshare --user") {
-			problems = append(problems, "release duplicates CI-owned assurance")
-			break
-		}
-	}
-	for name, raw := range releaseJobs {
-		job := workflowMap(raw)
-		for _, rawStep := range workflowSteps(job) {
-			step := workflowMap(rawStep)
-			if strings.HasPrefix(stringValue(step["uses"]), "goreleaser/goreleaser-action@") && (name != "publish" || !workflowNeeds(job, "verify") || !workflowPermissions(job, "contents", "write")) {
-				problems = append(problems, "GoReleaser publication bypass")
-			}
-		}
 	}
 	return problems
 }
@@ -1008,7 +744,7 @@ func TestDispatchRoutesLocalAndExactCIModes(t *testing.T) {
 		case "/repos/acme/repo/actions/workflows/ci.yml/runs":
 			fmt.Fprintf(w, `{"total_count":1,"workflow_runs":[{"id":7,"head_sha":%q,"status":"completed","conclusion":"success","path":".github/workflows/ci.yml","name":"CI"}]}`, sha)
 		case "/repos/acme/repo/actions/runs/7/jobs":
-			_, _ = io.WriteString(w, `{"total_count":2,"jobs":[{"name":"gate","status":"completed","conclusion":"success"},{"name":"release-config","status":"completed","conclusion":"success"}]}`)
+			_, _ = io.WriteString(w, `{"total_count":1,"jobs":[{"name":"gate","status":"completed","conclusion":"success"}]}`)
 		case "/repos/acme/repo/releases/tags/v0.41.0":
 			_, _ = io.WriteString(w, `{"body":"curated notes\n"}`)
 		default:

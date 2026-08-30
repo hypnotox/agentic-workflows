@@ -47,7 +47,7 @@ func TestEffortResidentsRefuseForeignOwnedBytesUnprivileged(t *testing.T) {
 // TestEffortResidentsRefuseForeignOwnedBytes exercises the no-follow owner check
 // against a resident owned by another user. Creating that fixture requires
 // privilege, so the body runs only under a privileged test process; the
-// production branch it covers carries a matching coverage-ignore.
+// production branch it covers carried the retired coverage exclusion marker.
 func TestEffortResidentsRefuseForeignOwnedBytes(t *testing.T) {
 	if runtime.GOOS == "windows" || testCurrentEUID() != 0 {
 		t.Skip("foreign ownership requires a privileged non-Windows test process")

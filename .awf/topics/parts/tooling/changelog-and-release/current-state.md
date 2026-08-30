@@ -34,7 +34,7 @@ Backing: test
 
 ### `invariant: release-gate-on-tag`
 
-The release workflow verifies successful exact-SHA CI conclusions, checkout and tag identity, origin/main ancestry, the release version, and curated notes before its needs-bound credential-bearing GoReleaser publish step. The stable CI release-configuration conclusion owns production snapshot construction and portability validation; the tag workflow does not repeat full repository assurance.
+The release workflow verifies the successful exact-SHA `CI / gate` conclusion, checkout and tag identity, origin/main ancestry, the release version, curated notes, and production snapshot archive integrity before its needs-bound credential-bearing GoReleaser publish step. It does not repeat repository test or lint assurance.
 Backing: test
 
 ### `invariant: release-platforms`
@@ -44,7 +44,7 @@ Backing: test
 
 ### `rule: hosted-release-protection`
 
-The live GitHub `release tags` ruleset applies to `refs/tags/v*` with no bypass actor and requires GitHub Actions checks `CI / gate` and `CI / release-config` on the exact tagged revision before the ref can be created or updated.
+The live GitHub `release tags` ruleset still requires `CI / gate` and the retired `CI / release-config` status on the exact tagged revision. Repository owners must remove the retired status requirement before the simplified workflow can publish tags.
 
 ### `invariant: release-notes-from-changelog`
 

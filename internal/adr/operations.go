@@ -71,7 +71,7 @@ func localSlug(id string) string {
 	if m := qualifiedIDRe.FindStringSubmatch(id); m != nil {
 		return m[1]
 	}
-	return "" // coverage-ignore: every caller passes an ID stateOpRe already validated
+	return ""
 }
 
 // nonBlankLines returns the section's non-blank, whitespace-trimmed lines.

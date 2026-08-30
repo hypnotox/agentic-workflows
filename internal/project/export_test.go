@@ -24,7 +24,7 @@ import (
 
 var testConfigs sync.Map
 
-const crefYAML = "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n  gateCmdFull: make gate full\n"
+const crefYAML = "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n"
 const domainCfg = "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n"
 
 func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *ProjectState) {

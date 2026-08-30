@@ -181,13 +181,16 @@ func TestPiExtensionHostLaneGateWiring(t *testing.T) {
 		"mktemp -d", "cp -a \"$root/.pi/extensions\"", "cp -a \"$root/.pi/agents\"",
 		"cp -a \"$root/.pi/skills\"", "ln -s \"$tool_dir/node_modules\" \"$workspace/node_modules\"",
 		"readFileSync(path)", "field(`file:", "bytes.length", "// @ts-nocheck", "tsc -p tools/pi-extension-test/tsconfig.json",
-		"--statements=100 --lines=100 --functions=100 --branches=100", "tmp_marker=\"\"", "cleanup_worker", "readdirSync", "localeCompare",
+		"node_modules/.bin/c8 --all", "tmp_marker=\"\"", "cleanup_worker", "readdirSync", "localeCompare",
 	} {
 		if !strings.Contains(sh, want) {
 			t.Errorf("host runner missing %q", want)
 		}
 	}
-	for _, banned := range []string{"docker", "reset)", "Dockerfile", "sed -i", "sha256sum", "sort -z"} {
+	for _, banned := range []string{
+		"docker", "reset)", "Dockerfile", "sed -i", "sha256sum", "sort -z",
+		"--check-coverage", "--statements=", "--lines=", "--functions=", "--branches=",
+	} {
 		if strings.Contains(strings.ToLower(sh), strings.ToLower(banned)) {
 			t.Errorf("host runner retains %q", banned)
 		}

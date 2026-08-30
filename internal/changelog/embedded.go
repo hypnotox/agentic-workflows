@@ -15,7 +15,7 @@ func Embedded() (string, error) {
 // EmbeddedVersion returns one selected release payload.
 func EmbeddedVersion(version string) (string, error) {
 	entries, err := Load(changelogfs.FS)
-	if err != nil { // coverage-ignore: the compiled embedded changelog asset is fixed and validated by the changelog corpus tests
+	if err != nil {
 		return "", err
 	}
 	entry, err := Version(entries, version)
@@ -25,7 +25,7 @@ func EmbeddedVersion(version string) (string, error) {
 // EmbeddedSince returns release payloads newer than version.
 func EmbeddedSince(version string) ([]string, error) {
 	entries, err := Load(changelogfs.FS)
-	if err != nil { // coverage-ignore: the compiled embedded changelog asset is fixed and validated by the changelog corpus tests
+	if err != nil {
 		return nil, err
 	}
 	matched, err := Since(entries, version)
@@ -35,7 +35,7 @@ func EmbeddedSince(version string) ([]string, error) {
 // EmbeddedRange returns release payloads in the inclusive selected range.
 func EmbeddedRange(from, to string) ([]string, error) {
 	entries, err := Load(changelogfs.FS)
-	if err != nil { // coverage-ignore: the compiled embedded changelog asset is fixed and validated by the changelog corpus tests
+	if err != nil {
 		return nil, err
 	}
 	matched, err := Range(entries, from, to)

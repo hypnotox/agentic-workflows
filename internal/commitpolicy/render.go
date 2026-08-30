@@ -12,11 +12,11 @@ import (
 func Presentation(policy Policy, outcome Outcome) (presentation.Document, error) {
 	if outcome.Disabled {
 		value, err := presentation.Prose("commit policy is disabled; author commitPolicy to preview exact commit provenance")
-		if err != nil { // coverage-ignore: fixed nonempty prose contains no forbidden line break
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		field, err := presentation.NewField("status", value)
-		if err != nil { // coverage-ignore: Prose validated the value and status is a fixed grammar-valid label
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		return presentation.NewDocument(field)
@@ -24,19 +24,19 @@ func Presentation(policy Policy, outcome Outcome) (presentation.Document, error)
 	if outcome.Refusal != nil {
 		r := outcome.Refusal
 		refsValue, err := presentation.Literal(strconv.FormatBool(r.RefsChanged))
-		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		refs, err := presentation.NewField("refs", refsValue)
-		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		indexValue, err := presentation.Literal(strconv.FormatBool(r.IndexChanged))
-		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		index, err := presentation.NewField("index", indexValue)
-		if err != nil { // coverage-ignore: validated inputs and fixed presentation grammar make this constructor path unreachable
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		steps := make([]presentation.Value, len(r.Actions))
@@ -54,11 +54,11 @@ func Presentation(policy Policy, outcome Outcome) (presentation.Document, error)
 	}
 	if len(outcome.Violations) == 0 {
 		value, err := presentation.Prose("all selected commits conform")
-		if err != nil { // coverage-ignore: fixed nonempty prose contains no forbidden line break
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		field, err := presentation.NewField("status", value)
-		if err != nil { // coverage-ignore: Prose validated the value and status is a fixed grammar-valid label
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		return presentation.NewDocument(field)
@@ -80,7 +80,7 @@ func Presentation(policy Policy, outcome Outcome) (presentation.Document, error)
 			return presentation.Document{}, err
 		}
 		record, err := presentation.NewRecord(commit, field, observed)
-		if err != nil { // coverage-ignore: three validated nonempty values always form a valid record
+		if err != nil {
 			return presentation.Document{}, err
 		}
 		records = append(records, record)
@@ -91,11 +91,11 @@ func Presentation(policy Policy, outcome Outcome) (presentation.Document, error)
 		}
 	}
 	refs, err := policyField("refs changed", "false")
-	if err != nil { // coverage-ignore: fixed label and value are grammar-valid
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	index, err := policyField("index changed", "false")
-	if err != nil { // coverage-ignore: fixed label and value are grammar-valid
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	summary := make([]presentation.Field, 0, 5)
@@ -105,7 +105,7 @@ func Presentation(policy Policy, outcome Outcome) (presentation.Document, error)
 			values[i] = identity.Name + " <" + identity.Email + ">"
 		}
 		allowed, fieldErr := policyField("allowed identities", strings.Join(values, ", "))
-		if fieldErr != nil { // coverage-ignore: each identity spelling contains literal angle brackets and the label is fixed
+		if fieldErr != nil {
 			return presentation.Document{}, fieldErr
 		}
 		summary = append(summary, allowed)
@@ -123,20 +123,20 @@ func Presentation(policy Policy, outcome Outcome) (presentation.Document, error)
 	}
 	if identityViolation {
 		remedy, fieldErr := policyField("identity remedy", "correct the author or committer identity to one allowed identity")
-		if fieldErr != nil { // coverage-ignore: fixed label and value are grammar-valid
+		if fieldErr != nil {
 			return presentation.Document{}, fieldErr
 		}
 		summary = append(summary, remedy)
 	}
 	if signatureViolation {
 		remedy, fieldErr := policyField("signature remedy", "configure commit.gpgSign, gpg.format, and user.signingKey for an allowed signer")
-		if fieldErr != nil { // coverage-ignore: fixed label and value are grammar-valid
+		if fieldErr != nil {
 			return presentation.Document{}, fieldErr
 		}
 		summary = append(summary, remedy)
 	}
 	retry, err := policyField("retry", "reconcile the listed commits, then rerun awf check commit-policy with the same explicit targets")
-	if err != nil { // coverage-ignore: fixed label and value are grammar-valid
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	summary = append(summary, retry)

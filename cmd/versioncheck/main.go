@@ -9,7 +9,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-func main() { // coverage-ignore: os.Exit wrapper; run is unit-tested
+func main() {
 	os.Exit(run(os.Stdout, os.Stderr, project.CheckVersionAuthority))
 }
 

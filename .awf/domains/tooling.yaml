@@ -1,17 +1,13 @@
 paths:
-  - test-performance.json
   - test-selection.json
   - cmd/**
   - internal/audit/**
   - internal/severity/**
-  - internal/coverage/**
-  - internal/testperformance/**
   - internal/testselection/**
   - internal/changelog/**
   - internal/checkop/**
   - internal/authoringop/**
   - internal/configop/**
-  - internal/commitgateop/**
   - internal/domainop/**
   - internal/localdocop/**
   - internal/evals/**

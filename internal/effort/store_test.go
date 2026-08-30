@@ -484,7 +484,7 @@ func snapshotEffortsTree(t *testing.T, root string) map[string]string {
 			return err
 		}
 		rel, err := filepath.Rel(base, path)
-		if err != nil { // coverage-ignore: every walked path is rooted at base by construction
+		if err != nil {
 			return err
 		}
 		if !info.Mode().IsRegular() {
@@ -492,13 +492,13 @@ func snapshotEffortsTree(t *testing.T, root string) map[string]string {
 			return nil
 		}
 		content, err := os.ReadFile(path)
-		if err != nil { // coverage-ignore: the walk just proved this readable regular leaf exists
+		if err != nil {
 			return err
 		}
 		out[rel] = info.Mode().String() + ":" + string(content)
 		return nil
 	})
-	if err != nil { // coverage-ignore: the efforts root is an owned readable directory in every fixture
+	if err != nil {
 		t.Fatalf("snapshot efforts tree: %v", err)
 	}
 	return out
@@ -513,7 +513,7 @@ func assertNoEffortTemporaries(t *testing.T, dir string) {
 	if errors.Is(err, os.ErrNotExist) {
 		return
 	}
-	if err != nil { // coverage-ignore: the reservation created this owned readable directory
+	if err != nil {
 		t.Fatal(err)
 	}
 	for _, entry := range entries {

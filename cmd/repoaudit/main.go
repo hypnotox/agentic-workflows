@@ -4,9 +4,7 @@
 // NOT part of the shipped awf standard: it is repo-local dev tooling wired as
 // `./x audit-local` and invoked by awf-reviewing-impl (ADR-0073). It never runs the
 // gate. Three rules: changelog conformance - an adopter-facing change in the range with
-// no CHANGELOG [Unreleased] entry is an error - and coverage-ignore re-evaluation - an
-// added or touched coverage-ignore directive in a production Go file is a warn
-// prompting a reachability re-check.
+// no CHANGELOG [Unreleased] entry is an error.
 package main
 
 import (
@@ -14,10 +12,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"slices"
 	"strings"
-
-	"github.com/hypnotox/agentic-workflows/internal/coverage"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
@@ -33,30 +28,27 @@ type finding struct {
 type gitReader interface {
 	MergeBase(context.Context, string, string) (string, error)
 	RangeChangedPaths(context.Context, string, string) ([]string, error)
-	RangeDiffText(context.Context, string, string) (string, error)
 	FileText(context.Context, string, string) (string, bool, error)
 }
 
-func main() { // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+func main() {
 	_, _, code := parseArgs(os.Args, os.Stderr)
-	if code != 0 { // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+	if code != 0 {
 		os.Exit(code)
 	}
-	ctx, cancel := context.WithTimeout(context.Background(), awfgit.CommandTimeout) // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+	ctx, cancel := context.WithTimeout(context.Background(), awfgit.CommandTimeout)
 	repo, err := awfgit.Open(".")
-	if err != nil { // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+	if err != nil {
 		fmt.Fprintln(os.Stderr, "repoaudit:", err)
 		cancel()
 		os.Exit(1)
 	}
-	code = runWith(ctx, os.Args, os.Stdout, os.Stderr, repo) // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+	code = runWith(ctx, os.Args, os.Stdout, os.Stderr, repo)
 	cancel()
-	os.Exit(code) // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
-} // coverage-ignore: process-exit composition boundary; runWith has fake-backed tests
+	os.Exit(code)
+}
 
 const changelogPath = "changelog/CHANGELOG.md"
-
-const coverageBaselinePath = "coverage-baseline.json"
 
 // adopterFacingPrefixes are the path roots whose change is adopter-visible: the
 // rendered templates, the shipped CLI, the config/lock schema, the artifact catalog
@@ -80,8 +72,6 @@ var adopterFacingPrefixes = []string{
 // appended here plus nothing else.
 var rules = []func(ctx context.Context, git gitReader, base, head string, log io.Writer) []finding{
 	changelogRule,
-	coverageIgnoreRule,
-	coverageBaselineRule,
 }
 
 func runWith(ctx context.Context, args []string, stdout, stderr io.Writer, git gitReader) int {
@@ -129,90 +119,6 @@ func runRange(ctx context.Context, base, head string, stdout io.Writer, git gitR
 	}
 	fmt.Fprintln(stdout, "repoaudit: clean")
 	return 0
-}
-
-// coverageBaselineRule reports each newly admitted raw miss as review evidence.
-// The gate owns policy enforcement; this range-oriented audit only makes the
-// stored admission reason visible to reviewers.
-func coverageBaselineRule(ctx context.Context, git gitReader, base, head string, _ io.Writer) []finding {
-	mb, err := git.MergeBase(ctx, base, head)
-	if err != nil {
-		return []finding{{severity.Error, "coverage-baseline-added", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
-	}
-	from := strings.TrimSpace(mb)
-	previous, previousFound, err := baselineAt(ctx, git, from)
-	if err != nil {
-		return []finding{{severity.Error, "coverage-baseline-added", fmt.Sprintf("reading %s at %s: %v", coverageBaselinePath, from, err)}}
-	}
-	current, currentFound, err := baselineAt(ctx, git, head)
-	if err != nil {
-		return []finding{{severity.Error, "coverage-baseline-added", fmt.Sprintf("reading %s at %s: %v", coverageBaselinePath, head, err)}}
-	}
-	if !previousFound && !currentFound {
-		return nil
-	}
-	if !currentFound {
-		return []finding{{severity.Error, "coverage-baseline-added", fmt.Sprintf("%s is unavailable at %s", coverageBaselinePath, head)}}
-	}
-
-	known := make(map[coverage.Identity]bool)
-	if previousFound {
-		for _, admission := range previous.Repository {
-			known[admission.Identity] = true
-		}
-	}
-	var added []coverage.MissAdmission
-	for _, admission := range current.Repository {
-		if !known[admission.Identity] {
-			added = append(added, admission)
-		}
-	}
-	slices.SortFunc(added, func(a, b coverage.MissAdmission) int {
-		return strings.Compare(formatCoverageIdentity(a.Identity), formatCoverageIdentity(b.Identity))
-	})
-	findings := make([]finding, 0, len(added))
-	for _, admission := range added {
-		detail := fmt.Sprintf("%s: added raw baseline identity; reviewed reason: %s", formatCoverageIdentity(admission.Identity), admission.Reason)
-		if admission.MovedFrom != nil {
-			detail = fmt.Sprintf("%s: moved from %s to raw baseline identity; reviewed reason: %s", formatCoverageIdentity(admission.Identity), formatCoverageIdentity(*admission.MovedFrom), admission.Reason)
-		}
-		findings = append(findings, finding{severity.Warn, "coverage-baseline-added", detail})
-	}
-	return findings
-}
-
-// baselineAt delegates strict parsing and canonical validation to the canonical
-// coverage owner after the git seam supplies endpoint content.
-func baselineAt(ctx context.Context, git gitReader, rev string) (coverage.Baseline, bool, error) {
-	raw, found, err := git.FileText(ctx, rev, coverageBaselinePath)
-	if err != nil {
-		return coverage.Baseline{}, false, err
-	}
-	if !found {
-		return coverage.Baseline{}, false, nil
-	}
-	file, err := os.CreateTemp("", "repoaudit-coverage-baseline-*.json")
-	if err != nil {
-		return coverage.Baseline{}, false, err
-	}
-	name := file.Name()
-	defer os.Remove(name)
-	if _, err := io.WriteString(file, raw); err != nil {
-		file.Close()
-		return coverage.Baseline{}, false, err
-	}
-	if err := file.Close(); err != nil {
-		return coverage.Baseline{}, false, err
-	}
-	baseline, err := coverage.LoadBaselineForHistoricalComparison(name)
-	if err != nil {
-		return coverage.Baseline{}, false, err
-	}
-	return baseline, true, nil
-}
-
-func formatCoverageIdentity(identity coverage.Identity) string {
-	return fmt.Sprintf("%s:%d.%d,%d.%d %d", identity.File, identity.Start.Line, identity.Start.Column, identity.End.Line, identity.End.Column, identity.Statements)
 }
 
 // changelogRule flags an adopter-facing change in base..head that lacks a CHANGELOG
@@ -266,55 +172,6 @@ func changelogRule(ctx context.Context, git gitReader, base, head string, log io
 		return []finding{{severity.Warn, "changelog-unreleased", fmt.Sprintf("adopter-facing change in %s..%s but %s [Unreleased] is unchanged: add an entry", base, head, changelogPath)}}
 	}
 	return nil
-}
-
-// coverageIgnoreMarker is the comment form the rule detects, assembled so this
-// file's own lines never match it (the same split literal internal/coverage
-// uses for its directive constant).
-const coverageIgnoreMarker = "//" + " coverage-ignore"
-
-// coverageIgnoreRule emits one warn per added-or-touched coverage-ignore
-// directive in a non-test Go file over the range: every ignore states a
-// reachability claim, and three factually false claims surfaced on 2026-07-08
-// alone, so each new one gets a deterministic re-evaluation prompt at review
-// time. A warn never affects the exit code; a git failure is an error - the
-// rule cannot verify, so it fails loud like the changelog rule.
-func coverageIgnoreRule(ctx context.Context, git gitReader, base, head string, log io.Writer) []finding {
-	mb, err := git.MergeBase(ctx, base, head)
-	if err != nil {
-		return []finding{{severity.Error, "coverage-ignore-added", fmt.Sprintf("git merge-base %s %s failed: %v", base, head, err)}}
-	}
-	from := strings.TrimSpace(mb)
-	// Pin the header format against user git config: diff.noprefix /
-	// diff.mnemonicprefix would drop or change the "b/" prefix the parser keys
-	// on, and an external diff driver would replace the format entirely.
-	diff, err := git.RangeDiffText(ctx, from, head)
-	if err != nil {
-		return []finding{{severity.Error, "coverage-ignore-added", fmt.Sprintf("git diff %s..%s failed: %v", from, head, err)}}
-	}
-	var out []finding
-	file := "" // current +++ target; "" while in a skipped (test/deleted) file
-	for _, ln := range strings.Split(diff, "\n") {
-		// Known limitation: an added content line that itself starts "++ "
-		// (a diff fixture embedded in a raw string in production Go) renders as
-		// "+++ ..." and would be misparsed as a header - contrived for *.go
-		// content and warning-only, so tolerated.
-		if rest, ok := strings.CutPrefix(ln, "+++ "); ok {
-			file = ""
-			if p, ok := strings.CutPrefix(rest, "b/"); ok && !strings.HasSuffix(p, "_test.go") {
-				file = p
-			}
-			continue
-		}
-		if file == "" || !strings.HasPrefix(ln, "+") {
-			continue
-		}
-		if strings.Contains(ln, coverageIgnoreMarker) {
-			out = append(out, finding{severity.Warn, "coverage-ignore-added",
-				file + ": added or touched coverage-ignore; re-evaluate: is this branch genuinely untriggerable? Try to stage the state it declares impossible"})
-		}
-	}
-	return out
 }
 
 // unreleasedSection returns the body of the ## [Unreleased] section of the changelog at

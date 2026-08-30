@@ -152,7 +152,7 @@ func (s *checkoutStub) GitPath(ctx context.Context, name string) (string, error)
 func stubOpener(apply func(root string, stub *checkoutStub)) OpenCheckout {
 	return func(root string) (Runner, error) {
 		checkout, err := awfgit.Open(root)
-		if err != nil { // coverage-ignore: every stubbed opener names a checkout the fixture just created
+		if err != nil {
 			return nil, err
 		}
 		stub := &checkoutStub{Runner: checkout}
@@ -280,7 +280,7 @@ func managerRooted(t *testing.T, root string, drift func(*awfgit.ControlRoots), 
 	drift(&drifted)
 	open := func(string) (Runner, error) {
 		checkout, err := awfgit.Open(root)
-		if err != nil { // coverage-ignore: the fixture just created this checkout
+		if err != nil {
 			return nil, err
 		}
 		stub := &checkoutStub{Runner: checkout}

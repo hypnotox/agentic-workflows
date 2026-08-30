@@ -157,7 +157,7 @@ func operationFree(ctx context.Context, checkout Runner) error {
 				return mergeRefusal(ctx, checkout)
 			}
 			return refusal("operation", "checkout has an in-progress Git operation", "finish or abort the native Git operation", "retry")
-		} else if !errors.Is(err, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
+		} else if !errors.Is(err, os.ErrNotExist) {
 			return err
 		}
 	}
@@ -601,7 +601,7 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		pathPresent := false
 		if _, statErr := managedLstat(path); statErr == nil {
 			pathPresent = true
-		} else if !errors.Is(statErr, os.ErrNotExist) { // coverage-ignore: local lstat reports an inode or os.ErrNotExist absent a kernel fault
+		} else if !errors.Is(statErr, os.ErrNotExist) {
 			return Result{}, removalProbeFailure(changed, effects, path, branch(slug), "managed path probe failed during removal", statErr)
 		}
 		regs, regsErr := m.git.WorktreeList(ctx)

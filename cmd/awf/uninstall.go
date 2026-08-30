@@ -38,7 +38,7 @@ func runUninstall(ctx context.Context, root string, stdout io.Writer) (returnErr
 		return uninstallErr
 	}
 	document, err := report.Document()
-	if err != nil { // coverage-ignore: Uninstall returns a count and validated resident-root names; the owner mapping uses fixed grammar
+	if err != nil {
 		return err
 	}
 	return presentation.Render(stdout, document)

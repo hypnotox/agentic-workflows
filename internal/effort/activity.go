@@ -202,7 +202,7 @@ func activityStorageFailure(operation activityOperation, stage string, err error
 }
 func (s store) replaceActivity(path string, a Activity, expected *fileIdentity, operation activityOperation) error {
 	raw, err := json.Marshal(a)
-	if err != nil { // coverage-ignore: Activity contains only JSON-native fields whose MarshalJSON methods cannot fail.
+	if err != nil {
 		return err
 	}
 	return s.replaceResidentExpected(path, raw, "activity", expected, operation)
@@ -218,11 +218,11 @@ func (s store) removeActivityExpected(path string, expected *fileIdentity) (retu
 		}
 	} else {
 		temp, err := os.CreateTemp(filepath.Dir(path), ".activity-remove-*.tmp")
-		if err != nil { // coverage-ignore: the validated activity resident has a usable parent; failure requires a concurrent storage fault.
+		if err != nil {
 			return activityStorageFailure(operation, "remove", err)
 		}
 		tempPath := temp.Name()
-		if err = temp.Close(); err != nil { // coverage-ignore: a newly created local temporary file cannot fail Close without a storage fault.
+		if err = temp.Close(); err != nil {
 			return activityStorageFailure(operation, "remove", err)
 		}
 		defer os.Remove(tempPath)
@@ -233,7 +233,7 @@ func (s store) removeActivityExpected(path string, expected *fileIdentity) (retu
 	if err := s.hit("activity.directory-fsync"); err != nil {
 		return activityStorageFailure(operation, "directory-fsync", err)
 	}
-	if err := syncDirectory(filepath.Dir(path)); err != nil { // coverage-ignore: injected directory-fsync faults cover this durability boundary; a real failure requires storage fault.
+	if err := syncDirectory(filepath.Dir(path)); err != nil {
 		return activityStorageFailure(operation, "directory-fsync", err)
 	}
 	return nil
@@ -254,7 +254,7 @@ func (s store) replaceResidentExpected(path string, raw []byte, label string, ex
 		if err := s.hit(label + ".directory-fsync"); err != nil {
 			return activityStorageFailure(operation, "directory-fsync", err)
 		}
-		if err := syncDirectory(filepath.Dir(path)); err != nil { // coverage-ignore: injected directory-fsync faults cover this durability boundary; a real failure requires a storage fault
+		if err := syncDirectory(filepath.Dir(path)); err != nil {
 			return activityStorageFailure(operation, "directory-fsync", err)
 		}
 		return nil
@@ -270,23 +270,23 @@ func (s store) replaceResidentExpected(path string, raw []byte, label string, ex
 		if !closed {
 			returnErr = errors.Join(returnErr, activityStorageFailure(operation, "replace", temp.Close()))
 		}
-		if e := os.Remove(tempPath); e != nil && !errors.Is(e, os.ErrNotExist) { // coverage-ignore: cleanup of a local temporary can only fail through a storage fault.
+		if e := os.Remove(tempPath); e != nil && !errors.Is(e, os.ErrNotExist) {
 			returnErr = errors.Join(returnErr, activityStorageFailure(operation, "replace", e))
 		}
 	}()
 	if err = s.hit(label + ".write"); err != nil {
 		return activityStorageFailure(operation, "replace", err)
 	}
-	if _, err = temp.Write(raw); err != nil { // coverage-ignore: injected write faults cover publication; a local temporary write failure requires storage fault.
+	if _, err = temp.Write(raw); err != nil {
 		return activityStorageFailure(operation, "replace", err)
 	}
 	if err = s.hit(label + ".fsync"); err != nil {
 		return activityStorageFailure(operation, "replace", err)
 	}
-	if err = temp.Sync(); err != nil { // coverage-ignore: injected fsync faults cover publication; a local temporary sync failure requires storage fault.
+	if err = temp.Sync(); err != nil {
 		return activityStorageFailure(operation, "replace", err)
 	}
-	if err = temp.Close(); err != nil { // coverage-ignore: a newly created local temporary file cannot fail Close without a storage fault.
+	if err = temp.Close(); err != nil {
 		return activityStorageFailure(operation, "replace", err)
 	}
 	closed = true
@@ -299,7 +299,7 @@ func (s store) replaceResidentExpected(path string, raw []byte, label string, ex
 	if err = s.hit(label + ".directory-fsync"); err != nil {
 		return activityStorageFailure(operation, "directory-fsync", err)
 	}
-	if err = syncDirectory(dir); err != nil { // coverage-ignore: injected directory-fsync faults cover this durability boundary; a real failure requires storage fault.
+	if err = syncDirectory(dir); err != nil {
 		return activityStorageFailure(operation, "directory-fsync", err)
 	}
 	return nil

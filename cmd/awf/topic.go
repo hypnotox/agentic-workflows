@@ -24,7 +24,7 @@ func runReadTopic(ctx context.Context, cwd, selector string, references, coverag
 
 func printTopicDetail(stdout io.Writer, detail presentation.Detail) error {
 	document, err := detail.Document()
-	if err != nil { // coverage-ignore: topic.Detail assembles a nonempty tree only through validated constructors
+	if err != nil {
 		return err
 	}
 	return presentation.Render(stdout, document)

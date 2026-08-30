@@ -18,11 +18,11 @@ import (
 func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFile, deps map[string][]string, err error) {
 	deps = map[string][]string{}
 	topicTemplate, err := fs.ReadFile(templates.FS, topicTID)
-	if err != nil { // coverage-ignore: the topic template is compile-time embedded
+	if err != nil {
 		return nil, nil, err
 	}
 	indexTemplate, err := fs.ReadFile(templates.FS, topicIndexTID)
-	if err != nil { // coverage-ignore: the topic index template is compile-time embedded
+	if err != nil {
 		return nil, nil, err
 	}
 	currentPaths, err := p.read.Paths("")
@@ -39,17 +39,17 @@ func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFil
 		}
 		model := topic.BuildTopicModel(t, corpus.DomainPaths[t.ID.Domain], corpus.Markers, currentPaths)
 		content, err := topic.RenderTopic(topicTID, topicTemplate, model)
-		if err != nil { // coverage-ignore: ParsePart already validated authoring comments and the typed model is always executable
+		if err != nil {
 			return nil, nil, fmt.Errorf("render topic %s: %w", t.ID.String(), err)
 		}
 		metadataPath, partPath := relSlash(p.root(), t.MetadataPath), relSlash(p.root(), t.PartPath)
 		marker, templateInputs, err := templateSourceRootMarker(p, topicTID)
-		if err != nil { // coverage-ignore: topicTID is validated embedded authority; helper error paths are covered directly
+		if err != nil {
 			return nil, nil, err
 		}
 		content = injectSourceMarker(injectBanner(marker+content, topicTID), []string{metadataPath, partPath})
 		cfgHash, err := topicHash(p.root(), projectTreeReader(p), model, t.MetadataPath, t.PartPath)
-		if err != nil { // coverage-ignore: topic loading just read both inputs; failure requires a concurrent filesystem race
+		if err != nil {
 			return nil, nil, err
 		}
 		path := base + "/" + t.ID.Domain + "/" + t.ID.Slug + ".md"
@@ -65,11 +65,11 @@ func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFil
 		}
 		model := topic.BuildIndexModel(domain, topics)
 		content, err := topic.RenderIndex(topicIndexTID, indexTemplate, model)
-		if err != nil { // coverage-ignore: the embedded index template and typed model are always executable
+		if err != nil {
 			return nil, nil, fmt.Errorf("render topic index %s: %w", domain, err)
 		}
 		marker, templateInputs, err := templateSourceRootMarker(p, topicIndexTID)
-		if err != nil { // coverage-ignore: topicIndexTID is validated embedded authority; helper error paths are covered directly
+		if err != nil {
 			return nil, nil, err
 		}
 		content = injectSourceMarker(injectBanner(marker+content, topicIndexTID), []string{
@@ -97,14 +97,14 @@ func topicHash(root string, read ProjectTreeReader, model topic.TopicRenderModel
 		if err != nil {
 			return "", err
 		}
-		if !ok { // coverage-ignore: topic loading just read both inputs from the same project-tree reader
+		if !ok {
 			return "", fmt.Errorf("read topic hash input %s", rel)
 		}
 		inputs[rel] = manifest.Hash(b)
 	}
 	proj["inputs"] = inputs
 	enc, err := yaml.Marshal(proj)
-	if err != nil { // coverage-ignore: the projection contains only strings, slices, and typed topic models
+	if err != nil {
 		return "", err
 	}
 	return manifest.Hash(enc), nil

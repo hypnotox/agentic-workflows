@@ -11,44 +11,23 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strings"
 
 	"github.com/bmatcuk/doublestar/v4"
 )
 
-var provingUnitName = regexp.MustCompile(`^(Test|Example|Fuzz)[A-Za-z0-9_]+$`)
-
 // Policy is the versioned repository selection policy.
 type Policy struct {
-	Version             int           `json:"version"`
-	MetaSuites          []SuitePolicy `json:"meta_suites"`
-	SharedPathPatterns  []string      `json:"shared_path_patterns"`
-	GeneratedGoPatterns []string      `json:"generated_go_patterns"`
-}
-
-// SuitePolicy declares one closed set of representative top-level proving
-// units. Suite IDs, packages, and proving-unit names are repository policy, not
-// operator-supplied regular expressions.
-type SuitePolicy struct {
-	ID      string   `json:"id"`
-	Package string   `json:"package"`
-	Tests   []string `json:"tests"`
+	Version             int      `json:"version"`
+	SmokePackages       []string `json:"smoke_packages"`
+	SharedPathPatterns  []string `json:"shared_path_patterns"`
+	GeneratedGoPatterns []string `json:"generated_go_patterns"`
 }
 
 // Package is one selected Go package and its stable, accumulated reasons.
 type Package struct {
-	Path          string   `json:"path"`
-	Reasons       []string `json:"reasons"`
-	RequiredTests []string `json:"required_tests,omitempty"`
-}
-
-// Suite is one selected declared suite and its stable, accumulated reasons.
-type Suite struct {
-	ID      string   `json:"id"`
-	Package string   `json:"package"`
-	Tests   []string `json:"tests"`
+	Path    string   `json:"path"`
 	Reasons []string `json:"reasons"`
 }
 
@@ -59,7 +38,6 @@ type Result struct {
 	Version  int       `json:"version"`
 	Outcome  string    `json:"outcome"`
 	Packages []Package `json:"packages"`
-	Suites   []Suite   `json:"suites"`
 	Reasons  []string  `json:"reasons,omitempty"`
 }
 
@@ -81,25 +59,15 @@ func Load(path string) (Policy, error) {
 	if policy.Version != 1 {
 		return Policy{}, fmt.Errorf("selection policy version %d is unsupported", policy.Version)
 	}
-	if len(policy.MetaSuites) == 0 {
-		return Policy{}, fmt.Errorf("selection policy declares no meta suites")
+	if len(policy.SmokePackages) == 0 {
+		return Policy{}, fmt.Errorf("selection policy declares no smoke packages")
 	}
 	declared := map[string]bool{}
-	for _, suite := range policy.MetaSuites {
-		if suite.ID == "" || declared[suite.ID] {
-			return Policy{}, fmt.Errorf("selection policy has invalid or duplicate meta suite %q", suite.ID)
+	for _, packagePath := range policy.SmokePackages {
+		if !validPackage(packagePath) || declared[packagePath] {
+			return Policy{}, fmt.Errorf("selection policy has invalid or duplicate smoke package %q", packagePath)
 		}
-		declared[suite.ID] = true
-		if !validPackage(suite.Package) || len(suite.Tests) == 0 {
-			return Policy{}, fmt.Errorf("selection policy has invalid meta suite %q", suite.ID)
-		}
-		seenTests := map[string]bool{}
-		for _, test := range suite.Tests {
-			if !provingUnitName.MatchString(test) || seenTests[test] {
-				return Policy{}, fmt.Errorf("selection policy meta suite %q has invalid or duplicate proving unit %q", suite.ID, test)
-			}
-			seenTests[test] = true
-		}
+		declared[packagePath] = true
 	}
 	if len(policy.SharedPathPatterns) == 0 || len(policy.GeneratedGoPatterns) == 0 {
 		return Policy{}, fmt.Errorf("selection policy requires shared and generated Go path patterns")
@@ -117,7 +85,7 @@ func validPackage(path string) bool {
 }
 
 // Select discovers repository packages then selects changed package ownership,
-// their reverse dependents, and declared meta suites. Production dependency
+// their reverse dependents, test importers, and a small declared smoke set. Production dependency
 // effects close transitively; test-only imports select their importing package
 // without falsely making that package's production consumers affected. Any
 // shared or uncertain path widens visibly; unavailable package discovery
@@ -128,7 +96,7 @@ func Select(ctx context.Context, root string, policy Policy, changedPaths []stri
 		return refused(policy, err), err
 	}
 	if len(paths) == 0 {
-		return Result{Version: policy.Version, Outcome: "empty", Packages: []Package{}, Suites: []Suite{}, Reasons: []string{"no-relevant-changes"}}, nil
+		return Result{Version: policy.Version, Outcome: "empty", Packages: []Package{}, Reasons: []string{"no-relevant-changes"}}, nil
 	}
 	graph, err := discover(ctx, root)
 	if err != nil {
@@ -143,7 +111,7 @@ func Select(ctx context.Context, root string, policy Policy, changedPaths []stri
 }
 
 func refused(policy Policy, err error) Result {
-	return Result{Version: policy.Version, Outcome: "refused", Packages: []Package{}, Suites: []Suite{}, Reasons: []string{err.Error()}}
+	return Result{Version: policy.Version, Outcome: "refused", Packages: []Package{}, Reasons: []string{err.Error()}}
 }
 
 type graph struct {
@@ -324,7 +292,6 @@ func hasBuildConstraint(contents []byte) bool {
 
 func selectPaths(policy Policy, graph graph, paths []string) Result {
 	selected := map[string]map[string]bool{}
-	selectedSuites := map[string]map[string]bool{}
 	direct := map[string]bool{}
 	productionDirect := map[string]bool{}
 	for _, path := range paths {
@@ -352,7 +319,7 @@ func selectPaths(policy Policy, graph graph, paths []string) Result {
 		addReason(selected, owner, "changed-package-input:"+path)
 	}
 	if len(selected) == 0 {
-		return Result{Version: policy.Version, Outcome: "empty", Packages: []Package{}, Suites: []Suite{}, Reasons: []string{"no-relevant-changes"}}
+		return Result{Version: policy.Version, Outcome: "empty", Packages: []Package{}, Reasons: []string{"no-relevant-changes"}}
 	}
 
 	productionAffected := map[string]bool{}
@@ -377,13 +344,13 @@ func selectPaths(policy Policy, graph graph, paths []string) Result {
 			}
 		}
 	}
-	for _, suite := range policy.MetaSuites {
-		if _, ok := graph.packages[suite.Package]; !ok {
-			return widened(policy, graph, "unavailable-meta-suite:"+suite.ID)
+	for _, packagePath := range policy.SmokePackages {
+		if _, ok := graph.packages[packagePath]; !ok {
+			return widened(policy, graph, "unavailable-smoke-package:"+packagePath)
 		}
-		addReason(selectedSuites, suite.ID, "declared-meta-suite")
+		addReason(selected, packagePath, "global-smoke")
 	}
-	return result(policy, "selected", selected, selectedSuites, nil)
+	return result(policy, "selected", selected, nil)
 }
 
 func packageOwner(graph graph, path string) (string, bool) {
@@ -429,7 +396,7 @@ func widened(policy Policy, graph graph, reason string) Result {
 	for path := range graph.packages {
 		addReason(selected, path, "widened:"+reason)
 	}
-	return result(policy, "widened", selected, map[string]map[string]bool{}, []string{reason})
+	return result(policy, "widened", selected, []string{reason})
 }
 
 func addReason(selected map[string]map[string]bool, path, reason string) {
@@ -439,39 +406,14 @@ func addReason(selected map[string]map[string]bool, path, reason string) {
 	selected[path][reason] = true
 }
 
-func result(policy Policy, outcome string, selected, selectedSuites map[string]map[string]bool, reasons []string) Result {
-	suiteByID := map[string]SuitePolicy{}
-	requiredTests := map[string]map[string]bool{}
-	for _, suite := range policy.MetaSuites {
-		suiteByID[suite.ID] = suite
-		if _, full := selected[suite.Package]; full {
-			for _, test := range suite.Tests {
-				addReason(requiredTests, suite.Package, test)
-			}
-			if suiteReasons := selectedSuites[suite.ID]; len(suiteReasons) > 0 {
-				for reason := range suiteReasons {
-					addReason(selected, suite.Package, "contains-suite:"+suite.ID+":"+reason)
-				}
-				delete(selectedSuites, suite.ID)
-			}
-		}
-	}
-
+func result(policy Policy, outcome string, selected map[string]map[string]bool, reasons []string) Result {
 	paths := sortedKeys(selected)
 	packages := make([]Package, 0, len(paths))
 	for _, path := range paths {
-		packages = append(packages, Package{Path: path, Reasons: sortedKeys(selected[path]), RequiredTests: sortedKeys(requiredTests[path])})
-	}
-	suiteIDs := sortedKeys(selectedSuites)
-	suites := make([]Suite, 0, len(suiteIDs))
-	for _, id := range suiteIDs {
-		declaration := suiteByID[id]
-		tests := append([]string(nil), declaration.Tests...)
-		sort.Strings(tests)
-		suites = append(suites, Suite{ID: id, Package: declaration.Package, Tests: tests, Reasons: sortedKeys(selectedSuites[id])})
+		packages = append(packages, Package{Path: path, Reasons: sortedKeys(selected[path])})
 	}
 	sort.Strings(reasons)
-	return Result{Version: policy.Version, Outcome: outcome, Packages: packages, Suites: suites, Reasons: reasons}
+	return Result{Version: policy.Version, Outcome: outcome, Packages: packages, Reasons: reasons}
 }
 
 func sortedKeys[V any](items map[string]V) []string {

@@ -141,7 +141,7 @@ func authorityEntriesFromTreeFiles(files []snapshot.File) (map[string]metaEntry,
 			if err != nil {
 				return nil, nil, err
 			}
-			if err := recordMeta(metadata, id, metaEntry{meta: m, path: f.Path}); err != nil { // coverage-ignore: distinct snapshot paths yield distinct topic IDs; recordMeta duplicate is unit-tested directly
+			if err := recordMeta(metadata, id, metaEntry{meta: m, path: f.Path}); err != nil {
 				return nil, nil, err
 			}
 		case strings.HasPrefix(f.Path, treePartsPrefix) && strings.HasSuffix(f.Path, treePartSuffix):

@@ -23,7 +23,7 @@ The gated `check` family is organized by subject universe. `check repo` aggregat
 [All topics](../topics/tooling/index.md)
 
 - [Audit and snapshots](../topics/tooling/audit-and-snapshots.md): Workflow-conformance auditing and the immutable git snapshot layer.
-- [Audit commands](../topics/tooling/audit-commands.md): The advisory audit surfaces: audit, repoaudit, mutants.
+- [Audit commands](../topics/tooling/audit-commands.md): The advisory audit surfaces: audit and repoaudit.
 - [Authority Queries](../topics/tooling/authority-queries.md): Read-only commands that expose current-state and ADR authority without duplicating code navigation.
 - [CLI](../topics/tooling/cli.md): Command dispatch and the behaviour of the awf command surfaces.
 - [Changelog and release](../topics/tooling/changelog-and-release.md): The changelog pipeline and release-notes contracts.
@@ -35,7 +35,7 @@ The gated `check` family is organized by subject universe. `check repo` aggregat
 - [Git access](../topics/tooling/git-access.md): The one semantic git seam - entrypoints, backends, and their pinned contracts.
 - [Initialization](../topics/tooling/init-and-enablement.md): Project adoption and initialization behavior.
 - [Project license](../topics/tooling/project-license.md): The repository license text, public references, and packaged-license contract.
-- [Quality gates](../topics/tooling/quality-gates.md): Coverage, prose, working-memory citations, and the command-runner gate machinery.
+- [Quality gates](../topics/tooling/quality-gates.md): Focused local feedback, repository checks, and the aggregate CI gate.
 - [Test infrastructure](../topics/tooling/test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
 - [Upgrade runtime](../topics/tooling/upgrade-runtime.md): The supported live-schema migration and journaled recovery runtime.
 

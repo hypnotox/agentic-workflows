@@ -440,7 +440,7 @@ func (h *historyOperation) resolveRevision(ctx context.Context, revision string,
 	if !selected {
 		return h.loadDistinctRevision(ctx, revision), nil
 	}
-	if resolving[revision] { // coverage-ignore: newReplayGraph rejects selected cycles before ownership planning
+	if resolving[revision] {
 		return nil, fmt.Errorf("cycle while resolving replay revision %s", revision)
 	}
 	resolving[revision] = true
@@ -503,7 +503,7 @@ func (h *historyOperation) stateForCommit(ctx context.Context, commit replayComm
 	}
 	byRevision[commit.Revision] = commit
 	entry, err := h.resolveRevision(ctx, commit.Revision, byRevision, map[string]bool{})
-	if err != nil { // coverage-ignore: production validates the graph before this focused compatibility seam runs
+	if err != nil {
 		return nil, err
 	}
 	return entry.result.state, entry.result.err

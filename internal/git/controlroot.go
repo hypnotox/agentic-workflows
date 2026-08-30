@@ -65,7 +65,7 @@ func (*HardSafetyError) Forceable() bool { return false }
 // OpenRepo remains the package's read-only go-git boundary.
 func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error) {
 	originalRoot, err := cleanAbsolute(root)
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err != nil {
 		return ControlRoots{}, fmt.Errorf("resolve invoking root: %w", err)
 	}
 	if err := lstatComponents(originalRoot); err != nil {
@@ -93,26 +93,26 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 	}
 
 	originalIdentity, err := stableIdentity(originalRoot)
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err != nil {
 		return ControlRoots{}, fmt.Errorf("resolve invoking-root identity: %w", err)
 	}
 	invokingIdentity, err := stableIdentity(invokingRoot)
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err != nil {
 		return ControlRoots{}, fmt.Errorf("resolve checkout identity: %w", err)
 	}
-	if !lexicallyContained(invokingIdentity, originalIdentity) { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if !lexicallyContained(invokingIdentity, originalIdentity) {
 		return ControlRoots{}, &HardSafetyError{Category: "repository-identity", Path: originalRoot, Err: errors.New("git resolved a checkout outside the invoking path")}
 	}
 	commonIdentity, err := stableIdentity(commonDir)
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err != nil {
 		return ControlRoots{}, &HardSafetyError{Category: "repository-identity", Path: commonDir, Err: err}
 	}
 	invokingGitDir, err := resolveValidated(invokingRoot, worktreeGitDir)
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err != nil {
 		return ControlRoots{}, identityError(invokingRoot, err)
 	}
 	invokingGitDirIdentity, err := stableIdentity(invokingGitDir)
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err != nil {
 		return ControlRoots{}, identityError(invokingRoot, err)
 	}
 
@@ -129,7 +129,7 @@ func ResolveControlRoots(ctx context.Context, root string) (ControlRoots, error)
 	var primaries []string
 	for _, record := range records {
 		worktree, err := cleanAbsolute(record.path)
-		if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		if err != nil {
 			return ControlRoots{}, &HardSafetyError{Category: "unconfined", Path: record.path, Err: err}
 		}
 		worktreeIdentity, err := stableIdentity(worktree)
@@ -195,10 +195,10 @@ func (r ControlRoots) ResidentRoot(name ResidentName) (string, error) {
 	}
 	primary := filepath.Clean(r.PrimaryRoot)
 	resident := filepath.Join(primary, ".awf", string(name))
-	if !lexicallyContained(primary, resident) { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if !lexicallyContained(primary, resident) {
 		return "", &HardSafetyError{Category: "unconfined", Path: resident}
 	}
-	if err := lstatExistingComponents(primary); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err := lstatExistingComponents(primary); err != nil {
 		return "", err
 	}
 	if err := lstatResidentComponents(primary, resident); err != nil {
@@ -269,7 +269,7 @@ func parseWorktreePorcelain(output []byte) ([]worktreeRecord, error) {
 			// terminator means an empty record git never emits.
 			return errors.New("empty worktree record")
 		}
-		if current.path == "" { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		if current.path == "" {
 			return errors.New("worktree record has no path")
 		}
 		if current.bare {
@@ -325,7 +325,7 @@ func parseWorktreePorcelain(output []byte) ([]worktreeRecord, error) {
 			if key == "HEAD" {
 				current.head = value
 			} else {
-				if seen["detached"] { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+				if seen["detached"] {
 					return nil, errors.New("worktree is both branched and detached")
 				}
 				current.branch = value
@@ -369,7 +369,7 @@ func worktreeGitDir(worktree string) (string, error) {
 		return filepath.Clean(dotGit), nil
 	}
 	raw, err := os.ReadFile(dotGit)
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err != nil {
 		return "", err
 	}
 	pointer, ok := strings.CutPrefix(removeGitLineDelimiter(string(raw)), "gitdir: ")
@@ -425,7 +425,7 @@ func resolveValidated(path string, resolve func(string) (string, error)) (string
 	if err != nil {
 		return "", err
 	}
-	if err := lstatComponents(path); err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err := lstatComponents(path); err != nil {
 		return "", err
 	}
 	return resolved, nil
@@ -462,7 +462,7 @@ func isolatedGitEnvironment(inherited []string) []string {
 
 func cleanAbsolute(path string) (string, error) {
 	absolute, err := filepath.Abs(path)
-	if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	if err != nil {
 		return "", err
 	}
 	return filepath.Clean(absolute), nil
@@ -483,7 +483,7 @@ func lstatComponents(path string) error {
 	remainder = strings.TrimPrefix(remainder, string(filepath.Separator))
 	current := volume + string(filepath.Separator)
 	for _, component := range strings.Split(remainder, string(filepath.Separator)) {
-		if component == "" { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		if component == "" {
 			continue
 		}
 		current = filepath.Join(current, component)
@@ -500,13 +500,13 @@ func lstatExistingComponents(path string) error {
 	remainder = strings.TrimPrefix(remainder, string(filepath.Separator))
 	current := volume + string(filepath.Separator)
 	for _, component := range strings.Split(remainder, string(filepath.Separator)) {
-		if component == "" { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		if component == "" {
 			continue
 		}
 		current = filepath.Join(current, component)
 		if _, err := platformLstatComponent(current, false); os.IsNotExist(unwrappedError(err)) {
 			return nil
-		} else if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+		} else if err != nil {
 			return err
 		}
 	}
@@ -516,7 +516,7 @@ func lstatExistingComponents(path string) error {
 func lstatResidentComponents(primary, resident string) error {
 	if _, err := platformLstatComponent(primary, true); os.IsNotExist(unwrappedError(err)) {
 		return nil
-	} else if err != nil { // coverage-ignore: requires an OS race or fault between adjacent validated identity operations
+	} else if err != nil {
 		return err
 	}
 	relative, _ := filepath.Rel(primary, resident)

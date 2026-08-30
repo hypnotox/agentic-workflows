@@ -30,11 +30,11 @@ func CreatedDocument(files []ScaffoldFile) (presentation.Document, error) {
 		values = append(values, value)
 	}
 	list, err := presentation.NewList("created files", values...)
-	if err != nil { // coverage-ignore: every path is validated above and created-files is a fixed grammar-valid label
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	section, err := presentation.NewSection("topic", list)
-	if err != nil { // coverage-ignore: the validated List is always an admitted Section child
+	if err != nil {
 		return presentation.Document{}, err
 	}
 	return presentation.NewDocument(section)
@@ -98,7 +98,7 @@ func ScaffoldFilesWithExists(cfg *config.Config, domain, title string, exists fu
 		Summary: "Current project contracts for this topic.",
 		Paths:   []string{"replace/with/project/path/**"},
 	})
-	if err != nil { // coverage-ignore: the fixed string-only metadata struct always marshals
+	if err != nil {
 		return nil, err
 	}
 	metadata = append(metadata, []byte("# EDIT: replace the path placeholder above with anchored project paths.\n")...)

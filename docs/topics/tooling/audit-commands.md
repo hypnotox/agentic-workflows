@@ -3,11 +3,11 @@
 <!-- awf:template-source templates/topics/topic.md.tmpl -->
 # Audit commands
 
-The advisory audit surfaces: audit, repoaudit, mutants.
+The advisory audit surfaces: audit and repoaudit.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/authoringop/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitgateop/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/coverage/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testperformance/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-performance.json`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf read topic tooling/audit-commands --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/authoringop/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `cmd/**`, `internal/clispec/**`, `internal/initspec/**`. Both domain and topic selectors must match. Run `awf read topic tooling/audit-commands --coverage` for current applicable and owned paths and marker sites.
 
-The advisory audit surfaces: awf audit, repoaudit, and mutants reporting.
+The advisory audit surfaces are awf audit and the repository-local repoaudit.
 
 ## Claims
 
@@ -34,11 +34,6 @@ Backing: test
 ### `invariant: audit-warn-exit-zero`
 
 The awf audit command returns success with a zero exit status when all of its findings are Warning severity, and returns a non-zero exit status when any single finding is Error severity.
-Backing: test
-
-### `invariant: mutants-missing-report-errors`
-
-The mutants command exits non-zero for a nonexistent report path and never prints no survived mutants for one, while a present-but-empty report file reports no survivors with exit 0.
 Backing: test
 
 ### `invariant: repoaudit-requires-explicit-range`

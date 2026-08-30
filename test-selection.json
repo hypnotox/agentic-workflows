@@ -1,20 +1,6 @@
 {
   "version": 1,
-  "meta_suites": [
-    {
-      "id": "awf-composition",
-      "package": "./cmd/awf",
-      "tests": [
-        "TestArchitectureDocNamesEveryCmd",
-        "TestGlobalHelpListsAllCommands",
-        "TestHandlerRegistryParity",
-        "TestHelpListsGroupChildren",
-        "TestNoOsExitOutsideMain",
-        "TestRunnerInstancesOwnProcessDependencies",
-        "TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures"
-      ]
-    }
-  ],
+  "smoke_packages": ["./cmd/awf"],
   "shared_path_patterns": [
     ".awf/**",
     ".github/**",
