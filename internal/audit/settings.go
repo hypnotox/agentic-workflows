@@ -2,15 +2,12 @@ package audit
 
 import "github.com/hypnotox/agentic-workflows/internal/config"
 
-// Settings is the fixed audit policy plus the repository's scope vocabulary.
+// Settings is the repository's allowed conventional-commit scope vocabulary.
 type Settings struct {
 	AllowedScopes []config.ScopeSpec
 }
 
-const (
-	subjectMaxLength = 72
-	diffThreshold    = 400
-)
+const subjectMaxLength = 72
 
 // ScopeNames returns just the allowed scope names, for gate matching.
 func (s Settings) ScopeNames() []string {
@@ -28,13 +25,4 @@ func Resolve(scopes []config.ScopeSpec) Settings {
 
 func defaultAllowedTypes() []string {
 	return []string{"build", "chore", "ci", "docs", "feat", "fix", "perf", "refactor", "revert", "style", "test"}
-}
-
-func defaultDependencyManifests() []string {
-	return []string{
-		"**/go.mod", "**/package.json", "**/pyproject.toml", "**/setup.py", "**/requirements*.txt",
-		"**/Cargo.toml", "**/Gemfile", "**/*.gemspec", "**/composer.json", "**/pom.xml", "**/build.gradle",
-		"**/build.gradle.kts", "**/*.csproj", "**/Directory.Packages.props", "**/mix.exs",
-		"**/Package.swift", "**/pubspec.yaml", "**/*.cabal", "**/package.yaml",
-	}
 }

@@ -2,7 +2,6 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
@@ -25,7 +24,7 @@ func runAudit(ctx context.Context, root, rangeArg string, stdout io.Writer) erro
 	}
 	outcome, err := audit.RunConfigured(ctx, root, cfg, base, head)
 	if err != nil {
-		return presentAuditRefusal(err)
+		return err
 	}
 	document, err := outcome.Report.Document()
 	if err != nil {
@@ -38,16 +37,4 @@ func runAudit(ctx context.Context, root, rangeArg string, stdout io.Writer) erro
 		return &producedReportError{fmt.Errorf("awf audit: error-ranked findings over %d commit(s) in %s..%s", outcome.Commits, base, head)}
 	}
 	return nil
-}
-
-func presentAuditRefusal(err error) error {
-	var horizon *audit.HistoricalHorizonError
-	if errors.As(err, &horizon) {
-		return fmt.Errorf("%w: audit with a release supporting schemas %d through %d, or restore an in-horizon revision", err, horizon.Floor, horizon.Horizon)
-	}
-	var partial *audit.PartialHistoricalAuthorityError
-	if errors.As(err, &partial) {
-		return fmt.Errorf("%w: restore the complete .awf/config.yaml and .awf/awf.lock pair", err)
-	}
-	return err
 }

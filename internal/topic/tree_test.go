@@ -278,7 +278,6 @@ func TestLoadCorpusFromTreeLoadsFilesystemFixture(t *testing.T) {
 	}
 }
 
-// invariant: tooling/audit-and-snapshots:audit-history-policy-projection (TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths)
 // invariant: config/validation:domain-path-globs-valid (TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths)
 func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
 	files := map[string]string{

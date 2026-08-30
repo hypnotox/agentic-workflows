@@ -28,13 +28,10 @@ func RunConfigured(ctx context.Context, root string, cfg *config.Config, base, h
 			generated[path] = true
 		}
 	}
-	docsDir := config.DocsDir
 	findings, commits, err := Run(ctx, root, base, head, Inputs{
 		Settings:       Resolve(config.AuditScopes(cfg.Audit)),
 		GeneratedPaths: generated,
-		ADRDir:         docsDir + "/decisions",
-		DocsDir:        docsDir,
-		IndexMd:        docsDir + "/decisions/INDEX.md",
+		DocsDir:        config.DocsDir,
 	})
 	if err != nil {
 		return Outcome{}, err

@@ -25,7 +25,7 @@ func TestRunConfiguredBuildsReportAndClassifiesOutcome(t *testing.T) {
 		failed                               bool
 	}{
 		{name: "clean", subject: "feat(awf): clean change", path: "next.go", content: "package x\n", status: "clean"},
-		{name: "warning", subject: "feat(awf): bump a dependency", path: "go.mod", content: "module x\n", status: "warnings"},
+		{name: "dependency change is not lifecycle-governed", subject: "feat(awf): bump a dependency", path: "go.mod", content: "module x\n", status: "clean"},
 		{name: "error", subject: "not a conventional commit subject", path: "next.go", content: "package x\n", status: "failed", failed: true},
 	}
 	for _, tc := range cases {

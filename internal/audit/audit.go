@@ -1,23 +1,19 @@
-// Package audit reports workflow-conformance findings over a branch's git
-// history. The range rules are advisory (ADR-0017): standalone, never wired into
-// the gate. The shared CheckConventionalCommit rule is the exception - it is also
-// consumed at commit time by the repository commit hook. Most rules are pure over
-// the commit range; the uncommitted-changes
-// rule (ADR-0025) additionally inspects the live working tree.
+// Package audit reports conventional-commit and prose-restraint findings over a
+// branch's git history. Range rules are advisory; the shared
+// CheckConventionalCommit rule is also consumed at commit time by the repository
+// commit hook. The uncommitted-changes rule additionally inspects the live
+// working tree.
 package audit
 
 import (
 	"context"
 	"fmt"
-	"path/filepath"
 	"regexp"
 	"slices"
 	"strings"
 	"unicode/utf8"
 
-	"github.com/hypnotox/agentic-workflows/internal/adr"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 	"github.com/hypnotox/agentic-workflows/internal/prosegate"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
@@ -31,19 +27,17 @@ type Finding struct {
 	Detail   string
 }
 
-// Inputs are the resolved audit settings plus the project-derived layout the rules
-// need. The embedded Settings carries the repository's allowed scope vocabulary.
+// Inputs are the resolved audit settings plus the generated and prose paths the
+// retained range rules need.
 type Inputs struct {
 	Settings
 	GeneratedPaths map[string]bool
-	ADRDir         string // e.g. "docs/decisions"
-	DocsDir        string // e.g. "docs"; the authored-prose root
-	IndexMd        string // e.g. "docs/decisions/INDEX.md"
+	DocsDir        string // e.g. "docs", the authored-prose root
 }
 
-// ruleUncommittedChanges flags a non-clean working tree as a branch-level Error
-// (ADR-0025). It reads live worktree state from native Git porcelain so the
-// audit uses Git's own repository, global, and system ignore semantics.
+// ruleUncommittedChanges flags a non-clean working tree as a branch-level Error.
+// It reads live worktree state from native Git porcelain so the audit uses Git's
+// own repository, global, and system ignore semantics.
 func ruleUncommittedChanges(ctx context.Context, repo *awfgit.Repo) ([]Finding, error) {
 	tracked, untracked, err := repo.ChangeCounts(ctx)
 	if err != nil {
@@ -59,114 +53,67 @@ func ruleUncommittedChanges(ctx context.Context, repo *awfgit.Repo) ([]Finding, 
 	}}, nil
 }
 
-// Run collects the caller-supplied commit range and evaluates the rules. The
-// range arrives as parameters rather than Inputs fields because no config key
-// supplies it (ADR-0127 Decision 3).
-// It also returns the number of commits the range resolved to, so the caller can
-// report the scope it evaluated rather than a bare verdict (ADR-0127 Decision 9).
+// Run collects the caller-supplied commit range and evaluates retained range
+// rules. It also returns the resolved commit count so callers can report the
+// evaluated scope.
 func Run(ctx context.Context, repoRoot, base, head string, in Inputs) ([]Finding, int, error) {
 	repo, _, err := awfgit.OpenContaining(repoRoot)
 	if err != nil {
 		return nil, 0, fmt.Errorf("open repo: %w", err)
 	}
-	op, err := newStreamingHistoryOperation(ctx, base, head, in,
-		repo.WalkRangeCommits,
-		func(ctx context.Context, revision string) (*revisionState, error) {
-			return loadSelectedRevision(ctx, repoRoot, revision, repo.CommitEntries, repo.CommitBlobsAt)
-		},
-		repo.FirstParentChangedPaths,
-		func(ctx context.Context) ([]Finding, error) {
-			return ruleUncommittedChanges(ctx, repo)
-		})
+	evaluator := newRangeEvaluator(in)
+	count, err := repo.WalkRangeCommits(ctx, base, head, func(commit awfgit.Commit) error {
+		evaluator.observe(commit)
+		return nil
+	})
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("collect audit range: %w", err)
 	}
-	findings, err := op.run(ctx)
+	live, err := ruleUncommittedChanges(ctx, repo)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("evaluate live cleanliness: %w", err)
 	}
-	return findings, op.visited, nil
+	return append(evaluator.findings(), live...), count, nil
 }
 
 var ccRe = regexp.MustCompile(`^([a-zA-Z]+)(\(([^)]+)\))?(!)?: .+`)
 
-// rangeEvaluator owns only the summaries each ordinary range rule needs. A
-// rich commit is consumed synchronously by observe and is never retained.
+// rangeEvaluator owns only the findings each retained range rule needs.
 type rangeEvaluator struct {
-	in                          Inputs
-	conventional, status, front []Finding
-	punctuation                 []Finding
-	manifest                    *Finding
-	adrTouched                  bool
-	lines                       int
+	in                        Inputs
+	conventional, punctuation []Finding
 }
 
-func newRangeEvaluator(in Inputs) *rangeEvaluator {
-	return &rangeEvaluator{in: in}
-}
+func newRangeEvaluator(in Inputs) *rangeEvaluator { return &rangeEvaluator{in: in} }
 
 func (e *rangeEvaluator) observe(c awfgit.Commit) {
 	e.conventional = append(e.conventional, CheckConventionalCommit(c, e.in.Settings)...)
-	indexTouched := false
 	for _, ch := range c.Changes {
-		indexTouched = indexTouched || ch.Path == e.in.IndexMd
-	}
-	for _, ch := range c.Changes {
-		if isADRFile(ch.Path, e.in.ADRDir) {
-			e.adrTouched = true
+		if ch.Action == awfgit.Deleted || !strings.HasSuffix(ch.Path, ".md") || !underDir(ch.Path, e.in.DocsDir) || e.in.GeneratedPaths[ch.Path] {
+			continue
 		}
-		if e.manifest == nil && matchesAny(defaultDependencyManifests(), ch.Path) {
-			f := finding(severity.Warn, "dependency-adr", c, "dependency manifest changed on this branch with no ADR touched: if a dependency was added, confirm an ADR covers it")
-			e.manifest = &f
+		before := prosegate.CountViolations(ch.OldText)
+		after := prosegate.CountViolations(ch.NewText)
+		var risen []string
+		if after.EmDashExcess > before.EmDashExcess {
+			risen = append(risen, fmt.Sprintf("em-dash excess (%d to %d)", before.EmDashExcess, after.EmDashExcess))
 		}
-		if !e.in.GeneratedPaths[ch.Path] {
-			e.lines += ch.Added + ch.Deleted
+		if after.EnDashes > before.EnDashes {
+			risen = append(risen, fmt.Sprintf("en-dash (U+2013) (%d to %d)", before.EnDashes, after.EnDashes))
 		}
-		if isADRFile(ch.Path, e.in.ADRDir) && ch.Action != awfgit.Deleted {
-			rec, ok := adrRecordOf(ch.Path, ch.NewText)
-			if !ok {
-				e.front = append(e.front, finding(severity.Warn, "adr-frontmatter", c, filepath.Base(ch.Path)+" frontmatter does not parse; ADR status rules skipped for it"))
-			}
-			if ok && rec.HasStatus() && rec.IsGoverned() {
-				old, oldOK := adrRecordOf(ch.Path, ch.OldText)
-				if (ch.Action == awfgit.Added || (oldOK && old.Status != rec.Status)) && !indexTouched {
-					e.status = append(e.status, finding(severity.Error, "adr-status-cochange", c, filepath.Base(ch.Path)+" status set/changed without INDEX.md in the same commit"))
-				}
-			}
-		}
-		if ch.Action != awfgit.Deleted && strings.HasSuffix(ch.Path, ".md") && underDir(ch.Path, e.in.DocsDir) && !e.in.GeneratedPaths[ch.Path] {
-			before := prosegate.CountViolations(ch.OldText)
-			after := prosegate.CountViolations(ch.NewText)
-			var risen []string
-			if after.EmDashExcess > before.EmDashExcess {
-				risen = append(risen, fmt.Sprintf("em-dash excess (%d to %d)", before.EmDashExcess, after.EmDashExcess))
-			}
-			if after.EnDashes > before.EnDashes {
-				risen = append(risen, fmt.Sprintf("en-dash (U+2013) (%d to %d)", before.EnDashes, after.EnDashes))
-			}
-			if len(risen) != 0 {
-				slices.Sort(risen)
-				e.punctuation = append(e.punctuation, finding(severity.Warn, "plain-punctuation", c, fmt.Sprintf("%s adds punctuation-restraint violations: %s; prefer ordinary punctuation and use at most two em dashes per paragraph", ch.Path, strings.Join(risen, ", "))))
-			}
+		if len(risen) != 0 {
+			slices.Sort(risen)
+			e.punctuation = append(e.punctuation, finding(severity.Warn, "plain-punctuation", c, fmt.Sprintf("%s adds punctuation-restraint violations: %s; prefer ordinary punctuation and use at most two em dashes per paragraph", ch.Path, strings.Join(risen, ", "))))
 		}
 	}
 }
 
 func (e *rangeEvaluator) findings() []Finding {
-	var out []Finding
-	out = append(out, e.conventional...)
-	out = append(out, e.status...)
-	out = append(out, e.front...)
-	if e.manifest != nil && !e.adrTouched {
-		out = append(out, *e.manifest)
-	}
-	return append(out, e.punctuation...)
+	return append(e.conventional, e.punctuation...)
 }
 
 // CheckConventionalCommit validates one commit's subject against the Conventional
-// Commits settings and returns any violations. It is the single definition of the
-// rule consumed by the audit range loop and the command-local commit hook.
-// Merge commits are exempt.
+// Commits settings and returns any violations. Merge commits are exempt.
 func CheckConventionalCommit(c awfgit.Commit, s Settings) []Finding {
 	return checkConventionalCommit(c, s, severity.Error)
 }
@@ -196,25 +143,6 @@ func finding(s severity.Rank, rule string, c awfgit.Commit, detail string) Findi
 	return Finding{Severity: s, Rule: rule, Commit: c.Hash, Subject: strings.Clone(c.Subject), Detail: detail}
 }
 
-// isADRFile reports whether path is a decision record directly under adrDir.
-// Every non-reserved Markdown file there is a record, numbered or pending
-// (ADR-0202 item 4).
-func isADRFile(path, adrDir string) bool {
-	return filepath.Dir(path) == adrDir && adr.FileIdentity(filepath.Base(path)) != ""
-}
-
-// adrRecordOf parses an ADR from blob text through internal/adr's bytes seam
-// (ADR-0130 item 5). ok is false only when frontmatter is present but does not
-// parse; absent frontmatter is a legitimate empty record, which is the
-// distinction ruleADRFrontmatter reports on.
-func adrRecordOf(path, text string) (adr.ADR, bool) {
-	rec, _, err := adr.ParseBytes(filepath.Base(path), []byte(text))
-	if err != nil {
-		return adr.ADR{}, false
-	}
-	return rec, true
-}
-
 func underDir(path, dir string) bool {
 	return path == dir || strings.HasPrefix(path, dir+"/")
 }
@@ -222,16 +150,6 @@ func underDir(path, dir string) bool {
 func containsFold(list []string, v string) bool {
 	for _, x := range list {
 		if strings.EqualFold(x, v) {
-			return true
-		}
-	}
-	return false
-}
-
-// matchesAny reports whether the repo-relative path matches any anchored glob.
-func matchesAny(globs []string, path string) bool {
-	for _, g := range globs {
-		if pathglob.Match(g, path) {
 			return true
 		}
 	}

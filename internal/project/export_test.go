@@ -285,13 +285,10 @@ func auditProject(state *ProjectState, ctx context.Context, base, head string) (
 			generated[path] = true
 		}
 	}
-	docsDir := config.DocsDir
 	return audit.Run(ctx, state.Root(), base, head, audit.Inputs{
 		Settings:       audit.Resolve(config.AuditScopes(testConfig(state).Audit)),
 		GeneratedPaths: generated,
-		ADRDir:         docsDir + "/decisions",
-		DocsDir:        docsDir,
-		IndexMd:        docsDir + "/decisions/INDEX.md",
+		DocsDir:        config.DocsDir,
 	})
 }
 func setTestRoots(state *ProjectState, roots resident.Roots) *ProjectState {

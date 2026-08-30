@@ -2,7 +2,6 @@ package main
 
 import (
 	"bytes"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -10,7 +9,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -43,15 +41,15 @@ func auditProject(t *testing.T) (gitfixture.Fixture, string) {
 func TestRunAuditWarningsExitZero(t *testing.T) {
 	repo, base := auditProject(t)
 	root := repo.Root()
-	// Valid CC subject, but touches go.mod with no ADR -> dependency-adr warn only.
-	gitfixture.Commit(t, repo, "feat(awf): bump a dependency", map[string]string{"go.mod": "module x\n// dep\n"})
+	// The subject remains valid while an authored Markdown change is advisory.
+	gitfixture.Commit(t, repo, "docs(awf): keep punctuation visible", map[string]string{"docs/manual.md": "before " + string(rune(0x2013)) + " after\n"})
 	var out bytes.Buffer
 	if err := runAudit(testContext(t), root, base, &out); err != nil {
 		t.Fatalf("warnings-only run should exit zero, got: %v", err)
 	}
 	// The readable category is plural while the domain rank remains warn.
-	if !strings.Contains(out.String(), "warnings:\n    dependency-adr |") {
-		t.Errorf("expected a warn-ranked dependency-adr finding, got: %q", out.String())
+	if !strings.Contains(out.String(), "warnings:\n    plain-punctuation |") {
+		t.Errorf("expected a warn-ranked punctuation finding, got: %q", out.String())
 	}
 }
 
@@ -59,29 +57,6 @@ func TestRunAuditPropagatesAuditFailure(t *testing.T) {
 	repo, _ := auditProject(t)
 	if err := runAudit(testContext(t), repo.Root(), "does-not-exist", out(t)); err == nil {
 		t.Fatal("unresolvable audit range accepted")
-	}
-}
-
-func TestPresentAuditRefusal(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		err  error
-		want string
-	}{
-		{name: "below horizon", err: &audit.HistoricalHorizonError{Schema: 2, Floor: 3, Horizon: 47}, want: "supporting schemas 3 through 47"},
-		{name: "above horizon", err: &audit.HistoricalHorizonError{Schema: 47, Floor: 3, Horizon: 47}, want: "supporting schemas 3 through 47"},
-		{name: "partial authority", err: &audit.PartialHistoricalAuthorityError{Config: true, Lock: false}, want: "restore the complete .awf/config.yaml and .awf/awf.lock pair"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			got := presentAuditRefusal(tc.err)
-			if !errors.Is(got, tc.err) || !strings.Contains(got.Error(), tc.want) {
-				t.Fatalf("refusal = %v, want wrapped source and %q", got, tc.want)
-			}
-		})
-	}
-	other := errors.New("other audit failure")
-	if got := presentAuditRefusal(other); !errors.Is(got, other) {
-		t.Fatalf("unclassified refusal = %v, want source identity", got)
 	}
 }
 

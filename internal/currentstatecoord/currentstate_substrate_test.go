@@ -43,7 +43,7 @@ func TestCurrentStateLiveAuthorityRefusals(t *testing.T) {
 	}
 }
 
-func TestLoadTreeCurrentStatePropagatesAuthorityParseFailure(t *testing.T) {
+func TestLoadTreeCurrentStateIgnoresMalformedHistoricalDecision(t *testing.T) {
 	tree, err := snapshot.NewTree([]snapshot.File{
 		{Path: ".awf/config.yaml", Mode: snapshot.Regular, Bytes: []byte("prefix: test\nintegrationBranch: main\ndomains: [tooling]\n")},
 		{Path: "docs/decisions/bad.md", Mode: snapshot.Regular, Bytes: []byte("not an ADR\n")},
@@ -51,8 +51,9 @@ func TestLoadTreeCurrentStatePropagatesAuthorityParseFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, err := loadTreeCurrentState(t.TempDir(), tree, nil); err == nil {
-		t.Fatal("malformed selected authority was accepted")
+	loaded, cfg, err := loadTreeCurrentState(t.TempDir(), tree, &manifest.Lock{SchemaVersion: 46, Files: map[string]manifest.Entry{"prior": {}}})
+	if err != nil || cfg == nil || len(loaded.Topics.All()) != 0 {
+		t.Fatalf("historical decision changed current-state load: loaded=%#v cfg=%#v err=%v", loaded, cfg, err)
 	}
 }
 

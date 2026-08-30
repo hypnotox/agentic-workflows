@@ -227,14 +227,16 @@ func TestCheckCurrentStateCorruptLock(t *testing.T) {
 	}
 }
 
-// TestCheckCurrentStateLoadError propagates a corpus load failure: a decisions
-// file that is not parseable.
-func TestCheckCurrentStateLoadError(t *testing.T) {
+func TestCheckCurrentStateIgnoresMalformedHistoricalDecision(t *testing.T) {
 	p := csRepo(t, csYAML, map[string]string{
 		".awf/domains/alpha.yaml":      "paths:\n  - internal/**\n",
 		"docs/decisions/0001-first.md": "---\nstatus: [unterminated\n---\n# X\n",
 	})
-	if _, err := checkCurrentStateProject(p, testContext(t)); err == nil {
-		t.Fatal("expected a corpus load error from the malformed ADR")
+	report, err := checkCurrentStateProject(p, testContext(t))
+	if err != nil {
+		t.Fatalf("malformed historical decision affected current-state check: %v", err)
+	}
+	if findings := currentStateFindings(report); len(findings) != 0 {
+		t.Fatalf("current-state findings = %v, want none", findings)
 	}
 }

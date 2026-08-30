@@ -203,13 +203,54 @@ func TestCoordinatorLockTransitionAndCoreConfig(t *testing.T) {
 		t.Fatal("initialized version mutation accepted")
 	}
 	loaded, cfg, err := loadTreeCurrentState(".", withConfig, &manifest.Lock{AWFVersion: "0.39.2", SchemaVersion: 46})
-	if err != nil || cfg == nil || len(loaded.ADRs) != 0 {
-		t.Fatalf("legacy config load = %#v, %#v, %v", loaded, cfg, err)
+	if err != nil || cfg == nil || len(loaded.Topics.All()) != 0 {
+		t.Fatalf("current-state config load = %#v, %#v, %v", loaded, cfg, err)
 	}
 }
 
 func TestQueryTopicPropagatesWorkingSnapshotFailure(t *testing.T) {
 	if _, err := QueryTopic(t.TempDir(), nil, context.Background(), "missing", topic.QueryOptions{}); err == nil {
 		t.Fatal("topic query accepted a directory outside a repository")
+	}
+}
+
+// TestCurrentStateCoordinationIgnoresHistoricalDecisions proves each selected
+// current-state route retains topic coverage, backing, and query behavior while
+// decisions are absent from the working tree and malformed in the index.
+func TestCurrentStateCoordinationIgnoresHistoricalDecisions(t *testing.T) {
+	fixture := gitfixture.InitRepo(t)
+	const configBody = "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n"
+	const topicPart = "Intro.\n\n## Claims\n\n### `invariant: covered`\nCoverage remains active.\nBacking: test\n"
+	files := map[string]string{
+		".awf/config.yaml":                                  configBody,
+		".awf/awf.lock":                                     `{"awfVersion":"0.39.2","schemaVersion":46,"files":{"prior":{}}}`,
+		".awf/domains/alpha.yaml":                           "paths: [\"internal/**\"]\n",
+		".awf/topics/metadata/alpha/coverage.yaml":          "title: Coverage\nsummary: Active coverage.\npaths: [\"internal/**\"]\n",
+		".awf/topics/parts/alpha/coverage/current-state.md": topicPart,
+		"internal/covered_test.go":                          "// invariant: alpha/coverage:covered (TestCovered)\nfunc TestCovered() {}\n",
+		"docs/decisions/0001-history.md":                    "# Historical Markdown\n",
+	}
+	gitfixture.Commit(t, fixture, "baseline", files)
+	gitfixture.Stage(t, fixture, map[string]string{"docs/decisions/0001-history.md": "---\nformat: unknown\n---\n# Malformed old lifecycle text\n"})
+	if err := os.Remove(filepath.Join(fixture.Root(), "docs/decisions/0001-history.md")); err != nil {
+		t.Fatal(err)
+	}
+	repo, err := awfgit.Open(fixture.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	working, err := CheckWorking(fixture.Root(), repo, context.Background())
+	if err != nil || len(working.Coverage) != 0 {
+		t.Fatalf("working current-state report = %#v, err=%v", working, err)
+	}
+	query, err := QueryTopic(fixture.Root(), repo, context.Background(), "alpha/coverage:covered", topic.QueryOptions{Coverage: true})
+	if err != nil || query.ID != "alpha/coverage:covered" || len(query.Claims) != 1 || query.Coverage == nil || len(query.Coverage.Applicability.MarkerSites) != 1 {
+		t.Fatalf("working current-state query = %#v, err=%v", query, err)
+	}
+
+	staged, err := CheckStaged(fixture.Root(), repo, context.Background())
+	if err != nil || len(staged.Coverage) != 0 {
+		t.Fatalf("staged current-state report = %#v, err=%v", staged, err)
 	}
 }

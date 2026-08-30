@@ -885,8 +885,8 @@
     "docs/topics/tooling/audit-and-snapshots.md": {
       "templateId": "topics/topic.md.tmpl",
       "templateHash": "sha256:25b4ec23c7a22667f9d78b1e5883af8702d82f67896c3a42ac0ad19032d7c7bb",
-      "configHash": "sha256:a4932c204f9d5abf98f1e0f6c0480810280785342ccc1f76b1659a6683a21f88",
-      "outputHash": "sha256:a1dab6e03fc6cb204efb671d725d06a7bd8b9a6e5282bb568f171a2b997ccf1c"
+      "configHash": "sha256:305a8a529ff62de0c79c3f0d03ef1b7a6ab2adba8460da1392f88bc547fd4ffd",
+      "outputHash": "sha256:5545e260352d090d4daf76ff74732f71b977822a5e839c1ee3e5636e17445b44"
     },
     "docs/topics/tooling/audit-commands.md": {
       "templateId": "topics/topic.md.tmpl",
