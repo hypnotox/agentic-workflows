@@ -294,7 +294,7 @@
       "templateId": "docs/config-reference.md.tmpl",
       "templateHash": "sha256:3d0c92dd17aee1aceecfb2e0f9cfa36689e0fe0967b6ccff69e27fcfc7aa14b0",
       "configHash": "sha256:18c6a7dcbe02d5a59533d159b7d5181644e1d1dcf99b5e00d7199b4daed8c009",
-      "outputHash": "sha256:4582661da5cb2df1a52a6199aa4b8600ee9942e9aed2cb97752cd93ecde29f59",
+      "outputHash": "sha256:811040928ff21ae8b8cc2c538fcdf56060fb40ea491482a375a3e54a5cf3e7be",
       "regenChecked": true
     },
     "docs/debugging.md": {
@@ -938,8 +938,8 @@
     "docs/workflow.md": {
       "templateId": "docs/workflow.md.tmpl",
       "templateHash": "sha256:13333630b3c37df57634af17ae849bc68017bed5fb5e4dcb0a856ad25340d1c7",
-      "configHash": "sha256:71d54f2e45a8a0c27f5fb236c01238c9d015b6bd83b202ddd6680a3e1334f425",
-      "outputHash": "sha256:f85401106ca33dcd9125e7d3e2d32df3a2dbbbcdb8781afde737313aea1d41b6"
+      "configHash": "sha256:5b045c1776d2fb68616132603f3f9d83204bac3fbeb182bef1e5727579d7ab15",
+      "outputHash": "sha256:bf25b525a66171a50768c18d2372bdb5de41902caf03b771fe59af04688f0d79"
     },
     "docs/working-with-awf.md": {
       "templateId": "docs/working-with-awf.md.tmpl",
