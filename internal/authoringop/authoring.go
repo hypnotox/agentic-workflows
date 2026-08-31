@@ -177,7 +177,7 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 		return outcome, fmt.Errorf("validate candidate project authority: %w", err)
 	}
 	candidatePublisher := publisher.New(candidateSession, project.Version)
-	if _, err := candidatePublisher.Prepare(); err != nil {
+	if _, err := candidatePublisher.Plan(); err != nil {
 		return outcome, fmt.Errorf("validate complete candidate project: %w", err)
 	}
 

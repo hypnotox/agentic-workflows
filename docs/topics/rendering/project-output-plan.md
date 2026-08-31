@@ -7,7 +7,7 @@ How a project assembles its render set, output plan, drift check, and prune beha
 
 **Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/artifactregistry/**`, `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf read topic rendering/project-output-plan --coverage` for current applicable and owned paths and marker sites.
 
-A project render assembles a deterministic output set from artifact-registry projections of catalog, target, configuration, topic, pitfall, local-document, hook, and resident declarations. The registry owns canonical output paths and producer-family check policy; output planning rejects conflicting or invalid declarations before mutation, and repository checks preserve completed owner evidence and explicit presentation order.
+A single-use Publisher operation consumes one project Session and its artifact-registry view. It registers and coalesces complete output definitions before rendering, rejects collisions and invalid recipes before any render closure executes, materializes every accepted definition exactly once, and shares one immutable plan with rendering, drift, generated-output checks, and publication. The registry owns canonical output paths and producer-family check policy; repository checks preserve completed owner evidence and explicit presentation order.
 
 The artifact registry's Pi target descriptor is the sole declaration of the two Pi-specific outputs: the subagent index and model-routing module. No target descriptor retains an effort index, effort client, or `using-effort` output.
 
@@ -25,7 +25,7 @@ Backing: test
 
 ### `invariant: output-plan-complete`
 
-The deterministic output plan contains every standard catalog artifact, applicable bridge file, generated document, reservation, configured local-document output, and the three resident-root markers. Historical decision and plan leaves remain outside managed output ownership.
+The deterministic output plan contains exactly one node for every accepted definition: every standard catalog artifact, applicable bridge file, generated document, reservation, configured local-document output, and the three resident-root markers. Each node retains its complete declarers and dependencies plus the exact inputs observed by its sole render closure. Historical decision and plan leaves remain outside managed output ownership.
 Backing: test
 
 ### `invariant: inert-sidecar-field-rejected`
@@ -50,7 +50,7 @@ Backing: test
 
 ### `invariant: shared-output-coalesced`
 
-An output produced by more than one target at the same path with an identical recipe is coalesced into a single plan node whose declarer set unions the contributing target names, and its drift hash folds in every declarer's projection. Two targets that declare the same path with conflicting recipes fail with a conflicting-output-recipes error.
+An output produced by more than one target at the same path with an identical recipe is coalesced before rendering, materialized once, and represented by a single plan node whose declarer set unions the contributing target names. Its recipe ConfigHash remains independently available, while its final drift ConfigHash additionally folds in every declarer's projection. Two definitions that declare the same path with conflicting recipes fail before any renderer executes.
 Backing: test
 
 ### `invariant: sidecar-key-overrides-default`
@@ -72,8 +72,8 @@ Backing: test
 ### `invariant: conditional-unit-single-source`
 
 Each config-tree render unit derives its enablement, path, template identity, render kind, and fixed
-sections from one bounded descriptor consumed by output declarations and render dispatch. Hook
-payloads and the runner are unconditional members, while bootstrap is the only member whose
+sections from one bounded descriptor consumed by output definition registration and render dispatch.
+Hook payloads and the runner are unconditional members, while bootstrap is the only member whose
 enablement is conditional. Unit-specific data construction, policy, encoding, and lifecycle behavior
 remain at their owning render seams.
 Backing: test

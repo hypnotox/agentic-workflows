@@ -1,4 +1,4 @@
-// Package outputplan owns immutable semantic output declarations and plans.
+// Package outputplan owns immutable semantic output values and plans.
 package outputplan
 
 import "slices"
@@ -114,7 +114,6 @@ func NewNode(spec NodeSpec) Node {
 	}
 	return Node{spec: spec}
 }
-func (n Node) Path() string        { return n.spec.Path }
 func (n Node) Declarers() []string { return slices.Clone(n.spec.Declarers) }
 func (n Node) Output() (Output, bool) {
 	if n.spec.Output == nil {
@@ -130,13 +129,6 @@ type Plan struct {
 
 func New(nodes []Node) Plan  { return Plan{nodes: slices.Clone(nodes)} }
 func (p Plan) Nodes() []Node { return slices.Clone(p.nodes) }
-func (p Plan) Paths() []string {
-	out := make([]string, 0, len(p.nodes))
-	for _, node := range p.nodes {
-		out = append(out, node.Path())
-	}
-	return out
-}
 func (p Plan) Outputs() []Output {
 	out := make([]Output, 0, len(p.nodes))
 	for _, node := range p.nodes {

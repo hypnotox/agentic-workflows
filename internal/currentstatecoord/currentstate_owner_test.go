@@ -146,7 +146,7 @@ func TestPrepareStagedOutputValidatesSidecarsFromSelectedIndex(t *testing.T) {
 			}
 			prepared, err := PrepareStagedOutput(context.Background(), fixture.Root())
 			if err == nil {
-				_, err = publisher.New(prepared.Session, project.Version).Prepare()
+				_, err = publisher.New(prepared.Session, project.Version).Plan()
 			}
 			if err == nil {
 				t.Fatal("staged malformed sidecar was accepted after its working-tree copy was removed")

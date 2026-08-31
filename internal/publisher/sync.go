@@ -61,7 +61,7 @@ func (p *Publisher) SyncLeased(ctx context.Context, lease *filesystem.Lease) (Re
 }
 
 // InitializeLeased derives and publishes first-adoption output under the
-// operation's pre-authority lease. Preparation intentionally has no mutator.
+// operation's pre-authority lease.
 func (p *Publisher) InitializeLeased(ctx context.Context, lease *filesystem.Lease, seed InitAuthority) (Result, error) {
 	if lease == nil {
 		return p.Initialize(seed)
@@ -72,6 +72,9 @@ func (p *Publisher) InitializeLeased(ctx context.Context, lease *filesystem.Leas
 // run owns the complete publication transaction. Lease acquisition precedes
 // planning, mutable lock observation, resident inspection, and every effect.
 func (p *Publisher) run(ctx context.Context, supplied *filesystem.Lease, seed *InitAuthority) (result Result, returnErr error) {
+	if err := p.beginMutation(); err != nil {
+		return Result{}, err
+	}
 	roots := p.inputs.session.Roots()
 	lease := supplied
 	owned := false
@@ -97,11 +100,12 @@ func (p *Publisher) run(ctx context.Context, supplied *filesystem.Lease, seed *I
 			return Result{}, err
 		}
 	}
-	prepared, err := p.Prepare()
+	p.allowPublicationPlanning()
+	plan, err := p.Plan()
 	if err != nil {
 		return Result{}, err
 	}
-	return p.sync(seed, &prepared.plan)
+	return p.sync(seed, &plan)
 }
 
 // InitAuthority is the explicit provenance supplied only by first adoption.
@@ -649,22 +653,26 @@ func syncMutation(backups []Backup, changes []Change, pruned []string) (presenta
 	return presentation.Mutation{Status: "completed", Changes: groups, Notes: notes, NextActions: []presentation.Value{next}}, nil
 }
 
-// InitCollisions reports unmanaged planned paths that already exist at the tracked root.
+// InitCollisions uses the path-only definition projection.  In particular it
+// must remain safe before init prompts: probing a foreign path is not an
+// authoritative render pass and never executes a template.
 func (p *Publisher) InitCollisions() ([]string, error) {
-	plan, err := p.Plan()
+	return p.InitCollisionsAt(p.inputs.root())
+}
+
+// InitCollisionsAt probes only the supplied filesystem paths.  It intentionally
+// builds definitions, not an operation plan, so initialization can refuse a
+// foreign file before prompting or executing a render closure.
+func (p *Publisher) InitCollisionsAt(root string) ([]string, error) {
+	definitions, err := buildOutputDefinitions(p.inputs.cfg, projectCatalog(p.inputs), p.inputs.targets(), projectTreeReader(p.inputs))
 	if err != nil {
 		return nil, err
 	}
-	return resident.CollisionsAt(p.inputs.root(), plan.Paths())
-}
-
-// InitCollisions reports unmanaged paths in this exact prepared universe that
-// already exist at the tracked root.
-func (p Preparation) InitCollisions() ([]string, error) {
-	if p.publisher == nil {
-		return nil, errors.New("publisher: unbound preparation")
+	paths := make([]string, 0, len(definitions))
+	for _, definition := range definitions {
+		paths = append(paths, definition.Path)
 	}
-	return resident.CollisionsAt(p.publisher.inputs.root(), p.plan.Paths())
+	return resident.CollisionsAt(root, paths)
 }
 
 // IsLocalDocTemplate is the bounded recognition policy outer composition passes to uninstall.

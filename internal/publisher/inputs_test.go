@@ -13,10 +13,12 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/glossary"
 	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 func TestNewRejectsMissingCompositionDependencies(t *testing.T) {
@@ -57,25 +59,87 @@ func TestPublisherDefensivelyOwnsConfigurationFacts(t *testing.T) {
 	if err != nil {
 		t.Fatalf("caller mutation affected existing Publisher: %v", err)
 	}
-	if !reflect.DeepEqual(before.Paths(), after.Paths()) || !reflect.DeepEqual(before.Outputs(), after.Outputs()) {
+	if !reflect.DeepEqual(before.Outputs(), after.Outputs()) {
 		t.Fatal("caller-owned config mutation changed an existing Publisher plan")
 	}
 }
 
-func TestPreparationFreezesGeneratedCheckSources(t *testing.T) {
-	checkFrozen := func(t *testing.T, mutate func(string)) {
+func TestPublisherOperationIsFrozenWhileNewOperationReadsFreshInPlaceContent(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	const outputPath = "docs/runbooks/incident.md"
+	contentAt := func(t *testing.T, operation *Publisher) string {
 		t.Helper()
-		state := csRepo(t, sampleYAML, map[string]string{".awf/skills/implementing.yaml": "data:\n  stale: before\n"})
-		prepared, err := newPublisher(state, testConfig(state), NewFilesystemReader(state.Root()), project.Version).Prepare()
+		plan, err := operation.Plan()
 		if err != nil {
 			t.Fatal(err)
 		}
-		before, err := generatedcheck.Additional(prepared.GeneratedOutput(), prepared.Plan())
+		for _, output := range plan.Outputs() {
+			if output.Path() == outputPath {
+				return output.Content()
+			}
+		}
+		t.Fatalf("missing output %s", outputPath)
+		return ""
+	}
+	state, err := loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	seed := contentAt(t, New(state, project.Version))
+	const marker = "<!-- awf:edit-in-place body -->\n\n"
+	beforeOnDisk := strings.Replace(seed, marker, marker+"before\n", 1)
+	if beforeOnDisk == seed {
+		t.Fatal("local document seed has no in-place marker")
+	}
+	testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(outputPath)), beforeOnDisk)
+	state, err = loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	frozen := New(state, project.Version)
+	before := contentAt(t, frozen)
+	testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(outputPath)), strings.Replace(before, "before", "after", 1))
+	if got := contentAt(t, frozen); got != before || !strings.Contains(got, "before") {
+		t.Fatalf("existing operation was not frozen: %q", got)
+	}
+	freshState, err := loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := contentAt(t, New(freshState, project.Version)); !strings.Contains(got, "after") || got == before {
+		t.Fatalf("new operation did not read fresh in-place content: %q", got)
+	}
+}
+
+func TestPublisherRefusesPublicationAfterReadOnlyMaterialization(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	state, err := loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	operation := New(state, project.Version)
+	if _, err := operation.Plan(); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := operation.SyncLeased(context.Background(), nil); err == nil || !strings.Contains(err.Error(), "materialized outside publication") {
+		t.Fatalf("stale operation publication error = %v", err)
+	}
+}
+
+func TestPublisherOperationFreezesGeneratedCheckSources(t *testing.T) {
+	checkFrozen := func(t *testing.T, mutate func(string)) {
+		t.Helper()
+		state := csRepo(t, sampleYAML, map[string]string{".awf/skills/implementing.yaml": "data:\n  stale: before\n"})
+		prepared, err := newPublisher(state, testConfig(state), NewFilesystemReader(state.Root()), project.Version).operationState()
+		if err != nil {
+			t.Fatal(err)
+		}
+		before, err := generatedcheck.Additional(cloneGeneratedOutput(prepared.generated), prepared.plan)
 		if err != nil {
 			t.Fatal(err)
 		}
 		mutate(state.Root())
-		after, err := generatedcheck.Additional(prepared.GeneratedOutput(), prepared.Plan())
+		after, err := generatedcheck.Additional(cloneGeneratedOutput(prepared.generated), prepared.plan)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -153,21 +217,21 @@ func TestPublisherStagedTreeOwnsADRAndTopicDerivation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf/topics/metadata/rendering/selected-tree.yaml"), []byte("working: [malformed\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	prepared, err := newPublisher(state, testConfig(state), snapshotTreeReader{tree: staged}, project.Version).Prepare()
+	prepared, err := newPublisher(state, testConfig(state), snapshotTreeReader{tree: staged}, project.Version).operationState()
 	if err != nil {
 		t.Fatalf("working-tree authority leaked into selected-tree planning: %v", err)
 	}
-	if len(prepared.Topics().All()) != 1 {
-		t.Fatalf("selected topic universe = %d", len(prepared.Topics().All()))
+	if len(prepared.topics.All()) != 1 {
+		t.Fatalf("selected topic universe = %d", len(prepared.topics.All()))
 	}
 }
 
-func TestPublisherResidentMarkerPreparationPropagatesPlanningFailure(t *testing.T) {
+func TestPublisherResidentMarkerPropagatesPlanningFailure(t *testing.T) {
 	state := csRepo(t, sampleYAML, map[string]string{})
 	cfg := testConfig(state)
 	lower := lowerWithTargets(state, append(state.Targets(), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
 	publisher := newPublisher(lower, cfg, NewFilesystemReader(state.Root()), project.Version)
-	if _, err := publisher.Prepare(); err == nil {
+	if _, err := publisher.operationState(); err == nil {
 		t.Fatal("resident-marker preparation hid planning failure")
 	}
 }
@@ -191,8 +255,10 @@ func TestSyncUsesTheSessionsSelectedConfigurationWithoutFactsRebinding(t *testin
 	}
 }
 
-func TestPreparationResidentMarkerRejectsAbsentMarker(t *testing.T) {
-	if _, err := (Preparation{}).ResidentMarker("effort-archive"); err == nil {
+func TestPublisherResidentMarkerRejectsAbsentMarker(t *testing.T) {
+	state := csRepo(t, sampleYAML, map[string]string{})
+	operation := newPublisher(state, testConfig(state), NewFilesystemReader(state.Root()), project.Version)
+	if _, err := operation.ResidentMarker("absent"); err == nil {
 		t.Fatal("absent resident marker was accepted")
 	}
 }
@@ -239,14 +305,15 @@ func TestFilesystemReaderKeepsInvokingGitfileProjectSelected(t *testing.T) {
 	}
 }
 
-func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
+func TestPublisherOperationProjectionsAreDeeplyDefensive(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "immutable", "Immutable", "paths: [\"internal/**\"]\n")
 	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	prepared, err := newPublisher(state, testConfig(state), NewFilesystemReader(root), project.Version).Prepare()
+	publisher := newPublisher(state, testConfig(state), NewFilesystemReader(root), project.Version)
+	prepared, err := publisher.operationState()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -260,39 +327,64 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 		Merged:   []glossary.Record{{Term: "merged", Meaning: "meaning", Domains: []string{"rendering"}}},
 		Domains:  []string{"rendering"},
 	}
-	beforePitfalls, beforeTopics := prepared.Pitfalls(), prepared.Topics()
-	beforeSkills, beforePlan := prepared.EffectiveSkills(), prepared.Plan()
-	beforeGlossary := prepared.Glossary()
+	pitfallsProjection := func() pitfall.Corpus {
+		value, err := publisher.Pitfalls()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	topicsProjection := func() topic.Corpus { return prepared.topics.Clone() }
+	skillsProjection := func() map[string]bool {
+		value, err := publisher.EffectiveSkills()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	planProjection := func() outputplan.Plan {
+		value, err := publisher.Plan()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	glossaryProjection := func() glossarycheck.Input {
+		value, err := publisher.Glossary()
+		if err != nil {
+			t.Fatal(err)
+		}
+		return value
+	}
+	beforePitfalls, beforeTopics := pitfallsProjection(), topicsProjection()
+	beforeSkills, beforePlan := skillsProjection(), planProjection()
+	beforeGlossary := glossaryProjection()
 
-	projectedPitfalls := prepared.Pitfalls().All()
+	projectedPitfalls := pitfallsProjection().All()
 	projectedPitfalls[0].Domains[0] = "mutated"
 	projectedPitfalls[0].Source[0] = 'X'
 
-	projectedTopics := prepared.Topics()
+	projectedTopics := topicsProjection()
 	projectedTopics.DomainPaths["rendering"][0] = "mutated"
 	allTopics := projectedTopics.All()
 	allTopics[0].Metadata.Paths[0] = "mutated"
 	allTopics[0].Claims[0].References = append(allTopics[0].Claims[0].References, "mutated")
 
-	projectedSkills := prepared.EffectiveSkills()
+	projectedSkills := skillsProjection()
 	for skill := range projectedSkills {
 		projectedSkills[skill] = !projectedSkills[skill]
 		projectedSkills["mutated"] = true
 		break
 	}
-	projectedGlossary := prepared.Glossary()
+	projectedGlossary := glossaryProjection()
 	projectedGlossary.Authored[0].Domains[0] = "mutated"
 	projectedGlossary.Merged[0].Domains[0] = "mutated"
 	projectedGlossary.Domains[0] = "mutated"
 
 	// outputplan has no exported mutable fields. Every slice-valued query is a
 	// defensive copy, so mutate each outward slice and each nested slice query.
-	planProjection := prepared.Plan()
-	paths := planProjection.Paths()
-	if len(paths) > 0 {
-		paths[0] = "mutated"
-	}
-	nodes := planProjection.Nodes()
+	projectedPlan := planProjection()
+	nodes := projectedPlan.Nodes()
 	if len(nodes) > 0 {
 		nodes[0] = nodes[len(nodes)-1]
 		declarers := nodes[0].Declarers()
@@ -307,17 +399,17 @@ func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 			}
 		}
 	}
-	outputs := planProjection.Outputs()
+	outputs := projectedPlan.Outputs()
 	if len(outputs) > 0 {
 		outputs[0] = outputs[len(outputs)-1]
 	}
 
 	for name, values := range map[string][2]any{
-		"Pitfalls":        {prepared.Pitfalls(), beforePitfalls},
-		"Topics":          {prepared.Topics(), beforeTopics},
-		"EffectiveSkills": {prepared.EffectiveSkills(), beforeSkills},
-		"Plan":            {prepared.Plan(), beforePlan},
-		"Glossary":        {prepared.Glossary(), beforeGlossary},
+		"Pitfalls":        {pitfallsProjection(), beforePitfalls},
+		"Topics":          {topicsProjection(), beforeTopics},
+		"EffectiveSkills": {skillsProjection(), beforeSkills},
+		"Plan":            {planProjection(), beforePlan},
+		"Glossary":        {glossaryProjection(), beforeGlossary},
 	} {
 		if !reflect.DeepEqual(values[0], values[1]) {
 			t.Errorf("mutating the %s projection changed a second projection or Publisher-owned state", name)

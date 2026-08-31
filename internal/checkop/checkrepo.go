@@ -97,14 +97,28 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 			return project.NewLoader(load, catalog.Standard, awfgit.ProjectResidentRoot, repo).Load(ctx, root)
 		},
 		checkReport: func(ctx context.Context, session *project.Session) (project.CheckReport, error) {
-			prepared, err := operationPreparation(session)
+			operation := composePublisher(session)
+			plan, err := operation.Plan()
 			if err != nil {
 				return project.CheckReport{}, err
 			}
-			return project.BuildCheckReport(session, session.Config(), session.Repository(), ctx, prepared.Plan(), project.OperationSemantics{
-				Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(),
-				GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary(),
-			})
+			pitfalls, err := operation.Pitfalls()
+			if err != nil {
+				return project.CheckReport{}, err
+			}
+			skills, err := operation.EffectiveSkills()
+			if err != nil {
+				return project.CheckReport{}, err
+			}
+			generated, err := operation.GeneratedOutput()
+			if err != nil {
+				return project.CheckReport{}, err
+			}
+			glossary, err := operation.Glossary()
+			if err != nil {
+				return project.CheckReport{}, err
+			}
+			return project.BuildCheckReport(session, session.Config(), session.Repository(), ctx, plan, pitfalls, skills, generated, glossary)
 		},
 		currentState: func(ctx context.Context, session *project.Session) (currentstatecoord.CurrentStateReport, error) {
 			return currentstatecoord.CheckWorking(session.Root(), session.Repository(), ctx)

@@ -70,7 +70,7 @@ func TestGeneratedSemanticsPropagatesPreparedTreeErrors(t *testing.T) {
 	inputs := renderInputsForTest(state)
 	sentinel := errors.New("generated entries unavailable")
 	inputs.read = generatedEntriesErrorReader{ProjectTreeReader: inputs.read, err: sentinel}
-	if _, err := (&Publisher{inputs: inputs}).Prepare(); !errors.Is(err, sentinel) {
+	if _, err := (&Publisher{inputs: inputs}).operationState(); !errors.Is(err, sentinel) {
 		t.Fatalf("Prepare error = %v, want generated entries sentinel", err)
 	}
 

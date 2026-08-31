@@ -1,9 +1,11 @@
 package publisher
 
 import (
+	"errors"
 	"fmt"
 	"maps"
 	"slices"
+	"sync"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -69,13 +71,23 @@ func deriveOperationStateWithPitfalls(p renderInputs) (pitfall.Corpus, topic.Cor
 }
 
 // Publisher is the sole output-plan construction and rendering coordinator.
-type Publisher struct{ inputs renderInputs }
+// One Publisher is one immutable operation: all readers share its one derived
+// universe, and publication may be attempted only once.
+type Publisher struct {
+	inputs        renderInputs
+	once          sync.Once
+	op            operation
+	opErr         error
+	mu            sync.Mutex
+	used          bool
+	opStarted     bool
+	publishing    bool
+	planningReady bool
+}
 
-// Preparation is one Publisher-owned derivation and its direct semantic
-// projections for residual consumers.
-type Preparation struct {
-	publisher *Publisher
+type operation struct {
 	plan      outputplan.Plan
+	files     []RenderedFile
 	pitfalls  pitfall.Corpus
 	topics    topic.Corpus
 	skills    map[string]bool
@@ -91,52 +103,130 @@ func New(session ProjectSession, version string) *Publisher {
 	return &Publisher{inputs: renderInputsFromSession(session, version)}
 }
 
-// Prepare derives one operation universe and constructs exactly one immutable plan.
-func (p *Publisher) Prepare() (Preparation, error) {
-	pitfalls, topics, skills, err := deriveOperationStateWithPitfalls(p.inputs)
-	if err != nil {
-		return Preparation{}, err
+func (p *Publisher) operationState() (*operation, error) {
+	p.mu.Lock()
+	if p.publishing && !p.planningReady {
+		p.mu.Unlock()
+		return nil, errors.New("publisher: publication planning is not ready")
 	}
-	built, err := outputPlanWithPitfalls(p.inputs, pitfalls, topics, skills)
-	if err != nil {
-		return Preparation{}, err
+	p.opStarted = true
+	p.mu.Unlock()
+	p.once.Do(func() {
+		pitfalls, topics, skills, err := deriveOperationStateWithPitfalls(p.inputs)
+		if err != nil {
+			p.opErr = err
+			return
+		}
+		built, err := outputPlanWithPitfalls(p.inputs, pitfalls, topics, skills)
+		if err != nil {
+			p.opErr = err
+			return
+		}
+		glossary, err := glossarySemantics(p.inputs)
+		if err != nil {
+			p.opErr = err
+			return
+		}
+		generated, err := generatedSemantics(p.inputs, topics)
+		if err != nil {
+			p.opErr = err
+			return
+		}
+		p.op = operation{
+			plan: freezePlan(built), files: built.writeFiles(),
+			pitfalls: clonePitfallCorpus(pitfalls), topics: topics.Clone(), skills: maps.Clone(skills),
+			generated: cloneGeneratedOutput(generated), glossary: cloneGlossaryInput(glossary),
+		}
+	})
+	if p.opErr != nil {
+		return nil, p.opErr
 	}
-	glossary, err := glossarySemantics(p.inputs)
-	if err != nil {
-		return Preparation{}, err
-	}
-	generated, err := generatedSemantics(p.inputs, topics)
-	if err != nil {
-		return Preparation{}, err
-	}
-	return Preparation{publisher: p, plan: freezePlan(built), pitfalls: pitfalls, topics: topics, skills: maps.Clone(skills), generated: generated, glossary: glossary}, nil
+	return &p.op, nil
 }
 
-// Plan derives exactly one immutable plan for this operation.
+// beginMutation reserves this operation's sole publication attempt.  It is
+// deliberately before lease acquisition: a failed attempt is still an attempt
+// against this operation's frozen authority.
+func (p *Publisher) beginMutation() error {
+	p.mu.Lock()
+	defer p.mu.Unlock()
+	if p.used {
+		return errors.New("publisher: operation already used for publication")
+	}
+	if p.opStarted {
+		return errors.New("publisher: operation already materialized outside publication")
+	}
+	p.used = true
+	p.publishing = true
+	return nil
+}
+
+func (p *Publisher) allowPublicationPlanning() {
+	p.mu.Lock()
+	p.planningReady = true
+	p.mu.Unlock()
+}
+
+// Plan returns the one immutable desired-output plan for this operation.
 func (p *Publisher) Plan() (outputplan.Plan, error) {
-	prepared, err := p.Prepare()
-	return prepared.Plan(), err
+	op, err := p.operationState()
+	if err != nil {
+		return outputplan.Plan{}, err
+	}
+	return op.plan, nil
 }
 
-// Plan returns the one immutable plan constructed for this operation.
-func (p Preparation) Plan() outputplan.Plan { return p.plan }
-
-// Pitfalls returns a defensive pitfall corpus derived from the selected operation tree.
-func (p Preparation) Pitfalls() pitfall.Corpus { return clonePitfallCorpus(p.pitfalls) }
-
-// Topics returns a defensive topic corpus derived from the selected operation tree.
-func (p Preparation) Topics() topic.Corpus { return p.topics.Clone() }
-
-// EffectiveSkills returns a defensive projection of the operation's effective skills.
-func (p Preparation) EffectiveSkills() map[string]bool { return maps.Clone(p.skills) }
-
-// GeneratedOutput returns a defensive prepared projection for generated-output checks.
-func (p Preparation) GeneratedOutput() generatedcheck.AdditionalInput {
-	return cloneGeneratedOutput(p.generated)
+// Pitfalls returns the operation's frozen pitfall corpus. These narrow accessors
+// share Plan's cached derivation rather than starting a second planning pass.
+func (p *Publisher) Pitfalls() (pitfall.Corpus, error) {
+	op, err := p.operationState()
+	if err != nil {
+		return pitfall.Corpus{}, err
+	}
+	return clonePitfallCorpus(op.pitfalls), nil
 }
 
-// Glossary returns a defensive prepared glossary projection.
-func (p Preparation) Glossary() glossarycheck.Input { return cloneGlossaryInput(p.glossary) }
+// EffectiveSkills returns the operation's frozen effective skill projection.
+func (p *Publisher) EffectiveSkills() (map[string]bool, error) {
+	op, err := p.operationState()
+	if err != nil {
+		return nil, err
+	}
+	return maps.Clone(op.skills), nil
+}
+
+// GeneratedOutput returns the operation's frozen generated-output input.
+func (p *Publisher) GeneratedOutput() (generatedcheck.AdditionalInput, error) {
+	op, err := p.operationState()
+	if err != nil {
+		return generatedcheck.AdditionalInput{}, err
+	}
+	return cloneGeneratedOutput(op.generated), nil
+}
+
+// Glossary returns the operation's frozen glossary input.
+func (p *Publisher) Glossary() (glossarycheck.Input, error) {
+	op, err := p.operationState()
+	if err != nil {
+		return glossarycheck.Input{}, err
+	}
+	return cloneGlossaryInput(op.glossary), nil
+}
+
+// ResidentMarker selects a resident marker from this operation's one plan.
+func (p *Publisher) ResidentMarker(name string) (outputplan.Output, error) {
+	plan, err := p.Plan()
+	if err != nil {
+		return outputplan.Output{}, err
+	}
+	want := ".awf/" + name + "/.gitignore"
+	for _, output := range plan.Outputs() {
+		if output.Path() == want {
+			return output, nil
+		}
+	}
+	return outputplan.Output{}, fmt.Errorf("resident marker %q is not planned", name)
+}
 
 func glossarySemantics(p renderInputs) (glossarycheck.Input, error) {
 	sc, err := p.cfg.Sidecar("docs", "glossary")
@@ -165,17 +255,6 @@ func cloneGlossaryInput(in glossarycheck.Input) glossarycheck.Input {
 		out.Merged[i].Domains = slices.Clone(out.Merged[i].Domains)
 	}
 	return out
-}
-
-// ResidentMarker selects the marker from this preparation's existing plan.
-func (p Preparation) ResidentMarker(name string) (outputplan.Output, error) {
-	want := ".awf/" + name + "/.gitignore"
-	for _, output := range p.plan.Outputs() {
-		if output.Path() == want {
-			return output, nil
-		}
-	}
-	return outputplan.Output{}, fmt.Errorf("resident marker %q is not planned", name)
 }
 
 func clonePitfallCorpus(corpus pitfall.Corpus) pitfall.Corpus {
@@ -219,9 +298,13 @@ func freezePlan(plan *OutputPlan) outputplan.Plan {
 	return outputplan.New(nodes)
 }
 
-// BuildConfigReference derives the live configuration reference from this operation's plan.
+// BuildConfigReference derives the live configuration reference from this operation's files.
 func (p *Publisher) BuildConfigReference() (ConfigReference, error) {
-	return configReferenceModel(p.inputs)
+	op, err := p.operationState()
+	if err != nil {
+		return ConfigReference{}, err
+	}
+	return configReferenceRows(p.inputs, slices.Clone(op.files))
 }
 
 // PreflightLocalDoc validates one candidate against the complete output inventory.

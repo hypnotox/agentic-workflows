@@ -180,16 +180,15 @@ func artifactLabel(tid string) string {
 type CheckReport = repositorycheck.Report
 
 // CheckReport performs one ordinary project check from prepared semantic inputs.
-func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, semantics OperationSemantics, op *OutputPlan) (CheckReport, error) {
+func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, pitfalls pitfall.Corpus, eff map[string]bool, generatedInput generatedcheck.AdditionalInput, glossary glossarycheck.Input, op *OutputPlan) (CheckReport, error) {
 	if err := configcheck.ValidateCommandWiring(p.cfg); err != nil {
 		return CheckReport{}, err
 	}
-	pitfalls, eff := semantics.Pitfalls, semantics.EffectiveSkills
-	glossaryResults, err := glossarycheck.Evaluate(semantics.Glossary)
+	glossaryResults, err := glossarycheck.Evaluate(glossary)
 	if err != nil {
 		return CheckReport{}, err
 	}
-	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, pitfalls, eff, semantics.GeneratedOutput, op, glossaryResults)
+	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, pitfalls, eff, generatedInput, op, glossaryResults)
 	if err != nil {
 		return CheckReport{}, err
 	}

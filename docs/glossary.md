@@ -51,6 +51,7 @@
 | project Session | The Loader-constructed immutable selected universe that binds configuration to complete facts and carries its roots, repository and reader handles, and artifact-registry projection through focused operations. |
 | promotion ladder | The retrospective rule that promotes a recurring codifiable observation to the strongest supportable form: invariant, gate or lint rule, review focus, or pitfall. |
 | prose knob | A prohibited catalog var descriptor that only tunes rendered prose; prose customization uses convention parts. Functional values drive commands, enforced identifiers, or executed paths. |
+| Publisher operation | The single-use publication value that consumes one project Session, settles complete output definitions before rendering, materializes each accepted node once, and shares one immutable plan with checks and publication. |
 | regeneration-derived document | A managed document recomputed from repository or catalog state rather than only its template and sidecar. |
 | resident root | A directory inside the config tree holding local machine-owned state rather than rendered output, so the closed-tree sweep leaves it alone instead of reporting it as a stray. |
 | resident-root policy | The deterministic behavior for resident-root paths, kinds, anchoring, collision refusal, preservation of dynamic descendants, and uninstall. |

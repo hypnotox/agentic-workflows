@@ -60,9 +60,9 @@ type RenderedFile struct {
 	// consumption the assembled source cannot show (both ADR-0086).
 	kind, artifact string
 	partVarRefs    []string
-	// ConsumedInputs records render-seam provenance independently of
-	// buildOutputDeclarations, so declaration parity exposes an omission or role
-	// mistake instead of deriving both sides from the declaration inventory.
+	// ConsumedInputs records provenance at the render seam. Definitions own
+	// output identity and dependencies; observed inputs stay coupled to the
+	// closure that actually consumed them.
 	ConsumedInputs     []OutputInput
 	ObservedTemplateID string
 }
@@ -321,6 +321,7 @@ type renderKindSpec struct {
 	kind     string
 	names    []string
 	target   Target
+	claimed  map[string]bool
 	tid      func(name string) string
 	sections func(name string) []string
 	outPath  func(t Target, name string) string
@@ -353,6 +354,13 @@ func docTID(p renderInputs, n string) string { return projectCatalog(p).Docs[n].
 func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]RenderedFile, error) {
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(spec.names)) {
+		outPath := spec.outPath(spec.target, name)
+		if spec.claimed != nil {
+			if spec.claimed[outPath] {
+				continue
+			}
+			spec.claimed[outPath] = true
+		}
 		sc, err := p.cfg.Sidecar(spec.kind, name)
 		if err != nil {
 			return nil, err
@@ -387,7 +395,7 @@ func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]Ren
 			options.encoder = spec.target.AgentDialect
 			options.encode = func(body string) (string, error) { return spec.encode(name, body, data) }
 		}
-		rf, err := renderTarget(p, spec.kind, name, spec.tid(name), spec.sections(name), sc, data, spec.outPath(spec.target, name), eff, options)
+		rf, err := renderTarget(p, spec.kind, name, spec.tid(name), spec.sections(name), sc, data, outPath, eff, options)
 		if err != nil {
 			return nil, err
 		}
@@ -410,11 +418,12 @@ func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]Ren
 
 // renderAllBase renders declarative catalog and singleton producers. OutputPlan
 // owns the public render/sync/check lifecycle and adds generated producers.
-func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclaration, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error) {
+func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDefinition, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error) {
 	var out []RenderedFile
+	claimed := map[string]bool{}
 	// Neutral: docs render once - the output path is docsDir-relative, not adapter-placed.
 	docsRfs, err := renderKind(p, renderKindSpec{
-		kind: "docs", names: catalog.NameDerivedDocNames(projectCatalog(p)),
+		kind: "docs", names: catalog.NameDerivedDocNames(projectCatalog(p)), claimed: claimed,
 		tid:      func(n string) string { return docTID(p, n) },
 		sections: func(n string) []string { return projectCatalog(p).Docs[n].Sections },
 		outPath:  func(_ Target, n string) string { return docOutPath(p, n) },
@@ -453,14 +462,14 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 		skillPath := func(t Target, n string) string { return t.SkillPath(p.cfg.Prefix, n) }
 		for _, spec := range []renderKindSpec{
 			{
-				kind: "skills", names: skillNames, target: t,
+				kind: "skills", names: skillNames, target: t, claimed: claimed,
 				tid:      func(n string) string { return skillTID(p, n) },
 				sections: func(n string) []string { return projectCatalog(p).Skills[n].Sections },
 				outPath:  skillPath,
 				defaults: func(n string) map[string]any { return projectCatalog(p).Skills[n].Data },
 			},
 			{
-				kind: "agents", names: slices.Sorted(maps.Keys(projectCatalog(p).Agents)), target: t,
+				kind: "agents", names: slices.Sorted(maps.Keys(projectCatalog(p).Agents)), target: t, claimed: claimed,
 				tid:      func(n string) string { return agentTID(p, n) },
 				sections: func(n string) []string { return projectCatalog(p).Agents[n].Sections },
 				outPath:  func(t Target, n string) string { return t.AgentPath(n) },
@@ -477,9 +486,10 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 			out = append(out, rfs...)
 		}
 		for _, targetOutput := range resolvedTargetOutputs(t, p.cfg.Prefix, skillNames) {
-			if targetOutputs[targetOutput.Path].canonical != t.Name {
+			if targetOutputs[targetOutput.Path].canonical != t.Name || claimed[targetOutput.Path] {
 				continue
 			}
+			claimed[targetOutput.Path] = true
 			target := t
 			data := projectData(p, config.Sidecar{}, eff)
 
@@ -500,8 +510,10 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 			rf.DeclarerProjection = targetDescriptorProjection(t)
 			rf.Encoder = targetOutput.Encoder
 			rf.Provenance = targetOutput.Provenance
-			for _, input := range targetOutput.Inputs {
-				rf.ConsumedInputs = append(rf.ConsumedInputs, OutputInput(input))
+			// The canonical target executes the closure once, but its coalesced
+			// definitions all remain observed inputs of that one output.
+			for _, input := range targetOutputs[targetOutput.Path].inputs {
+				rf.ConsumedInputs = append(rf.ConsumedInputs, input)
 			}
 			rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
 			out = append(out, rf)
@@ -518,6 +530,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 	data["mandatoryDocs"] = documentMapDocs(p)
 	data["localDocs"] = localDocumentMapDocs(p)
 	data["documentMapFallbackHeading"] = len(p.cfg.LocalDocs) != 0 && ad.Sections["document-map"].Drop
+	claimed["AGENTS.md"] = true
 	rf, err := renderTarget(p, "agents-doc", "", projectCatalog(p).Docs["agents-doc"].TID,
 		projectCatalog(p).Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
 	if err != nil {
@@ -539,9 +552,10 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 	// target with an empty BridgeFile emits no bridge, so neutral instructions
 	// never point at an unrendered target-owned file.
 	for _, t := range p.targets() {
-		if t.BridgeFile == "" {
+		if t.BridgeFile == "" || claimed[t.BridgeFile] {
 			continue
 		}
+		claimed[t.BridgeFile] = true
 		brf, err := renderTarget(p, targetBridgeKind, "", t.BridgeTemplate,
 			nil, config.Sidecar{}, projectData(p, config.Sidecar{}, eff), t.BridgeFile, eff,
 			&renderOutputOptions{sources: []string{"AGENTS.md"}})
@@ -556,7 +570,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 	lay := layout(p)
 	for _, sg := range plainSingletons(projectCatalog(p)) {
 		rfs, err := renderKind(p, renderKindSpec{
-			kind: sg.kind, names: []string{""},
+			kind: sg.kind, names: []string{""}, claimed: claimed,
 			tid:      func(string) string { return sg.tid },
 			sections: func(string) []string { return sg.sections(projectCatalog(p)) },
 			outPath:  func(Target, string) string { return sg.outPath(lay) },
@@ -570,9 +584,10 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 	// .awf/bootstrap.sh, hook payloads, and the runner share only their declarative selection facts. Rendering
 	// retains its own data construction and lifecycle behavior at this seam.
 	for _, unit := range conditionalUnits() {
-		if !unit.enabled(p.cfg) {
+		if !unit.enabled(p.cfg) || claimed[unit.path] {
 			continue
 		}
+		claimed[unit.path] = true
 		rf, err := renderTarget(p, unit.kind, "", unit.tid, unit.sections,
 			config.Sidecar{}, projectData(p, config.Sidecar{}, eff), unit.path, eff,
 			&renderOutputOptions{encoder: unit.encoder, bannerStyle: unit.provenance})
@@ -586,17 +601,18 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 	// descendants are local authority and never enter the manifest.
 	for _, name := range resident.RootNames() {
 		artifact := artifactregistry.Resident(name)
-		if !artifact.Participation.Check {
+		if !artifact.Participation.Check || claimed[artifact.OutputPath] {
 			continue
 		}
+		claimed[artifact.OutputPath] = true
 		rf, err := renderResidentMarker(p, artifact, eff)
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, rf)
 	}
-	// Duplicate declarations are deliberately retained for OutputPlan to
-	// coalesce or reject from normalized recipes.
+	// Definitions were already coalesced before execution; claimed paths ensure
+	// each compatible shared output reaches the plan exactly once.
 	return out, nil
 }
 

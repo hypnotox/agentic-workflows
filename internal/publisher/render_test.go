@@ -63,11 +63,11 @@ func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 	if err != nil || !strings.Contains(string(second), "operator-owned body\n\nwith spacing") {
 		t.Fatalf("preserved local body = %q, %v", second, err)
 	}
-	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: root})
+	declarations, err := buildOutputDefinitions(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: root})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(declarations, func(d OutputDeclaration) bool {
+	if !slices.ContainsFunc(declarations, func(d outputDefinition) bool {
 		return d.Path == "docs/runbooks/incident-response.md" && d.TemplateID == localDocTID
 	}) {
 		t.Fatalf("local document declaration missing: %#v", declarations)

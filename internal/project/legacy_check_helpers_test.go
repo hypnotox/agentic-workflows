@@ -40,11 +40,7 @@ func glossaryTersenessNotes(p renderInputs) ([]string, error) {
 }
 
 func glossaryInputForTest(p renderInputs) (glossarycheck.Input, error) {
-	prepared, err := testPublisher(p).Prepare()
-	if err != nil {
-		return glossarycheck.Input{}, err
-	}
-	return prepared.Glossary(), nil
+	return testPublisher(p).Glossary()
 }
 
 func mergedGlossaryRecords(sc config.Sidecar) ([]glossaryRecord, error) { return glossary.Merge(sc) }

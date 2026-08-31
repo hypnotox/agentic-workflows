@@ -10,31 +10,22 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 func operationInputs(state *Session, cfg *config.Config) renderInputs {
 	return newRenderInputs(state, cfg, state.Reader())
 }
 
-// OperationSemantics carries Publisher's direct semantic derivation to residual
-// project consumers without coupling project to application coordination.
-type OperationSemantics struct {
-	Pitfalls        pitfall.Corpus
-	Topics          topic.Corpus
-	EffectiveSkills map[string]bool
-	GeneratedOutput generatedcheck.AdditionalInput
-	Glossary        glossarycheck.Input
-}
-
 // AdvisoryNotes reports non-blocking project checks from one prepared universe.
-func AdvisoryNotes(state *Session, cfg *config.Config, output outputplan.Plan, semantics OperationSemantics) ([]string, error) {
-	return advisoryNotes(operationInputs(state, cfg), &output, semantics.Glossary)
+func AdvisoryNotes(state *Session, cfg *config.Config, output outputplan.Plan, glossary glossarycheck.Input) ([]string, error) {
+	return advisoryNotes(operationInputs(state, cfg), &output, glossary)
 }
 
-// BuildCheckReport checks the selected project tree using one prepared universe.
-func BuildCheckReport(state *Session, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, output outputplan.Plan, semantics OperationSemantics) (CheckReport, error) {
-	return checkReport(operationInputs(state, cfg), repo, ctx, semantics, &output)
+// BuildCheckReport checks the selected project tree using already-derived,
+// narrow semantic values. Project deliberately has no publisher-operation
+// bundle: orchestration remains at the application boundary.
+func BuildCheckReport(state *Session, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, output outputplan.Plan, pitfalls pitfall.Corpus, effectiveSkills map[string]bool, generated generatedcheck.AdditionalInput, glossary glossarycheck.Input) (CheckReport, error) {
+	return checkReport(operationInputs(state, cfg), repo, ctx, pitfalls, effectiveSkills, generated, glossary, &output)
 }
 
 // BuildListDocument renders the requested project inventory.

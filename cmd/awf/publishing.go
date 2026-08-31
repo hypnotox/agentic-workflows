@@ -8,11 +8,3 @@ import (
 func composePublisher(session *project.Session) *publisher.Publisher {
 	return publisher.New(session, project.Version)
 }
-
-func preparePublisher(composed *publisher.Publisher) (publisher.Preparation, error) {
-	return composed.Prepare()
-}
-
-func operationPreparation(session *project.Session) (publisher.Preparation, error) {
-	return preparePublisher(composePublisher(session))
-}

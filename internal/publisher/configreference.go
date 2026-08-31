@@ -470,22 +470,3 @@ func generateConfigReference(p renderInputs, files []RenderedFile, eff map[strin
 	}
 	return &wrapped, true, nil
 }
-
-// ConfigReferenceModel computes the reference's four typed collections
-// (ConfigKeys, VarEntries, SidecarFields, DataKeys) with live project state -
-// the `awf config` command's data source.
-func configReferenceModel(p renderInputs) (ConfigReference, error) {
-	pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
-	if err != nil {
-		return ConfigReference{}, err
-	}
-	op, err := outputPlanWithPitfalls(p, pitfalls, topics, eff)
-	if err != nil {
-		return ConfigReference{}, err
-	}
-	dds, err := generateDomainDocs(p, topics, eff)
-	if err != nil {
-		return ConfigReference{}, err
-	}
-	return configReferenceRows(p, slices.Concat(op.writeFiles(), dds))
-}

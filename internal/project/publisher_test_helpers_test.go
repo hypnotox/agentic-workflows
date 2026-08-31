@@ -25,11 +25,17 @@ func outputPlan(p renderInputs) (*OutputPlan, error) {
 	return &plan, err
 }
 func deriveOperationStateWithPitfalls(p renderInputs) (pitfall.Corpus, topic.Corpus, map[string]bool, error) {
-	prepared, err := testPublisher(p).Prepare()
+	operation := testPublisher(p)
+	pitfalls, err := operation.Pitfalls()
 	if err != nil {
 		return pitfall.Corpus{}, topic.Corpus{}, nil, err
 	}
-	return prepared.Pitfalls(), prepared.Topics(), prepared.EffectiveSkills(), nil
+	topics, err := topic.LoadCorpusFromReader(p.read, p.cfg)
+	if err != nil {
+		return pitfall.Corpus{}, topic.Corpus{}, nil, err
+	}
+	skills, err := operation.EffectiveSkills()
+	return pitfalls, topics, skills, err
 }
 func outputPlanWithPitfalls(p renderInputs, _ pitfall.Corpus, _ topic.Corpus, _ map[string]bool) (*OutputPlan, error) {
 	return outputPlan(p)

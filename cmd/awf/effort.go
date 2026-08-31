@@ -75,11 +75,8 @@ func expectedEffortArchiveMarker(ctx context.Context, root string) func() ([]byt
 		if err != nil {
 			return nil, err
 		}
-		prepared, err := operationPreparation(session)
-		if err != nil {
-			return nil, err
-		}
-		rendered, err := prepared.ResidentMarker(string(awfgit.ResidentEffortArchive))
+		operation := composePublisher(session)
+		rendered, err := operation.ResidentMarker(string(awfgit.ResidentEffortArchive))
 		if err != nil {
 			return nil, err
 		}

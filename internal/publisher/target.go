@@ -1,6 +1,9 @@
 package publisher
 
 import (
+	"fmt"
+	"slices"
+
 	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
@@ -40,6 +43,20 @@ func anyTargetHasCapability(targets []Target, capability Capability) bool {
 
 func targetDescriptorProjection(target Target) string {
 	return artifactregistry.TargetDescriptorProjection(target)
+}
+
+// targetRecipeProjection excludes declarer name but retains every target field
+// that artifactConfigHash can fold into target-backed output recipes.
+func targetRecipeProjection(target Target) string {
+	capabilities := slices.Clone(target.Capabilities)
+	slices.Sort(capabilities)
+	return fmt.Sprintf("%#v", struct {
+		SkillDir, AgentDir, AgentSuffix string
+		AgentDialect                    AgentDialect
+		BridgeFile, BridgeTemplate      string
+		Capabilities                    []Capability
+		Outputs                         []TargetOutput
+	}{target.SkillDir, target.AgentDir, target.AgentSuffix, target.AgentDialect, target.BridgeFile, target.BridgeTemplate, capabilities, target.Outputs})
 }
 
 func agentCommentStyle(Target) render.CommentStyle { return render.HTMLComment }

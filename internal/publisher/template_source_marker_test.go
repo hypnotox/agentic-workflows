@@ -31,14 +31,6 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := outputDeclarationParityError(active.Nodes, declarations); err != nil {
-		t.Fatal(err)
-	}
-
 	plainByPath := map[string]OutputNode{}
 	for _, node := range plain.Nodes {
 		plainByPath[node.Path] = node
@@ -114,9 +106,9 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 		t.Fatalf("banner/source/root ordering invalid:\n%s", topic.Content)
 	}
 
-	// Every active template input is mirrored by its declaration, including
-	// included partials. This also proves the matrix is declaration-derived,
-	// rather than inferred from a filename suffix.
+	// Every active node observes its template input, including included partials.
+	// This proves the matrix follows render-seam evidence rather than inferring
+	// behavior from a filename suffix.
 	for _, node := range active.Nodes {
 		if node.ObservedTemplateID == "" || encoders[node.ObservedTemplateID] != MarkdownAgentDialect {
 			continue

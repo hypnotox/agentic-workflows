@@ -5,10 +5,13 @@ import (
 	"testing"
 )
 
-func TestPreparationIsReadOnlyAndRequiresBinding(t *testing.T) {
-	unbound := Preparation{}
-	if _, err := unbound.InitCollisions(); err == nil || !strings.Contains(err.Error(), "unbound preparation") {
-		t.Fatalf("unbound collision error = %v", err)
+func TestPublisherRefusesASecondPublicationAttempt(t *testing.T) {
+	operation := &Publisher{}
+	if err := operation.beginMutation(); err != nil {
+		t.Fatal(err)
+	}
+	if err := operation.beginMutation(); err == nil || !strings.Contains(err.Error(), "already used") {
+		t.Fatalf("second mutation error = %v", err)
 	}
 }
 

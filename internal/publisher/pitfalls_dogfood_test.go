@@ -69,18 +69,18 @@ func TestPitfallDogfoodSourceOutputParity(t *testing.T) {
 }
 
 // This named integration stack exercises the complete pitfall output family:
-// corpus-to-index/leaf parity and navigation, source guidance, declarations and
-// dependencies, hash isolation, lock/drift/backup/prune lifecycle, staged
-// projection, and malformed-source refusal.
+// corpus-to-index/leaf parity and navigation, source guidance, definitions and
+// dependencies, hash isolation, lock/drift/backup/prune lifecycle, staged plan
+// parity, and malformed-source refusal.
 // invariant: rendering/doc-outputs:pitfall-output-complete (TestPitfallOutputCompleteIntegration)
 func TestPitfallOutputCompleteIntegration(t *testing.T) {
 	t.Run("dogfood-unique-row-leaf-parity", TestPitfallDogfoodSourceOutputParity)
 	t.Run("index-domain-navigation-and-leaf-metadata", TestPitfallCorpusRendersIndexAndLeaves)
 	t.Run("markdown-safe-metadata-projection", TestPitfallMetadataProjectionKeepsMarkdownStructure)
-	t.Run("working-declaration-plan-parity", TestPitfallDeclarationPlanDependencyParity)
+	t.Run("working-definition-dependencies", TestPitfallDefinitionsPreserveDependencies)
 	t.Run("source-guidance", TestSourceMarkerFamilyMatrix)
 	t.Run("hash-lock-drift-backup-prune", testPitfallHashAndOutputLifecycle)
-	t.Run("staged-projection", testPitfallStagedDeclarationParity)
+	t.Run("staged-plan", testPitfallStagedPlanParity)
 	t.Run("malformed-source", TestPitfallCorpusMalformedSourceFailsRender)
 }
 
@@ -191,7 +191,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	}
 }
 
-func testPitfallStagedDeclarationParity(t *testing.T) {
+func testPitfallStagedPlanParity(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	configYAML := withTestGateCmd(pitfallsCfg)
@@ -227,7 +227,8 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 	pitfallNodes := func(all []outputplan.Node) []outputplan.Node {
 		var out []outputplan.Node
 		for _, node := range all {
-			if node.Path() == "docs/pitfalls.md" || strings.HasPrefix(node.Path(), "docs/pitfalls/") {
+			output, ok := node.Output()
+			if ok && (output.Path() == "docs/pitfalls.md" || strings.HasPrefix(output.Path(), "docs/pitfalls/")) {
 				out = append(out, node)
 			}
 		}
@@ -238,7 +239,7 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 	if !slices.EqualFunc(workingNodes, stagedNodes, func(a, b outputplan.Node) bool {
 		aOutput, aRendered := a.Output()
 		bOutput, bRendered := b.Output()
-		return a.Path() == b.Path() &&
+		return aOutput.Path() == bOutput.Path() &&
 			aRendered == bRendered &&
 			(!aRendered || (aOutput.Path() == bOutput.Path() &&
 				aOutput.Content() == bOutput.Content() &&

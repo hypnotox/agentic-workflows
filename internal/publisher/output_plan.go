@@ -7,7 +7,6 @@ import (
 	"io/fs"
 	"maps"
 	"os"
-	"path"
 	"path/filepath"
 	"slices"
 	"strings"
@@ -26,14 +25,14 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// The declaration and plan types live plan-side with a one-way direction
+// The output and plan types live plan-side with a one-way direction
 // (ADR-0195 item 1): the plan orchestrates rendering, and render files never
 // call plan functions.
 
 // ProjectTreeReader preserves the concise producer-internal name for the neutral operation tree reader.
 type ProjectTreeReader = outputplan.TreeReader
 
-// ArtifactRole preserves the project package's declaration-role compatibility name.
+// ArtifactRole preserves the project package's input-role compatibility name.
 type ArtifactRole = outputplan.ArtifactRole
 
 const (
@@ -65,13 +64,14 @@ type OutputInput struct {
 	Role ArtifactRole
 }
 
-// OutputDeclaration records one deterministic declared output and its inputs.
-type OutputDeclaration struct {
-	Path         string
-	TemplateID   string
-	Declarers    []string
-	Inputs       []OutputInput
-	Dependencies []string
+// outputDefinition records one pre-render output identity and its coalesced owners.
+type outputDefinition struct {
+	Path             string
+	TemplateID       string
+	RecipeProjection string
+	Declarers        []string
+	Projections      []string
+	Dependencies     []string
 }
 
 func projectTreeReader(p renderInputs) ProjectTreeReader {
@@ -224,276 +224,117 @@ func filesystemProjectBoundary(dir string) bool {
 	return false
 }
 
-// buildOutputDeclarations enumerates deterministic producer declarations without
-// rendering or materializing the selected tree.
-func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader) ([]OutputDeclaration, error) {
+// buildOutputDefinitions registers managed output identities without executing
+// a renderer. Init uses this path-only projection before an operation exists.
+func buildOutputDefinitions(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader) ([]outputDefinition, error) {
 	pitfalls, err := loadPitfallCorpusFrom(read)
 	if err != nil {
 		return nil, err
 	}
-	decls := []OutputDeclaration{}
-	add := func(path, tid, who string, inputs []OutputInput) {
-		if path == "" {
-			return
-		}
-		path = filepath.ToSlash(filepath.Clean(path))
-		for i := range inputs {
-			inputs[i].Path = filepath.ToSlash(filepath.Clean(inputs[i].Path))
-		}
-		for i := range decls {
-			if decls[i].Path == path && decls[i].TemplateID == tid {
-				decls[i].Declarers = append(decls[i].Declarers, who)
-				decls[i].Inputs = append(decls[i].Inputs, inputs...)
-				return
-			}
-		}
-		decls = append(decls, OutputDeclaration{Path: path, TemplateID: tid, Declarers: []string{who}, Inputs: inputs})
-	}
-	configInput := []OutputInput{{Path: ".awf/config.yaml", Role: ArtifactConfig}}
-	var readErr error
-	exists := func(path string) bool {
-		if presence, ok := read.(declarationPathPresence); ok {
-			return presence.PathExists(path)
-		}
-
-		return declarationPathExists(read, path, &readErr)
-	}
-	inputs := func(tid string, authored ...OutputInput) []OutputInput {
-		out := slices.Clone(configInput)
-		if tid != "" {
-			out = append(out, OutputInput{Path: "templates/" + tid, Role: ArtifactTemplate})
-		}
-		for _, in := range authored {
-			if exists(in.Path) {
-				out = append(out, in)
-			}
-		}
-		return out
-	}
-	// Ordinary Markdown renderTarget consumers observe each authored expanded
-	// source mapping when the configured repository fact is active. Declarations
-	// mirror that observation without changing TemplateHash ownership.
-	markdownInputs := func(tid string, authored ...OutputInput) ([]OutputInput, error) {
-		out := inputs(tid, authored...)
-		if cfg.Render == nil || cfg.Render.TemplateSourceRoot == "" || tid == "" {
-			return out, nil
-		}
-		src, err := fs.ReadFile(templates.FS, tid)
-		if err != nil {
-			return nil, fmt.Errorf("read template %s: %w", tid, err)
-		}
-		expanded, err := render.ExpandIncludesSource(string(src), tid, templates.FS)
-		if err != nil {
-			return nil, fmt.Errorf("render %s: %w", tid, err)
-		}
-		seen := map[string]bool{}
-		for _, span := range expanded.Spans {
-			if span.Source != "" && !seen[span.Source] {
-				seen[span.Source] = true
-				out = append(out, OutputInput{Path: path.Join(cfg.Render.TemplateSourceRoot, span.Source), Role: ArtifactTemplate})
-			}
-		}
-		return out, nil
-	}
-	partInputs := func(kind, name string, sections []string, overrides ...map[string]config.SectionOverride) []OutputInput {
-		out := []OutputInput{}
-		for _, section := range sections {
-			if len(overrides) != 0 && overrides[0][section].Drop {
-				continue
-			}
-			var p string
-			if config.IsSingletonKind(kind) {
-				p = ".awf/parts/" + kind + "/" + section + ".md"
-			} else {
-				p = ".awf/" + kind + "/parts/" + name + "/" + section + ".md"
-			}
-			if exists(p) {
-				out = append(out, OutputInput{Path: p, Role: ArtifactConventionPart})
-			}
-		}
-		return out
-	}
-	for _, t := range targets {
-		for _, name := range slices.Sorted(maps.Keys(cat.Skills)) {
-			sc, err := cfg.Sidecar("skills", name)
-			if err != nil {
-				return nil, err
-			}
-			tid := mustDescriptor("skills").templateID(cat, name)
-			sections := cat.Skills[name].Sections
-			input, err := markdownInputs(tid, append([]OutputInput{{Path: ".awf/skills/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("skills", name, sections, sc.Sections)...)...)
-			if err != nil {
-				return nil, err
-			}
-			add(artifactregistry.OutputPath(cat, t, cfg.Prefix, "skills", name), tid, t.Name, input)
-		}
-		for _, name := range slices.Sorted(maps.Keys(cat.Agents)) {
-			sc, err := cfg.Sidecar("agents", name)
-			if err != nil {
-				return nil, err
-			}
-			tid := mustDescriptor("agents").templateID(cat, name)
-			sections := cat.Agents[name].Sections
-			input := inputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections, sc.Sections)...)...)
-			if t.AgentDialect == MarkdownAgentDialect {
-				input, err = markdownInputs(tid, append([]OutputInput{{Path: ".awf/agents/" + name + ".yaml", Role: ArtifactAuthoredData}}, partInputs("agents", name, sections, sc.Sections)...)...)
-				if err != nil {
-					return nil, err
-				}
-			}
-			add(artifactregistry.OutputPath(cat, t, cfg.Prefix, "agents", name), tid, t.Name, input)
-		}
-		bridgeInputs, err := markdownInputs(t.BridgeTemplate)
-		if err != nil {
-			return nil, err
-		}
-		add(t.BridgeFile, t.BridgeTemplate, t.BridgeTemplate, bridgeInputs)
-		if err := validateTargetOutputRequirements(t, cat); err != nil {
-			return nil, err
-		}
-		for _, o := range resolvedTargetOutputs(t, cfg.Prefix, slices.Sorted(maps.Keys(cat.Skills))) {
-			declaredInputs := inputs(o.TemplateID)
-			if o.Encoder == MarkdownAgentDialect {
-				declaredInputs, err = markdownInputs(o.TemplateID)
-				if err != nil {
-					return nil, err
-				}
-			}
-			for _, input := range o.Inputs {
-				declaredInputs = append(declaredInputs, OutputInput(input))
-			}
-			add(o.Path, o.TemplateID, t.Name, declaredInputs)
-		}
-	}
-	for _, name := range slices.Sorted(maps.Keys(cat.Docs)) {
-		e := cat.Docs[name]
-		sc, err := cfg.Sidecar(func() string {
-			if e.Mandatory {
-				return name
-			}
-			return "docs"
-		}(), name)
-		if err != nil {
-			return nil, err
-		}
-		// Output shape is a canonical registry projection of catalog structure.
-		out := artifactregistry.OutputPath(cat, Target{}, cfg.Prefix, "docs", name)
-		sidecarPath := ".awf/" + name + ".yaml"
-		if !e.Mandatory {
-			sidecarPath = ".awf/docs/" + name + ".yaml"
-		}
-		authored := []OutputInput{{Path: sidecarPath, Role: ArtifactAuthoredData}}
-		if e.AgentsDoc {
-			for _, doc := range slices.Sorted(maps.Keys(cat.Docs)) {
-				if !cat.Docs[doc].Mandatory {
-					authored = append(authored, OutputInput{Path: ".awf/docs/" + doc + ".yaml", Role: ArtifactAuthoredData})
-				}
-			}
-		}
-		authored = append(authored, partInputs(func() string {
-			if e.Mandatory {
-				return name
-			}
-			return "docs"
-		}(), name, e.Sections, sc.Sections)...)
-		declarer := e.TID
-		if e.Generated {
-			declarer = "generated-config-reference"
-		}
-		if name == "pitfalls" {
-			for _, source := range pitfallSourcePaths(pitfalls) {
-				authored = append(authored, OutputInput{Path: source, Role: ArtifactAuthoredData})
-			}
-		}
-		declaredInputs, err := markdownInputs(e.TID, authored...)
-		if err != nil {
-			return nil, err
-		}
-		add(out, e.TID, declarer, declaredInputs)
-	}
-	for _, local := range cfg.NormalizedLocalDocs() {
-		// A local document's only section is edit-in-place, so a present output is
-		// read back to preserve the authored body and is genuinely an input to its
-		// own next render. The authored-input filter drops it on the first render,
-		// when the output is still absent, exactly as the renderer does.
-		outPath := artifactregistry.LocalDocOutputPath(local.Name)
-		declaredInputs, err := markdownInputs(localDocTID, OutputInput{Path: outPath, Role: ArtifactManagedOutput})
-		if err != nil {
-			return nil, err
-		}
-		add(outPath, localDocTID, "local-doc:"+local.Name, declaredInputs)
-	}
-	for _, entry := range pitfalls.All() {
-		declaredInputs, err := markdownInputs(pitfallEntryTID, OutputInput{Path: entry.SourcePath, Role: ArtifactAuthoredData})
-		if err != nil {
-			return nil, err
-		}
-		add(artifactregistry.PitfallOutputPath(entry.Slug), pitfallEntryTID, "pitfall:"+entry.Slug, declaredInputs)
-	}
-	for _, d := range cfg.Domains {
-		sc, err := cfg.Sidecar("domains", d)
-		if err != nil {
-			return nil, err
-		}
-		authored := []OutputInput{{Path: ".awf/domains/" + d + ".yaml", Role: ArtifactAuthoredData}}
-		authored = append(authored, partInputs("domains", d, cat.DomainDoc.Sections, sc.Sections)...)
-		domainMetadata, err := read.Paths(".awf/topics/metadata/" + d + "/")
-		if err != nil {
-			return nil, err
-		}
-		for _, metadataPath := range domainMetadata {
-			if strings.HasSuffix(metadataPath, ".yaml") {
-				id := strings.TrimSuffix(strings.TrimPrefix(metadataPath, ".awf/topics/metadata/"), ".yaml")
-				authored = append(authored, OutputInput{Path: metadataPath, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
-			}
-		}
-		domainTID := mustDescriptor("domains").templateID(cat, d)
-		declaredInputs, err := markdownInputs(domainTID, authored...)
-		if err != nil {
-			return nil, err
-		}
-		add(artifactregistry.OutputPath(cat, Target{}, cfg.Prefix, "domains", d), domainTID, "generated-domain", declaredInputs)
-	}
-	allMetadata, err := read.Paths(".awf/topics/metadata/")
+	metadata, err := read.Paths(".awf/topics/metadata/")
 	if err != nil {
 		return nil, err
 	}
-	for _, p := range allMetadata {
-		if !strings.HasSuffix(p, ".yaml") {
+	topics := make([]definitionTopic, 0, len(metadata))
+	for _, metadataPath := range metadata {
+		if !strings.HasSuffix(metadataPath, ".yaml") {
 			continue
 		}
-		id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
-		declaredInputs, err := markdownInputs(topicTID, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
-		if err != nil {
-			return nil, err
-		}
-		add(artifactregistry.TopicOutputPath(id), topicTID, "topic:"+id, declaredInputs)
+		id := strings.TrimSuffix(strings.TrimPrefix(metadataPath, ".awf/topics/metadata/"), ".yaml")
+		topics = append(topics, definitionTopic{id: id, metadataPath: metadataPath, partPath: ".awf/topics/parts/" + id + "/current-state.md"})
 	}
-	for _, d := range cfg.Domains {
-		topicInputs := []OutputInput{}
-		indexMetadata, err := read.Paths(".awf/topics/metadata/" + d + "/")
-		if err != nil {
+	return buildOutputDefinitionsFromState(cfg, cat, targets, pitfalls, topics)
+}
+
+type definitionTopic struct {
+	id, metadataPath, partPath string
+}
+
+func definitionTopicsFromCorpus(root string, corpus topic.Corpus) []definitionTopic {
+	all := corpus.All()
+	out := make([]definitionTopic, 0, len(all))
+	for _, current := range all {
+		out = append(out, definitionTopic{
+			id: current.ID.String(), metadataPath: relSlash(root, current.MetadataPath), partPath: relSlash(root, current.PartPath),
+		})
+	}
+	return out
+}
+
+// buildOutputDefinitionsFromState is the authoritative operation population.
+// It consumes the operation's already-derived corpora instead of traversing the
+// selected tree a second time.
+func buildOutputDefinitionsFromState(cfg *config.Config, cat *catalog.Catalog, targets []Target, pitfalls pitfall.Corpus, topics []definitionTopic) ([]outputDefinition, error) {
+	definitions := []outputDefinition{}
+	add := func(outputPath, tid, declarer, recipeProjection string, dependencies ...string) {
+		if outputPath == "" {
+			return
+		}
+		definitions = append(definitions, outputDefinition{
+			Path: filepath.ToSlash(filepath.Clean(outputPath)), TemplateID: tid,
+			RecipeProjection: recipeProjection,
+			Declarers:        []string{declarer}, Dependencies: normalizePaths(dependencies),
+		})
+	}
+	addTarget := func(outputPath, tid, producer string, target Target) {
+		add(outputPath, tid, target.Name, producer+"\x00"+tid+"\x00"+targetRecipeProjection(target))
+		definitions[len(definitions)-1].Projections = []string{targetDescriptorProjection(target)}
+	}
+	for _, target := range targets {
+		if err := artifactregistry.ValidateTarget(target); err != nil {
 			return nil, err
 		}
-		for _, p := range indexMetadata {
-			if strings.HasSuffix(p, ".yaml") {
-				id := strings.TrimSuffix(strings.TrimPrefix(p, ".awf/topics/metadata/"), ".yaml")
-				topicInputs = append(topicInputs, OutputInput{Path: p, Role: ArtifactTopicMetadata}, OutputInput{Path: ".awf/topics/parts/" + id + "/current-state.md", Role: ArtifactClaimPart})
-			}
+		if err := validateTargetOutputRequirements(target, cat); err != nil {
+			return nil, err
 		}
-		if len(topicInputs) > 0 {
-			declaredInputs, err := markdownInputs(topicIndexTID, topicInputs...)
-			if err != nil {
-				return nil, err
-			}
-			add(artifactregistry.TopicIndexOutputPath(d), topicIndexTID, "topic-index:"+d, declaredInputs)
+		for _, name := range slices.Sorted(maps.Keys(cat.Skills)) {
+			addTarget(artifactregistry.OutputPath(cat, target, cfg.Prefix, "skills", name), mustDescriptor("skills").templateID(cat, name), "skills:"+name, target)
+		}
+		for _, name := range slices.Sorted(maps.Keys(cat.Agents)) {
+			addTarget(artifactregistry.OutputPath(cat, target, cfg.Prefix, "agents", name), mustDescriptor("agents").templateID(cat, name), "agents:"+name, target)
+		}
+		add(target.BridgeFile, target.BridgeTemplate, target.BridgeTemplate, "bridge\x00"+target.BridgeTemplate)
+		for _, output := range resolvedTargetOutputs(target, cfg.Prefix, slices.Sorted(maps.Keys(cat.Skills))) {
+			addTarget(output.Path, output.TemplateID, "target-output", target)
+		}
+	}
+	for _, name := range slices.Sorted(maps.Keys(cat.Docs)) {
+		entry := cat.Docs[name]
+		declarer := entry.TID
+		if entry.Generated {
+			declarer = "generated-config-reference"
+		}
+		deps := []string(nil)
+		if name == "pitfalls" {
+			deps = pitfallSourcePaths(pitfalls)
+		}
+		add(artifactregistry.OutputPath(cat, Target{}, cfg.Prefix, "docs", name), entry.TID, declarer, "docs\x00"+name, deps...)
+	}
+	for _, local := range cfg.NormalizedLocalDocs() {
+		add(artifactregistry.LocalDocOutputPath(local.Name), localDocTID, "local-doc:"+local.Name, "local-doc\x00"+local.Name)
+	}
+	for _, entry := range pitfalls.All() {
+		add(artifactregistry.PitfallOutputPath(entry.Slug), pitfallEntryTID, "pitfall:"+entry.Slug, "pitfall\x00"+entry.Slug, entry.SourcePath)
+	}
+	for _, domain := range cfg.Domains {
+		add(artifactregistry.OutputPath(cat, Target{}, cfg.Prefix, "domains", domain), mustDescriptor("domains").templateID(cat, domain), "generated-domain", "domain\x00"+domain)
+	}
+	byDomain := map[string][]string{}
+	for _, current := range topics {
+		add(artifactregistry.TopicOutputPath(current.id), topicTID, "topic:"+current.id, "topic\x00"+current.id, current.metadataPath, current.partPath)
+		if domain, _, ok := strings.Cut(current.id, "/"); ok {
+			byDomain[domain] = append(byDomain[domain], current.metadataPath, current.partPath)
+		}
+	}
+	for _, domain := range cfg.Domains {
+		if len(byDomain[domain]) != 0 {
+			add(artifactregistry.TopicIndexOutputPath(domain), topicIndexTID, "topic-index:"+domain, "topic-index\x00"+domain, byDomain[domain]...)
 		}
 	}
 	for _, unit := range conditionalUnits() {
-		if !unit.enabled(cfg) {
-			continue
+		if unit.enabled(cfg) {
+			add(unit.path, unit.tid, unit.tid, "conditional\x00"+unit.kind)
 		}
-		add(unit.path, unit.tid, unit.tid, inputs(unit.tid, partInputs(unit.kind, "", unit.sections)...))
 	}
 	for _, name := range resident.RootNames() {
 		artifact := artifactregistry.Resident(name)
@@ -503,46 +344,69 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if artifact.Owner != artifactregistry.OwnerResident {
 			return nil, fmt.Errorf("resident artifact %q has invalid owner %q", artifact.Name, artifact.Owner)
 		}
-		add(artifact.OutputPath, artifact.TemplateID, artifact.TemplateID, inputs(artifact.TemplateID))
+		add(artifact.OutputPath, artifact.TemplateID, artifact.TemplateID, "resident\x00"+artifact.Name)
 	}
-	if readErr != nil {
-		return nil, readErr
-	}
-	for i := range decls {
-		if decls[i].Path == config.DocsDir+"/pitfalls.md" {
-			decls[i].Dependencies = append(decls[i].Dependencies, pitfallSourcePaths(pitfalls)...)
-		} else if strings.HasPrefix(decls[i].Path, config.DocsDir+"/pitfalls/") && decls[i].TemplateID == pitfallEntryTID {
-			slug := strings.TrimSuffix(strings.TrimPrefix(decls[i].Path, config.DocsDir+"/pitfalls/"), ".md")
-			decls[i].Dependencies = append(decls[i].Dependencies, pitfall.SourceDir+"/"+slug+".md")
+	configReferencePath := artifactregistry.OutputPath(cat, Target{}, cfg.Prefix, "docs", "config-reference")
+	for i := range definitions {
+		if definitions[i].Path != configReferencePath {
+			continue
 		}
-		switch decls[i].TemplateID {
-		case topicTID, topicIndexTID:
-			for _, input := range decls[i].Inputs {
-				if input.Role == ArtifactTopicMetadata || input.Role == ArtifactClaimPart {
-					decls[i].Dependencies = append(decls[i].Dependencies, input.Path)
-				}
-			}
-		case cat.Docs["config-reference"].TID:
-			for _, candidate := range decls {
-				if candidate.Path != decls[i].Path {
-					decls[i].Dependencies = append(decls[i].Dependencies, candidate.Path)
-				}
+		for _, definition := range definitions {
+			if definition.Path != configReferencePath {
+				definitions[i].Dependencies = append(definitions[i].Dependencies, definition.Path)
 			}
 		}
-		slices.Sort(decls[i].Dependencies)
-		decls[i].Dependencies = slices.Compact(decls[i].Dependencies)
-		slices.Sort(decls[i].Declarers)
-		decls[i].Declarers = slices.Compact(decls[i].Declarers)
-		slices.SortFunc(decls[i].Inputs, func(a, b OutputInput) int {
-			if a.Path != b.Path {
-				return strings.Compare(a.Path, b.Path)
-			}
-			return strings.Compare(string(a.Role), string(b.Role))
-		})
-		decls[i].Inputs = slices.Compact(decls[i].Inputs)
 	}
-	slices.SortFunc(decls, func(a, b OutputDeclaration) int { return strings.Compare(a.Path, b.Path) })
-	return decls, nil
+	return coalesceDefinitions(cfg, definitions)
+}
+
+func normalizePaths(paths []string) []string {
+	out := slices.Clone(paths)
+	for i := range out {
+		out[i] = filepath.ToSlash(filepath.Clean(out[i]))
+	}
+	slices.Sort(out)
+	return slices.Compact(out)
+}
+
+func coalesceDefinitions(cfg *config.Config, definitions []outputDefinition) ([]outputDefinition, error) {
+	for _, local := range cfg.NormalizedLocalDocs() {
+		outputPath := artifactregistry.LocalDocOutputPath(local.Name)
+		owners := 0
+		for _, definition := range definitions {
+			if definition.Path == outputPath {
+				owners += len(definition.Declarers)
+			}
+		}
+		if owners > 1 {
+			return nil, fmt.Errorf("local document %q collides with managed output %q", local.Name, outputPath)
+		}
+	}
+	byPath := map[string]outputDefinition{}
+	for _, definition := range definitions {
+		current, found := byPath[definition.Path]
+		if !found {
+			byPath[definition.Path] = definition
+			continue
+		}
+		if current.TemplateID != definition.TemplateID || current.RecipeProjection != definition.RecipeProjection {
+			return nil, fmt.Errorf("two artifacts render to the same output path %q: conflicting output recipes", definition.Path)
+		}
+		current.Declarers = append(current.Declarers, definition.Declarers...)
+		current.Projections = append(current.Projections, definition.Projections...)
+		current.Dependencies = append(current.Dependencies, definition.Dependencies...)
+		byPath[definition.Path] = current
+	}
+	out := slices.Collect(maps.Values(byPath))
+	for i := range out {
+		slices.Sort(out[i].Declarers)
+		out[i].Declarers = slices.Compact(out[i].Declarers)
+		slices.Sort(out[i].Projections)
+		out[i].Projections = slices.Compact(out[i].Projections)
+		out[i].Dependencies = normalizePaths(out[i].Dependencies)
+	}
+	slices.SortFunc(out, func(a, b outputDefinition) int { return strings.Compare(a.Path, b.Path) })
+	return out, nil
 }
 
 // OutputPolicy preserves the project package's output-policy compatibility name.
@@ -574,8 +438,7 @@ type OutputNode struct {
 // OutputPlan is the single desired-output authority consumed by rendering,
 // sync, manifest/prune, checks, and planned-output reporting.
 type OutputPlan struct {
-	Nodes        []OutputNode
-	Declarations []OutputDeclaration
+	Nodes []OutputNode
 }
 
 func (op *OutputPlan) writeFiles() []RenderedFile {
@@ -594,13 +457,12 @@ func declaredPolicy(kind string, regen bool) OutputPolicy {
 	return artifactregistry.Policy(kind, regen)
 }
 
-// targetOutputDeclaration is a pre-render, normalized descriptor for an
+// targetOutputDefinition is a pre-render, normalized descriptor for an
 // extension output. It lets the planner settle compatibility before Execute.
-type targetOutputDeclaration struct {
-	recipe      OutputRecipe
-	declarers   []string
-	projections []string
-	canonical   string
+type targetOutputDefinition struct {
+	recipe    OutputRecipe
+	inputs    []OutputInput
+	canonical string
 }
 
 // resolvedTargetOutputs is the single selection and path translation point for
@@ -613,10 +475,10 @@ func resolvedTargetOutputs(t Target, prefix string, selected []string) []TargetO
 	return artifactregistry.ResolveTargetOutputs(t, prefix, selected)
 }
 
-// targetOutputDeclarations reads recipe inputs but never executes a template.
+// targetOutputDefinitions reads recipe inputs but never executes a template.
 // Thus a collision is reported before any producer renders its output.
-func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]targetOutputDeclaration, error) {
-	out := map[string]targetOutputDeclaration{}
+func targetOutputDefinitions(p renderInputs, eff map[string]bool) (map[string]targetOutputDefinition, error) {
+	out := map[string]targetOutputDefinition{}
 	for _, t := range p.targets() {
 		if err := artifactregistry.ValidateTarget(t); err != nil {
 			return nil, err
@@ -650,14 +512,14 @@ func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]t
 			if decl.canonical == "" {
 				decl.recipe, decl.canonical = recipe, t.Name
 			}
-			decl.declarers = append(decl.declarers, t.Name)
-			decl.projections = append(decl.projections, targetDescriptorProjection(t))
+			for _, input := range o.Inputs {
+				decl.inputs = append(decl.inputs, OutputInput(input))
+			}
 			out[o.Path] = decl
 		}
 	}
 	for path, decl := range out {
-		slices.Sort(decl.declarers)
-		slices.Sort(decl.projections)
+		decl.inputs = normalizeOutputInputs(decl.inputs)
 		out[path] = decl
 	}
 	return out, nil
@@ -677,59 +539,61 @@ func outputPlan(p renderInputs) (*OutputPlan, error) {
 }
 
 func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
-	declarationInventory, err := buildOutputDeclarations(p.cfg, projectCatalog(p), p.targets(), projectTreeReader(p))
+	definitions, err := buildOutputDefinitionsFromState(p.cfg, projectCatalog(p), p.targets(), pitfalls, definitionTopicsFromCorpus(p.root(), topics))
 	if err != nil {
 		return nil, err
 	}
-	if err := validateLocalDocOutputCollisions(p, declarationInventory); err != nil {
-		return nil, err
-	}
-	declarations, err := targetOutputDeclarations(p, eff)
-	if err != nil {
-		return nil, err
-	}
-	base, err := renderAllBase(p, declarations, eff, pitfalls)
-	if err != nil {
-		return nil, err
-	}
+	// Resolve every live template after the complete definition set has
+	// coalesced, but before any render closure can execute.
 	if err := validateLiveTemplates(p); err != nil {
 		return nil, err
 	}
-	plan := &OutputPlan{Declarations: declarationInventory}
-	add := func(f RenderedFile, declarer string, deps ...string) error {
-		recipe := OutputRecipe{TemplateID: f.TemplateID, TemplateHash: f.TemplateHash, ConfigHash: f.ConfigHash, Policy: f.Policy, Encoder: f.Encoder, Provenance: fmt.Sprintf("%d", f.Provenance)}
-		if f.Declarer == "" {
-			f.Declarer = declarer
-		}
-		// Compare all output-affecting normalized recipe inputs before a node is
-		// accepted. Declarer identity is intentionally excluded here.
+	// Extension recipes include policy, encoder, and provenance in addition to
+	// template identity. Settle their compatibility before choosing the one
+	// canonical target whose closure will execute.
+	targetOutputs, err := targetOutputDefinitions(p, eff)
+	if err != nil {
+		return nil, err
+	}
+	definitionByPath := make(map[string]outputDefinition, len(definitions))
+	for _, definition := range definitions {
+		definitionByPath[definition.Path] = definition
+	}
 
-		for i := range plan.Nodes {
-			if plan.Nodes[i].Path != f.Path {
-				continue
-			}
-			if plan.Nodes[i].Recipe != recipe {
-				return fmt.Errorf("two artifacts render to the same output path %q: conflicting output recipes", f.Path)
-			}
-			plan.Nodes[i].Declarers = append(plan.Nodes[i].Declarers, f.Declarer)
-			plan.Nodes[i].DeclarerProjections = append(plan.Nodes[i].DeclarerProjections, f.DeclarerProjection)
-			return nil
+	base, err := renderAllBase(p, targetOutputs, eff, pitfalls)
+	if err != nil {
+		return nil, err
+	}
+	plan := &OutputPlan{}
+	materialized := make(map[string]bool, len(definitions))
+	add := func(f RenderedFile) error {
+		definition, declared := definitionByPath[f.Path]
+		if !declared {
+			return fmt.Errorf("materialized undeclared output %q", f.Path)
+		}
+		if materialized[f.Path] {
+			return fmt.Errorf("output %q materialized more than once", f.Path)
+		}
+		materialized[f.Path] = true
+		if f.ObservedTemplateID != "" && f.ObservedTemplateID != definition.TemplateID {
+			return fmt.Errorf("output %q materialized template %q, want definition %q", f.Path, f.ObservedTemplateID, definition.TemplateID)
+		}
+		recipe := OutputRecipe{TemplateID: f.TemplateID, TemplateHash: f.TemplateHash, ConfigHash: f.ConfigHash, Policy: f.Policy, Encoder: f.Encoder, Provenance: fmt.Sprintf("%d", f.Provenance)}
+		projections := []string{f.DeclarerProjection}
+		if len(definition.Projections) != 0 {
+			projections = slices.Clone(definition.Projections)
 		}
 		copy := f
-		node := OutputNode{Path: f.Path, Recipe: recipe, Policy: f.Policy, Declarers: []string{f.Declarer}, DeclarerProjections: []string{f.DeclarerProjection}, DependsOn: deps, ConsumedInputs: normalizeOutputInputs(f.ConsumedInputs), ObservedTemplateID: f.ObservedTemplateID, file: &copy}
-		if decl, ok := declarations[f.Path]; ok {
-			node.Declarers, node.DeclarerProjections = decl.declarers, decl.projections
-		}
-		plan.Nodes = append(plan.Nodes, node)
+		plan.Nodes = append(plan.Nodes, OutputNode{
+			Path: f.Path, Recipe: recipe, Policy: f.Policy,
+			Declarers: slices.Clone(definition.Declarers), DeclarerProjections: projections,
+			DependsOn:      slices.Clone(definition.Dependencies),
+			ConsumedInputs: normalizeOutputInputs(f.ConsumedInputs), ObservedTemplateID: f.ObservedTemplateID, file: &copy,
+		})
 		return nil
 	}
 	for _, f := range base {
-		deps := []string(nil)
-		if f.Path == config.DocsDir+"/pitfalls.md" {
-			deps = pitfallSourcePaths(pitfalls)
-		}
-
-		if err := add(f, f.TemplateID, deps...); err != nil {
+		if err := add(f); err != nil {
 			return nil, err
 		}
 	}
@@ -738,7 +602,7 @@ func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topi
 		return nil, err
 	}
 	for _, f := range localDocs {
-		if err := add(f, f.Declarer); err != nil {
+		if err := add(f); err != nil {
 			return nil, err
 		}
 	}
@@ -747,17 +611,16 @@ func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topi
 		return nil, err
 	}
 	for _, f := range pitfallLeaves {
-		slug := strings.TrimSuffix(strings.TrimPrefix(f.Path, config.DocsDir+"/pitfalls/"), ".md")
-		if err := add(f, f.Declarer, pitfall.SourceDir+"/"+slug+".md"); err != nil {
+		if err := add(f); err != nil {
 			return nil, err
 		}
 	}
-	topicFiles, topicDeps, err := generateTopicDocs(p, topics)
+	topicFiles, _, err := generateTopicDocs(p, topics)
 	if err != nil {
 		return nil, err
 	}
 	for _, f := range topicFiles {
-		if err := add(f, f.Declarer, topicDeps[f.Path]...); err != nil {
+		if err := add(f); err != nil {
 			return nil, err
 		}
 	}
@@ -766,7 +629,7 @@ func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topi
 		return nil, err
 	}
 	for _, f := range domains {
-		if err := add(f, "generated-domain"); err != nil {
+		if err := add(f); err != nil {
 			return nil, err
 		}
 	}
@@ -774,23 +637,21 @@ func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topi
 	if cref, ok, err := generateConfigReference(p, inputs, eff); err != nil {
 		return nil, err
 	} else if ok {
-		deps := make([]string, 0, len(inputs))
-		for _, f := range inputs {
-			deps = append(deps, f.Path)
-		}
-
-		if err := add(*cref, "generated-config-reference", deps...); err != nil {
+		if err := add(*cref); err != nil {
 			return nil, err
+		}
+	}
+	for _, definition := range definitions {
+		if !materialized[definition.Path] {
+			return nil, fmt.Errorf("defined output %q was not materialized", definition.Path)
 		}
 	}
 	slices.SortFunc(plan.Nodes, func(a, b OutputNode) int { return strings.Compare(a.Path, b.Path) })
 	for i := range plan.Nodes {
-		slices.Sort(plan.Nodes[i].Declarers)
 		slices.Sort(plan.Nodes[i].DeclarerProjections)
-		slices.Sort(plan.Nodes[i].DependsOn)
 		if plan.Nodes[i].file != nil {
-			// Membership and each normalized declarer descriptor are observable
-			// even when a coalesced output's bytes are identical.
+			// The recipe hash remains available independently; the published hash
+			// additionally observes the complete coalesced declarer population.
 			plan.Nodes[i].file.ConfigHash = manifest.Hash([]byte(plan.Nodes[i].Recipe.ConfigHash + "\\x00" + strings.Join(plan.Nodes[i].DeclarerProjections, "\\x00")))
 		}
 	}
@@ -806,22 +667,6 @@ func preflightLocalDoc(p renderInputs, doc config.LocalDoc) error {
 	candidate.cfg = &candidateConfig
 	_, err := outputPlan(candidate)
 	return err
-}
-
-// validateLocalDocOutputCollisions compares configured local paths with the
-// complete declaration inventory before any producer renders. Intrinsic name
-// grammar remains config-owned; project owns collisions with every output
-// family, including generated and target-owned outputs.
-func validateLocalDocOutputCollisions(p renderInputs, declarations []OutputDeclaration) error {
-	for _, local := range p.cfg.NormalizedLocalDocs() {
-		localPath := config.DocsDir + "/" + local.Name + ".md"
-		for _, declaration := range declarations {
-			if declaration.Path == localPath && !slices.Contains(declaration.Declarers, "local-doc:"+local.Name) {
-				return fmt.Errorf("local document %q collides with managed output %q", local.Name, localPath)
-			}
-		}
-	}
-	return nil
 }
 
 func normalizeOutputInputs(inputs []OutputInput) []OutputInput {
@@ -847,14 +692,4 @@ func validateLiveTemplates(p renderInputs) error {
 		}
 	}
 	return nil
-}
-
-type declarationPathPresence interface{ PathExists(string) bool }
-
-func declarationPathExists(read ProjectTreeReader, path string, readErr *error) bool {
-	_, ok, err := read.ReadFile(path)
-	if err != nil && *readErr == nil {
-		*readErr = err
-	}
-	return ok
 }

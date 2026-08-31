@@ -16,19 +16,15 @@ func TestPlanAndNodesAreDefensiveValues(t *testing.T) {
 	outputParts[0], nodeDeclarers[0] = "mutated", "mutated"
 	nodes[0] = Node{}
 
-	if got := plan.Paths(); !reflect.DeepEqual(got, []string{"out"}) {
-		t.Fatalf("paths after input mutation = %v", got)
-	}
 	gotOutput, ok := plan.Nodes()[0].Output()
 	if !ok || !reflect.DeepEqual(gotOutput.StubParts(), []string{"part"}) {
 		t.Fatalf("output aliases construction input: %#v, %t", gotOutput, ok)
 	}
 
 	projectedNodes := plan.Nodes()
-	projectedPaths := plan.Paths()
 	projectedOutputs := plan.Outputs()
-	projectedNodes[0], projectedPaths[0], projectedOutputs[0] = Node{}, "mutated", Output{}
-	if plan.Paths()[0] != "out" || plan.Outputs()[0].Path() != "out" {
+	projectedNodes[0], projectedOutputs[0] = Node{}, Output{}
+	if plan.Outputs()[0].Path() != "out" {
 		t.Fatal("plan projections mutate stored values")
 	}
 }

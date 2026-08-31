@@ -48,7 +48,7 @@ Backing: test
 
 ### `invariant: managed-output-attribution`
 
-A reader-injected declaration builder enumerates the standard footprint's managed writes before rendering, retaining sorted declarers and exact inputs; those declarations are the output plan's generated-path classification.
+Publisher registers the complete managed-path definition set before rendering, retaining normalized recipes, declarers, and dependencies. Compatible definitions coalesce before one render closure materializes their shared node, while exact consumed inputs are observed at that render seam instead of reconstructed by a second inventory. The resulting immutable plan is the generated-path classification for render and check.
 Backing: test
 
 ### `invariant: ordinary-render-freshness`
@@ -88,7 +88,7 @@ Backing: test
 
 ### `invariant: sync-mutations-root-confined`
 
-Ordinary render and first adoption discover immutable tracked and resident anchors, acquire the complete canonical lease set before mutable configuration loading and output planning, and hold it through complete or typed partial outcome construction. Publisher retains stable output, backup, prune, and final-lock-last policy; no Preparation mutator can publish a stale plan. Selected root-confined handles observe expected identities and perform exclusive creation, replacement, removal, parent creation, mode correction, backup publication, and empty-ancestor cleanup without changing outside bytes or modes. Every failure after a committed directory, mode, backup, output, prune, cleanup, or lock effect returns and presents that stable effect with a retry or recovery action; a pre-effect failure preserves the tree, and no crash-atomicity is claimed.
+Ordinary render and first adoption discover immutable tracked and resident anchors, acquire the complete canonical lease set before mutable configuration loading and output planning, and hold it through complete or typed partial outcome construction. Each Publisher is single-use: publication derives its immutable operation state only after the lease is held, and a prior read-only materialization makes later publication refuse rather than reuse a stale plan. Publisher retains stable output, backup, prune, and final-lock-last policy. Selected root-confined handles observe expected identities and perform exclusive creation, replacement, removal, parent creation, mode correction, backup publication, and empty-ancestor cleanup without changing outside bytes or modes. Every failure after a committed directory, mode, backup, output, prune, cleanup, or lock effect returns and presents that stable effect with a retry or recovery action; a pre-effect failure preserves the tree, and no crash-atomicity is claimed.
 Backing: test
 
 ### `invariant: sync-backs-up-foreign`

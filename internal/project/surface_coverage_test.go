@@ -59,16 +59,17 @@ func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	prepared, planErr := testPublisher(operationInputs(p, testConfig(p))).Prepare()
+	operation := testPublisher(operationInputs(p, testConfig(p)))
+	plan, planErr := operation.Plan()
 	if planErr != nil {
 		t.Fatal(planErr)
 	}
-	semantics, err := preparedSemantics(p, prepared)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), prepared.Plan(), semantics); err != nil {
-		t.Fatalf("CheckReport changed after preparation: %v after %d glossary reads", err, reader.reads)
+	pitfalls, _ := operation.Pitfalls()
+	skills, _ := operation.EffectiveSkills()
+	generated, _ := operation.GeneratedOutput()
+	glossary, _ := operation.Glossary()
+	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), plan, pitfalls, skills, generated, glossary); err != nil {
+		t.Fatalf("CheckReport changed after operation construction: %v after %d glossary reads", err, reader.reads)
 	}
 }
 

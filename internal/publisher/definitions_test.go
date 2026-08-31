@@ -2,7 +2,6 @@ package publisher
 
 import (
 	"errors"
-	"fmt"
 	"os"
 	"path/filepath"
 	"reflect"
@@ -84,180 +83,105 @@ func TestProjectTreeReaders(t *testing.T) {
 	}
 }
 
-// TestBuildOutputDeclarationsPropagatesEnumerationFaults pins that a faulting
+// TestBuildOutputDefinitionsPropagatesEnumerationFaults pins that a faulting
 // tree read reaches the caller. Erasing it truncated the declaration set the
 // drift oracle is computed over, so a partial enumeration reported a clean tree
 // and exited 0.
-func TestBuildOutputDeclarationsPropagatesEnumerationFaults(t *testing.T) {
+func TestBuildOutputDefinitionsPropagatesEnumerationFaults(t *testing.T) {
 	read := memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x")}
 	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndomains: [d]\n"), configReaderAdapter{read})
 	if err != nil {
 		t.Fatal(err)
 	}
 	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
-	// Three sites enumerate the tree, in call order: per-domain metadata for the
-	// domain docs, the flat metadata list for topic docs, and per-domain metadata
-	// for the topic indexes. Each must surface its own fault.
-	for site := 1; site <= 3; site++ {
+	// Definitions enumerate the pitfall sources and the flat topic metadata set.
+	// Each path-only population read must surface its own fault.
+	for site := 1; site <= 2; site++ {
 		t.Run("site"+strconv.Itoa(site), func(t *testing.T) {
 			calls := 0
 			faulting := failingPathsReader{memoryProjectReader: read, failAt: site, calls: &calls}
-			if _, err := buildOutputDeclarations(cfg, cat, nil, faulting); err == nil || !strings.Contains(err.Error(), "enumeration fault") {
+			if _, err := buildOutputDefinitions(cfg, cat, nil, faulting); err == nil || !strings.Contains(err.Error(), "enumeration fault") {
 				t.Fatalf("site %d: error = %v, want the enumeration fault", site, err)
 			}
 		})
 	}
 }
 
-func TestBuildOutputDeclarationsPropagatesReadFaults(t *testing.T) {
-	read := failingReadReader{memoryProjectReader: memoryProjectReader{".awf/topics/metadata/d/t.yaml": []byte("x")}}
-	cfg, err := config.ParseTree(".awf", []byte("prefix: p\ndomains: [d]\n"), configReaderAdapter(read))
-	if err != nil {
-		t.Fatal(err)
-	}
-	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
-	if _, err := buildOutputDeclarations(cfg, cat, nil, read); err == nil || !strings.Contains(err.Error(), "read fault") {
-		t.Fatalf("error = %v, want the project-tree read fault", err)
-	}
-}
-
-func outputDeclarationParityError(nodes []OutputNode, declarations []OutputDeclaration) error {
-	if len(nodes) != len(declarations) {
-		planPaths, declPaths := map[string]bool{}, map[string]bool{}
-		for _, node := range nodes {
-			planPaths[node.Path] = true
-		}
-		for _, declaration := range declarations {
-			declPaths[declaration.Path] = true
-		}
-		var planOnly, declOnly []string
-		for path := range planPaths {
-			if !declPaths[path] {
-				planOnly = append(planOnly, path)
-			}
-		}
-		for path := range declPaths {
-			if !planPaths[path] {
-				declOnly = append(declOnly, path)
-			}
-		}
-		slices.Sort(planOnly)
-		slices.Sort(declOnly)
-		return fmt.Errorf("declaration parity: plan-only %v, declarations-only %v", planOnly, declOnly)
-	}
-	for i := range nodes {
-		node, declaration := nodes[i], declarations[i]
-		if node.Path != declaration.Path ||
-			!slices.Equal(node.Declarers, declaration.Declarers) ||
-			!slices.Equal(node.ConsumedInputs, normalizeOutputInputs(declaration.Inputs)) ||
-			!slices.Equal(node.DependsOn, declaration.Dependencies) {
-			return fmt.Errorf("declaration parity at %q: plan declarers=%v consumed=%v dependencies=%v; declaration declarers=%v inputs=%v dependencies=%v",
-				node.Path, node.Declarers, node.ConsumedInputs, node.DependsOn,
-				declaration.Declarers, declaration.Inputs, declaration.Dependencies)
-		}
-	}
-	return nil
-}
-
-// invariant: rendering/project-output-plan:conditional-unit-single-source (TestOutputDeclarationsMatchThePlan)
-// invariant: rendering/project-output-plan:output-plan-complete (TestOutputDeclarationsMatchThePlan)
-// invariant: rendering/sync-and-drift:managed-output-attribution (TestOutputDeclarationsMatchThePlan)
-func TestOutputDeclarationsMatchThePlan(t *testing.T) {
+// invariant: rendering/project-output-plan:conditional-unit-single-source (TestDefinitionsCoverRenderedPlan)
+// invariant: rendering/project-output-plan:output-plan-complete (TestDefinitionsCoverRenderedPlan)
+// invariant: rendering/sync-and-drift:managed-output-attribution (TestDefinitionsCoverRenderedPlan)
+func TestDefinitionsCoverRenderedPlan(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := loadTestSession(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := outputPlanProject(p)
+	plan, err := outputPlanProject(state)
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()})
+	definitions, err := buildOutputDefinitions(testConfig(state), projectCatalog(renderInputsForTest(state)), state.Targets(), filesystemProjectReader{root: state.Root()})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := outputDeclarationParityError(plan.Nodes, declarations); err != nil {
-		t.Fatal(err)
+	if len(plan.Nodes) != len(definitions) {
+		t.Fatalf("rendered nodes=%d definitions=%d", len(plan.Nodes), len(definitions))
 	}
-
-	runnerNode := slices.IndexFunc(plan.Nodes, func(node OutputNode) bool { return node.Path == "awf" })
-	runnerDeclaration := slices.IndexFunc(declarations, func(declaration OutputDeclaration) bool { return declaration.Path == "awf" })
-	if runnerNode < 0 || runnerDeclaration < 0 {
-		t.Fatal("enabled runner conditional unit missing from parity populations")
-	}
-	planOnly := slices.Delete(slices.Clone(declarations), runnerDeclaration, runnerDeclaration+1)
-	if err := outputDeclarationParityError(plan.Nodes, planOnly); err == nil || !strings.Contains(err.Error(), "plan-only [awf]") {
-		t.Fatalf("declaration-only omission escaped parity: %v", err)
-	}
-	declarationOnly := slices.Delete(slices.Clone(plan.Nodes), runnerNode, runnerNode+1)
-	if err := outputDeclarationParityError(declarationOnly, declarations); err == nil || !strings.Contains(err.Error(), "declarations-only [awf]") {
-		t.Fatalf("render-only omission escaped parity: %v", err)
+	for i := range plan.Nodes {
+		node, definition := plan.Nodes[i], definitions[i]
+		if node.Path != definition.Path || !slices.Equal(node.Declarers, definition.Declarers) || !slices.Equal(node.DependsOn, definition.Dependencies) {
+			t.Fatalf("definition %q != rendered node: definition=%#v node=%#v", definition.Path, definition, node)
+		}
 	}
 }
 
-func TestEnabledDeclarationsRejectMissingBridgeTemplate(t *testing.T) {
-	cfg := &config.Config{Prefix: "example", Render: &config.RenderConfig{TemplateSourceRoot: "templates"}}
-	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
-	targets := []Target{{Name: "broken", BridgeFile: "BRIDGE.md", BridgeTemplate: "missing/bridge.md.tmpl"}}
-	_, err := buildOutputDeclarations(cfg, cat, targets, memoryProjectReader{})
-	if err == nil || !strings.Contains(err.Error(), "read template missing/bridge.md.tmpl") {
+func TestEnabledDefinitionMissingBridgeTemplateRefusesBeforeOutput(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	state, err := loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	state = setTestTargets(state, []Target{{Name: "broken", BridgeFile: "BRIDGE.md", BridgeTemplate: "missing/bridge.md.tmpl", AgentDialect: MarkdownAgentDialect}})
+	if _, err := outputPlanProject(state); err == nil || !strings.Contains(err.Error(), "read template missing/bridge.md.tmpl") {
 		t.Fatalf("missing enabled bridge template error = %v", err)
 	}
 }
 
-func TestEnabledMarkdownDeclarationsMatchObservedTemplateSources(t *testing.T) {
+func TestMarkdownRenderObservesTemplateSources(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := loadTestSession(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	testConfig(p).Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	plan, err := outputPlanProject(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()})
+	testConfig(state).Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
+	plan, err := outputPlanProject(state)
 	if err != nil {
 		t.Fatal(err)
 	}
 	path := "docs/architecture.md"
-	nodeIndex := slices.IndexFunc(plan.Nodes, func(node OutputNode) bool { return node.Path == path })
-	declarationIndex := slices.IndexFunc(declarations, func(declaration OutputDeclaration) bool { return declaration.Path == path })
-	if nodeIndex < 0 || declarationIndex < 0 {
-		t.Fatalf("ordinary Markdown output missing: plan=%d declaration=%d", nodeIndex, declarationIndex)
-	}
-	if got, want := plan.Nodes[nodeIndex].ConsumedInputs, normalizeOutputInputs(declarations[declarationIndex].Inputs); !slices.Equal(got, want) {
-		t.Fatalf("enabled declaration/observation parity:\n got %#v\nwant %#v", got, want)
-	}
-	if !slices.Contains(plan.Nodes[nodeIndex].ConsumedInputs, OutputInput{Path: "templates/docs/architecture.md.tmpl", Role: ArtifactTemplate}) {
-		t.Fatalf("configured root source was not observed: %#v", plan.Nodes[nodeIndex].ConsumedInputs)
+	i := slices.IndexFunc(plan.Nodes, func(node OutputNode) bool { return node.Path == path })
+	if i < 0 || !slices.Contains(plan.Nodes[i].ConsumedInputs, OutputInput{Path: "templates/docs/architecture.md.tmpl", Role: ArtifactTemplate}) {
+		t.Fatalf("configured root source was not observed: %#v", plan.Nodes[i].ConsumedInputs)
 	}
 }
 
-func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
+func TestPitfallDefinitionsPreserveDependencies(t *testing.T) {
 	root := scaffoldFiles(t, pitfallsCfg, map[string]string{
 		"docs/pitfalls/alpha.md": pitfallSource("Alpha", "", "alpha body\n"),
 		"docs/pitfalls/beta.md":  pitfallSource("Beta", "", "beta body\n"),
 	})
-	p, err := loadTestSession(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	plan, err := outputPlanProject(p)
+	plan, err := outputPlanProject(state)
 	if err != nil {
-		t.Fatal(err)
-	}
-	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: root})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := outputDeclarationParityError(plan.Nodes, declarations); err != nil {
 		t.Fatal(err)
 	}
 	want := map[string][]string{
@@ -265,28 +189,11 @@ func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
 		"docs/pitfalls/alpha.md": {".awf/docs/pitfalls/alpha.md"},
 		"docs/pitfalls/beta.md":  {".awf/docs/pitfalls/beta.md"},
 	}
-	for path, deps := range want {
-		node := slices.IndexFunc(plan.Nodes, func(n OutputNode) bool { return n.Path == path })
-		decl := slices.IndexFunc(declarations, func(d OutputDeclaration) bool { return d.Path == path })
-		if node < 0 || decl < 0 || !slices.Equal(plan.Nodes[node].DependsOn, deps) || !slices.Equal(declarations[decl].Dependencies, deps) {
-			t.Fatalf("%s dependency parity: node=%v declaration=%v want=%v", path, func() []string {
-				if node < 0 {
-					return nil
-				}
-				return plan.Nodes[node].DependsOn
-			}(), func() []string {
-				if decl < 0 {
-					return nil
-				}
-				return declarations[decl].Dependencies
-			}(), deps)
+	for path, dependencies := range want {
+		i := slices.IndexFunc(plan.Nodes, func(node OutputNode) bool { return node.Path == path })
+		if i < 0 || !slices.Equal(plan.Nodes[i].DependsOn, dependencies) {
+			t.Fatalf("%s dependencies=%v want=%v", path, plan.Nodes[i].DependsOn, dependencies)
 		}
-	}
-	mutated := slices.Clone(declarations)
-	idx := slices.IndexFunc(mutated, func(d OutputDeclaration) bool { return d.Path == "docs/pitfalls/alpha.md" })
-	mutated[idx].Dependencies = nil
-	if err := outputDeclarationParityError(plan.Nodes, mutated); err == nil || !strings.Contains(err.Error(), "dependencies") {
-		t.Fatalf("missing pitfall dependency escaped parity: %v", err)
 	}
 }
 
@@ -325,32 +232,6 @@ func TestNormalizeOutputInputsOrdersRolesAtOnePath(t *testing.T) {
 	rolesAtOnePath := normalizeOutputInputs([]OutputInput{{Path: "same", Role: ArtifactTemplate}, {Path: "same", Role: ArtifactConfig}})
 	if !reflect.DeepEqual(rolesAtOnePath, []OutputInput{{Path: "same", Role: ArtifactConfig}, {Path: "same", Role: ArtifactTemplate}}) {
 		t.Fatalf("same-path role ordering = %#v", rolesAtOnePath)
-	}
-}
-
-// Full-catalog declaration planning parses every standard sidecar regardless
-// of legacy selection arrays.
-func TestBuildOutputDeclarationsRejectsMalformedFullCatalogSidecars(t *testing.T) {
-	for _, tc := range []struct {
-		name, kind, artifact, config, sidecar string
-	}{
-		{"skill", "skills", "implementing", "", ".awf/skills/implementing.yaml"},
-		{"agent", "agents", "reviewer", "", ".awf/agents/reviewer.yaml"},
-		{"doc", "docs", "architecture", "", ".awf/docs/architecture.yaml"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			read := memoryProjectReader{tc.sidecar: []byte("local: [bad")}
-			cfg, err := config.ParseTree(".awf", []byte("prefix: example\n"+tc.config), configReaderAdapter{read})
-			if err != nil {
-				t.Fatal(err)
-			}
-			if _, err := cfg.Sidecar(tc.kind, tc.artifact); err == nil {
-				t.Fatalf("test fixture did not corrupt %s sidecar", tc.name)
-			}
-			if _, err := buildOutputDeclarations(cfg, catalog.Standard, []Target{{Name: "test"}}, read); err == nil || !strings.Contains(err.Error(), tc.sidecar[5:]) {
-				t.Fatalf("standard-catalog malformed %s sidecar error = %v", tc.name, err)
-			}
-		})
 	}
 }
 

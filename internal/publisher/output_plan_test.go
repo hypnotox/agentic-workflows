@@ -52,12 +52,12 @@ func TestLocalDocsOutputPlan(t *testing.T) {
 
 // A local document's only section is edit-in-place, so once its output exists the
 // next render reads that output back to preserve the authored body. The
-// declaration must project that self-input; otherwise declaration/plan parity
-// holds on the first render (output absent) and breaks on every render after it.
+// The rendered node must observe that self-input so later comparison uses the
+// exact in-place universe that produced its bytes.
 //
-// invariant: rendering/project-output-plan:output-plan-complete (TestLocalDocDeclarationDeclaresExistingOutputInput)
-// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocDeclarationDeclaresExistingOutputInput)
-func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
+// invariant: rendering/project-output-plan:output-plan-complete (TestLocalDocRenderObservesExistingOutputInput)
+// invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocRenderObservesExistingOutputInput)
+func TestLocalDocRenderObservesExistingOutputInput(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	const outPath = "docs/runbooks/incident.md"
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "runbooks", "incident.md"),
@@ -71,19 +71,12 @@ func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	declarations, err := buildOutputDeclarations(testConfig(p), projectCatalog(renderInputsForTest(p)), p.Targets(), filesystemProjectReader{root: p.Root()})
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := outputDeclarationParityError(plan.Nodes, declarations); err != nil {
-		t.Fatal(err)
-	}
-	i := slices.IndexFunc(declarations, func(d OutputDeclaration) bool { return d.Path == outPath })
+	i := slices.IndexFunc(plan.Nodes, func(node OutputNode) bool { return node.Path == outPath })
 	if i < 0 {
-		t.Fatalf("local document missing from declarations")
+		t.Fatalf("local document missing from plan")
 	}
-	if !slices.Contains(declarations[i].Inputs, OutputInput{Path: outPath, Role: ArtifactManagedOutput}) {
-		t.Fatalf("declared inputs = %v", declarations[i].Inputs)
+	if !slices.Contains(plan.Nodes[i].ConsumedInputs, OutputInput{Path: outPath, Role: ArtifactManagedOutput}) {
+		t.Fatalf("observed inputs = %v", plan.Nodes[i].ConsumedInputs)
 	}
 }
 
@@ -93,9 +86,9 @@ func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p = setTestTargets(p, append(testTargets(p), Target{Name: "collision", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "docs/runbooks/x.md", TemplateID: "docs/architecture.md.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}}))
-	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "collides with managed output") {
-		t.Fatalf("collision error = %v", err)
+	p = setTestTargets(p, append(testTargets(p), Target{Name: "collision", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "docs/runbooks/x.md", TemplateID: "missing/never-rendered.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}}))
+	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "collides with managed output") || strings.Contains(err.Error(), "never-rendered") {
+		t.Fatalf("pre-render collision error = %v", err)
 	}
 }
 
@@ -321,6 +314,95 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 }
 
 // invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPolicyIsExplicit)
+func TestDefinitionCoalescerRejectsTargetBackedRecipeMismatches(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	state, err := loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	t.Run("same skill path with different target data", func(t *testing.T) {
+		one := claudeTarget
+		one.Name = "one"
+		two := one
+		two.Name = "two"
+		two.Capabilities = []Capability{CapabilitySessionHandoff}
+		state = setTestTargets(state, []Target{one, two})
+		if _, err := outputPlanProject(state); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
+			t.Fatalf("target-backed skill collision error = %v", err)
+		}
+	})
+
+	t.Run("target output collides with target-backed skill", func(t *testing.T) {
+		target := piTarget
+		target.Outputs = []TargetOutput{{
+			Path: target.SkillPath(testConfig(state).Prefix, "implementing"), TemplateID: skillTID(renderInputsForTest(state), "implementing"),
+			Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment,
+			Policy: declaredPolicy("skills", false), PolicyDeclared: true,
+		}}
+		state = setTestTargets(state, []Target{target})
+		if _, err := outputPlanProject(state); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
+			t.Fatalf("cross-family collision error = %v", err)
+		}
+	})
+}
+
+func TestRenderAllBaseMaterializesSharedTargetOutputOnce(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	state, err := loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	shared := piTarget
+	shared.Name = "second-pi"
+	shared.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	state = setTestTargets(state, append(testTargets(state), shared))
+	inputs := renderInputsForTest(state)
+	eff, err := effectiveSkills(inputs)
+	if err != nil {
+		t.Fatal(err)
+	}
+	targetOutputs, err := targetOutputDefinitions(inputs, eff)
+	if err != nil {
+		t.Fatal(err)
+	}
+	files, err := renderAllBase(inputs, targetOutputs, eff, pitfall.Corpus{})
+	if err != nil {
+		t.Fatal(err)
+	}
+	const sharedPath = ".pi/extensions/awf-subagents/index.ts"
+	count := 0
+	for _, file := range files {
+		if file.Path == sharedPath {
+			count++
+		}
+	}
+	if count != 1 {
+		t.Fatalf("shared output materializations = %d, want 1", count)
+	}
+}
+
+func TestInitCollisionsUsesPathOnlyDefinitions(t *testing.T) {
+	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
+	state, err := loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	bad := piTarget
+	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	bad.Outputs[0].Path = "foreign/output.ts"
+	bad.Outputs[0].TemplateID = "missing/not-needed-for-init.tmpl"
+	state = setTestTargets(state, []Target{bad})
+	testsupport.WriteFile(t, filepath.Join(root, "foreign", "output.ts"), "foreign\n")
+	collisions, err := testPublisher(renderInputsForTest(state)).InitCollisions()
+	if err != nil {
+		t.Fatalf("path-only init probe executed a render preflight: %v", err)
+	}
+	if !slices.Contains(collisions, "foreign/output.ts") {
+		t.Fatalf("init collisions = %v", collisions)
+	}
+}
+
 func TestOutputPolicyIsExplicit(t *testing.T) {
 	if got := declaredPolicy("agents", false); !got.ValidateFrontmatter || !got.ScanReferences {
 		t.Fatalf("agent policy = %#v", got)
@@ -425,17 +507,17 @@ func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
 	t.Fatal("literal topic output was absent from the plan")
 }
 
-// A local document's output is read twice on the way to a plan: the declaration
-// pass observes whether the in-place body exists, then the render pass reads it
-// back. Each read has its own propagation path, so each must surface its fault
-// rather than be erased by the other's success.
+// A local document's output is read twice on the way to a plan: collision
+// preflight observes whether the in-place body exists, then its sole render
+// closure reads the body back. Each read has its own propagation path, so each
+// must surface its fault rather than be erased by the other's success.
 func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
 	for _, tc := range []struct {
 		name      string
 		failAfter int
 	}{
-		{"declaration pass", 0},
-		{"render pass", 1},
+		{"collision preflight", 0},
+		{"render closure", 1},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
@@ -471,28 +553,28 @@ func TestOutputPlanPropagatesConfigReferenceRenderFault(t *testing.T) {
 	}
 }
 
-func TestTargetOutputDeclarationsRejectUnreadableTemplate(t *testing.T) {
+func TestTargetOutputDefinitionsRejectUnreadableTemplate(t *testing.T) {
 	bad := piTarget
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
 	cfg := &config.Config{Prefix: "example"}
 	p := testState()
 	p = lowerWithTargets(p, []Target{bad})
-	_, err := targetOutputDeclarations(newRenderInputs(p, cfg, nil, "test"), nil)
-	t.Logf("target output declaration error = %v", err)
+	_, err := targetOutputDefinitions(newRenderInputs(p, cfg, nil, "test"), nil)
+	t.Logf("target output definition error = %v", err)
 	if err == nil || !strings.Contains(err.Error(), "read template missing/target-output.tmpl") {
 		t.Fatalf("unreadable target output template error = %v", err)
 	}
 }
 
-func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
+func TestTargetOutputDefinitionsRejectUnknownRequiredSkill(t *testing.T) {
 	bad := piTarget
 	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].RequiresSkill = "missing"
 	cfg := &config.Config{Prefix: "example"}
 	p := testState()
 	p = lowerWithTargets(p, []Target{bad})
-	if _, err := targetOutputDeclarations(newRenderInputs(p, cfg, nil, "test"), nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
+	if _, err := targetOutputDefinitions(newRenderInputs(p, cfg, nil, "test"), nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target output requirement error = %v", err)
 	}
 }
@@ -513,7 +595,7 @@ func TestOutputPlanPropagatesTopicGenerationEnumerationFault(t *testing.T) {
 	state := testStateAt(t.TempDir())
 	calls := 0
 	failure := errors.New("topic enumeration failed")
-	reader := failingPathsReader{memoryProjectReader: memoryProjectReader{}, failAt: 3, calls: &calls}
+	reader := failingPathsReader{memoryProjectReader: memoryProjectReader{}, failAt: 1, calls: &calls}
 	_, err := outputPlanWithPitfalls(newRenderInputs(state, &config.Config{}, reader, project.Version), pitfall.Corpus{}, topic.Corpus{}, map[string]bool{})
 	if err == nil || !strings.Contains(err.Error(), failure.Error()) && !strings.Contains(err.Error(), "enumeration fault") {
 		t.Fatalf("output plan error = %v", err)

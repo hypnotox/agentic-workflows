@@ -15,8 +15,12 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
+	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
+	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
@@ -387,33 +391,55 @@ func mustDeriveSkills(t *testing.T, state *Session) map[string]bool {
 	}
 	return out
 }
-func projectOperationSemantics(prepared Preparation) project.OperationSemantics {
-	return project.OperationSemantics{Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
+func operationCheckInputs(operation *Publisher) (outputplan.Plan, pitfall.Corpus, map[string]bool, generatedcheck.AdditionalInput, glossarycheck.Input, error) {
+	plan, err := operation.Plan()
+	if err != nil {
+		return outputplan.Plan{}, pitfall.Corpus{}, nil, generatedcheck.AdditionalInput{}, glossarycheck.Input{}, err
+	}
+	pitfalls, err := operation.Pitfalls()
+	if err != nil {
+		return outputplan.Plan{}, pitfall.Corpus{}, nil, generatedcheck.AdditionalInput{}, glossarycheck.Input{}, err
+	}
+	skills, err := operation.EffectiveSkills()
+	if err != nil {
+		return outputplan.Plan{}, pitfall.Corpus{}, nil, generatedcheck.AdditionalInput{}, glossarycheck.Input{}, err
+	}
+	generated, err := operation.GeneratedOutput()
+	if err != nil {
+		return outputplan.Plan{}, pitfall.Corpus{}, nil, generatedcheck.AdditionalInput{}, glossarycheck.Input{}, err
+	}
+	glossary, err := operation.Glossary()
+	return plan, pitfalls, skills, generated, glossary, err
 }
 func checkReportProject(state *Session, ctx context.Context) (project.CheckReport, error) {
 	cfg := testConfig(state)
-	prepared, err := newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
+	plan, pitfalls, skills, generated, glossary, err := operationCheckInputs(newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version))
 	if err != nil {
 		return project.CheckReport{}, err
 	}
-	return project.BuildCheckReport(state, cfg, nil, ctx, prepared.Plan(), projectOperationSemantics(prepared))
+	return project.BuildCheckReport(state, cfg, nil, ctx, plan, pitfalls, skills, generated, glossary)
 }
 func checkProject(state *Session, _ ...context.Context) ([]manifest.Drift, error) {
 	cfg := testConfig(state)
-	prepared, err := newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
+	plan, pitfalls, skills, generated, glossary, err := operationCheckInputs(newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version))
 	if err != nil {
 		return nil, err
 	}
-	report, err := project.BuildCheckReport(state, cfg, nil, context.Background(), prepared.Plan(), projectOperationSemantics(prepared))
+	report, err := project.BuildCheckReport(state, cfg, nil, context.Background(), plan, pitfalls, skills, generated, glossary)
 	return report.Drift, err
 }
 func advisoryNotesProject(state *Session) ([]string, error) {
 	cfg := testConfig(state)
-	prepared, err := newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
+	operation := newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version)
+	plan, err := operation.Plan()
 	if err != nil {
 		return nil, err
 	}
-	return project.AdvisoryNotes(state, cfg, prepared.Plan(), projectOperationSemantics(prepared))
+	glossary, err := operation.Glossary()
+	if err != nil {
+		return nil, err
+	}
+	return project.AdvisoryNotes(state, cfg, plan, glossary)
 }
 func initializeReportProject(state *Session, seed InitAuthority) ([]Backup, []Change, []string, error) {
 	cfg := testConfig(state)
@@ -430,10 +456,14 @@ func plannedOutputsProject(state *Session) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return plan.Paths(), nil
+	paths := make([]string, 0, len(plan.Outputs()))
+	for _, output := range plan.Outputs() {
+		paths = append(paths, output.Path())
+	}
+	return paths, nil
 }
 func configReferenceProject(state *Session) (ConfigReference, error) {
-	return configReferenceModel(renderInputsForTest(state))
+	return testPublisher(renderInputsForTest(state)).BuildConfigReference()
 }
 func outputPlanProject(state *Session) (*OutputPlan, error) {
 	return outputPlan(renderInputsForTest(state))

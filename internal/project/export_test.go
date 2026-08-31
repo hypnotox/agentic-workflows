@@ -246,19 +246,29 @@ func syncReportProject(state *Session) ([]Backup, []Change, []string, error) {
 func initializeReportProject(state *Session, seed InitAuthority) ([]Backup, []Change, []string, error) {
 	return projectResult(testPublisher(operationInputs(state, testConfig(state))).Initialize(seed))
 }
-func preparedSemantics(_ *Session, prepared publisher.Preparation) (OperationSemantics, error) {
-	return OperationSemantics{Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}, nil
-}
 func checkReportProject(state *Session, ctx context.Context) (CheckReport, error) {
-	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()
+	operation := testPublisher(operationInputs(state, testConfig(state)))
+	plan, err := operation.Plan()
 	if err != nil {
 		return CheckReport{}, err
 	}
-	semantics, err := preparedSemantics(state, prepared)
+	pitfalls, err := operation.Pitfalls()
 	if err != nil {
 		return CheckReport{}, err
 	}
-	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx, prepared.Plan(), semantics)
+	skills, err := operation.EffectiveSkills()
+	if err != nil {
+		return CheckReport{}, err
+	}
+	generated, err := operation.GeneratedOutput()
+	if err != nil {
+		return CheckReport{}, err
+	}
+	glossary, err := operation.Glossary()
+	if err != nil {
+		return CheckReport{}, err
+	}
+	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx, plan, pitfalls, skills, generated, glossary)
 }
 func configReferenceProject(state *Session) (publisher.ConfigReference, error) {
 	return testPublisher(operationInputs(state, testConfig(state))).BuildConfigReference()
@@ -271,18 +281,23 @@ func plannedOutputsProject(state *Session) ([]string, error) {
 	if err != nil {
 		return nil, err
 	}
-	return plan.Paths(), nil
+	paths := make([]string, 0, len(plan.Outputs()))
+	for _, output := range plan.Outputs() {
+		paths = append(paths, output.Path())
+	}
+	return paths, nil
 }
 func advisoryNotesProject(state *Session) ([]string, error) {
-	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()
+	operation := testPublisher(operationInputs(state, testConfig(state)))
+	plan, err := operation.Plan()
 	if err != nil {
 		return nil, err
 	}
-	semantics, err := preparedSemantics(state, prepared)
+	glossary, err := operation.Glossary()
 	if err != nil {
 		return nil, err
 	}
-	return AdvisoryNotes(state, testConfig(state), prepared.Plan(), semantics)
+	return AdvisoryNotes(state, testConfig(state), plan, glossary)
 }
 
 func newPitfallProject(state *Session, title string) (presentation.Document, error) {

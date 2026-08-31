@@ -132,11 +132,11 @@ func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	for _, file := range files {
 		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(file.Path)), string(file.Content))
 	}
-	prepared, err := newPublisher(lowerForConfig(p, testConfig(p)), testConfig(p), NewFilesystemReader(root), project.Version).Prepare()
+	prepared, err := newPublisher(lowerForConfig(p, testConfig(p)), testConfig(p), NewFilesystemReader(root), project.Version).operationState()
 	if err != nil {
 		t.Fatalf("prepare scaffold corpus: %v", err)
 	}
-	corpus := prepared.Topics()
+	corpus := prepared.topics.Clone()
 	shell, ok := corpus.ByTopicID("rendering/prepared-shell")
 	if !ok || len(shell.Claims) != 0 {
 		t.Fatalf("scaffold shell = %#v, found %v", shell, ok)

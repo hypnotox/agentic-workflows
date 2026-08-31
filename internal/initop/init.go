@@ -19,7 +19,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
-	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
 // LoadProject is the command-composed project loader constructor used after the
@@ -53,17 +52,22 @@ type Input struct {
 	Interactive  bool
 }
 
-type advisoryNotesFunc func(*project.Session, *config.Config, publisher.Preparation) ([]string, error)
+type advisoryNotesFunc func(*project.Session, *config.Config, *publisher.Publisher) ([]string, error)
 type releaseLeaseFunc func(*filesystem.Lease) error
 
 // Run performs one complete initialization operation and returns its semantic
 // outcome. Rendering and protocol selection remain with the command.
 func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error) {
-	return runWithDependencies(ctx, input, loadProject, gate, func(state *project.Session, cfg *config.Config, prepared publisher.Preparation) ([]string, error) {
-		return project.AdvisoryNotes(state, cfg, prepared.Plan(), project.OperationSemantics{
-			Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(),
-			GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary(),
-		})
+	return runWithDependencies(ctx, input, loadProject, gate, func(state *project.Session, cfg *config.Config, operation *publisher.Publisher) ([]string, error) {
+		plan, err := operation.Plan()
+		if err != nil {
+			return nil, err
+		}
+		glossary, err := operation.Glossary()
+		if err != nil {
+			return nil, err
+		}
+		return project.AdvisoryNotes(state, cfg, plan, glossary)
 	}, (*filesystem.Lease).Release)
 }
 
@@ -167,11 +171,7 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 	}
 	cfg := session.Config()
 	composed := composePublisher(session)
-	prepared, err := composed.Prepare()
-	if err != nil {
-		return failScaffold(err)
-	}
-	collisions, err := prepared.InitCollisions()
+	collisions, err := composed.InitCollisions()
 	if err != nil {
 		return failScaffold(err)
 	}
@@ -198,7 +198,7 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 	if err != nil {
 		return publisherPartialOutcome(initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}, scaffold, result, err)
 	}
-	advisories, err := advisoryNotes(session, cfg, prepared)
+	advisories, err := advisoryNotes(session, cfg, composed)
 	if err != nil {
 		return publisherPartialOutcome(initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}, scaffold, result, err)
 	}
@@ -395,11 +395,7 @@ func probeCollisions(ctx context.Context, root string, loadProject LoadProject) 
 	if err != nil {
 		return nil, err
 	}
-	prepared, err := composePublisher(session).Prepare()
-	if err != nil {
-		return nil, err
-	}
-	return resident.CollisionsAt(root, prepared.Plan().Paths())
+	return composePublisher(session).InitCollisionsAt(root)
 }
 
 var nextActions = [...]string{

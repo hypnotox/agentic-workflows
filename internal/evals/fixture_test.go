@@ -40,10 +40,6 @@ func loadEvalSession(ctx context.Context, root string) (*project.Session, error)
 	return project.NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo).Load(ctx, root)
 }
 
-func evalPreparation(p *project.Session) (publisher.Preparation, error) {
-	return publisher.New(p, project.Version).Prepare()
-}
-
 func syncEvalProject(t *testing.T, p *project.Session) error {
 	t.Helper()
 	_, err := publisher.New(p, project.Version).SyncLeased(context.Background(), nil)
@@ -55,15 +51,16 @@ func checkProject(p *project.Session, ctx context.Context) ([]manifest.Drift, er
 	if err != nil {
 		return nil, err
 	}
-	prepared, err := evalPreparation(p)
+	operation := publisher.New(p, project.Version)
+	plan, err := operation.Plan()
 	if err != nil {
 		return nil, err
 	}
-	semantics := project.OperationSemantics{
-		Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(),
-		EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary(),
-	}
-	report, err := project.BuildCheckReport(p, cfg, nil, ctx, prepared.Plan(), semantics)
+	pitfalls, _ := operation.Pitfalls()
+	skills, _ := operation.EffectiveSkills()
+	generated, _ := operation.GeneratedOutput()
+	glossary, _ := operation.Glossary()
+	report, err := project.BuildCheckReport(p, cfg, nil, ctx, plan, pitfalls, skills, generated, glossary)
 	return report.Drift, err
 }
 
