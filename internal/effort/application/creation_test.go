@@ -74,7 +74,7 @@ func creationApp(t *testing.T, root string, apply func(*faultRunner), fault func
 		t.Fatal(err)
 	}
 	open := func(checkoutRoot string) (worktree.Runner, error) {
-		if filepath.Clean(checkoutRoot) == filepath.Clean(root) {
+		if sameCreationFixtureCheckout(checkoutRoot, root) {
 			return runner, nil
 		}
 		return awfgit.Open(checkoutRoot)
@@ -91,6 +91,26 @@ func creationApp(t *testing.T, root string, apply func(*faultRunner), fault func
 		t.Fatal(err)
 	}
 	return &app{service: service, manager: manager, gate: integrationGateCommand}
+}
+
+func sameCreationFixtureCheckout(left, right string) bool {
+	return sameCreationFixtureCheckoutWith(filesystem.NormalizePlatformPath, left, right)
+}
+
+func sameCreationFixtureCheckoutWith(normalize func(string) string, left, right string) bool {
+	return normalize(left) == normalize(right)
+}
+
+func TestCreationFixtureMatchesDarwinVarAlias(t *testing.T) {
+	normalizeDarwinAlias := func(value string) string {
+		if value == "/var/folders/fixture/repo" {
+			return "/private/var/folders/fixture/repo"
+		}
+		return filepath.Clean(value)
+	}
+	if !sameCreationFixtureCheckoutWith(normalizeDarwinAlias, "/var/folders/fixture/repo", "/private/var/folders/fixture/repo") {
+		t.Fatal("creation fixture did not match Darwin /var alias to canonical /private/var path")
+	}
 }
 
 func TestCreationRollbackRemovesOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
