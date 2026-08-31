@@ -134,7 +134,7 @@ func TestMissingRenderedLocalDocumentRefusesWithoutMutation(t *testing.T) {
 }
 
 func TestPartialErrorEmptyRecoveryUsesDefaultText(t *testing.T) {
-	document, err := (&PartialError{Outcome: Outcome{Kind: "skill", Name: "using-awf", Part: "generated-documents", SourcePath: ".awf/skills/parts/using-awf/generated-documents.md", Source: SourceCreated}, Cause: errors.New("cause")}).Document()
+	document, err := partial(Outcome{Kind: "skill", Name: "using-awf", Part: "generated-documents", SourcePath: ".awf/skills/parts/using-awf/generated-documents.md", Source: SourceCreated}, errors.New("cause"), "").Document()
 	if err != nil {
 		t.Fatal(err)
 	}

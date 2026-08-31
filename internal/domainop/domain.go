@@ -11,7 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
@@ -28,13 +28,30 @@ type Outcome struct {
 
 // PartialError retains every committed domain effect and the original cause.
 type PartialError struct {
-	Outcome  Outcome
-	Cause    error
-	Recovery []string
+	projectmutation.Partial[Outcome]
 }
 
-func (e *PartialError) Error() string { return e.Cause.Error() }
-func (e *PartialError) Unwrap() error { return e.Cause }
+func newPartial(outcome Outcome, cause error, recovery ...string) *PartialError {
+	return &PartialError{Partial: projectmutation.NewPartial(outcome, cause, recovery)}
+}
+
+func committed(outcome Outcome) bool {
+	return outcome.ConfigReplaced || outcome.ScaffoldCreated || outcome.Orphaned || outcome.Publisher.HasCommittedEffects()
+}
+
+// Finish retains committed domain effects when presentation cleanup or the
+// caller-held lease release fails after the focused mutation returns.
+func Finish(outcome Outcome, operationErr, releaseErr error) error {
+	makePartial := func(outcome Outcome, cause error, phase projectmutation.Phase) error {
+		recovery := "repair the post-commit fault, then retry the domain command"
+		if phase == projectmutation.PhaseRelease {
+			recovery = "repair the lease-release fault, then retry the domain command"
+		}
+		return newPartial(outcome, cause, recovery)
+	}
+	operationErr = projectmutation.Promote(outcome, operationErr, projectmutation.PhaseCleanup, committed, makePartial)
+	return projectmutation.Finish(outcome, operationErr, releaseErr, committed, makePartial)
+}
 
 func domainDocument(status string, o Outcome, recovery []string) (presentation.Document, error) {
 	fields := []presentation.Field{}
@@ -81,20 +98,20 @@ func (e *PartialError) Document() (presentation.Document, error) {
 	return domainDocument("domain mutation partially committed", e.Outcome, recovery)
 }
 
-// AddLeased configures name, creates its initial current-state part, and synchronizes under a caller-held complete project transaction.
-func AddLeased(ctx context.Context, root, name string, loader *project.Loader, lease *filesystem.Lease) (outcome Outcome, err error) {
+// Add configures name, creates its initial current-state part, and synchronizes under the caller's complete project transaction.
+func Add(_ context.Context, name string, tx *projectmutation.Transaction) (outcome Outcome, err error) {
 	if err := config.ValidateDomainName(name); err != nil {
 		return Outcome{}, err
 	}
-	if !loader.CoversProjectLease(ctx, root, lease) {
+	if tx == nil || tx.Scope() != projectmutation.ProjectScope {
 		return Outcome{}, errors.New("domain operation requires a covering project lease")
 	}
-	files, err := filesystem.Open(root)
+	files, err := tx.Open()
 	if err != nil {
 		return Outcome{}, err
 	}
 	defer files.Close()
-	session, configIdentity, err := loader.LoadForMutation(ctx, root, files)
+	session, configIdentity, err := tx.LoadForMutation(files)
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -113,33 +130,33 @@ func AddLeased(ctx context.Context, root, name string, loader *project.Loader, l
 		return Outcome{}, err
 	}
 	outcome.ConfigReplaced = true
-	created, err := scaffoldCurrentStateConfined(files, root, cfg, name)
+	created, err := scaffoldCurrentStateConfined(files, tx.Root(), cfg, name)
 	if err != nil {
-		return outcome, &PartialError{Outcome: outcome, Cause: err, Recovery: []string{"repair the authored domain path, then retry"}}
+		return outcome, newPartial(outcome, err, "repair the authored domain path, then retry")
 	}
 	outcome.ScaffoldCreated = created
-	result, syncErr := synchronize(ctx, root, loader, lease)
+	result, syncErr := tx.Synchronize()
 	outcome.Publisher = result
 	if syncErr != nil {
-		return outcome, &PartialError{Outcome: outcome, Cause: syncErr, Recovery: []string{"repair the reported publication fault, then retry"}}
+		return outcome, newPartial(outcome, syncErr, "repair the reported publication fault, then retry")
 	}
 	return outcome, nil
 }
 
-// RemoveLeased unconfigures name, synchronizes, and reports whether authored domain inputs remain orphaned under a caller-held complete project transaction.
-func RemoveLeased(ctx context.Context, root, name string, loader *project.Loader, lease *filesystem.Lease) (outcome Outcome, err error) {
+// Remove unconfigures name, synchronizes, and reports whether authored domain inputs remain orphaned under the caller's complete project transaction.
+func Remove(_ context.Context, name string, tx *projectmutation.Transaction) (outcome Outcome, err error) {
 	if err := config.ValidateDomainName(name); err != nil {
 		return Outcome{}, err
 	}
-	if !loader.CoversProjectLease(ctx, root, lease) {
+	if tx == nil || tx.Scope() != projectmutation.ProjectScope {
 		return Outcome{}, errors.New("domain operation requires a covering project lease")
 	}
-	files, err := filesystem.Open(root)
+	files, err := tx.Open()
 	if err != nil {
 		return Outcome{}, err
 	}
 	defer files.Close()
-	session, configIdentity, err := loader.LoadForMutation(ctx, root, files)
+	session, configIdentity, err := tx.LoadForMutation(files)
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -160,14 +177,14 @@ func RemoveLeased(ctx context.Context, root, name string, loader *project.Loader
 		return Outcome{}, err
 	}
 	outcome.ConfigReplaced = true
-	result, syncErr := synchronize(ctx, root, loader, lease)
+	result, syncErr := tx.Synchronize()
 	outcome.Publisher = result
 	if syncErr != nil {
-		return outcome, &PartialError{Outcome: outcome, Cause: syncErr, Recovery: []string{"repair the reported publication fault, then retry"}}
+		return outcome, newPartial(outcome, syncErr, "repair the reported publication fault, then retry")
 	}
 	outcome.Orphaned, err = hasSidecarOrParts(files, name)
 	if err != nil {
-		return outcome, &PartialError{Outcome: outcome, Cause: err, Recovery: []string{"inspect authored domain paths, then retry"}}
+		return outcome, newPartial(outcome, err, "inspect authored domain paths, then retry")
 	}
 	return outcome, nil
 }
@@ -199,18 +216,6 @@ func scaffoldCurrentStateConfined(files *filesystem.Handle, root string, cfg *co
 		return false, nil
 	}
 	return true, nil
-}
-
-func synchronize(ctx context.Context, root string, loader *project.Loader, lease *filesystem.Lease) (publisher.Result, error) {
-	if !loader.CoversProjectLease(ctx, root, lease) {
-		return publisher.Result{}, errors.New("domain synchronization requires a covering project lease")
-	}
-	session, err := loader.Load(ctx, root)
-	if err != nil {
-		return publisher.Result{}, err
-	}
-	composed := publisher.New(session, project.Version)
-	return composed.SyncLeased(ctx, lease)
 }
 
 func hasSidecarOrParts(files *filesystem.Handle, name string) (bool, error) {

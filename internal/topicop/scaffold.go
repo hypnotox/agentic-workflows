@@ -10,7 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
@@ -24,6 +24,9 @@ type PartialScaffoldError struct {
 
 func (e *PartialScaffoldError) Error() string { return e.Cause.Error() }
 func (e *PartialScaffoldError) Unwrap() error { return e.Cause }
+func (e *PartialScaffoldError) JoinCause(err error) {
+	e.Cause = errors.Join(e.Cause, err)
+}
 func (e *PartialScaffoldError) Document() (presentation.Document, error) {
 	changes := []presentation.MutationChange{}
 	for _, group := range []struct {
@@ -89,9 +92,9 @@ func scaffoldConfined(files *filesystem.Handle, cfg *config.Config, domain, titl
 			}
 		}
 		if len(failures) != 0 {
-			return presentation.Document{}, created, &PartialScaffoldError{Created: append([]string(nil), created...), Removed: removed, Remaining: remaining, Cause: errors.Join(append([]error{cause}, failures...)...), Recovery: []string{"remove only the listed remaining topic paths, then retry"}}
+			return presentation.Document{}, nil, &PartialScaffoldError{Created: append([]string(nil), created...), Removed: removed, Remaining: remaining, Cause: errors.Join(append([]error{cause}, failures...)...), Recovery: []string{"remove only the listed remaining topic paths, then retry"}}
 		}
-		return presentation.Document{}, created, cause
+		return presentation.Document{}, nil, cause
 	}
 	for _, file := range planned {
 		rel := filepath.ToSlash(file.Path)
@@ -126,37 +129,60 @@ func finishScaffoldClose(created []string, operationErr, closeErr error) error {
 	}
 }
 
-// CreateLeased opens the selected project and performs one topic-scaffolding operation under a caller-held tracked transaction.
-func CreateLeased(ctx context.Context, root, domain, title string, loader *project.Loader, lease *filesystem.Lease) (document presentation.Document, err error) {
-	if lease == nil || !lease.CoversTracked(root) {
-		return presentation.Document{}, errors.New("topic operation requires a covering tracked lease")
+// Outcome retains the semantic document and every authored path created by one
+// topic scaffold.
+type Outcome struct {
+	Document presentation.Document
+	Created  []string
+}
+
+func committed(outcome Outcome) bool { return len(outcome.Created) != 0 }
+
+// Finish retains created paths when presentation cleanup or the caller-held
+// lease release fails after the focused mutation returns.
+func Finish(outcome Outcome, operationErr, releaseErr error) error {
+	makePartial := func(outcome Outcome, cause error, phase projectmutation.Phase) error {
+		recovery := []string{"inspect the listed created topic paths", "do not retry scaffolding until the post-commit fault is repaired"}
+		if phase == projectmutation.PhaseRelease {
+			recovery[1] = "do not retry scaffolding until the lease-release fault is repaired"
+		}
+		paths := append([]string(nil), outcome.Created...)
+		return &PartialScaffoldError{Created: paths, Remaining: append([]string(nil), paths...), Cause: cause, Recovery: recovery}
 	}
-	files, err := filesystem.Open(root)
-	if err != nil {
-		return presentation.Document{}, err
+	operationErr = projectmutation.Promote(outcome, operationErr, projectmutation.PhaseCleanup, committed, makePartial)
+	return projectmutation.Finish(outcome, operationErr, releaseErr, committed, makePartial)
+}
+
+// Create opens the selected project and performs one topic-scaffolding operation under the caller's tracked transaction.
+func Create(_ context.Context, domain, title string, tx *projectmutation.Transaction) (outcome Outcome, err error) {
+	if tx == nil || tx.Scope() != projectmutation.TrackedScope {
+		return Outcome{}, errors.New("topic operation requires a covering tracked lease")
 	}
-	var created []string
-	defer func() { err = finishScaffoldClose(created, err, files.Close()) }()
-	matches, err := files.RootMatches(root)
+	files, err := tx.Open()
 	if err != nil {
-		return presentation.Document{}, err
+		return Outcome{}, err
+	}
+	defer func() { err = finishScaffoldClose(outcome.Created, err, files.Close()) }()
+	matches, err := files.RootMatches(tx.Root())
+	if err != nil {
+		return Outcome{}, err
 	}
 	if !matches {
-		return presentation.Document{}, filesystem.ErrIdentityChanged
+		return Outcome{}, filesystem.ErrIdentityChanged
 	}
-	session, configIdentity, err := loader.LoadForMutation(ctx, root, files)
+	session, configIdentity, err := tx.LoadForMutation(files)
 	if err != nil {
-		return presentation.Document{}, err
+		return Outcome{}, err
 	}
 	cfg := session.Config()
 	defer configIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
-	matches, err = files.RootMatches(root)
+	matches, err = files.RootMatches(tx.Root())
 	if err != nil {
-		return presentation.Document{}, err
+		return Outcome{}, err
 	}
 	if !matches {
-		return presentation.Document{}, filesystem.ErrIdentityChanged
+		return Outcome{}, filesystem.ErrIdentityChanged
 	}
-	document, created, err = scaffoldConfined(files, cfg, domain, title)
-	return document, err
+	outcome.Document, outcome.Created, err = scaffoldConfined(files, cfg, domain, title)
+	return outcome, err
 }

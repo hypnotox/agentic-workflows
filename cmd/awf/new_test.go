@@ -2,6 +2,7 @@ package main
 
 import (
 	"bytes"
+	"context"
 	"errors"
 	"io"
 	"maps"
@@ -10,10 +11,58 @@ import (
 	"slices"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
+
+type leaseProbeWriter struct {
+	root    string
+	checked bool
+	err     error
+}
+
+func (w *leaseProbeWriter) Write(p []byte) (int, error) {
+	if !w.checked {
+		w.checked = true
+		ctx, cancel := context.WithTimeout(context.Background(), 25*time.Millisecond)
+		defer cancel()
+		lease, err := filesystem.AcquireTrackedLease(ctx, w.root)
+		w.err = err
+		if lease != nil {
+			_ = lease.Release()
+		}
+	}
+	return len(p), nil
+}
+
+func TestMutationLeaseRemainsHeldThroughPresentation(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		root func(*testing.T) string
+		run  func(string, io.Writer) error
+	}{
+		{name: "local document project lease", root: scaffoldProject, run: func(root string, out io.Writer) error {
+			return newDoc(testContext(t), root, []string{"runbooks/lease", "Lease lifetime"}, nil, out)
+		}},
+		{name: "topic tracked lease", root: topicCLIProject, run: func(root string, out io.Writer) error {
+			return newTopic(testContext(t), root, []string{"rendering", "Lease Lifetime"}, out)
+		}},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			root := test.root(t)
+			probe := &leaseProbeWriter{root: root}
+			if err := test.run(root, probe); err != nil {
+				t.Fatal(err)
+			}
+			if !probe.checked || !errors.Is(probe.err, context.DeadlineExceeded) {
+				t.Fatalf("presentation lease probe = checked %t, error %v", probe.checked, probe.err)
+			}
+		})
+	}
+}
 
 func TestNewOwnerWrappersRejectUsageAndMalformedRepository(t *testing.T) {
 	if err := newDoc(testContext(t), t.TempDir(), nil, nil, io.Discard); err == nil {

@@ -9,9 +9,9 @@ import (
 	"path/filepath"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
@@ -22,13 +22,31 @@ type Outcome struct {
 	Publisher           publisher.Result
 }
 type PartialError struct {
-	Outcome  Outcome
-	Cause    error
-	Recovery []string
+	projectmutation.Partial[Outcome]
 }
 
-func (e *PartialError) Error() string { return e.Cause.Error() }
-func (e *PartialError) Unwrap() error { return e.Cause }
+func newPartial(outcome Outcome, cause error, recovery ...string) *PartialError {
+	return &PartialError{Partial: projectmutation.NewPartial(outcome, cause, recovery)}
+}
+
+func committed(outcome Outcome) bool {
+	return outcome.DeclarationReplaced || outcome.Publisher.HasCommittedEffects()
+}
+
+// Finish retains committed local-document effects when presentation cleanup or
+// the caller-held lease release fails after the focused mutation returns.
+func Finish(outcome Outcome, operationErr, releaseErr error) error {
+	makePartial := func(outcome Outcome, cause error, phase projectmutation.Phase) error {
+		recovery := "repair the post-commit fault, then retry awf new doc"
+		if phase == projectmutation.PhaseRelease {
+			recovery = "repair the lease-release fault, then retry awf new doc"
+		}
+		return newPartial(outcome, cause, recovery)
+	}
+	operationErr = projectmutation.Promote(outcome, operationErr, projectmutation.PhaseCleanup, committed, makePartial)
+	return projectmutation.Finish(outcome, operationErr, releaseErr, committed, makePartial)
+}
+
 func localDocument(status string, o Outcome, recovery []string) (presentation.Document, error) {
 	value, err := presentation.Literal(fmt.Sprintf("%t", o.DeclarationReplaced))
 	if err != nil {
@@ -79,17 +97,17 @@ func (e *PartialError) Document() (presentation.Document, error) {
 	return localDocument("local document partially committed", e.Outcome, recovery)
 }
 
-// RunLeased adds doc after checking its output collision, then synchronizes under a caller-held complete project transaction.
-func RunLeased(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader, lease *filesystem.Lease) (outcome Outcome, err error) {
-	if !loader.CoversProjectLease(ctx, root, lease) {
+// Run adds doc after checking its output collision, then synchronizes under the caller's complete project transaction.
+func Run(_ context.Context, doc config.LocalDoc, tx *projectmutation.Transaction) (outcome Outcome, err error) {
+	if tx == nil || tx.Scope() != projectmutation.ProjectScope {
 		return Outcome{}, errors.New("local document operation requires a covering project lease")
 	}
-	files, err := filesystem.Open(root)
+	files, err := tx.Open()
 	if err != nil {
 		return Outcome{}, err
 	}
 	defer files.Close()
-	session, configIdentity, err := loader.LoadForMutation(ctx, root, files)
+	session, configIdentity, err := tx.LoadForMutation(files)
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -104,7 +122,7 @@ func RunLeased(ctx context.Context, root string, doc config.LocalDoc, loader *pr
 		return Outcome{}, err
 	}
 	relative := filepath.ToSlash(filepath.Join("docs", doc.Name+".md"))
-	output := filepath.Join(root, "docs", filepath.FromSlash(doc.Name)+".md")
+	output := filepath.Join(tx.Root(), "docs", filepath.FromSlash(doc.Name)+".md")
 	if _, err := os.Lstat(output); err == nil {
 		return Outcome{}, fmt.Errorf("local document destination already exists: %s", relative)
 	} else if !errors.Is(err, os.ErrNotExist) {
@@ -115,14 +133,14 @@ func RunLeased(ctx context.Context, root string, doc config.LocalDoc, loader *pr
 	}
 	outcome.DocumentPath = relative
 	outcome.DeclarationReplaced = true
-	session, err = loader.Load(ctx, root)
-	if err != nil {
-		return outcome, &PartialError{Outcome: outcome, Cause: err, Recovery: []string{"repair config authority, then retry"}}
-	}
-	result, syncErr := publisher.New(session, project.Version).SyncLeased(ctx, lease)
+	result, syncErr := tx.Synchronize()
 	outcome.Publisher = result
 	if syncErr != nil {
-		return outcome, &PartialError{Outcome: outcome, Cause: syncErr, Recovery: []string{"repair the reported publication fault, then retry"}}
+		phase, _ := projectmutation.FailurePhase(syncErr)
+		if phase == projectmutation.PhaseReload {
+			return outcome, newPartial(outcome, syncErr, "repair config authority, then retry")
+		}
+		return outcome, newPartial(outcome, syncErr, "repair the reported publication fault, then retry")
 	}
 	return outcome, nil
 }

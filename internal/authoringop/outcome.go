@@ -5,6 +5,7 @@ import (
 	"fmt"
 
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
@@ -32,13 +33,10 @@ type Outcome struct {
 
 // PartialError retains every committed axis and the original typed cause.
 type PartialError struct {
-	Outcome  Outcome
-	Cause    error
-	Recovery []string
+	projectmutation.Partial[Outcome]
 }
 
 func (e *PartialError) Error() string { return "authoring partially committed: " + e.Cause.Error() }
-func (e *PartialError) Unwrap() error { return e.Cause }
 
 func outcomeDocument(status string, outcome Outcome, recovery []string) (presentation.Document, error) {
 	identity := []presentation.Field{}

@@ -5,7 +5,7 @@
 
 Root-confined path behavior and project mutation lease safety.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/authoringop/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `internal/filesystem/**`, `internal/testsupport/fsfixture/**`. Both domain and topic selectors must match. Run `awf read topic tooling/filesystem-access --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/authoringop/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/projectmutation/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `internal/filesystem/**`, `internal/projectmutation/**`, `internal/testsupport/fsfixture/**`. Both domain and topic selectors must match. Run `awf read topic tooling/filesystem-access --coverage` for current applicable and owned paths and marker sites.
 
 This topic records root-confined path behavior and project mutation lease safety.
 
@@ -19,4 +19,9 @@ Backing: test
 ### `invariant: root-scoped-project-mutation-leases`
 
 Project mutation leases canonicalize existing roots including symlink aliases, retain restrictive user-cache lock files, order complete scope-and-root identities even when roots match, wait with context cancellation, and release explicitly or on process exit. Distinct tracked and resident scopes let linked checkouts remain independently mutable while a shared resident root serializes cross-checkout mutation.
+Backing: test
+
+### `invariant: focused-project-mutation-transactions`
+
+Focused operations select tracked-only or complete project scope and retain validation, write order, rollback, recovery, outcome, and presentation policy. One transaction centralizes lease coverage, confined authority access, a fresh committed Session reload before at most one Publisher synchronization attempt, typed mechanical failure phases, and release and partial-effect plumbing; tracked-only topic scaffolding never synchronizes.
 Backing: test

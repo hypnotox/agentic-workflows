@@ -15,6 +15,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -32,18 +33,23 @@ func (w faultWriter) Write(p []byte) (int, error) {
 }
 func (w faultWriter) Close() error { return w.file.Close() }
 
-func Create(ctx context.Context, root, domain, title string, loader *project.Loader) (document presentation.Document, returnErr error) {
+func runCreate(ctx context.Context, root, domain, title string, loader *project.Loader) (document presentation.Document, returnErr error) {
 	lease, err := filesystem.AcquireTrackedLease(ctx, root)
 	if err != nil {
 		return presentation.Document{}, err
 	}
 	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-	return CreateLeased(ctx, root, domain, title, loader, lease)
+	tx, err := projectmutation.UseTracked(ctx, root, loader, lease)
+	if err != nil {
+		return presentation.Document{}, err
+	}
+	outcome, err := Create(ctx, domain, title, tx)
+	return outcome.Document, err
 }
 
 func TestCreateReportsUnavailableProject(t *testing.T) {
 	loader := project.NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot)
-	if _, err := Create(context.Background(), t.TempDir(), "rendering", "Current State", loader); err == nil {
+	if _, err := runCreate(context.Background(), t.TempDir(), "rendering", "Current State", loader); err == nil {
 		t.Fatal("unavailable project accepted")
 	}
 }
@@ -75,8 +81,12 @@ func TestCreateLeasedRefusesRootReplacementBetweenAuthorityLoadAndPublication(t 
 			t.Errorf("release tracked lease: %v", err)
 		}
 	}()
+	tx, err := projectmutation.UseTracked(context.Background(), root, loader, lease)
+	if err != nil {
+		t.Fatal(err)
+	}
 
-	if _, err := CreateLeased(context.Background(), root, "rendering", "Root Swap", loader, lease); !errors.Is(err, filesystem.ErrIdentityChanged) {
+	if _, err := Create(context.Background(), "rendering", "Root Swap", tx); !errors.Is(err, filesystem.ErrIdentityChanged) {
 		t.Fatalf("root replacement = %v, want identity refusal", err)
 	}
 	for _, tree := range []string{root, relocated} {
@@ -282,6 +292,35 @@ func TestScaffoldCloseFailureReportsEveryCommittedPath(t *testing.T) {
 				t.Fatalf("uncommitted or already-classified operation became a new partial outcome: %v", err)
 			}
 		})
+	}
+}
+
+func TestFinishDoesNotPromoteFullyRolledBackFailure(t *testing.T) {
+	operationFault := errors.New("write sentinel")
+	releaseFault := errors.New("release sentinel")
+	err := Finish(Outcome{}, operationFault, releaseFault)
+	var partial *PartialScaffoldError
+	if errors.As(err, &partial) {
+		t.Fatalf("rolled-back failure became partial: %#v", partial)
+	}
+	if !errors.Is(err, operationFault) || !errors.Is(err, releaseFault) {
+		t.Fatalf("rolled-back causes = %v", err)
+	}
+}
+
+func TestFinishTypesReleaseFaultWithCreatedPaths(t *testing.T) {
+	fault := errors.New("release sentinel")
+	outcome := Outcome{Created: []string{"metadata.yaml", "part.md"}}
+	err := Finish(outcome, nil, fault)
+	var partial *PartialScaffoldError
+	if !errors.As(err, &partial) || !errors.Is(err, fault) {
+		t.Fatalf("release partial = %#v, %v", partial, err)
+	}
+	if !slices.Equal(partial.Created, outcome.Created) || !slices.Equal(partial.Remaining, outcome.Created) {
+		t.Fatalf("release paths = created %v remaining %v", partial.Created, partial.Remaining)
+	}
+	if len(partial.Recovery) != 2 || !strings.Contains(partial.Recovery[1], "lease-release fault") {
+		t.Fatalf("release recovery = %#v", partial.Recovery)
 	}
 }
 

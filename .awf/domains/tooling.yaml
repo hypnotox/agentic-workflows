@@ -15,6 +15,7 @@ paths:
   - internal/commitmsg/**
   - internal/commitpolicy/**
   - internal/projectlicense/**
+  - internal/projectmutation/**
   - internal/topicop/**
   - internal/initop/**
   - internal/initspec/**

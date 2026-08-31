@@ -14,6 +14,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -24,13 +25,13 @@ func operationLoader() *project.Loader {
 	return project.NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot)
 }
 
-func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader) (outcome Outcome, returnErr error) {
-	lease, err := loader.AcquireProjectLease(ctx, root)
+func runOperation(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader) (outcome Outcome, returnErr error) {
+	tx, err := projectmutation.AcquireProject(ctx, root, loader, nil)
 	if err != nil {
 		return Outcome{}, err
 	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-	return RunLeased(ctx, root, doc, loader, lease)
+	defer func() { returnErr = errors.Join(returnErr, tx.Release()) }()
+	return Run(ctx, doc, tx)
 }
 
 func initializedLoader(t *testing.T, root string) *project.Loader {
@@ -50,7 +51,7 @@ func TestRunAddsDeclarationAndSynchronizes(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
 	doc := config.LocalDoc{Name: "runbooks/api", Title: "API", Description: "Operate API"}
-	if _, err := Run(context.Background(), root, doc, initializedLoader(t, root)); err != nil {
+	if _, err := runOperation(context.Background(), root, doc, initializedLoader(t, root)); err != nil {
 		t.Fatal(err)
 	}
 	if _, err := os.Stat(filepath.Join(root, "docs", "runbooks", "api.md")); err != nil {
@@ -64,12 +65,12 @@ func TestRunAddsDeclarationAndSynchronizes(t *testing.T) {
 
 func TestRunRejectsUnavailableAndInvalidInputs(t *testing.T) {
 	doc := config.LocalDoc{Name: "runbooks/api", Title: "API", Description: "Operate API"}
-	if _, err := Run(context.Background(), t.TempDir(), doc, operationLoader()); err == nil {
+	if _, err := runOperation(context.Background(), t.TempDir(), doc, operationLoader()); err == nil {
 		t.Fatal("uninitialized project accepted")
 	}
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
-	if _, err := Run(context.Background(), root, config.LocalDoc{Name: "bad name", Title: "API", Description: "Operate API"}, initializedLoader(t, root)); err == nil {
+	if _, err := runOperation(context.Background(), root, config.LocalDoc{Name: "bad name", Title: "API", Description: "Operate API"}, initializedLoader(t, root)); err == nil {
 		t.Fatal("invalid local document accepted")
 	}
 }
@@ -88,7 +89,7 @@ func TestRunRetainsDeclarationWhenSynchronizationFails(t *testing.T) {
 	}
 
 	doc := config.LocalDoc{Name: "runbooks/api", Title: "API", Description: "Operate API"}
-	_, err = Run(context.Background(), root, doc, loader)
+	_, err = runOperation(context.Background(), root, doc, loader)
 	if err == nil || !strings.Contains(err.Error(), "vars.gateCmd") {
 		t.Fatalf("synchronization error = %v", err)
 	}
@@ -109,7 +110,7 @@ func TestRunReportsDestinationInspectionFailure(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "runbooks"), "not a directory")
-	_, err := Run(context.Background(), root, config.LocalDoc{Name: "runbooks/api", Title: "API", Description: "Operate API"}, initializedLoader(t, root))
+	_, err := runOperation(context.Background(), root, config.LocalDoc{Name: "runbooks/api", Title: "API", Description: "Operate API"}, initializedLoader(t, root))
 	if err == nil || !errors.Is(err, syscall.ENOTDIR) {
 		t.Fatalf("error = %v", err)
 	}
@@ -124,7 +125,7 @@ func TestRunRefusesExistingDestinationBeforeWritingConfig(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, err = Run(context.Background(), root, config.LocalDoc{Name: "runbooks/api", Title: "API", Description: "Operate API"}, initializedLoader(t, root))
+	_, err = runOperation(context.Background(), root, config.LocalDoc{Name: "runbooks/api", Title: "API", Description: "Operate API"}, initializedLoader(t, root))
 	if err == nil || !errors.Is(err, os.ErrExist) && err.Error() != "local document destination already exists: docs/runbooks/api.md" {
 		t.Fatalf("error = %v", err)
 	}
@@ -142,15 +143,28 @@ func TestRunRetainsTypedPartialOutcomeAfterDeclaration(t *testing.T) {
 	if err := os.WriteFile(config.ConfigPath(root), []byte(invalid), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	_, err := Run(context.Background(), root, config.LocalDoc{Name: "runbooks/api", Title: "API", Description: "Operate API"}, loader)
+	_, err := runOperation(context.Background(), root, config.LocalDoc{Name: "runbooks/api", Title: "API", Description: "Operate API"}, loader)
 	var partial *PartialError
 	if !errors.As(err, &partial) || !partial.Outcome.DeclarationReplaced {
 		t.Fatalf("partial = %#v, err = %v", partial, err)
 	}
 }
 
+func TestFinishTypesReleaseFaultWithCommittedOutcome(t *testing.T) {
+	fault := errors.New("release sentinel")
+	outcome := Outcome{DocumentPath: "docs/runbooks/api.md", DeclarationReplaced: true}
+	err := Finish(outcome, nil, fault)
+	var partial *PartialError
+	if !errors.As(err, &partial) || !errors.Is(err, fault) || !partial.Outcome.DeclarationReplaced {
+		t.Fatalf("release partial = %#v, %v", partial, err)
+	}
+	if len(partial.Recovery) != 1 || !strings.Contains(partial.Recovery[0], "lease-release fault") {
+		t.Fatalf("release recovery = %#v", partial.Recovery)
+	}
+}
+
 func TestPartialErrorDocumentRetainsDeclarationAndDefaultRecovery(t *testing.T) {
-	partial := &PartialError{Outcome: Outcome{DocumentPath: "docs/runbooks/api.md", DeclarationReplaced: true}}
+	partial := newPartial(Outcome{DocumentPath: "docs/runbooks/api.md", DeclarationReplaced: true}, nil)
 	document, err := partial.Document()
 	if err != nil {
 		t.Fatal(err)

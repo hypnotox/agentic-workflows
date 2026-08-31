@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
@@ -41,7 +42,7 @@ type Request struct {
 
 // LeaseAcquirer is the narrow operation dependency used to retain the complete
 // project lease and directly inject release faults without mutable globals.
-type LeaseAcquirer func(context.Context, string) (*filesystem.Lease, func() error, error)
+type LeaseAcquirer = projectmutation.LeaseAcquirer
 
 // Run executes one complete semantic authoring transaction.
 func Run(ctx context.Context, root string, request Request, loader *project.Loader, acquire LeaseAcquirer) (Outcome, error) {
@@ -51,44 +52,18 @@ func Run(ctx context.Context, root string, request Request, loader *project.Load
 	if request.Mode != Edit && request.Mode != Reset {
 		return Outcome{}, fmt.Errorf("unknown authoring mode %q", request.Mode)
 	}
-	if acquire == nil {
-		acquire = func(ctx context.Context, root string) (*filesystem.Lease, func() error, error) {
-			lease, err := loader.AcquireProjectLease(ctx, root)
-			if err != nil {
-				return nil, nil, err
-			}
-			return lease, lease.Release, nil
-		}
-	}
-	lease, release, err := acquire(ctx, root)
+	tx, err := projectmutation.AcquireProject(ctx, root, loader, acquire)
 	if err != nil {
+		if errors.Is(err, projectmutation.ErrProjectLeaseCoverage) {
+			return Outcome{}, errors.New("authoring operation requires a covering project lease")
+		}
 		return Outcome{}, err
 	}
-	if lease == nil || release == nil || !loader.CoversProjectLease(ctx, root, lease) {
-		if release != nil {
-			_ = release()
-		}
-		return Outcome{}, errors.New("authoring operation requires a covering project lease")
-	}
-	outcome, operationErr := runLeased(ctx, root, request, loader, lease)
+	outcome, operationErr := runLeased(ctx, root, request, loader, tx)
 	operationErr = normalizePostRunError(outcome, operationErr)
-	releaseErr := release()
-	if releaseErr == nil {
-		return outcome, operationErr
-	}
-	var partial *PartialError
-	if errors.As(operationErr, &partial) {
-		partial.Cause = errors.Join(partial.Cause, releaseErr)
-		return partial.Outcome, partial
-	}
-	if committed(outcome) {
-		return outcome, &PartialError{
-			Outcome:  outcome,
-			Cause:    errors.Join(operationErr, releaseErr),
-			Recovery: recoveryFor(outcome, "remove reported residue first, then rerun awf render after the lease-release fault is repaired"),
-		}
-	}
-	return outcome, errors.Join(operationErr, releaseErr)
+	return outcome, projectmutation.Finish(outcome, operationErr, tx.Release(), committed, func(outcome Outcome, cause error, phase projectmutation.Phase) error {
+		return partialForPhase(outcome, cause, phase)
+	})
 }
 
 func committed(outcome Outcome) bool {
@@ -98,24 +73,27 @@ func committed(outcome Outcome) bool {
 // normalizePostRunError retains committed effects when deferred cleanup turns an
 // otherwise successful leased operation into a plain error.
 func normalizePostRunError(outcome Outcome, err error) error {
-	if err == nil || !committed(outcome) {
-		return err
-	}
-	var existing *PartialError
-	if errors.As(err, &existing) {
-		return err
-	}
-	return partial(outcome, err, "repair the post-commit fault, then rerun awf render")
+	return projectmutation.Promote(outcome, err, projectmutation.PhaseCleanup, committed, func(outcome Outcome, cause error, phase projectmutation.Phase) error {
+		return partialForPhase(outcome, cause, phase)
+	})
 }
 
-func runLeased(ctx context.Context, root string, request Request, loader *project.Loader, lease *filesystem.Lease) (outcome Outcome, returnErr error) {
-	files, err := filesystem.Open(root)
+func partialForPhase(outcome Outcome, cause error, phase projectmutation.Phase) *PartialError {
+	action := "repair the post-commit fault, then rerun awf render"
+	if phase == projectmutation.PhaseRelease {
+		action = "remove reported residue first, then rerun awf render after the lease-release fault is repaired"
+	}
+	return partial(outcome, cause, action)
+}
+
+func runLeased(ctx context.Context, root string, request Request, loader *project.Loader, tx *projectmutation.Transaction) (outcome Outcome, returnErr error) {
+	files, err := tx.Open()
 	if err != nil {
 		return Outcome{}, err
 	}
 	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
 
-	session, err := loader.Load(ctx, root)
+	session, err := tx.LoadAuthority()
 	if err != nil {
 		return Outcome{}, err
 	}
@@ -182,7 +160,7 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 	}
 
 	if request.Sidecar && !changed {
-		return synchronizeCommitted(ctx, root, loader, lease, outcome)
+		return synchronizeCommitted(tx, outcome)
 	}
 
 	if !target.Local && (request.Mode == Edit || request.Sidecar) {
@@ -239,20 +217,20 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 		return outcome, err
 	}
 
-	return synchronizeCommitted(ctx, root, loader, lease, outcome)
+	return synchronizeCommitted(tx, outcome)
 }
 
-func synchronizeCommitted(ctx context.Context, root string, loader *project.Loader, lease *filesystem.Lease, outcome Outcome) (Outcome, error) {
-	committedSession, err := loader.Load(ctx, root)
-	if err != nil {
-		return outcome, partial(outcome, err, "repair committed source authority, then rerun awf render")
-	}
-	result, syncErr := publisher.New(committedSession, project.Version).SyncLeased(ctx, lease)
+func synchronizeCommitted(tx *projectmutation.Transaction, outcome Outcome) (Outcome, error) {
+	result, syncErr := tx.Synchronize()
 	outcome.Publisher = result
-	if syncErr != nil {
-		return outcome, partial(outcome, syncErr, "remove reported residue first, repair the publisher fault, then rerun awf render")
+	if syncErr == nil {
+		return outcome, nil
 	}
-	return outcome, nil
+	phase, _ := projectmutation.FailurePhase(syncErr)
+	if phase == projectmutation.PhaseReload {
+		return outcome, partial(outcome, syncErr, "repair committed source authority, then rerun awf render")
+	}
+	return outcome, partial(outcome, syncErr, "remove reported residue first, repair the publisher fault, then rerun awf render")
 }
 
 func committedSourceEffect(request Request, local, existed bool) SourceEffect {
@@ -284,7 +262,11 @@ func candidateSource(request Request, local bool, before []byte) ([]byte, bool, 
 }
 
 func partial(outcome Outcome, cause error, action string) *PartialError {
-	return &PartialError{Outcome: outcome, Cause: cause, Recovery: recoveryFor(outcome, action)}
+	var recovery []string
+	if action != "" {
+		recovery = recoveryFor(outcome, action)
+	}
+	return &PartialError{Partial: projectmutation.NewPartial(outcome, cause, recovery)}
 }
 
 func recoveryFor(outcome Outcome, action string) []string {

@@ -12,6 +12,9 @@ data:
     - term: project Session
       meaning: "The Loader-constructed immutable selected universe that binds configuration to complete facts and carries its roots, repository and reader handles, and artifact-registry projection through focused operations."
       domains: [code-design]
+    - term: project mutation transaction
+      meaning: "A mechanics-only, operation-scoped value that retains selected lease coverage, confines authority access, reloads committed authority for one synchronization attempt, and types mechanical failures without owning focused-operation policy."
+      domains: [code-design, tooling]
     - term: Publisher operation
       meaning: "The single-use publication value that consumes one project Session, settles complete output definitions before rendering, materializes each accepted node once, and shares one immutable plan with checks and publication."
       domains: [rendering]

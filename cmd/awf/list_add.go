@@ -11,14 +11,16 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 )
 
 func runNewDomain(ctx context.Context, root, name string, stdout io.Writer) (returnErr error) {
+	var outcome domainop.Outcome
 	lease, err := filesystem.AcquireProjectLease(ctx, root, awfgit.ProjectResidentRoot(ctx, root))
 	if err != nil {
 		return err
 	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	defer func() { returnErr = domainop.Finish(outcome, returnErr, lease.Release()) }()
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
@@ -26,7 +28,11 @@ func runNewDomain(ctx context.Context, root, name string, stdout io.Writer) (ret
 	if err != nil {
 		return err
 	}
-	outcome, err := domainop.AddLeased(ctx, root, name, loader, lease)
+	tx, err := projectmutation.UseProject(ctx, root, loader, lease)
+	if err != nil {
+		return err
+	}
+	outcome, err = domainop.Add(ctx, name, tx)
 	if err != nil {
 		var partial *domainop.PartialError
 		if !errors.As(err, &partial) {
@@ -46,11 +52,12 @@ func runNewDomain(ctx context.Context, root, name string, stdout io.Writer) (ret
 }
 
 func runRemoveDomain(ctx context.Context, root, name string, stdout io.Writer) (returnErr error) {
+	var outcome domainop.Outcome
 	lease, err := filesystem.AcquireProjectLease(ctx, root, awfgit.ProjectResidentRoot(ctx, root))
 	if err != nil {
 		return err
 	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	defer func() { returnErr = domainop.Finish(outcome, returnErr, lease.Release()) }()
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
@@ -58,7 +65,11 @@ func runRemoveDomain(ctx context.Context, root, name string, stdout io.Writer) (
 	if err != nil {
 		return err
 	}
-	outcome, err := domainop.RemoveLeased(ctx, root, name, loader, lease)
+	tx, err := projectmutation.UseProject(ctx, root, loader, lease)
+	if err != nil {
+		return err
+	}
+	outcome, err = domainop.Remove(ctx, name, tx)
 	if err != nil {
 		var partial *domainop.PartialError
 		if !errors.As(err, &partial) {

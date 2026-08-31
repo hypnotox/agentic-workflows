@@ -12,6 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/localdocop"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/topicop"
 )
 
@@ -44,19 +45,20 @@ func newDoc(ctx context.Context, root string, args []string, title *string, stdo
 	if title != nil {
 		resolvedTitle = *title
 	}
+	var outcome localdocop.Outcome
 	loader, err := newProjectLoader(root)
 	if err != nil {
 		return err
 	}
-	lease, err := loader.AcquireProjectLease(ctx, root)
+	tx, err := projectmutation.AcquireProject(ctx, root, loader, nil)
 	if err != nil {
 		return err
 	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	defer func() { returnErr = localdocop.Finish(outcome, returnErr, tx.Release()) }()
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	outcome, err := localdocop.RunLeased(ctx, root, config.LocalDoc{Name: args[0], Title: resolvedTitle, Description: args[1]}, loader, lease)
+	outcome, err = localdocop.Run(ctx, config.LocalDoc{Name: args[0], Title: resolvedTitle, Description: args[1]}, tx)
 	if err != nil {
 		var partial *localdocop.PartialError
 		if !errors.As(err, &partial) {
@@ -113,11 +115,12 @@ func newTopic(ctx context.Context, root string, args []string, stdout io.Writer)
 	if len(args) < 2 {
 		return &usageErr{"usage: awf new topic <domain> <title>"}
 	}
+	var outcome topicop.Outcome
 	lease, err := filesystem.AcquireTrackedLease(ctx, root)
 	if err != nil {
 		return err
 	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	defer func() { returnErr = topicop.Finish(outcome, returnErr, lease.Release()) }()
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
@@ -125,7 +128,11 @@ func newTopic(ctx context.Context, root string, args []string, stdout io.Writer)
 	if err != nil {
 		return err
 	}
-	document, err := topicop.CreateLeased(ctx, root, args[0], strings.Join(args[1:], " "), loader, lease)
+	tx, err := projectmutation.UseTracked(ctx, root, loader, lease)
+	if err != nil {
+		return err
+	}
+	outcome, err = topicop.Create(ctx, args[0], strings.Join(args[1:], " "), tx)
 	if err != nil {
 		var partial *topicop.PartialScaffoldError
 		if !errors.As(err, &partial) {
@@ -137,5 +144,5 @@ func newTopic(ctx context.Context, root string, args []string, stdout io.Writer)
 		}
 		return errors.Join(err, presentation.Render(stdout, partialDocument))
 	}
-	return presentation.Render(stdout, document)
+	return presentation.Render(stdout, outcome.Document)
 }

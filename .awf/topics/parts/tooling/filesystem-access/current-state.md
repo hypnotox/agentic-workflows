@@ -11,3 +11,8 @@ Backing: test
 
 Project mutation leases canonicalize existing roots including symlink aliases, retain restrictive user-cache lock files, order complete scope-and-root identities even when roots match, wait with context cancellation, and release explicitly or on process exit. Distinct tracked and resident scopes let linked checkouts remain independently mutable while a shared resident root serializes cross-checkout mutation.
 Backing: test
+
+### `invariant: focused-project-mutation-transactions`
+
+Focused operations select tracked-only or complete project scope and retain validation, write order, rollback, recovery, outcome, and presentation policy. One transaction centralizes lease coverage, confined authority access, a fresh committed Session reload before at most one Publisher synchronization attempt, typed mechanical failure phases, and release and partial-effect plumbing; tracked-only topic scaffolding never synchronizes.
+Backing: test

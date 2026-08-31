@@ -14,6 +14,7 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -24,22 +25,22 @@ func operationLoader() *project.Loader {
 	return project.NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot)
 }
 
-func Add(ctx context.Context, root, name string, loader *project.Loader) (outcome Outcome, returnErr error) {
-	lease, err := loader.AcquireProjectLease(ctx, root)
+func runAdd(ctx context.Context, root, name string, loader *project.Loader) (outcome Outcome, returnErr error) {
+	tx, err := projectmutation.AcquireProject(ctx, root, loader, nil)
 	if err != nil {
 		return Outcome{}, err
 	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-	return AddLeased(ctx, root, name, loader, lease)
+	defer func() { returnErr = errors.Join(returnErr, tx.Release()) }()
+	return Add(ctx, name, tx)
 }
 
-func Remove(ctx context.Context, root, name string, loader *project.Loader) (outcome Outcome, returnErr error) {
-	lease, err := loader.AcquireProjectLease(ctx, root)
+func runRemove(ctx context.Context, root, name string, loader *project.Loader) (outcome Outcome, returnErr error) {
+	tx, err := projectmutation.AcquireProject(ctx, root, loader, nil)
 	if err != nil {
 		return Outcome{}, err
 	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-	return RemoveLeased(ctx, root, name, loader, lease)
+	defer func() { returnErr = errors.Join(returnErr, tx.Release()) }()
+	return Remove(ctx, name, tx)
 }
 
 func initializedLoader(t *testing.T, root string) *project.Loader {
@@ -58,14 +59,14 @@ func initializedLoader(t *testing.T, root string) *project.Loader {
 func TestAddScaffoldsConfiguredDomainAndRemoveReportsOrphan(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
-	if _, err := Add(context.Background(), root, "payments", initializedLoader(t, root)); err != nil {
+	if _, err := runAdd(context.Background(), root, "payments", initializedLoader(t, root)); err != nil {
 		t.Fatal(err)
 	}
 	part := filepath.Join(root, ".awf", "domains", "parts", "payments", "current-state.md")
 	if got, err := os.ReadFile(part); err != nil || !strings.Contains(string(got), "\"payments\" domain") {
 		t.Fatalf("part = %q, %v", got, err)
 	}
-	outcome, err := Remove(context.Background(), root, "payments", operationLoader())
+	outcome, err := runRemove(context.Background(), root, "payments", operationLoader())
 	if err != nil || !outcome.Orphaned {
 		t.Fatalf("remove = orphaned %t, %v", outcome.Orphaned, err)
 	}
@@ -74,7 +75,7 @@ func TestAddScaffoldsConfiguredDomainAndRemoveReportsOrphan(t *testing.T) {
 func TestRemoveRejectsAbsentConfiguredDomain(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
-	if _, err := Remove(context.Background(), root, "payments", initializedLoader(t, root)); err == nil || !strings.Contains(err.Error(), "not configured") {
+	if _, err := runRemove(context.Background(), root, "payments", initializedLoader(t, root)); err == nil || !strings.Contains(err.Error(), "not configured") {
 		t.Fatalf("error = %v", err)
 	}
 }
@@ -82,10 +83,10 @@ func TestRemoveRejectsAbsentConfiguredDomain(t *testing.T) {
 func TestDomainOperationsRejectInvalidAndUnavailableInputs(t *testing.T) {
 	loader := operationLoader()
 	for _, operation := range []func() error{
-		func() error { _, err := Add(context.Background(), t.TempDir(), "not valid", loader); return err },
-		func() error { _, err := Remove(context.Background(), t.TempDir(), "not valid", loader); return err },
-		func() error { _, err := Add(context.Background(), t.TempDir(), "payments", loader); return err },
-		func() error { _, err := Remove(context.Background(), t.TempDir(), "payments", loader); return err },
+		func() error { _, err := runAdd(context.Background(), t.TempDir(), "not valid", loader); return err },
+		func() error { _, err := runRemove(context.Background(), t.TempDir(), "not valid", loader); return err },
+		func() error { _, err := runAdd(context.Background(), t.TempDir(), "payments", loader); return err },
+		func() error { _, err := runRemove(context.Background(), t.TempDir(), "payments", loader); return err },
 	} {
 		if err := operation(); err == nil {
 			t.Fatal("invalid or unavailable operation succeeded")
@@ -98,13 +99,19 @@ func TestAddReportsBlockedCurrentStateParent(t *testing.T) {
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
 	blocked := filepath.Join(root, ".awf", "domains", "parts", "payments")
 	testsupport.WriteFile(t, blocked, "not a directory")
-	if _, err := Add(context.Background(), root, "payments", operationLoader()); err == nil {
+	if _, err := runAdd(context.Background(), root, "payments", operationLoader()); err == nil {
 		t.Fatal("blocked current-state parent accepted")
 	}
 }
 
 func TestSynchronizeReportsUnavailableProject(t *testing.T) {
-	if _, err := synchronize(context.Background(), t.TempDir(), operationLoader(), nil); err == nil {
+	root := t.TempDir()
+	tx, err := projectmutation.AcquireProject(context.Background(), root, operationLoader(), nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer tx.Release() //nolint:errcheck // test cleanup
+	if _, err := tx.Synchronize(); err == nil {
 		t.Fatal("unavailable project synchronized")
 	}
 }
@@ -120,7 +127,7 @@ func TestDomainOperationsReportSynchronizationFailure(t *testing.T) {
 		testsupport.WriteAwfConfig(t, root, fixtureConfig)
 		loader := initializedLoader(t, root)
 		breakRendering(t, root)
-		if _, err := Add(context.Background(), root, "payments", loader); err == nil {
+		if _, err := runAdd(context.Background(), root, "payments", loader); err == nil {
 			t.Fatal("add accepted a synchronization failure")
 		}
 	})
@@ -129,11 +136,11 @@ func TestDomainOperationsReportSynchronizationFailure(t *testing.T) {
 		root := t.TempDir()
 		testsupport.WriteAwfConfig(t, root, fixtureConfig)
 		loader := initializedLoader(t, root)
-		if _, err := Add(context.Background(), root, "payments", loader); err != nil {
+		if _, err := runAdd(context.Background(), root, "payments", loader); err != nil {
 			t.Fatal(err)
 		}
 		breakRendering(t, root)
-		if _, err := Remove(context.Background(), root, "payments", loader); err == nil {
+		if _, err := runRemove(context.Background(), root, "payments", loader); err == nil {
 			t.Fatal("remove accepted a synchronization failure")
 		}
 	})
@@ -198,15 +205,28 @@ func TestAddRetainsTypedPartialOutcomeAfterSynchronizationFailure(t *testing.T) 
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
 	loader := initializedLoader(t, root)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "parts", "workflow", "commit-discipline.md"), "{{=awf:unknown-placeholder}}\n")
-	_, err := Add(context.Background(), root, "payments", loader)
+	_, err := runAdd(context.Background(), root, "payments", loader)
 	var partial *PartialError
 	if !errors.As(err, &partial) || !partial.Outcome.ConfigReplaced || !partial.Outcome.ScaffoldCreated {
 		t.Fatalf("partial outcome = %#v, err = %v", partial, err)
 	}
 }
 
+func TestFinishTypesReleaseFaultWithCommittedOutcome(t *testing.T) {
+	fault := errors.New("release sentinel")
+	outcome := Outcome{ConfigReplaced: true}
+	err := Finish(outcome, nil, fault)
+	var partial *PartialError
+	if !errors.As(err, &partial) || !errors.Is(err, fault) || !partial.Outcome.ConfigReplaced {
+		t.Fatalf("release partial = %#v, %v", partial, err)
+	}
+	if len(partial.Recovery) != 1 || !strings.Contains(partial.Recovery[0], "lease-release fault") {
+		t.Fatalf("release recovery = %#v", partial.Recovery)
+	}
+}
+
 func TestPartialErrorDocumentRetainsEffectsAndDefaultRecovery(t *testing.T) {
-	partial := &PartialError{Outcome: Outcome{ConfigReplaced: true, ScaffoldCreated: true, Orphaned: true, Publisher: publisher.Result{}}}
+	partial := newPartial(Outcome{ConfigReplaced: true, ScaffoldCreated: true, Orphaned: true, Publisher: publisher.Result{}}, nil)
 	document, err := partial.Document()
 	if err != nil {
 		t.Fatal(err)
