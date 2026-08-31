@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/effort/application"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
@@ -173,14 +174,14 @@ func TestEffortCompositionRefusesAnUnusableResidentRoot(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), worktrees); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := openEffortComposition(testContext(t), root); err == nil {
+	if _, err := openEffortComposition(testContext(t), root, application.Request{Kind: application.List}, func() ([]byte, error) { return []byte("marker\n"), nil }); err == nil {
 		t.Fatal("symlinked resident worktrees root accepted")
 	}
 }
 
 func TestWorktreeCompositionFailuresRemainSilentOnStdout(t *testing.T) {
-	unopenable := func(context.Context, string) (effortComposition, error) {
-		return effortComposition{}, errors.New("injected open")
+	unopenable := func(context.Context, string, application.Request, func() ([]byte, error)) (application.Result, error) {
+		return application.Result{}, errors.New("injected application")
 	}
 	root := commandRepo(t)
 	for _, test := range []struct {

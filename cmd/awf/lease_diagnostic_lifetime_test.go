@@ -72,7 +72,7 @@ func TestEffortRefusalLeaseCoversDiagnosticWrite(t *testing.T) {
 	}
 	resident := awfgit.ProjectResidentRoot(testContext(t), root)
 	assertDiagnosticLeaseLifetime(t, result, func(ctx context.Context) (*filesystem.Lease, error) {
-		return filesystem.AcquireResidentLease(ctx, resident)
+		return filesystem.AcquireProjectLease(ctx, root, resident)
 	})
 }
 
@@ -94,14 +94,14 @@ func TestUpgradePartialAuthorityLeaseCoversDiagnosticWrite(t *testing.T) {
 func TestDiagnosticWriterFailureReleasesHeldLease(t *testing.T) {
 	root := commandRepo(t)
 	resident := awfgit.ProjectResidentRoot(testContext(t), root)
-	lease, err := filesystem.AcquireResidentLease(testContext(t), resident)
+	lease, err := filesystem.AcquireProjectLease(testContext(t), root, resident)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if code := completeHandlerResult(io.Discard, failingDiagnosticWriter{}, handlerFailureHeld(errors.New("typed diagnostic write failure"), lease.Release)); code != 1 {
 		t.Fatalf("exit code = %d, want 1", code)
 	}
-	second, err := filesystem.AcquireResidentLease(context.Background(), resident)
+	second, err := filesystem.AcquireProjectLease(context.Background(), root, resident)
 	if err != nil {
 		t.Fatalf("lease leaked after diagnostic writer failure: %v", err)
 	}

@@ -550,7 +550,7 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 	}
 	prSafety := workflowStep(macos, "Filesystem, publication, Git, effort, and worktree safety")
 	const prSafetyRun = `temp_root="$(cd "$RUNNER_TEMP" && pwd -P)"
-env TMPDIR="$temp_root" GOTMPDIR="$temp_root" go test -count=1 ./internal/filesystem ./internal/filepublication ./internal/git ./internal/effort ./internal/worktree`
+env TMPDIR="$temp_root" GOTMPDIR="$temp_root" go test -count=1 ./internal/filesystem ./internal/filepublication ./internal/git ./internal/effort ./internal/effort/application ./internal/worktree`
 	if stringValue(macos["if"]) != "${{ always() && (github.event_name != 'pull_request' || (needs.selection.result == 'success' && needs.selection.outputs.platform_sensitive == 'true')) }}" || !workflowNeeds(macos, "selection") || stringValue(prSafety["if"]) != "${{ github.event_name == 'pull_request' }}" || strings.TrimSpace(stringValue(prSafety["run"])) != prSafetyRun {
 		problems = append(problems, "PR macOS safety")
 	}

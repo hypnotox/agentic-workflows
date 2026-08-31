@@ -82,36 +82,6 @@ func (e *RefusalError) Unwrap() error {
 	return e.Err
 }
 
-// CreationError describes a failed managed creation after its compensating
-// finish attempt. It retains the legacy error text while exposing every changed
-// axis and recovery sequence to the command presentation boundary.
-type CreationError struct {
-	Message         string
-	Condition       string
-	ChangedEffort   bool
-	ChangedTopology bool
-	Topology        TopologyEffects
-	ManagedPath     string
-	ManagedBranch   string
-	Cause           error
-	RollbackCause   error
-	Steps           []string
-}
-
-// Error preserves the legacy managed-creation failure message.
-func (e *CreationError) Error() string { return e.Message }
-
-// Unwrap exposes both the creation and compensating-rollback mechanism causes.
-func (e *CreationError) Unwrap() []error {
-	if e.Cause == nil && e.RollbackCause == nil {
-		return nil
-	}
-	if e.RollbackCause == nil {
-		return []error{e.Cause}
-	}
-	return []error{e.Cause, e.RollbackCause}
-}
-
 // refusal records model-owned, independently executable recovery actions. NextAction
 // remains the legacy one-line summary used by Error; presentation uses NextActions.
 func refusal(category, condition string, actions ...string) error {

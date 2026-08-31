@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/effort/application"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -96,9 +97,9 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 		sub:    "new",
 		inv:    invocation{positionals: []string{"Missing slug"}, bools: map[string]bool{}, values: map[string]string{}},
 		stdout: &bytes.Buffer{},
-	}, func(_ context.Context, _ string) (effortComposition, error) {
+	}, func(context.Context, string, application.Request, func() ([]byte, error)) (application.Result, error) {
 		composed = true
-		return effortComposition{}, errors.New("composer invoked")
+		return application.Result{}, errors.New("application invoked")
 	})
 	if err == nil || !strings.Contains(err.Error(), "--slug is required") || composed {
 		t.Fatalf("missing slug err=%v composed=%t", err, composed)
@@ -302,7 +303,7 @@ func TestRunEffortFailureDispatches(t *testing.T) {
 	if err := runEffort(ctx("show", "missing"), openEffortComposition); err == nil {
 		t.Fatal("missing show accepted")
 	}
-	if err := runEffort(ctx("removed"), func(context.Context, string) (effortComposition, error) { return effortComposition{}, nil }); err == nil {
+	if err := runEffort(ctx("removed"), nil); err == nil {
 		t.Fatal("unknown effort action accepted")
 	}
 }

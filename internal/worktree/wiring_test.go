@@ -261,7 +261,7 @@ func newEffortService(t *testing.T, roots awfgit.ControlRoots, uuid func() (stri
 func managerWith(t *testing.T, root string, open OpenCheckout) *Manager {
 	t.Helper()
 	roots := worktreeControlRoots(t, root)
-	manager, err := Open(roots, open, openResidentForRoots(roots), newEffortService(t, roots, nil, nil))
+	manager, err := Open(roots, open, openResidentForRoots(roots))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -275,7 +275,6 @@ func managerWith(t *testing.T, root string, open OpenCheckout) *Manager {
 func managerRooted(t *testing.T, root string, drift func(*awfgit.ControlRoots), apply func(*checkoutStub)) *Manager {
 	t.Helper()
 	roots := worktreeControlRoots(t, root)
-	service := newEffortService(t, roots, nil, nil)
 	drifted := roots
 	drift(&drifted)
 	drifted.InvokingRoot = filesystem.NormalizePlatformPath(drifted.InvokingRoot)
@@ -290,7 +289,7 @@ func managerRooted(t *testing.T, root string, drift func(*awfgit.ControlRoots), 
 		}
 		return stub, nil
 	}
-	manager, err := Open(drifted, open, openResidentForRoots(drifted), service)
+	manager, err := Open(drifted, open, openResidentForRoots(drifted))
 	if err != nil {
 		t.Fatal(err)
 	}

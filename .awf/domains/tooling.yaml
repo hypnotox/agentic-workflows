@@ -22,7 +22,6 @@ paths:
   - internal/filesystem/**
   - internal/filepublication/**
   - internal/effort/**
-  - internal/effortop/**
   - internal/worktree/**
   - internal/testsupport/**
   - internal/snapshot/**

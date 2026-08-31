@@ -3,47 +3,74 @@ package main
 import (
 	"context"
 	"errors"
-	"time"
 
-	"github.com/hypnotox/agentic-workflows/internal/effort"
-	"github.com/hypnotox/agentic-workflows/internal/effortop"
-	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	"github.com/hypnotox/agentic-workflows/internal/effort/application"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
-// effortComposition is the wiring one effort command runs against: the resident
-// authority and the managed-topology manager, both bound to the same resolved
-// control roots.
-type effortComposition struct {
-	service *effort.Service
-	manager *worktree.Manager
+// executeEffort is the CLI adapter's one application-boundary contract.
+type executeEffort func(context.Context, string, application.Request, func() ([]byte, error)) (application.Result, error)
+
+// openEffortComposition binds the registered effort handler to the production
+// application boundary. The historical name remains local to command wiring;
+// no effort or worktree service is exposed through it.
+func openEffortComposition(ctx context.Context, root string, request application.Request, marker func() ([]byte, error)) (application.Result, error) {
+	return application.Execute(ctx, root, request, marker)
 }
 
-// composeEffort is how runEffort obtains that wiring. It is a parameter rather
-// than a package fixture so a test names the composition it is exercising
-// instead of replacing one behind the handler's back.
-type composeEffort func(ctx context.Context, root string) (effortComposition, error)
+func runEffort(c *cmdCtx, execute executeEffort) (returnErr error) {
+	if err := validateEffortGrammar(c); err != nil {
+		return err
+	}
+	request, err := effortRequest(c)
+	if err != nil {
+		return err
+	}
+	result, err := execute(c.ctx, c.root, request, expectedEffortArchiveMarker(c.ctx, c.root))
+	if result.Release != nil {
+		// The application chooses and acquires mutation scope before opening any
+		// effort state. The adapter retains that capability through final output.
+		if c.retainLease != nil {
+			c.retainLease(result.Release)
+		} else {
+			defer func() { returnErr = errors.Join(returnErr, result.Release()) }()
+		}
+	}
+	if err != nil {
+		return err
+	}
+	return presentation.Render(c.stdout, result.Document)
+}
 
-// openEffortComposition is the production composition root for the effort
-// command group. It resolves the control roots once and binds the seam's
-// operations to the two consumers' own contracts: the effort service asks three
-// questions of a handle opened on the invoking checkout, while the worktree
-// manager receives the opener itself, because it reasons about the invoking and
-// the managed checkout together and so opens a handle per checkout it touches.
-// That is why the invoking root is opened here and again through the opener:
-// a handle is pinned to one root, so the manager cannot borrow this one.
-func openEffortComposition(ctx context.Context, root string) (effortComposition, error) {
-	roots, err := awfgit.ResolveControlRoots(ctx, root)
-	if err != nil {
-		return effortComposition{}, err
+func effortRequest(c *cmdCtx) (application.Request, error) {
+	selected := firstPos(c.inv.positionals)
+	switch c.sub {
+	case "new":
+		return application.Request{Kind: application.New, Slug: c.inv.values["--slug"], Title: selected, Base: c.inv.values["--base"]}, nil
+	case "list":
+		return application.Request{Kind: application.List}, nil
+	case "show":
+		return application.Request{Kind: application.Show, Slug: selected}, nil
+	case "finish":
+		return application.Request{Kind: application.Finish, Slug: selected}, nil
+	case "worktree":
+		request := application.Request{Slug: c.inv.positionals[1], Base: c.inv.values["--base"]}
+		if c.inv.positionals[0] == "add" {
+			request.Kind = application.AddWorktree
+		} else {
+			request.Kind = application.RemoveWorktree
+		}
+		return request, nil
+	case "integrate":
+		return application.Request{Kind: application.Integrate, Slug: selected}, nil
+	default:
+		return application.Request{}, &usageErr{"usage: awf effort <new|list|show|finish|worktree|integrate>"}
 	}
-	repo, err := awfgit.Open(roots.InvokingRoot)
-	if err != nil {
-		return effortComposition{}, err
-	}
-	archiveMarker := func() ([]byte, error) {
+}
+
+func expectedEffortArchiveMarker(ctx context.Context, root string) func() ([]byte, error) {
+	return func() ([]byte, error) {
 		projectState, cfg, _, err := openProjectOperation(ctx, root)
 		if err != nil {
 			return nil, err
@@ -58,85 +85,6 @@ func openEffortComposition(ctx context.Context, root string) (effortComposition,
 		}
 		return []byte(rendered.Content()), nil
 	}
-	service, err := effort.Open(roots, effort.Dependencies{
-		Clock:                 time.Now,
-		UUID:                  effort.RandomUUIDv4,
-		Worktrees:             repo.WorktreeList,
-		BranchExists:          repo.BranchExists,
-		ValidateRef:           repo.ValidateRefName,
-		ExpectedArchiveMarker: archiveMarker,
-	})
-	if err != nil {
-		return effortComposition{}, err
-	}
-	manager, err := worktree.Open(roots, openCheckout, func(name awfgit.ResidentName) (worktree.ResidentHandle, error) {
-		residentRoot, rootErr := roots.ResidentRoot(name)
-		if rootErr != nil {
-			return nil, rootErr
-		}
-		return filesystem.Open(residentRoot)
-	}, service)
-	if err != nil {
-		return effortComposition{}, err
-	}
-	return effortComposition{service: service, manager: manager}, nil
-}
-
-// openCheckout satisfies the worktree manager's checkout contract directly with
-// the Git seam's handle: no adapter stands between them, so the manager's
-// contract is exactly a subset of the handle's surface.
-func openCheckout(root string) (worktree.Runner, error) { return awfgit.Open(root) }
-
-func runEffort(c *cmdCtx, compose composeEffort) (returnErr error) {
-	if err := validateEffortGrammar(c); err != nil {
-		return err
-	}
-	lease, err := effortop.AcquireMutationLease(c.ctx, c.root, c.sub)
-	if err != nil {
-		return err
-	}
-	if lease != nil {
-		// The effort application-composition seam chooses resident or dual-root
-		// scope before any resident record or Git topology observation; command
-		// composition retains it through rendered presentation.
-		if c.retainLease != nil {
-			c.retainLease(lease.Release)
-		} else {
-			defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-		}
-	}
-	composed, err := compose(c.ctx, c.root)
-	if err != nil {
-		return err
-	}
-	service, manager := composed.service, composed.manager
-	selected := firstPos(c.inv.positionals)
-	var document presentation.Document
-	switch c.sub {
-	case "new":
-		document, err = effortop.New(c.ctx, service, manager, effort.NewInput{Slug: c.inv.values["--slug"], Title: selected}, c.inv.values["--base"])
-	case "list":
-		document, err = effortop.List(service)
-	case "show":
-		document, err = effortop.Show(service, selected)
-	case "finish":
-		document, err = effortop.Finish(c.ctx, service, selected)
-	case "worktree":
-		slug := c.inv.positionals[1]
-		if c.inv.positionals[0] == "add" {
-			document, err = effortop.AddWorktree(c.ctx, manager, slug, c.inv.values["--base"])
-		} else {
-			document, err = effortop.RemoveWorktree(c.ctx, manager, slug)
-		}
-	case "integrate":
-		document, err = effortop.Integrate(c.ctx, c.root, manager, selected)
-	default:
-		return &usageErr{"usage: awf effort <new|list|show|finish|worktree|integrate>"}
-	}
-	if err != nil {
-		return err
-	}
-	return presentation.Render(c.stdout, document)
 }
 
 func validateEffortGrammar(c *cmdCtx) error {

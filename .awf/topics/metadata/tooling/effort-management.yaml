@@ -3,5 +3,4 @@ summary: Binary-owned effort records and optional resources.
 paths:
     - cmd/awf/effort*.go
     - internal/effort/**
-    - internal/effortop/**
     - internal/worktree/**

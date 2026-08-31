@@ -101,13 +101,6 @@ func AcquireTrackedLease(ctx context.Context, root string) (*Lease, error) {
 	return acquire(ctx, []leaseRequest{{scope: "project-tracked-locks", root: root}})
 }
 
-// AcquireResidentLease obtains the primary-resident transaction capability.
-// Resident-only operations use it so independent selected checkouts contend on
-// their shared lifecycle state without unnecessarily serializing tracked work.
-func AcquireResidentLease(ctx context.Context, root string) (*Lease, error) {
-	return acquire(ctx, []leaseRequest{{scope: "project-resident-locks", root: root}})
-}
-
 // AcquireProjectLease returns the transaction identity for an operation that
 // changes both checkout-local and primary-resident state. acquire canonicalizes
 // and orders both identities before taking either lock.

@@ -20,9 +20,10 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 - `internal/repositorycheck`: the policy-free RepositoryChecker preserves explicit owner-result order and compatibility projections without preparing inputs or inferring classification.
 - `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving bounded compatibility adapters and unrelated project operations.
 - `internal/currentstatecoord`: focused application operations select immutable working or staged universes for topic authority, current-state checks, and staged output preparation.
-- Focused operation packages: `internal/initop`, `internal/checkop`, `internal/configop`, `internal/topicop`, `internal/effortop`, `internal/domainop`, `internal/localdocop`, and `internal/authoringop` own bounded command use cases above their semantic mechanisms. `internal/authoringop` resolves semantic part identities, validates a complete candidate tree, publishes one confined source, and composes ordinary leased synchronization.
+- Focused operation packages: `internal/initop`, `internal/checkop`, `internal/configop`, `internal/topicop`, `internal/domainop`, `internal/localdocop`, and `internal/authoringop` own bounded command use cases above their semantic mechanisms. `internal/authoringop` resolves semantic part identities, validates a complete candidate tree, publishes one confined source, and composes ordinary leased synchronization.
+- `internal/effort/application`: the single effort application boundary owns the six lifecycle use cases, mutation-lease selection, managed-worktree coordination, rollback, and presentation mapping.
 - `internal/topic` and `internal/currentstate`: live-authority parsing and checks.
-- `internal/effort` and `internal/worktree`: local residents and Git-backed topology.
+- `internal/effort` and `internal/worktree`: local resident storage and safety, and managed Git-topology mechanics below the effort application boundary.
 - `internal/git`: the sole semantic Git seam.
 - `internal/snapshot` and `internal/filesystem`: immutable input and confined filesystem boundaries; snapshot keeps live path-and-mode inventory distinct from selected content bytes.
 - `cmd/awf`: thin CLI composition root for command lookup, parsing, concrete construction, one focused invocation, renderer or protocol-bypass selection, streams, and exit mapping.

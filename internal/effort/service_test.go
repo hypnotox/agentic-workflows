@@ -1,7 +1,6 @@
 package effort
 
 import (
-	"bytes"
 	"context"
 	"errors"
 	"os"
@@ -12,7 +11,6 @@ import (
 	"time"
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
 // noTopology is the answer set of a checkout that carries no managed worktree
@@ -32,7 +30,7 @@ func TestRefusalDiagnosticsPreserveErrorIdentityAndSeparateFacts(t *testing.T) {
 	if !errors.As(err, &refused) {
 		t.Fatalf("absent finish error lost refusal identity: %v", err)
 	}
-	assertRefusalDiagnostic(t, refused, "condition: effort \"absent-finish\" has no active resident or finishing reservation\nstate: resident\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: run `awf effort list` and use an active slug\n")
+	assertDiagnosticInfo(t, refused, "effort \"absent-finish\" has no active resident or finishing reservation", "resident", "", "bytes", "run `awf effort list` and use an active slug")
 
 	_, err = service.New(testContext(t), NewInput{Slug: strings.Repeat("s", 33), Title: "Overlong slug"})
 	if err == nil || !strings.Contains(err.Error(), "changed bytes: no") {
@@ -41,7 +39,7 @@ func TestRefusalDiagnosticsPreserveErrorIdentityAndSeparateFacts(t *testing.T) {
 	if !errors.As(err, &refused) {
 		t.Fatalf("overlong slug error lost refusal identity: %v", err)
 	}
-	assertRefusalDiagnostic(t, refused, "condition: explicit effort slug \"sssssssssssssssssssssssssssssssss\" is invalid\nstate: input\ncause: slug must contain 1-32 bytes\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: provide a different canonical value with `--slug`\n")
+	assertDiagnosticInfo(t, refused, "explicit effort slug \"sssssssssssssssssssssssssssssssss\" is invalid", "input", "slug must contain 1-32 bytes", "bytes", "provide a different canonical value with `--slug`")
 
 	refusalCause := errors.New("refusal cause")
 	if err := refusal("message", "condition", "state", "cause", nil, refusalCause); !errors.Is(err, refusalCause) {
@@ -53,31 +51,30 @@ func TestRefusalDiagnosticsPreserveErrorIdentityAndSeparateFacts(t *testing.T) {
 	if !errors.Is(corrupt, cause) {
 		t.Fatal("corrupt refusal lost cause identity")
 	}
-	assertRefusalDiagnostic(t, corrupt, "condition: effort resident is unusable\nstate: resident\ncause: resident: resident fault\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: preserve the resident and inspect it for manual cleanup\n")
+	assertDiagnosticInfo(t, corrupt, "effort resident is unusable", "resident", "resident: resident fault", "bytes", "preserve the resident and inspect it for manual cleanup")
+}
 
-	if _, err := recoverySteps([]RecoveryAction{{Text: "invalid\naction"}}); err == nil {
-		t.Fatal("recovery steps accepted a multiline action")
+func assertDiagnosticInfo(t *testing.T, err error, condition, state, cause, changed, action string) {
+	t.Helper()
+	info, ok := DiagnosticFor(err)
+	if !ok {
+		t.Fatalf("no effort diagnostic for %T", err)
+	}
+	if info.Condition != condition || info.State != state || info.Cause != cause || len(info.Changed) == 0 || info.Changed[0].Label != changed || len(info.Actions) == 0 || info.Actions[0].Text != action {
+		t.Fatalf("diagnostic info = %#v", info)
 	}
 }
 
-func assertRefusalDiagnostic(t *testing.T, err interface {
-	Diagnostic() (presentation.Diagnostic, error)
-}, want string) {
-	t.Helper()
-	diagnostic, diagnosticErr := err.Diagnostic()
-	if diagnosticErr != nil {
-		t.Fatal(diagnosticErr)
+func TestPartialFinishDiagnosticPrecedesTypedMechanismCause(t *testing.T) {
+	nested := refusal("nested refusal", "nested", "mechanism", "cause", []RecoveryAction{{Text: "nested action"}}, nil)
+	partial := &PartialFinishError{
+		Result:  FinishResult{State: FinishStateReserved, Reserved: true},
+		Cause:   nested,
+		Actions: []RecoveryAction{{Text: "inspect reservation"}},
 	}
-	document, documentErr := diagnostic.Document()
-	if documentErr != nil {
-		t.Fatal(documentErr)
-	}
-	var out bytes.Buffer
-	if renderErr := presentation.Render(&out, document); renderErr != nil {
-		t.Fatal(renderErr)
-	}
-	if got := out.String(); got != want {
-		t.Fatalf("diagnostic = %q, want %q", got, want)
+	info, ok := DiagnosticFor(partial)
+	if !ok || info.Condition != "effort finish was interrupted" || info.State != "operation" || len(info.Changed) < 2 || info.Changed[1].Label != "finishing reservation" || info.Changed[1].Value != "yes" || len(info.Actions) != 1 || info.Actions[0].Text != "inspect reservation" {
+		t.Fatalf("partial diagnostic = %#v, present=%t", info, ok)
 	}
 }
 
