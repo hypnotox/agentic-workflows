@@ -209,8 +209,9 @@ func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 			step := workflowStep(workflowMap(workflowJobs(c)["selection"]), "Select typed affected lanes")
 			step["run"] = strings.Replace(stringValue(step["run"]), `if .outcome == "widened" then`, `if .outcome == "widened-without-lanes" then`, 1)
 		}},
-		{"missing complete Go behavior", func(c, _ map[string]any) {
-			workflowStep(workflowMap(workflowJobs(c)["linux"]), "Complete Go behavior with calibration timing")["run"] = "true"
+		{"full Go warning ceiling changes", func(c, _ map[string]any) {
+			step := workflowStep(workflowMap(workflowJobs(c)["linux"]), "Complete Go behavior with calibration timing")
+			step["run"] = strings.Replace(stringValue(step["run"]), "AWF_FULL_LINUX_CEILING=4m", "AWF_FULL_LINUX_CEILING=5m", 1)
 		}},
 		{"missing calibration timing artifact", func(c, _ map[string]any) {
 			workflowMap(workflowStep(workflowMap(workflowJobs(c)["linux"]), "Upload full Linux calibration timing")["with"])["name"] = "foreign-timing"
@@ -528,7 +529,7 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 	for _, required := range []struct {
 		step, condition, run string
 	}{
-		{"Complete Go behavior with calibration timing", "", `./x test-full-linux calibrate --artifact "$RUNNER_TEMP/awf-full-linux-timing-v1.json"`},
+		{"Complete Go behavior with calibration timing", "", `AWF_FULL_LINUX_CEILING=4m ./x test-full-linux budget --artifact "$RUNNER_TEMP/awf-full-linux-timing-v1.json"`},
 		{"Build, blocking lint, version, and pins", "", "./x gate"},
 		{"Selected release-archive behavior", "${{ github.event_name == 'pull_request' && needs.selection.outputs.release_archive == 'true' }}", "go test -count=1 ./cmd/releasecheck"},
 		{"Selected render and repository checks", "${{ github.event_name != 'pull_request' || needs.selection.outputs.render_template == 'true' }}", "./x check && ./x render && git diff --exit-code"},
