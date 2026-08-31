@@ -174,7 +174,7 @@ jobs:
         run: |
           temp_root="$(cd "$RUNNER_TEMP" && pwd -P)"
           env TMPDIR="$temp_root" GOTMPDIR="$temp_root" go test -count=1 ./internal/filesystem ./internal/filepublication ./internal/projectmutation ./internal/git ./internal/effort ./internal/effort/application ./internal/worktree
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         if: ${{ github.event_name != 'pull_request' }}
         with: {node-version-file: .nvmrc, cache: npm, cache-dependency-path: tools/pi-extension-test/package-lock.json}
       - name: Complete macOS Go assurance
@@ -200,7 +200,7 @@ jobs:
         with: {ref: '${{ github.event_name == ''pull_request'' && github.event.pull_request.head.sha || github.sha }}'}
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with: {go-version-file: go.mod}
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with: {node-version-file: .nvmrc, cache: npm, cache-dependency-path: tools/pi-extension-test/package-lock.json}
       - name: Assert native target linux/amd64
         run: |
