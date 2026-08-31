@@ -8,6 +8,22 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.45.0] - 2026-08-31
+
+### Breaking changes
+
+- Require live repositories to already use schema 50. Older live repositories are refused without writes and must first use AWF 0.44 to reach schema 50; the managed adopter fleet completed that transition before this release.
+
+- Remove Pi session association, every `awf effort activity ...` command, and every `awf effort memory ...` command. The generic workflow now resolves the memory path with `awf effort show` and edits it with ordinary file tools. Existing memory frontmatter and `activity.json` remain accepted as opaque bytes, but a Pi process that loaded the old effort extension must be restarted before repository synchronization.
+
+### Others
+
+- Move supported source builds and development to Go 1.27.
+
+- Add typed affected-test lanes and an evidence-derived hosted full-Linux budget with timing artifacts, a four-minute warning threshold, and a twelve-minute hard timeout.
+
+- Add complete native source assurance on Linux/amd64 and macOS/arm64, and configure release publication to wait for matching candidate archive lifecycle smoke on both platforms.
+
 ## [0.44.0] - 2026-08-30
 
 ### Breaking changes
