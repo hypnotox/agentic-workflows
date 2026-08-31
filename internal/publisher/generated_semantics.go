@@ -6,6 +6,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -15,15 +16,19 @@ import (
 // selected tree before the output plan leaves Publisher.
 func generatedSemantics(p renderInputs, topics topic.Corpus) (generatedcheck.AdditionalInput, error) {
 	input := generatedcheck.AdditionalInput{Vars: maps.Clone(p.cfg.Vars), Domains: slices.Clone(p.cfg.Domains)}
-	for _, kind := range []string{"skills", "agents", "docs"} {
-		for _, name := range artifactNames(p.catalog(), kind) {
-			sections := artifactSections(p.catalog(), kind, name)
-			input.Artifacts = append(input.Artifacts, generatedcheck.Artifact{Kind: kind, Name: name, Sections: slices.Clone(sections)})
-			sidecar, err := p.cfg.Sidecar(kind, name)
+	for _, kind := range artifactregistry.Kinds() {
+		if kind.Cardinality != artifactregistry.PerEntry {
+			continue
+		}
+		names, _ := artifactregistry.CatalogNames(p.catalog(), kind.Plural)
+		for _, name := range names {
+			sections, _ := artifactregistry.Sections(p.catalog(), kind.Plural, name)
+			input.Artifacts = append(input.Artifacts, generatedcheck.Artifact{Kind: kind.Plural, Name: name, Sections: slices.Clone(sections)})
+			sidecar, err := p.cfg.Sidecar(kind.Plural, name)
 			if err != nil {
 				return generatedcheck.AdditionalInput{}, err
 			}
-			input.Sidecars = append(input.Sidecars, generatedcheck.SidecarData{Kind: kind, Name: name, Path: ".awf/" + kind + "/" + name + ".yaml", Data: maps.Clone(sidecar.Data)})
+			input.Sidecars = append(input.Sidecars, generatedcheck.SidecarData{Kind: kind.Plural, Name: name, Path: ".awf/" + kind.Plural + "/" + name + ".yaml", Data: maps.Clone(sidecar.Data)})
 		}
 	}
 	for _, domain := range p.cfg.Domains {
@@ -72,29 +77,6 @@ func generatedSemantics(p renderInputs, topics topic.Corpus) (generatedcheck.Add
 	}
 	input.ResidentRoot = p.state.Roots().Tracked == p.state.Roots().Resident
 	return input, nil
-}
-
-func artifactNames(c *catalog.Catalog, kind string) []string {
-	switch kind {
-	case "skills":
-		return slices.Sorted(maps.Keys(c.Skills))
-	case "agents":
-		return slices.Sorted(maps.Keys(c.Agents))
-	case "docs":
-		return slices.Sorted(maps.Keys(c.Docs))
-	}
-	return nil
-}
-func artifactSections(c *catalog.Catalog, kind, name string) []string {
-	switch kind {
-	case "skills":
-		return c.Skills[name].Sections
-	case "agents":
-		return c.Agents[name].Sections
-	case "docs":
-		return c.Docs[name].Sections
-	}
-	return nil
 }
 
 func cloneGeneratedOutput(input generatedcheck.AdditionalInput) generatedcheck.AdditionalInput {

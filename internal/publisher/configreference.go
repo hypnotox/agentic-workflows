@@ -7,6 +7,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -45,8 +46,10 @@ func potentialVarConsumers(cat *catalog.Catalog) (map[string][]string, error) {
 		}
 		return nil
 	}
-	for _, kind := range []string{"skills", "agents", "docs"} {
-		d, _ := descriptorByPlural(kind)
+	for _, d := range kindDescriptors {
+		if d.poolNames == nil {
+			continue
+		}
 		for _, name := range d.poolNames(cat) {
 			if err := add(d.templateID(cat, name)); err != nil {
 				return nil, err
@@ -61,7 +64,7 @@ func potentialVarConsumers(cat *catalog.Catalog) (map[string][]string, error) {
 			return nil, err
 		}
 	}
-	for _, name := range hookNames {
+	for _, name := range artifactregistry.Hooks() {
 		if err := add(hookTID(name)); err != nil {
 			return nil, err
 		}

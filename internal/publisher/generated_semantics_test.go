@@ -8,6 +8,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -82,12 +83,15 @@ func TestGeneratedSemanticsPropagatesPreparedTreeErrors(t *testing.T) {
 }
 
 func TestGeneratedSemanticClosedKinds(t *testing.T) {
-	c := &catalog.Catalog{}
-	if artifactNames(c, "unknown") != nil || artifactSections(c, "unknown", "") != nil {
+	if names, ok := artifactregistry.CatalogNames(&catalog.Catalog{}, "unknown"); ok || names != nil {
 		t.Fatal("unknown generated semantic kind was accepted")
 	}
 	projected := map[string]bool{}
-	for _, name := range artifactNames(catalog.Standard, "docs") {
+	names, ok := artifactregistry.CatalogNames(catalog.Standard, "docs")
+	if !ok {
+		t.Fatal("docs are not a registry catalog projection")
+	}
+	for _, name := range names {
 		projected[name] = true
 	}
 	for _, singleton := range catalog.SingletonKindsFor(catalog.Standard) {

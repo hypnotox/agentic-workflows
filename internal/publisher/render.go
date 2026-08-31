@@ -11,6 +11,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -23,16 +24,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
-
-// runnerSections is the pure awf wrapper's single declared section: the body
-// that resolves the bootstrap-pinned binary first, then PATH awf, and execs it
-// with all arguments forwarded verbatim.
-var runnerSections = []string{"runner-body"}
-
-// hookNames are the git-hook payload scripts the hooks singleton renders as a
-// unit under .awf/hooks/ (ADR-0048); each name resolves its template id
-// through hookTID.
-var hookNames = []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit", "reference-transaction"}
 
 type RenderedFile struct {
 	Path         string
@@ -584,16 +575,21 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 		}
 		rf, err := renderTarget(p, unit.kind, "", unit.tid, unit.sections,
 			config.Sidecar{}, projectData(p, config.Sidecar{}, eff), unit.path, eff,
-			&renderOutputOptions{encoder: PlainAgentDialect})
+			&renderOutputOptions{encoder: unit.encoder, bannerStyle: unit.provenance})
 		if err != nil {
 			return nil, err
 		}
+		rf.Policy = unit.policy
 		out = append(out, rf)
 	}
 	// Every resident root has exactly one tracked self-ignoring node. Dynamic
 	// descendants are local authority and never enter the manifest.
 	for _, name := range resident.RootNames() {
-		rf, err := renderResidentMarker(p, name, eff)
+		artifact := artifactregistry.Resident(name)
+		if !artifact.Participation.Check {
+			continue
+		}
+		rf, err := renderResidentMarker(p, artifact, eff)
 		if err != nil {
 			return nil, err
 		}
@@ -607,8 +603,11 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDeclarat
 // renderResidentMarker is the single resident-marker renderer. It owns template
 // execution and provenance-banner injection, so every caller sees the exact bytes
 // ordinary rendering plans and publishes.
-func renderResidentMarker(p renderInputs, name string, eff map[string]bool) (RenderedFile, error) {
-	return renderTarget(p, name, "", residentGitignoreTID(name), nil, config.Sidecar{}, projectData(p, config.Sidecar{}, eff), config.DirName+"/"+name+"/.gitignore", eff, &renderOutputOptions{encoder: PlainAgentDialect})
+func renderResidentMarker(p renderInputs, artifact artifactregistry.ResidentArtifact, eff map[string]bool) (RenderedFile, error) {
+	if artifact.Owner != artifactregistry.OwnerResident {
+		return RenderedFile{}, fmt.Errorf("resident artifact %q has invalid owner %q", artifact.Name, artifact.Owner)
+	}
+	return renderTarget(p, artifact.Name, "", artifact.TemplateID, nil, config.Sidecar{}, projectData(p, config.Sidecar{}, eff), artifact.OutputPath, eff, &renderOutputOptions{encoder: PlainAgentDialect})
 }
 
 // renderTarget assembles an artifact (sidecar sections + convention parts), executes
@@ -851,13 +850,13 @@ func generateLocalDocs(p renderInputs, eff map[string]bool) ([]RenderedFile, err
 	for _, local := range p.cfg.NormalizedLocalDocs() {
 		sc := config.Sidecar{Data: map[string]any{"title": local.Title}}
 		rf, err := renderTarget(p, "local-doc", local.Name, localDocTID, []string{"body"}, sc,
-			projectData(p, sc, eff), config.DocsDir+"/"+local.Name+".md", eff)
+			projectData(p, sc, eff), artifactregistry.LocalDocOutputPath(local.Name), eff)
 		if err != nil {
 			return nil, err
 		}
 		rf.Declarer, rf.DeclarerProjection = "local-doc:"+local.Name, local.Name+"\x00"+local.Title+"\x00"+local.Description
 		rf.ConfigHash = manifest.Hash([]byte(rf.ConfigHash + "\x00" + rf.DeclarerProjection))
-		rf.Policy = OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}
+		rf.Policy = declaredPolicy("local-doc", true)
 		out = append(out, rf)
 	}
 	return out, nil
@@ -868,7 +867,7 @@ func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus, eff map[string
 	for _, entry := range corpus.All() {
 		sc := config.Sidecar{Data: pitfallLeafData(entry)}
 		rf, err := renderTarget(p, "pitfall-entry", entry.Slug, pitfallEntryTID, nil, sc,
-			projectData(p, sc, eff), config.DocsDir+"/pitfalls/"+entry.Slug+".md", eff,
+			projectData(p, sc, eff), artifactregistry.PitfallOutputPath(entry.Slug), eff,
 			&renderOutputOptions{sources: []string{entry.SourcePath}})
 		if err != nil {
 			return nil, err

@@ -13,12 +13,13 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 <!-- awf:edit components: from .awf/docs/parts/architecture/components.md -->
 <!-- awf:template-source templates/docs/architecture.md.tmpl -->
 ## Components
-- `internal/projectstate`: owns immutable loaded project facts and resolved target declarations below application coordination.
+- `internal/artifactregistry`: owns canonical managed-artifact declarations and stable projections for kind, cardinality, target and capability metadata, catalog templates, output paths, hooks, check participation, and ownership.
+- `internal/projectstate`: owns immutable loaded project facts and exposes bounded compatibility projections of registry-resolved targets below application coordination.
 - `internal/outputplan`: owns neutral immutable output declarations, policies, recipes, rendered outputs, nodes, and operation plans shared below application coordination.
-- `internal/publisher`: the application-level Publisher constructs output plans, coordinates rendering and publication, and owns immutable publication Results from immutable project facts plus an explicit tree reader.
+- `internal/publisher`: the application-level Publisher derives output plans from the artifact registry and immutable project facts, coordinates rendering and publication, and owns immutable publication Results plus an explicit tree reader.
 - `internal/checkresult`: owns immutable ranked findings with explicit protected properties and separately unranked information.
 - `internal/repositorycheck`: the policy-free RepositoryChecker preserves explicit owner-result order and compatibility projections without preparing inputs or inferring classification.
-- `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving bounded compatibility adapters and unrelated project operations.
+- `internal/project`: `Loader` constructs the lower `ProjectState` facts while preserving bounded registry compatibility adapters and unrelated project operations.
 - `internal/currentstatecoord`: focused application operations select immutable working or staged universes for topic authority, current-state checks, and staged output preparation.
 - Focused operation packages: `internal/initop`, `internal/checkop`, `internal/configop`, `internal/topicop`, `internal/domainop`, `internal/localdocop`, and `internal/authoringop` own bounded command use cases above their semantic mechanisms. `internal/authoringop` resolves semantic part identities, validates a complete candidate tree, publishes one confined source, and composes ordinary leased synchronization.
 - `internal/effort/application`: the single effort application boundary owns the six lifecycle use cases, mutation-lease selection, managed-worktree coordination, rollback, and presentation mapping.

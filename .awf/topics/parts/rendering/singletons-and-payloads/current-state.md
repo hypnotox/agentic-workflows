@@ -1,4 +1,4 @@
-Always-on and toggleable singleton outputs: bootstrap and hook payloads, resident-root gitignores, and executable-mode rules. The commit-msg payload delegates to the commit-message gate. Pre-merge-commit remains a thin staged check because Git has not exposed the final message and parents at that earlier hook.
+The artifact registry canonically declares always-on and toggleable core units, hook payload identities and paths, catalog-derived singletons, check participation, and resident-root output paths. Publisher projections render bootstrap and hook payloads, resident-root gitignores, and executable-mode rules from those declarations. The commit-msg payload delegates to the commit-message gate. Pre-merge-commit remains a thin staged check because Git has not exposed the final message and parents at that earlier hook.
 
 ## Claims
 

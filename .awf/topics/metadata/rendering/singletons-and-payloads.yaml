@@ -1,6 +1,7 @@
 title: Singletons and payloads
 summary: "Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, file modes."
 paths:
+  - internal/artifactregistry/**
   - internal/outputplan/**
   - internal/publisher/**
   - internal/project/**

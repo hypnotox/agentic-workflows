@@ -37,7 +37,7 @@ func TestClaudeTargetPaths(t *testing.T) {
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow)
 // invariant: rendering/pi-runtime:pi-session-handoff-workflow (TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow)
 func TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow(t *testing.T) {
-	if !hasCapability(piTarget, CapabilitySubagentTools) || !hasCapability(piTarget, CapabilitySessionHandoff) {
+	if !slices.Contains(piTarget.Capabilities, CapabilitySubagentTools) || !slices.Contains(piTarget.Capabilities, CapabilitySessionHandoff) {
 		t.Fatalf("Pi capabilities = %v", piTarget.Capabilities)
 	}
 	if len(piTarget.Outputs) != 2 {

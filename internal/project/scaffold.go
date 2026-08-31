@@ -7,6 +7,7 @@ import (
 	"maps"
 	"slices"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
@@ -25,8 +26,11 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 	// Collect referenced var names from every selected catalog template family so an
 	// opt-in target added later renders without <no value>.
 	varSet := map[string]bool{}
-	for _, kind := range []string{"skills", "agents", "docs"} {
-		d, _ := descriptorByPlural(kind)
+	for _, kind := range artifactregistry.Kinds() {
+		d, _ := descriptorByPlural(kind.Plural)
+		if d.poolNames == nil {
+			continue
+		}
 		for _, name := range d.poolNames(cat) {
 			if err := collectVars(templates.FS, d.templateID(cat, name), varSet); err != nil {
 				return nil, err
@@ -41,7 +45,7 @@ func ScaffoldConfig(prefix string, vars map[string]string, scopes []string) ([]b
 		}
 	}
 	// Hook payloads render by default, so their vars must be seeded.
-	for _, name := range hookNames {
+	for _, name := range artifactregistry.Hooks() {
 		if err := collectVars(templates.FS, hookTID(name), varSet); err != nil {
 			return nil, err
 		}
@@ -228,8 +232,11 @@ func NeededVars() (map[string]bool, error) {
 func neededVarsFromFS(fsys fs.FS) (map[string]bool, error) {
 	cat := catalog.CompleteView().Catalog()
 	varSet := map[string]bool{}
-	for _, kind := range []string{"skills", "agents", "docs"} {
-		d, _ := descriptorByPlural(kind)
+	for _, kind := range artifactregistry.Kinds() {
+		d, _ := descriptorByPlural(kind.Plural)
+		if d.poolNames == nil {
+			continue
+		}
 		for _, n := range d.poolNames(cat) {
 			if err := collectVars(fsys, d.templateID(cat, n), varSet); err != nil {
 				return nil, err
@@ -244,7 +251,7 @@ func neededVarsFromFS(fsys fs.FS) (map[string]bool, error) {
 			return nil, err
 		}
 	}
-	for _, name := range hookNames {
+	for _, name := range artifactregistry.Hooks() {
 		if err := collectVars(fsys, hookTID(name), varSet); err != nil {
 			return nil, err
 		}

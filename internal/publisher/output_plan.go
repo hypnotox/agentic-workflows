@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
@@ -325,7 +326,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			if err != nil {
 				return nil, err
 			}
-			add(t.SkillPath(cfg.Prefix, name), tid, t.Name, input)
+			add(artifactregistry.OutputPath(cat, t, cfg.Prefix, "skills", name), tid, t.Name, input)
 		}
 		for _, name := range slices.Sorted(maps.Keys(cat.Agents)) {
 			sc, err := cfg.Sidecar("agents", name)
@@ -341,7 +342,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 					return nil, err
 				}
 			}
-			add(t.AgentPath(name), tid, t.Name, input)
+			add(artifactregistry.OutputPath(cat, t, cfg.Prefix, "agents", name), tid, t.Name, input)
 		}
 		bridgeInputs, err := markdownInputs(t.BridgeTemplate)
 		if err != nil {
@@ -376,18 +377,8 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if err != nil {
 			return nil, err
 		}
-		// Output shape is catalog structure, independent of Mandatory. AgentsDoc
-		// owns the root guide, Path owns a structural docs output, and an empty
-		// Path is a name-derived doc. Mandatory only selects sidecar location.
-		out := name + ".md"
-		if e.Path != "" {
-			out = e.Path
-		}
-		if e.AgentsDoc {
-			out = "AGENTS.md"
-		} else {
-			out = config.DocsDir + "/" + out
-		}
+		// Output shape is a canonical registry projection of catalog structure.
+		out := artifactregistry.OutputPath(cat, Target{}, cfg.Prefix, "docs", name)
 		sidecarPath := ".awf/" + name + ".yaml"
 		if !e.Mandatory {
 			sidecarPath = ".awf/docs/" + name + ".yaml"
@@ -426,7 +417,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		// read back to preserve the authored body and is genuinely an input to its
 		// own next render. The authored-input filter drops it on the first render,
 		// when the output is still absent, exactly as the renderer does.
-		outPath := config.DocsDir + "/" + local.Name + ".md"
+		outPath := artifactregistry.LocalDocOutputPath(local.Name)
 		declaredInputs, err := markdownInputs(localDocTID, OutputInput{Path: outPath, Role: ArtifactManagedOutput})
 		if err != nil {
 			return nil, err
@@ -438,7 +429,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if err != nil {
 			return nil, err
 		}
-		add(config.DocsDir+"/pitfalls/"+entry.Slug+".md", pitfallEntryTID, "pitfall:"+entry.Slug, declaredInputs)
+		add(artifactregistry.PitfallOutputPath(entry.Slug), pitfallEntryTID, "pitfall:"+entry.Slug, declaredInputs)
 	}
 	for _, d := range cfg.Domains {
 		sc, err := cfg.Sidecar("domains", d)
@@ -462,7 +453,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if err != nil {
 			return nil, err
 		}
-		add(config.DocsDir+"/domains/"+d+".md", domainTID, "generated-domain", declaredInputs)
+		add(artifactregistry.OutputPath(cat, Target{}, cfg.Prefix, "domains", d), domainTID, "generated-domain", declaredInputs)
 	}
 	allMetadata, err := read.Paths(".awf/topics/metadata/")
 	if err != nil {
@@ -477,7 +468,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		if err != nil {
 			return nil, err
 		}
-		add(config.DocsDir+"/topics/"+id+".md", topicTID, "topic:"+id, declaredInputs)
+		add(artifactregistry.TopicOutputPath(id), topicTID, "topic:"+id, declaredInputs)
 	}
 	for _, d := range cfg.Domains {
 		topicInputs := []OutputInput{}
@@ -496,7 +487,7 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 			if err != nil {
 				return nil, err
 			}
-			add(config.DocsDir+"/topics/"+d+"/index.md", topicIndexTID, "topic-index:"+d, declaredInputs)
+			add(artifactregistry.TopicIndexOutputPath(d), topicIndexTID, "topic-index:"+d, declaredInputs)
 		}
 	}
 	for _, unit := range conditionalUnits() {
@@ -506,8 +497,14 @@ func buildOutputDeclarations(cfg *config.Config, cat *catalog.Catalog, targets [
 		add(unit.path, unit.tid, unit.tid, inputs(unit.tid, partInputs(unit.kind, "", unit.sections)...))
 	}
 	for _, name := range resident.RootNames() {
-		tid := residentGitignoreTID(name)
-		add(".awf/"+name+"/.gitignore", tid, tid, inputs(tid))
+		artifact := artifactregistry.Resident(name)
+		if !artifact.Participation.Check {
+			continue
+		}
+		if artifact.Owner != artifactregistry.OwnerResident {
+			return nil, fmt.Errorf("resident artifact %q has invalid owner %q", artifact.Name, artifact.Owner)
+		}
+		add(artifact.OutputPath, artifact.TemplateID, artifact.TemplateID, inputs(artifact.TemplateID))
 	}
 	if readErr != nil {
 		return nil, readErr
@@ -595,14 +592,7 @@ func (op *OutputPlan) writeFiles() []RenderedFile {
 // declaredPolicy is assigned by a producer family, never inferred by a
 // template identifier or output filename. Consumers inspect only node Policy.
 func declaredPolicy(kind string, regen bool) OutputPolicy {
-	policy := OutputPolicy{Regenerate: regen}
-	switch kind {
-	case "skills", "agents":
-		policy.ValidateFrontmatter, policy.ScanReferences, policy.ScanSkillReferences = true, true, true
-	case "docs", "agents-doc", "doc-standard", "agents-md-standard", "working-with-awf", "pi-runtime-reference", "workflow", "architecture", "development", "glossary", "pitfalls", "roadmap", "testing", "releasing", "domains", "topics":
-		policy.ScanReferences, policy.ScanSkillReferences = true, true
-	}
-	return policy
+	return artifactregistry.Policy(kind, regen)
 }
 
 // targetOutputDeclaration is a pre-render, normalized descriptor for an
@@ -617,32 +607,11 @@ type targetOutputDeclaration struct {
 // resolvedTargetOutputs is the single selection and path translation point for
 // target-owned outputs. Planning, rendering, and prune all consume it.
 func validateTargetOutputRequirements(t Target, cat *catalog.Catalog) error {
-	for _, output := range t.Outputs {
-		if output.RequiresSkill != "" {
-			if _, ok := cat.Skills[output.RequiresSkill]; !ok {
-				return fmt.Errorf("target %q output %q requires unknown catalog skill %q", t.Name, output.Path, output.RequiresSkill)
-			}
-		}
-	}
-	return nil
+	return artifactregistry.ValidateTargetRequirements(t, cat)
 }
 
 func resolvedTargetOutputs(t Target, prefix string, selected []string) []TargetOutput {
-	selectedSet := map[string]bool{}
-	for _, name := range selected {
-		selectedSet[name] = true
-	}
-	out := []TargetOutput{}
-	for _, output := range t.Outputs {
-		if output.RequiresSkill != "" && !selectedSet[output.RequiresSkill] {
-			continue
-		}
-		if output.SkillName != "" {
-			output.Path = t.SkillPath(prefix, output.SkillName)
-		}
-		out = append(out, output)
-	}
-	return out
+	return artifactregistry.ResolveTargetOutputs(t, prefix, selected)
 }
 
 // targetOutputDeclarations reads recipe inputs but never executes a template.

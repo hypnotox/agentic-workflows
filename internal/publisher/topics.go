@@ -7,6 +7,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -29,7 +30,6 @@ func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFil
 	if err != nil {
 		return nil, nil, err
 	}
-	base := config.DocsDir + "/topics"
 	for _, discovered := range corpus.All() {
 		t, _ := corpus.ByTopicID(discovered.ID.String())
 		var referenceProjection []string
@@ -52,7 +52,7 @@ func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFil
 		if err != nil {
 			return nil, nil, err
 		}
-		path := base + "/" + t.ID.Domain + "/" + t.ID.Slug + ".md"
+		path := artifactregistry.TopicOutputPath(t.ID.String())
 		cfgHash = templateSourceConfigHash(cfgHash, templateSourceRoot(p))
 		observed := normalizeOutputInputs(append([]OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/" + topicTID, Role: ArtifactTemplate}, {Path: metadataPath, Role: ArtifactTopicMetadata}, {Path: partPath, Role: ArtifactClaimPart}}, templateInputs...))
 		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicTID, TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: observed, ObservedTemplateID: topicTID})
@@ -77,7 +77,7 @@ func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFil
 			config.DirName + "/topics/parts/" + domain + "/*/current-state.md",
 		})
 		enc, _ := yaml.Marshal(model)
-		path := base + "/" + domain + "/index.md"
+		path := artifactregistry.TopicIndexOutputPath(domain)
 		observed := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/" + topicIndexTID, Role: ArtifactTemplate}}
 		for _, t := range topics {
 			metadataPath, partPath := relSlash(p.root(), t.MetadataPath), relSlash(p.root(), t.PartPath)

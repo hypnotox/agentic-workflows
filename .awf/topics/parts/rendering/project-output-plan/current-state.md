@@ -1,6 +1,6 @@
-A project render assembles a deterministic output set from catalog, target, configuration, topic, pitfall, and local-document declarations. Output planning rejects conflicting or invalid declarations before mutation, and repository checks preserve completed owner evidence and explicit presentation order.
+A project render assembles a deterministic output set from artifact-registry projections of catalog, target, configuration, topic, pitfall, local-document, hook, and resident declarations. The registry owns canonical output paths and producer-family check policy; output planning rejects conflicting or invalid declarations before mutation, and repository checks preserve completed owner evidence and explicit presentation order.
 
-The Pi target descriptor is the sole declaration of the two Pi-specific outputs: the subagent index and model-routing module. No target descriptor retains an effort index, effort client, or `using-effort` output.
+The artifact registry's Pi target descriptor is the sole declaration of the two Pi-specific outputs: the subagent index and model-routing module. No target descriptor retains an effort index, effort client, or `using-effort` output.
 
 ## Claims
 

@@ -1,6 +1,7 @@
 title: Catalog and targets
 summary: The compile-time catalog and the tool-agnostic target seam.
 paths:
+  - internal/artifactregistry/**
   - internal/outputplan/**
   - internal/publisher/**
   - internal/catalog/**
