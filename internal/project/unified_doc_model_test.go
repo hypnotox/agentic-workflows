@@ -47,7 +47,7 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 
 	// (c) every structural non-root entry's TemplateKey/Path lands in templateMap
 	// at the derived docsDir path.
-	state := testStateWith(testState(&config.Config{}), "", resident.NewRoots("", ""), false, cat, cat, nil)
+	state := testStateWith(testState(&config.Config{}), "", resident.NewRoots("", ""), false, cat, nil)
 	tm := layout(newRenderInputs(state, &config.Config{}, nil)).templateMap()
 	for _, e := range cat.Docs {
 		if e.Path == "" || e.AgentsDoc {

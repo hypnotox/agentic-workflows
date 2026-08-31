@@ -20,7 +20,7 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -91,7 +91,7 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 
 func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 	root := t.TempDir()
-	p := testStateWith(testState(&config.Config{}), root, resident.NewRoots(root, root), false, catalog.Standard, catalog.Standard, nil)
+	p := testStateWith(testState(&config.Config{}), root, resident.NewRoots(root, root), false, catalog.Standard, nil)
 	rendered := map[string]RenderedFile{
 		"regen.md":  {Path: "regen.md", Content: "regen", Policy: OutputPolicy{Regenerate: true}},
 		"normal.md": {Path: "normal.md", Content: "normal"},
@@ -123,7 +123,7 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 	t.Run("no Git", func(t *testing.T) {
 		root := scaffold(t, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
-		p, err := Open(testContext(t), root)
+		p, err := loadTestSession(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -149,11 +149,11 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 		fixture := gitfixture.InitRepo(t)
 		root := filepath.Join(fixture.Root(), "nested")
 		testsupport.WriteAwfConfig(t, root, withTestGateCmd("prefix: example\nintegrationBranch: main\nvars: {}\n"))
-		p, err := Open(testContext(t), root)
+		p, err := loadTestSession(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !p.nested() {
+		if !p.Nested() {
 			t.Fatal("Loader.Open did not preserve the containing-repository prefix")
 		}
 		if err := syncProject(p); err != nil {

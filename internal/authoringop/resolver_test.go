@@ -11,16 +11,16 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-func resolverFixture(t *testing.T) (*project.ProjectState, *config.Config) {
+func resolverFixture(t *testing.T) (*project.Session, *config.Config) {
 	t.Helper()
 	root := t.TempDir()
 	writeFile(t, filepath.Join(root, ".awf/config.yaml"), "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [tooling]\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
 	loader := project.NewLoaderWithoutRepository(config.Load, catalog.Standard, func(context.Context, string) string { return root })
-	state, cfg, err := loader.OpenForOperation(context.Background(), root)
+	state, err := loader.Load(context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	return state, cfg
+	return state, state.Config()
 }
 
 // invariant: tooling/cli:semantic-artifact-authoring (TestResolveSidecarUsesSemanticCapabilitiesAndOwnedLayouts)
@@ -68,20 +68,20 @@ func TestResolveTargetsRejectMissingAuthoringAuthority(t *testing.T) {
 	state, cfg := resolverFixture(t)
 	for _, tc := range []struct {
 		name  string
-		state *project.ProjectState
+		state *project.Session
 		cfg   *config.Config
 	}{
 		{name: "nil state", cfg: cfg},
-		{name: "missing state", state: &project.ProjectState{}, cfg: cfg},
+		{name: "missing state", state: &project.Session{}, cfg: cfg},
 		{name: "nil config", state: state},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			for _, resolve := range []func(*project.ProjectState, *config.Config) error{
-				func(state *project.ProjectState, cfg *config.Config) error {
+			for _, resolve := range []func(*project.Session, *config.Config) error{
+				func(state *project.Session, cfg *config.Config) error {
 					_, err := project.ResolveSidecarTarget(state, cfg, "skill", "using-awf", "data.custom")
 					return err
 				},
-				func(state *project.ProjectState, cfg *config.Config) error {
+				func(state *project.Session, cfg *config.Config) error {
 					_, err := project.ResolveAuthoringTarget(state, cfg, "skill", "using-awf", "identity")
 					return err
 				},

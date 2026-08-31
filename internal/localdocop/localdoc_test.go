@@ -36,11 +36,11 @@ func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.
 func initializedLoader(t *testing.T, root string) *project.Loader {
 	t.Helper()
 	loader := operationLoader()
-	state, cfg, err := loader.OpenForOperation(context.Background(), root)
+	state, err := loader.Load(context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	if _, err := publisher.New(state, project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatal(err)
 	}
 	return loader

@@ -20,7 +20,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -619,7 +618,7 @@ func resolvedTargetOutputs(t Target, prefix string, selected []string) []TargetO
 func targetOutputDeclarations(p renderInputs, eff map[string]bool) (map[string]targetOutputDeclaration, error) {
 	out := map[string]targetOutputDeclaration{}
 	for _, t := range p.targets() {
-		if err := projectstate.ValidateTarget(t); err != nil {
+		if err := artifactregistry.ValidateTarget(t); err != nil {
 			return nil, err
 		}
 		if err := validateTargetOutputRequirements(t, projectCatalog(p)); err != nil {

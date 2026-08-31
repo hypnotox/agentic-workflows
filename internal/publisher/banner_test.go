@@ -144,7 +144,7 @@ func TestInjectSourceMarker(t *testing.T) {
 // leading #-comment keyed on the template id (ADR-0069).
 func TestResidentMarkerCompositionMatchesPlannedOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,7 +169,7 @@ func TestResidentMarkerCompositionMatchesPlannedOutput(t *testing.T) {
 
 func TestResidentMarkerPlanPropagatesOutputPlanFailure(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

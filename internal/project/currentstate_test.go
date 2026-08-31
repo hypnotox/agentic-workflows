@@ -1,4 +1,4 @@
-package project
+package project_test
 
 import (
 	"fmt"
@@ -7,15 +7,19 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-func currentStateFindings(r CurrentStateReport) []string {
+func currentStateFindings(r currentstatecoord.CurrentStateReport) []string {
 	var out []string
 	for _, coverage := range r.Coverage {
 		if coverage.Severity == severity.Error {
@@ -25,7 +29,7 @@ func currentStateFindings(r CurrentStateReport) []string {
 	return out
 }
 
-func currentStateWarningNotes(report CurrentStateReport) []string {
+func currentStateWarningNotes(report currentstatecoord.CurrentStateReport) []string {
 	var out []string
 	for _, finding := range report.Coverage {
 		if finding.Severity == severity.Warn {
@@ -36,7 +40,7 @@ func currentStateWarningNotes(report CurrentStateReport) []string {
 }
 
 func TestCurrentStateReportRouting(t *testing.T) {
-	r := CurrentStateReport{Coverage: []topic.CoverageFinding{{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error, CandidateTopics: []string{"alpha/global"}}, {Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3}}}
+	r := currentstatecoord.CurrentStateReport{Coverage: []topic.CoverageFinding{{Path: "internal/a.go", Domain: "alpha", Kind: topic.Uncovered, Severity: severity.Error, CandidateTopics: []string{"alpha/global"}}, {Path: "internal/b.go", Kind: topic.Fanout, Severity: severity.Warn, Topics: 3}}}
 	findings := currentStateFindings(r)
 	if len(findings) != 1 || !strings.Contains(findings[0], "internal/a.go") {
 		t.Fatalf("findings = %#v", findings)
@@ -61,6 +65,33 @@ domains:
 // csYAML is csNoPolicyYAML plus the currentState block.
 const csYAML = csNoPolicyYAML + "currentState:\n"
 
+func lockFile(root string) string { return filepath.Join(root, ".awf", "awf.lock") }
+
+func scaffoldFiles(t *testing.T, source string, files map[string]string) string {
+	t.Helper()
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, source)
+	for rel, body := range files {
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", rel), body)
+	}
+	return root
+}
+
+func loadSession(t *testing.T, root string) *project.Session {
+	t.Helper()
+	repo, _, err := awfgit.OpenContaining(root)
+	var session *project.Session
+	if err == nil {
+		session, err = project.NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo).Load(testsupport.Context(t), root)
+	} else {
+		session, err = project.NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot).Load(testsupport.Context(t), root)
+	}
+	if err != nil {
+		t.Fatal(err)
+	}
+	return session
+}
+
 // csRuleTopic is a one-claim current-state part citing an Implemented Origin ADR.
 const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\n"
 
@@ -68,7 +99,7 @@ const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\n"
 // given working files (untracked but nonignored, so the working Tree includes
 // them). It writes an Implemented ADR-0001 the topic can cite unless the caller
 // supplies its own decisions file.
-func csRepo(t *testing.T, cfg string, files map[string]string) *ProjectState {
+func csRepo(t *testing.T, cfg string, files map[string]string) *project.Session {
 	t.Helper()
 	repo := gitfixture.InitRepo(t)
 	dir := repo.Root()
@@ -87,11 +118,7 @@ func csRepo(t *testing.T, cfg string, files map[string]string) *ProjectState {
 	for rel, body := range files {
 		testsupport.WriteFile(t, filepath.Join(dir, rel), body)
 	}
-	p, err := Open(testContext(t), dir)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return p
+	return loadSession(t, dir)
 }
 
 // TestCheckCurrentState runs the working-tree check end to end: a covered path
@@ -118,7 +145,7 @@ func TestCheckCurrentState(t *testing.T) {
 	}
 	testsupport.WriteFile(t, lockFile(p.Root()), string(b))
 
-	report, err := checkCurrentStateProject(p, testContext(t))
+	report, err := currentstatecoord.CheckWorking(p.Root(), p.Repository(), testsupport.Context(t))
 	if err != nil {
 		t.Fatalf("CheckCurrentState: %v", err)
 	}
@@ -170,7 +197,7 @@ func TestCheckCurrentStateNoPolicy(t *testing.T) {
 		files[".awf/topics/parts/alpha/"+name+"/current-state.md"] = part
 	}
 	p := csRepo(t, cfg, files)
-	report, err := checkCurrentStateProject(p, testContext(t))
+	report, err := currentstatecoord.CheckWorking(p.Root(), p.Repository(), testsupport.Context(t))
 	if err != nil {
 		t.Fatalf("CheckCurrentState: %v", err)
 	}
@@ -189,7 +216,7 @@ func TestCheckCurrentStateNoPolicy(t *testing.T) {
 // TestCheckCurrentStateOutsideRepo covers the filesystem working-tree fallback
 // for a scaffolded project that is not a git repository.
 func TestCheckStagedRootOutsideRepo(t *testing.T) {
-	if _, err := currentstatecoord.CheckStagedRoot(testContext(t), t.TempDir()); err == nil {
+	if _, err := currentstatecoord.CheckStagedRoot(testsupport.Context(t), t.TempDir()); err == nil {
 		t.Fatal("CheckStagedRoot accepted a non-repository")
 	}
 }
@@ -197,18 +224,15 @@ func TestCheckStagedRootOutsideRepo(t *testing.T) {
 func TestCheckCurrentStateOutsideRepo(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", nil)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/awf.lock"), `{"awfVersion":"0.44.0","schemaVersion":50,"files":{"prior":{}}}`)
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, err := checkCurrentStateProject(p, testContext(t)); err != nil {
+	p := loadSession(t, root)
+	if _, err := currentstatecoord.CheckWorking(p.Root(), p.Repository(), testsupport.Context(t)); err != nil {
 		t.Fatalf("filesystem current-state fallback: %v", err)
 	}
 }
 
 func TestCheckCurrentStateNoInvariantClaims(t *testing.T) {
 	p := csRepo(t, "prefix: example\nintegrationBranch: main\n", map[string]string{})
-	report, err := checkCurrentStateProject(p, testContext(t))
+	report, err := currentstatecoord.CheckWorking(p.Root(), p.Repository(), testsupport.Context(t))
 	if err != nil {
 		t.Fatalf("current-state check with no invariant claims: %v", err)
 	}
@@ -222,7 +246,7 @@ func TestCheckCurrentStateNoInvariantClaims(t *testing.T) {
 func TestCheckCurrentStateCorruptLock(t *testing.T) {
 	p := csRepo(t, csYAML, map[string]string{".awf/domains/alpha.yaml": "paths:\n  - internal/**\n"})
 	testsupport.WriteFile(t, lockFile(p.Root()), "{not json")
-	if _, err := checkCurrentStateProject(p, testContext(t)); err == nil {
+	if _, err := currentstatecoord.CheckWorking(p.Root(), p.Repository(), testsupport.Context(t)); err == nil {
 		t.Fatal("expected a lock parse error")
 	}
 }
@@ -232,7 +256,7 @@ func TestCheckCurrentStateIgnoresMalformedHistoricalDecision(t *testing.T) {
 		".awf/domains/alpha.yaml":      "paths:\n  - internal/**\n",
 		"docs/decisions/0001-first.md": "---\nstatus: [unterminated\n---\n# X\n",
 	})
-	report, err := checkCurrentStateProject(p, testContext(t))
+	report, err := currentstatecoord.CheckWorking(p.Root(), p.Repository(), testsupport.Context(t))
 	if err != nil {
 		t.Fatalf("malformed historical decision affected current-state check: %v", err)
 	}

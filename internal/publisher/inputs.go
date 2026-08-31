@@ -12,23 +12,34 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
+	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
+// ProjectSession is the read-only project selection consumed by Publisher.
+// The concrete authority owner is project.Session.
+type ProjectSession interface {
+	Root() string
+	Roots() resident.Roots
+	Config() *config.Config
+	Reader() ProjectTreeReader
+	Catalog() *catalog.Catalog
+	Targets() []Target
+}
+
 type renderInputs struct {
-	state    *projectstate.ProjectState
+	session  ProjectSession
 	cfg      *config.Config
 	read     ProjectTreeReader
 	version  string
 	selected *catalog.Catalog
 }
 
-func newRenderInputs(state *projectstate.ProjectState, cfg *config.Config, read ProjectTreeReader, version string) renderInputs {
-	return renderInputs{state: state, cfg: cfg, read: read, version: version, selected: state.Catalog()}
+func renderInputsFromSession(session ProjectSession, version string) renderInputs {
+	return renderInputs{session: session, cfg: session.Config(), read: session.Reader(), version: version, selected: session.Catalog()}
 }
-func (p renderInputs) root() string              { return p.state.Root() }
-func (p renderInputs) targets() []Target         { return p.state.Targets() }
+func (p renderInputs) root() string              { return p.session.Root() }
+func (p renderInputs) targets() []Target         { return p.session.Targets() }
 func (p renderInputs) catalog() *catalog.Catalog { return p.selected }
 
 func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
@@ -72,15 +83,12 @@ type Preparation struct {
 	glossary  glossarycheck.Input
 }
 
-// New composes a Publisher from immutable loaded facts and an explicit operation tree reader.
-func New(state *projectstate.ProjectState, cfg *config.Config, read ProjectTreeReader, version string) *Publisher {
-	if state == nil || cfg == nil || read == nil {
+// New composes a Publisher from one authoritative project Session.
+func New(session ProjectSession, version string) *Publisher {
+	if session == nil || session.Config() == nil || session.Reader() == nil {
 		panic("publisher: missing composition dependency")
 	}
-	// Retain only the selected tree binding from cfg. Every semantic value is a
-	// fresh projection of the state's immutable loaded facts.
-	privateConfig := cfg.OperationTree().Bind(state.Facts())
-	return &Publisher{inputs: newRenderInputs(state, privateConfig, read, version)}
+	return &Publisher{inputs: renderInputsFromSession(session, version)}
 }
 
 // Prepare derives one operation universe and constructs exactly one immutable plan.

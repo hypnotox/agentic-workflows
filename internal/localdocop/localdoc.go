@@ -89,12 +89,13 @@ func RunLeased(ctx context.Context, root string, doc config.LocalDoc, loader *pr
 		return Outcome{}, err
 	}
 	defer files.Close()
-	state, cfg, configIdentity, err := loader.OpenForMutation(ctx, root, files)
+	session, configIdentity, err := loader.LoadForMutation(ctx, root, files)
 	if err != nil {
 		return Outcome{}, err
 	}
 	defer configIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
-	composed := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version)
+	cfg := session.Config()
+	composed := publisher.New(session, project.Version)
 	if err := composed.PreflightLocalDoc(doc); err != nil {
 		return Outcome{}, err
 	}
@@ -114,11 +115,11 @@ func RunLeased(ctx context.Context, root string, doc config.LocalDoc, loader *pr
 	}
 	outcome.DocumentPath = relative
 	outcome.DeclarationReplaced = true
-	state, cfg, err = loader.OpenForOperation(ctx, root)
+	session, err = loader.Load(ctx, root)
 	if err != nil {
 		return outcome, &PartialError{Outcome: outcome, Cause: err, Recovery: []string{"repair config authority, then retry"}}
 	}
-	result, syncErr := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).SyncLeased(ctx, lease)
+	result, syncErr := publisher.New(session, project.Version).SyncLeased(ctx, lease)
 	outcome.Publisher = result
 	if syncErr != nil {
 		return outcome, &PartialError{Outcome: outcome, Cause: syncErr, Recovery: []string{"repair the reported publication fault, then retry"}}

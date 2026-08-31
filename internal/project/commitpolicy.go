@@ -4,6 +4,7 @@ import (
 	"context"
 	"errors"
 
+	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/commitpolicy"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -121,7 +122,7 @@ func VerifyCommitPolicyAt(ctx context.Context, root string, targets []string) (p
 		document, presentationErr := commitpolicy.Presentation(commitpolicy.Policy{}, outcome)
 		return document, outcome, presentationErr
 	}
-	state, err := Open(ctx, roots.InvokingRoot, repo)
+	state, err := NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo).Load(ctx, roots.InvokingRoot)
 	if err != nil {
 		outcome := refused(commitpolicy.ConfigFailure, "load commitPolicy from "+roots.InvokingRoot, err)
 		document, presentationErr := commitpolicy.Presentation(commitpolicy.Policy{}, outcome)

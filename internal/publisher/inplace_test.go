@@ -191,7 +191,7 @@ func TestReadBackInPlaceBody(t *testing.T) {
 func TestPlanSectionsInPlacePartExclusive(t *testing.T) {
 	// invariant: rendering/inplace-and-placeholders:section-source-exclusive (TestPlanSectionsInPlacePartExclusive)
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -215,7 +215,7 @@ func TestPlanSectionsInPlacePartExclusive(t *testing.T) {
 // silently treating the part as absent.
 func TestPlanSectionsInPlacePartReadError(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -231,7 +231,7 @@ func TestPlanSectionsInPlacePartReadError(t *testing.T) {
 
 func TestPlanSectionsInPlaceOutputReadError(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -249,7 +249,7 @@ func TestPlanSectionsInPlaceOutputReadError(t *testing.T) {
 // up among the node's observed inputs.
 func TestObserveRenderInputsInPlaceOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -284,7 +284,7 @@ func TestObserveRenderInputsInPlaceOutput(t *testing.T) {
 // falls back to the default when the output is absent (first render).
 func TestPlanSectionsInPlaceReadBack(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -337,7 +337,7 @@ func TestAnyInPlace(t *testing.T) {
 // invariant: rendering/inplace-and-placeholders:in-place-spacing-owned (TestInPlaceComposedSyncCheckFixpoint)
 func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -472,7 +472,7 @@ func TestPointerPrefixesMatchRenderedPointers(t *testing.T) {
 // invariant: rendering/inplace-and-placeholders:authoring-comment-inplace-inert (TestInPlaceRegionKeepsAuthoringCommentShapedLine)
 func TestInPlaceRegionKeepsAuthoringCommentShapedLine(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

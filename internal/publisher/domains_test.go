@@ -36,7 +36,7 @@ func TestDomainDocRendersNarrativeWithoutADRIndex(t *testing.T) {
 	// effect on the domain doc.
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
 
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -61,7 +61,7 @@ func TestDomainDocRendersNarrativeWithoutADRIndex(t *testing.T) {
 // invariant: rendering/doc-outputs:domain-doc-regenerated (TestDomainDocStaleOnTopicAdd)
 func TestDomainDocStaleOnTopicAdd(t *testing.T) {
 	root := topicProject(t)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -86,7 +86,7 @@ func TestDomainDocStaleOnTopicAdd(t *testing.T) {
 func TestDomainDocMissingWhenDeleted(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
@@ -102,7 +102,7 @@ func TestDomainDocMissingWhenDeleted(t *testing.T) {
 func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
@@ -110,7 +110,7 @@ func TestDomainDocOrphanedWhenDomainRemoved(t *testing.T) {
 	if err := os.WriteFile(configPath(root), []byte("prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p2, err := Open(testContext(t), root)
+	p2, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -129,7 +129,7 @@ func TestDeriveOperationStateSurfacesTopicAssemblyError(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, map[string]string{
 		"topics/parts/rendering/orphan/current-state.md": "Intro.\n\n## Claims\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -147,7 +147,7 @@ func TestDomainPartOrphan(t *testing.T) {
 		// A part dir for a domain not in the configured domain list.
 		"domains/parts/other/current-state.md": "stray\n",
 	})
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
@@ -190,7 +190,7 @@ func TestDomainDocSectionParity(t *testing.T) {
 func TestDomainDocRendersTopicNavigation(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
@@ -204,7 +204,7 @@ func TestDomainDocRendersTopicNavigation(t *testing.T) {
 
 func TestDomainDocWithoutTopicsHasSingleFinalNewline(t *testing.T) {
 	root := scaffoldFiles(t, domainCfg, nil)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

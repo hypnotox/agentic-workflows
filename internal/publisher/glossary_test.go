@@ -15,7 +15,7 @@ const glossaryCfg = "prefix: example\nintegrationBranch: main\nvars: {}\n"
 // renderGlossary opens root and returns the rendered glossary doc's content.
 func renderGlossary(t *testing.T, root string) string {
 	t.Helper()
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -172,7 +172,7 @@ func TestGlossaryContentViolations(t *testing.T) {
 		"case-dup":            {"data:\n  terms:\n    - term: Foo\n      meaning: one\n    - term: foo\n      meaning: two\n", "case-insensitive duplicates"},
 	} {
 		t.Run(name, func(t *testing.T) {
-			p, err := Open(testContext(t), scaffoldFiles(t, glossaryCfg, map[string]string{"docs/glossary.yaml": tc.yaml}))
+			p, err := loadTestSession(testContext(t), scaffoldFiles(t, glossaryCfg, map[string]string{"docs/glossary.yaml": tc.yaml}))
 			if err != nil {
 				t.Fatal(err)
 			}

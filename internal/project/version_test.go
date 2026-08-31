@@ -11,7 +11,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 func snapshotVersionFixture(t *testing.T, root string) map[string][]byte {
@@ -135,19 +134,4 @@ func TestSchema49RefusesBeforeEffortOrUpgrade(t *testing.T) {
 		t.Fatalf("awf upgrade = %v\n%s; want below-floor refusal", err, output)
 	}
 	assertVersionFixtureUnchanged(t, root, before)
-}
-
-func TestCheckStagedRejectsInitializedVersionMutation(t *testing.T) {
-	repo := gitfixture.InitRepo(t)
-	head := stagedHeadFiles()
-	head[".awf/awf.lock"] = lockJSON(t, &manifest.Lock{AWFVersion: "0.44.0", SchemaVersion: 50, Files: map[string]manifest.Entry{"prior": {}}})
-	gitfixture.Stage(t, repo, head)
-	gitfixture.Commit(t, repo, "head", nil)
-	gitfixture.Stage(t, repo, map[string]string{
-		".awf/awf.lock": lockJSON(t, &manifest.Lock{AWFVersion: "0.44.0", SchemaVersion: 50, InitializedWithVersion: "0.44.0", Files: map[string]manifest.Entry{"prior": {}}}),
-	})
-	p := openStaged(t, repo.Root())
-	if _, err := checkStagedProject(p, testContext(t)); err == nil || !strings.Contains(err.Error(), "initializedWithVersion") {
-		t.Fatalf("error = %v, want initializedWithVersion refusal", err)
-	}
 }

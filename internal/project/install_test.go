@@ -30,7 +30,7 @@ func uninstallProject(t *testing.T, root string) (resident.UninstallReport, erro
 
 func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -74,7 +74,7 @@ func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 
 func TestUninstallPreservesResidentState(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -125,7 +125,7 @@ func TestUninstallPreservesResidentState(t *testing.T) {
 
 func TestUninstallRemovesEmptyResidentRoot(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -148,7 +148,7 @@ func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 	for _, kind := range []string{"file", "symlink", "unreadable"} {
 		t.Run(kind, func(t *testing.T) {
 			root := scaffold(t, sampleYAML)
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -188,7 +188,7 @@ func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 
 func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

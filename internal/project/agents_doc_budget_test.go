@@ -113,7 +113,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\naudit:\n  allowedScopes:\n    - name: awf\n", map[string]string{"parts/agents-doc/identity.md": "x"})
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -128,7 +128,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 				}
 			}
 			testsupport.WriteFile(t, filepath.Join(root, ".awf/parts/agents-doc/identity.md"), strings.Repeat("x", tc.bytes-actual+1))
-			p, err = Open(testContext(t), root)
+			p, err = loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}

@@ -75,7 +75,7 @@ func generatedSemantics(p renderInputs, topics topic.Corpus) (generatedcheck.Add
 			input.PitfallPaths = append(input.PitfallPaths, entry.Path)
 		}
 	}
-	input.ResidentRoot = p.state.Roots().Tracked == p.state.Roots().Resident
+	input.ResidentRoot = p.session.Roots().Tracked == p.session.Roots().Resident
 	return input, nil
 }
 

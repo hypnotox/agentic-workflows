@@ -94,10 +94,11 @@ func AddLeased(ctx context.Context, root, name string, loader *project.Loader, l
 		return Outcome{}, err
 	}
 	defer files.Close()
-	_, cfg, configIdentity, err := loader.OpenForMutation(ctx, root, files)
+	session, configIdentity, err := loader.LoadForMutation(ctx, root, files)
 	if err != nil {
 		return Outcome{}, err
 	}
+	cfg := session.Config()
 	defer configIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	for _, domain := range cfg.Domains {
 		if domain == name {
@@ -138,10 +139,11 @@ func RemoveLeased(ctx context.Context, root, name string, loader *project.Loader
 		return Outcome{}, err
 	}
 	defer files.Close()
-	_, cfg, configIdentity, err := loader.OpenForMutation(ctx, root, files)
+	session, configIdentity, err := loader.LoadForMutation(ctx, root, files)
 	if err != nil {
 		return Outcome{}, err
 	}
+	cfg := session.Config()
 	defer configIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	found := false
 	for _, domain := range cfg.Domains {
@@ -203,11 +205,11 @@ func synchronize(ctx context.Context, root string, loader *project.Loader, lease
 	if !loader.CoversProjectLease(ctx, root, lease) {
 		return publisher.Result{}, errors.New("domain synchronization requires a covering project lease")
 	}
-	state, cfg, err := loader.OpenForOperation(ctx, root)
+	session, err := loader.Load(ctx, root)
 	if err != nil {
 		return publisher.Result{}, err
 	}
-	composed := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version)
+	composed := publisher.New(session, project.Version)
 	return composed.SyncLeased(ctx, lease)
 }
 

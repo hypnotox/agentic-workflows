@@ -12,7 +12,7 @@ const glossaryCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndo
 
 // A disabled glossary doc is never read, so it can yield no drift.
 func TestCheckGlossaryDisabled(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
+	p, err := loadTestSession(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,7 +26,7 @@ func TestCheckGlossaryDisabled(t *testing.T) {
 // resolving their domains, and records carrying none, yield nothing.
 // invariant: rendering/doc-outputs:glossary-domains-resolved (TestCheckGlossaryValidatesDomains)
 func TestCheckGlossaryValidatesDomains(t *testing.T) {
-	p, err := Open(testContext(t), scaffoldFiles(t, glossaryCheckCfg, map[string]string{
+	p, err := loadTestSession(testContext(t), scaffoldFiles(t, glossaryCheckCfg, map[string]string{
 		"docs/glossary.yaml": "data:\n  terms:\n" +
 			"    - term: clean\n      meaning: resolves\n      domains: [rendering]\n" +
 			"    - term: untagged\n      meaning: no domains at all\n" +
@@ -62,7 +62,7 @@ func TestCheckGlossaryValidatesDomains(t *testing.T) {
 
 // Valid YAML with a bad data.terms shape surfaces the structural error.
 func TestCheckGlossaryStructuralError(t *testing.T) {
-	p, err := Open(testContext(t), scaffoldFiles(t, glossaryCheckCfg, map[string]string{
+	p, err := loadTestSession(testContext(t), scaffoldFiles(t, glossaryCheckCfg, map[string]string{
 		"docs/glossary.yaml": "data:\n  terms: just a string\n",
 	}))
 	if err != nil {

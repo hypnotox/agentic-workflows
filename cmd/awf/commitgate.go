@@ -22,8 +22,11 @@ type commitGateDependencies struct {
 
 func defaultCommitGateDependencies() commitGateDependencies {
 	return commitGateDependencies{readFile: os.ReadFile, readStdin: io.ReadAll, openProject: func(ctx context.Context, root string) (*config.Config, error) {
-		_, cfg, _, err := openProjectOperation(ctx, root)
-		return cfg, err
+		session, err := loadProjectSession(ctx, root)
+		if err != nil {
+			return nil, err
+		}
+		return session.Config(), nil
 	}}
 }
 

@@ -1,4 +1,4 @@
-The artifact registry holds the canonical operational declarations for every managed-artifact kind and built-in target, including stable ordering, cardinality, targeting, capabilities, template and output-path projections, and ownership. The catalog remains the single compile-time content authority for standard artifact entries, sections, defaults, and variables. Project, projectstate, and publisher expose registry-derived compatibility projections rather than parallel declaration tables. The claims below capture the current catalog and target contracts.
+The artifact registry holds the canonical operational declarations for every managed-artifact kind and built-in target, including stable ordering, cardinality, targeting, capabilities, template and output-path projections, and ownership. The catalog remains the single compile-time content authority for standard artifact entries, sections, defaults, and variables. One project Session carries the registry's defensive catalog and target projection to Publisher without a parallel declaration table or compatibility state owner. The claims below capture the current catalog and target contracts.
 
 ## Claims
 

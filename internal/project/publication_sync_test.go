@@ -17,7 +17,7 @@ import (
 
 func TestSyncPruneFailureKeepsLockEntry(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +49,7 @@ func TestSyncPruneFailureKeepsLockEntry(t *testing.T) {
 
 func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	_ = syncProject(p)
 	// Hand-delete the rendered file before the pruning sync: the report must
 	// not claim a removal the prune did not perform.
@@ -58,7 +58,7 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	}
 	noTDD := strings.Replace(sampleYAML, "  - debugging\n", "", 1)
 	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
-	p2, _ := Open(testContext(t), root)
+	p2, _ := loadTestSession(testContext(t), root)
 	_, _, pruned, err := syncReportProject(p2)
 	if err != nil {
 		t.Fatal(err)
@@ -70,7 +70,7 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 
 func TestSyncReportOpensDistinctResidentRootBeforeTrackedMutation(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -92,11 +92,11 @@ func TestSyncReportOpensDistinctResidentRootBeforeTrackedMutation(t *testing.T) 
 	if err := os.Remove(missingResident); err != nil {
 		t.Fatal(err)
 	}
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	roots := p.roots()
+	roots := p.Roots()
 	p = setTestRoots(p, resident.NewRoots(roots.Tracked, missingResident))
 	if _, _, _, err := syncReportProject(p); err == nil {
 		t.Fatal("sync accepted missing distinct resident root")
@@ -112,7 +112,7 @@ func TestSyncReportOpensDistinctResidentRootBeforeTrackedMutation(t *testing.T) 
 
 func TestSyncReportReportsContentAndModeOnce(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
@@ -123,7 +123,7 @@ func TestSyncReportReportsContentAndModeOnce(t *testing.T) {
 	if err := os.WriteFile(agents, []byte("hand edit\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p, _ = Open(testContext(t), root)
+	p, _ = loadTestSession(testContext(t), root)
 	_, changes, _, err := syncReportProject(p)
 	if err != nil {
 		t.Fatal(err)
@@ -159,7 +159,7 @@ func TestSyncReportForeignFinalSymlinkPolicy(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffold(t, sampleYAML)
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -215,7 +215,7 @@ func TestSyncReportForeignFinalSymlinkPolicy(t *testing.T) {
 
 func TestSyncReportReplacesManagedFinalSymlinkWithoutTargetAccess(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
@@ -226,7 +226,7 @@ func TestSyncReportReplacesManagedFinalSymlinkWithoutTargetAccess(t *testing.T) 
 	if err := os.Symlink("missing-target", agents); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	p, _ = Open(testContext(t), root)
+	p, _ = loadTestSession(testContext(t), root)
 	if _, _, _, err := syncReportProject(p); err != nil {
 		t.Fatalf("SyncReport: %v", err)
 	}
@@ -243,7 +243,7 @@ func TestSyncReportReplacesManagedFinalSymlinkWithoutTargetAccess(t *testing.T) 
 // non-hashed input) without mutating the embedded templates.
 func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	_, changes, pruned, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
@@ -284,7 +284,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 			t.Fatal(err)
 		}
 	}
-	p2, _ := Open(testContext(t), root)
+	p2, _ := loadTestSession(testContext(t), root)
 	_, changes, _, err = syncReportProject(p2)
 	if err != nil {
 		t.Fatal(err)
@@ -307,11 +307,11 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	residentRoot := t.TempDir()
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	roots := p.roots()
+	roots := p.Roots()
 	p = setTestRoots(p, resident.NewRoots(roots.Tracked, residentRoot))
 	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
@@ -341,8 +341,8 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	if err := os.Chmod(filepath.Join(root, "AGENTS.md"), 0o640); err != nil {
 		t.Fatal(err)
 	}
-	p, _ = Open(testContext(t), root)
-	roots = p.roots()
+	p, _ = loadTestSession(testContext(t), root)
+	roots = p.Roots()
 	roots.Resident = residentRoot
 	p = setTestRoots(p, roots)
 	backups, _, _, err := syncReportProject(p)
@@ -373,8 +373,8 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	if err := os.Chmod(residentFile, 0o640); err != nil {
 		t.Fatal(err)
 	}
-	p, _ = Open(testContext(t), root)
-	roots = p.roots()
+	p, _ = loadTestSession(testContext(t), root)
+	roots = p.Roots()
 	p = setTestRoots(p, resident.NewRoots(roots.Tracked, residentRoot))
 	backups, _, _, err = syncReportProject(p)
 	wantResidentBackup := Backup{Path: residentOutput, Bak: residentOutput + ".awf-bak"}
@@ -410,8 +410,8 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	if err := os.Symlink(outside, filepath.Join(root, filepath.FromSlash(retired))); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	p, _ = Open(testContext(t), root)
-	roots = p.roots()
+	p, _ = loadTestSession(testContext(t), root)
+	roots = p.Roots()
 	roots.Resident = residentRoot
 	p = setTestRoots(p, roots)
 	_, _, pruned, err := syncReportProject(p)
@@ -445,8 +445,8 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	if err := os.Symlink(outsidePrune, filepath.Join(root, "escape-prune")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	p, _ = Open(testContext(t), root)
-	roots = p.roots()
+	p, _ = loadTestSession(testContext(t), root)
+	roots = p.Roots()
 	roots.Resident = residentRoot
 	p = setTestRoots(p, roots)
 	if _, _, _, err := syncReportProject(p); err == nil {
@@ -488,8 +488,8 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	if err := os.Symlink(outsideRoot, filepath.Join(root, "docs")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	p, _ = Open(testContext(t), root)
-	roots = p.roots()
+	p, _ = loadTestSession(testContext(t), root)
+	roots = p.Roots()
 	roots.Resident = residentRoot
 	p = setTestRoots(p, roots)
 	if _, _, _, err := syncReportProject(p); err == nil {
@@ -506,7 +506,7 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 
 func TestSyncLockRefusesEscapingParent(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

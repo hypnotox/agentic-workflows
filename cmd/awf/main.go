@@ -237,7 +237,7 @@ func (r runner) run(args []string, stdout, stderr io.Writer) int {
 	// follows live-source admission and reads the same working or staged universe
 	// as the command rather than allowing config parsing to precede schema refusal.
 	guardCtx, cancel := newGitCommandContext()
-	if err := guardProjectState(guardCtx, cwd, cmd, top, sub, inv); err != nil {
+	if err := guardSession(guardCtx, cwd, cmd, top, sub, inv); err != nil {
 		cancel()
 		return dispatchFailure(stdout, stderr, err)
 	}
@@ -301,7 +301,7 @@ func newGitCommandContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), gitCommandTimeout)
 }
 
-// guardProjectState enforces the current-state upgrade command-state matrix.
+// guardSession enforces the current-state upgrade command-state matrix.
 // Exemption is the resolved command's StateExempt property, not a name list, so
 // a group child carries it independently of its parent. Only `check staged
 // commit` remains exempt while bare `check` and both repo scan children are not,
@@ -334,7 +334,7 @@ func validateCurrentAuthority(found, currentConfig, currentLock bool) error {
 	return nil
 }
 
-func guardProjectState(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error {
+func guardSession(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error {
 	if cmd.StateExempt {
 		return nil
 	}

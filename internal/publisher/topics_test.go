@@ -46,7 +46,7 @@ func topicProject(t *testing.T) string {
 	return root
 }
 func TestRepositoryEffortManagementCoverage(t *testing.T) {
-	p, err := Open(testContext(t), "../..")
+	p, err := loadTestSession(testContext(t), "../..")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -103,7 +103,7 @@ func TestRepositoryEffortManagementCoverage(t *testing.T) {
 func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 	root := topicProject(t)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/bad.yaml"), "title: [bad\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -115,7 +115,7 @@ func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 
 func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	root := topicProject(t)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -132,7 +132,7 @@ func TestScaffoldedZeroClaimTopicPipeline(t *testing.T) {
 	for _, file := range files {
 		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(file.Path)), string(file.Content))
 	}
-	prepared, err := New(lowerForConfig(p.OutputState(), testConfig(p)), testConfig(p), NewFilesystemReader(root), project.Version).Prepare()
+	prepared, err := newPublisher(lowerForConfig(p, testConfig(p)), testConfig(p), NewFilesystemReader(root), project.Version).Prepare()
 	if err != nil {
 		t.Fatalf("prepare scaffold corpus: %v", err)
 	}
@@ -232,7 +232,7 @@ func TestTopicRenderLifecycle(t *testing.T) {
 	writeProjectTopic(t, root, "zeta", "Zeta", "paths: [\"internal/**\"]\n")
 	writeProjectTopic(t, root, "alpha", "Alpha", "applies: global\n")
 	writeProjectTopicDomain(t, root, "tooling", "beta", "Beta", "applies: global\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,7 +335,7 @@ func TestTopicBrownfieldCollisionUsesSharedBackup(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, "docs/topics/rendering/contracts.md"), "foreign\n")
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	backups, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
@@ -351,7 +351,7 @@ func TestTopicBrownfieldCollisionUsesSharedBackup(t *testing.T) {
 func TestTopicPruneRemoveAndRename(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "old", "Old", "paths: [\"internal/**\"]\n")
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
@@ -362,7 +362,7 @@ func TestTopicPruneRemoveAndRename(t *testing.T) {
 		t.Fatal(err)
 	}
 	writeProjectTopic(t, root, "new", "New", "paths: [\"internal/**\"]\n")
-	p2, _ := Open(testContext(t), root)
+	p2, _ := loadTestSession(testContext(t), root)
 	_, pruned, err := syncReportProject(p2)
 	if err != nil {
 		t.Fatal(err)
@@ -378,7 +378,7 @@ func TestTopicOutputCollisions(t *testing.T) {
 	t.Run("topic index", func(t *testing.T) {
 		root := topicProject(t)
 		writeProjectTopic(t, root, "index", "Index", "paths: [\"internal/**\"]\n")
-		p, _ := Open(testContext(t), root)
+		p, _ := loadTestSession(testContext(t), root)
 		if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "same output path") {
 			t.Fatalf("collision %v", err)
 		}
@@ -388,7 +388,7 @@ func TestTopicRenderRejectsMalformedAuthoringComment(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "x", "X", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/x/current-state.md"), "<!-- awf:comment no close\n\n## Claims\n")
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if _, err := outputPlanProject(p); err == nil {
 		t.Fatal("malformed authoring comment accepted")
 	}
@@ -397,7 +397,7 @@ func TestTopicRenderRejectsMalformedAuthoringComment(t *testing.T) {
 func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 	root := topicProject(t)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/metadata/rendering/orphan.yaml"), "title: X\nsummary: X.\npaths: [x]\n")
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if _, err := outputPlanProject(p); err == nil {
 		t.Fatal("orphan corpus accepted")
 	}
@@ -406,7 +406,7 @@ func TestTopicCorpusRefusalAndSweep(t *testing.T) {
 	}
 	writeProjectTopic(t, root, "x", "X", "paths: [\"internal/**\"]\n")
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/topics/parts/rendering/x/extra.md"), "stray\n")
-	p, _ = Open(testContext(t), root)
+	p, _ = loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
@@ -431,7 +431,7 @@ currentState:
 	gitfixture.InitRepoAt(t, root)
 	writeADR(t, root, "0001-scheduling.md", testsupport.ADR("Implemented", testsupport.WithDomains("schedule"), testsupport.WithTitle("0001: Scheduling contracts"), testsupport.WithBody("## Decision\n\n1. Define scheduling.\n\n## Invariants\n\n- `invariant: legacy-scheduling` - legacy authority remains stable.\n")))
 	testsupport.WriteFile(t, filepath.Join(root, "internal/legacy_test.go"), "package internal\n// invariant: legacy-scheduling\n// invariant: schedule\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -468,7 +468,7 @@ Backing: test
 	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule.go"), "package schedule\n// state: schedule/contracts:deterministic-order\n")
 	testsupport.WriteFile(t, filepath.Join(root, "internal/schedule_test.go"), "package schedule\n// invariant: schedule/contracts:stable-output (TestStableOutput)\nfunc TestStableOutput() {}\n")
 
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -533,7 +533,7 @@ Backing: test
 			t.Fatal(err)
 		}
 	}
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -11,7 +11,7 @@ import (
 
 // runReadTopic composes the live operation and retains command rendering and exits.
 func runReadTopic(ctx context.Context, cwd, selector string, references, coverage bool, stdout io.Writer) error {
-	detail, err := topicop.Run(ctx, cwd, topicop.Input{Selector: selector, References: references, Coverage: coverage}, openProjectOperation, gate)
+	detail, err := topicop.Run(ctx, cwd, topicop.Input{Selector: selector, References: references, Coverage: coverage}, loadProjectSession, gate)
 	if err != nil {
 		var usage *topicop.UsageError
 		if errors.As(err, &usage) {

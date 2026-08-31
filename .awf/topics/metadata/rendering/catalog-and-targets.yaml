@@ -5,6 +5,5 @@ paths:
   - internal/outputplan/**
   - internal/publisher/**
   - internal/catalog/**
-  - internal/projectstate/**
   - internal/project/target.go
   - internal/project/target_test.go

@@ -16,7 +16,7 @@ import (
 func TestLocalDocAgentGuideProjection(t *testing.T) {
 	cfg := "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nlocalDocs:\n  - name: runbooks/zulu\n    title: Zulu runbook\n    description: Last local document.\n  - name: runbooks/alpha\n    title: Alpha runbook\n    description: First local document.\n"
 	root := scaffold(t, cfg)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -72,7 +72,7 @@ func TestLocalDocAgentGuideProjection(t *testing.T) {
 	if after := configHashOf(t, root, "docs/runbooks/zulu.md"); after != beforeZulu {
 		t.Fatal("local metadata changed unrelated output hash")
 	}
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +129,7 @@ func TestLocalDocAgentGuideProjection(t *testing.T) {
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocReferenceChecksBody)
 func TestLocalDocReferenceChecksBody(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\nlocalDocs:\n  - name: runbooks/checks\n    title: Checks\n    description: Check references.\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

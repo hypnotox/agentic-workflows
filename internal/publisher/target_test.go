@@ -11,8 +11,8 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -56,7 +56,7 @@ func TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow(t *testing.T)
 		t.Fatalf("retired effort-session datum remains: %#v", data)
 	}
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -136,7 +136,7 @@ func TestPiRealRuntimeSmoke(t *testing.T) {
 
 func TestTargetOutputRenderError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -234,7 +234,7 @@ func explorationFixtureConfig(target string) string {
 
 func explorationRenderedByPath(t *testing.T, config string) map[string]string {
 	t.Helper()
-	p, err := Open(testContext(t), scaffold(t, config))
+	p, err := loadTestSession(testContext(t), scaffold(t, config))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -252,7 +252,7 @@ func explorationRenderedByPath(t *testing.T, config string) map[string]string {
 func renderPiExtensionFile(t *testing.T, name string) string {
 	t.Helper()
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -288,7 +288,7 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
 		}},
 	}
-	if err := projectstate.ValidateTarget(custom); err != nil {
+	if err := artifactregistry.ValidateTarget(custom); err != nil {
 		t.Fatal(err)
 	}
 	if custom.SkillPath("example", "implementing") != ".custom/workflows/example-implementing/SKILL.md" ||
@@ -299,7 +299,7 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 		t.Fatal("custom descriptor capabilities were not projected")
 	}
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +332,7 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 
 func TestAllTargetPathsAndBridges(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -355,7 +355,7 @@ func TestAllTargetPathsAndBridges(t *testing.T) {
 // invariant: rendering/catalog-and-targets:claude-md-bridge (TestClaudeMdBridgeRendered)
 func TestClaudeMdBridgeRendered(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -385,7 +385,7 @@ func TestClaudeMdBridgeRendered(t *testing.T) {
 // invariant: rendering/catalog-and-targets:target-dialect-render (TestMultiTargetRender)
 func TestMultiTargetRender(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -455,7 +455,7 @@ const (
 
 func TestResolveTargetsRejectsUnknown(t *testing.T) {
 	root := scaffold(t, "prefix: awf\nintegrationBranch: main\n  - nope\n")
-	if _, err := Open(testContext(t), root); err == nil {
+	if _, err := loadTestSession(testContext(t), root); err == nil {
 		t.Fatal("expected Open to reject an unknown target name")
 	}
 }
@@ -463,7 +463,7 @@ func TestResolveTargetsRejectsUnknown(t *testing.T) {
 func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: awf\nintegrationBranch: main\ndomains: [rendering]\n", nil)
 	writeADR(t, root, "0001-engine.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Engine")))
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -489,7 +489,7 @@ func TestPlannedOutputsIncludesGeneratedDocs(t *testing.T) {
 
 func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

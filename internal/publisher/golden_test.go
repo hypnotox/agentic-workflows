@@ -16,7 +16,7 @@ import (
 // the standard catalog and its retained target artifacts.
 func TestEndToEndGolden(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -42,7 +42,7 @@ func TestEndToEndGolden(t *testing.T) {
 // invariant: rendering/render-engine:include-in-templatehash (TestTemplateHashCoversExpandedSource)
 func TestTemplateHashCoversExpandedSource(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -56,7 +56,7 @@ func assertResidentSyncFixtureUnchanged(t *testing.T, root string, before map[st
 // invariant: rendering/singletons-and-payloads:resident-output-preservation (TestSyncPreservesOwnedResidentRoots)
 func TestSyncPreservesOwnedResidentRoots(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -71,7 +71,7 @@ func TestSyncPreservesOwnedResidentRoots(t *testing.T) {
 		}
 	}
 	before := snapshotResidentSyncFixture(t, root)
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

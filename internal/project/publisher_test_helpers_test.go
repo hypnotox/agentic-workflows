@@ -4,9 +4,7 @@ import (
 	"context"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
@@ -16,13 +14,11 @@ type Change = publisher.Change
 type InitAuthority = publisher.InitAuthority
 
 func testPublisher(p renderInputs) *publisher.Publisher {
-	facts, err := config.NewFacts(p.cfg)
+	session, err := newSession(p.root(), p.residentRoots(), p.isNested(), p.cfg, p.catalog(), p.session.Targets(), p.session.Repository(), p.read)
 	if err != nil {
 		panic(err)
 	}
-	base := p.state.state
-	state := projectstate.NewDerivedWithFacts(base.Root(), base.Roots(), base.Nested(), facts, base.Catalog(), base.CompleteCatalog(), base.Targets())
-	return publisher.New(state, p.cfg, p.read, Version)
+	return publisher.New(session, Version)
 }
 func outputPlan(p renderInputs) (*OutputPlan, error) {
 	plan, err := testPublisher(p).Plan()
@@ -65,14 +61,6 @@ func generateConfigReference(p renderInputs, _ []RenderedFile, _ map[string]bool
 	}
 	return nil, false, nil
 }
-func CheckStagedDriftRoot(ctx context.Context, root string) ([]manifest.Drift, error) {
-	prep, err := PrepareStagedOutputState(ctx, root)
-	if err != nil {
-		return nil, err
-	}
-	plan, err := publisher.New(prep.State, prep.Config, prep.Reader, Version).Plan()
-	if err != nil {
-		return nil, err
-	}
-	return CheckStagedDrift(prep, plan)
-}
+
+var _ = context.Background
+var _ = config.DirName

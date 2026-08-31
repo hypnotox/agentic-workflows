@@ -16,7 +16,7 @@ func TestSectionDefaultPartRendersEndToEnd(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", map[string]string{
 		"parts/working-with-awf/commands.md": "Preamble before the default.\n\n{{=awf:sectionDefault}}\n\nAppendix after the default.\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -46,7 +46,7 @@ func TestSectionDefaultStubPartFailsRender(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", map[string]string{
 		"parts/agents-doc/identity.md": "{{=awf:sectionDefault}}\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

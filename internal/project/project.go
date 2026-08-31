@@ -9,12 +9,12 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"golang.org/x/mod/semver"
 )
@@ -80,6 +80,7 @@ type Loader struct {
 	view                catalog.View
 	resolveResidentRoot ResolveResidentRoot
 	repo                *awfgit.Repo
+	reader              ProjectTreeReader
 }
 
 // NewLoader constructs project-opening policy with its required composed Git
@@ -111,86 +112,146 @@ func newLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolve
 	return &Loader{loadConfigTree: loadConfigTree, view: catalog.NewView(standard), resolveResidentRoot: resolveResidentRoot, repo: repo}
 }
 
-// WithConfigLoader returns the same project-opening authority with one bounded
-// candidate config-tree loader. It preserves catalog, resident-root, and Git
-// policy while allowing an operation to validate an overlaid candidate tree.
-func (l *Loader) WithConfigLoader(load LoadConfigTree) *Loader {
-	if l == nil || load == nil {
-		panic("project Loader: missing candidate config loader")
+// WithSelection returns the same loading authority with one bounded config and
+// project-tree selection. Candidate and staged universes use this boundary so
+// every Session is constructed through Load from matching inputs.
+func (l *Loader) WithSelection(load LoadConfigTree, reader ProjectTreeReader) *Loader {
+	if l == nil || load == nil || reader == nil {
+		panic("project Loader: missing selected project input")
 	}
 	copy := *l
 	copy.loadConfigTree = load
+	copy.reader = reader
 	return &copy
 }
 
-// ProjectState preserves the RF-002 compatibility name for the lower immutable state owner.
-type ProjectState struct{ state *projectstate.ProjectState }
+// RegistryView is the immutable project-selected projection of the canonical
+// artifact registry. The declaration owner remains artifactregistry.
+type RegistryView struct {
+	catalog catalog.View
+	targets []artifactregistry.Target
+}
+
+// Catalog returns a defensive copy of the selected catalog.
+func (v RegistryView) Catalog() *catalog.Catalog { return v.catalog.Catalog() }
+
+// Targets returns defensive copies of the selected target declarations.
+func (v RegistryView) Targets() []artifactregistry.Target { return cloneTargets(v.targets) }
+
+// Session is one authoritative in-memory project selection. It owns the bound
+// configuration tree, immutable current facts, repository and root handles,
+// selected project reader, and canonical registry projection.
+type Session struct {
+	root     string
+	roots    resident.Roots
+	nested   bool
+	facts    config.Facts
+	selected *config.Config
+	repo     *awfgit.Repo
+	reader   ProjectTreeReader
+	registry RegistryView
+}
 
 // Root returns the invoking checkout root.
-func (s *ProjectState) Root() string {
-	if s == nil || s.state == nil {
+func (s *Session) Root() string {
+	if s == nil {
 		return ""
 	}
-	return s.state.Root()
+	return s.root
 }
 
-// Config returns a defensive copy of the immutable loaded configuration facts.
-func (s *ProjectState) Config() *config.Config {
-	if s == nil || s.state == nil {
+// Roots returns the selected tracked and resident roots.
+func (s *Session) Roots() resident.Roots {
+	if s == nil {
+		return resident.Roots{}
+	}
+	return s.roots
+}
+
+// Nested reports whether the invoking checkout is nested below its repository root.
+func (s *Session) Nested() bool { return s != nil && s.nested }
+
+// Config returns a defensive copy retaining this Session's selected tree binding.
+func (s *Session) Config() *config.Config {
+	if s == nil || s.selected == nil {
 		return config.Facts{}.Config()
 	}
-	return s.state.Config()
+	return s.selected.OperationTree().Bind(s.facts)
 }
 
-// Targets returns a defensive copy of the resolved targets.
-func (s *ProjectState) Targets() []Target {
-	if s == nil || s.state == nil {
+// Repository returns the one Git handle selected during loading, if any.
+func (s *Session) Repository() *awfgit.Repo {
+	if s == nil {
 		return nil
 	}
-	return s.state.Targets()
+	return s.repo
 }
 
-// OutputState returns the immutable loaded facts consumed by Publisher. The
-// lower value is projected defensively at this package boundary so Publisher
-// cannot retain the compatibility facade's target slice.
-func (s *ProjectState) OutputState() *projectstate.ProjectState {
-	if s == nil || s.state == nil {
+// Reader returns the project-tree reader selected with the configuration.
+func (s *Session) Reader() ProjectTreeReader {
+	if s == nil {
 		return nil
 	}
-	return projectstate.NewDerivedWithFacts(s.Root(), s.roots(), s.nested(), s.facts(), s.catalog(), s.completeCatalog(), s.Targets())
+	return s.reader
 }
 
-func (s *ProjectState) roots() resident.Roots             { return s.state.Roots() }
-func (s *ProjectState) nested() bool                      { return s.state.Nested() }
-func (s *ProjectState) facts() config.Facts               { return s.state.Facts() }
-func (s *ProjectState) catalog() *catalog.Catalog         { return s.state.Catalog() }
-func (s *ProjectState) completeCatalog() *catalog.Catalog { return s.state.CompleteCatalog() }
+// Registry returns the Session's immutable artifact-registry projection.
+func (s *Session) Registry() RegistryView {
+	if s == nil {
+		return RegistryView{}
+	}
+	return RegistryView{catalog: catalog.NewView(s.registry.Catalog()), targets: s.registry.Targets()}
+}
 
-func newProjectState(root string, roots resident.Roots, nested bool, cfg *config.Config, selected, complete *catalog.Catalog, targets []Target) (*ProjectState, error) {
-	state, err := projectstate.New(root, roots, nested, cfg, selected, complete, targets)
+// Catalog returns the Session's defensive selected registry catalog.
+func (s *Session) Catalog() *catalog.Catalog { return s.Registry().Catalog() }
+
+// Targets returns defensive copies of the resolved target declarations.
+func (s *Session) Targets() []Target { return s.Registry().Targets() }
+
+func (s *Session) catalog() *catalog.Catalog { return s.Catalog() }
+
+func cloneTargets(source []artifactregistry.Target) []artifactregistry.Target {
+	out := make([]artifactregistry.Target, len(source))
+	copy(out, source)
+	for i := range out {
+		out[i].Capabilities = append([]artifactregistry.Capability(nil), out[i].Capabilities...)
+		out[i].Outputs = append([]artifactregistry.TargetOutput(nil), out[i].Outputs...)
+		for j := range out[i].Outputs {
+			out[i].Outputs[j].Inputs = append([]artifactregistry.TargetOutputInput(nil), out[i].Outputs[j].Inputs...)
+		}
+	}
+	return out
+}
+
+func newSession(root string, roots resident.Roots, nested bool, cfg *config.Config, selected *catalog.Catalog, targets []Target, repo *awfgit.Repo, reader ProjectTreeReader) (*Session, error) {
+	facts, err := config.NewFacts(cfg)
 	if err != nil {
 		return nil, err
 	}
-	return &ProjectState{state: state}, nil
+	session := &Session{
+		root: root, roots: roots, nested: nested, facts: facts,
+		selected: cfg.OperationTree().Bind(facts), repo: repo, reader: reader,
+		registry: RegistryView{catalog: catalog.NewView(selected), targets: cloneTargets(targets)},
+	}
+	return session, nil
 }
 
-// renderInputs is the small rendering concern boundary. Immutable loaded facts
-// remain in ProjectState; cfg and read are the selected operation tree. Git is
-// deliberately not a field: repository operations take it explicitly.
+// renderInputs is the small rendering concern boundary over one Session.
 type renderInputs struct {
-	state *ProjectState
-	cfg   *config.Config
-	read  ProjectTreeReader
+	session *Session
+	cfg     *config.Config
+	read    ProjectTreeReader
 }
 
-func newRenderInputs(state *ProjectState, cfg *config.Config, read ProjectTreeReader) renderInputs {
-	return renderInputs{state: state, cfg: cfg, read: read}
+func newRenderInputs(session *Session, cfg *config.Config, read ProjectTreeReader) renderInputs {
+	return renderInputs{session: session, cfg: cfg, read: read}
 }
 
-func (p renderInputs) root() string                  { return p.state.Root() }
-func (p renderInputs) residentRoots() resident.Roots { return p.state.roots() }
-func (p renderInputs) catalog() *catalog.Catalog     { return p.state.catalog() }
-func (p renderInputs) isNested() bool                { return p.state.nested() }
+func (p renderInputs) root() string                  { return p.session.Root() }
+func (p renderInputs) residentRoots() resident.Roots { return p.session.Roots() }
+func (p renderInputs) catalog() *catalog.Catalog     { return p.session.catalog() }
+func (p renderInputs) isNested() bool                { return p.session.Nested() }
 
 // gitRepo returns the handle this project reads Git through, or the reason it
 // has none. Opening is never retried per operation: the handle is chosen once,
@@ -200,35 +261,6 @@ func gitRepo(root string, repo *awfgit.Repo) (*awfgit.Repo, error) {
 		return nil, fmt.Errorf("%s: %w", root, awfgit.ErrNotARepository)
 	}
 	return repo, nil
-}
-
-// Open is the transitional compatibility entry point for callers not yet
-// migrated to outer composition. A supplied repository preserves one composed
-// handle for an existing compatibility caller; new code composes a Loader.
-func Open(ctx context.Context, root string, selected ...*awfgit.Repo) (*ProjectState, error) {
-	if len(selected) > 1 {
-		return nil, errors.New("project Open: multiple repository dependencies")
-	}
-	var repo *awfgit.Repo
-	if len(selected) == 1 {
-		repo = selected[0]
-	} else {
-		var err error
-		repo, _, err = awfgit.OpenContaining(root)
-		if err != nil && !errors.Is(err, awfgit.ErrNotARepository) {
-			return nil, err
-		}
-	}
-	if repo == nil {
-		return NewLoaderWithoutRepository(config.Load, catalog.CompleteView().Catalog(), awfgit.ProjectResidentRoot).Open(ctx, root)
-	}
-	return NewLoader(config.Load, catalog.CompleteView().Catalog(), awfgit.ProjectResidentRoot, repo).Open(ctx, root)
-}
-
-// Open loads, validates, and derives one project's immutable facts.
-func (l *Loader) Open(ctx context.Context, root string) (*ProjectState, error) {
-	state, _, err := l.OpenForOperation(ctx, root)
-	return state, err
 }
 
 // AcquireProjectLease obtains both the selected-checkout and shared-resident
@@ -243,67 +275,64 @@ func (l *Loader) CoversProjectLease(ctx context.Context, root string, lease *fil
 	return lease.CoversProject(root, l.resolveResidentRoot(ctx, root))
 }
 
-// OpenForMutation loads authority through the supplied confined handle and
-// returns the identity of precisely the config bytes the Loader parsed. The
-// byte comparison closes the otherwise invisible interval between confined
-// observation and config-tree parsing; callers use identity for their expected
-// replacement.
-func (l *Loader) OpenForMutation(ctx context.Context, root string, files *filesystem.Handle) (*ProjectState, *config.Config, *filesystem.ExpectedIdentity, error) {
+// LoadForMutation selects authority through the supplied confined handle and
+// returns the identity of precisely the config bytes used by the Session.
+func (l *Loader) LoadForMutation(ctx context.Context, root string, files *filesystem.Handle) (*Session, *filesystem.ExpectedIdentity, error) {
 	if files == nil {
-		return nil, nil, nil, errors.New("project Loader: missing confined filesystem handle")
+		return nil, nil, errors.New("project Loader: missing confined filesystem handle")
 	}
 	identity, err := files.ExpectedIdentity(".awf/config.yaml")
 	if err != nil {
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
 	bytesBefore, err := files.Read(".awf/config.yaml")
 	if err != nil {
 		_ = identity.Release()
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	state, cfg, err := l.OpenForOperation(ctx, root)
+	session, err := l.Load(ctx, root)
 	if err != nil {
 		_ = identity.Release()
-		return nil, nil, nil, err
+		return nil, nil, err
 	}
-	if !bytes.Equal(bytesBefore, cfg.Source()) {
+	if !bytes.Equal(bytesBefore, session.Config().Source()) {
 		_ = identity.Release()
-		return nil, nil, nil, filesystem.ErrIdentityChanged
+		return nil, nil, filesystem.ErrIdentityChanged
 	}
-	return state, cfg, identity, nil
+	return session, identity, nil
 }
 
-// OpenForOperation returns immutable state together with the one concrete
-// configuration tree selected during loading. Commands pass that tree only to
-// operations that read sidecars, parts, or source bytes.
-func (l *Loader) OpenForOperation(ctx context.Context, root string) (*ProjectState, *config.Config, error) {
+// Load constructs one Session from the Loader's exact selected inputs.
+func (l *Loader) Load(ctx context.Context, root string) (*Session, error) {
 	cfg, err := l.loadConfigTree(config.RootDir(root))
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	if cfg == nil {
-		return nil, nil, errors.New("project Loader: load config tree returned nil config")
+		return nil, errors.New("project Loader: load config tree returned nil config")
 	}
 	if err := cfg.Validate(); err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	completeCat := l.view.Catalog()
-	cat := catalog.NewView(completeCat).Catalog()
+	selectedCatalog := l.view.Catalog()
 	targets, err := resolveTargets(KnownTargets())
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
 	roots := resident.NewRoots(root, l.resolveResidentRoot(ctx, root))
 	nested := l.repo != nil && l.repo.IsNested()
-	state, err := newProjectState(root, roots, nested, cfg, cat, completeCat, targets)
+	reader := l.reader
+	if reader == nil {
+		reader = filesystemProjectReader{root: root}
+	}
+	session, err := newSession(root, roots, nested, cfg, selectedCatalog, targets, l.repo, reader)
 	if err != nil {
-		return nil, nil, err
+		return nil, err
 	}
-	cfg = cfg.OperationTree().Bind(state.facts())
-	if err := validateAgainstCatalog(newRenderInputs(state, cfg, nil)); err != nil {
-		return nil, nil, err
+	if err := validateAgainstCatalog(newRenderInputs(session, session.Config(), session.Reader())); err != nil {
+		return nil, err
 	}
-	return state, cfg, nil
+	return session, nil
 }
 
 // catalog returns this project's one private selected-catalog snapshot.

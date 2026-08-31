@@ -486,8 +486,8 @@ func TargetDescriptorProjection(target Target) string {
 		Capabilities                                                      []Capability
 		Outputs                                                           []TargetOutput
 	}{target.Name, target.SkillDir, target.AgentDir, target.AgentSuffix, target.BridgeFile, target.BridgeTemplate, target.AgentDialect, capabilities, outputs})
-	// Preserve the historical hash projection while R2 compatibility aliases
-	// move the declaration owner out of projectstate.
+	// Preserve the historical hash projection after moving declaration ownership.
+	// The legacy package qualifier is serialized hash input, not a live type owner.
 	return strings.ReplaceAll(projection, "artifactregistry.", "projectstate.")
 }
 

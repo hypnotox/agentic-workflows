@@ -2,36 +2,33 @@ package publisher
 
 import (
 	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
-// AgentDialect preserves the project package's target-dialect compatibility name.
-type AgentDialect = projectstate.AgentDialect
+type AgentDialect = artifactregistry.AgentDialect
 
 const (
-	MarkdownAgentDialect = projectstate.MarkdownAgentDialect
-	PlainAgentDialect    = projectstate.PlainAgentDialect
+	MarkdownAgentDialect = artifactregistry.MarkdownAgentDialect
+	PlainAgentDialect    = artifactregistry.PlainAgentDialect
 )
 
-// Capability preserves the project package's target-capability compatibility name.
-type Capability = projectstate.Capability
+type Capability = artifactregistry.Capability
 
 const (
-	CapabilitySubagentTools  = projectstate.CapabilitySubagentTools
-	CapabilitySessionHandoff = projectstate.CapabilitySessionHandoff
+	CapabilitySubagentTools  = artifactregistry.CapabilitySubagentTools
+	CapabilitySessionHandoff = artifactregistry.CapabilitySessionHandoff
 )
 
-type TargetOutputProducer = projectstate.TargetOutputProducer
+type TargetOutputProducer = artifactregistry.TargetOutputProducer
 
-const TargetOutputTemplate = projectstate.TargetOutputTemplate
+const TargetOutputTemplate = artifactregistry.TargetOutputTemplate
 
-type TargetOutputInput = projectstate.TargetOutputInput
-type TargetOutput = projectstate.TargetOutput
-type Target = projectstate.Target
+type TargetOutputInput = artifactregistry.TargetOutputInput
+type TargetOutput = artifactregistry.TargetOutput
+type Target = artifactregistry.Target
 
-var claudeTarget = projectstate.BuiltinTarget("claude")
-var piTarget = projectstate.BuiltinTarget("pi")
+var claudeTarget = artifactregistry.BuiltinTarget("claude")
+var piTarget = artifactregistry.BuiltinTarget("pi")
 
 func targetTemplateData(target Target) map[string]any {
 	return artifactregistry.TargetTemplateData(target)

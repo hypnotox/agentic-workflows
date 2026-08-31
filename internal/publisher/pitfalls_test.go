@@ -11,7 +11,7 @@ import (
 
 func renderPitfallFiles(t *testing.T, root string) map[string]string {
 	t.Helper()
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -170,7 +170,7 @@ func TestPitfallCorpusEmptyState(t *testing.T) {
 
 func TestPitfallCorpusMalformedSourceFailsRender(t *testing.T) {
 	root := scaffoldFiles(t, pitfallsCfg, map[string]string{"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: x\n---\nbody\n"})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

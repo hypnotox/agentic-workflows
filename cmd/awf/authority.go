@@ -16,12 +16,12 @@ func runResolveTopic(ctx context.Context, root string, paths []string, uncovered
 	if !uncovered && len(paths) == 0 {
 		return &usageErr{"usage: awf resolve topic <path>..."}
 	}
-	state, _, repo, err := openProjectOperation(ctx, root)
+	session, err := loadProjectSession(ctx, root)
 	if err != nil {
 		return err
 	}
 	if uncovered {
-		detail, err := currentstatecoord.UncoveredPaths(state.Root(), repo, ctx)
+		detail, err := currentstatecoord.UncoveredPaths(session.Root(), session.Repository(), ctx)
 		if err != nil {
 			return err
 		}
@@ -29,12 +29,12 @@ func runResolveTopic(ctx context.Context, root string, paths []string, uncovered
 	}
 	normalized := make([]string, len(paths))
 	for i, path := range paths {
-		normalized[i], err = currentstatecoord.NormalizeAuthorityPath(state.Root(), path)
+		normalized[i], err = currentstatecoord.NormalizeAuthorityPath(session.Root(), path)
 		if err != nil {
 			return fmt.Errorf("resolve topic: %w", err)
 		}
 	}
-	detail, err := currentstatecoord.ResolveTopics(state.Root(), repo, ctx, normalized)
+	detail, err := currentstatecoord.ResolveTopics(session.Root(), session.Repository(), ctx, normalized)
 	if err != nil {
 		return err
 	}

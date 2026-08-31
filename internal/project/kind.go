@@ -117,8 +117,8 @@ type AuthoringTarget struct {
 }
 
 // ResolveSidecarTarget resolves a capability-valid leaf and its configuration-owned path.
-func ResolveSidecarTarget(s *ProjectState, cfg *config.Config, kind, name, field string) (AuthoringTarget, error) {
-	if s == nil || s.state == nil || cfg == nil {
+func ResolveSidecarTarget(s *Session, cfg *config.Config, kind, name, field string) (AuthoringTarget, error) {
+	if s == nil || s.selected == nil || cfg == nil {
 		return AuthoringTarget{}, fmt.Errorf("project: missing authoring authority")
 	}
 	d, ok := descriptorBySingular(kind)
@@ -156,8 +156,8 @@ func ResolveSidecarTarget(s *ProjectState, cfg *config.Config, kind, name, field
 	return AuthoringTarget{Kind: kind, Name: name, Part: field, SourcePath: rel}, nil
 }
 
-func ResolveAuthoringTarget(s *ProjectState, cfg *config.Config, kind, name, part string) (AuthoringTarget, error) {
-	if s == nil || s.state == nil || cfg == nil {
+func ResolveAuthoringTarget(s *Session, cfg *config.Config, kind, name, part string) (AuthoringTarget, error) {
+	if s == nil || s.selected == nil || cfg == nil {
 		return AuthoringTarget{}, fmt.Errorf("project: missing authoring authority")
 	}
 	descriptor, ok := descriptorBySingular(kind)

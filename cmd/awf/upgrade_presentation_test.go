@@ -5,7 +5,6 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
@@ -16,7 +15,7 @@ import (
 // to Publisher, so this test helper must not ship as an alternate publication
 // route.
 type upgradeSyncDependencies struct {
-	publisherSync func(context.Context, *project.ProjectState, *config.Config) (publisher.Result, error)
+	publisherSync func(context.Context, *project.Session) (publisher.Result, error)
 }
 
 func upgradeSyncMutationWith(ctx context.Context, root string, dependencies upgradeSyncDependencies) (presentation.Mutation, error) {
@@ -24,11 +23,11 @@ func upgradeSyncMutationWith(ctx context.Context, root string, dependencies upgr
 	if err != nil {
 		return presentation.Mutation{}, err
 	}
-	state, cfg, err := loader.OpenForOperation(ctx, root)
+	state, err := loader.Load(ctx, root)
 	if err != nil {
 		return presentation.Mutation{}, err
 	}
-	result, syncErr := dependencies.publisherSync(ctx, state, cfg)
+	result, syncErr := dependencies.publisherSync(ctx, state)
 	if syncErr != nil {
 		mutation, mutationErr := result.PartialMutation()
 		if mutationErr != nil {
@@ -43,8 +42,8 @@ func TestUpgradeSyncMutationWithPreservesPartialPublisherOutcome(t *testing.T) {
 	root := scaffoldProject(t)
 	cause := errors.New("late publication failure")
 	mutation, err := upgradeSyncMutationWith(testContext(t), root, upgradeSyncDependencies{
-		publisherSync: func(ctx context.Context, state *project.ProjectState, cfg *config.Config) (publisher.Result, error) {
-			result, syncErr := composePublisher(state, cfg).SyncLeased(context.Background(), nil)
+		publisherSync: func(ctx context.Context, state *project.Session) (publisher.Result, error) {
+			result, syncErr := composePublisher(state).SyncLeased(context.Background(), nil)
 			if syncErr != nil {
 				t.Fatal(syncErr)
 			}

@@ -8,7 +8,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
@@ -16,7 +15,7 @@ func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 		root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 			"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n",
 		})
-		p, err := Open(testContext(t), root)
+		p, err := loadTestSession(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -35,7 +34,7 @@ func TestOutputPlanRejectsMalformedRetainedData(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{tc.path: tc.sidecar})
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -48,7 +47,7 @@ func TestOutputPlanRejectsMalformedRetainedData(t *testing.T) {
 
 func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars:\n  gateCmd: make gate\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -77,7 +76,7 @@ func TestListDocumentRetainedInventory(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n", map[string]string{
 		"skills/debugging.yaml": "data:\n  testSurfaces: []\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -107,35 +106,6 @@ func TestListDocumentPropagatesInvalidCatalogEntry(t *testing.T) {
 	}
 }
 
-func TestCheckStagedDriftRejectsInvalidStagedSidecars(t *testing.T) {
-	for _, tc := range []struct {
-		name, path, contents string
-	}{
-		{"catalog validation", ".awf/skills/debugging.yaml", "data: [\n"},
-		{"output planning", ".awf/docs/glossary.yaml", "data:\n  terms: not-a-list\n"},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-			repo := gitfixture.InitRepoAt(t, root)
-			gitfixture.AddAll(t, repo)
-			gitfixture.Commit(t, repo, "config", nil)
-			p, err := Open(testContext(t), root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			if err := syncProject(p); err != nil {
-				t.Fatal(err)
-			}
-			gitfixture.AddAll(t, repo)
-			gitfixture.Commit(t, repo, "render", nil)
-			gitfixture.Stage(t, repo, map[string]string{tc.path: tc.contents})
-			if _, err := CheckStagedDriftRoot(testContext(t), root); err == nil {
-				t.Fatal("staged malformed sidecar was accepted")
-			}
-		})
-	}
-}
-
 type flippingGlossaryReader struct {
 	validReads int
 	reads      int
@@ -153,9 +123,3 @@ func (r *flippingGlossaryReader) ReadFile(path string) ([]byte, bool) {
 }
 
 func (r *flippingGlossaryReader) Paths(string) []string { return nil }
-
-func TestCheckStagedDriftRootRejectsNonRepository(t *testing.T) {
-	if _, err := CheckStagedDriftRoot(testContext(t), t.TempDir()); err == nil {
-		t.Fatal("staged drift accepted a non-repository root")
-	}
-}

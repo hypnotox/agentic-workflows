@@ -24,7 +24,7 @@ func corruptSidecar(t *testing.T, root, rel string) {
 
 func TestOpenMissingConfigFails(t *testing.T) {
 	// A bare temp dir with no .awf/config.yaml: config.Load fails.
-	_, err := Open(testContext(t), t.TempDir())
+	_, err := loadTestSession(testContext(t), t.TempDir())
 	if err == nil {
 		t.Fatal("expected Open to fail with no config.yaml")
 	}
@@ -32,7 +32,7 @@ func TestOpenMissingConfigFails(t *testing.T) {
 
 func TestOpenRejectsEmptyPrefix(t *testing.T) {
 	root := scaffold(t, "prefix: \"\"\n")
-	_, err := Open(testContext(t), root)
+	_, err := loadTestSession(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected Open to fail validation on empty prefix")
 	}
@@ -45,7 +45,7 @@ func TestOpenRejectsMalformedSkillSidecar(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"skills/implementing.yaml": "bogusUnknownField: true\n",
 	})
-	_, err := Open(testContext(t), root)
+	_, err := loadTestSession(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected Open to fail on a malformed skill sidecar")
 	}
@@ -55,7 +55,7 @@ func TestOpenRejectsMalformedAgentsDocSidecar(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"agents-doc.yaml": "bogusUnknownField: true\n",
 	})
-	_, err := Open(testContext(t), root)
+	_, err := loadTestSession(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected Open to fail on a malformed agents-doc sidecar")
 	}
@@ -65,7 +65,7 @@ func TestOpenRejectsUnknownAgentsDocSection(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"agents-doc.yaml": "sections:\n  not-a-real-section:\n    drop: true\n",
 	})
-	_, err := Open(testContext(t), root)
+	_, err := loadTestSession(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected Open to reject an undeclared agents-doc section")
 	}
@@ -111,7 +111,7 @@ func TestValidateFrontmatter(t *testing.T) {
 
 func TestDeclaredSections(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,7 +145,7 @@ func TestRenderAllSurfacesMalformedSidecars(t *testing.T) {
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffold(t, tc.cfg)
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatalf("Open: %v", err)
 			}
@@ -178,7 +178,7 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 			if err := os.MkdirAll(filepath.Join(root, tc.partDir), 0o755); err != nil {
 				t.Fatal(err)
 			}
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -197,7 +197,7 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 
 func TestRenderTargetEncoderError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func TestRenderTargetEncoderError(t *testing.T) {
 
 func TestRenderTargetMissingTemplate(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +225,7 @@ func TestRenderTargetMissingTemplate(t *testing.T) {
 
 func TestArtifactConfigHashUnreadablePart(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -243,7 +243,7 @@ func TestSyncMkdirAllErrorWhenParentIsFile(t *testing.T) {
 	// A regular file squatting on .claude/skills makes MkdirAll of the skill's
 	// output directory fail for every user (incl. root).
 	testsupport.WriteFile(t, filepath.Join(root, ".claude", "skills"), "i am a file, not a dir\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -258,7 +258,7 @@ func TestSyncWriteFileErrorWhenOutputIsDir(t *testing.T) {
 	if err := os.MkdirAll(filepath.Join(root, ".claude", "skills", "example-implementing", "SKILL.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -271,7 +271,7 @@ func TestSyncWriteFileErrorWhenOutputIsDir(t *testing.T) {
 
 func TestCheckFailsWithoutLock(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -282,7 +282,7 @@ func TestCheckFailsWithoutLock(t *testing.T) {
 
 func TestCheckSurfacesRenderError(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -298,7 +298,7 @@ func TestCheckSurfacesRenderError(t *testing.T) {
 
 func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -326,7 +326,7 @@ func TestCheckFlagsFileWhereKindDirBelongs(t *testing.T) {
 // invariant: rendering/sync-and-drift:target-prune-ancestors (TestSyncPrunesRemovedTargetTree)
 func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -358,7 +358,7 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 
 func TestCheckReportsMissingRenderedFile(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -397,7 +397,7 @@ func TestCheckDetectsDeadReference(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"parts/agents-doc/identity.md": "See [missing](no/such/file.md).\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -430,7 +430,7 @@ func TestCheckDeadRefsAbsoluteAndEscapingTargets(t *testing.T) {
 		"parts/doc-standard/principles.md": "See [w](/docs/workflow.md) and [out](../../outside.md).\n",
 	})
 	testsupport.WriteFile(t, filepath.Join(root, "..", "outside.md"), "outside\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -2,6 +2,7 @@ package publisher
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -10,13 +11,13 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
@@ -25,12 +26,69 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
-type ProjectState = project.ProjectState
+type Session = project.Session
+
+type derivedSession struct {
+	root    string
+	roots   resident.Roots
+	nested  bool
+	cfg     *config.Config
+	reader  ProjectTreeReader
+	catalog *catalog.Catalog
+	targets []Target
+}
+
+func (s *derivedSession) Root() string          { return s.root }
+func (s *derivedSession) Roots() resident.Roots { return s.roots }
+func (s *derivedSession) Nested() bool          { return s.nested }
+func (s *derivedSession) Config() *config.Config {
+	if s.cfg == nil {
+		return nil
+	}
+	facts, err := config.NewFacts(s.cfg)
+	if err != nil {
+		panic(err)
+	}
+	return s.cfg.OperationTree().Bind(facts)
+}
+func (s *derivedSession) Reader() ProjectTreeReader { return s.reader }
+func (s *derivedSession) Catalog() *catalog.Catalog { return catalog.NewView(s.catalog).Catalog() }
+func (s *derivedSession) Targets() []Target         { return append([]Target(nil), s.targets...) }
+
+func deriveSession(base ProjectSession, cfg *config.Config, reader ProjectTreeReader, selected *catalog.Catalog, targets []Target) *derivedSession {
+	if cfg == nil {
+		cfg = base.Config()
+	}
+	if reader == nil {
+		reader = base.Reader()
+	}
+	if selected == nil {
+		selected = base.Catalog()
+	}
+	if targets == nil {
+		targets = base.Targets()
+	}
+	return &derivedSession{root: base.Root(), roots: base.Roots(), cfg: cfg, reader: reader, catalog: selected, targets: append([]Target(nil), targets...)}
+}
+
+func newRenderInputs(state ProjectSession, cfg *config.Config, read ProjectTreeReader, version string) renderInputs {
+	return renderInputsFromSession(deriveSession(state, cfg, read, nil, nil), version)
+}
+
+func newPublisher(state ProjectSession, cfg *config.Config, read ProjectTreeReader, version string) *Publisher {
+	if state == nil {
+		return New(nil, version)
+	}
+	derived := deriveSession(state, state.Config(), state.Reader(), state.Catalog(), state.Targets())
+	derived.cfg = cfg
+	derived.reader = read
+	return New(derived, version)
+}
 
 var Version = project.Version
 
-func KnownTargets() []string                          { return projectstate.KnownTargets() }
-func resolveTargets(names []string) ([]Target, error) { return projectstate.ResolveTargets(names) }
+func KnownTargets() []string                          { return artifactregistry.KnownTargets() }
+func resolveTargets(names []string) ([]Target, error) { return artifactregistry.ResolveTargets(names) }
 
 var testConfigs sync.Map
 var targetOverrides sync.Map
@@ -73,7 +131,7 @@ func (r snapshotTreeReader) Paths(prefix string) ([]string, error) {
 	}
 	return out, nil
 }
-func csRepo(t *testing.T, cfg string, files map[string]string) *ProjectState {
+func csRepo(t *testing.T, cfg string, files map[string]string) *Session {
 	t.Helper()
 	repo := gitfixture.InitRepo(t)
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
@@ -84,13 +142,13 @@ func csRepo(t *testing.T, cfg string, files map[string]string) *ProjectState {
 	for rel, body := range files {
 		testsupport.WriteFile(t, filepath.Join(repo.Root(), rel), body)
 	}
-	state, err := Open(testContext(t), repo.Root())
+	state, err := loadTestSession(testContext(t), repo.Root())
 	if err != nil {
 		t.Fatal(err)
 	}
 	return state
 }
-func mustDeriveTopics(t *testing.T, state *ProjectState) topic.Corpus {
+func mustDeriveTopics(t *testing.T, state *Session) topic.Corpus {
 	t.Helper()
 	_, topics, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(state))
 	if err != nil {
@@ -98,7 +156,7 @@ func mustDeriveTopics(t *testing.T, state *ProjectState) topic.Corpus {
 	}
 	return topics
 }
-func queryTopicProject(state *ProjectState, ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
+func queryTopicProject(state *Session, ctx context.Context, selector string, opts topic.QueryOptions) (topic.QueryResult, error) {
 	repo, _, err := awfgit.OpenContaining(state.Root())
 	if err != nil {
 		return topic.QueryResult{}, err
@@ -172,23 +230,21 @@ func writeADR(t *testing.T, root, name, body string) {
 	t.Helper()
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "decisions", name), body)
 }
-func testTargets(state *ProjectState) []Target {
+func testTargets(state *Session) []Target {
 	if value, ok := targetOverrides.Load(state); ok {
 		return append([]Target(nil), value.([]Target)...)
 	}
 	return state.Targets()
 }
-func lowerWithTargets(state *projectstate.ProjectState, targets []Target) *projectstate.ProjectState {
-	return projectstate.NewDerivedWithFacts(state.Root(), state.Roots(), state.Nested(), state.Facts(), state.Catalog(), state.CompleteCatalog(), targets)
+func lowerWithTargets(state ProjectSession, targets []Target) *derivedSession {
+	derived := deriveSession(state, state.Config(), state.Reader(), state.Catalog(), state.Targets())
+	derived.targets = append([]Target(nil), targets...)
+	return derived
 }
-func lowerForConfig(state *projectstate.ProjectState, cfg *config.Config) *projectstate.ProjectState {
-	facts, err := config.NewFacts(cfg)
-	if err != nil {
-		panic(err)
-	}
-	return projectstate.NewDerivedWithFacts(state.Root(), state.Roots(), state.Nested(), facts, state.Catalog(), state.CompleteCatalog(), state.Targets())
+func lowerForConfig(state ProjectSession, cfg *config.Config) *derivedSession {
+	return deriveSession(state, cfg, state.Reader(), state.Catalog(), state.Targets())
 }
-func (p renderInputs) residentRoots() resident.Roots { return p.state.Roots() }
+func (p renderInputs) residentRoots() resident.Roots { return p.session.Roots() }
 
 func testContext(t *testing.T) context.Context { return testsupport.Context(t) }
 func withTestGateCmd(source string) string {
@@ -222,11 +278,11 @@ func gitScaffold(t *testing.T, branch string) string {
 }
 func scaffold(t *testing.T, source string) string { return scaffoldFiles(t, source, nil) }
 
-func initializedSampleProject(t *testing.T) (string, *ProjectState) {
+func initializedSampleProject(t *testing.T) (string, *Session) {
 	t.Helper()
 	initializedSampleSeedOnce.Do(func() {
 		root := scaffold(t, sampleYAML)
-		state, err := Open(testContext(t), root)
+		state, err := loadTestSession(testContext(t), root)
 		if err != nil {
 			initializedSampleSeedErr = err
 			return
@@ -244,7 +300,7 @@ func initializedSampleProject(t *testing.T) (string, *ProjectState) {
 	if err := initializedSampleSeed.Clone(root); err != nil {
 		t.Fatalf("clone publisher sample seed: %v", err)
 	}
-	state, err := Open(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("open cloned publisher sample seed: %v", err)
 	}
@@ -260,19 +316,24 @@ func scaffoldFiles(t *testing.T, source string, files map[string]string) string 
 	}
 	return root
 }
-func Open(ctx context.Context, root string) (*ProjectState, error) {
-	state, err := project.Open(ctx, root)
+func loadTestSession(ctx context.Context, root string) (*Session, error) {
+	repo, _, repoErr := awfgit.OpenContaining(root)
+	var state *project.Session
+	var err error
+	if repoErr == nil {
+		state, err = project.NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo).Load(ctx, root)
+	} else if errors.Is(repoErr, awfgit.ErrNotARepository) {
+		state, err = project.NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot).Load(ctx, root)
+	} else {
+		return nil, repoErr
+	}
 	if err != nil {
 		return nil, err
 	}
-	cfg, err := config.Load(config.RootDir(root))
-	if err != nil {
-		return nil, err
-	}
-	testConfigs.Store(state, cfg)
+	testConfigs.Store(state, state.Config())
 	return state, nil
 }
-func testConfig(state *ProjectState) *config.Config {
+func testConfig(state *Session) *config.Config {
 	if value, ok := testConfigs.Load(state); ok {
 		return value.(*config.Config)
 	}
@@ -280,40 +341,36 @@ func testConfig(state *ProjectState) *config.Config {
 	testConfigs.Store(state, cfg)
 	return cfg
 }
-func testState() *projectstate.ProjectState {
-	return projectstate.NewDerivedWithFacts("", resident.NewRoots("", ""), false, config.Facts{}, catalog.Standard, catalog.Standard, nil)
+func testState() *derivedSession {
+	return &derivedSession{roots: resident.NewRoots("", ""), cfg: &config.Config{}, reader: NewFilesystemReader(""), catalog: catalog.Standard}
 }
-func testStateAt(root string) *projectstate.ProjectState {
-	return projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, root), false, config.Facts{}, catalog.Standard, catalog.Standard, nil)
+func testStateAt(root string) *derivedSession {
+	return &derivedSession{root: root, roots: resident.NewRoots(root, root), cfg: &config.Config{}, reader: NewFilesystemReader(root), catalog: catalog.Standard}
 }
 func renderInputsAt(root string) renderInputs {
-	cfg := &config.Config{}
-	state := projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, root), false, config.Facts{}, catalog.Standard, catalog.Standard, nil)
-	return newRenderInputs(state, cfg, NewFilesystemReader(root), project.Version)
+	return renderInputsFromSession(testStateAt(root), project.Version)
 }
-func testRenderInputs(cfg *config.Config, roots resident.Roots, selected, complete *catalog.Catalog, targets []Target) renderInputs {
-	state := projectstate.NewDerivedWithFacts("", roots, false, config.Facts{}, selected, complete, targets)
-	return newRenderInputs(state, cfg, NewFilesystemReader(""), project.Version)
+func testRenderInputs(cfg *config.Config, roots resident.Roots, selected, _ *catalog.Catalog, targets []Target) renderInputs {
+	state := &derivedSession{roots: roots, cfg: cfg, reader: NewFilesystemReader(""), catalog: selected, targets: targets}
+	return renderInputsFromSession(state, project.Version)
 }
-func renderInputsWithTargets(state *ProjectState, targets []Target) renderInputs {
-	base := state.OutputState()
-	lower := projectstate.NewDerivedWithFacts(base.Root(), base.Roots(), base.Nested(), config.Facts{}, base.Catalog(), base.CompleteCatalog(), targets)
-	return newRenderInputs(lower, testConfig(state), NewFilesystemReader(state.Root()), project.Version)
+func renderInputsWithTargets(state *Session, targets []Target) renderInputs {
+	return newRenderInputs(lowerWithTargets(state, targets), testConfig(state), NewFilesystemReader(state.Root()), project.Version)
 }
-func setTestTargets(state *ProjectState, targets []Target) *ProjectState {
+func setTestTargets(state *Session, targets []Target) *Session {
 	targetOverrides.Store(state, targets)
 	return state
 }
 func testPublisher(inputs renderInputs) *Publisher {
-	return New(lowerForConfig(inputs.state, inputs.cfg), inputs.cfg, inputs.read, inputs.version)
+	return newPublisher(inputs.session, inputs.cfg, inputs.read, inputs.version)
 }
 
-func renderInputsForTest(state *ProjectState) renderInputs {
-	lower := state.OutputState()
+func renderInputsForTest(state *Session) renderInputs {
+	var selected ProjectSession = state
 	if value, ok := targetOverrides.Load(state); ok {
-		lower = projectstate.NewDerivedWithFacts(lower.Root(), lower.Roots(), lower.Nested(), config.Facts{}, lower.Catalog(), lower.CompleteCatalog(), value.([]Target))
+		selected = lowerWithTargets(state, value.([]Target))
 	}
-	return newRenderInputs(lower, testConfig(state), NewFilesystemReader(state.Root()), project.Version)
+	return newRenderInputs(selected, testConfig(state), NewFilesystemReader(state.Root()), project.Version)
 }
 func declaredSections(p renderInputs, kind, name string) []string {
 	if d, ok := descriptorByPlural(kind); ok && d.sections != nil {
@@ -322,7 +379,7 @@ func declaredSections(p renderInputs, kind, name string) []string {
 	}
 	return nil
 }
-func mustDeriveSkills(t *testing.T, state *ProjectState) map[string]bool {
+func mustDeriveSkills(t *testing.T, state *Session) map[string]bool {
 	t.Helper()
 	out, err := effectiveSkills(renderInputsForTest(state))
 	if err != nil {
@@ -333,55 +390,55 @@ func mustDeriveSkills(t *testing.T, state *ProjectState) map[string]bool {
 func projectOperationSemantics(prepared Preparation) project.OperationSemantics {
 	return project.OperationSemantics{Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}
 }
-func checkReportProject(state *ProjectState, ctx context.Context) (project.CheckReport, error) {
+func checkReportProject(state *Session, ctx context.Context) (project.CheckReport, error) {
 	cfg := testConfig(state)
-	prepared, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
+	prepared, err := newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
 	if err != nil {
 		return project.CheckReport{}, err
 	}
 	return project.BuildCheckReport(state, cfg, nil, ctx, prepared.Plan(), projectOperationSemantics(prepared))
 }
-func checkProject(state *ProjectState, _ ...context.Context) ([]manifest.Drift, error) {
+func checkProject(state *Session, _ ...context.Context) ([]manifest.Drift, error) {
 	cfg := testConfig(state)
-	prepared, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
+	prepared, err := newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
 	if err != nil {
 		return nil, err
 	}
 	report, err := project.BuildCheckReport(state, cfg, nil, context.Background(), prepared.Plan(), projectOperationSemantics(prepared))
 	return report.Drift, err
 }
-func advisoryNotesProject(state *ProjectState) ([]string, error) {
+func advisoryNotesProject(state *Session) ([]string, error) {
 	cfg := testConfig(state)
-	prepared, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
+	prepared, err := newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Prepare()
 	if err != nil {
 		return nil, err
 	}
 	return project.AdvisoryNotes(state, cfg, prepared.Plan(), projectOperationSemantics(prepared))
 }
-func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup, []Change, []string, error) {
+func initializeReportProject(state *Session, seed InitAuthority) ([]Backup, []Change, []string, error) {
 	cfg := testConfig(state)
-	result, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Initialize(seed)
+	result, err := newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Initialize(seed)
 	return result.Backups(), result.Changes(), result.Pruned(), err
 }
-func syncReportProject(state *ProjectState) ([]Backup, []string, error) {
+func syncReportProject(state *Session) ([]Backup, []string, error) {
 	cfg := testConfig(state)
-	result, err := New(lowerForConfig(state.OutputState(), cfg), cfg, NewFilesystemReader(state.Root()), project.Version).SyncLeased(context.Background(), nil)
+	result, err := newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version).SyncLeased(context.Background(), nil)
 	return result.Backups(), result.Pruned(), err
 }
-func plannedOutputsProject(state *ProjectState) ([]string, error) {
-	plan, err := New(lowerForConfig(state.OutputState(), testConfig(state)), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Plan()
+func plannedOutputsProject(state *Session) ([]string, error) {
+	plan, err := newPublisher(lowerForConfig(state, testConfig(state)), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Plan()
 	if err != nil {
 		return nil, err
 	}
 	return plan.Paths(), nil
 }
-func configReferenceProject(state *ProjectState) (ConfigReference, error) {
+func configReferenceProject(state *Session) (ConfigReference, error) {
 	return configReferenceModel(renderInputsForTest(state))
 }
-func outputPlanProject(state *ProjectState) (*OutputPlan, error) {
+func outputPlanProject(state *Session) (*OutputPlan, error) {
 	return outputPlan(renderInputsForTest(state))
 }
-func renderResidentMarkerProject(state *ProjectState, name string) (RenderedFile, error) {
+func renderResidentMarkerProject(state *Session, name string) (RenderedFile, error) {
 	plan, err := outputPlan(renderInputsForTest(state))
 	if err != nil {
 		return RenderedFile{}, err
@@ -394,14 +451,14 @@ func renderResidentMarkerProject(state *ProjectState, name string) (RenderedFile
 	}
 	return RenderedFile{}, fmt.Errorf("resident marker %s is absent from test plan", want)
 }
-func renderAll(state *ProjectState) ([]RenderedFile, error) {
+func renderAll(state *Session) ([]RenderedFile, error) {
 	plan, err := outputPlan(renderInputsForTest(state))
 	if err != nil {
 		return nil, err
 	}
 	return plan.writeFiles(), nil
 }
-func syncProject(state *ProjectState) error {
+func syncProject(state *Session) error {
 	pub := testPublisher(renderInputsForTest(state))
 	_, found, err := manifest.LoadOptional(config.LockPath(state.Root()))
 	if err != nil {
@@ -414,8 +471,7 @@ func syncProject(state *ProjectState) error {
 	}
 	return err
 }
-func renderInputsWithCatalog(state *ProjectState, selected *catalog.Catalog) renderInputs {
-	base := state.OutputState()
-	lower := projectstate.NewDerivedWithFacts(base.Root(), base.Roots(), base.Nested(), config.Facts{}, selected, base.CompleteCatalog(), base.Targets())
-	return newRenderInputs(lower, testConfig(state), NewFilesystemReader(state.Root()), project.Version)
+func renderInputsWithCatalog(state *Session, selected *catalog.Catalog) renderInputs {
+	lower := deriveSession(state, testConfig(state), NewFilesystemReader(state.Root()), selected, state.Targets())
+	return renderInputsFromSession(lower, project.Version)
 }

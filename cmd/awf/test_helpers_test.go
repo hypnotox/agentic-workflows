@@ -42,11 +42,11 @@ func initializeProject(ctx context.Context, root string, out io.Writer) error {
 	if err != nil {
 		return err
 	}
-	state, cfg, err := loader.OpenForOperation(ctx, root)
+	state, err := loader.Load(ctx, root)
 	if err != nil {
 		return err
 	}
-	result, err := composePublisher(state, cfg).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version})
+	result, err := composePublisher(state).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version})
 	if err != nil {
 		return err
 	}

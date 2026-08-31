@@ -13,7 +13,7 @@ import (
 
 func TestSyncWritesFilesAndLock(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestSyncWritesFilesAndLock(t *testing.T) {
 
 func TestSyncRendersDeclaredDoc(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -58,7 +58,7 @@ func TestSyncRendersDeclaredDoc(t *testing.T) {
 
 func TestSyncRendersAgentFromMap(t *testing.T) {
 	root := scaffold(t, "prefix: myproject\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -83,7 +83,7 @@ func TestSyncRendersAgentFromMap(t *testing.T) {
 func TestSyncRendersAgentsDoc(t *testing.T) {
 	t.Run("always-on by default", func(t *testing.T) {
 		root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n")
-		p, err := Open(testContext(t), root)
+		p, err := loadTestSession(testContext(t), root)
 		if err != nil {
 			t.Fatalf("Open: %v", err)
 		}
@@ -104,7 +104,7 @@ func TestSyncRendersAgentsDoc(t *testing.T) {
 func TestRenderAllRendersFullCatalogForBothTargets(t *testing.T) {
 	cfg := "prefix: example\nintegrationBranch: main\n"
 	root := scaffold(t, cfg)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -163,7 +163,7 @@ func TestRenderAllRendersFullCatalogForBothTargets(t *testing.T) {
 // invariant: rendering/guide-and-doc-templates:document-map-lists-mandatory-docs (TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally)
 func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -203,7 +203,7 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 func TestSyncRecordsTopicOutputsInManifest(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root)
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}

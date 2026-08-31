@@ -202,7 +202,7 @@ func TestRunNewPitfallScaffoldsOneAuthoredSourceWithoutRender(t *testing.T) {
 	broken := scaffoldProject(t)
 	testsupport.WriteAwfConfig(t, broken, minimalYAML+"unknown: true\n")
 	if err := runNew(testContext(t), broken, "pitfall", []string{"Title"}, io.Discard); err == nil {
-		t.Fatal("pitfall scaffold accepted a project.Open error")
+		t.Fatal("pitfall scaffold accepted a project Session loading error")
 	}
 }
 

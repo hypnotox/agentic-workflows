@@ -91,7 +91,7 @@ func TestSectionOrphanDetection(t *testing.T) {
 		"docs/parts/architecture/" + valid + ".md":  "## Valid\n\noverride body\n",
 		"docs/parts/architecture/" + orphan + ".md": "## Bogus\n\nstray\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -177,7 +177,7 @@ func TestMaintainableCodeDesignGuide(t *testing.T) {
 	}
 
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}

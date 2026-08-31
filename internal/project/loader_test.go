@@ -44,7 +44,7 @@ func TestNewLoaderRejectsMissingDependencies(t *testing.T) {
 	}
 }
 
-func TestLoaderWithConfigLoaderRejectsMissingCandidate(t *testing.T) {
+func TestLoaderWithSelectionRejectsMissingCandidate(t *testing.T) {
 	loader := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root })
 	for _, tc := range []struct {
 		name   string
@@ -56,12 +56,26 @@ func TestLoaderWithConfigLoaderRejectsMissingCandidate(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			defer func() {
-				if got := recover(); got != "project Loader: missing candidate config loader" {
+				if got := recover(); got != "project Loader: missing selected project input" {
 					t.Fatalf("panic = %v", got)
 				}
 			}()
-			tc.loader.WithConfigLoader(tc.load)
+			tc.loader.WithSelection(tc.load, filesystemProjectReader{root: t.TempDir()})
 		})
+	}
+}
+
+func TestLoaderSelectionCarriesThroughOperationInputs(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
+	reader := &filesystemProjectReader{root: root}
+	load := LoadConfigTree(config.Load)
+	session, err := NewLoaderWithoutRepository(load, catalog.Standard, func(_ context.Context, root string) string { return root }).WithSelection(load, reader).Load(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got := operationInputs(session, session.Config()).read; got != reader {
+		t.Fatalf("operation reader = %#v, want selected reader %#v", got, reader)
 	}
 }
 
@@ -76,7 +90,7 @@ func TestLoaderOpenReturnsLoadError(t *testing.T) {
 		t.Fatal("resident resolver called after load failure")
 		return ""
 	})
-	_, err := loader.Open(testContext(t), root)
+	_, err := loader.Load(testContext(t), root)
 	if gotPath != config.RootDir(root) {
 		t.Fatalf("load path = %q, want %q", gotPath, config.RootDir(root))
 	}
@@ -93,7 +107,7 @@ func TestLoaderOpenRejectsNilLoadedConfig(t *testing.T) {
 		t.Fatal("resident resolver called after nil config")
 		return ""
 	})
-	_, err := loader.Open(testContext(t), t.TempDir())
+	_, err := loader.Load(testContext(t), t.TempDir())
 	if err == nil || err.Error() != "project Loader: load config tree returned nil config" {
 		t.Fatalf("error = %v", err)
 	}
@@ -106,7 +120,7 @@ func TestLoaderOpenValidatesBeforeResolvingResidentRoot(t *testing.T) {
 		t.Fatal("resident resolver called before config validation")
 		return ""
 	})
-	_, err := loader.Open(testContext(t), t.TempDir())
+	_, err := loader.Load(testContext(t), t.TempDir())
 	if err == nil || err.Error() != "prefix must not be empty" {
 		t.Fatalf("error = %v", err)
 	}
@@ -118,12 +132,12 @@ func TestOpenFallsBackOnUnsafeResidentRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(external, "config.yaml"), "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if p.roots().Resident != root {
-		t.Fatalf("resident root = %q, want invoking root", p.roots().Resident)
+	if p.Roots().Resident != root {
+		t.Fatalf("resident root = %q, want invoking root", p.Roots().Resident)
 	}
 }
 
@@ -133,14 +147,14 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 	injected := *catalog.Standard
 	injected.Skills = maps.Clone(catalog.Standard.Skills)
 	loader := NewLoaderWithoutRepository(config.Load, &injected, func(_ context.Context, root string) string { return root })
-	p, err := loader.Open(testContext(t), root)
+	p, err := loader.Load(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
 	if p.catalog() == &injected || !reflect.DeepEqual(p.catalog(), &injected) {
-		t.Fatal("ProjectState did not own one equivalent injected catalog snapshot")
+		t.Fatal("Session did not own one equivalent injected catalog snapshot")
 	}
-	second, err := loader.Open(testContext(t), root)
+	second, err := loader.Load(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,12 +166,12 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 	}
 }
 
-func TestProjectStateDefensivelyOwnsTargetSnapshots(t *testing.T) {
+func TestSessionDefensivelyOwnsTargetSnapshots(t *testing.T) {
 	source := []Target{{
 		Name: "target", Capabilities: []Capability{CapabilitySubagentTools},
 		Outputs: []TargetOutput{{Path: "output", Inputs: []TargetOutputInput{{Path: "input", Role: outputplan.ArtifactTemplate}}}},
 	}}
-	state, err := newProjectState("root", resident.NewRoots("root", "resident"), false, &config.Config{}, catalog.Standard, catalog.Standard, source)
+	state, err := newSession("root", resident.NewRoots("root", "resident"), false, &config.Config{}, catalog.Standard, source, nil, filesystemProjectReader{root: "root"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -192,7 +206,7 @@ func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {
 	snapshot := &snapshotValue
 
 	loader := NewLoaderWithoutRepository(config.Load, injected, func(_ context.Context, root string) string { return root })
-	if _, err := loader.Open(testContext(t), root); err != nil {
+	if _, err := loader.Load(testContext(t), root); err != nil {
 		t.Fatal(err)
 	}
 	if !reflect.DeepEqual(injected, snapshot) {
@@ -205,7 +219,7 @@ func TestLoaderRejectsUnsupportedConfigFactData(t *testing.T) {
 	loader := NewLoaderWithoutRepository(func(string) (*config.Config, error) {
 		return &config.Config{Prefix: "example", IntegrationBranch: "main", Vars: map[string]any{"bad": unsupported{values: []string{"mutable"}}}}, nil
 	}, catalog.Standard, func(_ context.Context, root string) string { return root })
-	_, err := loader.Open(testContext(t), t.TempDir())
+	_, err := loader.Load(testContext(t), t.TempDir())
 	if err == nil || !strings.Contains(err.Error(), "unsupported semantic data type") {
 		t.Fatalf("Loader.Open error = %v", err)
 	}
@@ -214,7 +228,7 @@ func TestLoaderRejectsUnsupportedConfigFactData(t *testing.T) {
 func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\ndomains: [tooling]\nvars: {nested: {items: [original]}}\n")
-	p, err := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root }).Open(testContext(t), root)
+	p, err := NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, root string) string { return root }).Load(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -239,12 +253,12 @@ func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	if p.catalog().Skills["debugging"].Sections[0] == "returned mutation" {
 		t.Fatal("catalog accessor returned an alias")
 	}
-	complete := p.completeCatalog()
+	complete := p.Catalog()
 	complete.Skills["debugging"] = catalog.SkillSpec{Sections: []string{"complete mutation"}}
-	if p.completeCatalog().Skills["debugging"].Sections[0] == "complete mutation" {
+	if p.Catalog().Skills["debugging"].Sections[0] == "complete mutation" {
 		t.Fatal("complete catalog accessor returned an alias")
 	}
-	if p.Root() != root || p.roots().Tracked != root || p.nested() || p.Config().Source() != nil {
+	if p.Root() != root || p.Roots().Tracked != root || p.Nested() || p.Config().Source() == nil {
 		t.Fatal("Loader did not construct the expected fact state")
 	}
 }

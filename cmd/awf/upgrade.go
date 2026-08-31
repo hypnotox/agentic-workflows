@@ -76,11 +76,11 @@ func upgradeSyncMutationLeased(ctx context.Context, root string, lease *filesyst
 	if err != nil {
 		return presentation.Mutation{}, err
 	}
-	state, cfg, err := loader.OpenForOperation(ctx, root)
+	session, err := loader.Load(ctx, root)
 	if err != nil {
 		return presentation.Mutation{}, err
 	}
-	result, syncErr := composePublisher(state, cfg).SyncLeased(ctx, lease)
+	result, syncErr := composePublisher(session).SyncLeased(ctx, lease)
 	if syncErr != nil {
 		mutation, mutationErr := result.PartialMutation()
 		if mutationErr != nil {

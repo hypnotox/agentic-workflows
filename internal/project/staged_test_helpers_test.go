@@ -39,7 +39,7 @@ func lockJSON(t *testing.T, lock *manifest.Lock) string {
 }
 
 // writeLock writes and stages the project's awf.lock.
-func writeLock(t *testing.T, p *ProjectState, lock *manifest.Lock) {
+func writeLock(t *testing.T, p *Session, lock *manifest.Lock) {
 	t.Helper()
 	b, err := lock.Marshal()
 	if err != nil {
@@ -51,9 +51,9 @@ func writeLock(t *testing.T, p *ProjectState, lock *manifest.Lock) {
 
 // openStaged opens a project whose config is on disk (staged or untracked),
 // failing the test on error.
-func openStaged(t *testing.T, dir string) *ProjectState {
+func openStaged(t *testing.T, dir string) *Session {
 	t.Helper()
-	p, err := Open(testContext(t), dir)
+	p, err := loadTestSession(testContext(t), dir)
 	if err != nil {
 		t.Fatal(err)
 	}

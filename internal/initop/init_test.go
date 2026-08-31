@@ -270,7 +270,7 @@ func TestRunPostPublicationFailuresPresentCompletePublisherAndScaffoldEffects(t 
 				return project.NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, selected string) string { return selected }), nil
 			}
 			want := errors.New("post-publication failure")
-			advisory := func(state *project.ProjectState, cfg *config.Config, prepared publisher.Preparation) ([]string, error) {
+			advisory := func(state *project.Session, cfg *config.Config, prepared publisher.Preparation) ([]string, error) {
 				if !releaseFailure {
 					return nil, want
 				}

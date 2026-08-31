@@ -10,29 +10,19 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
-// TestSyncAutoLinksDocsInAgentsDoc covers the project-level wiring that the
-// template golden cannot: RenderAll injects resolvedDocs() into the agents-doc
-// data map so the Document map auto-links every declared (non-local) doc with
-// its catalog title/desc. A local doc must not appear.
-func TestOpenRejectsMultipleRepositoryDependencies(t *testing.T) {
-	if _, err := Open(testContext(t), t.TempDir(), nil, nil); err == nil {
-		t.Fatal("multiple repository dependencies accepted")
-	}
-}
-
 func TestOpenRejectsMalformedRepository(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := Open(testContext(t), root); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
+	if _, err := loadTestSession(testContext(t), root); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
 		t.Fatalf("malformed repository error = %v", err)
 	}
 }
 
 func TestOpenValidConfigSucceeds(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	_, err := Open(testContext(t), root)
+	_, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("expected valid config to open cleanly, got: %v", err)
 	}
@@ -44,7 +34,7 @@ func TestOpenRejectsUnknownSectionOverride(t *testing.T) {
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"skills/debugging.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
-	_, err := Open(testContext(t), root)
+	_, err := loadTestSession(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected error for unknown section override 'bogus'")
 	}
@@ -64,7 +54,7 @@ func TestOpenAllowsValidSectionOverride(t *testing.T) {
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"skills/debugging.yaml": "sections:\n  oracle-and-handoff:\n    drop: true\n",
 	})
-	_, err := Open(testContext(t), root)
+	_, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("valid section override 'oracle-and-handoff' should succeed, got: %v", err)
 	}
@@ -76,7 +66,7 @@ func TestOpenRejectsUnknownAgentSectionOverride(t *testing.T) {
 	root := scaffoldFiles(t, cfg, map[string]string{
 		"agents/reviewer.yaml": "sections:\n  bogus:\n    drop: true\n",
 	})
-	_, err := Open(testContext(t), root)
+	_, err := loadTestSession(testContext(t), root)
 	if err == nil {
 		t.Fatal("expected error for unknown agent section override 'bogus'")
 	}

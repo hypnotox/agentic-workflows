@@ -20,7 +20,7 @@ import (
 func normalizeSemver(s string) (string, bool) { return manifest.NormalizeSemver(s) }
 
 // gate refuses to operate against a config the running binary cannot correctly
-// interpret. It runs before project.Open. On the schema axis: "gate" (config
+// interpret. It runs before project Session loading. On the schema axis: "gate" (config
 // behind binary) → "run awf upgrade"; "ahead" (config ahead of binary) → "update
 // your pinned awf" (ADR-0039); "autobump" proceeds and the subsequent sync stamps
 // the current schema. On the release-version axis: after the schema check it loads

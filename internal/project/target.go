@@ -1,46 +1,32 @@
 package project
 
-import "github.com/hypnotox/agentic-workflows/internal/projectstate"
+import "github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 
-// AgentDialect preserves the project package's target-dialect compatibility name.
-type AgentDialect = projectstate.AgentDialect
-
-const (
-	// MarkdownAgentDialect preserves the Markdown target-dialect compatibility value.
-	MarkdownAgentDialect = projectstate.MarkdownAgentDialect
-	// PlainAgentDialect preserves the plain-text target-dialect compatibility value.
-	PlainAgentDialect = projectstate.PlainAgentDialect
-)
-
-// Capability preserves the project package's target-capability compatibility name.
-type Capability = projectstate.Capability
+type AgentDialect = artifactregistry.AgentDialect
 
 const (
-	// CapabilitySubagentTools preserves the subagent-tools capability value.
-	CapabilitySubagentTools = projectstate.CapabilitySubagentTools
-	// CapabilitySessionHandoff preserves the session-handoff capability value.
-	CapabilitySessionHandoff = projectstate.CapabilitySessionHandoff
+	MarkdownAgentDialect = artifactregistry.MarkdownAgentDialect
+	PlainAgentDialect    = artifactregistry.PlainAgentDialect
 )
 
-// TargetOutputProducer preserves the project package's producer compatibility name.
-type TargetOutputProducer = projectstate.TargetOutputProducer
+type Capability = artifactregistry.Capability
 
-// TargetOutputTemplate preserves the template-producer compatibility value.
-const TargetOutputTemplate = projectstate.TargetOutputTemplate
+const (
+	CapabilitySubagentTools  = artifactregistry.CapabilitySubagentTools
+	CapabilitySessionHandoff = artifactregistry.CapabilitySessionHandoff
+)
 
-// TargetOutputInput preserves the project package's target-input compatibility name.
-type TargetOutputInput = projectstate.TargetOutputInput
+type TargetOutputProducer = artifactregistry.TargetOutputProducer
 
-// TargetOutput preserves the project package's target-output compatibility name.
-type TargetOutput = projectstate.TargetOutput
+const TargetOutputTemplate = artifactregistry.TargetOutputTemplate
 
-// Target preserves the project package's resolved-target compatibility name.
-type Target = projectstate.Target
+type TargetOutputInput = artifactregistry.TargetOutputInput
+type TargetOutput = artifactregistry.TargetOutput
+type Target = artifactregistry.Target
 
-// KnownTargets returns the closed built-in target names.
-func KnownTargets() []string { return projectstate.KnownTargets() }
+func KnownTargets() []string { return artifactregistry.KnownTargets() }
 
-func resolveTargets(names []string) ([]Target, error) { return projectstate.ResolveTargets(names) }
+func resolveTargets(names []string) ([]Target, error) { return artifactregistry.ResolveTargets(names) }
 
-var claudeTarget = projectstate.BuiltinTarget("claude")
-var piTarget = projectstate.BuiltinTarget("pi")
+var claudeTarget = artifactregistry.BuiltinTarget("claude")
+var piTarget = artifactregistry.BuiltinTarget("pi")

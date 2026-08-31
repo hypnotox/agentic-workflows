@@ -21,7 +21,7 @@ const debuggingVars = `vars:
 // (the target the convention-part tests drive).
 func syncAndReadDebugging(t *testing.T, root string) string {
 	t.Helper()
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -39,7 +39,7 @@ func syncAndReadDebugging(t *testing.T, root string) string {
 // syncAndReadAgents syncs the project and returns the rendered AGENTS.md.
 func syncAndReadAgents(t *testing.T, root string) string {
 	t.Helper()
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -56,7 +56,7 @@ func syncAndReadAgents(t *testing.T, root string) string {
 // invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestCheckReportAgentGuideSizeAdvisoryManagedOnly)
 func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", nil)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -166,7 +166,7 @@ func TestLocalDocGuideSize(t *testing.T) {
 		fmt.Fprintf(&entries, "  - name: runbooks/doc-%03d\n    title: Local document %03d\n    description: %s\n", i, i, strings.Repeat("x", 100))
 	}
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n"+entries.String())
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -174,7 +174,7 @@ func TestLocalDocGuideSize(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Reopening makes the second sync read the in-place local outputs back.
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -225,7 +225,7 @@ func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"parts/maintainable-code-design/decision-posture.md": uniqueBody + "\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -253,7 +253,7 @@ func TestMaintainableCodeDesignPartOverride(t *testing.T) {
 func TestTopicPartUsesRawPublicationSafeAssembly(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root)
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}

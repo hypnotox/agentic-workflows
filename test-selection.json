@@ -20,9 +20,9 @@
         "templates/pi/**",
         "templates/skills/**",
         "tools/pi-extension-test/**",
+        "internal/artifactregistry/**",
         "internal/catalog/**",
         "internal/project/target.go",
-        "internal/projectstate/target.go",
         "internal/publisher/target.go"
       ]
     },
@@ -31,11 +31,11 @@
       "patterns": [
         ".awf/**",
         "templates/**",
+        "internal/artifactregistry/**",
         "internal/catalog/**",
         "internal/manifest/**",
         "internal/outputplan/**",
         "internal/project/target.go",
-        "internal/projectstate/target.go",
         "internal/publisher/**",
         "internal/render/**"
       ]

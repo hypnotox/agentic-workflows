@@ -11,7 +11,7 @@ import (
 
 // checkProject preserves the terse drift-only shape used by project tests while
 // production consumers retain CheckReport and its tracking advisories.
-func checkProject(p *ProjectState, ctx context.Context) ([]manifest.Drift, error) {
+func checkProject(p *Session, ctx context.Context) ([]manifest.Drift, error) {
 	report, err := checkReportProject(p, ctx)
 	return report.Drift, err
 }
@@ -19,7 +19,7 @@ func checkProject(p *ProjectState, ctx context.Context) ([]manifest.Drift, error
 // mustDeriveCorpus derives the operation-owned ADR corpus the way a lifecycle
 // entry does, so a helper test exercises the same threaded value production
 // passes it (ADR-0180).
-func mustPitfallCorpus(t *testing.T, p *ProjectState) pitfall.Corpus {
+func mustPitfallCorpus(t *testing.T, p *Session) pitfall.Corpus {
 	t.Helper()
 	corpus, err := loadPitfallCorpus(renderInputsForTest(p))
 	if err != nil {
@@ -29,7 +29,7 @@ func mustPitfallCorpus(t *testing.T, p *ProjectState) pitfall.Corpus {
 }
 
 // mustDeriveTopics derives the operation-owned topic corpus the same way.
-func mustDeriveTopics(t *testing.T, p *ProjectState) topic.Corpus {
+func mustDeriveTopics(t *testing.T, p *Session) topic.Corpus {
 	t.Helper()
 	_, topics, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {
@@ -39,7 +39,7 @@ func mustDeriveTopics(t *testing.T, p *ProjectState) topic.Corpus {
 }
 
 // mustDeriveSkills derives the operation-owned effective skill set the same way.
-func mustDeriveSkills(t *testing.T, p *ProjectState) map[string]bool {
+func mustDeriveSkills(t *testing.T, p *Session) map[string]bool {
 	t.Helper()
 	_, _, eff, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {

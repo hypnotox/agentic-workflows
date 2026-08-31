@@ -31,7 +31,7 @@ func TestRunUnknownCommand(t *testing.T) {
 }
 
 func TestRunDispatchError(t *testing.T) {
-	// render in a bare dir: project.Open fails -> handler error -> exit 1.
+	// Rendering in a bare directory fails Session loading, then exits 1.
 	root := t.TempDir()
 	var out, errb bytes.Buffer
 	if code := runFrom(root, []string{"awf", "render"}, &out, &errb); code != 1 {

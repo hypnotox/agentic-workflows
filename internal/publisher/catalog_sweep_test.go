@@ -174,7 +174,7 @@ func cloneRenderData(in map[string]any) map[string]any {
 	return cloneTemplateValue(in).(map[string]any)
 }
 
-func singletonTemplateContexts(t *testing.T, p *ProjectState, eff map[string]bool) []singletonTemplateContext {
+func singletonTemplateContexts(t *testing.T, p *Session, eff map[string]bool) []singletonTemplateContext {
 	t.Helper()
 	var contexts []singletonTemplateContext
 	for _, kind := range catalog.SingletonKindsFor(projectCatalog(renderInputsForTest(p))) {
@@ -590,7 +590,7 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

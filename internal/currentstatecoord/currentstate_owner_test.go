@@ -11,6 +11,8 @@ import (
 
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -121,6 +123,35 @@ func TestPrepareStagedOutputSelectedUniverseErrors(t *testing.T) {
 	gitfixture.Add(t, fixture, ".awf/config.yaml", ".awf/awf.lock")
 	if _, err := PrepareStagedOutput(ctx, fixture.Root()); err == nil || !strings.Contains(err.Error(), "not a scannable file") {
 		t.Fatalf("unscannable config error = %v", err)
+	}
+}
+
+func TestPrepareStagedOutputValidatesSidecarsFromSelectedIndex(t *testing.T) {
+	for _, tc := range []struct {
+		name, path, contents string
+	}{
+		{name: "catalog validation", path: ".awf/skills/debugging.yaml", contents: "data: [\n"},
+		{name: "output planning", path: ".awf/docs/glossary.yaml", contents: "data:\n  terms: not-a-list\n"},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			fixture := gitfixture.InitRepo(t)
+			gitfixture.Stage(t, fixture, map[string]string{
+				".awf/config.yaml": "prefix: example\nintegrationBranch: main\n",
+				".awf/awf.lock":    `{"awfVersion":"0.44.0","schemaVersion":50,"files":{"prior":{}}}`,
+			})
+			gitfixture.Commit(t, fixture, "base", nil)
+			gitfixture.Stage(t, fixture, map[string]string{tc.path: tc.contents})
+			if err := os.Remove(filepath.Join(fixture.Root(), tc.path)); err != nil {
+				t.Fatal(err)
+			}
+			prepared, err := PrepareStagedOutput(context.Background(), fixture.Root())
+			if err == nil {
+				_, err = publisher.New(prepared.Session, project.Version).Prepare()
+			}
+			if err == nil {
+				t.Fatal("staged malformed sidecar was accepted after its working-tree copy was removed")
+			}
+		})
 	}
 }
 

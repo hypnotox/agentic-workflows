@@ -44,7 +44,7 @@ func TestGlossaryTemplate(t *testing.T) {
 // invariant: rendering/doc-outputs:pi-runtime-reference-output (TestDailyDocumentationOwnership)
 func TestDailyDocumentationOwnership(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

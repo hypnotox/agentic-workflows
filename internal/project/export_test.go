@@ -13,7 +13,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
@@ -24,17 +23,49 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
+	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
 var testConfigs sync.Map
 
 const crefYAML = "prefix: example\nintegrationBranch: main\nvars:\n  testCmd: go test ./...\n  gateCmd: make gate\n"
 const domainCfg = "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n"
+const csYAML = "prefix: example\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n"
+const csRuleTopic = "Intro.\n\n## Claims\n\n### `rule: r`\nRule prose.\n"
 
-func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *ProjectState) {
+func loadTestSession(ctx context.Context, root string) (*Session, error) {
+	repo, _, err := awfgit.OpenContaining(root)
+	if err != nil {
+		if !errors.Is(err, awfgit.ErrNotARepository) {
+			return nil, err
+		}
+		return NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot).Load(ctx, root)
+	}
+	return NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo).Load(ctx, root)
+}
+
+func csRepo(t *testing.T, cfg string, files map[string]string) *Session {
+	t.Helper()
+	repo := gitfixture.InitRepo(t)
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+	testsupport.WriteAwfConfig(t, repo.Root(), cfg)
+	if err := (&manifest.Lock{AWFVersion: Version, SchemaVersion: 50, Files: map[string]manifest.Entry{}}).Save(lockPath(repo.Root())); err != nil {
+		t.Fatal(err)
+	}
+	for rel, body := range files {
+		testsupport.WriteFile(t, filepath.Join(repo.Root(), rel), body)
+	}
+	state, err := loadTestSession(testContext(t), repo.Root())
+	if err != nil {
+		t.Fatal(err)
+	}
+	return state
+}
+
+func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *Session) {
 	t.Helper()
 	root := scaffoldFiles(t, configYAML, files)
-	state, err := Open(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -49,7 +80,7 @@ func explorationFixtureConfig(string) string {
 }
 func explorationRenderedByPath(t *testing.T, configYAML string) map[string]string {
 	t.Helper()
-	state, err := Open(testContext(t), scaffold(t, configYAML))
+	state, err := loadTestSession(testContext(t), scaffold(t, configYAML))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -73,7 +104,7 @@ func renderPiExtensionFile(t *testing.T, name string) string {
 }
 func assertV3ADRTemplatePublicationSafe(t *testing.T) {
 	t.Helper()
-	state, err := Open(testContext(t), scaffold(t, sampleYAML))
+	state, err := loadTestSession(testContext(t), scaffold(t, sampleYAML))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -129,7 +160,7 @@ func difference(a, b []string) []string {
 	return out
 }
 
-func testConfig(state *ProjectState) *config.Config {
+func testConfig(state *Session) *config.Config {
 	if cached, ok := testConfigs.Load(state); ok {
 		return cached.(*config.Config)
 	}
@@ -144,8 +175,8 @@ func testConfig(state *ProjectState) *config.Config {
 	return actual.(*config.Config)
 }
 
-func testState(cfg *config.Config) *ProjectState {
-	state, err := newProjectState("", resident.NewRoots("", ""), false, cfg, catalog.Standard, catalog.Standard, nil)
+func testState(cfg *config.Config) *Session {
+	state, err := newSession("", resident.NewRoots("", ""), false, cfg, catalog.Standard, nil, nil, publisher.NewFilesystemReader(""))
 	if err != nil {
 		panic(err)
 	}
@@ -153,17 +184,17 @@ func testState(cfg *config.Config) *ProjectState {
 	return state
 }
 
-func testStateAt(root string) *ProjectState {
+func testStateAt(root string) *Session {
 	state := testState(&config.Config{})
-	out, err := newProjectState(root, resident.NewRoots(root, root), false, testConfig(state), catalog.Standard, catalog.Standard, state.Targets())
+	out, err := newSession(root, resident.NewRoots(root, root), false, testConfig(state), catalog.Standard, state.Targets(), testRepo(state), publisher.NewFilesystemReader(root))
 	if err != nil {
 		panic(err)
 	}
 	testConfigs.Store(out, testConfig(state))
 	return out
 }
-func testStateWith(state *ProjectState, root string, roots resident.Roots, nested bool, selected, complete *catalog.Catalog, targets []Target) *ProjectState {
-	out, err := newProjectState(root, roots, nested, testConfig(state), selected, complete, targets)
+func testStateWith(state *Session, root string, roots resident.Roots, nested bool, selected *catalog.Catalog, targets []Target) *Session {
+	out, err := newSession(root, roots, nested, testConfig(state), selected, targets, testRepo(state), publisher.NewFilesystemReader(root))
 	if err != nil {
 		panic(err)
 	}
@@ -171,7 +202,7 @@ func testStateWith(state *ProjectState, root string, roots resident.Roots, neste
 	return out
 }
 
-func testRepo(state *ProjectState) *awfgit.Repo {
+func testRepo(state *Session) *awfgit.Repo {
 	repo, _, err := awfgit.OpenContaining(state.Root())
 	if err != nil && !errors.Is(err, awfgit.ErrNotARepository) {
 		return nil
@@ -179,12 +210,12 @@ func testRepo(state *ProjectState) *awfgit.Repo {
 	return repo
 }
 
-func testPlan(state *ProjectState) (outputplan.Plan, error) {
+func testPlan(state *Session) (outputplan.Plan, error) {
 	return testPublisher(operationInputs(state, testConfig(state))).Plan()
 }
 
-func syncProject(state *ProjectState) error {
-	pub := publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version)
+func syncProject(state *Session) error {
+	pub := testPublisher(operationInputs(state, testConfig(state)))
 	_, found, err := manifest.LoadOptional(lockPath(state.Root()))
 	if err != nil {
 		return err
@@ -196,43 +227,29 @@ func syncProject(state *ProjectState) error {
 	}
 	return err
 }
-func renderAll(state *ProjectState) ([]RenderedFile, error) {
+func renderAll(state *Session) ([]RenderedFile, error) {
 	plan, err := testPlan(state)
 	if err != nil {
 		return nil, err
 	}
 	return planWriteFiles(&plan), nil
 }
-func checkStagedProject(state *ProjectState, ctx context.Context) (CurrentStateReport, error) {
-	return currentstatecoord.CheckStaged(state.Root(), testRepo(state), ctx)
-}
-func checkStagedDriftProject(state *ProjectState, ctx context.Context) ([]manifest.Drift, error) {
-	prep, err := PrepareStagedOutputState(ctx, state.Root())
-	if err != nil {
-		return nil, err
-	}
-	plan, err := publisher.New(prep.State, prep.Config, prep.Reader, Version).Plan()
-	if err != nil {
-		return nil, err
-	}
-	return CheckStagedDrift(prep, plan)
-}
-func outputPlanProject(state *ProjectState) (*OutputPlan, error) {
+func outputPlanProject(state *Session) (*OutputPlan, error) {
 	return outputPlan(operationInputs(state, testConfig(state)))
 }
 func projectResult(result publisher.Result, err error) ([]Backup, []Change, []string, error) {
 	return result.Backups(), result.Changes(), result.Pruned(), err
 }
-func syncReportProject(state *ProjectState) ([]Backup, []Change, []string, error) {
-	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).SyncLeased(context.Background(), nil))
+func syncReportProject(state *Session) ([]Backup, []Change, []string, error) {
+	return projectResult(testPublisher(operationInputs(state, testConfig(state))).SyncLeased(context.Background(), nil))
 }
-func initializeReportProject(state *ProjectState, seed InitAuthority) ([]Backup, []Change, []string, error) {
-	return projectResult(publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).Initialize(seed))
+func initializeReportProject(state *Session, seed InitAuthority) ([]Backup, []Change, []string, error) {
+	return projectResult(testPublisher(operationInputs(state, testConfig(state))).Initialize(seed))
 }
-func preparedSemantics(_ *ProjectState, prepared publisher.Preparation) (OperationSemantics, error) {
+func preparedSemantics(_ *Session, prepared publisher.Preparation) (OperationSemantics, error) {
 	return OperationSemantics{Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(), GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary()}, nil
 }
-func checkReportProject(state *ProjectState, ctx context.Context) (CheckReport, error) {
+func checkReportProject(state *Session, ctx context.Context) (CheckReport, error) {
 	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()
 	if err != nil {
 		return CheckReport{}, err
@@ -243,20 +260,20 @@ func checkReportProject(state *ProjectState, ctx context.Context) (CheckReport, 
 	}
 	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx, prepared.Plan(), semantics)
 }
-func configReferenceProject(state *ProjectState) (publisher.ConfigReference, error) {
+func configReferenceProject(state *Session) (publisher.ConfigReference, error) {
 	return testPublisher(operationInputs(state, testConfig(state))).BuildConfigReference()
 }
-func initCollisionsProject(state *ProjectState) ([]string, error) {
-	return publisher.New(state.OutputState(), testConfig(state), publisher.NewFilesystemReader(state.Root()), Version).InitCollisions()
+func initCollisionsProject(state *Session) ([]string, error) {
+	return testPublisher(operationInputs(state, testConfig(state))).InitCollisions()
 }
-func plannedOutputsProject(state *ProjectState) ([]string, error) {
+func plannedOutputsProject(state *Session) ([]string, error) {
 	plan, err := testPlan(state)
 	if err != nil {
 		return nil, err
 	}
 	return plan.Paths(), nil
 }
-func advisoryNotesProject(state *ProjectState) ([]string, error) {
+func advisoryNotesProject(state *Session) ([]string, error) {
 	prepared, err := testPublisher(operationInputs(state, testConfig(state))).Prepare()
 	if err != nil {
 		return nil, err
@@ -268,13 +285,10 @@ func advisoryNotesProject(state *ProjectState) ([]string, error) {
 	return AdvisoryNotes(state, testConfig(state), prepared.Plan(), semantics)
 }
 
-func checkCurrentStateProject(state *ProjectState, ctx context.Context) (CurrentStateReport, error) {
-	return currentstatecoord.CheckWorking(state.Root(), testRepo(state), ctx)
-}
-func newPitfallProject(state *ProjectState, title string) (presentation.Document, error) {
+func newPitfallProject(state *Session, title string) (presentation.Document, error) {
 	return NewPitfall(state.Root(), title)
 }
-func auditProject(state *ProjectState, ctx context.Context, base, head string) ([]audit.Finding, int, error) {
+func auditProject(state *Session, ctx context.Context, base, head string) ([]audit.Finding, int, error) {
 	generated := map[string]bool{}
 	lock, _, err := manifest.LoadOptional(config.LockPath(state.Root()))
 	if err != nil {
@@ -291,10 +305,10 @@ func auditProject(state *ProjectState, ctx context.Context, base, head string) (
 		DocsDir:        config.DocsDir,
 	})
 }
-func setTestRoots(state *ProjectState, roots resident.Roots) *ProjectState {
-	return testStateWith(state, state.Root(), roots, state.nested(), state.catalog(), state.completeCatalog(), state.Targets())
+func setTestRoots(state *Session, roots resident.Roots) *Session {
+	return testStateWith(state, state.Root(), roots, state.Nested(), state.catalog(), state.Targets())
 }
-func renderInputsForTest(state *ProjectState) renderInputs {
+func renderInputsForTest(state *Session) renderInputs {
 	return newRenderInputs(state, testConfig(state), filesystemProjectReader{root: state.Root()})
 }
 

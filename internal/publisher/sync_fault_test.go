@@ -11,12 +11,10 @@ import (
 	"sync"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -278,7 +276,7 @@ func (f *swapBeforeLockReplaceFilesystem) ReplaceExpected(path string, expected 
 	return f.syncFilesystem.ReplaceExpected(path, expected, contents, mode)
 }
 
-func testSyncPlan(t *testing.T, state *ProjectState) (renderInputs, *outputplan.Plan) {
+func testSyncPlan(t *testing.T, state *Session) (renderInputs, *outputplan.Plan) {
 	t.Helper()
 	inputs := renderInputsForTest(state)
 	plan, err := testPublisher(inputs).Plan()
@@ -287,7 +285,7 @@ func testSyncPlan(t *testing.T, state *ProjectState) (renderInputs, *outputplan.
 	}
 	return inputs, &plan
 }
-func syncWithFilesystems(t *testing.T, state *ProjectState, filesystems syncFilesystems) ([]Backup, []Change, []string, error) {
+func syncWithFilesystems(t *testing.T, state *Session, filesystems syncFilesystems) ([]Backup, []Change, []string, error) {
 	t.Helper()
 	inputs, plan := testSyncPlan(t, state)
 	backups, changes, pruned, _, err := syncReportWithPlan(inputs, nil, filesystems, plan)
@@ -303,7 +301,7 @@ func assertPerm(t *testing.T, path string, want fs.FileMode) {
 
 func TestBackupFileConfinedReturnsSourceInspectionError(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	state, err := Open(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -332,7 +330,7 @@ func TestBackupFileRetriesOnlyPublicationCollision(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	state, err := Open(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -371,12 +369,15 @@ func TestSyncFilesystemsRouteUnchangedPaths(t *testing.T) {
 }
 func TestOpenSyncFilesystemsComposesDistinctRootsBeforeMutation(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	state, err := Open(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	base := state.OutputState()
-	inputs := newRenderInputs(projectstate.NewDerivedWithFacts(base.Root(), resident.NewRoots(root, t.TempDir()), base.Nested(), config.Facts{}, base.Catalog(), base.CompleteCatalog(), base.Targets()), testConfig(state), NewFilesystemReader(root), Version)
+	base := state
+	selected := deriveSession(base, testConfig(state), NewFilesystemReader(root), base.Catalog(), base.Targets())
+	selected.roots = resident.NewRoots(root, t.TempDir())
+	selected.nested = base.Nested()
+	inputs := renderInputsFromSession(selected, Version)
 	filesystems, closeAll, err := openSyncFilesystems(inputs)
 	if err != nil {
 		t.Fatal(err)
@@ -385,11 +386,15 @@ func TestOpenSyncFilesystemsComposesDistinctRootsBeforeMutation(t *testing.T) {
 	if filesystems.tracked == filesystems.resident {
 		t.Fatal("distinct roots reused one handle")
 	}
-	inputs.state = projectstate.NewDerivedWithFacts(base.Root(), resident.NewRoots(root, filepath.Join(root, "missing")), base.Nested(), config.Facts{}, base.Catalog(), base.CompleteCatalog(), base.Targets())
+	missingResident := *selected
+	missingResident.roots = resident.NewRoots(root, filepath.Join(root, "missing"))
+	inputs.session = &missingResident
 	if _, _, err := openSyncFilesystems(inputs); err == nil {
 		t.Fatal("missing resident root opened")
 	}
-	inputs.state = projectstate.NewDerivedWithFacts(base.Root(), resident.NewRoots(filepath.Join(root, "missing-tracked"), root), base.Nested(), config.Facts{}, base.Catalog(), base.CompleteCatalog(), base.Targets())
+	missingTracked := *selected
+	missingTracked.roots = resident.NewRoots(filepath.Join(root, "missing-tracked"), root)
+	inputs.session = &missingTracked
 	if _, _, err := openSyncFilesystems(inputs); err == nil {
 		t.Fatal("missing tracked root opened")
 	}
@@ -448,7 +453,7 @@ func TestLocalDocPruneFaultsKeepRecoveryAndLock(t *testing.T) {
 func localDocPruneFault(t *testing.T, name string, wrap func(syncFilesystem, error) syncFilesystem, wantBackup bool) {
 	t.Helper()
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
-	state, err := Open(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -491,7 +496,7 @@ func localDocPruneFault(t *testing.T, name string, wrap func(syncFilesystem, err
 // invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestBackupFileConfinedPropagatesPublicationFailure)
 func TestBackupFileConfinedPropagatesPublicationFailure(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	state, _ := Open(testContext(t), root)
+	state, _ := loadTestSession(testContext(t), root)
 	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
 	if err != nil {
 		t.Fatal(err)
@@ -510,7 +515,7 @@ func TestBackupFileConfinedPropagatesPublicationFailure(t *testing.T) {
 func TestSyncReportsCommittedBackupAndCleanupResidue(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	testsupport.WriteFile(t, filepath.Join(root, "AGENTS.md"), "foreign\n")
-	state, err := Open(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -809,7 +814,7 @@ func TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure(t *t
 // invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestSyncBackupPublicationRefusesParentSwap)
 func TestSyncBackupPublicationRefusesParentSwap(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	state, _ := Open(testContext(t), root)
+	state, _ := loadTestSession(testContext(t), root)
 	testsupport.WriteFile(t, filepath.Join(root, "collision/source"), "source bytes\n")
 	outside := t.TempDir()
 	sentinel := filepath.Join(outside, "sentinel")
@@ -916,7 +921,7 @@ func TestConcurrentBackupsPublishCompleteCopies(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	state, _ := Open(testContext(t), root)
+	state, _ := loadTestSession(testContext(t), root)
 	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
 	if err != nil {
 		t.Fatal(err)
@@ -990,7 +995,7 @@ func TestSyncRefusesInvalidPermanentLockBeforeMutation(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffold(t, sampleYAML)
-			state, err := Open(testContext(t), root)
+			state, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}

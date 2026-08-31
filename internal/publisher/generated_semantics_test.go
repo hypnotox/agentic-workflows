@@ -63,7 +63,7 @@ func TestFilesystemReaderEntriesErrors(t *testing.T) {
 }
 
 func TestGeneratedSemanticsPropagatesPreparedTreeErrors(t *testing.T) {
-	state, err := Open(context.Background(), scaffold(t, sampleYAML))
+	state, err := loadTestSession(context.Background(), scaffold(t, sampleYAML))
 	if err != nil {
 		t.Fatal(err)
 	}

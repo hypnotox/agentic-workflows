@@ -9,7 +9,7 @@ const pitfallsCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndo
 
 // An empty unconditional pitfall corpus yields no project-level drift.
 func TestCheckPitfallsEmpty(t *testing.T) {
-	p, err := Open(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
+	p, err := loadTestSession(testContext(t), scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -25,7 +25,7 @@ func TestCheckPitfallsValidatesDomains(t *testing.T) {
 		"docs/pitfalls/clean.md":      pitfallSource("Clean", "domains: [rendering]\n"),
 		"docs/pitfalls/bad-domain.md": pitfallSource("BadDomain", "domains: [bogus]\n"),
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -40,7 +40,7 @@ func TestCheckPitfallsValidatesDomains(t *testing.T) {
 
 // A malformed authored source is a hard corpus-load error before check projection.
 func TestCheckPitfallsStructuralError(t *testing.T) {
-	p, err := Open(testContext(t), scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
+	p, err := loadTestSession(testContext(t), scaffoldFiles(t, pitfallsCheckCfg, map[string]string{
 		"docs/pitfalls/bad.md": "---\ntitle: Bad\nunknown: value\n---\nbody\n",
 	}))
 	if err != nil {

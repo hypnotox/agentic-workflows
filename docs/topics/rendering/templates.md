@@ -5,7 +5,7 @@
 
 The embedded template source and its rendered content contracts.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf read topic rendering/templates --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf read topic rendering/templates --coverage` for current applicable and owned paths and marker sites.
 
 The templates tree holds the embedded skill, agent, doc, and adapter template source. The claims below capture the current template-content contracts.
 

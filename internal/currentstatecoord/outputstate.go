@@ -8,29 +8,29 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
-	"github.com/hypnotox/agentic-workflows/internal/resident"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
 // OutputPreparation selects the index universe used exclusively by staged
-// generated-output drift. It carries output-plan inputs, not authority context.
+// generated-output drift. Session owns the exact selected configuration,
+// repository, reader, current facts, and registry view.
 type OutputPreparation struct {
-	State  *projectstate.ProjectState
-	Config *config.Config
-	Reader outputplan.TreeReader
-	tree   *snapshot.Tree
-	lock   *manifest.Lock
+	Session *project.Session
+	tree    *snapshot.Tree
+	lock    *manifest.Lock
 }
 
 // PrepareStagedOutput selects only the index universe for staged output drift.
 // It never consults working-tree configuration or locks.
 func PrepareStagedOutput(ctx context.Context, root string) (*OutputPreparation, error) {
-	repo, prefix, err := awfgit.OpenContaining(root)
+	repo, _, err := awfgit.OpenContaining(root)
 	if err != nil {
 		return nil, err
 	}
@@ -49,22 +49,26 @@ func PrepareStagedOutput(ctx context.Context, root string) (*OutputPreparation, 
 	if !found {
 		return nil, fmt.Errorf("no staged %s/config.yaml", config.DirName)
 	}
-	complete := catalog.CompleteView().Catalog()
-	selected := catalog.NewView(complete).Catalog()
-	facts, err := config.NewFacts(cfg)
+	reader := snapshotReader{tree: tree}
+	load := func(string) (*config.Config, error) { return cfg, nil }
+	loader := project.NewLoader(load, catalog.Standard, func(context.Context, string) string { return "" }, repo).WithSelection(load, reader)
+	session, err := loader.Load(ctx, root)
 	if err != nil {
 		return nil, err
 	}
-	targets, err := projectstate.ResolveTargets(projectstate.KnownTargets())
-	if err != nil {
-		return nil, err
-	}
-	state := projectstate.NewDerivedWithFacts(root, resident.NewRoots(root, ""), prefix != "", facts, selected, complete, targets)
-	return &OutputPreparation{State: state, Config: cfg, Reader: snapshotReader{tree: tree}, tree: tree, lock: lock}, nil
+	return &OutputPreparation{Session: session, tree: tree, lock: lock}, nil
 }
 
-func (p *OutputPreparation) Tree() *snapshot.Tree { return p.tree }
 func (p *OutputPreparation) Lock() *manifest.Lock { return p.lock.Clone() }
+
+// Check compares one Publisher plan entirely within this prepared index universe.
+func (p *OutputPreparation) Check(plan outputplan.Plan) (checkresult.Result, error) {
+	indexed := map[string]bool{}
+	for _, file := range p.tree.List() {
+		indexed[file.Path] = true
+	}
+	return generatedcheck.Staged(p.Session.Nested(), p.Lock(), plan, p.Session.Reader(), indexed)
+}
 
 type snapshotReader struct{ tree *snapshot.Tree }
 

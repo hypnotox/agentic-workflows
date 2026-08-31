@@ -45,11 +45,11 @@ func Remove(ctx context.Context, root, name string, loader *project.Loader) (out
 func initializedLoader(t *testing.T, root string) *project.Loader {
 	t.Helper()
 	loader := operationLoader()
-	state, cfg, err := loader.OpenForOperation(context.Background(), root)
+	state, err := loader.Load(context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	if _, err := publisher.New(state, project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatal(err)
 	}
 	return loader
@@ -152,10 +152,11 @@ func scaffoldCurrentStateForTest(root string, cfg *config.Config, name string) e
 func TestScaffoldCurrentStatePreservesExistingAndReportsFilesystemFailures(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
-	_, cfg, err := operationLoader().OpenForOperation(context.Background(), root)
+	session, err := operationLoader().Load(context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
 	}
+	cfg := session.Config()
 	path := cfg.PartPath("domains", "payments", "current-state")
 	testsupport.WriteFile(t, path, "kept")
 	if err := scaffoldCurrentStateForTest(root, cfg, "payments"); err != nil {

@@ -43,11 +43,11 @@ func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, s
 	if err != nil {
 		return err
 	}
-	state, cfg, err := loader.OpenForOperation(ctx, root)
+	session, err := loader.Load(ctx, root)
 	if err != nil {
 		return errors.Join(err, lease.Release())
 	}
-	composed := composePublisher(state, cfg)
+	composed := composePublisher(session)
 	result, syncErr := composed.SyncLeased(ctx, lease)
 	return finishSyncPrinting(stdout, result, syncErr, lease.Release())
 }

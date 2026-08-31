@@ -90,7 +90,7 @@ func TestGuideOmitsLocalAndStandardSkillMetadata(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"skills/nebula-router.yaml": "data:\n  description: " + localDescription + "\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

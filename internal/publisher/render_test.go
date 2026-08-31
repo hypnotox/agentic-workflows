@@ -3,6 +3,7 @@ package publisher
 import (
 	"os"
 	"path/filepath"
+	"reflect"
 	"slices"
 	"strings"
 	"testing"
@@ -19,7 +20,7 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 	t.Helper()
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n",
 		map[string]string{"parts/workflow/commit-discipline.md": body})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -38,7 +39,7 @@ func syncedWorkflowDoc(t *testing.T, body string) string {
 // invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocRendersAndPreservesBody)
 func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident-response\n    title: Incident response\n    description: Handle incidents.\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,7 +89,7 @@ func TestLocalDocRendersAndPreservesBody(t *testing.T) {
 // invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneUsesFirstFreeBackupSuffix)
 func TestLocalDocPruneUsesFirstFreeBackupSuffix(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -117,7 +118,7 @@ func TestLocalDocPruneUsesFirstFreeBackupSuffix(t *testing.T) {
 // invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneRejectsSymlinkAndKeepsLock)
 func TestLocalDocPruneRejectsSymlinkAndKeepsLock(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -144,7 +145,7 @@ func TestLocalDocPruneRejectsSymlinkAndKeepsLock(t *testing.T) {
 // invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneAbsentSourceNeedsNoBackup)
 func TestLocalDocPruneAbsentSourceNeedsNoBackup(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -167,14 +168,14 @@ func TestLocalDocPruneAbsentSourceNeedsNoBackup(t *testing.T) {
 
 func TestLocalDocRejectsStandardOutputCollision(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: architecture\n    title: Architecture\n    description: Duplicate standard output.\n")
-	if _, err := Open(testContext(t), root); err == nil || !strings.Contains(err.Error(), "collides with standard output") {
+	if _, err := loadTestSession(testContext(t), root); err == nil || !strings.Contains(err.Error(), "collides with standard output") {
 		t.Fatalf("standard-output collision error = %v", err)
 	}
 }
 
 func TestCommitPolicyRenderDataProjection(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -193,7 +194,7 @@ func TestCommitPolicyRenderDataProjection(t *testing.T) {
 		AllowedIdentities:    []config.CommitPolicyIdentity{{Name: "Ada", Email: "ada@example.test"}},
 	}
 	testConfig(p).CommitPolicy = policy
-	if got := projectData(renderInputsForTest(p), config.Sidecar{}, map[string]bool{})["commitPolicy"]; got != policy {
+	if got := projectData(renderInputsForTest(p), config.Sidecar{}, map[string]bool{})["commitPolicy"]; !reflect.DeepEqual(got, policy) {
 		t.Fatalf("commitPolicy projection = %#v, want typed policy %#v", got, policy)
 	}
 }
@@ -240,7 +241,7 @@ func TestCommentOnlyPartRendersEmptySection(t *testing.T) {
 func TestMalformedAuthoringCommentFailsSync(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n",
 		map[string]string{"parts/workflow/commit-discipline.md": "<!-- awf:comment unclosed\n"})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -335,7 +336,7 @@ func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
 
 func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

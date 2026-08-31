@@ -17,7 +17,7 @@ import (
 func runnerFile(t *testing.T) *RenderedFile {
 	t.Helper()
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -118,7 +118,7 @@ func TestRunnerPublicationSafe(t *testing.T) {
 // ordinary managed output, it is removed without a backup and reported pruned.
 func TestPruneTreatsRetiredRunnerAsOrdinaryManagedOutput(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -139,7 +139,7 @@ func TestPruneTreatsRetiredRunnerAsOrdinaryManagedOutput(t *testing.T) {
 	if err := os.Rename(filepath.Join(root, "awf"), filepath.Join(root, "x")); err != nil {
 		t.Fatal(err)
 	}
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -165,7 +165,7 @@ func TestPruneTreatsRetiredRunnerAsOrdinaryManagedOutput(t *testing.T) {
 
 func TestPruneRemovesManagedSymlinkWithoutTargetAccess(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -188,7 +188,7 @@ func TestPruneRemovesManagedSymlinkWithoutTargetAccess(t *testing.T) {
 	if err := os.Symlink("missing-target", filepath.Join(root, "x")); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -222,7 +222,7 @@ func TestRunnerNotASingletonKind(t *testing.T) {
 // override renders and `./awf check` does not flag `.awf/runner` as unclaimed.
 func TestRunnerPartOverrideClaimed(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -261,7 +261,7 @@ func TestRunnerPartOverrideClaimed(t *testing.T) {
 // than a silent default.
 func TestRunnerPartReadError(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

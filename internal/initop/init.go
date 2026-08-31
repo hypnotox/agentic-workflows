@@ -53,13 +53,13 @@ type Input struct {
 	Interactive  bool
 }
 
-type advisoryNotesFunc func(*project.ProjectState, *config.Config, publisher.Preparation) ([]string, error)
+type advisoryNotesFunc func(*project.Session, *config.Config, publisher.Preparation) ([]string, error)
 type releaseLeaseFunc func(*filesystem.Lease) error
 
 // Run performs one complete initialization operation and returns its semantic
 // outcome. Rendering and protocol selection remain with the command.
 func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error) {
-	return runWithDependencies(ctx, input, loadProject, gate, func(state *project.ProjectState, cfg *config.Config, prepared publisher.Preparation) ([]string, error) {
+	return runWithDependencies(ctx, input, loadProject, gate, func(state *project.Session, cfg *config.Config, prepared publisher.Preparation) ([]string, error) {
 		return project.AdvisoryNotes(state, cfg, prepared.Plan(), project.OperationSemantics{
 			Pitfalls: prepared.Pitfalls(), Topics: prepared.Topics(), EffectiveSkills: prepared.EffectiveSkills(),
 			GeneratedOutput: prepared.GeneratedOutput(), Glossary: prepared.Glossary(),
@@ -161,11 +161,12 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 	if err != nil {
 		return failScaffold(err)
 	}
-	state, cfg, err := loader.OpenForOperation(ctx, root)
+	session, err := loader.Load(ctx, root)
 	if err != nil {
 		return failScaffold(err)
 	}
-	composed := composePublisher(state, cfg)
+	cfg := session.Config()
+	composed := composePublisher(session)
 	prepared, err := composed.Prepare()
 	if err != nil {
 		return failScaffold(err)
@@ -197,7 +198,7 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 	if err != nil {
 		return publisherPartialOutcome(initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}, scaffold, result, err)
 	}
-	advisories, err := advisoryNotes(state, cfg, prepared)
+	advisories, err := advisoryNotes(session, cfg, prepared)
 	if err != nil {
 		return publisherPartialOutcome(initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}, scaffold, result, err)
 	}
@@ -207,8 +208,8 @@ func runWithDependencies(ctx context.Context, input Input, loadProject LoadProje
 	}, nil
 }
 
-func composePublisher(state *project.ProjectState, cfg *config.Config) *publisher.Publisher {
-	return publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version)
+func composePublisher(session *project.Session) *publisher.Publisher {
+	return publisher.New(session, project.Version)
 }
 
 type scaffoldFilesystem interface {
@@ -367,11 +368,11 @@ func probeCollisions(ctx context.Context, root string, loadProject LoadProject) 
 		if err != nil {
 			return nil, err
 		}
-		state, cfg, err := loader.OpenForOperation(ctx, root)
+		session, err := loader.Load(ctx, root)
 		if err != nil {
 			return nil, err
 		}
-		return composePublisher(state, cfg).InitCollisions()
+		return composePublisher(session).InitCollisions()
 	}
 	tmp, err := os.MkdirTemp("", "awf-init-probe-*")
 	if err != nil {
@@ -390,11 +391,11 @@ func probeCollisions(ctx context.Context, root string, loadProject LoadProject) 
 		return nil, err
 	}
 	loader := project.NewLoaderWithoutRepository(config.Load, catalog.Standard, func(_ context.Context, selected string) string { return selected })
-	state, cfg, err := loader.OpenForOperation(ctx, tmp)
+	session, err := loader.Load(ctx, tmp)
 	if err != nil {
 		return nil, err
 	}
-	prepared, err := composePublisher(state, cfg).Prepare()
+	prepared, err := composePublisher(session).Prepare()
 	if err != nil {
 		return nil, err
 	}

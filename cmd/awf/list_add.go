@@ -84,11 +84,11 @@ func runRemoveDomain(ctx context.Context, root, name string, stdout io.Writer) (
 }
 
 func runList(ctx context.Context, root, kindFilter string, stdout io.Writer) error {
-	state, cfg, _, err := openProjectOperation(ctx, root)
+	session, err := loadProjectSession(ctx, root)
 	if err != nil {
 		return err
 	}
-	document, err := project.BuildListDocument(state, cfg, kindFilter)
+	document, err := project.BuildListDocument(session, session.Config(), kindFilter)
 	if err != nil {
 		return err
 	}

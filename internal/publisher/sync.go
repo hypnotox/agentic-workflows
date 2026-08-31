@@ -72,7 +72,7 @@ func (p *Publisher) InitializeLeased(ctx context.Context, lease *filesystem.Leas
 // run owns the complete publication transaction. Lease acquisition precedes
 // planning, mutable lock observation, resident inspection, and every effect.
 func (p *Publisher) run(ctx context.Context, supplied *filesystem.Lease, seed *InitAuthority) (result Result, returnErr error) {
-	roots := p.inputs.state.Roots()
+	roots := p.inputs.session.Roots()
 	lease := supplied
 	owned := false
 	if lease == nil {
@@ -248,15 +248,15 @@ func (s syncFilesystems) output(rel string) (syncFilesystem, string) {
 }
 
 func openSyncFilesystems(p renderInputs) (syncFilesystems, func(), error) {
-	tracked, err := filesystem.Open(p.state.Roots().Tracked)
+	tracked, err := filesystem.Open(p.session.Roots().Tracked)
 	if err != nil {
 		return syncFilesystems{}, nil, err
 	}
 	closeAll := func() { _ = tracked.Close() }
-	if p.state.Roots().Resident == p.state.Roots().Tracked {
+	if p.session.Roots().Resident == p.session.Roots().Tracked {
 		return syncFilesystems{tracked: tracked, resident: tracked}, closeAll, nil
 	}
-	residentHandle, err := filesystem.Open(p.state.Roots().Resident)
+	residentHandle, err := filesystem.Open(p.session.Roots().Resident)
 	if err != nil {
 		closeAll()
 		return syncFilesystems{}, nil, err
@@ -315,7 +315,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			return nil, nil, nil, nil, errors.New("pre-tracking authority: ordinary sync requires a supported permanent lock; restore .awf/awf.lock from version control")
 		}
 	}
-	preservedResidents, err := resident.InspectRoots(p.state.Roots().Resident)
+	preservedResidents, err := resident.InspectRoots(p.session.Roots().Resident)
 	if err != nil {
 		return nil, nil, nil, nil, err
 	}

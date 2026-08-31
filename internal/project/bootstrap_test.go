@@ -16,7 +16,7 @@ import (
 func bootstrapFile(t *testing.T, configYAML string) *RenderedFile {
 	t.Helper()
 	root := scaffold(t, configYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -232,7 +232,7 @@ func TestBootstrapNotRenderedWhenDisabled(t *testing.T) {
 func upgradeFile(t *testing.T, configYAML string) *RenderedFile {
 	t.Helper()
 	root := scaffold(t, configYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -251,7 +251,7 @@ func upgradeFile(t *testing.T, configYAML string) *RenderedFile {
 // invariant: rendering/singletons-and-payloads:bootstrap-two-files (TestBootstrapSingletonRendersBothScripts)
 func TestBootstrapSingletonRendersBothScripts(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nbootstrap:\n  enabled: true\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -39,11 +39,11 @@ func Run(ctx context.Context, root, key string, loadProject LoadProject, gate Ga
 	if err != nil {
 		return presentation.Document{}, err
 	}
-	state, cfg, err := loader.OpenForOperation(ctx, root)
+	session, err := loader.Load(ctx, root)
 	if err != nil {
 		return presentation.Document{}, err
 	}
-	model, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(state.Root()), project.Version).BuildConfigReference()
+	model, err := publisher.New(session, project.Version).BuildConfigReference()
 	if err != nil {
 		return presentation.Document{}, err
 	}

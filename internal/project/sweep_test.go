@@ -25,7 +25,7 @@ const bakDetail = "stale awf-bak backup: review and delete"
 
 func checkDrift(t *testing.T, root string) []manifest.Drift {
 	t.Helper()
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

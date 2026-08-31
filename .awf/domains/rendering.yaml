@@ -8,7 +8,6 @@ paths:
   - internal/render/**
   - internal/catalog/**
   - internal/project/**
-  - internal/projectstate/**
   - internal/pitfall/**
   - internal/pitfallcheck/**
   - internal/glossary/**

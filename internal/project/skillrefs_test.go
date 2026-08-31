@@ -8,7 +8,7 @@ import (
 // over the rendered set (INDEX.md/domain docs are irrelevant to these fixtures).
 func deadSkillRefs(t *testing.T, files map[string]string) []string {
 	t.Helper()
-	p, err := Open(testContext(t), scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", files))
+	p, err := loadTestSession(testContext(t), scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {}\n", files))
 	if err != nil {
 		t.Fatal(err)
 	}

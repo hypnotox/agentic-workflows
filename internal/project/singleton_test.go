@@ -14,7 +14,7 @@ import (
 // agentsDocContent renders the tree and returns AGENTS.md's content.
 func agentsDocContent(t *testing.T, configYAML string) string {
 	t.Helper()
-	p, err := Open(testContext(t), scaffold(t, configYAML))
+	p, err := loadTestSession(testContext(t), scaffold(t, configYAML))
 	if err != nil {
 		t.Fatal(err)
 	}

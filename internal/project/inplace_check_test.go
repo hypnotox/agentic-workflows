@@ -11,7 +11,7 @@ import (
 func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	// invariant: rendering/inplace-and-placeholders:in-place-tamper-drift (TestCheckLockedFilesInPlaceRegenDrift)
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

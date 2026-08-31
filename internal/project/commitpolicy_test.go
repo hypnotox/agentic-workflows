@@ -62,7 +62,7 @@ func TestVerifyCommitPolicyDisabledAndConfigured(t *testing.T) {
 	base := gitfixture.Commit(t, repo, "base", map[string]string{"a": "a"})
 	head := gitfixture.Commit(t, repo, "head", map[string]string{"b": "b"})
 	testsupport.WriteAwfConfig(t, repo.Root(), "prefix: x\nintegrationBranch: master\ncommitPolicy:\n  grandfatheredThrough: "+base+"\n  allowedIdentities:\n    - name: T\n      email: t@example.com\n")
-	state, err := Open(ctx, repo.Root())
+	state, err := loadTestSession(ctx, repo.Root())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -327,7 +327,7 @@ func TestCommitPolicyManifestProjection(t *testing.T) {
 	root := scaffold(t, base)
 	syncAndLoad := func() *manifest.Lock {
 		t.Helper()
-		p, err := Open(testContext(t), root)
+		p, err := loadTestSession(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
 		}

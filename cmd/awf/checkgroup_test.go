@@ -345,8 +345,8 @@ func TestHelpListsCheckChildren(t *testing.T) {
 	}
 }
 
-// invariant: tooling/cli:group-child-project-guard-exemption (TestCheckExemptChildrenRunUnderGuardedProjectState)
-func TestCheckExemptChildrenRunUnderGuardedProjectState(t *testing.T) {
+// invariant: tooling/cli:group-child-project-guard-exemption (TestCheckExemptChildrenRunUnderGuardedSession)
+func TestCheckExemptChildrenRunUnderGuardedSession(t *testing.T) {
 	root := scaffoldProject(t)
 	testsupport.WriteFile(t, filepath.Join(root, ".awf", "current-state-upgrade.journal"), `{"version":1,"phase":"prepared","finalLockSHA256":"2d711642b726b04401627ca9fbac32f5c8530fb1903cc4db02258717921a4881","operations":[{"path":".awf/awf.lock","prior":{"present":false,"mode":0,"content":null},"replacement":{"present":true,"mode":420,"content":"eA=="}}]}`)
 	repo := gitfixture.At(root)

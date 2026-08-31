@@ -36,11 +36,11 @@ func transactionFixture(t *testing.T, local bool) (string, *project.Loader) {
 	}
 	writeFile(t, filepath.Join(root, ".awf/config.yaml"), "prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate}\n"+localConfig)
 	loader := project.NewLoaderWithoutRepository(config.Load, catalog.Standard, func(context.Context, string) string { return root })
-	state, cfg, err := loader.OpenForOperation(context.Background(), root)
+	state, err := loader.Load(context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := publisher.New(state.OutputState(), cfg, publisher.NewFilesystemReader(root), project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	if _, err := publisher.New(state, project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatal(err)
 	}
 	return root, loader

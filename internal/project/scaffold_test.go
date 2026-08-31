@@ -43,7 +43,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "bad.md"), []byte("malformed"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -60,7 +60,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			if err := os.WriteFile(dir, []byte("not a directory"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -77,7 +77,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(dir, "bad.md"), []byte("---\ntitle: Bad\n---\nbody\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -106,7 +106,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 		})
 		t.Run("mkdir failure", func(t *testing.T) {
 			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -131,7 +131,7 @@ func TestPitfallScaffoldCLIContract(t *testing.T) {
 				t.Fatal(err)
 			}
 		}
-		p, err := Open(testContext(t), root)
+		p, err := loadTestSession(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -155,7 +155,7 @@ func TestNewPitfallPublicationFailureLeavesDestinationAbsent(t *testing.T) {
 		t.Fatal("missing project root opened for pitfall scaffold")
 	}
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -176,7 +176,7 @@ func TestNewPitfallPublicationFailureLeavesDestinationAbsent(t *testing.T) {
 
 func TestNewPitfallCommittedCleanupOutcomeIsActionableAndDoesNotAdvance(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -287,7 +287,7 @@ func TestNewPitfallRootConfinement(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -310,7 +310,7 @@ func TestNewPitfallRootConfinement(t *testing.T) {
 // invariant: tooling/cli:pitfall-scaffold (TestNewPitfallScaffoldContract)
 func TestNewPitfallScaffoldContract(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -351,7 +351,7 @@ func TestNewPitfallScaffoldContract(t *testing.T) {
 // invariant: tooling/cli:pitfall-scaffold (TestNewPitfallExclusiveRaceRefusesThenRetryReallocates)
 func TestNewPitfallExclusiveRaceRefusesThenRetryReallocates(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {}\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -514,7 +514,7 @@ func TestInitProducesCleanSyncableProject(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(awfDir, "config.yaml"), b, 0o644); err != nil {
 		t.Fatal(err)
 	}
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

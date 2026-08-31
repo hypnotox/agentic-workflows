@@ -188,7 +188,7 @@ func TestUninstallAndInitRefuseCorruptLock(t *testing.T) {
 	}
 }
 
-// TestHandlersOnBareDirError covers each handler's project.Open error return.
+// TestHandlersOnBareDirError covers each handler's Session loading error return.
 func TestHandlersOnBareDirError(t *testing.T) {
 	ctx := testContext(t)
 	bare := func(t *testing.T) string { return t.TempDir() }

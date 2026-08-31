@@ -8,7 +8,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -20,7 +19,7 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -57,13 +56,13 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 		t.Error("missing kind-derived domain fixture unexpectedly resolves")
 	}
 
-	base := p.OutputState()
+	base := p
 	selected := base.Catalog()
 	missing := selected.Docs["architecture"]
 	missing.TID = "missing/live-template.tmpl"
 	selected.Docs["missing-live-fixture"] = missing
-	lower := projectstate.NewDerivedWithFacts(base.Root(), base.Roots(), base.Nested(), base.Facts(), selected, base.CompleteCatalog(), base.Targets())
-	if _, err := New(lower, testConfig(p), NewFilesystemReader(p.Root()), project.Version).Plan(); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
+	lower := deriveSession(base, testConfig(p), NewFilesystemReader(p.Root()), selected, base.Targets())
+	if _, err := New(lower, project.Version).Plan(); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
 	}
 }
@@ -73,7 +72,7 @@ func TestLiveTemplateEncodersFollowDeclarations(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -19,7 +19,7 @@ import (
 // invariant: rendering/project-output-plan:output-policy-explicit (TestOutputPolicyRoutesMisleadingPathsEndToEnd)
 func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -122,7 +122,7 @@ func TestCheckLockedFilesClassifiesOrdinaryFreshnessBeforeObservation(t *testing
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -140,7 +140,7 @@ func TestCheckLockedFilesClassifiesOrdinaryFreshnessBeforeObservation(t *testing
 
 func configHashOf(t *testing.T, root, rel string) string {
 	t.Helper()
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("Open: %v", err)
 	}
@@ -187,7 +187,7 @@ func TestSyncPruneRefusesEscapingLockPathBeforeMutation(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	victim := filepath.Join(root, "..", "victim.txt")
 	testsupport.WriteFile(t, victim, "keep me\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -211,7 +211,7 @@ func TestSyncPruneRefusesEscapingLockPathBeforeMutation(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p2, err := Open(testContext(t), root)
+	p2, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -237,7 +237,7 @@ func TestCheckFlagsOrphanedSingletonParts(t *testing.T) {
 		"parts/loose.md":                 "not a kind dir\n",
 		"parts/workflow/notes.txt":       "not a part file\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -267,7 +267,7 @@ func TestCheckFlagsOrphanedSingletonParts(t *testing.T) {
 // invariant: config/migrations-and-locks:schema-version-lock (TestSyncStampsSchemaVersion)
 func TestSyncStampsSchemaVersion(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -302,7 +302,7 @@ func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{
 		"parts/workflow/commit-discipline.md": "## Commit discipline\n\n{{=awf:commitScopeTable}}\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -310,7 +310,7 @@ func TestScopesEditReflagsPlaceholderPart(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteAwfConfig(t, root, cfg("ADR markdown documents")) // scope edit, part untouched
-	p2, err := Open(testContext(t), root)
+	p2, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -348,7 +348,7 @@ func TestSyncReportRefusesCorruptLockBeforeWriting(t *testing.T) {
 		t.Fatal(err)
 	}
 	corruptProjectLock(t, root)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -368,7 +368,7 @@ func TestCheckSplitsMissingVsCorrupt(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	syncClean(t, root)
 	corruptProjectLock(t, root)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -402,7 +402,7 @@ func TestAuditAndCollisionsRefuseCorruptLock(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	syncClean(t, root)
 	corruptProjectLock(t, root)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -427,7 +427,7 @@ func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 	root := scaffoldFiles(t, cfg("ADR docs"), map[string]string{
 		"parts/workflow/commit-discipline.md": "## Commit discipline\n\n<!-- awf:comment demo of {{=awf:commitScopeTable}} -->\nplain text\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -435,7 +435,7 @@ func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteAwfConfig(t, root, cfg("ADR markdown documents")) // scope edit, part untouched
-	p2, err := Open(testContext(t), root)
+	p2, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -453,7 +453,7 @@ func TestCommentWrappedScopePlaceholderDoesNotFold(t *testing.T) {
 func TestTopicMetadataAndPartBothDriveDrift(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root)
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
@@ -469,7 +469,7 @@ func TestTopicMetadataAndPartBothDriveDrift(t *testing.T) {
 
 func TestCheckCleanAfterSync(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
@@ -484,7 +484,7 @@ func TestCheckCleanAfterSync(t *testing.T) {
 
 func TestCheckDetectsHandEdit(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	_ = syncProject(p)
 	skill := filepath.Join(root, ".claude/skills/example-debugging/SKILL.md")
 	_ = os.WriteFile(skill, []byte("hand edited\n"), 0o644)
@@ -496,7 +496,7 @@ func TestCheckDetectsHandEdit(t *testing.T) {
 
 func TestCheckStaleTakesPrecedence(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
@@ -537,7 +537,7 @@ func TestCheckStaleTakesPrecedence(t *testing.T) {
 // invariant: rendering/sync-and-drift:check-invalid-frontmatter (TestCheckDetectsInvalidFrontmatter)
 func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -562,7 +562,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 // The attribute is the single source for selecting the applicable check.
 func TestRegenCheckedAttribute(t *testing.T) {
 	root := scaffold(t, domainCfg)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

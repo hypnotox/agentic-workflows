@@ -17,7 +17,7 @@ import (
 
 func TestPitfallDogfoodSourceOutputParity(t *testing.T) {
 	root := filepath.Clean("../..")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -90,7 +90,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 		"docs/pitfalls/beta.md":  pitfallSource("Beta", "", "beta body\n"),
 		"domains/rendering.yaml": "paths: ['internal/**']\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -102,7 +102,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	leafBefore := outputNodeAt(t, before, "docs/pitfalls/alpha.md")
 	sourcePath := filepath.Join(root, ".awf/docs/pitfalls/alpha.md")
 	testsupport.WriteFile(t, sourcePath, pitfallSource("Alpha", "domains: [rendering]\n", "changed alpha body\n"))
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -119,7 +119,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 		t.Fatal("body-only source edit did not change full-source pitfall leaf")
 	}
 	testsupport.WriteFile(t, sourcePath, pitfallSource("Alpha renamed", "domains: [rendering]\n", "changed alpha body\n"))
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, ".awf/docs/pitfalls/alpha.md")); err != nil {
 		t.Fatal(err)
 	}
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -200,7 +200,7 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 		".awf/docs/pitfalls/alpha.md": pitfallSource("Alpha", "", "alpha body\n"),
 		".awf/docs/pitfalls/beta.md":  pitfallSource("Beta", "", "beta body\n"),
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -220,7 +220,7 @@ func testPitfallStagedDeclarationParity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	staged, err := New(stagedOutput.State, stagedOutput.Config, stagedOutput.Reader, Version).Plan()
+	staged, err := New(stagedOutput.Session, Version).Plan()
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -273,7 +273,7 @@ func outputNodeAt(t *testing.T, plan *OutputPlan, path string) OutputNode {
 	return plan.Nodes[idx]
 }
 
-func assertPitfallDrift(t *testing.T, p *ProjectState, path, kind string) {
+func assertPitfallDrift(t *testing.T, p *Session, path, kind string) {
 	t.Helper()
 	drift, err := checkProject(p, testContext(t))
 	if err != nil {

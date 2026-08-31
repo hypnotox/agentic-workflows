@@ -104,10 +104,10 @@ func TestRunAuditRejectsMalformedRange(t *testing.T) {
 }
 
 func TestRunAuditOpenError(t *testing.T) {
-	// A dir with no .awf/config.yaml -> project.Open fails. The range is valid,
+	// A dir with no .awf/config.yaml makes Session loading fail. The range is valid,
 	// so this reaches Open rather than stopping at the refusal above.
 	if err := runAudit(testContext(t), t.TempDir(), "HEAD", out(t)); err == nil {
-		t.Fatal("expected a project.Open error")
+		t.Fatal("expected a project Session loading error")
 	}
 }
 

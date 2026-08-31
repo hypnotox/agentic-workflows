@@ -8,11 +8,11 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -22,7 +22,7 @@ import (
 // invariant: rendering/doc-outputs:local-doc-output-complete (TestLocalDocsOutputPlan)
 func TestLocalDocsOutputPlan(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/z\n    title: Z\n    description: Z document.\n  - name: runbooks/a\n    title: A\n    description: A document.\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -63,7 +63,7 @@ func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, "docs", "runbooks", "incident.md"),
 		"# Incident\n\n<!-- awf:edit-in-place body -->\nauthored body\n")
 
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,7 +89,7 @@ func TestLocalDocDeclarationDeclaresExistingOutputInput(t *testing.T) {
 
 func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/x\n    title: X\n    description: X document.\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -106,7 +106,7 @@ func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 // the plan, and the drift oracle computed from it, silently narrowed.
 func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -145,11 +145,11 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
 		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{ScanReferences: true}, PolicyDeclared: true}}},
 	} {
-		if err := projectstate.ValidateTarget(target); err == nil {
+		if err := artifactregistry.ValidateTarget(target); err == nil {
 			t.Fatalf("invalid target %#v was accepted", target)
 		}
 		root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-		p, err := Open(testContext(t), root)
+		p, err := loadTestSession(testContext(t), root)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -175,7 +175,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 		"target-bridge/.yaml": "data: {}\n",
 		"claude/.yaml":        "data: {}\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -276,7 +276,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 // invariant: rendering/project-output-plan:shared-output-coalesced (TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering)
 func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -346,7 +346,7 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 // removed-invariant (TestCurrentStateOutputPlanMatchesTree)
 func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 	root := filepath.Clean(filepath.Join("..", ".."))
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -409,7 +409,7 @@ func TestCurrentStateOutputPlanMatchesTree(t *testing.T) {
 func TestOutputPlanTopicNodesHaveLiteralPathsAndInputs(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
-	p, _ := Open(testContext(t), root)
+	p, _ := loadTestSession(testContext(t), root)
 	op, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
@@ -439,7 +439,7 @@ func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
-			p, err := Open(testContext(t), root)
+			p, err := loadTestSession(testContext(t), root)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -451,7 +451,7 @@ func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := outputPlan(newRenderInputs(p.OutputState(), cfg, read, project.Version)); !errors.Is(err, failure) {
+			if _, err := outputPlan(newRenderInputs(p, cfg, read, project.Version)); !errors.Is(err, failure) {
 				t.Fatalf("output plan error = %v, want %v", err, failure)
 			}
 		})
@@ -462,7 +462,7 @@ func TestOutputPlanPropagatesConfigReferenceRenderFault(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
 		"parts/config-reference/intro.md": "<!-- awf:comment unclosed\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -499,7 +499,7 @@ func TestTargetOutputDeclarationsRejectUnknownRequiredSkill(t *testing.T) {
 
 func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

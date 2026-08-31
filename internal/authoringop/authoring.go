@@ -115,15 +115,16 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 	}
 	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
 
-	state, cfg, err := loader.OpenForOperation(ctx, root)
+	session, err := loader.Load(ctx, root)
 	if err != nil {
 		return Outcome{}, err
 	}
+	cfg := session.Config()
 	var target project.AuthoringTarget
 	if request.Sidecar {
-		target, err = ResolveSidecar(state, cfg, request.Kind, request.Name, request.Part)
+		target, err = ResolveSidecar(session, cfg, request.Kind, request.Name, request.Part)
 	} else {
-		target, err = ResolvePart(state, cfg, request.Kind, request.Name, request.Part)
+		target, err = ResolvePart(session, cfg, request.Kind, request.Name, request.Part)
 	}
 	if err != nil {
 		return Outcome{}, err
@@ -170,12 +171,12 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 	if err != nil {
 		return outcome, fmt.Errorf("validate candidate config tree: %w", err)
 	}
-	candidateLoader := loader.WithConfigLoader(func(string) (*config.Config, error) { return candidateConfig, nil })
-	candidateState, candidateConfig, err := candidateLoader.OpenForOperation(ctx, root)
+	candidateLoad := func(string) (*config.Config, error) { return candidateConfig, nil }
+	candidateSession, err := loader.WithSelection(candidateLoad, overlay).Load(ctx, root)
 	if err != nil {
 		return outcome, fmt.Errorf("validate candidate project authority: %w", err)
 	}
-	candidatePublisher := publisher.New(candidateState.OutputState(), candidateConfig, overlay, project.Version)
+	candidatePublisher := publisher.New(candidateSession, project.Version)
 	if _, err := candidatePublisher.Prepare(); err != nil {
 		return outcome, fmt.Errorf("validate complete candidate project: %w", err)
 	}
@@ -242,11 +243,11 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 }
 
 func synchronizeCommitted(ctx context.Context, root string, loader *project.Loader, lease *filesystem.Lease, outcome Outcome) (Outcome, error) {
-	committedState, committedConfig, err := loader.OpenForOperation(ctx, root)
+	committedSession, err := loader.Load(ctx, root)
 	if err != nil {
 		return outcome, partial(outcome, err, "repair committed source authority, then rerun awf render")
 	}
-	result, syncErr := publisher.New(committedState.OutputState(), committedConfig, publisher.NewFilesystemReader(root), project.Version).SyncLeased(ctx, lease)
+	result, syncErr := publisher.New(committedSession, project.Version).SyncLeased(ctx, lease)
 	outcome.Publisher = result
 	if syncErr != nil {
 		return outcome, partial(outcome, syncErr, "remove reported residue first, repair the publisher fault, then rerun awf render")

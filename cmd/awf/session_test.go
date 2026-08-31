@@ -11,12 +11,12 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
-func TestOpenProjectOperationRejectsMalformedRepository(t *testing.T) {
+func TestLoadProjectSessionRejectsMalformedRepository(t *testing.T) {
 	root := t.TempDir()
 	if err := os.WriteFile(filepath.Join(root, ".git"), []byte("not a gitdir pointer"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := openProjectOperation(testContext(t), root); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
+	if _, err := loadProjectSession(testContext(t), root); err == nil || errors.Is(err, awfgit.ErrNotARepository) {
 		t.Fatalf("malformed repository error = %v", err)
 	}
 }

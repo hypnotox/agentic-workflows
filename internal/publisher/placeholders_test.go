@@ -11,7 +11,7 @@ import (
 
 // projectWithScopes opens a scaffolded project with two meaning-bearing scopes
 // and both gate-command vars set (every registry key populated).
-func projectWithScopes(t *testing.T) *ProjectState {
+func projectWithScopes(t *testing.T) *Session {
 	t.Helper()
 	root := scaffold(t, "prefix: awftest\nintegrationBranch: main\n"+
 		"vars:\n  gateCmd: ./x gate\n  checkCmd: ./x check\n"+
@@ -19,7 +19,7 @@ func projectWithScopes(t *testing.T) *ProjectState {
 		"audit:\n  allowedScopes:\n"+
 		"    - {name: adr, meaning: ADR docs}\n"+
 		"    - {name: rendering, meaning: the render engine}\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -28,9 +28,9 @@ func projectWithScopes(t *testing.T) *ProjectState {
 
 // projectAcceptAny opens a scaffolded project with no audit config (accept-any
 // scopes) and no gate vars - the scope keys and gate keys are all absent.
-func projectAcceptAny(t *testing.T) *ProjectState {
+func projectAcceptAny(t *testing.T) *Session {
 	t.Helper()
-	p, err := Open(testContext(t), scaffold(t, "prefix: bare\nintegrationBranch: main\nvars: {}\n"))
+	p, err := loadTestSession(testContext(t), scaffold(t, "prefix: bare\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -171,7 +171,7 @@ func TestPlaceholderValueTokenFree(t *testing.T) {
 	// A scope meaning carrying the token taints commitScopeTable's value.
 	root := scaffold(t, "prefix: awftest\nintegrationBranch: main\nvars: {}\n"+
 		"audit:\n  allowedScopes:\n    - {name: adr, meaning: \"see {{=awf:commitScopeList}}\"}\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -194,7 +194,7 @@ func TestPlaceholderSubstitutionInSync(t *testing.T) {
 	good := scaffoldFiles(t, cfg, map[string]string{
 		"parts/workflow/commit-discipline.md": "## Commit discipline\n\n{{=awf:commitScopeTable}}\n",
 	})
-	p, err := Open(testContext(t), good)
+	p, err := loadTestSession(testContext(t), good)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -212,7 +212,7 @@ func TestPlaceholderSubstitutionInSync(t *testing.T) {
 	bad := scaffoldFiles(t, cfg, map[string]string{
 		"parts/workflow/commit-discipline.md": "## Commit discipline\n\n{{=awf:bogus}}\n",
 	})
-	bp, err := Open(testContext(t), bad)
+	bp, err := loadTestSession(testContext(t), bad)
 	if err != nil {
 		t.Fatal(err)
 	}

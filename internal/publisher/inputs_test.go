@@ -15,7 +15,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/projectstate"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -27,9 +26,9 @@ func TestNewRejectsMissingCompositionDependencies(t *testing.T) {
 		name string
 		new  func()
 	}{
-		{"state", func() { New(nil, cfg, memoryProjectReader{}, project.Version) }},
-		{"config", func() { New(state.OutputState(), nil, memoryProjectReader{}, project.Version) }},
-		{"reader", func() { New(state.OutputState(), cfg, nil, project.Version) }},
+		{"state", func() { newPublisher(nil, cfg, memoryProjectReader{}, project.Version) }},
+		{"config", func() { newPublisher(state, nil, memoryProjectReader{}, project.Version) }},
+		{"reader", func() { newPublisher(state, cfg, nil, project.Version) }},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -46,7 +45,7 @@ func TestNewRejectsMissingCompositionDependencies(t *testing.T) {
 func TestPublisherDefensivelyOwnsConfigurationFacts(t *testing.T) {
 	state := csRepo(t, sampleYAML, map[string]string{})
 	cfg := testConfig(state)
-	publisher := New(state.OutputState(), cfg, NewFilesystemReader(state.Root()), project.Version)
+	publisher := newPublisher(state, cfg, NewFilesystemReader(state.Root()), project.Version)
 	before, err := publisher.Plan()
 	if err != nil {
 		t.Fatal(err)
@@ -67,7 +66,7 @@ func TestPreparationFreezesGeneratedCheckSources(t *testing.T) {
 	checkFrozen := func(t *testing.T, mutate func(string)) {
 		t.Helper()
 		state := csRepo(t, sampleYAML, map[string]string{".awf/skills/implementing.yaml": "data:\n  stale: before\n"})
-		prepared, err := New(state.OutputState(), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Prepare()
+		prepared, err := newPublisher(state, testConfig(state), NewFilesystemReader(state.Root()), project.Version).Prepare()
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -102,7 +101,7 @@ func TestPreparationFreezesGeneratedCheckSources(t *testing.T) {
 
 func TestRenderInputsSnapshotsCatalogOnce(t *testing.T) {
 	state := csRepo(t, sampleYAML, map[string]string{})
-	lower := state.OutputState()
+	lower := state
 	inputs := newRenderInputs(lower, testConfig(state), memoryProjectReader{}, project.Version)
 
 	first := projectCatalog(inputs)
@@ -121,7 +120,7 @@ func TestRenderInputsSnapshotsCatalogOnce(t *testing.T) {
 func TestPublisherStagedTreeOwnsADRAndTopicDerivation(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "selected-tree", "Selected tree", "paths: [\"internal/**\"]\n")
-	state, err := Open(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -154,7 +153,7 @@ func TestPublisherStagedTreeOwnsADRAndTopicDerivation(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf/topics/metadata/rendering/selected-tree.yaml"), []byte("working: [malformed\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	prepared, err := New(state.OutputState(), testConfig(state), snapshotTreeReader{tree: staged}, project.Version).Prepare()
+	prepared, err := newPublisher(state, testConfig(state), snapshotTreeReader{tree: staged}, project.Version).Prepare()
 	if err != nil {
 		t.Fatalf("working-tree authority leaked into selected-tree planning: %v", err)
 	}
@@ -166,29 +165,29 @@ func TestPublisherStagedTreeOwnsADRAndTopicDerivation(t *testing.T) {
 func TestPublisherResidentMarkerPreparationPropagatesPlanningFailure(t *testing.T) {
 	state := csRepo(t, sampleYAML, map[string]string{})
 	cfg := testConfig(state)
-	lower := lowerWithTargets(state.OutputState(), append(state.Targets(), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
-	publisher := New(lower, cfg, NewFilesystemReader(state.Root()), project.Version)
+	lower := lowerWithTargets(state, append(state.Targets(), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
+	publisher := newPublisher(lower, cfg, NewFilesystemReader(state.Root()), project.Version)
 	if _, err := publisher.Prepare(); err == nil {
 		t.Fatal("resident-marker preparation hid planning failure")
 	}
 }
 
-func TestSyncPlanningFailurePrecedesInvalidCommandWiring(t *testing.T) {
+func TestSyncUsesTheSessionsSelectedConfigurationWithoutFactsRebinding(t *testing.T) {
 	state := csRepo(t, sampleYAML, map[string]string{})
 	cfg := testConfig(state)
 	delete(cfg.Vars, "gateCmd")
-	base := state.OutputState()
+	base := state
 	selected := base.Catalog()
 	missing := selected.Docs["architecture"]
 	missing.TID = "missing/live-template.tmpl"
 	selected.Docs["missing-live-fixture"] = missing
-	lower := projectstate.NewDerivedWithFacts(base.Root(), base.Roots(), base.Nested(), base.Facts(), selected, base.CompleteCatalog(), base.Targets())
-	_, err := New(lower, cfg, NewFilesystemReader(state.Root()), project.Version).SyncLeased(context.Background(), nil)
-	if err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
-		t.Fatalf("Sync error = %v, want planning error", err)
+	lower := deriveSession(base, cfg, NewFilesystemReader(state.Root()), selected, base.Targets())
+	_, err := New(lower, project.Version).SyncLeased(context.Background(), nil)
+	if err == nil || !strings.Contains(err.Error(), "vars.gateCmd") {
+		t.Fatalf("Sync error = %v, want selected-session command-wiring error", err)
 	}
-	if strings.Contains(err.Error(), "vars.gateCmd") {
-		t.Fatalf("Sync error = %v, command-wiring error won over planning", err)
+	if strings.Contains(err.Error(), "missing/live-template.tmpl") {
+		t.Fatalf("Sync error = %v, stale state facts overrode the selected Session config", err)
 	}
 }
 
@@ -243,11 +242,11 @@ func TestFilesystemReaderKeepsInvokingGitfileProjectSelected(t *testing.T) {
 func TestPreparationProjectionsAreDeeplyDefensive(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "immutable", "Immutable", "paths: [\"internal/**\"]\n")
-	state, err := Open(testContext(t), root)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	prepared, err := New(state.OutputState(), testConfig(state), NewFilesystemReader(root), project.Version).Prepare()
+	prepared, err := newPublisher(state, testConfig(state), NewFilesystemReader(root), project.Version).Prepare()
 	if err != nil {
 		t.Fatal(err)
 	}

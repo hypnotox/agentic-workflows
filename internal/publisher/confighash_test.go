@@ -12,7 +12,7 @@ import (
 
 func TestDataDefaultsConfigurationChangesConfigHash(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -36,7 +36,7 @@ func TestDataDefaultsConfigurationChangesConfigHash(t *testing.T) {
 
 func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -101,7 +101,7 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 
 func TestIntegrationBranchConsumerConfigHash(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -142,7 +142,7 @@ func TestIntegrationBranchConsumerConfigHash(t *testing.T) {
 // invariant: config/configuration:template-source-root (TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash)
 func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -196,7 +196,7 @@ func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) 
 
 func TestRetiredTelemetryTemplateValuesDoNotAffectConfigHash(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

@@ -98,11 +98,11 @@ func newPitfall(ctx context.Context, root string, args []string, stdout io.Write
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	state, _, _, err := openProjectOperation(ctx, root)
+	session, err := loadProjectSession(ctx, root)
 	if err != nil {
 		return err
 	}
-	document, err := project.NewPitfall(state.Root(), args[0])
+	document, err := project.NewPitfall(session.Root(), args[0])
 	if err != nil {
 		return err
 	}

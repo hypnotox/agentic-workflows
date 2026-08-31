@@ -86,7 +86,7 @@ func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
 	}
 
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	project, err := Open(testContext(t), root)
+	project, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

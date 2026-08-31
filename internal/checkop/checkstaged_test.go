@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -111,8 +112,8 @@ func TestCollectCheckStagedRoutesOrdinaryCurrentStateOwnerResults(t *testing.T) 
 		t.Fatal(err)
 	}
 	dependencies := productionCheckStagedDependencies()
-	dependencies.stateRoot = func(context.Context, string) (project.CurrentStateReport, error) {
-		return project.CurrentStateReport{CurrentResult: ordinaryResult, OwnerResult: ordinaryResult}, nil
+	dependencies.stateRoot = func(context.Context, string) (currentstatecoord.CurrentStateReport, error) {
+		return currentstatecoord.CurrentStateReport{CurrentResult: ordinaryResult, OwnerResult: ordinaryResult}, nil
 	}
 	present := dependencies.present
 	seen := map[checkresult.Property]bool{}

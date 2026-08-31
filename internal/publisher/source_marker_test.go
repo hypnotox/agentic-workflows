@@ -22,7 +22,7 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 	})
 	writeProjectTopic(t, root, "opaque", "Opaque", "applies: global\n")
 	writeADR(t, root, "0001-fixture.md", testsupport.ADR("Implemented", testsupport.WithDomains("rendering"), testsupport.WithTitle("0001: Fixture"), testsupport.WithBody("## Decision\n\n1. Fixture.\n")))
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

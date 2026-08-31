@@ -12,8 +12,8 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/execution"
-	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/prosegate"
 	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
@@ -25,7 +25,7 @@ type repoCheckCounters struct {
 	loads, opens, reports, states, indexes int
 }
 
-func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.ProjectState, check project.CheckReport, state project.CurrentStateReport, tree *snapshot.Tree, counts *repoCheckCounters) repoCheckDependencies {
+func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Session, check project.CheckReport, state currentstatecoord.CurrentStateReport, tree *snapshot.Tree, counts *repoCheckCounters) repoCheckDependencies {
 	t.Helper()
 	state = currentStateReportForTest(t, state)
 	if !hasCheckResults(check.AggregateAdvisoryResult()) && !hasCheckResults(check.TrackingInformationResult()) && (len(check.Warnings) > 0 || len(check.Information) > 0 || len(check.TrackingInformation) > 0) {
@@ -77,25 +77,25 @@ func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Proj
 			counts.loads++
 			return cfg, nil
 		},
-		openProject: func(_ context.Context, _ string, got *config.Config) (*project.ProjectState, *awfgit.Repo, error) {
+		loadSession: func(_ context.Context, _ string, got *config.Config) (*project.Session, error) {
 			counts.opens++
 			if got != cfg {
-				t.Fatalf("openProject config = %p, want prepared config %p", got, cfg)
+				t.Fatalf("loadSession config = %p, want prepared config %p", got, cfg)
 			}
-			return p, nil, nil
+			return p, nil
 		},
-		checkReport: func(_ context.Context, got *project.ProjectState, gotConfig *config.Config, _ *awfgit.Repo) (project.CheckReport, error) {
+		checkReport: func(_ context.Context, got *project.Session) (project.CheckReport, error) {
 			counts.reports++
-			if gotConfig != cfg {
-				t.Fatalf("checkReport config = %p, want %p", gotConfig, cfg)
-			}
 			if got != p {
-				t.Fatalf("checkReport project = %p, want prepared project %p", got, p)
+				t.Fatalf("checkReport session = %p, want prepared session %p", got, p)
 			}
 			return check, nil
 		},
-		currentState: func(_ context.Context, _ string, _ *awfgit.Repo) (project.CurrentStateReport, error) {
+		currentState: func(_ context.Context, got *project.Session) (currentstatecoord.CurrentStateReport, error) {
 			counts.states++
+			if got != p {
+				t.Fatalf("currentState session = %p, want prepared session %p", got, p)
+			}
 			return state, nil
 		},
 		present: func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
@@ -152,7 +152,7 @@ func TestRepoCheckRoutesAggregateOwnerResults(t *testing.T) {
 		t.Fatal(err)
 	}
 	counts := &repoCheckCounters{}
-	deps := repoCheckTestDependencies(t, &config.Config{}, &project.ProjectState{}, report, project.CurrentStateReport{}, nil, counts)
+	deps := repoCheckTestDependencies(t, &config.Config{}, &project.Session{}, report, currentstatecoord.CurrentStateReport{}, nil, counts)
 	present := deps.present
 	var properties []checkresult.Property
 	var informationKinds []string
@@ -194,12 +194,12 @@ func TestRepoCheckRoutesWorkingCurrentStateOwnerResult(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	state := project.CurrentStateReport{
+	state := currentstatecoord.CurrentStateReport{
 		CurrentResult: result,
 		OwnerResult:   result,
 	}
 	counts := &repoCheckCounters{}
-	deps := repoCheckTestDependencies(t, &config.Config{}, &project.ProjectState{}, project.CheckReport{}, state, nil, counts)
+	deps := repoCheckTestDependencies(t, &config.Config{}, &project.Session{}, project.CheckReport{}, state, nil, counts)
 	present := deps.present
 	var properties []checkresult.Property
 	var informationKinds []string
@@ -246,7 +246,7 @@ func TestRepoCheckAggregateTypedPresentationFailuresPropagate(t *testing.T) {
 	for target := 1; target <= 4; target++ {
 		t.Run(fmt.Sprintf("projection-%d", target), func(t *testing.T) {
 			failure := fmt.Errorf("projection %d failed", target)
-			deps := repoCheckTestDependencies(t, &config.Config{}, &project.ProjectState{}, report, project.CurrentStateReport{}, nil, &repoCheckCounters{})
+			deps := repoCheckTestDependencies(t, &config.Config{}, &project.Session{}, report, currentstatecoord.CurrentStateReport{}, nil, &repoCheckCounters{})
 			present := deps.present
 			calls := 0
 			deps.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
@@ -266,7 +266,7 @@ func TestRepoCheckAggregateTypedPresentationFailuresPropagate(t *testing.T) {
 
 func TestRepoCheckCategoryFailuresPropagate(t *testing.T) {
 	cfg := &config.Config{}
-	p := &project.ProjectState{}
+	p := &project.Session{}
 	for _, tc := range []struct {
 		name string
 		step execution.StepID
@@ -299,7 +299,7 @@ func TestRepoCheckCategoryFailuresPropagate(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{}, project.CurrentStateReport{}, tree, counts)
+			deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{}, currentstatecoord.CurrentStateReport{}, tree, counts)
 			failure := errors.New(tc.name + " category failure")
 			tc.set(&deps, failure)
 			if err := runRepoCheckSelection(context.Background(), t.TempDir(), io.Discard, []execution.StepID{tc.step}, execution.StopOnFailure, false, deps); !errors.Is(err, failure) {
@@ -309,7 +309,7 @@ func TestRepoCheckCategoryFailuresPropagate(t *testing.T) {
 	}
 }
 
-func currentStateReportForTest(t *testing.T, report project.CurrentStateReport) project.CurrentStateReport {
+func currentStateReportForTest(t *testing.T, report currentstatecoord.CurrentStateReport) currentstatecoord.CurrentStateReport {
 	t.Helper()
 	return report
 }
@@ -317,12 +317,12 @@ func currentStateReportForTest(t *testing.T, report project.CurrentStateReport) 
 // invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestAggregateCheckAgentGuideSizeWarning)
 func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	cfg := &config.Config{}
-	p := &project.ProjectState{}
+	p := &project.Session{}
 	advisory := "AGENTS.md is 12289 bytes, allowed 12288 bytes; see docs/agents-md-standard.md"
 	runAggregate := func(t *testing.T, notes []string) string {
 		t.Helper()
 		counts := &repoCheckCounters{}
-		deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Warnings: notes, Notes: notes}, project.CurrentStateReport{}, nil, counts)
+		deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Warnings: notes, Notes: notes}, currentstatecoord.CurrentStateReport{}, nil, counts)
 		var out bytes.Buffer
 		if err := runRepoCheckSelection(context.Background(), t.TempDir(), &out, []execution.StepID{repoStepDrift}, execution.ContinueOnFailure, true, deps); err != nil {
 			t.Fatalf("warning-only aggregate error: %v", err)
@@ -355,7 +355,7 @@ func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	})
 
 	counts := &repoCheckCounters{}
-	deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Warnings: []string{"ordinary-advisory", advisory}, Notes: []string{"ordinary-advisory", advisory}}, project.CurrentStateReport{}, nil, counts)
+	deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Warnings: []string{"ordinary-advisory", advisory}, Notes: []string{"ordinary-advisory", advisory}}, currentstatecoord.CurrentStateReport{}, nil, counts)
 	var direct bytes.Buffer
 	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &direct, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, deps); err != nil {
 		t.Fatalf("direct drift error: %v", err)

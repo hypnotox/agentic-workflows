@@ -23,11 +23,11 @@ vars:
 
 func TestConfigReferenceRowsPropagatesInjectedTemplateReadError(t *testing.T) {
 	root := scaffold(t, crefYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	selected := p.OutputState().Catalog()
+	selected := p.Catalog()
 	selected.Skills["missing-template"] = catalog.SkillSpec{}
 	inputs := renderInputsWithCatalog(p, selected)
 	_, err = configReferenceRows(inputs, nil)
@@ -51,7 +51,7 @@ func TestTemplateSourceRootCurrentValue(t *testing.T) {
 
 func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -87,10 +87,10 @@ func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 	}
 }
 
-func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *ProjectState) {
+func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *Session) {
 	t.Helper()
 	root := scaffoldFiles(t, configYAML, files)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -336,7 +336,7 @@ func TestConfigReferenceSidecarRules(t *testing.T) {
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffoldFiles(t, crefYAML, map[string]string{"config-reference.yaml": tc.sidecar})
-			if _, err := Open(testContext(t), root); err == nil || !strings.Contains(err.Error(), tc.wantErr) {
+			if _, err := loadTestSession(testContext(t), root); err == nil || !strings.Contains(err.Error(), tc.wantErr) {
 				t.Errorf("Open = %v, want error containing %q", err, tc.wantErr)
 			}
 		})
@@ -385,7 +385,7 @@ func TestConfigReferencePartReadFault(t *testing.T) {
 // A malformed config-reference sidecar fails at open like any other sidecar.
 func TestConfigReferenceSidecarParseError(t *testing.T) {
 	root := scaffoldFiles(t, crefYAML, map[string]string{"config-reference.yaml": "data: [unclosed\n"})
-	if _, err := Open(testContext(t), root); err == nil || !strings.Contains(err.Error(), "config-reference.yaml") {
+	if _, err := loadTestSession(testContext(t), root); err == nil || !strings.Contains(err.Error(), "config-reference.yaml") {
 		t.Errorf("Open = %v, want a parse error naming the sidecar", err)
 	}
 }

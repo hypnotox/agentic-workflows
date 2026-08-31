@@ -9,7 +9,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
-	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
@@ -22,7 +21,7 @@ type Input struct {
 }
 
 // LoadProject opens the command-selected project inputs as immutable state.
-type LoadProject func(context.Context, string) (*project.ProjectState, *config.Config, *awfgit.Repo, error)
+type LoadProject func(context.Context, string) (*project.Session, error)
 
 // Gate validates the selected live command universe.
 type Gate func(context.Context, string) error
@@ -48,11 +47,11 @@ func Run(ctx context.Context, root string, input Input, load LoadProject, gate G
 	if err := gate(ctx, root); err != nil {
 		return presentation.Detail{}, err
 	}
-	state, _, repo, err := load(ctx, root)
+	session, err := load(ctx, root)
 	if err != nil {
 		return presentation.Detail{}, err
 	}
-	result, err := currentstatecoord.QueryTopic(state.Root(), repo, ctx, input.Selector, topic.QueryOptions{References: input.References, Coverage: input.Coverage})
+	result, err := currentstatecoord.QueryTopic(session.Root(), session.Repository(), ctx, input.Selector, topic.QueryOptions{References: input.References, Coverage: input.Coverage})
 	if err != nil {
 		return presentation.Detail{}, err
 	}

@@ -2,6 +2,7 @@ package evals
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"sort"
@@ -11,6 +12,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
@@ -27,23 +29,33 @@ var (
 	evalSeeds  = make(map[string]testsupport.TreeSeed)
 )
 
-func evalPreparation(p *project.ProjectState, cfg *config.Config) (publisher.Preparation, error) {
-	return publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Prepare()
+func loadEvalSession(ctx context.Context, root string) (*project.Session, error) {
+	repo, _, err := awfgit.OpenContaining(root)
+	if err != nil {
+		if !errors.Is(err, awfgit.ErrNotARepository) {
+			return nil, err
+		}
+		return project.NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot).Load(ctx, root)
+	}
+	return project.NewLoader(config.Load, catalog.Standard, awfgit.ProjectResidentRoot, repo).Load(ctx, root)
 }
 
-func syncEvalProject(t *testing.T, p *project.ProjectState) error {
+func evalPreparation(p *project.Session) (publisher.Preparation, error) {
+	return publisher.New(p, project.Version).Prepare()
+}
+
+func syncEvalProject(t *testing.T, p *project.Session) error {
 	t.Helper()
-	cfg := mustEvalConfig(t, p)
-	_, err := publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).SyncLeased(context.Background(), nil)
+	_, err := publisher.New(p, project.Version).SyncLeased(context.Background(), nil)
 	return err
 }
 
-func checkProject(p *project.ProjectState, ctx context.Context) ([]manifest.Drift, error) {
+func checkProject(p *project.Session, ctx context.Context) ([]manifest.Drift, error) {
 	cfg, err := config.Load(config.RootDir(p.Root()))
 	if err != nil {
 		return nil, err
 	}
-	prepared, err := evalPreparation(p, cfg)
+	prepared, err := evalPreparation(p)
 	if err != nil {
 		return nil, err
 	}
@@ -55,7 +67,7 @@ func checkProject(p *project.ProjectState, ctx context.Context) ([]manifest.Drif
 	return report.Drift, err
 }
 
-func mustEvalConfig(t *testing.T, state *project.ProjectState) *config.Config {
+func mustEvalConfig(t *testing.T, state *project.Session) *config.Config {
 	t.Helper()
 	cfg, err := config.Load(config.RootDir(state.Root()))
 	if err != nil {
@@ -135,15 +147,11 @@ func fullCatalogSeedForTarget(t *testing.T, cat *catalog.Catalog, target string)
 	}
 	root := filepath.Join(t.TempDir(), "seed")
 	testsupport.WriteAwfConfig(t, root, fullCatalogConfigForTarget(cat, target))
-	p, err := project.Open(testsupport.Context(t), root)
+	p, err := loadEvalSession(testsupport.Context(t), root)
 	if err != nil {
-		t.Fatalf("open: %v", err)
+		t.Fatalf("load: %v", err)
 	}
-	cfg, err := config.Load(config.RootDir(root))
-	if err != nil {
-		t.Fatalf("load config: %v", err)
-	}
-	if _, err := publisher.New(p.OutputState(), cfg, publisher.NewFilesystemReader(p.Root()), project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
+	if _, err := publisher.New(p, project.Version).Initialize(publisher.InitAuthority{InitializedWithVersion: project.Version}); err != nil {
 		t.Fatalf("initialize: %v", err)
 	}
 	seed, err := testsupport.CaptureTree(root)
@@ -221,9 +229,9 @@ func TestFullCatalogCoverage(t *testing.T) {
 	for _, targetName := range []string{"claude", "pi"} {
 		t.Run(targetName, func(t *testing.T) {
 			root := cloneFullCatalogForTarget(t, cat, targetName)
-			p, err := project.Open(testsupport.Context(t), root)
+			p, err := loadEvalSession(testsupport.Context(t), root)
 			if err != nil {
-				t.Fatalf("open initialized project: %v", err)
+				t.Fatalf("load initialized project: %v", err)
 			}
 			if len(p.Targets()) != 2 {
 				t.Fatalf("targets = %d, want both built-in targets", len(p.Targets()))

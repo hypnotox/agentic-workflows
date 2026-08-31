@@ -71,11 +71,11 @@ func effortRequest(c *cmdCtx) (application.Request, error) {
 
 func expectedEffortArchiveMarker(ctx context.Context, root string) func() ([]byte, error) {
 	return func() ([]byte, error) {
-		projectState, cfg, _, err := openProjectOperation(ctx, root)
+		session, err := loadProjectSession(ctx, root)
 		if err != nil {
 			return nil, err
 		}
-		prepared, err := operationPreparation(projectState, cfg)
+		prepared, err := operationPreparation(session)
 		if err != nil {
 			return nil, err
 		}

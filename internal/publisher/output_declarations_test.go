@@ -167,7 +167,7 @@ func TestOutputDeclarationsMatchThePlan(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -213,7 +213,7 @@ func TestEnabledMarkdownDeclarationsMatchObservedTemplateSources(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -245,7 +245,7 @@ func TestPitfallDeclarationPlanDependencyParity(t *testing.T) {
 		"docs/pitfalls/alpha.md": pitfallSource("Alpha", "", "alpha body\n"),
 		"docs/pitfalls/beta.md":  pitfallSource("Beta", "", "beta body\n"),
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -295,7 +295,7 @@ func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 		"skills/debugging.yaml":                        "data: {}\n",
 		"skills/parts/debugging/debugging-surfaces.md": "Observed part.\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

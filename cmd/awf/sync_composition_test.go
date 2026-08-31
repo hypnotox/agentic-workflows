@@ -95,11 +95,11 @@ func TestFinishSyncPrintingPresentsCompleteEffectsOnLeaseReleaseFailure(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	state, cfg, err := loader.OpenForOperation(ctx, root)
+	state, err := loader.Load(ctx, root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	result, err := composePublisher(state, cfg).SyncLeased(context.Background(), nil)
+	result, err := composePublisher(state).SyncLeased(context.Background(), nil)
 	if err != nil {
 		t.Fatal(err)
 	}

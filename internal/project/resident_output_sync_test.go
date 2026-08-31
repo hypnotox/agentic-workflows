@@ -12,7 +12,7 @@ import (
 
 func TestSyncNeverPrunesResidentEffortsDescendants(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -30,7 +30,7 @@ func TestSyncNeverPrunesResidentEffortsDescendants(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	p, err = Open(testContext(t), root)
+	p, err = loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -48,7 +48,7 @@ func TestSyncNeverPrunesResidentEffortsDescendants(t *testing.T) {
 
 func TestSyncRejectsUnsafeResidentEffortsRoot(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

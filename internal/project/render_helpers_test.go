@@ -30,7 +30,7 @@ func renderedByPath(t *testing.T, files []RenderedFile, path string) string {
 // syncClean opens+syncs root and fails on any residual drift.
 func syncClean(t *testing.T, root string) {
 	t.Helper()
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

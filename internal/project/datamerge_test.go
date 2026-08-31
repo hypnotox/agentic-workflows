@@ -7,7 +7,7 @@ import "testing"
 // invariant: rendering/sync-and-drift:catalog-data-in-confighash (TestCatalogDataChangesConfigHash)
 func TestCatalogDataChangesConfigHash(t *testing.T) {
 	root := scaffold(t, sampleYAML)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -32,7 +32,7 @@ func TestCatalogDataChangesConfigHash(t *testing.T) {
 		map[string]any{"name": "Changed", "kind": "unit", "location": "here"},
 	}}
 	selected.Skills["debugging"] = spec
-	p = testStateWith(p, p.Root(), p.roots(), p.nested(), selected, p.completeCatalog(), p.Targets())
+	p = testStateWith(p, p.Root(), p.Roots(), p.Nested(), selected, p.Targets())
 	after := hashOf()
 	if before == after {
 		t.Fatalf("ConfigHash unchanged after catalog default-data change: %s", before)

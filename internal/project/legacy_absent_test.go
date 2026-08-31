@@ -10,7 +10,7 @@ import (
 func TestDecisionIndexesNotPlanned(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n",
 		map[string]string{"domains/rendering.yaml": "paths: ['internal/**']\n"})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}

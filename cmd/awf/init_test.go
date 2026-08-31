@@ -462,7 +462,7 @@ func TestInitCollisionsOpenError(t *testing.T) {
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	// Unknown field → strict config.Load fails → project.Open errors inside runInit.
+	// Unknown field → strict config.Load fails → Session loading errors inside runInit.
 	if err := os.WriteFile(filepath.Join(dir, "config.yaml"), []byte("bogusField: true\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -472,12 +472,12 @@ func TestInitCollisionsOpenError(t *testing.T) {
 	}
 	var out, errb bytes.Buffer
 	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code == 0 {
-		t.Fatal("expected init to fail when project.Open errors")
+		t.Fatal("expected init to fail when Session loading errors")
 	}
 	// --force skips the probe, so the same malformed config now fails at
-	// runInit's own post-scaffold project.Open - keeping that branch covered.
+	// Keep runInit's own post-scaffold Session loading branch covered.
 	if code := runFrom(root, []string{"awf", "init", "--force"}, &out, &errb); code == 0 {
-		t.Fatal("expected init --force to fail when project.Open errors")
+		t.Fatal("expected init --force to fail when Session loading errors")
 	}
 }
 

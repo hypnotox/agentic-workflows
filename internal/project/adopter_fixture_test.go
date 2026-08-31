@@ -27,7 +27,7 @@ bootstrap:
 		"topics/metadata/alpha/model.yaml":          "title: Model\nsummary: Fixture model rules.\npaths: [\"internal/**\"]\n",
 		"topics/parts/alpha/model/current-state.md": "Fixture model guidance.\n\n## Claims\n",
 	})
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("open fixture: %v", err)
 	}
@@ -39,7 +39,7 @@ bootstrap:
 
 func TestTemporaryAdopterRenderDriftLifecycle(t *testing.T) {
 	root := temporaryAuthoredAdopter(t)
-	p, err := Open(testContext(t), root)
+	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatalf("reopen fixture: %v", err)
 	}
