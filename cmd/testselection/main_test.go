@@ -254,7 +254,14 @@ func withLinuxPlatform(t *testing.T) {
 	t.Cleanup(func() { currentPlatform = old })
 }
 
+func isolateFullLinuxTestEnvironment(t *testing.T) {
+	t.Helper()
+	t.Setenv("AWF_FULL_LINUX_CEILING", "")
+	t.Setenv("AWF_FULL_LINUX_TIMING_ARTIFACT", "")
+}
+
 func TestFullLinuxCalibrationRecordsRawEvidenceWithoutInventingCeiling(t *testing.T) {
+	isolateFullLinuxTestEnvironment(t)
 	withLinuxPlatform(t)
 	old := runFullSuite
 	t.Cleanup(func() { runFullSuite = old })
@@ -278,6 +285,7 @@ func TestFullLinuxCalibrationRecordsRawEvidenceWithoutInventingCeiling(t *testin
 }
 
 func TestFullLinuxBudgetWarnsWithoutFailureAndRecordsBudget(t *testing.T) {
+	isolateFullLinuxTestEnvironment(t)
 	withLinuxPlatform(t)
 	old := runFullSuite
 	t.Cleanup(func() { runFullSuite = old })
@@ -296,6 +304,7 @@ func TestFullLinuxBudgetWarnsWithoutFailureAndRecordsBudget(t *testing.T) {
 }
 
 func TestFullLinuxHardTimeoutAndFailureWriteArtifactsAndFail(t *testing.T) {
+	isolateFullLinuxTestEnvironment(t)
 	withLinuxPlatform(t)
 	oldRunner, oldContext := runFullSuite, fullLinuxBudgetContext
 	t.Cleanup(func() { runFullSuite, fullLinuxBudgetContext = oldRunner, oldContext })
@@ -330,9 +339,17 @@ func TestFullLinuxHardTimeoutAndFailureWriteArtifactsAndFail(t *testing.T) {
 }
 
 func TestFullLinuxRequiresHostedEvidenceCeilingAndExactPlatform(t *testing.T) {
-	oldPlatform := currentPlatform
-	t.Cleanup(func() { currentPlatform = oldPlatform })
+	// Reproduce the hosted outer command's timing environment before applying
+	// the missing-ceiling test's isolated environment contract.
+	t.Setenv("AWF_FULL_LINUX_CEILING", "4m")
+	t.Setenv("AWF_FULL_LINUX_TIMING_ARTIFACT", filepath.Join(t.TempDir(), "ambient.json"))
+	isolateFullLinuxTestEnvironment(t)
+	oldPlatform, oldRunner := currentPlatform, runFullSuite
+	t.Cleanup(func() { currentPlatform, runFullSuite = oldPlatform, oldRunner })
 	currentPlatform = func() (string, string) { return "linux", "amd64" }
+	runFullSuite = func(context.Context, string, []string, io.Writer) (time.Duration, error) {
+		return 0, errors.New("full suite must not run while validating arguments")
+	}
 	var stdout, stderr bytes.Buffer
 	if code := runFullLinux([]string{"--mode", "budget", "--artifact", filepath.Join(t.TempDir(), "x")}, &stdout, &stderr); code != 2 || !strings.Contains(stderr.String(), "evidence-derived") {
 		t.Fatalf("missing ceiling code=%d stderr=%s", code, stderr.String())
@@ -351,7 +368,7 @@ func TestXFullLinuxBudgetRefusesMissingReviewedCeilingBeforeExecution(t *testing
 	}
 	cmd := exec.Command("bash", filepath.Join(root, "x"), "test-full-linux", "budget")
 	cmd.Dir = root
-	cmd.Env = removeEnvironment(os.Environ(), "AWF_FULL_LINUX_CEILING")
+	cmd.Env = removeEnvironment(os.Environ(), "AWF_FULL_LINUX_CEILING", "AWF_FULL_LINUX_TIMING_ARTIFACT")
 	output, err := cmd.CombinedOutput()
 	var exitErr *exec.ExitError
 	if !errors.As(err, &exitErr) || exitErr.ExitCode() != 2 || !bytes.Contains(output, []byte("reviewed hosted evidence")) {
@@ -359,11 +376,15 @@ func TestXFullLinuxBudgetRefusesMissingReviewedCeilingBeforeExecution(t *testing
 	}
 }
 
-func removeEnvironment(environment []string, name string) []string {
-	prefix := name + "="
+func removeEnvironment(environment []string, names ...string) []string {
+	removed := make(map[string]bool, len(names))
+	for _, name := range names {
+		removed[name] = true
+	}
 	filtered := make([]string, 0, len(environment))
 	for _, value := range environment {
-		if !strings.HasPrefix(value, prefix) {
+		name, _, _ := strings.Cut(value, "=")
+		if !removed[name] {
 			filtered = append(filtered, value)
 		}
 	}
