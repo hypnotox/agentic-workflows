@@ -1,5 +1,5 @@
 title: Filesystem access
-summary: Single-home root-confined filesystem access and its controlled test fault source.
+summary: Root-confined path behavior and project mutation lease safety.
 paths:
   - internal/filesystem/**
   - internal/testsupport/fsfixture/**

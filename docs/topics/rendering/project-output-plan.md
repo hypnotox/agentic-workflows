@@ -7,7 +7,7 @@ How a project assembles its render set, output plan, drift check, and prune beha
 
 **Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/projectstate/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf read topic rendering/project-output-plan --coverage` for current applicable and owned paths and marker sites.
 
-Publisher assembles the full render set, constructs one immutable operation-scoped output plan, and owns sync-time publication. Immutable plan values live in `internal/outputplan`, while Publisher privately owns its declaration inventory. Current-state coordinator operations consume Publisher's defensive semantic projections when Publisher already participates, so drift, tracking, advisory, and staged consumers reuse one operation preparation without transferring Publisher ownership, reparsing its corpora, or collapsing distinct operation universes.
+A project render assembles a deterministic output set from catalog, target, configuration, topic, pitfall, and local-document declarations. Output planning rejects conflicting or invalid declarations before mutation, and repository checks preserve completed owner evidence and explicit presentation order.
 
 The Pi target descriptor is the sole declaration of the two Pi-specific outputs: the subagent index and model-routing module. No target descriptor retains an effort index, effort client, or `using-effort` output.
 
@@ -16,11 +16,6 @@ The Pi target descriptor is the sole declaration of the two Pi-specific outputs:
 ### `invariant: bridge-render-identity`
 
 Every target-declared bridge renders through the neutral `target-bridge` identity while its descriptor remains the sole owner of bridge path and template. Input observation does not derive a target-specific sidecar or template from that neutral identity, so a future bridge target cannot inherit Claude-specific inputs accidentally.
-Backing: test
-
-### `invariant: kind-dispatch-single-table`
-
-Every per-kind facet - the catalog collection, declared sections, output path, singular and plural labels, and freeform-domain membership - is defined once in the single ordered kind-descriptor table in the project package, and cmd/awf decides no kind fact outside the table's exported accessors; a test asserts the table's kind set equals the catalog's kinds plus the freeform domains kind, and a source-scanning test over the cmd/awf sources asserts no kind-name equality or switch-case comparison remains there.
 Backing: test
 
 ### `invariant: multi-target-render`
@@ -40,17 +35,12 @@ Backing: test
 
 ### `invariant: check-report-single-plan`
 
-Publisher constructs one immutable output plan after deriving the operation's pitfall, topic, and effective-skill state for consumers that require rendering or output planning. Outer command composition passes that same neutral `internal/outputplan` value or its semantic projections to output, individual check owners, RepositoryChecker, tracking, advisory, staged, initialization-planning, and resident-marker consumers; project checks and current-state projections never import Publisher or reconstruct planning policy. RepositoryChecker consumes completed results and never rebuilds the plan or corpora. Tracking derives every planned write plus the separately written `.awf/awf.lock`, compares them with the Git seam's ignore-independent index metadata, and excludes resident-root outputs only for a nested adopter. Each working or staged operation constructs its own plan without a persistent cache or cross-universe mutable state, while every participating consumer within that operation reuses the produced value.
+Repository check composition preserves each completed owner's immutable evidence and explicit slot order. It rejects owner results placed in advisory-only or information-only slots rather than silently reclassifying them.
 Backing: test
 
 ### `invariant: output-policy-explicit`
 
 Post-processing of each output, frontmatter validation, link scanning, and skill-reference scanning, is selected by that output's declared policy rather than its file suffix. A non-Markdown path with a Markdown policy is still validated and scanned, a Markdown-looking path with a plain policy is not, and the zero-value policy scans nothing.
-Backing: test
-
-### `invariant: resident-policy-single-home`
-
-The resident-root table, the resident-path predicate, and anchored output-path resolution have exactly one production home in internal/resident; core consumes them through the Roots value constructed once at project open, and no file under internal/project or cmd redeclares or re-derives the table or predicate (internal/git's seam-owned ResidentName spelling is the recorded tolerated parallel).
 Backing: test
 
 ### `invariant: scaffold-seeds-all-vars`
@@ -78,10 +68,6 @@ Backing: test
 A target descriptor is validated against closed sets: unknown capabilities, unknown agent dialects, unknown output encoders, out-of-set provenance values, path traversal in output paths, and undeclared or inconsistent output policies are all rejected, both when the descriptor is validated and again when the output plan is built.
 Backing: test
 
-### `invariant: template-id-single-derivation`
-
-Template identity derives from the catalog, the kind-descriptor table, and the singleton and target declaration tables alone; no production file outside those declaration files spells a full template-ID path literal, and internal/topic receives template identity and content from its caller rather than re-reading the embedded tree. Live identity resolution derives from those same authorities.
-Backing: test
 
 ### `invariant: conditional-unit-single-source`
 

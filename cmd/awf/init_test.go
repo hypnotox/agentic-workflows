@@ -31,6 +31,7 @@ func readInitConfig(t *testing.T, root string) string {
 // schema as JSON and writes nothing (no .awf/ created).
 // invariant: tooling/cli:init-describe-read-only (TestInitDescribeReadOnly)
 // invariant: tooling/cli:init-describe-read-only (TestInitDescribeReadOnly)
+// invariant: tooling/cli:explicit-output-bypasses (TestWriteInitDescriptorProtocolBytesAndErrors)
 func TestWriteInitDescriptorProtocolBytesAndErrors(t *testing.T) {
 	const payload = `{"descriptors":["x"]}`
 	var out bytes.Buffer

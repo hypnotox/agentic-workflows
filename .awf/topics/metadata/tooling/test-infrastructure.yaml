@@ -1,4 +1,4 @@
 title: Test infrastructure
-summary: Shared internal test-support infrastructure and its dependency boundary.
+summary: Observable safety for reusable test fixtures.
 paths:
   - internal/testsupport/**

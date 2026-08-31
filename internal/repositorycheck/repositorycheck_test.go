@@ -21,7 +21,8 @@ func finding(kind, path, detail string) checkresult.Finding {
 	return checkresult.Finding{Rank: severity.Error, Property: "correctness", Evidence: checkresult.Evidence{Kind: kind, Path: path, Detail: detail}}
 }
 
-func TestComposePreservesExplicitSlotOrderAndCompatibilityProjections(t *testing.T) {
+// invariant: rendering/project-output-plan:check-report-single-plan (TestComposePreservesExplicitSlotOrder)
+func TestComposePreservesExplicitSlotOrder(t *testing.T) {
 	producer := result(t, []checkresult.Finding{finding("first", "one", "first error")}, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "unused", Path: "two", Detail: "producer information"}}})
 	advisories := result(t, []checkresult.Finding{{Rank: severity.Warn, Property: "heuristic", Evidence: checkresult.Evidence{Kind: "unrelated-spelling", Detail: "ordinary warning"}}}, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "also-unrelated", Detail: "ordinary information"}}})
 	tracking := result(t, nil, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "anything", Detail: "tracking information"}}})
@@ -35,25 +36,19 @@ func TestComposePreservesExplicitSlotOrderAndCompatibilityProjections(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	var driftKinds []string
-	for _, drift := range report.Drift {
-		driftKinds = append(driftKinds, drift.Kind)
+	var findingKinds []string
+	for _, finding := range report.Result.Findings() {
+		findingKinds = append(findingKinds, finding.Evidence.Kind)
 	}
-	if want := []string{"first", "unused"}; !slices.Equal(driftKinds, want) {
-		t.Fatalf("drift order = %v, want %v", driftKinds, want)
+	if want := []string{"first", "unrelated-spelling"}; !slices.Equal(findingKinds, want) {
+		t.Fatalf("finding order = %v, want %v", findingKinds, want)
 	}
-	if !slices.Equal(report.Warnings, []string{"ordinary warning"}) {
-		t.Fatalf("ordinary warnings = %v", report.Warnings)
+	var informationKinds []string
+	for _, information := range report.Result.Information() {
+		informationKinds = append(informationKinds, information.Evidence.Kind)
 	}
-	if !slices.Equal(report.Information, []string{"ordinary information"}) {
-		t.Fatalf("aggregate information = %v", report.Information)
-	}
-	if !slices.Equal(report.TrackingInformation, []string{"tracking information"}) {
-		t.Fatalf("tracking information = %v", report.TrackingInformation)
-	}
-
-	if !slices.Equal(report.Notes, []string{"ordinary information", "ordinary warning"}) || !slices.Equal(report.TrackingNotes, []string{"tracking information"}) {
-		t.Fatalf("compatibility notes = %#v", report)
+	if want := []string{"unused", "also-unrelated", "anything"}; !slices.Equal(informationKinds, want) {
+		t.Fatalf("information order = %v, want %v", informationKinds, want)
 	}
 }
 

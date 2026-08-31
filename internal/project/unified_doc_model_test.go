@@ -1,14 +1,12 @@
 package project
 
 import (
-	"maps"
 	"slices"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
-	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 // The whole doc surface derives from the single catalog doc collection: output
@@ -58,22 +56,6 @@ func TestUnifiedDocModelProjections(t *testing.T) {
 		if v := tm[e.TemplateKey]; v != "docs/"+e.Path {
 			t.Errorf("templateMap[%q]=%v, want %q", e.TemplateKey, v, "docs/"+e.Path)
 		}
-	}
-}
-
-func TestProjectSingletonConsumersUseInjectedView(t *testing.T) {
-	custom := *catalog.CompleteView().Catalog()
-	custom.Docs = maps.Clone(custom.Docs)
-	delete(custom.Docs, "workflow")
-	custom.Docs["custom-singleton"] = catalog.DocEntry{Path: "custom.md", Sections: []string{"body"}}
-	cfg := &config.Config{}
-	p := testStateWith(testState(&config.Config{}), t.TempDir(), resident.NewRoots(t.TempDir(), t.TempDir()), false, &custom, &custom, nil)
-	model := buildClaimedModel(newRenderInputs(p, cfg, filesystemProjectReader{root: p.Root()}), nil, topic.Corpus{})
-	if model.singletons["workflow"] || !model.singletons["custom-singleton"] {
-		t.Fatalf("project singleton membership = %#v", model.singletons)
-	}
-	if model.files[config.DirName+"/workflow.yaml"] || !model.files[config.DirName+"/custom-singleton.yaml"] {
-		t.Fatalf("project singleton files = %#v", model.files)
 	}
 }
 

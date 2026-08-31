@@ -1,12 +1,6 @@
 // Package testsupport provides shared test-fixture helpers used across awf's
 // test suites: managed TestMain HOME lifecycle, project-config scaffolding,
 // ADR frontmatter fixtures, file-writing primitives, and the seam-swap idiom.
-// It is a leaf package -
-// only the Go standard library may be imported here (see the gitfixture
-// subpackage, the single home for Git fixtures and the only place permitted to
-// reach Git directly) - so it is safe to import from
-// any package's tests without risking an import cycle (ADR-0044). deps_test.go
-// enforces the zero-internal-deps constraint mechanically.
 package testsupport
 
 import (
@@ -21,9 +15,8 @@ import (
 
 // gitTestDeadline bounds a test's native Git work. It is a hang-prevention
 // ceiling, generous enough that no healthy fixture operation approaches it, so a
-// test that reaches it has stalled. It deliberately duplicates the value of
-// internal/git.CommandTimeout, which this package may not import: the
-// zero-internal-deps rule forces the copy, so the two are kept equal by hand.
+// test that reaches it has stalled. It matches the production Git command
+// ceiling so fixture and application boundaries enforce the same deadline.
 const gitTestDeadline = 2 * time.Minute
 
 // Context returns the test's context with a deadline attached, cancelled when

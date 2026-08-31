@@ -1,21 +1,8 @@
-// Package gitfixture is the single home for building git repository state in
-// awf's test suites. It exposes two lanes over one opaque Fixture value: a
-// go-git lane that constructs state in process, and a native lane (this
-// package's own os/exec calls) for the states go-git cannot express -
-// registered worktrees, orphan branches, an in-progress merge, and a
-// non-default object format.
-//
-// The exported surface is backend-neutral: commits are hex strings and
-// repositories are Fixture values, so a consumer never names a go-git or
-// plumbing type to build a fixture. Sig is the one deliberate exception, kept
-// for the internal/git suites that drive go-git directly.
-//
-// The package deliberately does not import internal/git
-// (tooling/quality-gates:testsupport-zero-internal-deps), so the native lane
-// carries its own copy of the isolated-environment construction rather than
-// reusing the seam's. It is kept out of internal/testsupport so a caller that
-// only needs e.g. testsupport.WriteFile does not pull go-git into its test
-// binary (ADR-0044).
+// Package gitfixture builds Git repository state for tests through an opaque
+// Fixture value. Its in-process lane creates ordinary state, while its native
+// lane creates registered worktrees, orphan branches, in-progress merges, and
+// non-default object formats. Both lanes expose backend-neutral repository and
+// commit values; Sig supports tests that exercise go-git behavior directly.
 package gitfixture
 
 import (

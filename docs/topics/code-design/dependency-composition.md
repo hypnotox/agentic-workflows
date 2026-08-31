@@ -55,7 +55,3 @@ Boundaries carry immutable loaded facts; semantic topic, output-declaration, pol
 Code-design authority and cross-package code-structure work uses the `code-design` scope, and a structural change uses the existing `refactor` type rather than a `refactor` scope.
 Backing: unbacked
 Verify: Compare `.awf/config.yaml` with the rendered scope tables, confirm no `refactor` scope exists, and run `./awf check staged commit` against the planned code-design subjects.
-### `invariant: sync-project-loader-wiring`
-
-Top-level render, initialized render, and every existing post-mutation render reach project opening through the one Loader composed by the `runSync` family; `project.Open` remains a transitional compatibility wrapper with no new caller.
-Backing: test

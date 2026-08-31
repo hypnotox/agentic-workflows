@@ -35,7 +35,7 @@
 | effort scratch | An optional `.awf/efforts/<slug>/scratch/` directory for disposable effort-local data, whose real-directory boundary awf validates without scaffolding or traversing descendants. |
 | export earns its consumer | A new or deliberately converted exported symbol has an outside-package production consumer in the same transaction, except documented test exports, composition boundaries, and error identities. |
 | gating classification | A command spec's `inherit`, `ungated`, `gated`, or `gated-in-handler` classification. `inherit` resolves a group child's parent and cannot apply to a top-level command. |
-| git seam | The `internal/git` package is the single home of Git access, exposing one semantic entrypoint per capability independent of its backend. |
+| git seam | The observable Git boundary for repository status, revision, worktree, range, isolation, cancellation, and error behavior, independent of backend identity. |
 | global test seam | A package-level variable reassigned by tests. New seams of this form are banned; existing ones are conversion candidates. |
 | grab-bag home | A production package or file named for a topical pile, such as util, common, helpers, or misc; new production code and deliberate conversions may not create one. |
 | integration branch | The configured branch that receives completed managed-worktree efforts. |
@@ -53,7 +53,7 @@
 | prose knob | A prohibited catalog var descriptor that only tunes rendered prose; prose customization uses convention parts. Functional values drive commands, enforced identifiers, or executed paths. |
 | regeneration-derived document | A managed document recomputed from repository or catalog state rather than only its template and sidecar. |
 | resident root | A directory inside the config tree holding local machine-owned state rather than rendered output, so the closed-tree sweep leaves it alone instead of reporting it as a stray. |
-| resident-root policy | The `internal/resident` package is the single home for resident-root paths, kinds, anchoring, collisions, and uninstall. |
+| resident-root policy | The deterministic behavior for resident-root paths, kinds, anchoring, collision refusal, preservation of dynamic descendants, and uninstall. |
 | retrospective | The terminal workflow step after assurance and managed-topology removal that records durable lessons and finishes the effort last. |
 | Roots anchoring value | The construction input that combines tracked and resident output roots and resolves anchored output paths. |
 | routine checkpoint | The autonomous boundary that validates effort ownership, updates memory, and classifies whether user attention is required. |

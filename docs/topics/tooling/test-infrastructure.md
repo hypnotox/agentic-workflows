@@ -3,25 +3,15 @@
 <!-- awf:template-source templates/topics/topic.md.tmpl -->
 # Test infrastructure
 
-Shared internal test-support infrastructure and its dependency boundary.
+Observable safety for reusable test fixtures.
 
 **Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/authoringop/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `internal/testsupport/**`. Both domain and topic selectors must match. Run `awf read topic tooling/test-infrastructure --coverage` for current applicable and owned paths and marker sites.
 
-This topic records the current ownership contract and both directions of the dependency boundary for shared internal test-support infrastructure.
+This topic records observable safety for reusable test fixtures.
 
 ## Claims
-
-### `invariant: test-support-leaf-boundary`
-
-Non-test Go files under `internal/testsupport/**` may import the standard library and their own subpackages, with go-git additionally permitted only within `gitfixture`, but may not import another repository internal package.
-Backing: test
 
 ### `invariant: immutable-fixture-seeds`
 
 Expensive reusable test fixtures are captured as immutable representations at their narrowest package owner, and every mutating consumer receives a distinct clone. Cloning preserves file modes, symbolic links, and Git state without relying on filesystem-specific copy correctness; tests never share a live mutable root.
-Backing: test
-
-### `invariant: production-never-imports-test-support`
-
-Non-test Go files outside `internal/testsupport/**` never import the root test-support package or any of its subpackages; shared test fixtures remain a test-only dependency in the direction from outside-package tests into test support.
 Backing: test

@@ -7,11 +7,11 @@ Atomic no-replace complete-file publication shared across production consumers.
 
 **Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/authoringop/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/effortop/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `internal/filepublication/**`. Both domain and topic selectors must match. Run `awf read topic tooling/file-publication --coverage` for current applicable and owned paths and marker sites.
 
-Complete file creation has one cross-platform publication home; consumers retain their own naming, identity, retry, and durability policy.
+Complete-file publication refuses replacement and preserves one complete winner under concurrent attempts; consumers retain their own naming, identity, retry, and durability policy.
 
 ## Claims
 
 ### `invariant: exclusive-file-publication-single-home`
 
-`internal/filepublication` alone prepares complete same-directory temporary files and performs released-platform atomic no-replace creation; its consumers receive a matchable destination-exists refusal that preserves the winner bytes, while `internal/effort` retains expected-identity replacement, removal, and durable resident ordering. This provides namespace atomicity and complete-file publication, not a stronger power-loss durability promise.
+Exclusive publication prepares a complete same-directory temporary file before released-platform atomic no-replace creation. Concurrent publishers leave one complete winner, and a losing consumer receives a matchable destination-exists refusal without changing the winner bytes. This provides namespace atomicity and complete-file publication, not a stronger power-loss durability promise.
 Backing: test

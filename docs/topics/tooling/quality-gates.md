@@ -52,11 +52,6 @@ The repository gate exits nonzero for version or schema incompatibility, build f
 Backing: unbacked
 Verify: Inspect `x`, `.golangci.yml`, and `.golangci-advisory.yml`; blocking commands must propagate failure and advisory lint must use a zero issues exit code without hiding execution failures.
 
-### `invariant: testsupport-zero-internal-deps`
-
-No non-test Go file under internal/testsupport, including internal/testsupport/gitfixture, imports any internal awf package; only the Go standard library, plus go-git within gitfixture, are permitted, enforced by a static scan of the package's own import graph.
-Backing: test
-
 ### `invariant: workflow-actions-sha-pinned`
 
 The pincheck gate exits non-zero when any remote uses: reference under .github/workflows is not pinned to a full 40-hex commit SHA or when a goreleaser-action version input is not an exact semver version.

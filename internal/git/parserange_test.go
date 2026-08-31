@@ -3,8 +3,6 @@ package git
 import (
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 // TestParseRangeTable pins the two accepted shapes and every rejection.
@@ -59,29 +57,5 @@ func TestParseRangeTable(t *testing.T) {
 		if base != c.base || head != c.head {
 			t.Errorf("ParseRange(%q, %v) = %q, %q; want %q, %q", c.arg, c.bare, base, head, c.base, c.head)
 		}
-	}
-}
-
-// TestParseRangeIsTheOnlyRangeParser fails if a second range parser reappears
-// anywhere in the module. internal/git is skipped because ParseRange itself
-// splits on ".."; the repo-walk boundary (hidden trees, nested checkouts,
-// test files) is owned by testsupport.WalkRepoSources.
-// invariant: tooling/git-access:git-range-parser-single-definition (TestParseRangeIsTheOnlyRangeParser)
-func TestParseRangeIsTheOnlyRangeParser(t *testing.T) {
-	root := testsupport.RepoRoot(t)
-	var offenders []string
-	testsupport.WalkRepoSources(t, root, func(rel string, body []byte) {
-		if strings.HasPrefix(rel, "internal/git/") || strings.HasPrefix(rel, "examples/") {
-			return
-		}
-		for _, line := range strings.Split(string(body), "\n") {
-			if strings.Contains(line, "strings.Cut(") && strings.Contains(line, `".."`) {
-				offenders = append(offenders, rel)
-				break
-			}
-		}
-	})
-	if len(offenders) > 0 {
-		t.Errorf("range parsing must live only in internal/git.ParseRange; found a second parser in: %v", offenders)
 	}
 }

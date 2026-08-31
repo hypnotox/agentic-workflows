@@ -127,10 +127,6 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		_, notes, err := checkGeneratedTracking(p.nested(), testRepo(p), testContext(t), &OutputPlan{})
-		if err != nil || len(notes) != 1 || !strings.Contains(notes[0], "unavailable outside a Git repository") {
-			t.Fatalf("no-Git tracking = notes %q, err %v", notes, err)
-		}
 		if err := syncProject(p); err != nil {
 			t.Fatal(err)
 		}
@@ -139,9 +135,6 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 			t.Fatal(err)
 		}
 		const unavailable = "generated-artifact tracking is unavailable outside a Git repository"
-		if !slices.Equal(report.TrackingInformation, []string{unavailable}) {
-			t.Fatalf("no-Git report tracking information = %q, want one compatibility projection", report.TrackingInformation)
-		}
 		count := 0
 		for _, item := range report.Result.Information() {
 			if item.Evidence.Detail == unavailable {

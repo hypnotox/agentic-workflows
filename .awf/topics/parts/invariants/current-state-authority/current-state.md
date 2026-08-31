@@ -2,11 +2,6 @@ The currentstate package loads current-state topic authority from repository sna
 
 ## Claims
 
-### `invariant: production-packages-domain-owned`
-
-Every ordinary production package path is owned by a configured domain and applicable current-state topic, with the focused resolver exposing absence without enforcing it.
-Backing: test
-
 ### `invariant: current-state-adr-independent`
 
 The live topic corpus and focused topic queries load claims, references, backing, proof sites, selectors, coverage, and fan-out without loading a decision corpus.

@@ -10,14 +10,10 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
-// Template-ID declarations for every render unit that has no catalog DocEntry:
-// the adapter bridge, the config-tree singletons (the bootstrap pair, the
-// git-hook payloads, the awf wrapper), the resident-root gitignores, and the
-// topic doc pair.
-// Together with the catalog's own DocEntry TIDs (internal/catalog/standard.go),
-// the kind-descriptor table (kind.go), and the target declaration table
-// (target.go) these are the only production spellings of a template id
-// (inv: template-id-single-derivation).
+// Template-ID declarations for render units without a catalog DocEntry: the
+// adapter bridge, config-tree singletons, resident-root gitignores, and topic
+// document pair. Live template resolution verifies these identities before
+// publication.
 const (
 	// targetBridgeKind is the neutral render identity for every descriptor-owned
 	// bridge. It is not a target name and therefore has no sidecar namespace.

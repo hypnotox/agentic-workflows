@@ -41,19 +41,7 @@ func checkDrift(t *testing.T, root string) []manifest.Drift {
 
 func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{"current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n", "current-state-upgrade.journal": "{}\n"})
-	p, err := Open(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := renderAll(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	drift, err := sweepConfigTree(renderInputsForTest(p), files, mustDeriveTopics(t, p))
-	if err != nil {
-		t.Fatal(err)
-	}
-	orphans := orphanedByPath(drift)
+	orphans := orphanedByPath(checkDrift(t, root))
 	if orphans[".awf/current-state-migration.yaml"] != unclaimedDetail {
 		t.Fatalf("reintroduced migration approval was not unclaimed: %#v", orphans)
 	}

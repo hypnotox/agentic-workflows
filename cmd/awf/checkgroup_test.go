@@ -74,6 +74,7 @@ func TestCheckStatePathsDispatchDistinctly(t *testing.T) {
 }
 
 // invariant: tooling/quality-gates:gates-always-run (TestCheckScannersAlwaysRun)
+// invariant: tooling/cli:repo-check-capability-plan (TestCheckScannersAlwaysRun)
 func TestCheckScannersAlwaysRun(t *testing.T) {
 	const prosePath = "docs/prose.md"
 	const memoryPath = "docs/decisions/0001-memory.md"

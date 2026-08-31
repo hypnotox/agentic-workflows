@@ -2,17 +2,10 @@ package fsfixture
 
 import (
 	"errors"
-	"go/ast"
-	"go/build"
-	"go/parser"
-	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
-	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func fixture(t *testing.T, faults ...Fault) (*Handle, string) {
@@ -230,67 +223,7 @@ func TestFixtureErrors(t *testing.T) {
 	}
 }
 
-// TestFilesystemFaultSourceSingleHome proves the live fixture is the distinct, bounded test source.
-// invariant: tooling/filesystem-access:single-fault-source (TestFilesystemFaultSourceSingleHome)
-func TestFilesystemFaultSourceSingleHome(t *testing.T) {
-	var rootSources, operationSources, faultSources []string
-	testsupport.WalkRepoSources(t, testsupport.RepoRoot(t), func(rel string, body []byte) {
-		if !strings.HasPrefix(rel, "internal/testsupport/") {
-			return
-		}
-		// Check every fixture production file before source traits can make it irrelevant.
-		if strings.HasPrefix(rel, "internal/testsupport/fsfixture/") {
-			if finding := fixtureImportFinding(rel, string(body)); finding != "" {
-				t.Fatal(finding)
-			}
-		}
-		source, err := faultSourceFacts(rel, string(body))
-		if err != nil {
-			t.Fatal(err)
-		}
-		if finding := faultSourceFinding(rel, source); finding != "" {
-			t.Fatalf("fixture source facts: %s", finding)
-		}
-		if source.opensRoot {
-			rootSources = append(rootSources, rel)
-		}
-		if source.operation {
-			operationSources = append(operationSources, rel)
-		}
-		if source.fault {
-			faultSources = append(faultSources, rel)
-		}
-	})
-	for _, got := range [][]string{rootSources, operationSources, faultSources} {
-		if len(got) != 1 || got[0] != "internal/testsupport/fsfixture/fsfixture.go" {
-			t.Fatalf("fixture source ownership = roots %v, operations %v, faults %v", rootSources, operationSources, faultSources)
-		}
-	}
-	for _, tc := range []struct{ src, want string }{
-		{`package other; import "os"; func x(s string) { os.OpenRoot(s) }`, "outside canonical home"},
-		{`package other; import "os"; var openRoot = os.OpenRoot; func x(s string) { openRoot(s) }`, "outside canonical home"},
-		{`package other; type Operation string; type Fault struct { Err error }`, "outside canonical home"},
-		{`package fsfixture; import "github.com/example/notstd"; type Operation string; type Fault struct { Err error }; type Handle struct{}`, "import"},
-		{`package fsfixture; import "example/dependency"; type Operation string; type Fault struct { Err error }; type Handle struct{}`, "import"},
-	} {
-		facts, err := faultSourceFacts("internal/testsupport/fsfixture/fsfixture.go", tc.src)
-		if err != nil {
-			t.Fatal(err)
-		}
-		if finding := faultSourceFinding("source.go", facts); !strings.Contains(finding, tc.want) {
-			t.Fatalf("synthetic finding = %q, want %q", finding, tc.want)
-		}
-	}
-	if finding := fixtureImportFinding("internal/testsupport/fsfixture/helper.go", `package fsfixture; import "github.com/example/notstd"; func helper() {}`); !strings.Contains(finding, "import") {
-		t.Fatalf("import-only helper finding = %q", finding)
-	}
-	if finding := fixtureImportFinding("internal/testsupport/fsfixture/helper.go", `package fsfixture; import "example/dependency"; func helper() {}`); !strings.Contains(finding, "import") {
-		t.Fatalf("dotless import-only helper finding = %q", finding)
-	}
-	if finding := fixtureImportFinding("internal/testsupport/fsfixture/helper.go", `package fsfixture; import "github.com/hypnotox/agentic-workflows/internal/testsupport/other"; func helper() {}`); !strings.Contains(finding, "import") {
-		t.Fatalf("testsupport sibling import finding = %q", finding)
-	}
-	// Selected faults preserve identity for every operation before nonmatching faults delegate through the real root.
+func TestFaultsPreserveIdentityAndDelegate(t *testing.T) {
 	for _, op := range []Operation{OperationWalk, OperationWalkInfo, OperationRead, OperationInfo, OperationLinkInfo} {
 		sentinel := errors.New("selected " + string(op))
 		h, _ := fixture(t, Fault{Operation: op, Path: faultPath(op), Err: sentinel})
@@ -302,132 +235,6 @@ func TestFilesystemFaultSourceSingleHome(t *testing.T) {
 			t.Fatalf("%s did not delegate: %v", op, err)
 		}
 	}
-}
-
-type sourceFacts struct {
-	opensRoot      bool
-	operation      bool
-	fault          bool
-	allowedImports bool
-	hasADRSlug     bool
-}
-
-func fixtureImportFinding(path, src string) string {
-	f, err := parser.ParseFile(token.NewFileSet(), path, src, 0)
-	if err != nil {
-		return path + ": parse: " + err.Error()
-	}
-	for _, im := range f.Imports {
-		importPath := strings.Trim(im.Path.Value, `"`)
-		if standardLibraryImport(importPath) || importPath == "github.com/hypnotox/agentic-workflows/internal/testsupport/fsfixture" || strings.HasPrefix(importPath, "github.com/hypnotox/agentic-workflows/internal/testsupport/fsfixture/") {
-			continue
-		}
-		return path + ": disallowed import outside standard library or fsfixture"
-	}
-	return ""
-}
-
-func standardLibraryImport(path string) bool {
-	pkg, err := build.Default.Import(path, "", build.FindOnly)
-	return err == nil && pkg.Goroot
-}
-
-func faultSourceFacts(path, src string) (sourceFacts, error) {
-	f, err := parser.ParseFile(token.NewFileSet(), path, src, parser.ParseComments)
-	if err != nil {
-		return sourceFacts{}, err
-	}
-	facts := sourceFacts{allowedImports: fixtureImportFinding(path, src) == ""}
-	osNames := osImportNames(f)
-	openRootAliases := openRootAliases(f, osNames)
-	for _, group := range f.Comments {
-		if strings.Contains(group.Text(), "ADR-consumer-local-contracts-over-single-home-filesystem-access") {
-			facts.hasADRSlug = true
-		}
-	}
-	ast.Inspect(f, func(n ast.Node) bool {
-		if c, ok := n.(*ast.CallExpr); ok && isOpenRoot(c.Fun, osNames, openRootAliases) {
-			facts.opensRoot = true
-		}
-		if ts, ok := n.(*ast.TypeSpec); ok {
-			facts.operation = facts.operation || ts.Name.Name == "Operation"
-			facts.fault = facts.fault || ts.Name.Name == "Fault"
-		}
-		return true
-	})
-	return facts, nil
-}
-
-func osImportNames(f *ast.File) map[string]bool {
-	names := map[string]bool{}
-	for _, im := range f.Imports {
-		if strings.Trim(im.Path.Value, `"`) != "os" {
-			continue
-		}
-		name := "os"
-		if im.Name != nil {
-			name = im.Name.Name
-		}
-		names[name] = true
-	}
-	return names
-}
-
-func openRootAliases(f *ast.File, osNames map[string]bool) map[string]bool {
-	aliases := map[string]bool{}
-	ast.Inspect(f, func(n ast.Node) bool {
-		switch n := n.(type) {
-		case *ast.ValueSpec:
-			for i, value := range n.Values {
-				if i < len(n.Names) && isOpenRoot(value, osNames, aliases) {
-					aliases[n.Names[i].Name] = true
-				}
-			}
-		case *ast.AssignStmt:
-			for i, value := range n.Rhs {
-				if i >= len(n.Lhs) || !isOpenRoot(value, osNames, aliases) {
-					continue
-				}
-				if name, ok := n.Lhs[i].(*ast.Ident); ok {
-					aliases[name.Name] = true
-				}
-			}
-		}
-		return true
-	})
-	return aliases
-}
-
-func isOpenRoot(expr ast.Expr, osNames, aliases map[string]bool) bool {
-	if id, ok := expr.(*ast.Ident); ok && aliases[id.Name] {
-		return true
-	}
-	s, ok := expr.(*ast.SelectorExpr)
-	return ok && s.Sel.Name == "OpenRoot" && importedName(s.X, osNames)
-}
-
-func importedName(expr ast.Expr, names map[string]bool) bool {
-	id, ok := expr.(*ast.Ident)
-	return ok && names[id.Name]
-}
-
-func faultSourceFinding(path string, facts sourceFacts) string {
-	if !facts.opensRoot && !facts.operation && !facts.fault {
-		return ""
-	}
-	if !facts.allowedImports {
-		return path + ": disallowed import outside standard library or testsupport"
-	}
-	if path != "internal/testsupport/fsfixture/fsfixture.go" {
-		return path + ": filesystem fault source outside canonical home"
-	}
-	if !facts.opensRoot || !facts.operation || !facts.fault {
-		return path + ": incomplete filesystem fault source"
-	}
-	if !facts.hasADRSlug {
-		return path + ": missing filesystem fault-source ADR slug"
-	}
-	return ""
 }
 
 func faultPath(op Operation) string {

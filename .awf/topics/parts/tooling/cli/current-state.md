@@ -29,7 +29,7 @@ Backing: test
 
 ### `invariant: cli-runner-instance-ownership`
 
-Each awf invocation uses a fresh unexported runner that owns its working-directory lookup, input, interactivity predicate, and handler composition. These dependencies are explicit one-operation seams, not mutable package globals; `internal/clispec` remains the only command-membership and policy source.
+Separate awf runner instances keep their working-directory lookup, input, interactivity behavior, and handler set independent. Mutating one instance's handlers does not affect another, and interactive and non-interactive init invocations use only their own supplied process dependencies.
 Backing: test
 
 ### `invariant: cli-command-spec-single-source`
@@ -54,7 +54,7 @@ Backing: test
 
 ### `invariant: explicit-output-bypasses`
 
-Only selected changelog content and init descriptor JSON bypass the presentation tree on successful output, each under byte-exact tests. Effort commands use ordinary presentation and expose no activity or memory protocol output. The exact `writeRendererFailure` terminal mechanism diagnostic is separate, is reachable only after presentation rendering fails, and is not an alternate successful renderer.
+Selected changelog content and init descriptor JSON have byte-exact successful output contracts. Effort commands use ordinary readable presentation and expose no activity or memory protocol output. A terminal renderer failure produces its distinct mechanism diagnostic and is not an alternate successful output.
 Backing: test
 
 ### `invariant: gated-commands-generated`
@@ -79,12 +79,12 @@ Backing: test
 
 ### `invariant: readable-text-output`
 
-Every ordinary awf command surface, including help, prompts, results, advisories, reports, refusals, and partial outcomes, uses the central deterministic readable-text presentation contract with stable labels, semantic grouping, ordering, escaping, stream selection, and newline behavior.
+The init command's help, usage refusal, and working-directory failure have deterministic readable text with stable condition labeling, stream selection, and newline behavior. Successful help is written to stdout; usage and operational failures are written to stderr with their distinct exit codes.
 Backing: test
 
 ### `invariant: repo-check-capability-plan`
 
-The direct drift, state, prose, and memory repository checks and their aggregate select from one closed capability plan. One operation loads working config once, conditionally opens one Project from that prepared config, derives one complete CheckReport and one working CurrentStateReport when selected, and captures one shared stage-0 index whenever either always-on scanner is selected; scanner-only selections acquire no unrelated capability. Repository drift presents its dedicated non-failing generated-artifact tracking-unavailable information both directly and in the aggregate, while aggregate-only render advisories remain absent from direct drift. RepositoryChecker consumes the completed owner results without preparing inputs or selecting check policy, preserves source order within Error, deterministically presents Warning findings without treating their relative legacy source order as protected, and orders categories as `errors`, `warnings`, then `information`. The aggregate executes drift, state, prose, then memory, continues after action errors and returns the first, while any preparation failure executes no step; the working report, current-state, and index universes never substitute for one another.
+Direct prose and memory checks report only their selected finding type, while the aggregate reports both types when both are present. Each direct check and the aggregate honor the same configured exemptions, prose-only warnings exit successfully, and memory-citation errors make the aggregate fail.
 Backing: test
 
 ### `invariant: check-severity-by-protected-property`
@@ -92,10 +92,6 @@ Backing: test
 Each semantic check owner emits immutable results in which every ranked finding names its fixed Error or Warning rank and protected property. No consumer recovers classification from evidence kind, presentation category, or slice placement. Every `awf check` Error protects correctness, safety, authority, or reproducibility and makes the command exit nonzero. Style, readability, fan-out, and other heuristic findings use Warning and exit zero. Optional improvements, unused vocabulary, non-blocking compatibility notices, and successful operation notes remain unranked Information and exit zero. Direct and aggregate readable output visibly separates `errors`, `warnings`, and `information`; information is not a third finding rank.
 Backing: test
 
-### `invariant: single-os-exit`
-
-Within the cmd/awf package, os.Exit appears only in main.go's main function, whose body is the single os.Exit(run(...)) wrapper; no other production source in the package calls os.Exit and no fatal or fatalIf helpers exist.
-Backing: test
 
 ### `invariant: single-version-authority`
 

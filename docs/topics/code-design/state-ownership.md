@@ -31,7 +31,3 @@ Verify: For each changed type, confirm no reset, reload, or begin-style step mus
 Within one operation, a new or deliberately converted derived value is produced exactly once and every consumer receives it rather than re-deriving it; the rule counts productions per value per operation, not producers per type.
 Backing: unbacked
 Verify: For each changed derived value, enumerate its production sites within one operation and confirm exactly one, with every other consumer receiving the value.
-### `invariant: project-derived-state-ownership`
-
-No production function in internal/projectstate or internal/resident writes a field of that package's constructed long-lived values outside the function that constructs the value: project state is fixed by `Loader.Open`, and resident Roots is fixed at construction.
-Backing: test

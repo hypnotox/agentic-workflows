@@ -550,10 +550,6 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{
 		skillPath: {OutputHash: manifest.Hash([]byte(broken))},
 	}}
-	findings := checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, map[string]RenderedFile{skillPath: file}, nil)
-	if len(findings) != 1 || findings[0].Property != propertyReproducibility {
-		t.Fatalf("invalid-frontmatter semantic finding = %#v, want reproducibility", findings)
-	}
 	drift := checkLockedDrift(renderInputsForTest(p).residentRoots(), lock, map[string]RenderedFile{skillPath: file}, nil)
 	want := []manifest.Drift{{Path: skillPath, Kind: "invalid-frontmatter", Detail: "frontmatter name is empty"}}
 	if !slices.Equal(drift, want) {

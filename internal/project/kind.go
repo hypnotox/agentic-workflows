@@ -24,9 +24,8 @@ type kindDescriptor struct {
 	templateID     func(*catalog.Catalog, string) string           // embedded template id
 }
 
-// kindDescriptors is the single ordered source of per-kind dispatch (inv:
-// kind-dispatch-single-table), in `awf list` display order. It is also the sole
-// enumeration of CLI-addressable artifact kinds and their dispatch facets.
+// kindDescriptors lists CLI-addressable artifact kinds and the facets used by
+// project dispatch, in `awf list` display order.
 var kindDescriptors = []kindDescriptor{
 	{
 		Plural: "skills", Singular: "skill",

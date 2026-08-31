@@ -3,6 +3,7 @@ package project
 import (
 	"context"
 	"errors"
+	"os"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -10,14 +11,18 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
+	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
+	"github.com/hypnotox/agentic-workflows/internal/referencecheck"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -293,11 +298,71 @@ func renderInputsForTest(state *ProjectState) renderInputs {
 	return newRenderInputs(state, testConfig(state), filesystemProjectReader{root: state.Root()})
 }
 
+func testOutputPlan(rendered map[string]RenderedFile) outputplan.Plan {
+	nodes := make([]outputplan.Node, 0, len(rendered))
+	for _, file := range rendered {
+		output := outputplan.NewOutput(outputplan.OutputSpec{Path: file.Path, Content: file.Content, TemplateID: file.TemplateID, TemplateHash: file.TemplateHash, ConfigHash: file.ConfigHash, Policy: file.Policy, Assembled: file.assembled, Kind: file.kind, Artifact: file.artifact, PartVarRefs: file.partVarRefs})
+		nodes = append(nodes, outputplan.NewNode(outputplan.NodeSpec{Path: file.Path, Output: &output}))
+	}
+	return outputplan.New(nodes)
+}
+
+func testReferenceDrift(result checkresult.Result) []manifest.Drift {
+	out := make([]manifest.Drift, 0, len(result.Findings()))
+	for _, finding := range result.Findings() {
+		out = append(out, manifest.Drift{Path: finding.Evidence.Path, Kind: finding.Evidence.Kind, Detail: finding.Evidence.Detail})
+	}
+	return out
+}
+
+func checkDeadRefs(p renderInputs, files []RenderedFile) []manifest.Drift {
+	rendered := make(map[string]RenderedFile, len(files))
+	for _, file := range files {
+		rendered[file.Path] = file
+	}
+	result, err := referencecheck.Check(testOutputPlan(rendered), p.cfg.Prefix, nil, nil, func(path string) bool { _, err := os.Stat(filepath.Join(p.root(), path)); return err == nil })
+	if err != nil {
+		panic(err)
+	}
+	return testReferenceDrift(result)
+}
+
+func checkDeadSkillRefs(p renderInputs, files []RenderedFile, effective map[string]bool) []manifest.Drift {
+	rendered, known := make(map[string]RenderedFile, len(files)), map[string]bool{}
+	for _, file := range files {
+		rendered[file.Path] = file
+	}
+	for name := range p.catalog().Skills {
+		known[name] = true
+	}
+	result, err := referencecheck.Check(testOutputPlan(rendered), p.cfg.Prefix, effective, known, func(string) bool { return true })
+	if err != nil {
+		panic(err)
+	}
+	return testReferenceDrift(result)
+}
+
 func checkLockedDrift(roots resident.Roots, lock *manifest.Lock, rendered map[string]RenderedFile, tracking []manifest.Drift) []manifest.Drift {
-	findings := checkLockedFiles(roots, lock, rendered, tracking)
-	drift := make([]manifest.Drift, 0, len(findings))
-	for _, finding := range findings {
-		drift = append(drift, finding.Drift)
+	findings := make([]checkresult.Finding, 0, len(tracking))
+	for _, item := range tracking {
+		if item.Kind == "untracked" {
+			detail := item.Detail
+			if detail == "" {
+				detail = "untracked"
+			}
+			findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: propertyReproducibility, Evidence: checkresult.Evidence{Kind: item.Kind, Path: item.Path, Detail: detail}})
+		}
+	}
+	tracked, _ := checkresult.New(findings, nil)
+	result, err := generatedcheck.Locked(false, lock, testOutputPlan(rendered), func(path string) ([]byte, error) {
+		return os.ReadFile(roots.ResolveOutput(path))
+	}, tracked)
+	if err != nil {
+		panic(err)
+	}
+	drift := make([]manifest.Drift, 0, len(result.Findings()))
+	for _, finding := range result.Findings() {
+		drift = append(drift, manifest.Drift{Path: finding.Evidence.Path, Kind: finding.Evidence.Kind, Detail: finding.Evidence.Detail})
 	}
 	return drift
 }

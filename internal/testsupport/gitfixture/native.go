@@ -353,12 +353,9 @@ func isUnsupportedObjectFormat(explicit bool, err error) bool {
 	return explicit && err != nil && !errors.Is(err, context.DeadlineExceeded)
 }
 
-// nativeEnvironment strips every inherited git control variable and pins the
+// nativeEnvironment strips every inherited Git control variable and pins the
 // settings that keep a fixture invocation off the developer's machine: no
-// global or system configuration, no terminal or credential prompt. It repeats
-// internal/git's construction rather than importing it, because testsupport
-// carries zero internal dependencies
-// (tooling/quality-gates:testsupport-zero-internal-deps).
+// global or system configuration, terminal interaction, or credential prompt.
 func nativeEnvironment(inherited []string) []string {
 	filtered := make([]string, 0, len(inherited)+6)
 	for _, entry := range inherited {

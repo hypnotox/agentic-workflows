@@ -11,7 +11,7 @@ The tooling domain owns the command-line binary and local effort and worktree au
 
 `internal/commitmsg` owns Git message cleaning. `internal/git` and `internal/snapshot` expose semantic commit, index, tree, and topology evidence. `internal/audit` walks a caller-selected range deterministically and reports Conventional Commit, punctuation-restraint, and live-cleanliness findings without parsing decision history. Context cancellation and deadline expiry abort operations with matchable identity rather than becoming advisory findings.
 
-`internal/filesystem` exclusively owns production root-confined filesystem handles, including the sole concrete handle and no interfaces, while `internal/testsupport/fsfixture` owns the standard-library-only controlled fault source for tests.
+Root-confined filesystem operations refuse escaping access, preserve wrapped error identity, and return bytes with permissions from one observed file generation. Controlled filesystem fault fixtures delegate unselected operations to their real root and preserve caller-supplied error identity.
 
 The gated `check` family is organized by subject universe. `check repo` aggregates drift, current-state, prose, and memory checks; `check staged` aggregates HEAD-to-index current-state and rendered-output drift, while its commit-message child remains direct-only because it requires a message file. Bare `check` runs both aggregates, and the prose and memory children always run with their configured exemption lists. The prose child applies punctuation restraint to every tracked text file without language-specific comment detection. Historical decision context never becomes current-state authority.
 
@@ -30,10 +30,10 @@ The gated `check` family is organized by subject universe. `check repo` aggregat
 - [Effort management](../topics/tooling/effort-management.md): Binary-owned effort records and optional resources.
 - [Evaluations](../topics/tooling/evaluations.md): The golden-task evaluation suite.
 - [File publication](../topics/tooling/file-publication.md): Atomic no-replace complete-file publication shared across production consumers.
-- [Filesystem access](../topics/tooling/filesystem-access.md): Single-home root-confined filesystem access and its controlled test fault source.
-- [Git access](../topics/tooling/git-access.md): The one semantic git seam - entrypoints, backends, and their pinned contracts.
+- [Filesystem access](../topics/tooling/filesystem-access.md): Root-confined path behavior and project mutation lease safety.
+- [Git access](../topics/tooling/git-access.md): Observable Git isolation, errors, status, and range grammar.
 - [Initialization](../topics/tooling/init-and-enablement.md): Project adoption and initialization behavior.
 - [Project license](../topics/tooling/project-license.md): The repository license text, public references, and packaged-license contract.
 - [Quality gates](../topics/tooling/quality-gates.md): Focused local feedback, repository checks, and the aggregate CI gate.
-- [Test infrastructure](../topics/tooling/test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
+- [Test infrastructure](../topics/tooling/test-infrastructure.md): Observable safety for reusable test fixtures.
 - [Upgrade runtime](../topics/tooling/upgrade-runtime.md): The supported live-schema migration and journaled recovery runtime.

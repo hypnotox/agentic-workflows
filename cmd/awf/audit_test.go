@@ -129,24 +129,6 @@ func TestRunAuditDispatch(t *testing.T) {
 	}
 }
 
-// TestRunAuditRoutesConfiguredWorkToAudit proves the command keeps only its
-// CLI boundary role rather than reconstructing audit inputs or reports.
-func TestRunAuditRoutesConfiguredWorkToAudit(t *testing.T) {
-	source, err := os.ReadFile("audit.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	text := string(source)
-	if !strings.Contains(text, "audit.RunConfigured(") {
-		t.Fatal("runAudit must invoke the audit-owned configured operation")
-	}
-	for _, obsolete := range []string{"project.Audit(", "audit.Report("} {
-		if strings.Contains(text, obsolete) {
-			t.Fatalf("runAudit retains obsolete audit orchestration route %q", obsolete)
-		}
-	}
-}
-
 func TestRunAuditDispatchFailingReport(t *testing.T) {
 	repo, base := auditProject(t)
 	root := repo.Root()

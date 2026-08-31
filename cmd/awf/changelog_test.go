@@ -211,6 +211,7 @@ func TestRunChangelogFlagsExclusive(t *testing.T) {
 // TestChangelogPublicPayloadContracts pins every public payload form at the
 // driver boundary: authored bytes go only to stdout and successful payloads
 // never add diagnostics or alter the exit status.
+// invariant: tooling/cli:explicit-output-bypasses (TestChangelogPublicPayloadContracts)
 func TestChangelogPublicPayloadContracts(t *testing.T) {
 	readGolden := func(t *testing.T, name string) []byte {
 		t.Helper()

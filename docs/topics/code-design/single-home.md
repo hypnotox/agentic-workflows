@@ -11,11 +11,6 @@ This topic governs concerns introduced by new work and forks deliberately conver
 
 ## Claims
 
-### `invariant: pitfall-model-single-home`
-
-Pitfall identity, strict source parsing, title equivalence, canonical serialization, Markdown title escaping, relative-link preflight, and slug allocation have one production home in `internal/pitfall`; project orchestration and migration consume that model without redeclaring its semantic types or rules.
-Backing: test
-
 
 ### `invariant: single-implementation`
 

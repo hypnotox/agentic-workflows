@@ -2,17 +2,12 @@ package filesystem
 
 import (
 	"errors"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
 func openFixture(t *testing.T) (*Handle, string) {
@@ -354,6 +349,60 @@ func TestBackupPropagatesSourceReadError(t *testing.T) {
 	}
 }
 
+// invariant: tooling/filesystem-access:root-confined-paths (TestReadWithModeReturnsOneObservedGeneration)
+func TestReadWithModeReturnsOneObservedGeneration(t *testing.T) {
+	h, root := openFixture(t)
+	const path = "generation"
+	if err := os.WriteFile(filepath.Join(root, path), []byte("alpha"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+
+	stop := make(chan struct{})
+	finished := make(chan struct{})
+	writerErr := make(chan error, 1)
+	go func() {
+		defer close(finished)
+		generation := 0
+		for {
+			select {
+			case <-stop:
+				return
+			default:
+			}
+			contents, mode := []byte("alpha"), fs.FileMode(0o600)
+			if generation%2 == 1 {
+				contents, mode = []byte("bravo"), 0o640
+			}
+			if err := h.Replace(path, contents, mode); err != nil {
+				writerErr <- err
+				return
+			}
+			generation++
+			runtime.Gosched()
+		}
+	}()
+	defer func() {
+		close(stop)
+		<-finished
+	}()
+
+	for range 5000 {
+		contents, mode, err := h.ReadWithMode(path)
+		if err != nil {
+			t.Fatal(err)
+		}
+		consistent := string(contents) == "alpha" && mode == 0o600 || string(contents) == "bravo" && mode == 0o640
+		if !consistent {
+			t.Fatalf("read combined different file generations: contents=%q mode=%#o", contents, mode)
+		}
+	}
+	select {
+	case err := <-writerErr:
+		t.Fatalf("replace generation: %v", err)
+	default:
+	}
+}
+
 func TestBackupPreservesModeAndSelectsAvailablePath(t *testing.T) {
 	h, root := openFixture(t)
 	if err := os.WriteFile(filepath.Join(root, "source"), []byte("source bytes"), 0o640); err != nil {
@@ -406,65 +455,6 @@ func TestBackupPropagatesNonCollisionPublicationFailure(t *testing.T) {
 	})
 	if !errors.Is(err, failure) || calls != 1 {
 		t.Fatalf("backup error = %v, publication calls = %d", err, calls)
-	}
-}
-
-func TestReadWithModeUsesOneOpenedFileForBytesAndMode(t *testing.T) {
-	var source []byte
-	testsupport.WalkRepoSources(t, testsupport.RepoRoot(t), func(rel string, body []byte) {
-		if rel == "internal/filesystem/handle.go" {
-			source = append([]byte(nil), body...)
-		}
-	})
-	file, err := parser.ParseFile(token.NewFileSet(), "internal/filesystem/handle.go", source, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var function *ast.FuncDecl
-	for _, declaration := range file.Decls {
-		candidate, ok := declaration.(*ast.FuncDecl)
-		if ok && candidate.Name.Name == "ReadWithMode" {
-			function = candidate
-			break
-		}
-	}
-	if function == nil {
-		t.Fatal("ReadWithMode declaration missing")
-	}
-	selector := func(expression ast.Expr, object, member string) bool {
-		selected, ok := expression.(*ast.SelectorExpr)
-		if !ok || selected.Sel.Name != member {
-			return false
-		}
-		if identifier, ok := selected.X.(*ast.Ident); ok {
-			return identifier.Name == object
-		}
-		root, ok := selected.X.(*ast.SelectorExpr)
-		identifier, identifierOK := root.X.(*ast.Ident)
-		return ok && identifierOK && identifier.Name+"."+root.Sel.Name == object
-	}
-	opens, reads, stats := 0, 0, 0
-	ast.Inspect(function.Body, func(node ast.Node) bool {
-		call, ok := node.(*ast.CallExpr)
-		if !ok {
-			return true
-		}
-		switch {
-		case selector(call.Fun, "h.root", "Open"):
-			opens++
-		case selector(call.Fun, "h.root", "ReadFile") || selector(call.Fun, "h.root", "Stat"):
-			t.Fatalf("ReadWithMode split bytes and mode across root calls: %s", call.Fun)
-		case selector(call.Fun, "io", "ReadAll") && len(call.Args) == 1:
-			if identifier, ok := call.Args[0].(*ast.Ident); ok && identifier.Name == "file" {
-				reads++
-			}
-		case selector(call.Fun, "file", "Stat"):
-			stats++
-		}
-		return true
-	})
-	if opens != 1 || reads != 1 || stats != 1 {
-		t.Fatalf("ReadWithMode operations = opens %d reads %d stats %d; want one opened file supplying bytes and mode", opens, reads, stats)
 	}
 }
 
@@ -972,336 +962,4 @@ func TestOpenFailureAndWalkErrors(t *testing.T) {
 			t.Fatal("missing metadata path succeeded")
 		}
 	}
-}
-
-// TestRootConfinedFilesystemSingleHome is intentionally structural: production root handles have one home.
-// invariant: tooling/filesystem-access:single-production-handle (TestRootConfinedFilesystemSingleHome)
-// invariant: tooling/filesystem-access:root-scoped-project-mutation-leases (TestRootConfinedFilesystemSingleHome)
-func TestRootConfinedFilesystemSingleHome(t *testing.T) {
-	var consumers []string
-	filesystemSources := map[string]string{}
-	testsupport.WalkRepoSources(t, testsupport.RepoRoot(t), func(rel string, body []byte) {
-		if strings.HasPrefix(rel, "internal/filesystem/") {
-			filesystemSources[rel] = string(body)
-		}
-		if finding := rootSourceFinding(rel, string(body)); finding != "" {
-			t.Fatalf("production root ownership: %s", finding)
-		}
-		if finding := filesystemConsumerFinding(rel, string(body)); finding != "" {
-			t.Fatalf("production filesystem consumer: %s", finding)
-		} else if rel != "internal/filesystem/handle.go" && strings.Contains(string(body), "internal/filesystem") {
-			consumers = append(consumers, rel)
-		}
-		if finding := advisoryLeaseOwnerFinding(rel, string(body)); finding != "" {
-			t.Fatalf("production advisory-lease ownership: %s", finding)
-		}
-	})
-	if finding := filesystemPackageFinding(filesystemSources); finding != "" {
-		t.Fatalf("filesystem package shape: %s", finding)
-	}
-	if len(consumers) == 0 {
-		t.Fatal("no outside-package production constructor/capability flow imports filesystem")
-	}
-	for _, tc := range []struct {
-		name, path, src, want string
-	}{
-		{"canonical handle", "internal/filesystem/handle.go", "package filesystem\nimport \"os\"\ntype Handle struct { root *os.Root }\nfunc Open(x string) { os.OpenRoot(x) }", ""},
-		{"outside root constructor", "internal/other/other.go", "package other\nimport root \"os\"\nfunc Open(x string) { root.OpenRoot(x) }", "outside filesystem concrete root use"},
-		{"outside root storage", "internal/other/other.go", "package other\nimport root \"os\"\ntype x struct { r *root.Root }", "outside filesystem concrete root use"},
-		{"aliased root constructor", "internal/other/other.go", "package other\nimport \"os\"\nvar openRoot = os.OpenRoot\nfunc Open(x string) { openRoot(x) }", "outside filesystem concrete root use"},
-		{"aliased root storage", "internal/other/other.go", "package other\nimport \"os\"\ntype rootAlias = os.Root\ntype x struct { r *rootAlias }", "outside filesystem concrete root use"},
-		{"second handle", "internal/filesystem/handle.go", "package filesystem\ntype Other struct{}\ntype Handle struct{}", "exported concrete Other"},
-		{"provider interface", "internal/filesystem/handle.go", "package filesystem\ntype Handle struct{}\ntype Filesystem interface{ Read(string) }", "interface Filesystem"},
-		{"unexported interface", "internal/filesystem/handle.go", "package filesystem\ntype Handle struct{}\ntype filesystem interface{ Read(string) }", "interface filesystem"},
-		{"returned constructor", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nfunc Open(x string) (*filesystem.Handle, error) { return filesystem.Open(x) }", ""},
-		{"compile-only reference", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Open", "filesystem import without constructor/capability flow"},
-		{"arbitrary selector", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nvar _ = filesystem.Handle", "filesystem import without constructor/capability flow"},
-		{"supported entry policy", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/hypnotox/agentic-workflows/internal/filesystem\"\nfunc supported(entry fs.DirEntry) { filesystem.SupportedTreeEntry(entry) }", ""},
-		{"second flock owner", "internal/upgrade/upgrade.go", "package upgrade\nimport \"github.com/gofrs/flock\"\nvar _ = flock.New", "outside filesystem imports advisory-lock implementation"},
-	} {
-		got := rootSourceFinding(tc.path, tc.src)
-		if got == "" {
-			got = filesystemConsumerFinding(tc.path, tc.src)
-		}
-		if got == "" {
-			got = advisoryLeaseOwnerFinding(tc.path, tc.src)
-		}
-		if got == "" && strings.HasPrefix(tc.path, "internal/filesystem/") {
-			got = filesystemPackageFinding(map[string]string{tc.path: tc.src})
-		}
-		if !strings.Contains(got, tc.want) {
-			t.Fatalf("%s finding = %q, want category %q", tc.name, got, tc.want)
-		}
-	}
-	for _, tc := range []struct {
-		name string
-		src  map[string]string
-		want string
-	}{
-		{"cross-file extra concrete", map[string]string{"internal/filesystem/handle.go": "package filesystem\ntype Handle struct{}", "internal/filesystem/extra.go": "package filesystem\ntype Extra struct{}"}, "exported concrete Extra"},
-		{"cross-file interface", map[string]string{"internal/filesystem/handle.go": "package filesystem\ntype Handle struct{}", "internal/filesystem/contract.go": "package filesystem\ntype Contract interface{}"}, "interface Contract"},
-	} {
-		if got := filesystemPackageFinding(tc.src); !strings.Contains(got, tc.want) {
-			t.Fatalf("%s finding = %q, want category %q", tc.name, got, tc.want)
-		}
-	}
-}
-
-func advisoryLeaseOwnerFinding(rel, src string) string {
-	f, err := parser.ParseFile(token.NewFileSet(), rel, src, parser.ImportsOnly)
-	if err != nil {
-		return rel + ": parse: " + err.Error()
-	}
-	for _, im := range f.Imports {
-		if strings.Trim(im.Path.Value, `"`) == "github.com/gofrs/flock" && rel != "internal/filesystem/lease.go" {
-			return rel + ": outside filesystem imports advisory-lock implementation"
-		}
-	}
-	return ""
-}
-
-func rootSourceFinding(rel, src string) string {
-	f, err := parser.ParseFile(token.NewFileSet(), rel, src, 0)
-	if err != nil {
-		return rel + ": parse: " + err.Error()
-	}
-	osNames := osImportNames(f)
-	openRootAliases, rootAliases := rootAliases(f, osNames)
-	rootUses := len(openRootAliases) != 0 || len(rootAliases) != 0
-	ast.Inspect(f, func(n ast.Node) bool {
-		switch n := n.(type) {
-		case *ast.CallExpr:
-			if isOpenRoot(n.Fun, osNames, openRootAliases) {
-				rootUses = true
-			}
-		case *ast.StarExpr:
-			if isRootType(n.X, osNames, rootAliases) {
-				rootUses = true
-			}
-		}
-		return true
-	})
-	if rel == "internal/testsupport/fsfixture/fsfixture.go" || strings.HasPrefix(rel, "internal/filesystem/") {
-		return ""
-	}
-	if rootUses {
-		return rel + ": outside filesystem concrete root use"
-	}
-	return ""
-}
-
-func osImportNames(f *ast.File) map[string]bool {
-	names := map[string]bool{}
-	for _, im := range f.Imports {
-		if strings.Trim(im.Path.Value, `"`) != "os" {
-			continue
-		}
-		name := "os"
-		if im.Name != nil {
-			name = im.Name.Name
-		}
-		names[name] = true
-	}
-	return names
-}
-
-func rootAliases(f *ast.File, osNames map[string]bool) (map[string]bool, map[string]bool) {
-	openRootAliases, rootAliases := map[string]bool{}, map[string]bool{}
-	ast.Inspect(f, func(n ast.Node) bool {
-		switch n := n.(type) {
-		case *ast.ValueSpec:
-			for i, value := range n.Values {
-				if i < len(n.Names) && isOpenRoot(value, osNames, openRootAliases) {
-					openRootAliases[n.Names[i].Name] = true
-				}
-			}
-		case *ast.AssignStmt:
-			for i, value := range n.Rhs {
-				if i >= len(n.Lhs) || !isOpenRoot(value, osNames, openRootAliases) {
-					continue
-				}
-				if name, ok := n.Lhs[i].(*ast.Ident); ok {
-					openRootAliases[name.Name] = true
-				}
-			}
-		case *ast.TypeSpec:
-			if n.Assign.IsValid() && isRootType(n.Type, osNames, rootAliases) {
-				rootAliases[n.Name.Name] = true
-			}
-		}
-		return true
-	})
-	return openRootAliases, rootAliases
-}
-
-func isOpenRoot(expr ast.Expr, osNames, aliases map[string]bool) bool {
-	if id, ok := expr.(*ast.Ident); ok && aliases[id.Name] {
-		return true
-	}
-	s, ok := expr.(*ast.SelectorExpr)
-	return ok && s.Sel.Name == "OpenRoot" && importedOS(s.X, osNames)
-}
-
-func isRootType(expr ast.Expr, osNames, aliases map[string]bool) bool {
-	if id, ok := expr.(*ast.Ident); ok && aliases[id.Name] {
-		return true
-	}
-	s, ok := expr.(*ast.SelectorExpr)
-	return ok && s.Sel.Name == "Root" && importedOS(s.X, osNames)
-}
-
-func filesystemConsumerFinding(rel, src string) string {
-	f, err := parser.ParseFile(token.NewFileSet(), rel, src, 0)
-	if err != nil {
-		return rel + ": parse: " + err.Error()
-	}
-	if rel == "internal/filesystem/handle.go" {
-		return ""
-	}
-	imports := map[string]bool{}
-	for _, im := range f.Imports {
-		if strings.Trim(im.Path.Value, `"`) != "github.com/hypnotox/agentic-workflows/internal/filesystem" {
-			continue
-		}
-		name := "filesystem"
-		if im.Name != nil {
-			name = im.Name.Name
-		}
-		imports[name] = true
-	}
-	if len(imports) == 0 {
-		return ""
-	}
-	bound := map[string]bool{}
-	capability := false
-	ast.Inspect(f, func(n ast.Node) bool {
-		switch n := n.(type) {
-		case *ast.Field:
-			star, ok := n.Type.(*ast.StarExpr)
-			if !ok {
-				break
-			}
-			selector, ok := star.X.(*ast.SelectorExpr)
-			if !ok || !importedOS(selector.X, imports) {
-				break
-			}
-			if selector.Sel.Name == "ExpectedIdentity" {
-				capability = true
-				break
-			}
-			if selector.Sel.Name != "Handle" {
-				break
-			}
-			for _, name := range n.Names {
-				bound[name.Name] = true
-			}
-		case *ast.AssignStmt:
-			for i, rhs := range n.Rhs {
-				call, ok := rhs.(*ast.CallExpr)
-				if !ok || !isFilesystemConstructor(call, imports) || i >= len(n.Lhs) {
-					continue
-				}
-				if id, ok := n.Lhs[i].(*ast.Ident); ok {
-					bound[id.Name] = true
-				}
-			}
-		case *ast.CallExpr:
-			if isFilesystemConstructor(n, imports) {
-				capability = true
-			}
-			if s, ok := n.Fun.(*ast.SelectorExpr); ok {
-				if id, ok := s.X.(*ast.Ident); ok && bound[id.Name] {
-					capability = true
-				}
-				if id, ok := s.X.(*ast.Ident); ok && imports[id.Name] && (s.Sel.Name == "Backup" || s.Sel.Name == "CanonicalRoot" || s.Sel.Name == "NormalizePlatformPath" || s.Sel.Name == "SupportedTreeEntry" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireTrackedLease" || s.Sel.Name == "AcquireResidentLease" || s.Sel.Name == "AcquireProjectLease") {
-					capability = true
-				}
-			}
-			for _, arg := range n.Args {
-				if id, ok := arg.(*ast.Ident); ok && bound[id.Name] {
-					capability = true
-				}
-			}
-		}
-		return true
-	})
-	if !capability {
-		return rel + ": filesystem import without constructor/capability flow"
-	}
-	return ""
-}
-
-func filesystemPackageFinding(sources map[string]string) string {
-	handles := 0
-	rootUses := false
-	for rel, src := range sources {
-		f, err := parser.ParseFile(token.NewFileSet(), rel, src, 0)
-		if err != nil {
-			return rel + ": parse: " + err.Error()
-		}
-		if f.Name.Name != "filesystem" {
-			return rel + ": wrong package"
-		}
-		osNames := map[string]bool{}
-		for _, im := range f.Imports {
-			if strings.Trim(im.Path.Value, `"`) == "os" {
-				name := "os"
-				if im.Name != nil {
-					name = im.Name.Name
-				}
-				osNames[name] = true
-			}
-		}
-		ast.Inspect(f, func(n ast.Node) bool {
-			s, ok := n.(*ast.SelectorExpr)
-			if ok && s.Sel.Name == "OpenRoot" && importedOS(s.X, osNames) {
-				rootUses = true
-			}
-			return true
-		})
-		for _, decl := range f.Decls {
-			gen, ok := decl.(*ast.GenDecl)
-			if !ok {
-				continue
-			}
-			for _, spec := range gen.Specs {
-				typeSpec, ok := spec.(*ast.TypeSpec)
-				if !ok {
-					continue
-				}
-				if _, ok := typeSpec.Type.(*ast.InterfaceType); ok {
-					return rel + ": interface " + typeSpec.Name.Name
-				}
-				if !typeSpec.Name.IsExported() {
-					continue
-				}
-				if typeSpec.Name.Name == "Lease" || typeSpec.Name.Name == "LeaseError" || typeSpec.Name.Name == "LeaseErrorKind" || typeSpec.Name.Name == "ExpectedIdentity" {
-					continue
-				}
-				if typeSpec.Name.Name != "Handle" {
-					return rel + ": exported concrete " + typeSpec.Name.Name
-				}
-				if _, ok := typeSpec.Type.(*ast.StructType); !ok {
-					return rel + ": Handle is not concrete"
-				}
-				handles++
-			}
-		}
-	}
-	if handles != 1 || !rootUses {
-		return "internal/filesystem: expected one concrete Handle and root use"
-	}
-	return ""
-}
-
-func isFilesystemConstructor(call *ast.CallExpr, imports map[string]bool) bool {
-	s, ok := call.Fun.(*ast.SelectorExpr)
-	// Handle construction and the neutral lease capability are the two allowed
-	// production flows from this package; neither exports another concrete type.
-	return ok && (s.Sel.Name == "Open" || s.Sel.Name == "CanonicalRoot" || s.Sel.Name == "NormalizePlatformPath" || s.Sel.Name == "Acquire" || s.Sel.Name == "AcquireProject" || s.Sel.Name == "AcquireTrackedLease" || s.Sel.Name == "AcquireResidentLease" || s.Sel.Name == "AcquireProjectLease") && importedOS(s.X, imports)
-}
-
-func importedOS(expr ast.Expr, names map[string]bool) bool {
-	id, ok := expr.(*ast.Ident)
-	return ok && names[id.Name]
 }

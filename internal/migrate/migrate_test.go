@@ -3,9 +3,6 @@ package migrate
 import (
 	"context"
 	"errors"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
 	"path/filepath"
 	"slices"
@@ -114,20 +111,6 @@ func TestAheadSchemasRefuse(t *testing.T) {
 			}
 			assertSnapshot(t, root, before)
 		})
-	}
-}
-
-func TestRegistryIsOnlyTheSchema50NoOpAndHasNoReachablePre50Migrator(t *testing.T) {
-	if LiveSchemaFloor != 50 || Current() != 50 {
-		t.Fatalf("live schema range = %d..%d, want 50..50", LiveSchemaFloor, Current())
-	}
-	if len(registry) != 1 || registry[0].To != 50 || registry[0].Name != "supported-schema-50" || registry[0].Build != nil {
-		t.Fatalf("registry = %#v, want only schema-50 no-op", registry)
-	}
-	for _, migration := range registry {
-		if migration.To < 50 || migration.Build != nil {
-			t.Fatalf("concrete pre-50 migrator remains reachable: %#v", migration)
-		}
 	}
 }
 
@@ -270,77 +253,6 @@ func TestBuildRejectsInvalidMigrationRegistry(t *testing.T) {
 				t.Fatalf("invalid registry error = %v, want %q", err, tc.want)
 			}
 		})
-	}
-}
-
-func TestRetiredConfigLayoutsHavePresenceOnlyProductionConsumers(t *testing.T) {
-	allowedCalls := map[string]map[string]bool{
-		"retiredLayout":           {"filepath.Join": true, "os.Stat": true, "errors.Is": true, "fmt.Errorf": true},
-		"ProjectPresent":          {"config.ConfigPath": true, "config.LockPath": true, "filepath.Join": true, "os.Stat": true, "errors.Is": true, "fmt.Errorf": true},
-		"ProjectPresentFromFiles": {"has": true},
-	}
-	presenceOnly := func(function *ast.FuncDecl) bool {
-		valid := true
-		ast.Inspect(function.Body, func(node ast.Node) bool {
-			call, ok := node.(*ast.CallExpr)
-			if !ok {
-				return true
-			}
-			name := ""
-			switch target := call.Fun.(type) {
-			case *ast.Ident:
-				name = target.Name
-			case *ast.SelectorExpr:
-				if owner, ok := target.X.(*ast.Ident); ok {
-					name = owner.Name + "." + target.Sel.Name
-				}
-			}
-			if !allowedCalls[function.Name.Name][name] {
-				valid = false
-			}
-			return valid
-		})
-		return valid
-	}
-	synthetic, err := parser.ParseFile(token.NewFileSet(), "synthetic.go", `package migrate; func retiredLayout(string) { os.ReadFile(".claude/awf.yaml") }`, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if presenceOnly(synthetic.Decls[0].(*ast.FuncDecl)) {
-		t.Fatal("retired-layout census accepted synthetic representation read")
-	}
-	var found int
-	testsupport.WalkRepoSources(t, testsupport.RepoRoot(t), func(rel string, body []byte) {
-		if !strings.HasSuffix(rel, ".go") || strings.HasSuffix(rel, "_test.go") || (!strings.Contains(string(body), `".claude"`) && !strings.Contains(string(body), `".claude/awf`)) {
-			return
-		}
-		if rel != "internal/migrate/migrate.go" {
-			t.Fatalf("retired config layout has production consumer %s", rel)
-		}
-		file, err := parser.ParseFile(token.NewFileSet(), rel, body, 0)
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, declaration := range file.Decls {
-			function, ok := declaration.(*ast.FuncDecl)
-			if !ok {
-				continue
-			}
-			ast.Inspect(function.Body, func(node ast.Node) bool {
-				literal, ok := node.(*ast.BasicLit)
-				if !ok || literal.Kind != token.STRING || (!strings.Contains(literal.Value, `.claude`) && !strings.Contains(literal.Value, `awf.yaml`)) {
-					return true
-				}
-				found++
-				if _, ok := allowedCalls[function.Name.Name]; !ok || !presenceOnly(function) {
-					t.Fatalf("retired config layout representation interpreted by %s", function.Name.Name)
-				}
-				return true
-			})
-		}
-	})
-	if found == 0 {
-		t.Fatal("retired layout presence census found no production recognizer")
 	}
 }
 

@@ -12,10 +12,10 @@
 - [Effort management](effort-management.md): Binary-owned effort records and optional resources.
 - [Evaluations](evaluations.md): The golden-task evaluation suite.
 - [File publication](file-publication.md): Atomic no-replace complete-file publication shared across production consumers.
-- [Filesystem access](filesystem-access.md): Single-home root-confined filesystem access and its controlled test fault source.
-- [Git access](git-access.md): The one semantic git seam - entrypoints, backends, and their pinned contracts.
+- [Filesystem access](filesystem-access.md): Root-confined path behavior and project mutation lease safety.
+- [Git access](git-access.md): Observable Git isolation, errors, status, and range grammar.
 - [Initialization](init-and-enablement.md): Project adoption and initialization behavior.
 - [Project license](project-license.md): The repository license text, public references, and packaged-license contract.
 - [Quality gates](quality-gates.md): Focused local feedback, repository checks, and the aggregate CI gate.
-- [Test infrastructure](test-infrastructure.md): Shared internal test-support infrastructure and its dependency boundary.
+- [Test infrastructure](test-infrastructure.md): Observable safety for reusable test fixtures.
 - [Upgrade runtime](upgrade-runtime.md): The supported live-schema migration and journaled recovery runtime.

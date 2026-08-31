@@ -5,10 +5,6 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"go/ast"
-	"go/format"
-	"go/parser"
-	"go/token"
 	"io"
 	"slices"
 	"strings"
@@ -136,7 +132,7 @@ func mustSnapshotTree(t *testing.T) *snapshot.Tree {
 	return tree
 }
 
-func TestRepoCheckRoutesAggregateOwnerResultsWithoutCompatibilitySlices(t *testing.T) {
+func TestRepoCheckRoutesAggregateOwnerResults(t *testing.T) {
 	ordinary, err := checkresult.New([]checkresult.Finding{{
 		Rank: severity.Warn, Property: "ordinary-property",
 		Evidence: checkresult.Evidence{Kind: "ordinary-kind", Detail: "ordinary warning"},
@@ -155,10 +151,6 @@ func TestRepoCheckRoutesAggregateOwnerResultsWithoutCompatibilitySlices(t *testi
 	if err != nil {
 		t.Fatal(err)
 	}
-	report.Warnings = []string{"mutated compatibility warning"}
-	report.Information = []string{"mutated compatibility information"}
-	report.TrackingInformation = []string{"mutated compatibility tracking"}
-
 	counts := &repoCheckCounters{}
 	deps := repoCheckTestDependencies(t, &config.Config{}, &project.ProjectState{}, report, project.CurrentStateReport{}, nil, counts)
 	present := deps.present
@@ -191,9 +183,6 @@ func TestRepoCheckRoutesAggregateOwnerResultsWithoutCompatibilitySlices(t *testi
 		if !strings.Contains(stdout.String(), want) {
 			t.Fatalf("typed aggregate output missing %q: %q", want, stdout.String())
 		}
-	}
-	if strings.Contains(stdout.String(), "mutated compatibility") {
-		t.Fatalf("compatibility projection changed aggregate routing: %q", stdout.String())
 	}
 }
 
@@ -232,9 +221,6 @@ func TestRepoCheckRoutesWorkingCurrentStateOwnerResult(t *testing.T) {
 	}
 	if !strings.Contains(stdout.String(), "coverage warning") || !strings.Contains(stdout.String(), "provisional information") {
 		t.Fatalf("working current-state output = %q", stdout.String())
-	}
-	if strings.Contains(stdout.String(), "mutated compatibility") || strings.Contains(stdout.String(), "mutated-compatibility-information") {
-		t.Fatalf("compatibility projection changed current-state routing: %q", stdout.String())
 	}
 }
 
@@ -328,44 +314,6 @@ func currentStateReportForTest(t *testing.T, report project.CurrentStateReport) 
 	return report
 }
 
-// invariant: tooling/cli:repo-check-capability-plan (TestRepoCheckProductionWiring)
-func TestRepoCheckProductionWiring(t *testing.T) {
-	assertRepoCheckProductionWiring(t)
-}
-
-func assertRepoCheckProductionWiring(t *testing.T) {
-	t.Helper()
-	cases := []struct {
-		file     string
-		function string
-		contains []string
-	}{
-		{"checkrepo.go", "productionRepoCheckDependencies", []string{"project.NewLoader(", "project.NewLoaderWithoutRepository(", "project.BuildCheckReport("}},
-		{"operation.go", "Run", []string{"case Repository:", "collectCheckRepoWithPlanNotes"}},
-		{"operation.go", "Run", []string{"case RepositoryDrift:", "case RepositoryState:", "case RepositoryProse:", "case RepositoryMemory:"}},
-	}
-	for _, tc := range cases {
-		t.Run("wiring/"+tc.function, func(t *testing.T) {
-			body := formattedFunctionBody(t, tc.file, tc.function)
-			for _, fragment := range tc.contains {
-				if !strings.Contains(body, fragment) {
-					t.Fatalf("%s %s body does not contain %q:\n%s", tc.file, tc.function, fragment, body)
-				}
-			}
-			callee := "runRepoCheckSelection("
-			switch tc.function {
-			case "productionRepoCheckDependencies":
-				callee = ""
-			case "Run":
-				callee = ""
-			}
-			if callee != "" && strings.Count(body, callee) != 1 {
-				t.Fatalf("%s %s must call %s exactly once:\n%s", tc.file, tc.function, callee, body)
-			}
-		})
-	}
-}
-
 // invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestAggregateCheckAgentGuideSizeWarning)
 func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	cfg := &config.Config{}
@@ -415,26 +363,4 @@ func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	if got := direct.String(); got != completedCheckReport {
 		t.Fatalf("direct drift output = %q, want no advisory", got)
 	}
-}
-
-func formattedFunctionBody(t *testing.T, path, name string) string {
-	t.Helper()
-	fset := token.NewFileSet()
-	file, err := parser.ParseFile(fset, path, nil, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, declaration := range file.Decls {
-		function, ok := declaration.(*ast.FuncDecl)
-		if !ok || function.Name.Name != name {
-			continue
-		}
-		var out bytes.Buffer
-		if err := format.Node(&out, fset, function.Body); err != nil {
-			t.Fatal(err)
-		}
-		return out.String()
-	}
-	t.Fatalf("function %s not found in %s", name, path)
-	return ""
 }

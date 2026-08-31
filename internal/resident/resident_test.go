@@ -3,9 +3,6 @@ package resident
 import (
 	"context"
 	"errors"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -41,54 +38,6 @@ func saveLock(t *testing.T, root string, files map[string]manifest.Entry) {
 	if err := (&manifest.Lock{Files: files}).Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
-}
-
-// TestUninstallWriterCensus prevents a second, unleased host-path mutation
-// entrypoint from returning after this conversion. It scans production syntax
-// and commits negative examples so the proof itself cannot quietly become a
-// no-op.
-func TestUninstallWriterCensus(t *testing.T) {
-	source, err := os.ReadFile("resident.go")
-	if err != nil {
-		t.Fatal(err)
-	}
-	findings := uninstallWriterFindings(t, source)
-	if len(findings) != 0 {
-		t.Fatalf("uninstall writer census:\n%s", strings.Join(findings, "\n"))
-	}
-	negative := []byte(`package resident
-import "os"
-func Uninstall() { _ = os.Remove("unconfined") }
-`)
-	if findings := uninstallWriterFindings(t, negative); len(findings) != 3 {
-		t.Fatalf("negative census findings = %v, want unleased export, raw remove, and missing coverage check", findings)
-	}
-}
-
-func uninstallWriterFindings(t *testing.T, source []byte) []string {
-	t.Helper()
-	file, err := parser.ParseFile(token.NewFileSet(), "resident.go", source, 0)
-	if err != nil {
-		t.Fatal(err)
-	}
-	var findings []string
-	ast.Inspect(file, func(node ast.Node) bool {
-		switch node := node.(type) {
-		case *ast.FuncDecl:
-			if node.Name.Name == "Uninstall" {
-				findings = append(findings, "exported unleased uninstall")
-			}
-		case *ast.SelectorExpr:
-			if ident, ok := node.X.(*ast.Ident); ok && ident.Name == "os" && node.Sel.Name == "Remove" {
-				findings = append(findings, "raw os.Remove")
-			}
-		}
-		return true
-	})
-	if !strings.Contains(string(source), "lease.CoversProject(root, residentRoot)") {
-		findings = append(findings, "leased entrypoint does not verify project coverage")
-	}
-	return findings
 }
 
 func TestUninstallRequiresCoveringLease(t *testing.T) {

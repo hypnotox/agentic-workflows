@@ -1,23 +1,13 @@
-The filesystem package owns production root-confined access, while the dedicated testsupport fixture owns the distinct kernel-backed controlled fault source.
+This topic records root-confined path behavior and project mutation lease safety.
 
 ## Claims
 
-### `invariant: single-production-handle`
-
-`internal/filesystem` is the only production home for deliberately composed root-confined filesystem access; it exports one concrete handle and no provider-owned interface, while historical direct filesystem effects remain bounded candidates until a concrete conversion adopts the handle.
-Backing: test
-
 ### `invariant: root-confined-paths`
 
-The production handle accepts only valid slash-relative paths beneath its selected `os.Root`, refuses absolute, parent, and escaping-symlink access, returns slash-relative walk paths without following directory symlinks, and preserves wrapped error identity.
+Root-confined operations accept only valid slash-relative paths beneath the selected root, refuse absolute, parent, and escaping-symlink access, return slash-relative walk paths without following directory symlinks, and preserve wrapped error identity. A read-with-mode result returns bytes and permissions from one observed file generation even while the path is atomically replaced.
 Backing: test
 
 ### `invariant: root-scoped-project-mutation-leases`
 
-`internal/filesystem` owns one persistent advisory lease mechanism. It canonicalizes existing roots including symlink aliases, retains restrictive user-cache lock files, orders complete scope-and-root identities even when roots match, waits with context cancellation, and releases explicitly or on process exit. Tracked and resident callers select distinct lease scopes, so linked checkouts remain independently mutable while a shared resident root serializes cross-checkout mutation.
-Backing: test
-
-### `invariant: single-fault-source`
-
-`internal/testsupport/fsfixture` is the only standard-library-only kernel-backed controlled filesystem fault source; it delegates unselected operations to its real root, preserves caller-supplied error identity, and cites the durable distinct-source decision at its implementation site. Production import exclusion remains governed by `tooling/test-infrastructure:production-never-imports-test-support`.
+Project mutation leases canonicalize existing roots including symlink aliases, retain restrictive user-cache lock files, order complete scope-and-root identities even when roots match, wait with context cancellation, and release explicitly or on process exit. Distinct tracked and resident scopes let linked checkouts remain independently mutable while a shared resident root serializes cross-checkout mutation.
 Backing: test

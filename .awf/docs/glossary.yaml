@@ -19,7 +19,7 @@ data:
       meaning: "The construction input that combines tracked and resident output roots and resolves anchored output paths."
       domains: [rendering]
     - term: resident-root policy
-      meaning: "The `internal/resident` package is the single home for resident-root paths, kinds, anchoring, collisions, and uninstall."
+      meaning: "The deterministic behavior for resident-root paths, kinds, anchoring, collision refusal, preservation of dynamic descendants, and uninstall."
       domains: [rendering]
     - term: trigger table
       meaning: "The catalog-derived guide row for each skill, pairing its prefixed name with its one-line trigger."
@@ -125,7 +125,7 @@ data:
       meaning: "The compact generated `docs/pitfalls.md` metadata index and same-slug generated leaves, derived from authored pitfall sources."
       domains: [rendering]
     - term: git seam
-      meaning: "The `internal/git` package is the single home of Git access, exposing one semantic entrypoint per capability independent of its backend."
+      meaning: "The observable Git boundary for repository status, revision, worktree, range, isolation, cancellation, and error behavior, independent of backend identity."
       domains: [tooling]
     - term: seam entrypoint
       meaning: "One exported git-seam operation: a repository-handle method or a free function before or without an opened repository."

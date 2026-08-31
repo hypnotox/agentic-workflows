@@ -3,11 +3,7 @@ package main
 import (
 	"bytes"
 	"errors"
-	"go/ast"
-	"go/parser"
-	"go/token"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
 
@@ -51,86 +47,38 @@ func TestRunHelp(t *testing.T) {
 	}
 }
 
-// TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures is an explicit
-// registry-keyed interface contract. A new top-level family must be added here;
-// there is no count-based or missing-family allowance. Each entry names the
-// separately executed test that pins a real result from that family; this unit
-// additionally pins its exact help, usage failure, and operational failure.
-func TestTopLevelCommandFamiliesUseStructuredHelpAndUsageFailures(t *testing.T) {
-	families := map[string]string{
-		"init":      "TestInitDescribeReadOnly",
-		"render":    "TestEmptyInitChecksOnUnbornHead",
-		"edit":      "TestPartAuthoringCLI",
-		"reset":     "TestPartAuthoringCLI",
-		"check":     "TestRunCheckCleanThenDirty",
-		"read":      "TestReadTopicExposesOnlyReferencesAndCoverage",
-		"resolve":   "TestRunResolveTopicUsage",
-		"audit":     "TestRunAuditDispatch",
-		"effort":    "TestEffortPublicTextProtocol",
-		"list":      "TestRunListPrintsSkills",
-		"config":    "TestRunConfigDispatch",
-		"new":       "TestRunNewDispatch",
-		"remove":    "TestRunNewDomainLifecycle",
-		"upgrade":   "TestRunUpgradeRendersSuccessfulFinalJournalMutation",
-		"uninstall": "TestRunUninstallDispatch",
-		"changelog": "TestChangelogPublicPayloadContracts",
-		"version":   "TestRunVersion",
+// invariant: tooling/cli:readable-text-output (TestInitHelpUsageAndOperationalFailure)
+func TestInitHelpUsageAndOperationalFailure(t *testing.T) {
+	var command clispec.Command
+	for _, candidate := range clispec.Commands {
+		if candidate.Name == "init" {
+			command = candidate
+			break
+		}
 	}
-	contractTests := map[string]bool{}
-	paths, err := filepath.Glob("*_test.go")
+	if command.Name == "" {
+		t.Fatal("init command is not available")
+	}
+	document, err := command.Help.Document("awf init", command.Summary)
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range paths {
-		file, err := parser.ParseFile(token.NewFileSet(), path, nil, 0)
-		if err != nil {
-			t.Fatalf("parse %s: %v", path, err)
-		}
-		for _, declaration := range file.Decls {
-			if function, ok := declaration.(*ast.FuncDecl); ok {
-				contractTests[function.Name.Name] = true
-			}
-		}
+	var want bytes.Buffer
+	if err := presentation.Render(&want, document); err != nil {
+		t.Fatal(err)
 	}
-	commands := make(map[string]clispec.Command, len(clispec.Commands))
-	for _, command := range clispec.Commands {
-		commands[command.Name] = command
-		if _, ok := families[command.Name]; !ok {
-			t.Errorf("uncontracted top-level command family %q", command.Name)
-		}
+	var stdout, stderr bytes.Buffer
+	if code := run([]string{"awf", "init", "--help"}, &stdout, &stderr); code != 0 || stdout.String() != want.String() || stderr.Len() != 0 {
+		t.Fatalf("help exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
-	for name, contractTest := range families {
-		command, ok := commands[name]
-		if !ok {
-			t.Errorf("contract names missing top-level command family %q", name)
-			continue
-		}
-		if !contractTests[contractTest] {
-			t.Errorf("%s result contract test %q is missing", name, contractTest)
-		}
-		t.Run(name, func(t *testing.T) {
-			document, err := command.Help.Document("awf "+name, command.Summary)
-			if err != nil {
-				t.Fatal(err)
-			}
-			var want bytes.Buffer
-			if err := presentation.Render(&want, document); err != nil {
-				t.Fatal(err)
-			}
-			var stdout, stderr bytes.Buffer
-			if code := run([]string{"awf", name, "--help"}, &stdout, &stderr); code != 0 || stdout.String() != want.String() || stderr.Len() != 0 {
-				t.Fatalf("help exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
-			}
-			stdout.Reset()
-			stderr.Reset()
-			if code := run([]string{"awf", name, "--presentation-contract-invalid"}, &stdout, &stderr); code != 2 || stdout.Len() != 0 || stderr.String() != "condition: awf: awf "+name+": unknown flag \"--presentation-contract-invalid\"\n" {
-				t.Fatalf("usage exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
-			}
-			stdout.Reset()
-			stderr.Reset()
-			if code := newRunner(func() (string, error) { return "", errors.New("working directory unavailable") }, os.Stdin, func() bool { return false }).run([]string{"awf", name}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != "condition: awf: working directory unavailable\n" {
-				t.Fatalf("operational exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
-			}
-		})
+	stdout.Reset()
+	stderr.Reset()
+	if code := run([]string{"awf", "init", "--invalid"}, &stdout, &stderr); code != 2 || stdout.Len() != 0 || stderr.String() != "condition: awf: awf init: unknown flag \"--invalid\"\n" {
+		t.Fatalf("usage exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
+	}
+	stdout.Reset()
+	stderr.Reset()
+	if code := newRunner(func() (string, error) { return "", errors.New("working directory unavailable") }, os.Stdin, func() bool { return false }).run([]string{"awf", "init"}, &stdout, &stderr); code != 1 || stdout.Len() != 0 || stderr.String() != "condition: awf: working directory unavailable\n" {
+		t.Fatalf("operational exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 }

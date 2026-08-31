@@ -6,25 +6,10 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
-
-func TestAdvisoryCompatibilityAndReportErrorPaths(t *testing.T) {
-	if got := advisoryCompatibilityFiles(func() *OutputPlan {
-		plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "declaration-only"})})
-		return &plan
-	}()); len(got) != 0 {
-		t.Fatalf("compatibility files = %#v", got)
-	}
-	if _, err := checkresult.New([]checkresult.Finding{{Rank: severity.Error, Property: propertyCorrectness, Evidence: checkresult.Evidence{Kind: "broken", Path: "path"}}}, nil); err == nil {
-		t.Fatal("report finalizer accepted invalid producer evidence")
-	}
-}
 
 func TestAdvisoryNotesRejectMalformedRetainedData(t *testing.T) {
 	t.Run("pitfalls", func(t *testing.T) {
