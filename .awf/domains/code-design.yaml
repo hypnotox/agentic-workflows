@@ -1,4 +1,3 @@
 paths:
   - internal/checkresult/**
-  - internal/execution/**
   - internal/presentation/**

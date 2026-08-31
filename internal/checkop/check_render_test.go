@@ -4,7 +4,6 @@ import (
 	"context"
 	"io"
 
-	"github.com/hypnotox/agentic-workflows/internal/execution"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
@@ -21,12 +20,12 @@ func renderCheckCollection(stdout io.Writer, collection checkCollection) error {
 	return out.Failure
 }
 
-func runRepoCheckSelection(ctx context.Context, root string, stdout io.Writer, selected []execution.StepID, policy execution.FailurePolicy, aggregate bool, deps repoCheckDependencies) error {
-	return runRepoCheckSelectionWithPlanNotes(ctx, root, stdout, selected, policy, aggregate, nil, planNoteSink{}, deps)
+func runRepoCheckSelection(ctx context.Context, root string, stdout io.Writer, selected []repositoryLane, continueOnFailure, aggregate bool, deps repoCheckDependencies) error {
+	return runRepoCheckSelectionWithNotes(ctx, root, stdout, selected, continueOnFailure, aggregate, nil, deps)
 }
 
-func runRepoCheckSelectionWithPlanNotes(ctx context.Context, root string, stdout io.Writer, selected []execution.StepID, policy execution.FailurePolicy, aggregate bool, leadingNotes []string, planNotes planNoteSink, deps repoCheckDependencies) error {
-	collection, err := collectRepoCheckSelectionWithPlanNotes(ctx, root, selected, policy, aggregate, leadingNotes, planNotes, deps)
+func runRepoCheckSelectionWithNotes(ctx context.Context, root string, stdout io.Writer, selected []repositoryLane, continueOnFailure, aggregate bool, leadingNotes []string, deps repoCheckDependencies) error {
+	collection, err := collectRepoCheckSelection(ctx, root, selected, continueOnFailure, aggregate, leadingNotes, deps)
 	if err != nil {
 		return err
 	}

@@ -12,7 +12,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -46,7 +45,7 @@ func TestCollectCheckStagedRetainsMissingLockFailureAndReportsVersionSkew(t *tes
 	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML})
 	repo := gitfixture.At(root)
 	gitfixture.StageRemoval(t, repo, ".awf/awf.lock")
-	collection, err := collectCheckStagedSelectionWith(context.Background(), root, planNoteSink{}, true, false, productionCheckStagedDependencies())
+	collection, err := collectCheckStagedSelectionWith(context.Background(), root, true, false, productionCheckStagedDependencies())
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -60,22 +59,22 @@ func TestCollectCheckStagedRetainsMissingLockFailureAndReportsVersionSkew(t *tes
 		t.Fatal(err)
 	}
 	gitfixture.Stage(t, repo, map[string]string{".awf/awf.lock": string(body)})
-	collection, err = collectCheckStagedSelectionWith(context.Background(), root, planNoteSink{}, false, false, productionCheckStagedDependencies())
+	collection, err = collectCheckStagedSelectionWith(context.Background(), root, false, false, productionCheckStagedDependencies())
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(collection.information) != 1 || !strings.Contains(collection.information[0], "ahead of this project") {
-		t.Fatalf("version skew information = %v", collection.information)
+	if len(collection.results) != 1 || len(collection.results[0].result.Information()) != 1 || !strings.Contains(collection.results[0].result.Information()[0].Evidence.Detail, "ahead of this project") {
+		t.Fatalf("version skew results = %#v", collection.results)
 	}
 }
 
-func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
+func TestRunCheckStagedContinuesAfterStateOperationFailure(t *testing.T) {
 	root := stagedCheckProject(t, map[string]string{".awf/config.yaml": checkYAML})
-	stateFailure := errors.New("state category mapping failed")
+	stateFailure := errors.New("state check failed")
 	driftFailure := errors.New("staged drift failed")
 	dependencies := productionCheckStagedDependencies()
-	dependencies.present = func(checkresult.Result, string, bool) (repositorycheck.Presentation, error) {
-		return repositorycheck.Presentation{}, stateFailure
+	dependencies.stateRoot = func(context.Context, string) (currentstatecoord.CurrentStateReport, error) {
+		return currentstatecoord.CurrentStateReport{}, stateFailure
 	}
 	driftRan := false
 	dependencies.driftRoot = func(context.Context, string) (checkresult.Result, error) {
@@ -83,13 +82,13 @@ func TestRunCheckStagedContinuesAfterStatePresentationFailure(t *testing.T) {
 		return checkresult.Result{}, driftFailure
 	}
 	var stdout bytes.Buffer
-	collection, err := collectCheckStagedWith(context.Background(), root, planNoteSink{}, dependencies)
+	collection, err := collectCheckStagedWith(context.Background(), root, dependencies)
 	if err != nil {
 		t.Fatalf("collection error = %v, want operational failures retained in the collection", err)
 	}
 	err = renderCheckCollection(&stdout, collection)
 	if !driftRan {
-		t.Fatal("staged drift did not run after state presentation failure")
+		t.Fatal("staged drift did not run after state operation failure")
 	}
 	if !errors.Is(err, stateFailure) || !errors.Is(err, driftFailure) {
 		t.Fatalf("operational error = %v, want joined state and drift failures", err)
@@ -115,30 +114,20 @@ func TestCollectCheckStagedRoutesOrdinaryCurrentStateOwnerResults(t *testing.T) 
 	dependencies.stateRoot = func(context.Context, string) (currentstatecoord.CurrentStateReport, error) {
 		return currentstatecoord.CurrentStateReport{CurrentResult: ordinaryResult, OwnerResult: ordinaryResult}, nil
 	}
-	present := dependencies.present
-	seen := map[checkresult.Property]bool{}
-	informationSeen := false
-	dependencies.present = func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
-		for _, finding := range result.Findings() {
-			seen[finding.Property] = true
-		}
-		for _, item := range result.Information() {
-			if item.Evidence.Kind == "current-state" {
-				informationSeen = true
-			}
-		}
-		return present(result, check, evidence)
-	}
-	collection, err := collectCheckStagedSelectionWith(context.Background(), root, planNoteSink{}, true, false, dependencies)
+	collection, err := collectCheckStagedSelectionWith(context.Background(), root, true, false, dependencies)
 	if err != nil {
 		t.Fatal(err)
+	}
+	if len(collection.results) != 1 || collection.results[0].check != "staged current-state" {
+		t.Fatalf("staged results = %#v", collection.results)
+	}
+	result := collection.results[0].result
+	if len(result.Findings()) != 1 || result.Findings()[0].Property != "current-state-coverage" || len(result.Information()) != 1 || result.Information()[0].Evidence.Kind != "current-state" {
+		t.Fatalf("staged typed route lost owner results: %#v", result)
 	}
 	var stdout bytes.Buffer
 	if err := renderCheckCollection(&stdout, collection); err != nil {
 		t.Fatal(err)
-	}
-	if !seen["current-state-coverage"] || informationSeen == false {
-		t.Fatalf("staged typed route lost owner results: properties=%v information=%v", seen, informationSeen)
 	}
 	for _, want := range []string{"ordinary coverage warning", "ordinary provisional information"} {
 		if !strings.Contains(stdout.String(), want) {

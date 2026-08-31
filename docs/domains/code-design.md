@@ -7,7 +7,7 @@
 <!-- awf:edit current-state: from .awf/domains/parts/code-design/current-state.md -->
 <!-- awf:template-source templates/domains/domain.md.tmpl -->
 ## Current state
-The code-design domain is the sole domain owner of its selectors, including `internal/execution/**` and `internal/presentation/**`. Its global topics remain repository-wide applicable guidance; a global topic may separately own a bounded path only where its selectors and these domain selectors both match. `code-design/presentation-ownership` owns the cross-cutting presentation model globally and the bounded `internal/presentation/**` package surface, while the scoped `presentation-package` topic retains its complementary package-local boundary. Read the owning scoped and global topics before changing a governed structure rather than copying their claims into local guidance.
+The code-design domain is the sole domain owner of its selectors, `internal/checkresult/**` and `internal/presentation/**`. Its global topics remain repository-wide applicable guidance; a global topic may separately own a bounded path only where its selectors and these domain selectors both match. `code-design/presentation-ownership` owns the cross-cutting presentation model globally and the bounded `internal/presentation/**` package surface, while the scoped `presentation-package` topic retains its complementary package-local boundary. Read the owning scoped and global topics before changing a governed structure rather than copying their claims into local guidance.
 
 
 <!-- awf:template-source templates/domains/domain.md.tmpl -->
@@ -16,7 +16,6 @@ The code-design domain is the sole domain owner of its selectors, including `int
 [All topics](../topics/code-design/index.md)
 
 - [Dependency composition](../topics/code-design/dependency-composition.md): How awf selects, owns, and wires volatile dependencies without speculative abstraction.
-- [Execution planning](../topics/code-design/execution-planning.md): How closed multi-step operations prepare shared requirements and execute selected steps.
 - [Outcome modeling](../topics/code-design/outcome-modeling.md): How awf surfaces refusals and results for caller action, and how error identity is declared, matched, and tested.
 - [Package composition](../topics/code-design/package-composition.md): What a package owns and states, what earns an export, and how exported surface stays documented.
 - [Presentation ownership](../topics/code-design/presentation-ownership.md): Which package renders a result model for humans, and what a command binary keeps.

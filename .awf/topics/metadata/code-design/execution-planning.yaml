@@ -1,4 +1,0 @@
-title: Execution planning
-summary: How closed multi-step operations prepare shared requirements and execute selected steps.
-paths:
-  - internal/execution/**

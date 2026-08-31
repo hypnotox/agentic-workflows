@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/hypnotox/agentic-workflows/internal/execution"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
@@ -33,49 +32,51 @@ type Outcome struct {
 	Failure  error
 }
 
-type planNoteSink map[string]struct{}
-
 // Run prepares and executes exactly one resolved repository-check use case.
 func Run(ctx context.Context, root string, leaf Leaf) (Outcome, error) {
-	planNotes := planNoteSink{}
 	var collection checkCollection
 	var err error
 	switch leaf {
 	case Check:
-		collection, err = collectCheckRepoWithPlanNotes(ctx, root, planNotes)
+		collection, err = collectCheckRepo(ctx, root)
 		if err != nil {
 			collection.operational = append(collection.operational, err)
 		}
 		_, _, gitErr := awfgit.OpenContaining(root)
 		if errors.Is(gitErr, awfgit.ErrNotARepository) {
-			collection.information = append(collection.information, "staged check universe unavailable outside a git repository")
+			information, informationErr := informationResult([]string{"staged check universe unavailable outside a git repository"})
+			if informationErr != nil {
+				collection.operational = append(collection.operational, informationErr)
+			} else {
+				collection.add("advisory", information, false)
+			}
 			return outcome(collection)
 		}
 		if gitErr != nil {
 			collection.operational = append(collection.operational, gitErr)
 			return outcome(collection)
 		}
-		staged, stagedErr := collectCheckStaged(ctx, root, planNotes)
+		staged, stagedErr := collectCheckStaged(ctx, root)
 		collection = collection.append(staged)
 		if stagedErr != nil {
 			collection.operational = append(collection.operational, stagedErr)
 		}
 	case Repository:
-		collection, err = collectCheckRepoWithPlanNotes(ctx, root, planNotes)
+		collection, err = collectCheckRepo(ctx, root)
 	case RepositoryDrift:
-		collection, err = collectRepoCheckSelectionWithPlanNotes(ctx, root, []execution.StepID{repoStepDrift}, execution.StopOnFailure, false, nil, planNotes, productionRepoCheckDependencies())
+		collection, err = collectRepoCheckSelection(ctx, root, []repositoryLane{repositoryDrift}, false, false, nil, productionRepoCheckDependencies())
 	case RepositoryState:
-		collection, err = collectRepoCheckSelectionWithPlanNotes(ctx, root, []execution.StepID{repoStepState}, execution.StopOnFailure, false, nil, planNotes, productionRepoCheckDependencies())
+		collection, err = collectRepoCheckSelection(ctx, root, []repositoryLane{repositoryState}, false, false, nil, productionRepoCheckDependencies())
 	case RepositoryProse:
-		collection, err = collectRepoCheckSelectionWithPlanNotes(ctx, root, []execution.StepID{repoStepProse}, execution.StopOnFailure, false, nil, planNotes, productionRepoCheckDependencies())
+		collection, err = collectRepoCheckSelection(ctx, root, []repositoryLane{repositoryProse}, false, false, nil, productionRepoCheckDependencies())
 	case RepositoryMemory:
-		collection, err = collectRepoCheckSelectionWithPlanNotes(ctx, root, []execution.StepID{repoStepMemory}, execution.StopOnFailure, false, nil, planNotes, productionRepoCheckDependencies())
+		collection, err = collectRepoCheckSelection(ctx, root, []repositoryLane{repositoryMemory}, false, false, nil, productionRepoCheckDependencies())
 	case Staged:
-		collection, err = collectCheckStaged(ctx, root, planNotes)
+		collection, err = collectCheckStaged(ctx, root)
 	case StagedState:
-		collection, err = collectCheckStagedSelection(ctx, root, planNotes, true, false)
+		collection, err = collectCheckStagedSelection(ctx, root, true, false)
 	case StagedDrift:
-		collection, err = collectCheckStagedSelection(ctx, root, planNotes, false, true)
+		collection, err = collectCheckStagedSelection(ctx, root, false, true)
 	default:
 		return Outcome{}, fmt.Errorf("unknown repository-check operation %d", leaf)
 	}
@@ -86,12 +87,12 @@ func Run(ctx context.Context, root string, leaf Leaf) (Outcome, error) {
 }
 
 func outcome(collection checkCollection) (Outcome, error) {
+	report, reportErr := checkReport(collection.results)
 	if len(collection.operational) > 0 {
-		return Outcome{}, errors.Join(collection.operational...)
+		return Outcome{}, errors.Join(append(collection.operational, reportErr)...)
 	}
-	report, err := checkReport(collection.warnings, collection.information, collection.presentation)
-	if err != nil {
-		return Outcome{}, err
+	if reportErr != nil {
+		return Outcome{}, reportErr
 	}
 	document, err := report.Document()
 	if err != nil {

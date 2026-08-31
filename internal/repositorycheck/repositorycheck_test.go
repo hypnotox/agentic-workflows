@@ -52,43 +52,6 @@ func TestComposePreservesExplicitSlotOrder(t *testing.T) {
 	}
 }
 
-func TestPresentationUsesExplicitRanksAndPreservesEvidence(t *testing.T) {
-	mixed := result(t, []checkresult.Finding{
-		finding("error-kind", "error.md", "error detail"),
-		{Rank: severity.Warn, Property: "heuristic", Evidence: checkresult.Evidence{Kind: "warning-kind", Path: "warning.md", Detail: "warning detail"}},
-	}, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "information-kind", Path: "information.md", Detail: "information detail"}}})
-
-	plain, err := Present(mixed, "owner")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(plain.Errors) != 1 || len(plain.Warnings) != 1 || len(plain.Information) != 1 {
-		t.Fatalf("plain presentation = %#v", plain)
-	}
-	evidence, err := PresentEvidence(mixed, "owner")
-	if err != nil {
-		t.Fatal(err)
-	}
-	combined := (Presentation{}).Append(plain).Append(evidence)
-	if len(combined.Errors) != 2 || len(combined.Warnings) != 2 || len(combined.Information) != 2 {
-		t.Fatalf("combined presentation = %#v", combined)
-	}
-	if _, err := Present(mixed, ""); err == nil {
-		t.Fatal("presentation accepted an empty check label")
-	}
-	whitespaceFinding := result(t, []checkresult.Finding{{Rank: severity.Error, Property: "correctness", Evidence: checkresult.Evidence{Kind: "kind", Detail: " "}}}, nil)
-	if _, err := Present(whitespaceFinding, "owner"); err == nil {
-		t.Fatal("presentation accepted whitespace-only finding detail")
-	}
-	whitespaceInformation := result(t, nil, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "kind", Detail: " "}}})
-	if _, err := Present(whitespaceInformation, "owner"); err == nil {
-		t.Fatal("presentation accepted whitespace-only information detail")
-	}
-	if !HasErrors(mixed) || HasErrors(result(t, nil, nil)) {
-		t.Fatal("HasErrors did not follow explicit ranks")
-	}
-}
-
 func TestComposeRejectsResultsInWrongExplicitSlots(t *testing.T) {
 	errorResult := result(t, []checkresult.Finding{finding("error", "path", "detail")}, nil)
 	warningResult := result(t, []checkresult.Finding{{Rank: severity.Warn, Property: "heuristic", Evidence: checkresult.Evidence{Kind: "warning", Detail: "detail"}}}, nil)

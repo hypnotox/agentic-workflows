@@ -7,7 +7,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
@@ -42,86 +41,6 @@ type Report struct {
 	trackingInformationResult checkresult.Result
 	Notes                     []string
 	TrackingNotes             []string
-}
-
-// Presentation is the explicit ranked projection of owner-classified results.
-// Its fields preserve deterministic append order without recovering meaning from category labels.
-type Presentation struct {
-	Errors      []presentation.Record
-	Warnings    []presentation.Record
-	Information []presentation.Record
-}
-
-// Append preserves ordinary evidence multiplicity and deterministic category order.
-func (p Presentation) Append(other Presentation) Presentation {
-	p.Errors = append(p.Errors, other.Errors...)
-	p.Warnings = append(p.Warnings, other.Warnings...)
-	p.Information = append(p.Information, other.Information...)
-	return p
-}
-
-// Present projects one owner-classified result using its explicitly supplied
-// check label. Rank, not evidence spelling, selects the destination.
-func Present(result checkresult.Result, check string) (Presentation, error) {
-	return present(result, check, false)
-}
-
-// PresentEvidence is Present for a destination whose established output
-// includes producer evidence before its detail.
-func PresentEvidence(result checkresult.Result, check string) (Presentation, error) {
-	return present(result, check, true)
-}
-
-func present(result checkresult.Result, check string, evidencePrefix bool) (Presentation, error) {
-	var out Presentation
-	record := func(detail string) (presentation.Record, error) {
-		name, err := presentation.Prose(check)
-		if err != nil {
-			return presentation.Record{}, err
-		}
-		value, err := presentation.Prose(detail)
-		if err != nil {
-			return presentation.Record{}, err
-		}
-		return presentation.NewRecord(name, value)
-	}
-	for _, finding := range result.Findings() {
-		detail := finding.Evidence.Detail
-		if evidencePrefix {
-			detail = fmt.Sprintf("%s: %s: %s", finding.Evidence.Kind, finding.Evidence.Path, detail)
-		}
-		item, err := record(detail)
-		if err != nil {
-			return Presentation{}, err
-		}
-		if finding.Rank == severity.Error {
-			out.Errors = append(out.Errors, item)
-		} else {
-			out.Warnings = append(out.Warnings, item)
-		}
-	}
-	for _, item := range result.Information() {
-		detail := item.Evidence.Detail
-		if evidencePrefix {
-			detail = fmt.Sprintf("%s: %s: %s", item.Evidence.Kind, item.Evidence.Path, detail)
-		}
-		record, err := record(detail)
-		if err != nil {
-			return Presentation{}, err
-		}
-		out.Information = append(out.Information, record)
-	}
-	return out, nil
-}
-
-// HasErrors reports whether owner-classified results contain Error findings.
-func HasErrors(result checkresult.Result) bool {
-	for _, finding := range result.Findings() {
-		if finding.Rank == severity.Error {
-			return true
-		}
-	}
-	return false
 }
 
 // Compose aggregates completed owner results in their explicit established

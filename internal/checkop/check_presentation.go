@@ -3,16 +3,23 @@ package checkop
 import (
 	"fmt"
 
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
+// reportedResult carries only the presentation facts that do not belong to an
+// owner-classified check result. Result remains the sole check-result model.
+type reportedResult struct {
+	check          string
+	result         checkresult.Result
+	evidencePrefix bool
+}
+
 type checkCollection struct {
-	warnings     []string
-	information  []string
-	presentation repositorycheck.Presentation
-	failures     []error
-	operational  []error
+	results     []reportedResult
+	failures    []error
+	operational []error
 }
 
 type producedReportError struct{ error }
@@ -21,35 +28,55 @@ func (e *producedReportError) Unwrap() error { return e.error }
 
 type producedCheckFailure struct{ err error }
 
-func (e producedCheckFailure) Error() string {
-	return e.err.Error()
-}
+func (e producedCheckFailure) Error() string { return e.err.Error() }
 func (e producedCheckFailure) Unwrap() error { return e.err }
 
+func (c *checkCollection) add(check string, result checkresult.Result, evidencePrefix bool) {
+	c.results = append(c.results, reportedResult{check: check, result: result, evidencePrefix: evidencePrefix})
+}
+
 func (c checkCollection) append(other checkCollection) checkCollection {
-	// Ordinary evidence is not identity data: equal advisories and findings from
-	// the repository and staged universes remain separate, source-ordered facts.
-	// Plan warnings are deduplicated at their dedicated planNoteSink boundary.
-	c.warnings = append(c.warnings, other.warnings...)
-	c.information = append(c.information, other.information...)
-	c.presentation = c.presentation.Append(other.presentation)
+	// Equal evidence from repository and staged universes remains separate,
+	// source-ordered facts rather than identity data.
+	c.results = append(c.results, other.results...)
 	c.failures = append(c.failures, other.failures...)
 	c.operational = append(c.operational, other.operational...)
 	return c
 }
 
-func checkReport(warningNotes, informationNotes []string, projected repositorycheck.Presentation) (presentation.Report, error) {
-	warningRecords, err := advisoryRecords(warningNotes)
-	if err != nil {
-		return presentation.Report{}, err
+// checkReport is the single repository-check report assembly path. It projects
+// owner-classified results directly into the central presentation model.
+func checkReport(results []reportedResult) (presentation.Report, error) {
+	var errorRecords, warningRecords, informationRecords []presentation.Record
+	for _, reported := range results {
+		for _, finding := range reported.result.Findings() {
+			detail := finding.Evidence.Detail
+			if reported.evidencePrefix {
+				detail = fmt.Sprintf("%s: %s: %s", finding.Evidence.Kind, finding.Evidence.Path, detail)
+			}
+			record, err := checkRecord(reported.check, detail)
+			if err != nil {
+				return presentation.Report{}, err
+			}
+			if finding.Rank == severity.Error {
+				errorRecords = append(errorRecords, record)
+			} else {
+				warningRecords = append(warningRecords, record)
+			}
+		}
+		for _, information := range reported.result.Information() {
+			detail := information.Evidence.Detail
+			if reported.evidencePrefix {
+				detail = fmt.Sprintf("%s: %s: %s", information.Evidence.Kind, information.Evidence.Path, detail)
+			}
+			record, err := checkRecord(reported.check, detail)
+			if err != nil {
+				return presentation.Report{}, err
+			}
+			informationRecords = append(informationRecords, record)
+		}
 	}
-	informationRecords, err := advisoryRecords(informationNotes)
-	if err != nil {
-		return presentation.Report{}, err
-	}
-	errorRecords := projected.Errors
-	warningRecords = append(warningRecords, projected.Warnings...)
-	informationRecords = append(informationRecords, projected.Information...)
+
 	status := "completed"
 	if len(errorRecords) > 0 {
 		status = "failed"
@@ -64,35 +91,27 @@ func checkReport(warningNotes, informationNotes []string, projected repositorych
 	if err != nil {
 		return presentation.Report{}, err
 	}
-	output := []presentation.ReportCategory{}
+	var categories []presentation.ReportCategory
 	if len(errorRecords) > 0 {
-		output = append(output, presentation.ReportCategory{Label: "errors", Schema: []string{"check", "detail"}, Records: errorRecords})
+		categories = append(categories, presentation.ReportCategory{Label: "errors", Schema: []string{"check", "detail"}, Records: errorRecords})
 	}
 	if len(warningRecords) > 0 {
-		output = append(output, presentation.ReportCategory{Label: "warnings", Schema: []string{"check", "detail"}, Records: warningRecords})
+		categories = append(categories, presentation.ReportCategory{Label: "warnings", Schema: []string{"check", "detail"}, Records: warningRecords})
 	}
 	if len(informationRecords) > 0 {
-		output = append(output, presentation.ReportCategory{Label: "information", Schema: []string{"check", "detail"}, Records: informationRecords})
+		categories = append(categories, presentation.ReportCategory{Label: "information", Schema: []string{"check", "detail"}, Records: informationRecords})
 	}
-	return presentation.Report{Status: status, Summary: []presentation.Field{summary}, Categories: output}, nil
+	return presentation.Report{Status: status, Summary: []presentation.Field{summary}, Categories: categories}, nil
 }
 
-func advisoryRecords(notes []string) ([]presentation.Record, error) {
-	records := make([]presentation.Record, 0, len(notes))
-	for _, note := range notes {
-		check, err := presentation.Prose("advisory")
-		if err != nil {
-			return nil, err
-		}
-		detail, err := presentation.Prose(note)
-		if err != nil {
-			return nil, err
-		}
-		record, err := presentation.NewRecord(check, detail)
-		if err != nil {
-			return nil, err
-		}
-		records = append(records, record)
+func checkRecord(check, detail string) (presentation.Record, error) {
+	name, err := presentation.Prose(check)
+	if err != nil {
+		return presentation.Record{}, err
 	}
-	return records, nil
+	value, err := presentation.Prose(detail)
+	if err != nil {
+		return presentation.Record{}, err
+	}
+	return presentation.NewRecord(name, value)
 }

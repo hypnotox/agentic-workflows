@@ -8,43 +8,35 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
-	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"golang.org/x/mod/semver"
 )
 
 type checkStagedDependencies struct {
 	stateRoot func(context.Context, string) (currentstatecoord.CurrentStateReport, error)
 	driftRoot func(context.Context, string) (checkresult.Result, error)
-	present   func(checkresult.Result, string, bool) (repositorycheck.Presentation, error)
 }
 
 func productionCheckStagedDependencies() checkStagedDependencies {
 	return checkStagedDependencies{
 		stateRoot: currentstatecoord.CheckStagedRoot,
 		driftRoot: stagedDriftResult,
-		present: func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
-			if evidence {
-				return repositorycheck.PresentEvidence(result, check)
-			}
-			return repositorycheck.Present(result, check)
-		},
 	}
 }
 
 // collectCheckStaged runs the staged transition universe. The commit child is direct-only.
-func collectCheckStaged(ctx context.Context, root string, planNotes planNoteSink) (checkCollection, error) {
-	return collectCheckStagedWith(ctx, root, planNotes, productionCheckStagedDependencies())
+func collectCheckStaged(ctx context.Context, root string) (checkCollection, error) {
+	return collectCheckStagedWith(ctx, root, productionCheckStagedDependencies())
 }
 
-func collectCheckStagedWith(ctx context.Context, root string, planNotes planNoteSink, dependencies checkStagedDependencies) (checkCollection, error) {
-	return collectCheckStagedSelectionWith(ctx, root, planNotes, true, true, dependencies)
+func collectCheckStagedWith(ctx context.Context, root string, dependencies checkStagedDependencies) (checkCollection, error) {
+	return collectCheckStagedSelectionWith(ctx, root, true, true, dependencies)
 }
 
-func collectCheckStagedSelection(ctx context.Context, root string, planNotes planNoteSink, state, drift bool) (checkCollection, error) {
-	return collectCheckStagedSelectionWith(ctx, root, planNotes, state, drift, productionCheckStagedDependencies())
+func collectCheckStagedSelection(ctx context.Context, root string, state, drift bool) (checkCollection, error) {
+	return collectCheckStagedSelectionWith(ctx, root, state, drift, productionCheckStagedDependencies())
 }
 
-func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes planNoteSink, state, drift bool, dependencies checkStagedDependencies) (checkCollection, error) {
+func collectCheckStagedSelectionWith(ctx context.Context, root string, state, drift bool, dependencies checkStagedDependencies) (checkCollection, error) {
 	lock, err := stagedLock(ctx, root)
 	if err != nil && !errors.Is(err, errNoStagedLock) {
 		return checkCollection{}, err
@@ -60,7 +52,11 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 	} else {
 		lockV, binV, ok := lockVsBinaryLock(lock)
 		if ok && semver.Compare(binV, lockV) > 0 {
-			collection.information = append(collection.information, fmt.Sprintf("awf %s is ahead of this project (rendered by %s); run awf render to re-pin", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v")))
+			result, resultErr := informationResult([]string{fmt.Sprintf("awf %s is ahead of this project (rendered by %s); run awf render to re-pin", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v"))})
+			if resultErr != nil {
+				return checkCollection{}, resultErr
+			}
+			collection.add("advisory", result, false)
 		}
 	}
 	if state && lock != nil {
@@ -68,14 +64,9 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 		if err != nil {
 			collection.operational = append(collection.operational, err)
 		} else {
-			projected, projectErr := presentCurrentStateReport(report, "staged current-state", planNotes, dependencies.present)
-			if projectErr != nil {
-				collection.operational = append(collection.operational, projectErr)
-			} else {
-				collection.presentation = collection.presentation.Append(projected)
-				if repositorycheck.HasErrors(report.Result()) {
-					collection.failures = append(collection.failures, errors.New("check staged state failed"))
-				}
+			collection.add("staged current-state", report.CurrentResult, false)
+			if hasErrors(report.Result()) {
+				collection.failures = append(collection.failures, errors.New("check staged state failed"))
 			}
 		}
 	}
@@ -84,14 +75,9 @@ func collectCheckStagedSelectionWith(ctx context.Context, root string, planNotes
 		if err != nil {
 			collection.operational = append(collection.operational, err)
 		} else {
-			projected, projectErr := dependencies.present(result, "staged drift", true)
-			if projectErr != nil {
-				collection.operational = append(collection.operational, projectErr)
-			} else {
-				collection.presentation = collection.presentation.Append(projected)
-				if repositorycheck.HasErrors(result) {
-					collection.failures = append(collection.failures, errors.New("check staged drift failed"))
-				}
+			collection.add("staged drift", result, true)
+			if hasErrors(result) {
+				collection.failures = append(collection.failures, errors.New("check staged drift failed"))
 			}
 		}
 	}

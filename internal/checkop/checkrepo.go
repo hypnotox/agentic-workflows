@@ -11,26 +11,25 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
-	"github.com/hypnotox/agentic-workflows/internal/execution"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
+	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"golang.org/x/mod/semver"
 )
 
-const (
-	repoStepDrift  execution.StepID = "drift"
-	repoStepState  execution.StepID = "state"
-	repoStepProse  execution.StepID = "prose"
-	repoStepMemory execution.StepID = "memory"
+type repositoryLane uint8
 
-	repoRequirementConfig       execution.RequirementID = "config"
-	repoRequirementProject      execution.RequirementID = "project"
-	repoRequirementCheckReport  execution.RequirementID = "check-report"
-	repoRequirementCurrentState execution.RequirementID = "current-state"
-	repoRequirementIndex        execution.RequirementID = "index"
+const (
+	repositoryDrift repositoryLane = iota + 1
+	repositoryState
+	repositoryProse
+	repositoryMemory
 )
+
+func orderedRepositoryLanes() []repositoryLane {
+	return []repositoryLane{repositoryDrift, repositoryState, repositoryProse, repositoryMemory}
+}
 
 type repoCheckInputs struct {
 	config       *config.Config
@@ -38,7 +37,7 @@ type repoCheckInputs struct {
 	checkReport  project.CheckReport
 	currentState currentstatecoord.CurrentStateReport
 	index        *snapshot.Tree
-	presentation repositorycheck.Presentation
+	collection   checkCollection
 }
 
 type repoCheckDependencies struct {
@@ -47,29 +46,27 @@ type repoCheckDependencies struct {
 	checkReport  func(context.Context, *project.Session) (project.CheckReport, error)
 	currentState func(context.Context, *project.Session) (currentstatecoord.CurrentStateReport, error)
 	indexTree    func(context.Context, string) (*snapshot.Tree, error)
-	present      func(checkresult.Result, string, bool) (repositorycheck.Presentation, error)
 }
-
-type checkResultPresenter func(checkresult.Result, string, bool) (repositorycheck.Presentation, error)
 
 func hasCheckResults(result checkresult.Result) bool {
 	return len(result.Findings()) > 0 || len(result.Information()) > 0
 }
 
-func informationResult(notes []string) checkresult.Result {
+func hasErrors(result checkresult.Result) bool {
+	for _, finding := range result.Findings() {
+		if finding.Rank == severity.Error {
+			return true
+		}
+	}
+	return false
+}
+
+func informationResult(notes []string) (checkresult.Result, error) {
 	information := make([]checkresult.Information, 0, len(notes))
 	for _, note := range notes {
 		information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "repository-check", Detail: note}})
 	}
-	result, err := checkresult.New(nil, information)
-	if err != nil {
-		return checkresult.Result{}
-	}
-	return result
-}
-
-func presentCurrentStateReport(report currentstatecoord.CurrentStateReport, check string, _ planNoteSink, present checkResultPresenter) (repositorycheck.Presentation, error) {
-	return present(report.CurrentResult, check, false)
+	return checkresult.New(nil, information)
 }
 
 type repoIndexPreparationError struct{ err error }
@@ -123,12 +120,6 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 		currentState: func(ctx context.Context, session *project.Session) (currentstatecoord.CurrentStateReport, error) {
 			return currentstatecoord.CheckWorking(session.Root(), session.Repository(), ctx)
 		},
-		present: func(result checkresult.Result, check string, evidence bool) (repositorycheck.Presentation, error) {
-			if evidence {
-				return repositorycheck.PresentEvidence(result, check)
-			}
-			return repositorycheck.Present(result, check)
-		},
 		indexTree: func(ctx context.Context, root string) (*snapshot.Tree, error) {
 			tree, err := stagedTree(ctx, root)
 			if err != nil {
@@ -139,132 +130,56 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 	}
 }
 
-// repoCheckSystem defines one operation-local capability graph. It freezes typed
-// prepared inputs into output actions only after all selected requirements work.
-func repoCheckSystem(root string, aggregate bool, leadingNotes []string, planNotes planNoteSink, inputs *repoCheckInputs, deps repoCheckDependencies) execution.System {
-	return execution.System{
-		Requirements: []execution.Requirement{
-			{ID: repoRequirementConfig, Prepare: func(context.Context) error {
-				cfg, err := deps.loadConfig(config.RootDir(root))
-				inputs.config = cfg
-				return err
-			}},
-			{ID: repoRequirementProject, Dependencies: []execution.RequirementID{repoRequirementConfig}, Prepare: func(ctx context.Context) error {
-				session, err := deps.loadSession(ctx, root, inputs.config)
-				inputs.session = session
-				return err
-			}},
-			{ID: repoRequirementCheckReport, Dependencies: []execution.RequirementID{repoRequirementProject}, Prepare: func(ctx context.Context) error {
-				r, err := deps.checkReport(ctx, inputs.session)
-				inputs.checkReport = r
-				return err
-			}},
-			{ID: repoRequirementCurrentState, Dependencies: []execution.RequirementID{repoRequirementProject}, Prepare: func(ctx context.Context) error {
-				r, err := deps.currentState(ctx, inputs.session)
-				inputs.currentState = r
-				return err
-			}},
-			{ID: repoRequirementIndex, Dependencies: []execution.RequirementID{repoRequirementConfig}, Prepare: func(ctx context.Context) error {
-				tree, err := deps.indexTree(ctx, root)
-				inputs.index = tree
-				return err
-			}},
-		},
-		Foundations: []execution.RequirementID{repoRequirementConfig},
-		Steps: []execution.Step{
-			{ID: repoStepDrift, Requirements: func(context.Context) ([]execution.RequirementID, error) {
-				return []execution.RequirementID{repoRequirementCheckReport}, nil
-			}},
-			{ID: repoStepState, Requirements: func(context.Context) ([]execution.RequirementID, error) {
-				return []execution.RequirementID{repoRequirementCurrentState}, nil
-			}},
-			{ID: repoStepProse, Requirements: func(context.Context) ([]execution.RequirementID, error) {
-				return []execution.RequirementID{repoRequirementIndex}, nil
-			}},
-			{ID: repoStepMemory, Requirements: func(context.Context) ([]execution.RequirementID, error) {
-				return []execution.RequirementID{repoRequirementIndex}, nil
-			}},
-		},
-		Bind: func(steps []execution.StepID) ([]execution.BoundAction, error) {
-			actions := make([]execution.BoundAction, 0, len(steps))
-			for _, step := range steps {
-				switch step {
-				case repoStepDrift:
-					report := inputs.checkReport
-					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						tracking, err := deps.present(report.TrackingInformationResult(), "advisory", false)
-						if err != nil {
-							return err
-						}
-						inputs.presentation = inputs.presentation.Append(tracking)
-						if aggregate {
-							leading := informationResult(leadingNotes)
-							projected, err := deps.present(leading, "advisory", false)
-							if err != nil {
-								return err
-							}
-							inputs.presentation = inputs.presentation.Append(projected)
-							projected, err = deps.present(report.AggregateAdvisoryResult(), "advisory", false)
-							if err != nil {
-								return err
-							}
-							inputs.presentation = inputs.presentation.Append(projected)
-						}
-						projected, err := deps.present(report.DirectResult, "drift", true)
-						if err != nil {
-							return err
-						}
-						inputs.presentation = inputs.presentation.Append(projected)
-						if repositorycheck.HasErrors(report.DirectResult) {
-							return producedCheckFailure{errors.New("check repo drift failed")}
-						}
-						return nil
-					}})
-				case repoStepState:
-					report := inputs.currentState
-					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						projected, err := presentCurrentStateReport(report, "current-state", planNotes, deps.present)
-						if err != nil {
-							return err
-						}
-						inputs.presentation = inputs.presentation.Append(projected)
-						if repositorycheck.HasErrors(report.Result()) {
-							return producedCheckFailure{errors.New("check repo state failed")}
-						}
-						return nil
-					}})
-				case repoStepProse:
-					cfg, tree := inputs.config, inputs.index
-					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						result, err := proseCheckResult(cfg, tree)
-						if err != nil {
-							return err
-						}
-						projected, err := deps.present(result, "prose", false)
-						inputs.presentation = inputs.presentation.Append(projected)
-						return err
-					}})
-				case repoStepMemory:
-					cfg, tree := inputs.config, inputs.index
-					actions = append(actions, execution.BoundAction{Step: step, Run: func(context.Context) error {
-						result, err := memoryCheckResult(cfg, tree)
-						projected, projectErr := deps.present(result, "memory", false)
-						inputs.presentation = inputs.presentation.Append(projected)
-						if projectErr != nil {
-							return projectErr
-						}
-						return err
-					}})
-				}
-			}
-			return actions, nil
-		},
+// prepareRepositoryChecks makes the real lane dependencies explicit. Every
+// selected input is ready before any result is collected, preserving the
+// operation's no-partial-report preparation barrier.
+func prepareRepositoryChecks(ctx context.Context, root string, selected []repositoryLane, deps repoCheckDependencies) (*repoCheckInputs, error) {
+	for _, lane := range selected {
+		if !slices.Contains(orderedRepositoryLanes(), lane) {
+			return nil, fmt.Errorf("unknown repository check lane %d", lane)
+		}
 	}
+	inputs := &repoCheckInputs{}
+	cfg, err := deps.loadConfig(config.RootDir(root))
+	if err != nil {
+		return nil, fmt.Errorf("prepare requirement %q: %w", "config", err)
+	}
+	inputs.config = cfg
+
+	needsSession := slices.Contains(selected, repositoryDrift) || slices.Contains(selected, repositoryState)
+	if needsSession {
+		session, err := deps.loadSession(ctx, root, cfg)
+		if err != nil {
+			return nil, fmt.Errorf("prepare requirement %q: %w", "project", err)
+		}
+		inputs.session = session
+	}
+	if slices.Contains(selected, repositoryDrift) {
+		report, err := deps.checkReport(ctx, inputs.session)
+		if err != nil {
+			return nil, fmt.Errorf("prepare requirement %q: %w", "check-report", err)
+		}
+		inputs.checkReport = report
+	}
+	if slices.Contains(selected, repositoryState) {
+		report, err := deps.currentState(ctx, inputs.session)
+		if err != nil {
+			return nil, fmt.Errorf("prepare requirement %q: %w", "current-state", err)
+		}
+		inputs.currentState = report
+	}
+	if slices.Contains(selected, repositoryProse) || slices.Contains(selected, repositoryMemory) {
+		tree, err := deps.indexTree(ctx, root)
+		if err != nil {
+			return nil, fmt.Errorf("prepare requirement %q: %w", "index", err)
+		}
+		inputs.index = tree
+	}
+	return inputs, nil
 }
 
-func collectRepoCheckSelectionWithPlanNotes(ctx context.Context, root string, selected []execution.StepID, policy execution.FailurePolicy, aggregate bool, leadingNotes []string, planNotes planNoteSink, deps repoCheckDependencies) (checkCollection, error) {
-	inputs := &repoCheckInputs{}
-	prepared, err := execution.Prepare(ctx, repoCheckSystem(root, aggregate, leadingNotes, planNotes, inputs, deps), selected)
+func collectRepoCheckSelection(ctx context.Context, root string, selected []repositoryLane, continueOnFailure, aggregate bool, leadingNotes []string, deps repoCheckDependencies) (checkCollection, error) {
+	inputs, err := prepareRepositoryChecks(ctx, root, selected, deps)
 	if err != nil {
 		var indexErr *repoIndexPreparationError
 		if errors.As(err, &indexErr) {
@@ -272,42 +187,102 @@ func collectRepoCheckSelectionWithPlanNotes(ctx context.Context, root string, se
 		}
 		return checkCollection{}, err
 	}
-	outcomes, err := prepared.Run(ctx, policy)
-	if err != nil {
-		return checkCollection{}, err
-	}
-	collection := checkCollection{presentation: inputs.presentation}
-	for _, outcome := range outcomes {
-		if outcome.Err == nil {
+	for _, lane := range orderedRepositoryLanes() {
+		if !slices.Contains(selected, lane) {
 			continue
 		}
-		var produced producedCheckFailure
-		if errors.As(outcome.Err, &produced) {
-			collection.failures = append(collection.failures, outcome.Err)
-			continue
+		if err := ctx.Err(); err != nil {
+			return checkCollection{}, err
 		}
-		collection.operational = append(collection.operational, outcome.Err)
+		laneErr := collectRepositoryLane(inputs, lane, aggregate, leadingNotes)
+		if laneErr != nil {
+			laneErr = fmt.Errorf("execute step %q: %w", laneName(lane), laneErr)
+		}
+		if err := ctx.Err(); err != nil {
+			return checkCollection{}, err
+		}
+		if laneErr != nil {
+			var produced producedCheckFailure
+			if errors.As(laneErr, &produced) {
+				inputs.collection.failures = append(inputs.collection.failures, laneErr)
+			} else {
+				inputs.collection.operational = append(inputs.collection.operational, laneErr)
+			}
+			if !continueOnFailure {
+				break
+			}
+		}
 	}
-	return collection, nil
+	return inputs.collection, nil
 }
 
-func repoScannerErrorPrefix(selected []execution.StepID) string {
-	for _, step := range []execution.StepID{repoStepProse, repoStepMemory} {
-		if !slices.Contains(selected, step) {
+func collectRepositoryLane(inputs *repoCheckInputs, lane repositoryLane, aggregate bool, leadingNotes []string) error {
+	switch lane {
+	case repositoryDrift:
+		report := inputs.checkReport
+		inputs.collection.add("advisory", report.TrackingInformationResult(), false)
+		if aggregate {
+			leading, err := informationResult(leadingNotes)
+			if err != nil {
+				return err
+			}
+			inputs.collection.add("advisory", leading, false)
+			inputs.collection.add("advisory", report.AggregateAdvisoryResult(), false)
+		}
+		inputs.collection.add("drift", report.DirectResult, true)
+		if hasErrors(report.DirectResult) {
+			return producedCheckFailure{errors.New("check repo drift failed")}
+		}
+	case repositoryState:
+		report := inputs.currentState
+		inputs.collection.add("current-state", report.CurrentResult, false)
+		if hasErrors(report.Result()) {
+			return producedCheckFailure{errors.New("check repo state failed")}
+		}
+	case repositoryProse:
+		result, err := proseCheckResult(inputs.config, inputs.index)
+		inputs.collection.add("prose", result, false)
+		return err
+	case repositoryMemory:
+		result, err := memoryCheckResult(inputs.config, inputs.index)
+		inputs.collection.add("memory", result, false)
+		return err
+	default:
+		return fmt.Errorf("unknown repository check lane %d", lane)
+	}
+	return nil
+}
+
+func laneName(lane repositoryLane) string {
+	switch lane {
+	case repositoryDrift:
+		return "drift"
+	case repositoryState:
+		return "state"
+	case repositoryProse:
+		return "prose"
+	case repositoryMemory:
+		return "memory"
+	default:
+		return fmt.Sprintf("lane-%d", lane)
+	}
+}
+
+func repoScannerErrorPrefix(selected []repositoryLane) string {
+	for _, lane := range []repositoryLane{repositoryProse, repositoryMemory} {
+		if !slices.Contains(selected, lane) {
 			continue
 		}
-		if step == repoStepProse {
+		if lane == repositoryProse {
 			return "check repo prose"
 		}
-		if step == repoStepMemory {
-			return "check repo memory"
-		}
+		return "check repo memory"
 	}
 	panic("repo index preparation without a selected scanner")
 }
 
-// collectCheckRepoWithPlanNotes runs the repository-universe aggregate and owns its version note.
-func collectCheckRepoWithPlanNotes(ctx context.Context, root string, planNotes planNoteSink) (checkCollection, error) {
+// collectCheckRepo runs the repository-universe aggregate and owns its version note.
+func collectCheckRepo(ctx context.Context, root string) (checkCollection, error) {
 	lockV, binV, ok, err := checkLockVsBinary(root)
 	if err != nil {
 		return checkCollection{}, err
@@ -316,7 +291,7 @@ func collectCheckRepoWithPlanNotes(ctx context.Context, root string, planNotes p
 	if ok && semver.Compare(binV, lockV) > 0 {
 		leadingNotes = append(leadingNotes, fmt.Sprintf("awf %s is ahead of this project (rendered by %s); run awf render to re-pin", strings.TrimPrefix(binV, "v"), strings.TrimPrefix(lockV, "v")))
 	}
-	return collectRepoCheckSelectionWithPlanNotes(ctx, root, []execution.StepID{repoStepDrift, repoStepState, repoStepProse, repoStepMemory}, execution.ContinueOnFailure, true, leadingNotes, planNotes, productionRepoCheckDependencies())
+	return collectRepoCheckSelection(ctx, root, orderedRepositoryLanes(), true, true, leadingNotes, productionRepoCheckDependencies())
 }
 
 func checkLockVsBinary(root string) (lockV, binV string, ok bool, err error) {
