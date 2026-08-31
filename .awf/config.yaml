@@ -59,6 +59,9 @@ commitPolicy:
       key: ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIF8DILJOI+TMmpnFxH0vS+3WuhYyFZHRIMfPfiLZYK18
 integrationBranch: main
 localDocs:
+  - name: v0-45-adopter-rollout
+    title: v0.45 Adopter Rollout
+    description: Verified closure evidence for the v0.45 managed-adopter rollout
   - name: known-issues
     title: Known Issues
     description: Reproducible concrete defects with completion criteria
