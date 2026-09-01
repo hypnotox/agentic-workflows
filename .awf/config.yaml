@@ -56,6 +56,9 @@ localDocs:
   - name: v0-45-adopter-rollout
     title: v0.45 Adopter Rollout
     description: Verified closure evidence for the v0.45 managed-adopter rollout
+  - name: v0-46-adopter-rollout
+    title: v0.46 Adopter Rollout
+    description: Verified closure evidence for the v0.46 managed-adopter rollout
   - name: known-issues
     title: Known Issues
     description: Reproducible concrete defects with completion criteria

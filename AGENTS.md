@@ -107,3 +107,5 @@ For command flags and daily use, see [docs/working-with-awf.md](docs/working-wit
 - **Research:** [docs/research/index.md](docs/research/index.md), Unresolved design questions and experiments with decision triggers
 
 - **v0.45 Adopter Rollout:** [docs/v0-45-adopter-rollout.md](docs/v0-45-adopter-rollout.md), Verified closure evidence for the v0.45 managed-adopter rollout
+
+- **v0.46 Adopter Rollout:** [docs/v0-46-adopter-rollout.md](docs/v0-46-adopter-rollout.md), Verified closure evidence for the v0.46 managed-adopter rollout

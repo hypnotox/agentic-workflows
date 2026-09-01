@@ -245,8 +245,8 @@
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
       "templateHash": "sha256:eae92f4cfcc204201d598b8ba02410807326895b6e7ab9357dc18a9c72616a7c",
-      "configHash": "sha256:75acd0be3a381c70fb5b44d2601a89b4c41ee02f1b03443df4c01819f87f2398",
-      "outputHash": "sha256:4943e4567ba9ed197d3674f41a4d98d5a230a43485161ae4188dd220ef7dc577"
+      "configHash": "sha256:a4d96669c3e19511117442e76db6d9f8ff15f6c4aee2148dc3f7258e6b724c47",
+      "outputHash": "sha256:3bb18d99d976bcdbab12e45f2b50ed5c723f0c851e1424507a4cb1bcfce17027"
     },
     "CLAUDE.md": {
       "templateId": "claude/CLAUDE.md.tmpl",
@@ -276,7 +276,7 @@
       "templateId": "docs/config-reference.md.tmpl",
       "templateHash": "sha256:3d0c92dd17aee1aceecfb2e0f9cfa36689e0fe0967b6ccff69e27fcfc7aa14b0",
       "configHash": "sha256:18c6a7dcbe02d5a59533d159b7d5181644e1d1dcf99b5e00d7199b4daed8c009",
-      "outputHash": "sha256:4b99fb6b8af3fd83b298577aee98c1dd7fe4edf0a309cdae47c9562d0af8213c",
+      "outputHash": "sha256:df48e239a7ac5fab78207d826f60f5472c0ef7bd6d66deb89fc9ab7619737622",
       "regenChecked": true
     },
     "docs/debugging.md": {
@@ -590,8 +590,8 @@
     "docs/roadmap.md": {
       "templateId": "docs/roadmap.md.tmpl",
       "templateHash": "sha256:26c7896fbc808c909083ceedc048ea5706a9252d32642d031bd816d7ef1cd511",
-      "configHash": "sha256:336ff22a914940f9013a6d8db41b28814f8397c31d0a8a0e02cabc81160d8932",
-      "outputHash": "sha256:42666b4d007c67bd03036ea4764c1a6c4063caf1822008065be0f12afb2ac166"
+      "configHash": "sha256:d7a96266ed5dadeb9d9356151bd086b90f5551e6c6f15a49a2fe23dd94a240ee",
+      "outputHash": "sha256:5312b444dbe1f8eed8efaf42eebbb79d6651c1a9115741cf296c1057176081ec"
     },
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
@@ -916,6 +916,13 @@
       "templateHash": "sha256:f09ab3b6e84fa2d6a10c6f2ac2a6e1552ad8cada8855c9e378f432a96b7c733d",
       "configHash": "sha256:5a16ee1fb459c32b5dd403c4f2541feed1fe2db0446a849eee0ccd30c5598013",
       "outputHash": "sha256:f94df3359e7a51063c5ea7928b513e7ae3bd1315a3459080d3534f492453b1a5",
+      "regenChecked": true
+    },
+    "docs/v0-46-adopter-rollout.md": {
+      "templateId": "docs/local.md.tmpl",
+      "templateHash": "sha256:f09ab3b6e84fa2d6a10c6f2ac2a6e1552ad8cada8855c9e378f432a96b7c733d",
+      "configHash": "sha256:8ff7dd62e785fdb66b909790202a29cba7dcd9febbe912c9f48050d37ca5dfd4",
+      "outputHash": "sha256:05337f535435ed218adb692112e6e550890b8e35dd0e1a283ad39e46ff0a21c2",
       "regenChecked": true
     },
     "docs/workflow.md": {
