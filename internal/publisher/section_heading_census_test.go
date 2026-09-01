@@ -7,6 +7,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -25,7 +26,7 @@ func TestLiveMarkdownSectionHeadingCensus(t *testing.T) {
 	}
 	visited, sections := 0, 0
 	for tid, encoder := range liveTemplateEncoders(renderInputsForTest(p)) {
-		if encoder != MarkdownAgentDialect {
+		if encoder != artifactregistry.MarkdownAgentDialect {
 			continue
 		}
 		visited++

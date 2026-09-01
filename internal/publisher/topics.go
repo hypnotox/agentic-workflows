@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -54,8 +55,8 @@ func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFil
 		}
 		path := artifactregistry.TopicOutputPath(t.ID.String())
 		cfgHash = templateSourceConfigHash(cfgHash, templateSourceRoot(p))
-		observed := normalizeOutputInputs(append([]OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/" + topicTID, Role: ArtifactTemplate}, {Path: metadataPath, Role: ArtifactTopicMetadata}, {Path: partPath, Role: ArtifactClaimPart}}, templateInputs...))
-		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicTID, TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: observed, ObservedTemplateID: topicTID})
+		observed := normalizeOutputInputs(append([]OutputInput{{Path: config.DirName + "/config.yaml", Role: outputplan.ArtifactConfig}, {Path: "templates/" + topicTID, Role: outputplan.ArtifactTemplate}, {Path: metadataPath, Role: outputplan.ArtifactTopicMetadata}, {Path: partPath, Role: outputplan.ArtifactClaimPart}}, templateInputs...))
+		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicTID, TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: observed, ObservedTemplateID: topicTID})
 		deps[path] = []string{metadataPath, partPath}
 	}
 	for _, domain := range slices.Sorted(slices.Values(p.cfg.Domains)) {
@@ -78,17 +79,17 @@ func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFil
 		})
 		enc, _ := yaml.Marshal(model)
 		path := artifactregistry.TopicIndexOutputPath(domain)
-		observed := []OutputInput{{Path: config.DirName + "/config.yaml", Role: ArtifactConfig}, {Path: "templates/" + topicIndexTID, Role: ArtifactTemplate}}
+		observed := []OutputInput{{Path: config.DirName + "/config.yaml", Role: outputplan.ArtifactConfig}, {Path: "templates/" + topicIndexTID, Role: outputplan.ArtifactTemplate}}
 		for _, t := range topics {
 			metadataPath, partPath := relSlash(p.root(), t.MetadataPath), relSlash(p.root(), t.PartPath)
 			deps[path] = append(deps[path], metadataPath, partPath)
-			observed = append(observed, OutputInput{Path: metadataPath, Role: ArtifactTopicMetadata}, OutputInput{Path: partPath, Role: ArtifactClaimPart})
+			observed = append(observed, OutputInput{Path: metadataPath, Role: outputplan.ArtifactTopicMetadata}, OutputInput{Path: partPath, Role: outputplan.ArtifactClaimPart})
 		}
-		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicIndexTID, TemplateHash: manifest.Hash(indexTemplate), ConfigHash: templateSourceConfigHash(manifest.Hash(enc), templateSourceRoot(p)), Policy: declaredPolicy("topics", false), Declarer: "topic-index:" + domain, DeclarerProjection: domain, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: normalizeOutputInputs(append(observed, templateInputs...)), ObservedTemplateID: topicIndexTID})
+		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicIndexTID, TemplateHash: manifest.Hash(indexTemplate), ConfigHash: templateSourceConfigHash(manifest.Hash(enc), templateSourceRoot(p)), Policy: declaredPolicy("topics", false), Declarer: "topic-index:" + domain, DeclarerProjection: domain, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: normalizeOutputInputs(append(observed, templateInputs...)), ObservedTemplateID: topicIndexTID})
 	}
 	return files, deps, nil
 }
-func topicHash(root string, read ProjectTreeReader, model topic.TopicRenderModel, paths ...string) (string, error) {
+func topicHash(root string, read outputplan.TreeReader, model topic.TopicRenderModel, paths ...string) (string, error) {
 	proj := map[string]any{"model": model}
 	inputs := map[string]string{}
 	for _, path := range paths {

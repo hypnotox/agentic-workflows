@@ -29,7 +29,7 @@ func TestComposePreservesExplicitSlotOrder(t *testing.T) {
 
 	report, err := Compose(Inputs{
 		Tracking:            Slot{},
-		ProducerResults:     []Slot{{Result: producer, IncludeInformationInDrift: true}},
+		ProducerResults:     []Slot{{Result: producer, IncludeInformationInDirect: true}},
 		OrdinaryAdvisories:  Slot{Result: advisories},
 		TrackingInformation: Slot{Result: tracking},
 	})

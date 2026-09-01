@@ -109,17 +109,6 @@ func corpusFromTreeFiles(tree *snapshot.Tree, files []snapshot.File, cfg *config
 	return assembleCorpus(metadata, parts, cfg.Domains, domainPaths)
 }
 
-// LoadAuthorityCorpusFromFiles parses the reduced topic authority from the
-// supplied snapshot files. Historical selections use this exact byte-fed core
-// without materializing a complete Tree.
-func LoadAuthorityCorpusFromFiles(files []snapshot.File, cfg *config.Config) (Corpus, error) {
-	metadata, parts, err := authorityEntriesFromTreeFiles(files)
-	if err != nil {
-		return Corpus{}, err
-	}
-	return assembleCorpus(metadata, parts, cfg.Domains, nil)
-}
-
 func scannableTreeFiles(tree *snapshot.Tree) []snapshot.File {
 	allFiles := tree.List()
 	files := make([]snapshot.File, 0, len(allFiles))

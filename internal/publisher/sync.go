@@ -12,6 +12,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configcheck"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
@@ -24,7 +25,7 @@ import (
 )
 
 // validatePublicationArtifact preserves Publisher's dialect-compatible callback.
-func validatePublicationArtifact(content []byte, _ AgentDialect) error {
+func validatePublicationArtifact(content []byte, _ artifactregistry.AgentDialect) error {
 	return generatedcheck.ValidateFrontmatter(content)
 }
 
@@ -326,7 +327,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 	files := op.Outputs()
 	for _, f := range files {
 		if f.Policy().ValidateFrontmatter {
-			if err := validatePublicationArtifact([]byte(f.Content()), AgentDialect(f.Encoder())); err != nil {
+			if err := validatePublicationArtifact([]byte(f.Content()), artifactregistry.AgentDialect(f.Encoder())); err != nil {
 				return nil, nil, nil, nil, fmt.Errorf("invalid agent artifact in %s: %w", f.Path(), err)
 			}
 		}

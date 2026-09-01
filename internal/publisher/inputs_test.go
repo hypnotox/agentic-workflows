@@ -9,6 +9,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
 	"github.com/hypnotox/agentic-workflows/internal/glossary"
@@ -229,7 +230,7 @@ func TestPublisherStagedTreeOwnsADRAndTopicDerivation(t *testing.T) {
 func TestPublisherResidentMarkerPropagatesPlanningFailure(t *testing.T) {
 	state := csRepo(t, sampleYAML, map[string]string{})
 	cfg := testConfig(state)
-	lower := lowerWithTargets(state, append(state.Targets(), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
+	lower := lowerWithTargets(state, append(state.Targets(), artifactregistry.Target{Outputs: []artifactregistry.TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
 	publisher := newPublisher(lower, cfg, NewFilesystemReader(state.Root()), project.Version)
 	if _, err := publisher.operationState(); err == nil {
 		t.Fatal("resident-marker preparation hid planning failure")

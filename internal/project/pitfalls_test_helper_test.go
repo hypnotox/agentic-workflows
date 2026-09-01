@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 )
 
@@ -13,7 +14,7 @@ func loadPitfallCorpus(p renderInputs) (pitfall.Corpus, error) {
 	return loadPitfallCorpusFrom(projectTreeReader(p))
 }
 
-func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
+func loadPitfallCorpusFrom(reader outputplan.TreeReader) (pitfall.Corpus, error) {
 	var paths []string
 	switch current := reader.(type) {
 	case snapshotTreeReader:
@@ -51,4 +52,4 @@ func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
 	return pitfall.Load(files)
 }
 
-func projectTreeReader(p renderInputs) ProjectTreeReader { return p.read }
+func projectTreeReader(p renderInputs) outputplan.TreeReader { return p.read }

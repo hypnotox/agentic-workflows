@@ -17,7 +17,7 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 - `internal/outputplan`: owns neutral immutable output policies, recipes, rendered outputs, nodes, and operation plans shared below application coordination.
 - `internal/publisher`: the application-level, single-use Publisher consumes one immutable project Session, registers and coalesces complete output definitions, renders each accepted node once, and shares its immutable plan with checking and publication. It owns publication Results plus an explicit tree reader.
 - `internal/checkresult`: owns immutable ranked findings with explicit protected properties and separately unranked information.
-- `internal/repositorycheck`: the policy-free RepositoryChecker preserves explicit owner-result order and compatibility projections without preparing inputs or inferring classification.
+- `internal/repositorycheck`: the policy-free RepositoryChecker preserves explicit owner-result order and typed result partitions without preparing inputs or inferring classification.
 - `internal/project`: `Loader` validates one selected project universe and constructs its immutable `Session`, which owns bound configuration and complete facts, roots and repository handles, the matching tree reader, and the artifact-registry projection consumed by focused operations and Publisher.
 - `internal/projectmutation`: the mechanics-only transaction boundary centralizes operation-selected lease coverage, confined authority access, fresh committed Session reload, one-attempt Publisher synchronization, typed mechanical failure phases, and partial/release plumbing. Focused operations retain validation, mutation and rollback order, recovery policy, outcomes, and presentation.
 - `internal/currentstatecoord`: focused application operations select immutable working or staged universes for topic authority, current-state checks, and staged output preparation.
@@ -28,7 +28,7 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 - `internal/git`: the sole semantic Git seam.
 - `internal/snapshot` and `internal/filesystem`: immutable input and confined filesystem boundaries; snapshot keeps live path-and-mode inventory distinct from selected content bytes.
 - `cmd/awf`: thin CLI composition root for command lookup, parsing, concrete construction, one focused invocation, renderer or protocol-bypass selection, streams, and exit mapping.
-- Generated Pi extensions: an awf-owned protocol-v2 profile adapter and retained effort integration. Independently installed, unpinned `hypnotox/pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation; successful handshake and final profile registration define compatibility, with an actionable no-fallback failure otherwise.
+- Generated Pi extensions: one awf-owned protocol-v2 profile adapter. Awf emits no Pi-specific effort association or memory tools. Independently installed, unpinned `hypnotox/pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation; successful handshake and final profile registration define compatibility, with an actionable no-fallback failure otherwise.
 - Auxiliary commands: `cmd/deadcodecheck`, `cmd/pincheck`, `cmd/releasecheck`, `cmd/repoaudit`, `cmd/testselection`, and `cmd/versioncheck`.
 
 

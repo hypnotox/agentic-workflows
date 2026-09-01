@@ -3,6 +3,8 @@ package project
 import (
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/pitfallcheck"
 )
 
 const pitfallsCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
@@ -13,9 +15,9 @@ func TestCheckPitfallsEmpty(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkPitfalls(renderInputsForTest(p), mustPitfallCorpus(t, p))
-	if err != nil || drift != nil {
-		t.Errorf("empty pitfalls must yield no drift, got %v / %v", drift, err)
+	result, err := pitfallcheck.Check(p.Config().Domains, mustPitfallCorpus(t, p))
+	if err != nil || len(result.Findings()) != 0 || len(result.Information()) != 0 {
+		t.Errorf("empty pitfalls must yield no findings, got %#v / %v", result, err)
 	}
 }
 
@@ -29,12 +31,13 @@ func TestCheckPitfallsValidatesDomains(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkPitfalls(renderInputsForTest(p), mustPitfallCorpus(t, p))
+	result, err := pitfallcheck.Check(p.Config().Domains, mustPitfallCorpus(t, p))
 	if err != nil {
-		t.Fatalf("checkPitfalls: %v", err)
+		t.Fatalf("pitfall check: %v", err)
 	}
-	if len(drift) != 1 || drift[0].Kind != "pitfall-domain" || !strings.Contains(drift[0].Detail, "bogus") {
-		t.Fatalf("want pitfall-domain(bogus) drift, got %#v", drift)
+	findings := result.Findings()
+	if len(findings) != 1 || findings[0].Evidence.Kind != "pitfall-domain" || !strings.Contains(findings[0].Evidence.Detail, "bogus") {
+		t.Fatalf("want pitfall-domain(bogus) finding, got %#v", findings)
 	}
 }
 

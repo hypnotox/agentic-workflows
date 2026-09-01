@@ -28,7 +28,12 @@ Backing: test
 
 ### `invariant: audit-scopes-descriptor-routed`
 
-A non-empty commit-scopes init answer is written to `audit.allowedScopes` (comma-split and trimmed), while an empty answer writes no audit block at all, leaving scopes accept-any.
+A non-empty commit-scopes init answer is written to `audit.allowedScopes` (comma-split and trimmed), while an empty answer writes no audit block at all, leaving live commit gating accept-any. This project-configured vocabulary governs new commit messages and rendered current guidance, not historical audit acceptance.
+Backing: test
+
+### `invariant: audit-historical-scopes-fixed`
+
+`awf audit` evaluates committed history against a fixed code-owned scope vocabulary that includes every scope retained in this repository's history. Editing `audit.allowedScopes` cannot make a historical scope invalid or admit a project-only scope into historical analysis.
 Backing: test
 
 ### `invariant: audit-warn-exit-zero`

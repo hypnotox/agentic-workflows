@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -150,13 +151,13 @@ func TestLocalDocReferenceChecksBody(t *testing.T) {
 		t.Fatal(err)
 	}
 	var link bool
-	for _, d := range report.Drift {
+	for _, d := range reportDrift(report) {
 		link = link || d.Path == "docs/runbooks/checks.md" && d.Kind == "dead-reference"
 	}
 	skillDrift := checkDeadSkillRefs(renderInputsForTest(p), []RenderedFile{{
-		Path: path, Content: string(b), Policy: OutputPolicy{ScanSkillReferences: true},
+		Path: path, Content: string(b), Policy: outputplan.Policy{ScanSkillReferences: true},
 	}}, map[string]bool{})
 	if !link || len(skillDrift) != 1 || skillDrift[0].Path != path || skillDrift[0].Kind != "dead-skill-reference" {
-		t.Fatalf("local body reference drift = %#v; skill drift = %#v", report.Drift, skillDrift)
+		t.Fatalf("local body reference drift = %#v; skill drift = %#v", reportDrift(report), skillDrift)
 	}
 }

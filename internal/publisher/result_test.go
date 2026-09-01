@@ -3,6 +3,8 @@ package publisher
 import (
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 )
 
 func TestPublisherRefusesASecondPublicationAttempt(t *testing.T) {
@@ -41,7 +43,7 @@ func TestValidatePublicationArtifactRefusals(t *testing.T) {
 		"---\nname: \"\"\ndescription: description\n---\n",
 		"---\nname: name\ndescription: \"\"\n---\n",
 	} {
-		if err := validatePublicationArtifact([]byte(content), MarkdownAgentDialect); err == nil {
+		if err := validatePublicationArtifact([]byte(content), artifactregistry.MarkdownAgentDialect); err == nil {
 			t.Fatalf("accepted invalid publication artifact %q", content)
 		}
 	}

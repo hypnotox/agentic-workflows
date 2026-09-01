@@ -5,7 +5,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 )
 
-// kindDescriptor is Publisher's compatibility projection of one canonical kind.
+// kindDescriptor carries the rendering functions derived from one canonical kind.
 type kindDescriptor struct {
 	Plural         string
 	Singular       string
@@ -43,9 +43,6 @@ func allKindDescriptors() []kindDescriptor {
 	}
 	return out
 }
-
-// kindDescriptors is a compatibility projection of the canonical registry.
-var kindDescriptors = allKindDescriptors()
 
 func descriptorByPlural(kind string) (kindDescriptor, bool) {
 	declaration, ok := artifactregistry.KindByPlural(kind)

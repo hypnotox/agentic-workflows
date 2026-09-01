@@ -23,53 +23,9 @@ type repoCheckCounters struct {
 	loads, opens, reports, states, indexes int
 }
 
-func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Session, check project.CheckReport, state currentstatecoord.CurrentStateReport, tree *snapshot.Tree, counts *repoCheckCounters) repoCheckDependencies {
+func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Session, check repositorycheck.Report, state currentstatecoord.CurrentStateReport, tree *snapshot.Tree, counts *repoCheckCounters) repoCheckDependencies {
 	t.Helper()
 	state = currentStateReportForTest(t, state)
-	if !hasCheckResults(check.AggregateAdvisoryResult()) && !hasCheckResults(check.TrackingInformationResult()) && (len(check.Warnings) > 0 || len(check.Information) > 0 || len(check.TrackingInformation) > 0) {
-		result := func(warnings []string, informationNotes []string, property checkresult.Property) checkresult.Result {
-			findings := make([]checkresult.Finding, 0, len(warnings))
-			for _, warning := range warnings {
-				findings = append(findings, checkresult.Finding{Rank: severity.Warn, Property: property, Evidence: checkresult.Evidence{Kind: "test-compatibility", Detail: warning}})
-			}
-			information := make([]checkresult.Information, 0, len(informationNotes))
-			for _, note := range informationNotes {
-				information = append(information, checkresult.Information{Evidence: checkresult.Evidence{Kind: "test-compatibility", Detail: note}})
-			}
-			out, err := checkresult.New(findings, information)
-			if err != nil {
-				t.Fatal(err)
-			}
-			return out
-		}
-		typed, err := repositorycheck.Compose(repositorycheck.Inputs{
-			OrdinaryAdvisories:  repositorycheck.Slot{Result: result(check.Warnings, check.Information, "test-advisory")},
-			TrackingInformation: repositorycheck.Slot{Result: result(nil, check.TrackingInformation, "test-tracking")},
-		})
-		if err != nil {
-			t.Fatal(err)
-		}
-		typed.DirectResult = check.DirectResult
-		typed.Drift = check.Drift
-		check = typed
-	}
-	if len(check.DirectResult.Findings()) == 0 && len(check.DirectResult.Information()) == 0 && len(check.Drift) > 0 {
-		var findings []checkresult.Finding
-		var information []checkresult.Information
-		for _, drift := range check.Drift {
-			evidence := checkresult.Evidence{Kind: drift.Kind, Path: drift.Path, Detail: drift.Detail}
-			if drift.Kind == "unused-var" || drift.Kind == "unused-data" {
-				information = append(information, checkresult.Information{Evidence: evidence})
-			} else {
-				findings = append(findings, checkresult.Finding{Rank: severity.Error, Property: "test-compatibility", Evidence: evidence})
-			}
-		}
-		var err error
-		check.DirectResult, err = checkresult.New(findings, information)
-		if err != nil {
-			t.Fatal(err)
-		}
-	}
 	return repoCheckDependencies{
 		loadConfig: func(string) (*config.Config, error) {
 			counts.loads++
@@ -82,7 +38,7 @@ func repoCheckTestDependencies(t *testing.T, cfg *config.Config, p *project.Sess
 			}
 			return p, nil
 		},
-		checkReport: func(_ context.Context, got *project.Session) (project.CheckReport, error) {
+		checkReport: func(_ context.Context, got *project.Session) (repositorycheck.Report, error) {
 			counts.reports++
 			if got != p {
 				t.Fatalf("checkReport session = %p, want prepared session %p", got, p)
@@ -186,7 +142,7 @@ func TestRepoCheckRoutesWorkingCurrentStateOwnerResult(t *testing.T) {
 		t.Fatal(err)
 	}
 	state := currentstatecoord.CurrentStateReport{CurrentResult: result, OwnerResult: result}
-	deps := repoCheckTestDependencies(t, &config.Config{}, &project.Session{}, project.CheckReport{}, state, nil, &repoCheckCounters{})
+	deps := repoCheckTestDependencies(t, &config.Config{}, &project.Session{}, repositorycheck.Report{}, state, nil, &repoCheckCounters{})
 	collection, err := collectRepoCheckSelection(context.Background(), t.TempDir(), []repositoryLane{repositoryState}, false, false, nil, deps)
 	if err != nil {
 		t.Fatal(err)
@@ -208,7 +164,7 @@ func TestRepoCheckTypedPreparationOrderAndCancellation(t *testing.T) {
 	session := &project.Session{}
 	tree := mustSnapshotTree(t)
 	counts := &repoCheckCounters{}
-	deps := repoCheckTestDependencies(t, cfg, session, project.CheckReport{}, currentstatecoord.CurrentStateReport{}, tree, counts)
+	deps := repoCheckTestDependencies(t, cfg, session, repositorycheck.Report{}, currentstatecoord.CurrentStateReport{}, tree, counts)
 	var events []string
 	loadConfig := deps.loadConfig
 	deps.loadConfig = func(root string) (*config.Config, error) {
@@ -221,7 +177,7 @@ func TestRepoCheckTypedPreparationOrderAndCancellation(t *testing.T) {
 		return loadSession(ctx, root, got)
 	}
 	checkReport := deps.checkReport
-	deps.checkReport = func(ctx context.Context, got *project.Session) (project.CheckReport, error) {
+	deps.checkReport = func(ctx context.Context, got *project.Session) (repositorycheck.Report, error) {
 		events = append(events, "report")
 		return checkReport(ctx, got)
 	}
@@ -255,13 +211,13 @@ func TestRepoCheckTypedPreparationOrderAndCancellation(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	canceled, err := collectRepoCheckSelection(ctx, t.TempDir(), orderedRepositoryLanes(), true, true, nil, repoCheckTestDependencies(t, cfg, session, project.CheckReport{}, currentstatecoord.CurrentStateReport{}, tree, &repoCheckCounters{}))
+	canceled, err := collectRepoCheckSelection(ctx, t.TempDir(), orderedRepositoryLanes(), true, true, nil, repoCheckTestDependencies(t, cfg, session, repositorycheck.Report{}, currentstatecoord.CurrentStateReport{}, tree, &repoCheckCounters{}))
 	if !errors.Is(err, context.Canceled) || len(canceled.results) != 0 {
 		t.Fatalf("pre-canceled collection = %#v, error = %v", canceled, err)
 	}
 
 	ctx, cancel = context.WithCancel(context.Background())
-	canceling := repoCheckTestDependencies(t, cfg, session, project.CheckReport{}, currentstatecoord.CurrentStateReport{}, tree, &repoCheckCounters{})
+	canceling := repoCheckTestDependencies(t, cfg, session, repositorycheck.Report{}, currentstatecoord.CurrentStateReport{}, tree, &repoCheckCounters{})
 	indexTree = canceling.indexTree
 	canceling.indexTree = func(ctx context.Context, root string) (*snapshot.Tree, error) {
 		prepared, err := indexTree(ctx, root)
@@ -276,7 +232,7 @@ func TestRepoCheckTypedPreparationOrderAndCancellation(t *testing.T) {
 
 func TestRepoCheckPreparationFailureProducesNoPartialResult(t *testing.T) {
 	failure := errors.New("state preparation failed")
-	deps := repoCheckTestDependencies(t, &config.Config{}, &project.Session{}, project.CheckReport{}, currentstatecoord.CurrentStateReport{}, mustSnapshotTree(t), &repoCheckCounters{})
+	deps := repoCheckTestDependencies(t, &config.Config{}, &project.Session{}, repositorycheck.Report{}, currentstatecoord.CurrentStateReport{}, mustSnapshotTree(t), &repoCheckCounters{})
 	indexRan := false
 	deps.currentState = func(context.Context, *project.Session) (currentstatecoord.CurrentStateReport, error) {
 		return currentstatecoord.CurrentStateReport{}, failure
@@ -293,7 +249,7 @@ func TestRepoCheckPreparationFailureProducesNoPartialResult(t *testing.T) {
 
 func TestRepoCheckIndexPreparationPreservesScannerErrorText(t *testing.T) {
 	failure := errors.New("index unavailable")
-	deps := repoCheckTestDependencies(t, &config.Config{}, &project.Session{}, project.CheckReport{}, currentstatecoord.CurrentStateReport{}, mustSnapshotTree(t), &repoCheckCounters{})
+	deps := repoCheckTestDependencies(t, &config.Config{}, &project.Session{}, repositorycheck.Report{}, currentstatecoord.CurrentStateReport{}, mustSnapshotTree(t), &repoCheckCounters{})
 	deps.indexTree = func(context.Context, string) (*snapshot.Tree, error) {
 		return nil, &repoIndexPreparationError{err: fmt.Errorf("cannot read staged files: %w", failure)}
 	}
@@ -305,7 +261,7 @@ func TestRepoCheckIndexPreparationPreservesScannerErrorText(t *testing.T) {
 
 func TestRepoCheckAggregateContinuesProducedFailuresInLaneOrder(t *testing.T) {
 	drift := checkTestResult(t, []checkresult.Finding{checkFinding(severity.Error, "correctness", "missing", "AGENTS.md", "missing")}, nil)
-	report := project.CheckReport{DirectResult: drift}
+	report := repositorycheck.Report{DirectResult: drift}
 	stateResult := checkTestResult(t, nil, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "current-state", Detail: "state completed"}}})
 	state := currentstatecoord.CurrentStateReport{CurrentResult: stateResult, OwnerResult: stateResult}
 	deps := repoCheckTestDependencies(t, &config.Config{}, &project.Session{}, report, state, nil, &repoCheckCounters{})
@@ -330,6 +286,23 @@ func currentStateReportForTest(t *testing.T, report currentstatecoord.CurrentSta
 	return report
 }
 
+func advisoryReportForTest(t *testing.T, details []string) repositorycheck.Report {
+	t.Helper()
+	findings := make([]checkresult.Finding, 0, len(details))
+	for _, detail := range details {
+		findings = append(findings, checkresult.Finding{Rank: severity.Warn, Property: "test-advisory", Evidence: checkresult.Evidence{Kind: "advisory", Detail: detail}})
+	}
+	advisories, err := checkresult.New(findings, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	report, err := repositorycheck.Compose(repositorycheck.Inputs{OrdinaryAdvisories: repositorycheck.Slot{Result: advisories}})
+	if err != nil {
+		t.Fatal(err)
+	}
+	return report
+}
+
 // invariant: rendering/sync-and-drift:agent-guide-size-advisory (TestAggregateCheckAgentGuideSizeWarning)
 func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	cfg := &config.Config{}
@@ -338,7 +311,7 @@ func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	runAggregate := func(t *testing.T, notes []string) string {
 		t.Helper()
 		counts := &repoCheckCounters{}
-		deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Warnings: notes, Notes: notes}, currentstatecoord.CurrentStateReport{}, nil, counts)
+		deps := repoCheckTestDependencies(t, cfg, p, advisoryReportForTest(t, notes), currentstatecoord.CurrentStateReport{}, nil, counts)
 		var out bytes.Buffer
 		if err := runRepoCheckSelection(context.Background(), t.TempDir(), &out, []repositoryLane{repositoryDrift}, true, true, deps); err != nil {
 			t.Fatalf("warning-only aggregate error: %v", err)
@@ -371,7 +344,7 @@ func TestAggregateCheckAgentGuideSizeWarning(t *testing.T) {
 	})
 
 	counts := &repoCheckCounters{}
-	deps := repoCheckTestDependencies(t, cfg, p, project.CheckReport{Warnings: []string{"ordinary-advisory", advisory}, Notes: []string{"ordinary-advisory", advisory}}, currentstatecoord.CurrentStateReport{}, nil, counts)
+	deps := repoCheckTestDependencies(t, cfg, p, advisoryReportForTest(t, []string{"ordinary-advisory", advisory}), currentstatecoord.CurrentStateReport{}, nil, counts)
 	var direct bytes.Buffer
 	if err := runRepoCheckSelection(context.Background(), t.TempDir(), &direct, []repositoryLane{repositoryDrift}, false, false, deps); err != nil {
 		t.Fatalf("direct drift error: %v", err)

@@ -10,6 +10,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
@@ -167,26 +168,26 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 }
 
 func TestSessionDefensivelyOwnsTargetSnapshots(t *testing.T) {
-	source := []Target{{
-		Name: "target", Capabilities: []Capability{CapabilitySubagentTools},
-		Outputs: []TargetOutput{{Path: "output", Inputs: []TargetOutputInput{{Path: "input", Role: outputplan.ArtifactTemplate}}}},
+	source := []artifactregistry.Target{{
+		Name: "target", Capabilities: []artifactregistry.Capability{artifactregistry.CapabilitySubagentTools},
+		Outputs: []artifactregistry.TargetOutput{{Path: "output", Inputs: []artifactregistry.TargetOutputInput{{Path: "input", Role: outputplan.ArtifactTemplate}}}},
 	}}
 	state, err := newSession("root", resident.NewRoots("root", "resident"), false, &config.Config{}, catalog.Standard, source, nil, filesystemProjectReader{root: "root"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	source[0].Capabilities[0] = CapabilitySessionHandoff
+	source[0].Capabilities[0] = artifactregistry.CapabilitySessionHandoff
 	source[0].Outputs[0].Path = "mutated"
 	source[0].Outputs[0].Inputs[0].Path = "mutated"
 	first := state.Targets()
-	if first[0].Capabilities[0] != CapabilitySubagentTools || first[0].Outputs[0].Path != "output" || first[0].Outputs[0].Inputs[0].Path != "input" {
+	if first[0].Capabilities[0] != artifactregistry.CapabilitySubagentTools || first[0].Outputs[0].Path != "output" || first[0].Outputs[0].Inputs[0].Path != "input" {
 		t.Fatalf("project state retained a target construction alias: %#v", first)
 	}
-	first[0].Capabilities[0] = CapabilitySessionHandoff
+	first[0].Capabilities[0] = artifactregistry.CapabilitySessionHandoff
 	first[0].Outputs[0].Path = "returned mutation"
 	first[0].Outputs[0].Inputs[0].Path = "returned mutation"
 	second := state.Targets()
-	if second[0].Capabilities[0] != CapabilitySubagentTools || second[0].Outputs[0].Path != "output" || second[0].Outputs[0].Inputs[0].Path != "input" {
+	if second[0].Capabilities[0] != artifactregistry.CapabilitySubagentTools || second[0].Outputs[0].Path != "output" || second[0].Outputs[0].Inputs[0].Path != "input" {
 		t.Fatalf("resolvedTargets returned a nested alias: %#v", second)
 	}
 }
@@ -234,7 +235,7 @@ func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	}
 	p.Config().Domains[0] = "mutated"
 	p.Config().Vars["nested"].(map[string]any)["items"].([]any)[0] = "mutated"
-	p.Targets()[0].Capabilities = append(p.Targets()[0].Capabilities, CapabilitySubagentTools)
+	p.Targets()[0].Capabilities = append(p.Targets()[0].Capabilities, artifactregistry.CapabilitySubagentTools)
 	p.catalog().Skills["debugging"] = catalog.SkillSpec{Sections: []string{"mutated"}}
 	got := p.Config()
 	if got.Domains[0] != "tooling" || got.Vars["nested"].(map[string]any)["items"].([]any)[0] != "original" {
@@ -242,7 +243,7 @@ func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	}
 	returnedTargets := p.Targets()
 	wantCapabilities := len(returnedTargets[1].Capabilities)
-	returnedTargets[1].Capabilities = append(returnedTargets[1].Capabilities, CapabilitySubagentTools)
+	returnedTargets[1].Capabilities = append(returnedTargets[1].Capabilities, artifactregistry.CapabilitySubagentTools)
 	if len(p.Targets()[1].Capabilities) != wantCapabilities {
 		t.Fatal("resolved target accessor returned an alias")
 	}

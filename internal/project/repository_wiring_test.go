@@ -8,6 +8,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 )
 
 // ADR-0281: the Pi-extension gate lane runs directly on the pinned host Node
@@ -215,7 +217,7 @@ func TestPiExtensionEditorQuietStrip(t *testing.T) {
 	// Enumerate from the target descriptor, not from a directory walk. A walk
 	// cannot notice a governed file that stopped being rendered. The temporary
 	// authored adopter keeps this assertion independent of a committed example.
-	governed := map[string]TargetOutput{}
+	governed := map[string]artifactregistry.TargetOutput{}
 	for _, out := range piTarget.Outputs {
 		if strings.HasSuffix(out.Path, ".ts") {
 			governed[out.Path] = out

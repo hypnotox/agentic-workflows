@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"golang.org/x/mod/semver"
 )
@@ -80,7 +81,7 @@ type Loader struct {
 	view                catalog.View
 	resolveResidentRoot ResolveResidentRoot
 	repo                *awfgit.Repo
-	reader              ProjectTreeReader
+	reader              outputplan.TreeReader
 }
 
 // NewLoader constructs project-opening policy with its required composed Git
@@ -115,7 +116,7 @@ func newLoader(loadConfigTree LoadConfigTree, standard *catalog.Catalog, resolve
 // WithSelection returns the same loading authority with one bounded config and
 // project-tree selection. Candidate and staged universes use this boundary so
 // every Session is constructed through Load from matching inputs.
-func (l *Loader) WithSelection(load LoadConfigTree, reader ProjectTreeReader) *Loader {
+func (l *Loader) WithSelection(load LoadConfigTree, reader outputplan.TreeReader) *Loader {
 	if l == nil || load == nil || reader == nil {
 		panic("project Loader: missing selected project input")
 	}
@@ -148,7 +149,7 @@ type Session struct {
 	facts    config.Facts
 	selected *config.Config
 	repo     *awfgit.Repo
-	reader   ProjectTreeReader
+	reader   outputplan.TreeReader
 	registry RegistryView
 }
 
@@ -188,7 +189,7 @@ func (s *Session) Repository() *awfgit.Repo {
 }
 
 // Reader returns the project-tree reader selected with the configuration.
-func (s *Session) Reader() ProjectTreeReader {
+func (s *Session) Reader() outputplan.TreeReader {
 	if s == nil {
 		return nil
 	}
@@ -207,7 +208,7 @@ func (s *Session) Registry() RegistryView {
 func (s *Session) Catalog() *catalog.Catalog { return s.Registry().Catalog() }
 
 // Targets returns defensive copies of the resolved target declarations.
-func (s *Session) Targets() []Target { return s.Registry().Targets() }
+func (s *Session) Targets() []artifactregistry.Target { return s.Registry().Targets() }
 
 func (s *Session) catalog() *catalog.Catalog { return s.Catalog() }
 
@@ -224,7 +225,7 @@ func cloneTargets(source []artifactregistry.Target) []artifactregistry.Target {
 	return out
 }
 
-func newSession(root string, roots resident.Roots, nested bool, cfg *config.Config, selected *catalog.Catalog, targets []Target, repo *awfgit.Repo, reader ProjectTreeReader) (*Session, error) {
+func newSession(root string, roots resident.Roots, nested bool, cfg *config.Config, selected *catalog.Catalog, targets []artifactregistry.Target, repo *awfgit.Repo, reader outputplan.TreeReader) (*Session, error) {
 	facts, err := config.NewFacts(cfg)
 	if err != nil {
 		return nil, err
@@ -241,10 +242,10 @@ func newSession(root string, roots resident.Roots, nested bool, cfg *config.Conf
 type renderInputs struct {
 	session *Session
 	cfg     *config.Config
-	read    ProjectTreeReader
+	read    outputplan.TreeReader
 }
 
-func newRenderInputs(session *Session, cfg *config.Config, read ProjectTreeReader) renderInputs {
+func newRenderInputs(session *Session, cfg *config.Config, read outputplan.TreeReader) renderInputs {
 	return renderInputs{session: session, cfg: cfg, read: read}
 }
 

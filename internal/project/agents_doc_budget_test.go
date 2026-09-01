@@ -149,7 +149,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 				t.Fatal(err)
 			}
 			var notes []string
-			for _, note := range report.Notes {
+			for _, note := range reportNotes(report) {
 				if strings.Contains(note, "AGENTS.md") && strings.Contains(note, "12288") {
 					notes = append(notes, note)
 				}
@@ -160,7 +160,7 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 					classified = classified || finding.Rank == severity.Warn && finding.Property == "heuristic-quality" && strings.Contains(finding.Evidence.Detail, "12289")
 				}
 				if !classified {
-					t.Fatalf("CheckReport omitted owner-classified guide warning: %#v", report.Result.Findings())
+					t.Fatalf("project report omitted owner-classified guide warning: %#v", report.Result.Findings())
 				}
 				if len(notes) != 1 || !strings.Contains(notes[0], "12289") || !strings.Contains(notes[0], "docs/agents-md-standard.md") {
 					t.Fatalf("overage note = %#v", notes)
@@ -168,10 +168,10 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 				// The size advisory remains aggregate-only and follows ordinary
 				// advisories. Use the scaffold's stub-content advisory rather than
 				// the retired plan scope checker to preserve that ordering contract.
-				ordinaryIndex := slices.IndexFunc(report.Notes, func(note string) bool { return strings.Contains(note, "unauthored stub content") })
-				sizeIndex := slices.Index(report.Notes, notes[0])
+				ordinaryIndex := slices.IndexFunc(reportNotes(report), func(note string) bool { return strings.Contains(note, "unauthored stub content") })
+				sizeIndex := slices.Index(reportNotes(report), notes[0])
 				if ordinaryIndex < 0 || sizeIndex < 0 || ordinaryIndex >= sizeIndex {
-					t.Fatalf("CheckReport notes do not place ordinary advisory before size advisory: %#v", report.Notes)
+					t.Fatalf("project report notes do not place ordinary advisory before size advisory: %#v", reportNotes(report))
 				}
 				direct, err := advisoryNotesProject(p)
 				if err != nil {
@@ -192,8 +192,8 @@ func TestAgentGuideSizeAdvisoryBoundary(t *testing.T) {
 					if err != nil {
 						t.Fatal(err)
 					}
-					if got := strings.Count(strings.Join(residentReport.Notes, "\n"), "12289"); got != 1 {
-						t.Fatalf("%s resident size notes = %d, want 1: %#v", resident, got, residentReport.Notes)
+					if got := strings.Count(strings.Join(reportNotes(residentReport), "\n"), "12289"); got != 1 {
+						t.Fatalf("%s resident size notes = %d, want 1: %#v", resident, got, reportNotes(residentReport))
 					}
 				}
 				return

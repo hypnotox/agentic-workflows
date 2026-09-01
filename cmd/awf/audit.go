@@ -18,11 +18,7 @@ func runAudit(ctx context.Context, root, rangeArg string, stdout io.Writer) erro
 	if err != nil {
 		return &usageErr{"awf audit: " + err.Error()}
 	}
-	session, err := loadProjectSession(ctx, root)
-	if err != nil {
-		return err
-	}
-	outcome, err := audit.RunConfigured(ctx, root, session.Config(), base, head)
+	outcome, err := audit.RunHistorical(ctx, root, base, head)
 	if err != nil {
 		return err
 	}

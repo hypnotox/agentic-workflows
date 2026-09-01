@@ -28,8 +28,8 @@ const (
 	Symlink
 )
 
-// Construction faults. NewTree and NewSelection return one of these when a File
-// would make the snapshot ambiguous or unsafe to address by path.
+// Construction faults. NewTree returns one of these when a File would make the
+// snapshot ambiguous or unsafe to address by path.
 var (
 	// ErrUnsupportedMode reports a File whose Mode is not representable.
 	ErrUnsupportedMode = errors.New("snapshot: unsupported file mode")

@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -35,7 +36,7 @@ func TestVarDescriptorParity(t *testing.T) {
 	for _, e := range cat.Docs {
 		paths = append(paths, e.TID) // merged-in singletons render from non-docs/ templates
 	}
-	for _, name := range hookNames {
+	for _, name := range artifactregistry.Hooks() {
 		paths = append(paths, "hooks/"+name+".sh.tmpl")
 	}
 	for _, p := range paths {

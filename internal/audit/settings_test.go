@@ -17,7 +17,14 @@ func TestFixedAuditPolicy(t *testing.T) {
 	}
 }
 
-func TestResolvePreservesOnlyScopes(t *testing.T) {
+func TestHistoricalSettingsUsesCompleteFixedScopeVocabulary(t *testing.T) {
+	want := []string{"adr", "adr-system", "awf", "catalog", "cmd", "code-design", "config", "decisions", "hooks", "invariants", "manifest", "plans", "project", "render", "rendering", "spine", "tooling"}
+	if got := historicalSettings().ScopeNames(); !reflect.DeepEqual(got, want) {
+		t.Errorf("historical scopes = %v, want %v", got, want)
+	}
+}
+
+func TestResolvePreservesLiveProjectScopes(t *testing.T) {
 	scopes := []config.ScopeSpec{{Name: "awf"}}
 	if got := Resolve(scopes).AllowedScopes; !reflect.DeepEqual(got, scopes) {
 		t.Errorf("AllowedScopes = %v, want %v", got, scopes)

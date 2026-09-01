@@ -6,8 +6,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
@@ -44,7 +46,7 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 		}
 		content := node.file.Content
 		declaredEncoder, declared := encoders[node.ObservedTemplateID]
-		wantMarker := node.ObservedTemplateID != "" && declared && declaredEncoder == MarkdownAgentDialect
+		wantMarker := node.ObservedTemplateID != "" && declared && declaredEncoder == artifactregistry.MarkdownAgentDialect
 		hasMarker := strings.Contains(content, "<!-- awf:template-source ")
 		if hasMarker != wantMarker {
 			t.Errorf("%s marker participation = %t, want %t (template %q encoder %q)", node.Path, hasMarker, wantMarker, node.ObservedTemplateID, declaredEncoder)
@@ -110,10 +112,10 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	// This proves the matrix follows render-seam evidence rather than inferring
 	// behavior from a filename suffix.
 	for _, node := range active.Nodes {
-		if node.ObservedTemplateID == "" || encoders[node.ObservedTemplateID] != MarkdownAgentDialect {
+		if node.ObservedTemplateID == "" || encoders[node.ObservedTemplateID] != artifactregistry.MarkdownAgentDialect {
 			continue
 		}
-		if !slices.Contains(node.ConsumedInputs, OutputInput{Path: "templates/" + node.ObservedTemplateID, Role: ArtifactTemplate}) {
+		if !slices.Contains(node.ConsumedInputs, OutputInput{Path: "templates/" + node.ObservedTemplateID, Role: outputplan.ArtifactTemplate}) {
 			t.Errorf("%s lacks configured root template input: %#v", node.Path, node.ConsumedInputs)
 		}
 	}

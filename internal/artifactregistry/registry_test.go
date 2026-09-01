@@ -71,23 +71,23 @@ func TestCatalogProjectionPreservesCatalogAuthority(t *testing.T) {
 }
 
 func TestRegistryTargetOutputNormalizationPreservesCollisionInputs(t *testing.T) {
-	one := Target{SkillDir: ".one/skills", Outputs: []Output{{SkillName: "workflow", RequiresSkill: "workflow"}}}
-	two := Target{SkillDir: ".two/skills", Outputs: []Output{{SkillName: "workflow", RequiresSkill: "workflow"}}}
-	oneOutput := ResolveTargetOutputs(one, "acme", []string{"workflow"})
-	twoOutput := ResolveTargetOutputs(two, "acme", []string{"workflow"})
-	if got, want := oneOutput[0].Path, ".one/skills/acme-workflow/SKILL.md"; got != want {
+	one := Target{SkillDir: ".one/skills", Outputs: []TargetOutput{{SkillName: "workflow", RequiresSkill: "workflow"}}}
+	two := Target{SkillDir: ".two/skills", Outputs: []TargetOutput{{SkillName: "workflow", RequiresSkill: "workflow"}}}
+	oneOutput := ResolveTargetArtifacts(one, "acme", []string{"workflow"})
+	twoOutput := ResolveTargetArtifacts(two, "acme", []string{"workflow"})
+	if got, want := oneOutput[0].Output.Path, ".one/skills/acme-workflow/SKILL.md"; got != want {
 		t.Fatalf("first resolved path = %q, want %q", got, want)
 	}
-	if oneOutput[0].Path == twoOutput[0].Path {
+	if oneOutput[0].Output.Path == twoOutput[0].Output.Path {
 		t.Fatal("different target directories collapsed to one collision key")
 	}
-	if got := ResolveTargetOutputs(one, "acme", nil); len(got) != 0 {
+	if got := ResolveTargetArtifacts(one, "acme", nil); len(got) != 0 {
 		t.Fatalf("required-skill filtering returned %#v", got)
 	}
 }
 
 func TestUnknownRequiredSkillPreservesExactRefusal(t *testing.T) {
-	target := Target{Name: "pi", Outputs: []Output{{Path: "out", RequiresSkill: "missing"}}}
+	target := Target{Name: "pi", Outputs: []TargetOutput{{Path: "out", RequiresSkill: "missing"}}}
 	err := ValidateTargetRequirements(target, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}})
 	if got, want := err.Error(), `target "pi" output "out" requires unknown catalog skill "missing"`; got != want {
 		t.Fatalf("error = %q, want %q", got, want)
@@ -96,10 +96,10 @@ func TestUnknownRequiredSkillPreservesExactRefusal(t *testing.T) {
 
 func TestRegistryCanonicalMetadata(t *testing.T) {
 	if got, want := Kinds(), []Kind{
-		{Plural: "skills", Singular: "skill", Cardinality: PerEntry, Targeting: TargetAdapter, Owner: OwnerCatalog, TemplatePattern: "skills/%s/SKILL.md.tmpl", OwnsParts: true},
-		{Plural: "agents", Singular: "agent", Cardinality: PerEntry, Targeting: TargetAdapter, Owner: OwnerCatalog, TemplatePattern: "agents/%s.md.tmpl", OwnsParts: true},
-		{Plural: "docs", Singular: "doc", Cardinality: PerEntry, Targeting: TargetNeutral, Owner: OwnerCatalog, OwnsParts: true},
-		{Plural: "domains", Singular: "domain", Cardinality: Freeform, Targeting: TargetNeutral, Owner: OwnerCatalog, TemplatePattern: "domains/domain.md.tmpl", OwnsParts: true},
+		{Plural: "skills", Singular: "skill", Cardinality: CardinalityCatalog, Targeting: TargetAdapter, Owner: OwnerCatalog, TemplatePattern: "skills/%s/SKILL.md.tmpl", OwnsParts: true},
+		{Plural: "agents", Singular: "agent", Cardinality: CardinalityCatalog, Targeting: TargetAdapter, Owner: OwnerCatalog, TemplatePattern: "agents/%s.md.tmpl", OwnsParts: true},
+		{Plural: "docs", Singular: "doc", Cardinality: CardinalityCatalog, Targeting: TargetNeutral, Owner: OwnerCatalog, OwnsParts: true},
+		{Plural: "domains", Singular: "domain", Cardinality: CardinalityFreeform, Targeting: TargetNeutral, Owner: OwnerCatalog, TemplatePattern: "domains/domain.md.tmpl", OwnsParts: true},
 	}; !slices.Equal(got, want) {
 		t.Fatalf("Kinds() = %#v, want %#v", got, want)
 	}
@@ -114,7 +114,7 @@ func TestRegistryCanonicalMetadata(t *testing.T) {
 	}
 	if got, want := Targets(), []Target{
 		{Name: "claude", SkillDir: ".claude/skills", AgentDir: ".claude/agents", AgentSuffix: ".md", AgentDialect: MarkdownAgentDialect, BridgeFile: "CLAUDE.md", BridgeTemplate: "claude/CLAUDE.md.tmpl"},
-		{Name: "pi", SkillDir: ".pi/skills", AgentDir: ".pi/agents", AgentSuffix: ".md", AgentDialect: MarkdownAgentDialect, Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff}, Outputs: []Output{
+		{Name: "pi", SkillDir: ".pi/skills", AgentDir: ".pi/agents", AgentSuffix: ".md", AgentDialect: MarkdownAgentDialect, Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff}, Outputs: []TargetOutput{
 			{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, PolicyDeclared: true},
 			{Path: ".pi/extensions/awf-subagents/model-routing.ts", TemplateID: "pi/awf-subagents/model-routing.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, PolicyDeclared: true},
 		}},

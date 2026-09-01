@@ -9,6 +9,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/audit"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
@@ -20,6 +21,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/referencecheck"
+	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -193,7 +195,7 @@ func testStateAt(root string) *Session {
 	testConfigs.Store(out, testConfig(state))
 	return out
 }
-func testStateWith(state *Session, root string, roots resident.Roots, nested bool, selected *catalog.Catalog, targets []Target) *Session {
+func testStateWith(state *Session, root string, roots resident.Roots, nested bool, selected *catalog.Catalog, targets []artifactregistry.Target) *Session {
 	out, err := newSession(root, roots, nested, testConfig(state), selected, targets, testRepo(state), publisher.NewFilesystemReader(root))
 	if err != nil {
 		panic(err)
@@ -234,39 +236,39 @@ func renderAll(state *Session) ([]RenderedFile, error) {
 	}
 	return planWriteFiles(&plan), nil
 }
-func outputPlanProject(state *Session) (*OutputPlan, error) {
+func outputPlanProject(state *Session) (*outputplan.Plan, error) {
 	return outputPlan(operationInputs(state, testConfig(state)))
 }
-func projectResult(result publisher.Result, err error) ([]Backup, []Change, []string, error) {
+func projectResult(result publisher.Result, err error) ([]publisher.Backup, []publisher.Change, []string, error) {
 	return result.Backups(), result.Changes(), result.Pruned(), err
 }
-func syncReportProject(state *Session) ([]Backup, []Change, []string, error) {
+func syncReportProject(state *Session) ([]publisher.Backup, []publisher.Change, []string, error) {
 	return projectResult(testPublisher(operationInputs(state, testConfig(state))).SyncLeased(context.Background(), nil))
 }
-func initializeReportProject(state *Session, seed InitAuthority) ([]Backup, []Change, []string, error) {
+func initializeReportProject(state *Session, seed publisher.InitAuthority) ([]publisher.Backup, []publisher.Change, []string, error) {
 	return projectResult(testPublisher(operationInputs(state, testConfig(state))).Initialize(seed))
 }
-func checkReportProject(state *Session, ctx context.Context) (CheckReport, error) {
+func checkReportProject(state *Session, ctx context.Context) (repositorycheck.Report, error) {
 	operation := testPublisher(operationInputs(state, testConfig(state)))
 	plan, err := operation.Plan()
 	if err != nil {
-		return CheckReport{}, err
+		return repositorycheck.Report{}, err
 	}
 	pitfalls, err := operation.Pitfalls()
 	if err != nil {
-		return CheckReport{}, err
+		return repositorycheck.Report{}, err
 	}
 	skills, err := operation.EffectiveSkills()
 	if err != nil {
-		return CheckReport{}, err
+		return repositorycheck.Report{}, err
 	}
 	generated, err := operation.GeneratedOutput()
 	if err != nil {
-		return CheckReport{}, err
+		return repositorycheck.Report{}, err
 	}
 	glossary, err := operation.Glossary()
 	if err != nil {
-		return CheckReport{}, err
+		return repositorycheck.Report{}, err
 	}
 	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx, plan, pitfalls, skills, generated, glossary)
 }

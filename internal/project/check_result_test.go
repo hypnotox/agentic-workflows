@@ -28,7 +28,7 @@ func TestProducerResultsPreserveRankPropertyAndEvidence(t *testing.T) {
 	tracking := projectTestResult(t, nil, []checkresult.Information{{Evidence: checkresult.Evidence{Kind: "tracking", Detail: "tracking unavailable"}}})
 
 	report, err := repositorycheck.Compose(repositorycheck.Inputs{
-		ProducerResults:     []repositorycheck.Slot{{Result: producer, IncludeInformationInDrift: true}},
+		ProducerResults:     []repositorycheck.Slot{{Result: producer, IncludeInformationInDirect: true}},
 		OrdinaryAdvisories:  repositorycheck.Slot{Result: advisories},
 		TrackingInformation: repositorycheck.Slot{Result: tracking},
 	})

@@ -11,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -192,7 +193,7 @@ func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(lockFile(root))

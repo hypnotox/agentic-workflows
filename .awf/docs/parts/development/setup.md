@@ -5,7 +5,7 @@
 | Node v24.19.0 and npm | `.nvmrc` pins the Pi lane runtime. Local NVM selects it without downloading; run `nvm install v24.19.0` if absent. Hosted workflows set `AWF_PI_TEST_SKIP_NVM=1` after setup-node and the runner still rejects any runtime that is not the exact pin. |
 | `hypnotox/pi-tools` for Pi use | Install independently at any protocol-v2-compatible revision; awf does not pin it. |
 
-For adopter Pi sessions, compatibility means a successful protocol-v2 capability handshake and final awf profile registration. Missing, incompatible, late, or rejected negotiation reports an actionable prerequisite error and activates no awf fallback. The awf effort extension separately requires a compatible adopter-supplied Pi runtime.
+For adopter Pi sessions, compatibility means a successful protocol-v2 capability handshake and final awf profile registration. Missing, incompatible, late, or rejected negotiation reports an actionable prerequisite error and activates no awf fallback. Awf provides no Pi-specific effort association or memory extension and declares no adopter Pi package-version floor.
 
 The Pi lane requires the pinned host Node and npm, but no services, environment variables, or model credentials.
 

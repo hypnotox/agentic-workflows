@@ -12,7 +12,7 @@ import (
 // validateAgainstCatalog checks that every enabled non-local target is in the
 // catalog and that its sidecar's section overrides name declared sections.
 func validateAgainstCatalog(p renderInputs) error {
-	for _, d := range kindDescriptors {
+	for _, d := range allKindDescriptors() {
 		if d.poolNames == nil { // domains: freeform, not catalog-validated
 			continue
 		}

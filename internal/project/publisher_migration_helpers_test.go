@@ -4,6 +4,7 @@ import (
 	"slices"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 )
 
@@ -23,10 +24,10 @@ func (l Layout) templateMap() map[string]any {
 	return out
 }
 
-func targetTemplateData(target Target) map[string]any {
+func targetTemplateData(target artifactregistry.Target) map[string]any {
 	return map[string]any{
-		"targetSubagentTools":  slices.Contains(target.Capabilities, CapabilitySubagentTools),
-		"targetSessionHandoff": slices.Contains(target.Capabilities, CapabilitySessionHandoff),
+		"targetSubagentTools":  slices.Contains(target.Capabilities, artifactregistry.CapabilitySubagentTools),
+		"targetSessionHandoff": slices.Contains(target.Capabilities, artifactregistry.CapabilitySessionHandoff),
 	}
 }
 

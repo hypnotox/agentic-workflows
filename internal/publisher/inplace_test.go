@@ -8,6 +8,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
@@ -262,7 +263,7 @@ func TestObserveRenderInputsInPlaceOutput(t *testing.T) {
 	}
 	found := false
 	for _, in := range inputs {
-		if in.Path == "out.md" && in.Role == ArtifactManagedOutput {
+		if in.Path == "out.md" && in.Role == outputplan.ArtifactManagedOutput {
 			found = true
 		}
 	}
@@ -366,7 +367,7 @@ func TestInPlaceComposedSyncCheckFixpoint(t *testing.T) {
 		lock := &manifest.Lock{Files: map[string]manifest.Entry{
 			"out.md": {RegenChecked: true, OutputHash: manifest.Hash([]byte(regenerated))},
 		}}
-		rendered := map[string]RenderedFile{"out.md": {Path: "out.md", Content: regenerated, RegenChecked: true, TemplateID: "in-place/composed.tmpl", Policy: OutputPolicy{Regenerate: true}}}
+		rendered := map[string]RenderedFile{"out.md": {Path: "out.md", Content: regenerated, RegenChecked: true, TemplateID: "in-place/composed.tmpl", Policy: outputplan.Policy{Regenerate: true}}}
 		return checkLockedFiles(renderInputsForTest(p).residentRoots(), lock, rendered, nil)
 	}
 	write := func(content string) {

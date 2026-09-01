@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -87,7 +88,7 @@ func TestLiveStateAuthorityRejectsOmissionAndWrongClass(t *testing.T) {
 	}
 }
 
-func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *Session) {
+func syncedProject(t *testing.T, configYAML string, files map[string]string) (string, *project.Session) {
 	t.Helper()
 	root := scaffoldFiles(t, configYAML, files)
 	p, err := loadTestSession(testContext(t), root)

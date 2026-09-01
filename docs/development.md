@@ -13,7 +13,7 @@
 | Node v24.19.0 and npm | `.nvmrc` pins the Pi lane runtime. Local NVM selects it without downloading; run `nvm install v24.19.0` if absent. Hosted workflows set `AWF_PI_TEST_SKIP_NVM=1` after setup-node and the runner still rejects any runtime that is not the exact pin. |
 | `hypnotox/pi-tools` for Pi use | Install independently at any protocol-v2-compatible revision; awf does not pin it. |
 
-For adopter Pi sessions, compatibility means a successful protocol-v2 capability handshake and final awf profile registration. Missing, incompatible, late, or rejected negotiation reports an actionable prerequisite error and activates no awf fallback. The awf effort extension separately requires a compatible adopter-supplied Pi runtime.
+For adopter Pi sessions, compatibility means a successful protocol-v2 capability handshake and final awf profile registration. Missing, incompatible, late, or rejected negotiation reports an actionable prerequisite error and activates no awf fallback. Awf provides no Pi-specific effort association or memory extension and declares no adopter Pi package-version floor.
 
 The Pi lane requires the pinned host Node and npm, but no services, environment variables, or model credentials.
 
@@ -59,7 +59,7 @@ For volatile mechanisms, compose at the outer boundary that knows production and
 |---|---|
 | `golangci-lint` | Lint and format. |
 | `deadcode` | Dead-code gate (ADR-0063). |
-| Pi lane dependencies | Pinned Node, TypeScript, Pi ai/TUI 0.84.2, TypeBox, and checksummed `fork-v0.84.2.2` in `tools/pi-extension-test/`. The host lane installs its lockfile into a checkout-local tree with `npm ci --ignore-scripts`, validates a Node/npm/platform fingerprint, and uses narrow throwaway copies. |
+| Pi lane dependencies | Pinned Node, TypeScript, Pi ai/TUI test packages, TypeBox, and the checksummed test-only pi-tools source in `tools/pi-extension-test/`. The host lane installs its lockfile into a checkout-local tree with `npm ci --ignore-scripts`, validates a Node/npm/platform fingerprint, and uses narrow throwaway copies. |
 
-Pi and `hypnotox/pi-tools` are adopter-supplied, not awf binary dependencies. The strict lane directly consumes `pi-tools/testing` v0.3.0 as source-only test support; adopters install `pi-tools` independently at an unpinned revision; successful protocol-v2 negotiation and final profile registration, rather than a package revision, define compatibility. `pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation. Awf owns the rendered profile adapter, workflow policy, and effort integration. The checked Pi artifact retains the numeric 0.84.2 floor and lock-pinned integrity only for awf-owned runtime integration.
+Pi and `hypnotox/pi-tools` are adopter-supplied, not awf binary dependencies. The strict lane directly consumes `pi-tools/testing` v0.3.0 as source-only test support; adopters install `pi-tools` independently at an unpinned revision; successful protocol-v2 negotiation and final profile registration, rather than a package revision, define compatibility. `pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation. Awf owns the rendered profile adapter and workflow policy, emits no Pi-specific effort association or memory tools, and declares no adopter Pi package-version floor.
 

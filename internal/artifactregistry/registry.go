@@ -22,10 +22,6 @@ const (
 	CardinalityCatalog   Cardinality = "catalog"
 	CardinalityFreeform  Cardinality = "freeform"
 	CardinalitySingleton Cardinality = "singleton"
-
-	// Compatibility names used by registry consumers.
-	PerEntry = CardinalityCatalog
-	Freeform = CardinalityFreeform
 )
 
 // Targeting describes whether one artifact is neutral or emitted per target.
@@ -94,9 +90,6 @@ type TargetOutput struct {
 	Policy         outputplan.Policy
 	PolicyDeclared bool
 }
-
-// Output is the concise registry name for a target-owned output.
-type Output = TargetOutput
 
 // Target places adapter artifacts for one runtime.
 type Target struct {
@@ -351,8 +344,6 @@ func Hooks() []string {
 	}
 	return out
 }
-func HookNames() []string      { return Hooks() }
-func RunnerSections() []string { return slices.Clone(runnerSections) }
 
 // Hook is the stable hook-specific projection of a managed unit.
 type Hook struct {
@@ -535,16 +526,6 @@ func ResolveTargetArtifacts(target Target, prefix string, selected []string) []T
 			artifact.Output.Path = target.SkillPath(prefix, artifact.Output.SkillName)
 		}
 		out = append(out, artifact)
-	}
-	return out
-}
-
-// ResolveTargetOutputs is the compatibility projection consumed by existing seams.
-func ResolveTargetOutputs(target Target, prefix string, selected []string) []TargetOutput {
-	artifacts := ResolveTargetArtifacts(target, prefix, selected)
-	out := make([]TargetOutput, len(artifacts))
-	for i, artifact := range artifacts {
-		out[i] = artifact.Output
 	}
 	return out
 }

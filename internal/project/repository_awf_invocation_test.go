@@ -6,6 +6,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -36,7 +37,7 @@ func withInvocationData(data map[string]any, value map[string]any) map[string]an
 	return copy
 }
 
-func withInvocationTarget(data map[string]any, target Target) map[string]any {
+func withInvocationTarget(data map[string]any, target artifactregistry.Target) map[string]any {
 	copy := withInvocationData(data, data["data"].(map[string]any))
 	for key, value := range targetTemplateData(target) {
 		copy[key] = value
@@ -86,7 +87,7 @@ func TestRepositoryAwfInvocation(t *testing.T) {
 	guide := renderGolden(t, "agents-doc/AGENTS.md.tmpl", withInvocationTarget(data, piTarget))
 	assertNoBareRepositoryAwfExecution(t, "AGENTS guide", guide)
 
-	for _, target := range []Target{claudeTarget, piTarget} {
+	for _, target := range []artifactregistry.Target{claudeTarget, piTarget} {
 		targetData := withInvocationTarget(data, target)
 		for name, skill := range catalog.Standard.Skills {
 			assertNoBareRepositoryAwfExecution(t, target.Name+" skill "+name, renderSkillGolden(t, name, withInvocationData(targetData, skill.Data)))

@@ -69,7 +69,7 @@ func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
 	generated, _ := operation.GeneratedOutput()
 	glossary, _ := operation.Glossary()
 	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), plan, pitfalls, skills, generated, glossary); err != nil {
-		t.Fatalf("CheckReport changed after operation construction: %v after %d glossary reads", err, reader.reads)
+		t.Fatalf("project report changed after operation construction: %v after %d glossary reads", err, reader.reads)
 	}
 }
 

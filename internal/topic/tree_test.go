@@ -278,8 +278,8 @@ func TestLoadCorpusFromTreeLoadsFilesystemFixture(t *testing.T) {
 	}
 }
 
-// invariant: config/validation:domain-path-globs-valid (TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths)
-func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
+// invariant: config/validation:domain-path-globs-valid (TestLoadCorpusFromTreeValidatesCompleteAuthority)
+func TestLoadCorpusFromTreeValidatesCompleteAuthority(t *testing.T) {
 	files := map[string]string{
 		".awf/topics/metadata/alpha/one.yaml":          "title: One\nsummary: O.\npaths: [\"internal/**\"]\n",
 		".awf/topics/parts/alpha/one/current-state.md": rulePart("r", ""),
@@ -289,16 +289,6 @@ func TestLoadAuthorityCorpusFromTreeOmitsMarkersAndDomainPaths(t *testing.T) {
 	cfg := parseCfg(t, "prefix: test\nintegrationBranch: main\ndomains: [alpha]\ncurrentState:\n  sources:\n    - globs: [\"internal/**/*_test.go\"]\n      marker: //\n  testGlobs: [\"internal/**/*_test.go\"]\n")
 	tree := treeFrom(t, files)
 
-	got, err := LoadAuthorityCorpusFromFiles(tree.List(), cfg)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(got.All()) != 1 || got.All()[0].ID.String() != "alpha/one" || len(got.All()[0].Claims) != 1 {
-		t.Fatalf("authority topics = %#v", got.All())
-	}
-	if got.DomainPaths != nil || len(got.Markers.All()) != 0 {
-		t.Fatalf("reduced corpus retained omitted projections: paths=%#v markers=%#v", got.DomainPaths, got.Markers.All())
-	}
 	if _, err := LoadCorpusFromTree(tree, cfg); err == nil ||
 		!strings.Contains(err.Error(), "parse domain sidecar alpha") {
 		t.Fatalf("full corpus accepted malformed domain sidecar: %v", err)

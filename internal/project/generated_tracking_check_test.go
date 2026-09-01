@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
@@ -47,10 +48,10 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.ContainsFunc(report.Drift, func(finding manifest.Drift) bool {
+	if !slices.ContainsFunc(reportDrift(report), func(finding manifest.Drift) bool {
 		return finding.Path == "AGENTS.md" && finding.Kind == "untracked"
 	}) {
-		t.Fatalf("globally ignored generated output was not reported: %#v", report.Drift)
+		t.Fatalf("globally ignored generated output was not reported: %#v", reportDrift(report))
 	}
 
 	gitfixture.AddAll(t, repo)
@@ -58,10 +59,10 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.ContainsFunc(report.Drift, func(finding manifest.Drift) bool {
+	if slices.ContainsFunc(reportDrift(report), func(finding manifest.Drift) bool {
 		return finding.Path == "AGENTS.md" && finding.Kind == "untracked"
 	}) {
-		t.Fatalf("tracked ignored generated output reported untracked: %#v", report.Drift)
+		t.Fatalf("tracked ignored generated output reported untracked: %#v", reportDrift(report))
 	}
 	gitfixture.StageRemoval(t, repo, "AGENTS.md", ".awf/awf.lock")
 
@@ -70,12 +71,12 @@ func TestCheckReportRequiresGeneratedArtifactsInIndex(t *testing.T) {
 		t.Fatal(err)
 	}
 	var got []string
-	for _, finding := range report.Drift {
+	for _, finding := range reportDrift(report) {
 		if finding.Kind == "untracked" {
 			got = append(got, finding.Path)
 		}
 		if (finding.Path == "AGENTS.md" || finding.Path == ".awf/awf.lock") && finding.Kind == "missing" {
-			t.Fatalf("missing duplicates untracked root cause: %#v", report.Drift)
+			t.Fatalf("missing duplicates untracked root cause: %#v", reportDrift(report))
 		}
 	}
 	if joined := strings.Join(got, ","); joined != ".awf/awf.lock,AGENTS.md" {
@@ -93,7 +94,7 @@ func TestCheckLockedFilesSuppressesMissingForUntrackedOutputs(t *testing.T) {
 	root := t.TempDir()
 	p := testStateWith(testState(&config.Config{}), root, resident.NewRoots(root, root), false, catalog.Standard, nil)
 	rendered := map[string]RenderedFile{
-		"regen.md":  {Path: "regen.md", Content: "regen", Policy: OutputPolicy{Regenerate: true}},
+		"regen.md":  {Path: "regen.md", Content: "regen", Policy: outputplan.Policy{Regenerate: true}},
 		"normal.md": {Path: "normal.md", Content: "normal"},
 	}
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{
@@ -164,9 +165,9 @@ func TestCheckGeneratedTrackingNoGitAndNestedResidentExclusion(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		for _, finding := range report.Drift {
+		for _, finding := range reportDrift(report) {
 			if finding.Kind == "untracked" && resident.IsResidentPath(finding.Path) {
-				t.Fatalf("nested resident output reported untracked: %#v", report.Drift)
+				t.Fatalf("nested resident output reported untracked: %#v", reportDrift(report))
 			}
 		}
 	})

@@ -15,8 +15,5 @@ func CurrentSchemaChange() Change {
 // Changes is the fact collector passed through the supported migration seam.
 type Changes struct{ items []Change }
 
-// Add records one ordered migration fact.
-func (c *Changes) Add(text string) { c.items = append(c.items, Change{Text: text}) }
-
 // Items returns a defensive copy of the facts collected by the migration chain.
 func (c *Changes) Items() []Change { return append([]Change(nil), c.items...) }

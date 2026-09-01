@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 )
 
 func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
@@ -20,7 +21,7 @@ func TestCheckLockedFilesInPlaceRegenDrift(t *testing.T) {
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{
 		"x": {RegenChecked: true, OutputHash: manifest.Hash([]byte(canonical))},
 	}}
-	rendered := map[string]RenderedFile{"x": {Path: "x", Content: canonical, RegenChecked: true, TemplateID: "in-place/mock.tmpl", Policy: OutputPolicy{Regenerate: true}}}
+	rendered := map[string]RenderedFile{"x": {Path: "x", Content: canonical, RegenChecked: true, TemplateID: "in-place/mock.tmpl", Policy: outputplan.Policy{Regenerate: true}}}
 
 	// On-disk equals the regenerated content (in-place body already read back) → clean.
 	if err := os.WriteFile(xPath, []byte(canonical), 0o644); err != nil {

@@ -8,8 +8,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -26,17 +28,17 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 
 	// The .ts suffix is irrelevant: the declared Markdown policy selects
 	// frontmatter validation, link scanning, and skill-reference scanning.
-	frontmatter := RenderedFile{Path: "misleading.ts", Content: "not frontmatter\n", Policy: OutputPolicy{ValidateFrontmatter: true}, Encoder: MarkdownAgentDialect}
+	frontmatter := RenderedFile{Path: "misleading.ts", Content: "not frontmatter\n", Policy: outputplan.Policy{ValidateFrontmatter: true}, Encoder: artifactregistry.MarkdownAgentDialect}
 	testsupport.WriteFile(t, filepath.Join(root, frontmatter.Path), frontmatter.Content)
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{"misleading.ts": {OutputHash: manifest.Hash([]byte(frontmatter.Content))}}}
 	if drift := checkLockedDrift(renderInputsForTest(p).residentRoots(), lock, map[string]RenderedFile{frontmatter.Path: frontmatter}, nil); len(drift) != 1 || drift[0].Kind != "invalid-frontmatter" {
 		t.Fatalf("frontmatter policy drift = %#v", drift)
 	}
-	link := RenderedFile{Path: "misleading.toml", Content: "[missing](no/such/file.md)", Policy: OutputPolicy{ScanReferences: true}}
+	link := RenderedFile{Path: "misleading.toml", Content: "[missing](no/such/file.md)", Policy: outputplan.Policy{ScanReferences: true}}
 	if drift := checkDeadRefs(renderInputsForTest(p), []RenderedFile{link}); len(drift) != 1 || drift[0].Kind != "dead-reference" {
 		t.Fatalf("link policy drift = %#v", drift)
 	}
-	skill := RenderedFile{Path: "misleading.ts", Content: "example-debugging", Policy: OutputPolicy{ScanSkillReferences: true}}
+	skill := RenderedFile{Path: "misleading.ts", Content: "example-debugging", Policy: outputplan.Policy{ScanSkillReferences: true}}
 	if drift := checkDeadSkillRefs(renderInputsForTest(p), []RenderedFile{skill}, map[string]bool{}); len(drift) != 1 || drift[0].Kind != "dead-skill-reference" {
 		t.Fatalf("skill-reference policy drift = %#v", drift)
 	}
@@ -54,7 +56,7 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 	// Regeneration likewise follows policy, not a generated template ID or
 	// conventional skill location.
 	testsupport.WriteFile(t, filepath.Join(root, "misleading/SKILL.md"), "old\n")
-	regen := RenderedFile{Path: "misleading/SKILL.md", Content: "new\n", Policy: OutputPolicy{Regenerate: true}}
+	regen := RenderedFile{Path: "misleading/SKILL.md", Content: "new\n", Policy: outputplan.Policy{Regenerate: true}}
 	lock = &manifest.Lock{Files: map[string]manifest.Entry{regen.Path: {}}}
 	if drift := checkLockedDrift(renderInputsForTest(p).residentRoots(), lock, map[string]RenderedFile{regen.Path: regen}, nil); len(drift) != 1 || drift[0].Kind != "stale" {
 		t.Fatalf("regeneration policy drift = %#v", drift)
@@ -107,14 +109,14 @@ func TestCheckLockedFilesClassifiesOrdinaryFreshnessBeforeObservation(t *testing
 		{
 			name:     "regenerated policy retained",
 			observed: text("old"),
-			file:     RenderedFile{Path: path, Content: "new", Policy: OutputPolicy{Regenerate: true}},
+			file:     RenderedFile{Path: path, Content: "new", Policy: outputplan.Policy{Regenerate: true}},
 			entry:    manifest.Entry{},
 			want:     []manifest.Drift{{Path: path, Kind: "stale", Detail: "generated output out of date; run awf render"}},
 		},
 		{
 			name:     "in-place policy retained",
 			observed: text("old"),
-			file:     RenderedFile{Path: path, Content: "new", TemplateID: "template", Policy: OutputPolicy{Regenerate: true}},
+			file:     RenderedFile{Path: path, Content: "new", TemplateID: "template", Policy: outputplan.Policy{Regenerate: true}},
 			entry:    manifest.Entry{},
 			want:     []manifest.Drift{{Path: path, Kind: "hand-edited", Detail: "on-disk output differs from the regenerated file; run awf render to restore awf-owned regions"}},
 		},
@@ -546,7 +548,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	// Fresh planned bytes, the locked hash, and observed bytes all agree, so
 	// frontmatter validation is the first applicable finding.
 	testsupport.WriteFile(t, filepath.Join(root, skillPath), broken)
-	file := RenderedFile{Path: skillPath, Content: broken, Policy: OutputPolicy{ValidateFrontmatter: true}, Encoder: MarkdownAgentDialect}
+	file := RenderedFile{Path: skillPath, Content: broken, Policy: outputplan.Policy{ValidateFrontmatter: true}, Encoder: artifactregistry.MarkdownAgentDialect}
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{
 		skillPath: {OutputHash: manifest.Hash([]byte(broken))},
 	}}

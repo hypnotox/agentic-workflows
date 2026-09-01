@@ -78,7 +78,7 @@ func TestCheckReportAgentGuideSizeAdvisoryManagedOnly(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	for _, note := range report.Notes {
+	for _, note := range reportNotes(report) {
 		if strings.Contains(note, "AGENTS.md") && strings.Contains(note, "12288") {
 			t.Fatalf("local agents document size note = %q", note)
 		}
@@ -185,11 +185,11 @@ func TestLocalDocGuideSize(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(report.Drift) != 0 {
-		t.Fatalf("guide-size advisory must remain non-failing: %#v", report.Drift)
+	if len(reportDrift(report)) != 0 {
+		t.Fatalf("guide-size advisory must remain non-failing: %#v", reportDrift(report))
 	}
-	if !strings.Contains(strings.Join(report.Notes, "\n"), "12288") {
-		t.Fatalf("expected unchanged 12288-byte advisory: %#v", report.Notes)
+	if !strings.Contains(strings.Join(reportNotes(report), "\n"), "12288") {
+		t.Fatalf("expected unchanged 12288-byte advisory: %#v", reportNotes(report))
 	}
 }
 

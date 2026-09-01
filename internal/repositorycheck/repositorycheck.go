@@ -3,18 +3,16 @@ package repositorycheck
 
 import (
 	"fmt"
-	"slices"
 
 	"github.com/hypnotox/agentic-workflows/internal/checkresult"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 )
 
 // Slot supplies one completed owner result and whether its unranked information
-// contributes to the legacy drift projection.
+// contributes to the direct result consumed by repository checks.
 type Slot struct {
-	Result                    checkresult.Result
-	IncludeInformationInDrift bool
+	Result                     checkresult.Result
+	IncludeInformationInDirect bool
 }
 
 // Inputs names the established working-check destinations. Callers place each
@@ -26,21 +24,15 @@ type Inputs struct {
 	TrackingInformation Slot
 }
 
-// Report preserves the existing repository-check projections.
+// Report carries the typed aggregate and its explicitly placed direct result.
 type Report struct {
-	Drift               []manifest.Drift
-	Warnings            []string
-	Information         []string
-	TrackingInformation []string
-	Result              checkresult.Result
-	// DirectResult is the explicitly placed direct-drift projection. Aggregate
-	// advisories remain in Result but never appear in a direct child.
+	Result checkresult.Result
+	// DirectResult excludes aggregate advisories so a direct drift check reports
+	// only producer-owned failures and explicitly included information.
 	DirectResult checkresult.Result
-	// Typed aggregate partitions retain owner classification for command consumers.
+
 	aggregateAdvisoryResult   checkresult.Result
 	trackingInformationResult checkresult.Result
-	Notes                     []string
-	TrackingNotes             []string
 }
 
 // Compose aggregates completed owner results in their explicit established
@@ -56,29 +48,26 @@ func Compose(input Inputs) (Report, error) {
 	var information []checkresult.Information
 	var directFindings []checkresult.Finding
 	var directInformation []checkresult.Information
-	var drift []manifest.Drift
-	appendSlot := func(slot Slot, includeDriftInformation bool) {
+	appendSlot := func(slot Slot, includeInformationInDirect bool) {
 		for _, finding := range slot.Result.Findings() {
 			findings = append(findings, finding)
 			if finding.Rank == severity.Error {
 				directFindings = append(directFindings, finding)
-				drift = append(drift, manifest.Drift{Kind: finding.Evidence.Kind, Path: finding.Evidence.Path, Detail: finding.Evidence.Detail})
 			}
 		}
 		for _, item := range slot.Result.Information() {
 			information = append(information, item)
-			if includeDriftInformation {
+			if includeInformationInDirect {
 				directInformation = append(directInformation, item)
-				drift = append(drift, manifest.Drift{Kind: item.Evidence.Kind, Path: item.Evidence.Path, Detail: item.Evidence.Detail})
 			}
 		}
 	}
-	appendSlot(input.Tracking, input.Tracking.IncludeInformationInDrift)
+	appendSlot(input.Tracking, input.Tracking.IncludeInformationInDirect)
 	for _, slot := range input.ProducerResults {
-		appendSlot(slot, slot.IncludeInformationInDrift)
+		appendSlot(slot, slot.IncludeInformationInDirect)
 	}
-	appendSlot(input.OrdinaryAdvisories, input.OrdinaryAdvisories.IncludeInformationInDrift)
-	appendSlot(input.TrackingInformation, input.TrackingInformation.IncludeInformationInDrift)
+	appendSlot(input.OrdinaryAdvisories, input.OrdinaryAdvisories.IncludeInformationInDirect)
+	appendSlot(input.TrackingInformation, input.TrackingInformation.IncludeInformationInDirect)
 
 	result, err := checkresult.New(findings, information)
 	if err != nil {
@@ -88,19 +77,12 @@ func Compose(input Inputs) (Report, error) {
 	if err != nil {
 		return Report{}, fmt.Errorf("finalize direct owner-classified check results: %w", err)
 	}
-	report := Report{
+	return Report{
 		Result:                    result,
 		DirectResult:              direct,
-		Drift:                     drift,
 		aggregateAdvisoryResult:   input.OrdinaryAdvisories.Result,
 		trackingInformationResult: input.TrackingInformation.Result,
-	}
-	report.Warnings = findingDetails(input.OrdinaryAdvisories.Result)
-	report.Information = informationDetails(input.OrdinaryAdvisories.Result)
-	report.TrackingInformation = append(informationDetails(input.Tracking.Result), informationDetails(input.TrackingInformation.Result)...)
-	report.Notes = append(slices.Clone(report.Information), report.Warnings...)
-	report.TrackingNotes = slices.Clone(report.TrackingInformation)
-	return report, nil
+	}, nil
 }
 
 // SplitWarnings separates a completed owner result for explicitly different
@@ -141,32 +123,9 @@ func requireAdvisories(role string, result checkresult.Result) error {
 	return nil
 }
 
-func requireWarnings(role string, result checkresult.Result) error {
-	if len(result.Information()) > 0 {
-		return fmt.Errorf("%s includes information", role)
-	}
-	return requireAdvisories(role, result)
-}
-
 func requireInformation(role string, result checkresult.Result) error {
 	if len(result.Findings()) > 0 {
 		return fmt.Errorf("%s includes ranked finding", role)
 	}
 	return nil
-}
-
-func findingDetails(result checkresult.Result) []string {
-	var details []string
-	for _, finding := range result.Findings() {
-		details = append(details, finding.Evidence.Detail)
-	}
-	return details
-}
-
-func informationDetails(result checkresult.Result) []string {
-	var details []string
-	for _, information := range result.Information() {
-		details = append(details, information.Evidence.Detail)
-	}
-	return details
 }

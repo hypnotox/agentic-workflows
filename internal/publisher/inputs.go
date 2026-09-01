@@ -7,6 +7,7 @@ import (
 	"slices"
 	"sync"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
@@ -24,15 +25,15 @@ type ProjectSession interface {
 	Root() string
 	Roots() resident.Roots
 	Config() *config.Config
-	Reader() ProjectTreeReader
+	Reader() outputplan.TreeReader
 	Catalog() *catalog.Catalog
-	Targets() []Target
+	Targets() []artifactregistry.Target
 }
 
 type renderInputs struct {
 	session  ProjectSession
 	cfg      *config.Config
-	read     ProjectTreeReader
+	read     outputplan.TreeReader
 	version  string
 	selected *catalog.Catalog
 }
@@ -40,9 +41,9 @@ type renderInputs struct {
 func renderInputsFromSession(session ProjectSession, version string) renderInputs {
 	return renderInputs{session: session, cfg: session.Config(), read: session.Reader(), version: version, selected: session.Catalog()}
 }
-func (p renderInputs) root() string              { return p.session.Root() }
-func (p renderInputs) targets() []Target         { return p.session.Targets() }
-func (p renderInputs) catalog() *catalog.Catalog { return p.selected }
+func (p renderInputs) root() string                       { return p.session.Root() }
+func (p renderInputs) targets() []artifactregistry.Target { return p.session.Targets() }
+func (p renderInputs) catalog() *catalog.Catalog          { return p.selected }
 
 func projectCatalog(p renderInputs) *catalog.Catalog { return p.catalog() }
 

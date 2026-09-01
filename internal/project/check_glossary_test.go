@@ -5,10 +5,21 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/checkresult"
+	"github.com/hypnotox/agentic-workflows/internal/glossary"
+	"github.com/hypnotox/agentic-workflows/internal/glossarycheck"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
 const glossaryCheckCfg = "prefix: example\nintegrationBranch: main\nvars: {}\ndomains: [rendering]\n"
+
+func evaluateGlossaryForTest(p *Session) (checkresult.Result, error) {
+	input, err := testPublisher(renderInputsForTest(p)).Glossary()
+	if err != nil {
+		return checkresult.Result{}, err
+	}
+	return glossarycheck.Evaluate(input)
+}
 
 // A disabled glossary doc is never read, so it can yield no drift.
 func TestCheckGlossaryDisabled(t *testing.T) {
@@ -16,9 +27,9 @@ func TestCheckGlossaryDisabled(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkGlossary(renderInputsForTest(p))
-	if err != nil || drift != nil {
-		t.Errorf("disabled glossary must yield no drift, got %v / %v", drift, err)
+	result, err := evaluateGlossaryForTest(p)
+	if err != nil || len(result.Findings()) != 0 || len(result.Information()) != 0 {
+		t.Errorf("disabled glossary must yield no findings, got %#v / %v", result, err)
 	}
 }
 
@@ -35,14 +46,15 @@ func TestCheckGlossaryValidatesDomains(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	drift, err := checkGlossary(renderInputsForTest(p))
+	result, err := evaluateGlossaryForTest(p)
 	if err != nil {
-		t.Fatalf("checkGlossary: %v", err)
+		t.Fatalf("glossary check: %v", err)
 	}
-	if len(drift) != 1 || drift[0].Kind != "glossary-domain" ||
-		!strings.Contains(drift[0].Detail, "bogus") || !strings.Contains(drift[0].Detail, "bad") ||
-		drift[0].Path != glossarySidecarPath {
-		t.Fatalf("want one glossary-domain drift naming term bad and domain bogus, got %#v", drift)
+	findings := result.Findings()
+	if len(findings) != 1 || findings[0].Evidence.Kind != "glossary-domain" ||
+		!strings.Contains(findings[0].Evidence.Detail, "bogus") || !strings.Contains(findings[0].Evidence.Detail, "bad") ||
+		findings[0].Evidence.Path != glossary.SidecarPath {
+		t.Fatalf("want one glossary-domain finding naming term bad and domain bogus, got %#v", findings)
 	}
 	// Drive the public surface too: the helper finding it is worth nothing if
 	// Check drops the slice on the floor. Check reads the lock, so sync first.
@@ -68,7 +80,7 @@ func TestCheckGlossaryStructuralError(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := checkGlossary(renderInputsForTest(p)); err == nil || !strings.Contains(err.Error(), "must be a list") {
+	if _, err := evaluateGlossaryForTest(p); err == nil || !strings.Contains(err.Error(), "must be a list") {
 		t.Fatalf("expected structural error, got %v", err)
 	}
 }

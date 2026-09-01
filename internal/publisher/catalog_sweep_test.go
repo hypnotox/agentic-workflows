@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -174,7 +175,7 @@ func cloneRenderData(in map[string]any) map[string]any {
 	return cloneTemplateValue(in).(map[string]any)
 }
 
-func singletonTemplateContexts(t *testing.T, p *Session, eff map[string]bool) []singletonTemplateContext {
+func singletonTemplateContexts(t *testing.T, p *project.Session, eff map[string]bool) []singletonTemplateContext {
 	t.Helper()
 	var contexts []singletonTemplateContext
 	for _, kind := range catalog.SingletonKindsFor(projectCatalog(renderInputsForTest(p))) {

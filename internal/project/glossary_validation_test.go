@@ -5,6 +5,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/glossary"
 )
 
 func TestGlossaryRecordsRejectMalformedResidualCheckData(t *testing.T) {
@@ -28,7 +29,7 @@ func TestGlossaryRecordsRejectMalformedResidualCheckData(t *testing.T) {
 	}
 	for name, raw := range cases {
 		t.Run(name, func(t *testing.T) {
-			if _, err := glossaryRecords(raw); err == nil || !strings.Contains(err.Error(), glossarySidecarPath) {
+			if _, err := glossary.Records(raw); err == nil || !strings.Contains(err.Error(), glossary.SidecarPath) {
 				t.Fatalf("glossaryRecords(%#v) error = %v", raw, err)
 			}
 		})
@@ -36,11 +37,11 @@ func TestGlossaryRecordsRejectMalformedResidualCheckData(t *testing.T) {
 }
 
 func TestGlossaryRecordsAcceptSupportedMappingShapesAndMergeLayers(t *testing.T) {
-	records, err := glossaryRecords([]any{map[any]any{"term": " t ", "meaning": " m ", "domains": []any{" d "}}})
+	records, err := glossary.Records([]any{map[any]any{"term": " t ", "meaning": " m ", "domains": []any{" d "}}})
 	if err != nil || len(records) != 1 || records[0].Term != "t" || records[0].Meaning != "m" || len(records[0].Domains) != 1 || records[0].Domains[0] != "d" {
 		t.Fatalf("records = %#v, %v", records, err)
 	}
-	if records, err := glossaryRecords(nil); err != nil || records != nil {
+	if records, err := glossary.Records(nil); err != nil || records != nil {
 		t.Fatalf("nil records = %#v, %v", records, err)
 	}
 
@@ -48,7 +49,7 @@ func TestGlossaryRecordsAcceptSupportedMappingShapesAndMergeLayers(t *testing.T)
 		"standardTerms": []any{map[string]any{"term": "kept", "meaning": "standard"}, map[string]any{"term": "override", "meaning": "standard"}},
 		"terms":         []any{map[string]any{"term": "Override", "meaning": "authored"}},
 	}}
-	merged, err := mergedGlossaryRecords(sidecar)
+	merged, err := glossary.Merge(sidecar)
 	if err != nil || len(merged) != 2 || merged[0].Term != "kept" || merged[1].Meaning != "authored" {
 		t.Fatalf("merged = %#v, %v", merged, err)
 	}
@@ -57,7 +58,7 @@ func TestGlossaryRecordsAcceptSupportedMappingShapesAndMergeLayers(t *testing.T)
 		"authored": {Data: map[string]any{"terms": "bad"}},
 	} {
 		t.Run(name, func(t *testing.T) {
-			if _, err := mergedGlossaryRecords(sc); err == nil {
+			if _, err := glossary.Merge(sc); err == nil {
 				t.Fatal("malformed layer accepted")
 			}
 		})

@@ -33,7 +33,7 @@ type CheckAdvisories struct {
 }
 
 // AdvisoryNotes returns the non-failing notes derived from one prepared output plan.
-func advisoryNotes(p renderInputs, op *OutputPlan, glossary glossarycheck.Input) ([]string, error) {
+func advisoryNotes(p renderInputs, op *outputplan.Plan, glossary glossarycheck.Input) ([]string, error) {
 	glossaryResults, err := glossarycheck.Evaluate(glossary)
 	if err != nil {
 		return nil, err
@@ -42,7 +42,7 @@ func advisoryNotes(p renderInputs, op *OutputPlan, glossary glossarycheck.Input)
 	return append(slices.Clone(advisories.Warnings), advisories.Information...), nil
 }
 
-func advisoryNotesWithState(p renderInputs, op *OutputPlan, glossaryResult checkresult.Result) CheckAdvisories {
+func advisoryNotesWithState(p renderInputs, op *outputplan.Plan, glossaryResult checkresult.Result) CheckAdvisories {
 	files := planWriteFiles(op)
 	all := advisoryCompatibilityFiles(op)
 	information := append(unsetVarNotes(p, files), stubNotes(all)...)
@@ -57,12 +57,12 @@ func advisoryNotesWithState(p renderInputs, op *OutputPlan, glossaryResult check
 }
 
 // advisoryCompatibilityFiles preserves the established stub-note multiplicity
-// without reconstructing output producers. Before CheckReport shared one plan,
+// without reconstructing output producers. Before report construction shared one plan,
 // advisory preparation appended a second generated domain and config-reference
 // set to the plan's write files. Successful command output keeps that cardinality
 // by reusing those immutable plan nodes while every artifact is still produced
 // exactly once.
-func advisoryCompatibilityFiles(op *OutputPlan) []RenderedFile {
+func advisoryCompatibilityFiles(op *outputplan.Plan) []RenderedFile {
 	files := planWriteFiles(op)
 	all := slices.Clone(files)
 	for _, node := range op.Nodes() {
@@ -176,25 +176,22 @@ func artifactLabel(tid string) string {
 	}
 }
 
-// CheckReport is the ordinary check operation's compatibility projection.
-type CheckReport = repositorycheck.Report
-
-// CheckReport performs one ordinary project check from prepared semantic inputs.
-func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, pitfalls pitfall.Corpus, eff map[string]bool, generatedInput generatedcheck.AdditionalInput, glossary glossarycheck.Input, op *OutputPlan) (CheckReport, error) {
+// checkReport performs one ordinary project check from prepared semantic inputs.
+func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, pitfalls pitfall.Corpus, eff map[string]bool, generatedInput generatedcheck.AdditionalInput, glossary glossarycheck.Input, op *outputplan.Plan) (repositorycheck.Report, error) {
 	if err := configcheck.ValidateCommandWiring(p.cfg); err != nil {
-		return CheckReport{}, err
+		return repositorycheck.Report{}, err
 	}
 	glossaryResults, err := glossarycheck.Evaluate(glossary)
 	if err != nil {
-		return CheckReport{}, err
+		return repositorycheck.Report{}, err
 	}
 	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, pitfalls, eff, generatedInput, op, glossaryResults)
 	if err != nil {
-		return CheckReport{}, err
+		return repositorycheck.Report{}, err
 	}
 	advisories, err := advisoryResultsWithState(p, op, glossaryResults)
 	if err != nil {
-		return CheckReport{}, err
+		return repositorycheck.Report{}, err
 	}
 	return repositorycheck.Compose(repositorycheck.Inputs{
 		Tracking:            trackingResult,
@@ -211,7 +208,7 @@ const (
 	propertyHeuristic       checkresult.Property = "heuristic-quality"
 )
 
-func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, pitfalls pitfall.Corpus, eff map[string]bool, generatedInput generatedcheck.AdditionalInput, op *OutputPlan, glossaryResult checkresult.Result) (repositorycheck.Slot, []repositorycheck.Slot, checkresult.Result, error) {
+func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, pitfalls pitfall.Corpus, eff map[string]bool, generatedInput generatedcheck.AdditionalInput, op *outputplan.Plan, glossaryResult checkresult.Result) (repositorycheck.Slot, []repositorycheck.Slot, checkresult.Result, error) {
 	var indexPaths generatedcheck.IndexPaths
 	if repo != nil {
 		indexPaths = repo.IndexPaths
@@ -240,7 +237,7 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 	if err != nil {
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
-	results = append(results, repositorycheck.Slot{Result: generated, IncludeInformationInDrift: true})
+	results = append(results, repositorycheck.Slot{Result: generated, IncludeInformationInDirect: true})
 	references, err := referenceResult(p, *op, eff)
 	if err != nil {
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
@@ -283,13 +280,12 @@ func referenceResult(p renderInputs, op outputplan.Plan, effective map[string]bo
 	return referencecheck.Check(op, p.cfg.Prefix, effective, known, func(path string) bool { _, err := os.Stat(filepath.Join(p.root(), path)); return err == nil })
 }
 
-// Result adapters preserve owner-classified results for ordinary CheckReport
-// composition. Legacy helpers remain available to direct callers without
-// changing the normal composition boundary.
+// Result adapters preserve owner-classified results for ordinary repository
+// check composition.
 func pitfallResult(p renderInputs, pitfalls pitfall.Corpus) (checkresult.Result, error) {
 	return pitfallcheck.Check(p.cfg.Domains, pitfalls)
 }
-func advisoryResultsWithState(p renderInputs, op *OutputPlan, glossaryResult checkresult.Result) (checkresult.Result, error) {
+func advisoryResultsWithState(p renderInputs, op *outputplan.Plan, glossaryResult checkresult.Result) (checkresult.Result, error) {
 	advisories := advisoryNotesWithState(p, op, glossaryResult)
 	var findings []checkresult.Finding
 	for _, note := range advisories.Warnings {

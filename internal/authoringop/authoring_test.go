@@ -14,6 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
@@ -76,7 +77,7 @@ func TestRunRejectsInvalidLeaseContractWithoutMutation(t *testing.T) {
 	released := false
 	cases := []struct {
 		name    string
-		acquire LeaseAcquirer
+		acquire projectmutation.LeaseAcquirer
 	}{
 		{
 			name: "nil lease",

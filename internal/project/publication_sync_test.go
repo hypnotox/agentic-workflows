@@ -11,6 +11,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -74,7 +75,7 @@ func TestSyncReportOpensDistinctResidentRootBeforeTrackedMutation(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	agents := filepath.Join(root, "AGENTS.md")
@@ -113,7 +114,7 @@ func TestSyncReportOpensDistinctResidentRootBeforeTrackedMutation(t *testing.T) 
 func TestSyncReportReportsContentAndModeOnce(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := loadTestSession(testContext(t), root)
-	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	agents := filepath.Join(root, "AGENTS.md")
@@ -128,7 +129,7 @@ func TestSyncReportReportsContentAndModeOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if want := []Change{{Path: "AGENTS.md", Cause: "internal"}}; !reflect.DeepEqual(changes, want) {
+	if want := []publisher.Change{{Path: "AGENTS.md", Cause: "internal"}}; !reflect.DeepEqual(changes, want) {
 		t.Fatalf("changes = %v, want one record for both corrections: %v", changes, want)
 	}
 	assertPerm(t, agents, 0o644)
@@ -163,7 +164,7 @@ func TestSyncReportForeignFinalSymlinkPolicy(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
+			if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 				t.Fatal(err)
 			}
 			lock, err := manifest.Load(lockPath(p.Root()))
@@ -216,7 +217,7 @@ func TestSyncReportForeignFinalSymlinkPolicy(t *testing.T) {
 func TestSyncReportReplacesManagedFinalSymlinkWithoutTargetAccess(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := loadTestSession(testContext(t), root)
-	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	agents := filepath.Join(root, "AGENTS.md")
@@ -244,7 +245,7 @@ func TestSyncReportReplacesManagedFinalSymlinkWithoutTargetAccess(t *testing.T) 
 func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := loadTestSession(testContext(t), root)
-	_, changes, pruned, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version})
+	_, changes, pruned, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -289,7 +290,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []Change{
+	want := []publisher.Change{
 		{Path: ".awf/efforts/.gitignore", Cause: "internal"},
 		{Path: ".claude/skills/example-debugging/SKILL.md", Cause: "config"},
 		{Path: "AGENTS.md", Cause: "template"},
@@ -313,7 +314,7 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	}
 	roots := p.Roots()
 	p = setTestRoots(p, resident.NewRoots(roots.Tracked, residentRoot))
-	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ root, path string }{
@@ -346,7 +347,7 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	roots.Resident = residentRoot
 	p = setTestRoots(p, roots)
 	backups, _, _, err := syncReportProject(p)
-	if err != nil || !slices.Contains(backups, Backup{Path: "AGENTS.md", Bak: "AGENTS.md.awf-bak"}) {
+	if err != nil || !slices.Contains(backups, publisher.Backup{Path: "AGENTS.md", Bak: "AGENTS.md.awf-bak"}) {
 		t.Fatalf("foreign backup = %v, error = %v", backups, err)
 	}
 	backup := filepath.Join(root, "AGENTS.md.awf-bak")
@@ -377,7 +378,7 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	roots = p.Roots()
 	p = setTestRoots(p, resident.NewRoots(roots.Tracked, residentRoot))
 	backups, _, _, err = syncReportProject(p)
-	wantResidentBackup := Backup{Path: residentOutput, Bak: residentOutput + ".awf-bak"}
+	wantResidentBackup := publisher.Backup{Path: residentOutput, Bak: residentOutput + ".awf-bak"}
 	if err != nil || !slices.Contains(backups, wantResidentBackup) {
 		t.Fatalf("resident backup = %v, error = %v", backups, err)
 	}
@@ -510,7 +511,7 @@ func TestSyncLockRefusesEscapingParent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	before, err := os.ReadFile(lockFile(root))

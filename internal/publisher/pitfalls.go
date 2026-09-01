@@ -8,6 +8,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 )
 
@@ -17,7 +18,7 @@ func loadPitfallCorpus(p renderInputs) (pitfall.Corpus, error) {
 	return loadPitfallCorpusFrom(projectTreeReader(p))
 }
 
-func loadPitfallCorpusFrom(reader ProjectTreeReader) (pitfall.Corpus, error) {
+func loadPitfallCorpusFrom(reader outputplan.TreeReader) (pitfall.Corpus, error) {
 	paths, err := reader.Paths(pitfallsSourceDir + "/")
 	if err != nil {
 		return pitfall.Corpus{}, err

@@ -10,8 +10,10 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 )
 
@@ -144,7 +146,7 @@ func TestEnabledDefinitionMissingBridgeTemplateRefusesBeforeOutput(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	state = setTestTargets(state, []Target{{Name: "broken", BridgeFile: "BRIDGE.md", BridgeTemplate: "missing/bridge.md.tmpl", AgentDialect: MarkdownAgentDialect}})
+	state = setTestTargets(state, []artifactregistry.Target{{Name: "broken", BridgeFile: "BRIDGE.md", BridgeTemplate: "missing/bridge.md.tmpl", AgentDialect: artifactregistry.MarkdownAgentDialect}})
 	if _, err := outputPlanProject(state); err == nil || !strings.Contains(err.Error(), "read template missing/bridge.md.tmpl") {
 		t.Fatalf("missing enabled bridge template error = %v", err)
 	}
@@ -166,7 +168,7 @@ func TestMarkdownRenderObservesTemplateSources(t *testing.T) {
 	}
 	path := "docs/architecture.md"
 	i := slices.IndexFunc(plan.Nodes, func(node OutputNode) bool { return node.Path == path })
-	if i < 0 || !slices.Contains(plan.Nodes[i].ConsumedInputs, OutputInput{Path: "templates/docs/architecture.md.tmpl", Role: ArtifactTemplate}) {
+	if i < 0 || !slices.Contains(plan.Nodes[i].ConsumedInputs, OutputInput{Path: "templates/docs/architecture.md.tmpl", Role: outputplan.ArtifactTemplate}) {
 		t.Fatalf("configured root source was not observed: %#v", plan.Nodes[i].ConsumedInputs)
 	}
 }
@@ -216,9 +218,9 @@ func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 		t.Fatalf("missing node %s", path)
 	}
 	want := normalizeOutputInputs([]OutputInput{
-		{Path: ".awf/config.yaml", Role: ArtifactConfig},
-		{Path: ".awf/skills/debugging.yaml", Role: ArtifactAuthoredData},
-		{Path: "templates/skills/debugging/SKILL.md.tmpl", Role: ArtifactTemplate},
+		{Path: ".awf/config.yaml", Role: outputplan.ArtifactConfig},
+		{Path: ".awf/skills/debugging.yaml", Role: outputplan.ArtifactAuthoredData},
+		{Path: "templates/skills/debugging/SKILL.md.tmpl", Role: outputplan.ArtifactTemplate},
 	})
 	if !reflect.DeepEqual(plan.Nodes[idx].ConsumedInputs, want) {
 		t.Fatalf("consumed inputs = %#v, want %#v", plan.Nodes[idx].ConsumedInputs, want)
@@ -229,14 +231,14 @@ func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 // roles recorded at one path keep both entries and sort by role, so a
 // role-misclassified input is still visible to every consumer of the plan.
 func TestNormalizeOutputInputsOrdersRolesAtOnePath(t *testing.T) {
-	rolesAtOnePath := normalizeOutputInputs([]OutputInput{{Path: "same", Role: ArtifactTemplate}, {Path: "same", Role: ArtifactConfig}})
-	if !reflect.DeepEqual(rolesAtOnePath, []OutputInput{{Path: "same", Role: ArtifactConfig}, {Path: "same", Role: ArtifactTemplate}}) {
+	rolesAtOnePath := normalizeOutputInputs([]OutputInput{{Path: "same", Role: outputplan.ArtifactTemplate}, {Path: "same", Role: outputplan.ArtifactConfig}})
+	if !reflect.DeepEqual(rolesAtOnePath, []OutputInput{{Path: "same", Role: outputplan.ArtifactConfig}, {Path: "same", Role: outputplan.ArtifactTemplate}}) {
 		t.Fatalf("same-path role ordering = %#v", rolesAtOnePath)
 	}
 }
 
 func TestResolvedTargetOutputsFiltersRequiredSkills(t *testing.T) {
-	target := Target{SkillDir: ".target/skills", Outputs: []TargetOutput{{Path: "always"}, {Path: "conditional", RequiresSkill: "implementing"}, {SkillName: "workflow", RequiresSkill: "effort-workflow"}}}
+	target := artifactregistry.Target{SkillDir: ".target/skills", Outputs: []artifactregistry.TargetOutput{{Path: "always"}, {Path: "conditional", RequiresSkill: "implementing"}, {SkillName: "workflow", RequiresSkill: "effort-workflow"}}}
 	outputs := resolvedTargetOutputs(target, "example", []string{"implementing"})
 	if len(outputs) != 2 || outputs[0].Path != "always" || outputs[1].Path != "conditional" {
 		t.Fatalf("filtered outputs = %#v", outputs)
@@ -271,7 +273,7 @@ func (r failingReadReader) ReadFile(string) ([]byte, bool, error) {
 }
 
 type faultingProjectReader struct {
-	ProjectTreeReader
+	outputplan.TreeReader
 	path      string
 	err       error
 	failAfter int
@@ -287,7 +289,7 @@ func (r faultingProjectReader) ReadFile(path string) ([]byte, bool, error) {
 			return nil, false, r.err
 		}
 	}
-	return r.ProjectTreeReader.ReadFile(path)
+	return r.TreeReader.ReadFile(path)
 }
 
 // failingPathsReader faults the failAt'th Paths call so each propagation site

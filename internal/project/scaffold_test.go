@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -576,7 +577,7 @@ func TestInitializeReportPropagatesResidentInspectionFailure(t *testing.T) {
 	if err := os.WriteFile(residentRoot, []byte("not a directory"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(state, InitAuthority{InitializedWithVersion: Version}); err == nil || !strings.Contains(err.Error(), "unsafe resident root") {
+	if _, _, _, err := initializeReportProject(state, publisher.InitAuthority{InitializedWithVersion: Version}); err == nil || !strings.Contains(err.Error(), "unsafe resident root") {
 		t.Fatalf("initialize resident inspection error = %v", err)
 	}
 }

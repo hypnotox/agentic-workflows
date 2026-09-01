@@ -11,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -75,7 +76,7 @@ func TestLocalDocRenderObservesExistingOutputInput(t *testing.T) {
 	if i < 0 {
 		t.Fatalf("local document missing from plan")
 	}
-	if !slices.Contains(plan.Nodes[i].ConsumedInputs, OutputInput{Path: outPath, Role: ArtifactManagedOutput}) {
+	if !slices.Contains(plan.Nodes[i].ConsumedInputs, OutputInput{Path: outPath, Role: outputplan.ArtifactManagedOutput}) {
 		t.Fatalf("observed inputs = %v", plan.Nodes[i].ConsumedInputs)
 	}
 }
@@ -86,7 +87,7 @@ func TestLocalDocCollisionWithTargetOutputPrecedesRendering(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p = setTestTargets(p, append(testTargets(p), Target{Name: "collision", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "docs/runbooks/x.md", TemplateID: "missing/never-rendered.tmpl", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}}))
+	p = setTestTargets(p, append(testTargets(p), artifactregistry.Target{Name: "collision", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{Path: "docs/runbooks/x.md", TemplateID: "missing/never-rendered.tmpl", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}}))
 	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "collides with managed output") || strings.Contains(err.Error(), "never-rendered") {
 		t.Fatalf("pre-render collision error = %v", err)
 	}
@@ -120,23 +121,23 @@ func TestOutputPlanPropagatesPreAdoptionEnumerationFault(t *testing.T) {
 // removed-invariant (TestTargetDescriptorValidation)
 // removed-invariant (TestTargetDescriptorValidation)
 func TestTargetDescriptorValidation(t *testing.T) {
-	for _, target := range []Target{
+	for _, target := range []artifactregistry.Target{
 		{Name: "bad", BridgeFile: "X"},
-		{Name: "bad", Capabilities: []Capability{"unknown"}},
+		{Name: "bad", Capabilities: []artifactregistry.Capability{"unknown"}},
 		{Name: "bad", AgentDialect: "unknown"},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "../bad", TemplateID: "x"}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{SkillName: "x/y", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{SkillName: "../escape", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{SkillName: "/absolute", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", SkillName: "ambiguous", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: "unknown"}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Inputs: []TargetOutputInput{{Path: "unexpected", Role: ArtifactTemplate}}}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: "unknown", Provenance: render.HTMLComment, PolicyDeclared: true}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: 99, PolicyDeclared: true}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
-		{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{{Path: "x", TemplateID: "x", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: OutputPolicy{ScanReferences: true}, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{Path: "../bad", TemplateID: "x"}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{SkillName: "x/y", TemplateID: "x", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{SkillName: "../escape", TemplateID: "x", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{SkillName: "/absolute", TemplateID: "x", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{Path: "x", SkillName: "ambiguous", TemplateID: "x", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{Path: "x", TemplateID: "x", Producer: "unknown"}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{Path: "x", TemplateID: "x", Producer: artifactregistry.TargetOutputTemplate, Inputs: []artifactregistry.TargetOutputInput{{Path: "unexpected", Role: outputplan.ArtifactTemplate}}}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{Path: "x", TemplateID: "x", Producer: artifactregistry.TargetOutputTemplate}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{Path: "x", TemplateID: "x", Producer: artifactregistry.TargetOutputTemplate, Encoder: "unknown", Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{Path: "x", TemplateID: "x", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: 99, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{Path: "x", TemplateID: "x", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{Path: "x", TemplateID: "x", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.PlainAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}},
+		{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{{Path: "x", TemplateID: "x", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.PlainAgentDialect, Provenance: render.SlashComment, Policy: outputplan.Policy{ScanReferences: true}, PolicyDeclared: true}}},
 	} {
 		if err := artifactregistry.ValidateTarget(target); err == nil {
 			t.Fatalf("invalid target %#v was accepted", target)
@@ -146,7 +147,7 @@ func TestTargetDescriptorValidation(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		p = setTestTargets(p, []Target{target})
+		p = setTestTargets(p, []artifactregistry.Target{target})
 		if _, err := outputPlanProject(p); err == nil {
 			t.Fatalf("planner accepted invalid target %#v", target)
 		}
@@ -172,22 +173,22 @@ func TestBridgeRenderIdentity(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	custom := Target{
+	custom := artifactregistry.Target{
 		Name:           "custom",
 		SkillDir:       ".custom/workflows",
 		AgentDir:       ".custom/reviewers",
 		AgentSuffix:    ".agent.md",
-		AgentDialect:   MarkdownAgentDialect,
+		AgentDialect:   artifactregistry.MarkdownAgentDialect,
 		BridgeFile:     "CUSTOM.md",
 		BridgeTemplate: bridgeTID,
-		Capabilities:   []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
-		Outputs: []TargetOutput{{
+		Capabilities:   []artifactregistry.Capability{artifactregistry.CapabilitySubagentTools, artifactregistry.CapabilitySessionHandoff},
+		Outputs: []artifactregistry.TargetOutput{{
 			Path: ".custom/extension.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl",
-			Producer: TargetOutputTemplate, Encoder: PlainAgentDialect,
-			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
+			Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.PlainAgentDialect,
+			Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true,
 		}},
 	}
-	p = setTestTargets(p, []Target{claudeTarget, custom, piTarget})
+	p = setTestTargets(p, []artifactregistry.Target{claudeTarget, custom, piTarget})
 	plan, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
@@ -208,13 +209,13 @@ func TestBridgeRenderIdentity(t *testing.T) {
 			t.Errorf("%s template identity = recipe %q observed %q, want %q", path, node.Recipe.TemplateID, node.ObservedTemplateID, templateID)
 		}
 		for _, sidecar := range []string{".awf/target-bridge/.yaml", ".awf/claude/.yaml"} {
-			if slices.Contains(node.ConsumedInputs, OutputInput{Path: sidecar, Role: ArtifactAuthoredData}) {
+			if slices.Contains(node.ConsumedInputs, OutputInput{Path: sidecar, Role: outputplan.ArtifactAuthoredData}) {
 				t.Errorf("%s inherited fictitious sidecar input %s", path, sidecar)
 			}
 		}
 		wantInputs := []OutputInput{
-			{Path: ".awf/config.yaml", Role: ArtifactConfig},
-			{Path: "templates/" + templateID, Role: ArtifactTemplate},
+			{Path: ".awf/config.yaml", Role: outputplan.ArtifactConfig},
+			{Path: "templates/" + templateID, Role: outputplan.ArtifactTemplate},
 		}
 		if !slices.Equal(node.ConsumedInputs, wantInputs) || len(node.DependsOn) != 0 {
 			t.Errorf("%s source guidance changed machine inputs: inputs=%#v dependencies=%#v", path, node.ConsumedInputs, node.DependsOn)
@@ -259,7 +260,7 @@ func TestBridgeRenderIdentity(t *testing.T) {
 	}
 
 	custom.BridgeTemplate = "missing/custom-bridge.tmpl"
-	p = setTestTargets(p, []Target{custom})
+	p = setTestTargets(p, []artifactregistry.Target{custom})
 	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "read template missing/custom-bridge.tmpl") {
 		t.Fatalf("missing custom bridge template error = %v", err)
 	}
@@ -275,7 +276,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	}
 	shared := piTarget
 	shared.Name = "second-pi"
-	shared.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	shared.Outputs = append([]artifactregistry.TargetOutput(nil), piTarget.Outputs...)
 	p = setTestTargets(p, append(testTargets(p), shared))
 	op, err := outputPlanProject(p)
 	if err != nil {
@@ -306,7 +307,7 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 		}
 	}
 	targets = testTargets(p)
-	targets[len(targets)-1].Outputs[0].Policy = OutputPolicy{Regenerate: true}
+	targets[len(targets)-1].Outputs[0].Policy = outputplan.Policy{Regenerate: true}
 	p = setTestTargets(p, targets)
 	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
 		t.Fatalf("conflicting shared output error = %v", err)
@@ -326,8 +327,8 @@ func TestDefinitionCoalescerRejectsTargetBackedRecipeMismatches(t *testing.T) {
 		one.Name = "one"
 		two := one
 		two.Name = "two"
-		two.Capabilities = []Capability{CapabilitySessionHandoff}
-		state = setTestTargets(state, []Target{one, two})
+		two.Capabilities = []artifactregistry.Capability{artifactregistry.CapabilitySessionHandoff}
+		state = setTestTargets(state, []artifactregistry.Target{one, two})
 		if _, err := outputPlanProject(state); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
 			t.Fatalf("target-backed skill collision error = %v", err)
 		}
@@ -335,12 +336,12 @@ func TestDefinitionCoalescerRejectsTargetBackedRecipeMismatches(t *testing.T) {
 
 	t.Run("target output collides with target-backed skill", func(t *testing.T) {
 		target := piTarget
-		target.Outputs = []TargetOutput{{
+		target.Outputs = []artifactregistry.TargetOutput{{
 			Path: target.SkillPath(testConfig(state).Prefix, "implementing"), TemplateID: skillTID(renderInputsForTest(state), "implementing"),
-			Producer: TargetOutputTemplate, Encoder: MarkdownAgentDialect, Provenance: render.HTMLComment,
+			Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment,
 			Policy: declaredPolicy("skills", false), PolicyDeclared: true,
 		}}
-		state = setTestTargets(state, []Target{target})
+		state = setTestTargets(state, []artifactregistry.Target{target})
 		if _, err := outputPlanProject(state); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
 			t.Fatalf("cross-family collision error = %v", err)
 		}
@@ -355,7 +356,7 @@ func TestRenderAllBaseMaterializesSharedTargetOutputOnce(t *testing.T) {
 	}
 	shared := piTarget
 	shared.Name = "second-pi"
-	shared.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	shared.Outputs = append([]artifactregistry.TargetOutput(nil), piTarget.Outputs...)
 	state = setTestTargets(state, append(testTargets(state), shared))
 	inputs := renderInputsForTest(state)
 	eff, err := effectiveSkills(inputs)
@@ -389,10 +390,10 @@ func TestInitCollisionsUsesPathOnlyDefinitions(t *testing.T) {
 		t.Fatal(err)
 	}
 	bad := piTarget
-	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	bad.Outputs = append([]artifactregistry.TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].Path = "foreign/output.ts"
 	bad.Outputs[0].TemplateID = "missing/not-needed-for-init.tmpl"
-	state = setTestTargets(state, []Target{bad})
+	state = setTestTargets(state, []artifactregistry.Target{bad})
 	testsupport.WriteFile(t, filepath.Join(root, "foreign", "output.ts"), "foreign\n")
 	collisions, err := testPublisher(renderInputsForTest(state)).InitCollisions()
 	if err != nil {
@@ -413,7 +414,7 @@ func TestOutputPolicyIsExplicit(t *testing.T) {
 	if got := declaredPolicy("efforts", false); got.ScanReferences {
 		t.Fatalf("efforts policy = %#v", got)
 	}
-	if (OutputPolicy{}).ScanReferences {
+	if (outputplan.Policy{}).ScanReferences {
 		t.Fatal("zero policy must not scan")
 	}
 }
@@ -527,7 +528,7 @@ func TestOutputPlanPropagatesLocalRenderReadFault(t *testing.T) {
 			}
 			failure := errors.New("local output read failed")
 			calls := 0
-			read := faultingProjectReader{ProjectTreeReader: filesystemProjectReader{root: root},
+			read := faultingProjectReader{TreeReader: filesystemProjectReader{root: root},
 				path: "docs/runbooks/incident.md", err: failure, failAfter: tc.failAfter, calls: &calls}
 			cfg, err := config.Load(config.RootDir(root))
 			if err != nil {
@@ -555,11 +556,11 @@ func TestOutputPlanPropagatesConfigReferenceRenderFault(t *testing.T) {
 
 func TestTargetOutputDefinitionsRejectUnreadableTemplate(t *testing.T) {
 	bad := piTarget
-	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	bad.Outputs = append([]artifactregistry.TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
 	cfg := &config.Config{Prefix: "example"}
 	p := testState()
-	p = lowerWithTargets(p, []Target{bad})
+	p = lowerWithTargets(p, []artifactregistry.Target{bad})
 	_, err := targetOutputDefinitions(newRenderInputs(p, cfg, nil, "test"), nil)
 	t.Logf("target output definition error = %v", err)
 	if err == nil || !strings.Contains(err.Error(), "read template missing/target-output.tmpl") {
@@ -569,11 +570,11 @@ func TestTargetOutputDefinitionsRejectUnreadableTemplate(t *testing.T) {
 
 func TestTargetOutputDefinitionsRejectUnknownRequiredSkill(t *testing.T) {
 	bad := piTarget
-	bad.Outputs = append([]TargetOutput(nil), piTarget.Outputs...)
+	bad.Outputs = append([]artifactregistry.TargetOutput(nil), piTarget.Outputs...)
 	bad.Outputs[0].RequiresSkill = "missing"
 	cfg := &config.Config{Prefix: "example"}
 	p := testState()
-	p = lowerWithTargets(p, []Target{bad})
+	p = lowerWithTargets(p, []artifactregistry.Target{bad})
 	if _, err := targetOutputDefinitions(newRenderInputs(p, cfg, nil, "test"), nil); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target output requirement error = %v", err)
 	}
@@ -585,7 +586,7 @@ func TestValidateLiveTemplatesRejectsMissingTargetTemplate(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p = setTestTargets(p, append(testTargets(p), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
+	p = setTestTargets(p, append(testTargets(p), artifactregistry.Target{Outputs: []artifactregistry.TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
 	if err := validateLiveTemplates(renderInputsForTest(p)); err == nil || !strings.Contains(err.Error(), "read template missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
 	}

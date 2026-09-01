@@ -29,39 +29,10 @@ import (
 // (ADR-0195 item 1): the plan orchestrates rendering, and render files never
 // call plan functions.
 
-// ProjectTreeReader preserves the concise producer-internal name for the neutral operation tree reader.
-type ProjectTreeReader = outputplan.TreeReader
-
-// ArtifactRole preserves the project package's input-role compatibility name.
-type ArtifactRole = outputplan.ArtifactRole
-
-const (
-	// ArtifactConfig identifies an authored configuration input.
-	ArtifactConfig = outputplan.ArtifactConfig
-	// ArtifactLock identifies the managed project lock.
-	ArtifactLock = outputplan.ArtifactLock
-	// ArtifactManifest identifies manifest authority.
-	ArtifactManifest = outputplan.ArtifactManifest
-	// ArtifactTemplate identifies an embedded template input.
-	ArtifactTemplate = outputplan.ArtifactTemplate
-	// ArtifactConventionPart identifies an authored convention part.
-	ArtifactConventionPart = outputplan.ArtifactConventionPart
-	// ArtifactAuthoredData identifies authored sidecar data.
-	ArtifactAuthoredData = outputplan.ArtifactAuthoredData
-	// ArtifactTopicMetadata identifies authored topic metadata.
-	ArtifactTopicMetadata = outputplan.ArtifactTopicMetadata
-	// ArtifactClaimPart identifies an authored current-state claim part.
-	ArtifactClaimPart = outputplan.ArtifactClaimPart
-	// ArtifactManagedOutput identifies an existing managed output input.
-	ArtifactManagedOutput = outputplan.ArtifactManagedOutput
-	// ArtifactProtocolDescriptor identifies a runtime protocol descriptor.
-	ArtifactProtocolDescriptor = outputplan.ArtifactProtocolDescriptor
-)
-
 // OutputInput records one semantic input consumed by a declared output.
 type OutputInput struct {
 	Path string
-	Role ArtifactRole
+	Role outputplan.ArtifactRole
 }
 
 // outputDefinition records one pre-render output identity and its coalesced owners.
@@ -74,14 +45,16 @@ type outputDefinition struct {
 	Dependencies     []string
 }
 
-func projectTreeReader(p renderInputs) ProjectTreeReader {
+func projectTreeReader(p renderInputs) outputplan.TreeReader {
 	return p.read
 }
 
 type filesystemProjectReader struct{ root string }
 
 // NewFilesystemReader opens the ordinary working-tree reader used by Publisher.
-func NewFilesystemReader(root string) ProjectTreeReader { return filesystemProjectReader{root: root} }
+func NewFilesystemReader(root string) outputplan.TreeReader {
+	return filesystemProjectReader{root: root}
+}
 
 func (r filesystemProjectReader) ReadFile(path string) ([]byte, bool, error) {
 	b, err := os.ReadFile(filepath.Join(r.root, filepath.FromSlash(path)))
@@ -226,7 +199,7 @@ func filesystemProjectBoundary(dir string) bool {
 
 // buildOutputDefinitions registers managed output identities without executing
 // a renderer. Init uses this path-only projection before an operation exists.
-func buildOutputDefinitions(cfg *config.Config, cat *catalog.Catalog, targets []Target, read ProjectTreeReader) ([]outputDefinition, error) {
+func buildOutputDefinitions(cfg *config.Config, cat *catalog.Catalog, targets []artifactregistry.Target, read outputplan.TreeReader) ([]outputDefinition, error) {
 	pitfalls, err := loadPitfallCorpusFrom(read)
 	if err != nil {
 		return nil, err
@@ -264,7 +237,7 @@ func definitionTopicsFromCorpus(root string, corpus topic.Corpus) []definitionTo
 // buildOutputDefinitionsFromState is the authoritative operation population.
 // It consumes the operation's already-derived corpora instead of traversing the
 // selected tree a second time.
-func buildOutputDefinitionsFromState(cfg *config.Config, cat *catalog.Catalog, targets []Target, pitfalls pitfall.Corpus, topics []definitionTopic) ([]outputDefinition, error) {
+func buildOutputDefinitionsFromState(cfg *config.Config, cat *catalog.Catalog, targets []artifactregistry.Target, pitfalls pitfall.Corpus, topics []definitionTopic) ([]outputDefinition, error) {
 	definitions := []outputDefinition{}
 	add := func(outputPath, tid, declarer, recipeProjection string, dependencies ...string) {
 		if outputPath == "" {
@@ -276,7 +249,7 @@ func buildOutputDefinitionsFromState(cfg *config.Config, cat *catalog.Catalog, t
 			Declarers:        []string{declarer}, Dependencies: normalizePaths(dependencies),
 		})
 	}
-	addTarget := func(outputPath, tid, producer string, target Target) {
+	addTarget := func(outputPath, tid, producer string, target artifactregistry.Target) {
 		add(outputPath, tid, target.Name, producer+"\x00"+tid+"\x00"+targetRecipeProjection(target))
 		definitions[len(definitions)-1].Projections = []string{targetDescriptorProjection(target)}
 	}
@@ -308,7 +281,7 @@ func buildOutputDefinitionsFromState(cfg *config.Config, cat *catalog.Catalog, t
 		if name == "pitfalls" {
 			deps = pitfallSourcePaths(pitfalls)
 		}
-		add(artifactregistry.OutputPath(cat, Target{}, cfg.Prefix, "docs", name), entry.TID, declarer, "docs\x00"+name, deps...)
+		add(artifactregistry.OutputPath(cat, artifactregistry.Target{}, cfg.Prefix, "docs", name), entry.TID, declarer, "docs\x00"+name, deps...)
 	}
 	for _, local := range cfg.NormalizedLocalDocs() {
 		add(artifactregistry.LocalDocOutputPath(local.Name), localDocTID, "local-doc:"+local.Name, "local-doc\x00"+local.Name)
@@ -317,7 +290,7 @@ func buildOutputDefinitionsFromState(cfg *config.Config, cat *catalog.Catalog, t
 		add(artifactregistry.PitfallOutputPath(entry.Slug), pitfallEntryTID, "pitfall:"+entry.Slug, "pitfall\x00"+entry.Slug, entry.SourcePath)
 	}
 	for _, domain := range cfg.Domains {
-		add(artifactregistry.OutputPath(cat, Target{}, cfg.Prefix, "domains", domain), mustDescriptor("domains").templateID(cat, domain), "generated-domain", "domain\x00"+domain)
+		add(artifactregistry.OutputPath(cat, artifactregistry.Target{}, cfg.Prefix, "domains", domain), mustDescriptor("domains").templateID(cat, domain), "generated-domain", "domain\x00"+domain)
 	}
 	byDomain := map[string][]string{}
 	for _, current := range topics {
@@ -346,7 +319,7 @@ func buildOutputDefinitionsFromState(cfg *config.Config, cat *catalog.Catalog, t
 		}
 		add(artifact.OutputPath, artifact.TemplateID, artifact.TemplateID, "resident\x00"+artifact.Name)
 	}
-	configReferencePath := artifactregistry.OutputPath(cat, Target{}, cfg.Prefix, "docs", "config-reference")
+	configReferencePath := artifactregistry.OutputPath(cat, artifactregistry.Target{}, cfg.Prefix, "docs", "config-reference")
 	for i := range definitions {
 		if definitions[i].Path != configReferencePath {
 			continue
@@ -409,16 +382,13 @@ func coalesceDefinitions(cfg *config.Config, definitions []outputDefinition) ([]
 	return out, nil
 }
 
-// OutputPolicy preserves the project package's output-policy compatibility name.
-type OutputPolicy = outputplan.Policy
-
 // OutputRecipe is the normalized, output-affecting declaration used for
 // collision diagnostics and configuration hashes. Target identity is kept on
 // OutputNode declarers rather than here, so compatible shared outputs coalesce.
 type OutputRecipe struct {
 	TemplateID, TemplateHash, ConfigHash string
-	Policy                               OutputPolicy
-	Encoder                              AgentDialect
+	Policy                               outputplan.Policy
+	Encoder                              artifactregistry.AgentDialect
 	Provenance                           string
 }
 
@@ -426,7 +396,7 @@ type OutputRecipe struct {
 type OutputNode struct {
 	Path                string
 	Recipe              OutputRecipe
-	Policy              OutputPolicy
+	Policy              outputplan.Policy
 	Declarers           []string
 	DeclarerProjections []string
 	DependsOn           []string
@@ -453,7 +423,7 @@ func (op *OutputPlan) writeFiles() []RenderedFile {
 
 // declaredPolicy is assigned by a producer family, never inferred by a
 // template identifier or output filename. Consumers inspect only node Policy.
-func declaredPolicy(kind string, regen bool) OutputPolicy {
+func declaredPolicy(kind string, regen bool) outputplan.Policy {
 	return artifactregistry.Policy(kind, regen)
 }
 
@@ -467,12 +437,17 @@ type targetOutputDefinition struct {
 
 // resolvedTargetOutputs is the single selection and path translation point for
 // target-owned outputs. Planning, rendering, and prune all consume it.
-func validateTargetOutputRequirements(t Target, cat *catalog.Catalog) error {
+func validateTargetOutputRequirements(t artifactregistry.Target, cat *catalog.Catalog) error {
 	return artifactregistry.ValidateTargetRequirements(t, cat)
 }
 
-func resolvedTargetOutputs(t Target, prefix string, selected []string) []TargetOutput {
-	return artifactregistry.ResolveTargetOutputs(t, prefix, selected)
+func resolvedTargetOutputs(t artifactregistry.Target, prefix string, selected []string) []artifactregistry.TargetOutput {
+	artifacts := artifactregistry.ResolveTargetArtifacts(t, prefix, selected)
+	outputs := make([]artifactregistry.TargetOutput, len(artifacts))
+	for i, artifact := range artifacts {
+		outputs[i] = artifact.Output
+	}
+	return outputs
 }
 
 // targetOutputDefinitions reads recipe inputs but never executes a template.

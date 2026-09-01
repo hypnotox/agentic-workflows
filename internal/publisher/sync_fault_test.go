@@ -15,6 +15,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -276,7 +277,7 @@ func (f *swapBeforeLockReplaceFilesystem) ReplaceExpected(path string, expected 
 	return f.syncFilesystem.ReplaceExpected(path, expected, contents, mode)
 }
 
-func testSyncPlan(t *testing.T, state *Session) (renderInputs, *outputplan.Plan) {
+func testSyncPlan(t *testing.T, state *project.Session) (renderInputs, *outputplan.Plan) {
 	t.Helper()
 	inputs := renderInputsForTest(state)
 	plan, err := testPublisher(inputs).Plan()
@@ -285,7 +286,7 @@ func testSyncPlan(t *testing.T, state *Session) (renderInputs, *outputplan.Plan)
 	}
 	return inputs, &plan
 }
-func syncWithFilesystems(t *testing.T, state *Session, filesystems syncFilesystems) ([]Backup, []Change, []string, error) {
+func syncWithFilesystems(t *testing.T, state *project.Session, filesystems syncFilesystems) ([]Backup, []Change, []string, error) {
 	t.Helper()
 	inputs, plan := testSyncPlan(t, state)
 	backups, changes, pruned, _, err := syncReportWithPlan(inputs, nil, filesystems, plan)

@@ -5,6 +5,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
@@ -96,7 +97,7 @@ func TestProjectRendersStandardAgentMetadataAndBody(t *testing.T) {
 	}
 	for i := range files {
 		if files[i].Path == ".pi/extensions/awf-subagents/index.ts" {
-			if files[i].Encoder != PlainAgentDialect {
+			if files[i].Encoder != artifactregistry.PlainAgentDialect {
 				t.Fatalf("Pi target-owned encoder = %q", files[i].Encoder)
 			}
 			return
@@ -111,7 +112,7 @@ func TestProjectEncodeAgentRejectsUnknownDialect(t *testing.T) {
 	p := testRenderInputs(&config.Config{}, resident.NewRoots("", ""), &catalog.Catalog{Agents: map[string]catalog.AgentSpec{
 		"reviewer": {Name: "reviewer", Description: "description"},
 	}}, catalog.Standard, nil)
-	if _, err := encodeAgent(p, Target{AgentDialect: "unknown"}, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
+	if _, err := encodeAgent(p, artifactregistry.Target{AgentDialect: "unknown"}, "reviewer", "# reviewer\n", map[string]any{}); err == nil {
 		t.Fatal("encodeAgent accepted an unknown dialect")
 	}
 }

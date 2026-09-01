@@ -5,6 +5,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -180,12 +181,12 @@ func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) 
 	if plain.ConfigHash == active.ConfigHash || plain.TemplateHash != active.TemplateHash {
 		t.Fatalf("root projection hashes plain=%#v active=%#v", plain, active)
 	}
-	nativeBefore, err := renderTarget(renderInputsForTest(p), "hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: PlainAgentDialect})
+	nativeBefore, err := renderTarget(renderInputsForTest(p), "hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: artifactregistry.PlainAgentDialect})
 	if err != nil {
 		t.Fatal(err)
 	}
 	testConfig(p).Render = nil
-	nativeAbsent, err := renderTarget(renderInputsForTest(p), "hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: PlainAgentDialect})
+	nativeAbsent, err := renderTarget(renderInputsForTest(p), "hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: artifactregistry.PlainAgentDialect})
 	if err != nil {
 		t.Fatal(err)
 	}

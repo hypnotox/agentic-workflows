@@ -10,6 +10,7 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
@@ -61,7 +62,17 @@ func checkProject(p *project.Session, ctx context.Context) ([]manifest.Drift, er
 	generated, _ := operation.GeneratedOutput()
 	glossary, _ := operation.Glossary()
 	report, err := project.BuildCheckReport(p, cfg, nil, ctx, plan, pitfalls, skills, generated, glossary)
-	return report.Drift, err
+	if err != nil {
+		return nil, err
+	}
+	var drift []manifest.Drift
+	for _, finding := range report.DirectResult.Findings() {
+		drift = append(drift, manifest.Drift{Kind: finding.Evidence.Kind, Path: finding.Evidence.Path, Detail: finding.Evidence.Detail})
+	}
+	for _, information := range report.DirectResult.Information() {
+		drift = append(drift, manifest.Drift{Kind: information.Evidence.Kind, Path: information.Evidence.Path, Detail: information.Evidence.Detail})
+	}
+	return drift, nil
 }
 
 func mustEvalConfig(t *testing.T, state *project.Session) *config.Config {
@@ -110,7 +121,7 @@ func cloneFullCatalog(t *testing.T, cat *catalog.Catalog) string {
 	return cloneFullCatalogForTarget(t, cat, "claude")
 }
 
-func targetNamed(t *testing.T, targets []project.Target, name string) project.Target {
+func targetNamed(t *testing.T, targets []artifactregistry.Target, name string) artifactregistry.Target {
 	t.Helper()
 	for _, target := range targets {
 		if target.Name == name {
@@ -118,7 +129,7 @@ func targetNamed(t *testing.T, targets []project.Target, name string) project.Ta
 		}
 	}
 	t.Fatalf("requested target %q not rendered in %#v", name, targets)
-	return project.Target{}
+	return artifactregistry.Target{}
 }
 
 func catalogDocPath(root, name string, entry catalog.DocEntry) string {

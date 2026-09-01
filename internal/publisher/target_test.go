@@ -13,6 +13,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -37,7 +38,7 @@ func TestClaudeTargetPaths(t *testing.T) {
 // invariant: rendering/pi-runtime:pi-extension-target-render (TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow)
 // invariant: rendering/pi-runtime:pi-session-handoff-workflow (TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow)
 func TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow(t *testing.T) {
-	if !slices.Contains(piTarget.Capabilities, CapabilitySubagentTools) || !slices.Contains(piTarget.Capabilities, CapabilitySessionHandoff) {
+	if !slices.Contains(piTarget.Capabilities, artifactregistry.CapabilitySubagentTools) || !slices.Contains(piTarget.Capabilities, artifactregistry.CapabilitySessionHandoff) {
 		t.Fatalf("Pi capabilities = %v", piTarget.Capabilities)
 	}
 	if len(piTarget.Outputs) != 2 {
@@ -141,7 +142,7 @@ func TestTargetOutputRenderError(t *testing.T) {
 		t.Fatal(err)
 	}
 	targets := testTargets(p)
-	var pi *Target
+	var pi *artifactregistry.Target
 	for i := range targets {
 		if targets[i].Name == "pi" {
 			pi = &targets[i]
@@ -273,19 +274,19 @@ func renderPiExtensionFile(t *testing.T, name string) string {
 // invariant: rendering/catalog-and-targets:built-in-runtime-targets (TestTargetDescriptorCustomization)
 // invariant: rendering/project-output-plan:multi-target-render (TestTargetDescriptorCustomization)
 func TestTargetDescriptorCustomization(t *testing.T) {
-	custom := Target{
+	custom := artifactregistry.Target{
 		Name:           "custom",
 		SkillDir:       ".custom/workflows",
 		AgentDir:       ".custom/reviewers",
 		AgentSuffix:    ".agent.md",
-		AgentDialect:   MarkdownAgentDialect,
+		AgentDialect:   artifactregistry.MarkdownAgentDialect,
 		BridgeFile:     "CUSTOM.md",
 		BridgeTemplate: bridgeTID,
-		Capabilities:   []Capability{CapabilitySubagentTools, CapabilitySessionHandoff},
-		Outputs: []TargetOutput{{
+		Capabilities:   []artifactregistry.Capability{artifactregistry.CapabilitySubagentTools, artifactregistry.CapabilitySessionHandoff},
+		Outputs: []artifactregistry.TargetOutput{{
 			Path: ".custom/extension.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl",
-			Producer: TargetOutputTemplate, Encoder: PlainAgentDialect,
-			Provenance: render.SlashComment, Policy: OutputPolicy{}, PolicyDeclared: true,
+			Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.PlainAgentDialect,
+			Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true,
 		}},
 	}
 	if err := artifactregistry.ValidateTarget(custom); err != nil {
@@ -303,16 +304,16 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	p = setTestTargets(p, []Target{custom})
+	p = setTestTargets(p, []artifactregistry.Target{custom})
 	files, err := renderAll(p)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]AgentDialect{
-		".custom/workflows/example-implementing/SKILL.md": MarkdownAgentDialect,
-		".custom/reviewers/reviewer.agent.md":             MarkdownAgentDialect,
-		"CUSTOM.md":                                       MarkdownAgentDialect,
-		".custom/extension.ts":                            PlainAgentDialect,
+	want := map[string]artifactregistry.AgentDialect{
+		".custom/workflows/example-implementing/SKILL.md": artifactregistry.MarkdownAgentDialect,
+		".custom/reviewers/reviewer.agent.md":             artifactregistry.MarkdownAgentDialect,
+		"CUSTOM.md":                                       artifactregistry.MarkdownAgentDialect,
+		".custom/extension.ts":                            artifactregistry.PlainAgentDialect,
 	}
 	counts := map[string]int{}
 	for _, file := range files {

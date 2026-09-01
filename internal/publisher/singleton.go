@@ -6,6 +6,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
@@ -51,9 +52,9 @@ type conditionalUnit struct {
 	tid        string
 	kind       string
 	sections   []string
-	encoder    AgentDialect
+	encoder    artifactregistry.AgentDialect
 	provenance render.CommentStyle
-	policy     OutputPolicy
+	policy     outputplan.Policy
 }
 
 func conditionalUnits() []conditionalUnit {
@@ -63,50 +64,50 @@ func conditionalUnits() []conditionalUnit {
 		out[i] = conditionalUnit{
 			enabled: declaration.Enabled, path: declaration.Path, tid: declaration.TemplateID,
 			kind: declaration.Kind, sections: append([]string(nil), declaration.Sections...),
-			encoder: AgentDialect(declaration.Encoder), provenance: declaration.Provenance,
+			encoder: artifactregistry.AgentDialect(declaration.Encoder), provenance: declaration.Provenance,
 			policy: declaration.Policy,
 		}
 	}
 	return out
 }
 
-// Compatibility projections for package-local callers and behavioral tests.
-var hookNames = artifactregistry.HookNames()
-var runnerSections = artifactregistry.RunnerSections()
-
 // liveTemplateEncoders derives every embedded identity that can participate in render authority.
-func liveTemplateEncoders(p renderInputs) map[string]AgentDialect {
-	encoders := map[string]AgentDialect{topicTID: MarkdownAgentDialect, topicIndexTID: MarkdownAgentDialect, pitfallEntryTID: MarkdownAgentDialect}
+func liveTemplateEncoders(p renderInputs) map[string]artifactregistry.AgentDialect {
+	return liveTemplateEncodersWithKinds(p, allKindDescriptors())
+}
+
+func liveTemplateEncodersWithKinds(p renderInputs, kinds []kindDescriptor) map[string]artifactregistry.AgentDialect {
+	encoders := map[string]artifactregistry.AgentDialect{topicTID: artifactregistry.MarkdownAgentDialect, topicIndexTID: artifactregistry.MarkdownAgentDialect, pitfallEntryTID: artifactregistry.MarkdownAgentDialect}
 	if len(p.cfg.LocalDocs) != 0 {
-		encoders[localDocTID] = MarkdownAgentDialect
+		encoders[localDocTID] = artifactregistry.MarkdownAgentDialect
 	}
-	for _, descriptor := range kindDescriptors {
+	for _, descriptor := range kinds {
 		if descriptor.freeformDomain {
-			encoders[descriptor.templateID(projectCatalog(p), "")] = MarkdownAgentDialect
+			encoders[descriptor.templateID(projectCatalog(p), "")] = artifactregistry.MarkdownAgentDialect
 		}
 	}
 	for name := range projectCatalog(p).Skills {
-		encoders[skillTID(p, name)] = MarkdownAgentDialect
+		encoders[skillTID(p, name)] = artifactregistry.MarkdownAgentDialect
 	}
 	for name := range projectCatalog(p).Agents {
-		encoders[agentTID(p, name)] = MarkdownAgentDialect
+		encoders[agentTID(p, name)] = artifactregistry.MarkdownAgentDialect
 	}
 	for _, entry := range projectCatalog(p).Docs {
-		encoders[entry.TID] = MarkdownAgentDialect
+		encoders[entry.TID] = artifactregistry.MarkdownAgentDialect
 	}
 	for _, target := range p.targets() {
 		if target.BridgeTemplate != "" {
-			encoders[target.BridgeTemplate] = MarkdownAgentDialect
+			encoders[target.BridgeTemplate] = artifactregistry.MarkdownAgentDialect
 		}
 		for _, output := range target.Outputs {
 			encoders[output.TemplateID] = output.Encoder
 		}
 	}
 	for _, unit := range artifactregistry.ConditionalUnits() {
-		encoders[unit.TemplateID] = AgentDialect(unit.Encoder)
+		encoders[unit.TemplateID] = artifactregistry.AgentDialect(unit.Encoder)
 	}
 	for _, root := range resident.RootNames() {
-		encoders[residentGitignoreTID(root)] = PlainAgentDialect
+		encoders[residentGitignoreTID(root)] = artifactregistry.PlainAgentDialect
 	}
 	return encoders
 }

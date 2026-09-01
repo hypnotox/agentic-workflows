@@ -13,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
 	"github.com/hypnotox/agentic-workflows/internal/glossary"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -46,7 +47,7 @@ func potentialVarConsumers(cat *catalog.Catalog) (map[string][]string, error) {
 		}
 		return nil
 	}
-	for _, d := range kindDescriptors {
+	for _, d := range allKindDescriptors() {
 		if d.poolNames == nil {
 			continue
 		}
@@ -464,7 +465,7 @@ func generateConfigReference(p renderInputs, files []RenderedFile, eff map[strin
 		markerParts: rf.markerParts, assembled: rf.assembled,
 		partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
 		RegenChecked: true, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID, Encoder: rf.Encoder,
-		Policy: OutputPolicy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}
+		Policy: outputplan.Policy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}
 	if templateSourceRoot(p) != "" {
 		wrapped.TemplateID, wrapped.TemplateHash, wrapped.ConfigHash = rf.TemplateID, rf.TemplateHash, rf.ConfigHash
 	}

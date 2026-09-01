@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -18,8 +17,8 @@ func configuredAuditRepository(t *testing.T) (gitfixture.Fixture, string) {
 	return repo, base
 }
 
-// invariant: tooling/audit-commands:audit-reports-evaluated-scope (TestRunConfiguredBuildsReportAndClassifiesOutcome)
-func TestRunConfiguredBuildsReportAndClassifiesOutcome(t *testing.T) {
+// invariant: tooling/audit-commands:audit-reports-evaluated-scope (TestRunHistoricalBuildsReportAndClassifiesOutcome)
+func TestRunHistoricalBuildsReportAndClassifiesOutcome(t *testing.T) {
 	cases := []struct {
 		name, subject, path, content, status string
 		failed                               bool
@@ -32,7 +31,7 @@ func TestRunConfiguredBuildsReportAndClassifiesOutcome(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			repo, base := configuredAuditRepository(t)
 			gitfixture.Commit(t, repo, tc.subject, map[string]string{tc.path: tc.content})
-			outcome, err := RunConfigured(testContext(t), repo.Root(), &config.Config{}, base, "HEAD")
+			outcome, err := RunHistorical(testContext(t), repo.Root(), base, "HEAD")
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -54,10 +53,10 @@ func TestRunConfiguredBuildsReportAndClassifiesOutcome(t *testing.T) {
 	}
 }
 
-// invariant: tooling/audit-commands:audit-empty-range-announced (TestRunConfiguredAnnouncesEmptyRange)
-func TestRunConfiguredAnnouncesEmptyRange(t *testing.T) {
+// invariant: tooling/audit-commands:audit-empty-range-announced (TestRunHistoricalAnnouncesEmptyRange)
+func TestRunHistoricalAnnouncesEmptyRange(t *testing.T) {
 	repo, _ := configuredAuditRepository(t)
-	empty, err := RunConfigured(testContext(t), repo.Root(), &config.Config{}, "HEAD", "HEAD")
+	empty, err := RunHistorical(testContext(t), repo.Root(), "HEAD", "HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -78,7 +77,7 @@ func TestRunConfiguredAnnouncesEmptyRange(t *testing.T) {
 	}
 }
 
-func TestRunConfiguredUsesLockedGeneratedPaths(t *testing.T) {
+func TestRunHistoricalUsesLockedGeneratedPaths(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	lock := `{"awfVersion":"0.1.0","schemaVersion":3,"files":{"generated.go":{}}}`
 	base := gitfixture.Commit(t, repo, "feat(awf): base", map[string]string{
@@ -88,7 +87,7 @@ func TestRunConfiguredUsesLockedGeneratedPaths(t *testing.T) {
 	})
 	gitfixture.Commit(t, repo, "feat(awf): generated update", map[string]string{"generated.go": "package x\n" + strings.Repeat("var n int\n", 500)})
 
-	outcome, err := RunConfigured(testContext(t), repo.Root(), &config.Config{}, base, "HEAD")
+	outcome, err := RunHistorical(testContext(t), repo.Root(), base, "HEAD")
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -97,7 +96,7 @@ func TestRunConfiguredUsesLockedGeneratedPaths(t *testing.T) {
 	}
 }
 
-func TestRunConfiguredPropagatesInputAndAnalysisFailures(t *testing.T) {
+func TestRunHistoricalPropagatesInputAndAnalysisFailures(t *testing.T) {
 	dir := t.TempDir()
 	if err := os.MkdirAll(filepath.Join(dir, ".awf"), 0o755); err != nil {
 		t.Fatal(err)
@@ -105,12 +104,12 @@ func TestRunConfiguredPropagatesInputAndAnalysisFailures(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(dir, ".awf", "awf.lock"), []byte("not json"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := RunConfigured(testContext(t), dir, &config.Config{}, "HEAD", "HEAD"); err == nil {
+	if _, err := RunHistorical(testContext(t), dir, "HEAD", "HEAD"); err == nil {
 		t.Fatal("invalid lock accepted")
 	}
 
 	repo, _ := configuredAuditRepository(t)
-	if _, err := RunConfigured(testContext(t), repo.Root(), &config.Config{}, "does-not-exist", "HEAD"); err == nil {
+	if _, err := RunHistorical(testContext(t), repo.Root(), "does-not-exist", "HEAD"); err == nil {
 		t.Fatal("unresolvable range accepted")
 	}
 }

@@ -18,7 +18,7 @@ type kindDescriptor struct {
 	freeformDomain bool
 	poolNames      func(*catalog.Catalog) []string
 	sections       func(*catalog.Catalog, string) ([]string, bool)
-	outPath        func(t Target, prefix, name string) string
+	outPath        func(t artifactregistry.Target, prefix, name string) string
 	templateID     func(*catalog.Catalog, string) string
 }
 
@@ -40,7 +40,7 @@ func projectKindDescriptor(kind artifactregistry.Kind) kindDescriptor {
 		}
 	}
 	if kind.Targeting == artifactregistry.TargetAdapter {
-		descriptor.outPath = func(target Target, prefix, name string) string {
+		descriptor.outPath = func(target artifactregistry.Target, prefix, name string) string {
 			return artifactregistry.OutputPath(catlessCatalog, target, prefix, kind.Plural, name)
 		}
 	}
@@ -58,9 +58,6 @@ func allKindDescriptors() []kindDescriptor {
 	}
 	return out
 }
-
-// kindDescriptors is a compatibility projection of the canonical registry.
-var kindDescriptors = allKindDescriptors()
 
 func descriptorByPlural(kind string) (kindDescriptor, bool) {
 	declaration, ok := artifactregistry.KindByPlural(kind)

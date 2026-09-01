@@ -16,9 +16,13 @@ import (
 // auditProject creates a temp project (minimal .awf config) with a git repo and
 // a base commit, returning the root and the base commit hash.
 func auditProject(t *testing.T) (gitfixture.Fixture, string) {
+	return auditProjectWithConfig(t, "prefix: example\nintegrationBranch: main\n")
+}
+
+func auditProjectWithConfig(t *testing.T, config string) (gitfixture.Fixture, string) {
 	t.Helper()
 	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
+	testsupport.WriteAwfConfig(t, root, config)
 	// Sync writes the lock so the configured audit operation can identify generated paths.
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatal(err)
@@ -104,10 +108,35 @@ func TestRunAuditRejectsMalformedRange(t *testing.T) {
 }
 
 func TestRunAuditOpenError(t *testing.T) {
-	// A dir with no .awf/config.yaml makes Session loading fail. The range is valid,
-	// so this reaches Open rather than stopping at the refusal above.
+	// The range is valid, so a non-repository reaches audit's repository open.
 	if err := runAudit(testContext(t), t.TempDir(), "HEAD", out(t)); err == nil {
-		t.Fatal("expected a project Session loading error")
+		t.Fatal("expected an audit repository open error")
+	}
+}
+
+// invariant: tooling/audit-commands:audit-historical-scopes-fixed (TestRunAuditUsesFixedHistoricalScopesInsteadOfProjectConfig)
+func TestRunAuditUsesFixedHistoricalScopesInsteadOfProjectConfig(t *testing.T) {
+	const projectConfig = "prefix: example\nintegrationBranch: main\naudit:\n  allowedScopes:\n    - custom\n"
+	cases := []struct {
+		name, subject string
+		wantFailure   bool
+	}{
+		{name: "historical scope omitted by project config remains accepted", subject: "feat(adr-system): historical change"},
+		{name: "project-only scope remains rejected", subject: "feat(custom): project policy cannot alter history", wantFailure: true},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			repo, base := auditProjectWithConfig(t, projectConfig)
+			gitfixture.Commit(t, repo, tc.subject, map[string]string{"main.go": "package x\nvar changed int\n"})
+			var rendered bytes.Buffer
+			err := runAudit(testContext(t), repo.Root(), base, &rendered)
+			if (err != nil) != tc.wantFailure {
+				t.Fatalf("runAudit error = %v, want failure %t; report=%q", err, tc.wantFailure, rendered.String())
+			}
+			if tc.wantFailure && !strings.Contains(rendered.String(), `disallowed scope "custom"`) {
+				t.Fatalf("report = %q, want fixed-policy scope rejection", rendered.String())
+			}
+		})
 	}
 }
 

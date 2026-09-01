@@ -11,11 +11,12 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/generatedcheck"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
 
 type generatedEntriesErrorReader struct {
-	ProjectTreeReader
+	outputplan.TreeReader
 	err error
 }
 
@@ -24,7 +25,7 @@ func (r generatedEntriesErrorReader) Entries(string) ([]generatedcheck.TreeEntry
 }
 
 type generatedPathsErrorReader struct {
-	ProjectTreeReader
+	outputplan.TreeReader
 	err error
 }
 
@@ -69,14 +70,14 @@ func TestGeneratedSemanticsPropagatesPreparedTreeErrors(t *testing.T) {
 	}
 	inputs := renderInputsForTest(state)
 	sentinel := errors.New("generated entries unavailable")
-	inputs.read = generatedEntriesErrorReader{ProjectTreeReader: inputs.read, err: sentinel}
+	inputs.read = generatedEntriesErrorReader{TreeReader: inputs.read, err: sentinel}
 	if _, err := (&Publisher{inputs: inputs}).operationState(); !errors.Is(err, sentinel) {
 		t.Fatalf("Prepare error = %v, want generated entries sentinel", err)
 	}
 
 	inputs = renderInputsForTest(state)
 	sentinel = errors.New("generated paths unavailable")
-	inputs.read = generatedPathsErrorReader{ProjectTreeReader: inputs.read, err: sentinel}
+	inputs.read = generatedPathsErrorReader{TreeReader: inputs.read, err: sentinel}
 	if _, err := generatedSemantics(inputs, topic.Corpus{}); !errors.Is(err, sentinel) {
 		t.Fatalf("generatedSemantics error = %v, want paths sentinel", err)
 	}

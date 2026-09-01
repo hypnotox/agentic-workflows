@@ -207,8 +207,8 @@ var keys = []Entry{
 	},
 	{
 		Path: "audit.allowedScopes", Type: "list of scope entries (bare string, or {name, meaning})", Default: "accept any scope",
-		Description:  "The project's Conventional Commits scope taxonomy: the single home for commit scopes; rendered prose quotes it from here. Absent = accept any scope; entries are enforced by `awf check staged commit`/`awf audit` and editing them reflags referencing rendered artifacts.",
-		Availability: "Read by `awf check staged commit`, `awf audit`, and every rendered artifact quoting the scope list.",
+		Description:  "The project's live Conventional Commits scope taxonomy for new commits; rendered prose quotes it from here. Absent = accept any live scope; entries are enforced by `awf check staged commit` and editing them reflags referencing rendered artifacts. Historical `awf audit` uses a fixed code-owned vocabulary instead.",
+		Availability: "Read by `awf check staged commit` and every rendered artifact quoting the live scope list; not read by historical `awf audit`.",
 	},
 	{
 		Path: "audit.allowedScopes[].name", Type: "string", Default: "none",

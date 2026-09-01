@@ -21,18 +21,6 @@ func IndexTree(ctx context.Context, repo *git.Repo) (*Tree, error) {
 	return treeFromBlobs(blobs)
 }
 
-// NewSelectionFromBlobs converts Git blobs into an immutable Selection. It
-// preserves Git's regular, executable, and symlink modes and rejects any mode
-// outside that closed set; Selection performs the clone, sort, and path
-// validation.
-func NewSelectionFromBlobs(blobs []git.IndexBlob) (*Selection, error) {
-	files, err := filesFromBlobs(blobs)
-	if err != nil {
-		return nil, err
-	}
-	return NewSelection(files)
-}
-
 // treeFromBlobs converts Git blobs into an immutable Tree.
 func treeFromBlobs(blobs []git.IndexBlob) (*Tree, error) {
 	files, err := filesFromBlobs(blobs)

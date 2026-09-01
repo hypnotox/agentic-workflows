@@ -24,14 +24,9 @@ When range collection or the live cleanliness read returns context cancellation 
 Backing: unbacked
 Verify: Inject cancellation at the range and live-cleanliness seams and confirm the returned error matches the injected context error and later work does not run.
 
-### `invariant: sparse-snapshot-explicit-selection`
-
-An immutable snapshot Selection is type-distinct from a complete snapshot Tree. Selected reads fail on an unsafe, duplicate, missing, outside-project, or unsupported requested path; full-tree consumers cannot treat an unselected path as repository absence, and current and staged checks retain complete snapshots.
-Backing: test
-
 ### `invariant: audit-conventional-commits`
 
-awf audit raises an Error finding for a range commit whose subject is not a well-formed Conventional Commit, carries a type outside the fixed Conventional Commits set or a scope outside the configured scope list, or exceeds the fixed 72-character subject limit; a conforming commit raises none.
+awf audit raises an Error finding for a range commit whose subject is not a well-formed Conventional Commit, carries a type outside the fixed Conventional Commits set or a scope outside the fixed historical scope vocabulary, or exceeds the fixed 72-character subject limit; a conforming commit raises none. Live `audit.allowedScopes` policy does not alter historical evaluation.
 Backing: test
 
 ### `invariant: audit-empty-range-clean`

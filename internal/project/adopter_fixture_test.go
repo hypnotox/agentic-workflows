@@ -6,6 +6,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
 // temporaryAuthoredAdopter builds a representative authored adopter without
@@ -31,7 +32,7 @@ bootstrap:
 	if err != nil {
 		t.Fatalf("open fixture: %v", err)
 	}
-	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatalf("initialize fixture: %v", err)
 	}
 	return root

@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -358,11 +359,11 @@ func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
 		wantHeading bool
 	}{
 		{"ordinary Markdown", nil, true},
-		{"generated Markdown", &renderOutputOptions{encoder: MarkdownAgentDialect}, true},
-		{"Markdown target", &renderOutputOptions{encoder: MarkdownAgentDialect, bannerStyle: render.HTMLComment}, true},
-		{"plain target", &renderOutputOptions{encoder: PlainAgentDialect, bannerStyle: render.SlashComment}, false},
-		{"plain conditional", &renderOutputOptions{encoder: PlainAgentDialect}, false},
-		{"plain resident", &renderOutputOptions{encoder: PlainAgentDialect}, false},
+		{"generated Markdown", &renderOutputOptions{encoder: artifactregistry.MarkdownAgentDialect}, true},
+		{"Markdown target", &renderOutputOptions{encoder: artifactregistry.MarkdownAgentDialect, bannerStyle: render.HTMLComment}, true},
+		{"plain target", &renderOutputOptions{encoder: artifactregistry.PlainAgentDialect, bannerStyle: render.SlashComment}, false},
+		{"plain conditional", &renderOutputOptions{encoder: artifactregistry.PlainAgentDialect}, false},
+		{"plain resident", &renderOutputOptions{encoder: artifactregistry.PlainAgentDialect}, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {

@@ -13,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/project"
+	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 	"github.com/hypnotox/agentic-workflows/internal/severity"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"golang.org/x/mod/semver"
@@ -34,7 +35,7 @@ func orderedRepositoryLanes() []repositoryLane {
 type repoCheckInputs struct {
 	config       *config.Config
 	session      *project.Session
-	checkReport  project.CheckReport
+	checkReport  repositorycheck.Report
 	currentState currentstatecoord.CurrentStateReport
 	index        *snapshot.Tree
 	collection   checkCollection
@@ -43,13 +44,9 @@ type repoCheckInputs struct {
 type repoCheckDependencies struct {
 	loadConfig   func(string) (*config.Config, error)
 	loadSession  func(context.Context, string, *config.Config) (*project.Session, error)
-	checkReport  func(context.Context, *project.Session) (project.CheckReport, error)
+	checkReport  func(context.Context, *project.Session) (repositorycheck.Report, error)
 	currentState func(context.Context, *project.Session) (currentstatecoord.CurrentStateReport, error)
 	indexTree    func(context.Context, string) (*snapshot.Tree, error)
-}
-
-func hasCheckResults(result checkresult.Result) bool {
-	return len(result.Findings()) > 0 || len(result.Information()) > 0
 }
 
 func hasErrors(result checkresult.Result) bool {
@@ -93,27 +90,27 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 			}
 			return project.NewLoader(load, catalog.Standard, awfgit.ProjectResidentRoot, repo).Load(ctx, root)
 		},
-		checkReport: func(ctx context.Context, session *project.Session) (project.CheckReport, error) {
+		checkReport: func(ctx context.Context, session *project.Session) (repositorycheck.Report, error) {
 			operation := composePublisher(session)
 			plan, err := operation.Plan()
 			if err != nil {
-				return project.CheckReport{}, err
+				return repositorycheck.Report{}, err
 			}
 			pitfalls, err := operation.Pitfalls()
 			if err != nil {
-				return project.CheckReport{}, err
+				return repositorycheck.Report{}, err
 			}
 			skills, err := operation.EffectiveSkills()
 			if err != nil {
-				return project.CheckReport{}, err
+				return repositorycheck.Report{}, err
 			}
 			generated, err := operation.GeneratedOutput()
 			if err != nil {
-				return project.CheckReport{}, err
+				return repositorycheck.Report{}, err
 			}
 			glossary, err := operation.Glossary()
 			if err != nil {
-				return project.CheckReport{}, err
+				return repositorycheck.Report{}, err
 			}
 			return project.BuildCheckReport(session, session.Config(), session.Repository(), ctx, plan, pitfalls, skills, generated, glossary)
 		},

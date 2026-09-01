@@ -39,16 +39,12 @@ awf does not pin its revision, so it can be patched or updated without an awf re
 is established by a successful protocol-v2 capability handshake and final awf profile registration.
 A missing, incompatible, late, or rejected handshake reports an actionable error and activates no
 awf fallback. `pi-tools` owns general context usage, handoff, and subagent execution mechanics; awf
-renders the workflow-specific profile adapter and, when enabled, its effort integration. CodeGraph
-is the expected source-navigation tool for structural discovery, architecture, callers,
-dependencies, and impact analysis, while Git selects changed paths. awf does not check that
-CodeGraph is installed; its focused read and resolve commands supply normative project authority
-that structural navigation cannot infer.
-
-The awf-owned effort extension requires the APIs provided by the
-[`fork-v0.84.2.2` Pi release](https://github.com/hypnotox/pi/releases/tag/fork-v0.84.2.2)
-or a later compatible build. See all
-[Pi fork releases](https://github.com/hypnotox/pi/releases) for downloadable versions.
+renders the workflow-specific profile adapter. Awf provides no Pi-specific effort association or
+memory tools, and the adapter has no Pi package-version floor. CodeGraph is the expected
+source-navigation tool for structural discovery, architecture, callers, dependencies, and impact
+analysis, while Git selects changed paths. awf does not check that CodeGraph is installed; its
+focused read and resolve commands supply normative project authority that structural navigation
+cannot infer.
 
 ## Install
 

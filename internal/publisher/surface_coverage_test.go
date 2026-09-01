@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 )
@@ -26,7 +27,7 @@ func TestBuildOutputDefinitionsCoversTargetAndMetadataEdges(t *testing.T) {
 	}
 	sharedOutput := piTarget.Outputs[0]
 	sharedOutput.Path, sharedOutput.TemplateID = "shared", "template"
-	targets := []Target{{Name: "one", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{sharedOutput}}, {Name: "two", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{sharedOutput}}}
+	targets := []artifactregistry.Target{{Name: "one", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{sharedOutput}}, {Name: "two", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{sharedOutput}}}
 	read := memoryProjectReader{".awf/topics/metadata/note.txt": []byte("ignored")}
 	decls, err := buildOutputDefinitions(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, targets, read)
 	if err != nil {
@@ -45,7 +46,7 @@ func TestBuildOutputDefinitionsCoversTargetAndMetadataEdges(t *testing.T) {
 
 	unknownOutput := sharedOutput
 	unknownOutput.Path, unknownOutput.RequiresSkill = "missing", "absent"
-	unknown := []Target{{Name: "bad", AgentDialect: MarkdownAgentDialect, Outputs: []TargetOutput{unknownOutput}}}
+	unknown := []artifactregistry.Target{{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{unknownOutput}}}
 	if _, err := buildOutputDefinitions(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, unknown, read); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target requirement error = %v", err)
 	}

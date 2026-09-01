@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -21,7 +22,7 @@ func TestInitializeReportAcceptsBrownfieldGovernedRecord(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatalf("initialize governed brownfield: %v", err)
 	}
 	after, err := os.ReadFile(filepath.Join(root, "docs/decisions", "0001-governed.md"))

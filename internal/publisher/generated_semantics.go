@@ -17,7 +17,7 @@ import (
 func generatedSemantics(p renderInputs, topics topic.Corpus) (generatedcheck.AdditionalInput, error) {
 	input := generatedcheck.AdditionalInput{Vars: maps.Clone(p.cfg.Vars), Domains: slices.Clone(p.cfg.Domains)}
 	for _, kind := range artifactregistry.Kinds() {
-		if kind.Cardinality != artifactregistry.PerEntry {
+		if kind.Cardinality != artifactregistry.CardinalityCatalog {
 			continue
 		}
 		names, _ := artifactregistry.CatalogNames(p.catalog(), kind.Plural)

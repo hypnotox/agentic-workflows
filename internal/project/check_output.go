@@ -1,13 +1,10 @@
 package project
 
 import (
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
-
-type ProjectTreeReader = outputplan.TreeReader
-type OutputPlan = outputplan.Plan
-type OutputPolicy = outputplan.Policy
 
 // RenderedFile is the residual checker projection of one neutral planned output.
 // It is constructed only at the outputplan-to-check translation point.
@@ -16,7 +13,7 @@ type RenderedFile struct {
 	RegenChecked                                        bool
 	Policy                                              outputplan.Policy
 	Declarer, DeclarerProjection                        string
-	Encoder                                             AgentDialect
+	Encoder                                             artifactregistry.AgentDialect
 	Provenance                                          render.CommentStyle
 	assembled                                           string
 	stubDefaults, stubParts, markerParts                []string
@@ -29,7 +26,7 @@ func checkFile(output outputplan.Output) RenderedFile {
 		Path: output.Path(), Content: output.Content(), TemplateID: output.TemplateID(),
 		TemplateHash: output.TemplateHash(), ConfigHash: output.ConfigHash(), RegenChecked: output.RegenChecked(),
 		Policy: output.Policy(), Declarer: output.Declarer(), DeclarerProjection: output.DeclarerProjection(),
-		Encoder: AgentDialect(output.Encoder()), Provenance: render.CommentStyle(output.Provenance()),
+		Encoder: artifactregistry.AgentDialect(output.Encoder()), Provenance: render.CommentStyle(output.Provenance()),
 		assembled: output.Assembled(), stubDefaults: output.StubDefaults(), stubParts: output.StubParts(),
 		markerParts: output.MarkerParts(), kind: output.Kind(), artifact: output.Artifact(), partVarRefs: output.PartVarRefs(),
 	}

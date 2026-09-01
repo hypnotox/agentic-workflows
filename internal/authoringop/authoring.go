@@ -14,6 +14,7 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
@@ -40,12 +41,9 @@ type Request struct {
 	Value       any
 }
 
-// LeaseAcquirer is the narrow operation dependency used to retain the complete
-// project lease and directly inject release faults without mutable globals.
-type LeaseAcquirer = projectmutation.LeaseAcquirer
-
-// Run executes one complete semantic authoring transaction.
-func Run(ctx context.Context, root string, request Request, loader *project.Loader, acquire LeaseAcquirer) (Outcome, error) {
+// Run executes one complete semantic authoring transaction. The lease acquirer
+// remains injectable so tests can exercise release faults without mutable globals.
+func Run(ctx context.Context, root string, request Request, loader *project.Loader, acquire projectmutation.LeaseAcquirer) (Outcome, error) {
 	if loader == nil {
 		return Outcome{}, errors.New("authoring operation requires a project loader")
 	}
@@ -304,7 +302,7 @@ func existingDirectories(files *filesystem.Handle, candidates []string) []string
 // candidateOverlay supplies the exact same candidate replacement/removal to
 // both the project-tree and config-tree reader contracts.
 type candidateOverlay struct {
-	base    publisher.ProjectTreeReader
+	base    outputplan.TreeReader
 	path    string
 	bytes   []byte
 	present bool

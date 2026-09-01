@@ -4,14 +4,11 @@ import (
 	"context"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 )
-
-type Backup = publisher.Backup
-type Change = publisher.Change
-type InitAuthority = publisher.InitAuthority
 
 func testPublisher(p renderInputs) *publisher.Publisher {
 	session, err := newSession(p.root(), p.residentRoots(), p.isNested(), p.cfg, p.catalog(), p.session.Targets(), p.session.Repository(), p.read)
@@ -20,7 +17,7 @@ func testPublisher(p renderInputs) *publisher.Publisher {
 	}
 	return publisher.New(session, Version)
 }
-func outputPlan(p renderInputs) (*OutputPlan, error) {
+func outputPlan(p renderInputs) (*outputplan.Plan, error) {
 	plan, err := testPublisher(p).Plan()
 	return &plan, err
 }
@@ -37,7 +34,7 @@ func deriveOperationStateWithPitfalls(p renderInputs) (pitfall.Corpus, topic.Cor
 	skills, err := operation.EffectiveSkills()
 	return pitfalls, topics, skills, err
 }
-func outputPlanWithPitfalls(p renderInputs, _ pitfall.Corpus, _ topic.Corpus, _ map[string]bool) (*OutputPlan, error) {
+func outputPlanWithPitfalls(p renderInputs, _ pitfall.Corpus, _ topic.Corpus, _ map[string]bool) (*outputplan.Plan, error) {
 	return outputPlan(p)
 }
 func generateDomainDocs(p renderInputs, _ topic.Corpus, _ map[string]bool) ([]RenderedFile, error) {

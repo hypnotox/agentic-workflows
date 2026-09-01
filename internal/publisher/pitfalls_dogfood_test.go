@@ -11,6 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/currentstatecoord"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -274,7 +275,7 @@ func outputNodeAt(t *testing.T, plan *OutputPlan, path string) OutputNode {
 	return plan.Nodes[idx]
 }
 
-func assertPitfallDrift(t *testing.T, p *Session, path, kind string) {
+func assertPitfallDrift(t *testing.T, p *project.Session, path, kind string) {
 	t.Helper()
 	drift, err := checkProject(p, testContext(t))
 	if err != nil {

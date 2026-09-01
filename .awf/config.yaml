@@ -1,11 +1,5 @@
 audit:
   allowedScopes:
-    - name: adr
-      meaning: historical decision-record commits
-    - name: adr-system
-      meaning: historical decision-system commits
-    - name: plans
-      meaning: historical plan-document commits
     - name: decisions
       meaning: durable decision records
     - name: awf

@@ -6,12 +6,13 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
 // projectWithScopes opens a scaffolded project with two meaning-bearing scopes
 // and both gate-command vars set (every registry key populated).
-func projectWithScopes(t *testing.T) *Session {
+func projectWithScopes(t *testing.T) *project.Session {
 	t.Helper()
 	root := scaffold(t, "prefix: awftest\nintegrationBranch: main\n"+
 		"vars:\n  gateCmd: ./x gate\n  checkCmd: ./x check\n"+
@@ -28,7 +29,7 @@ func projectWithScopes(t *testing.T) *Session {
 
 // projectAcceptAny opens a scaffolded project with no audit config (accept-any
 // scopes) and no gate vars - the scope keys and gate keys are all absent.
-func projectAcceptAny(t *testing.T) *Session {
+func projectAcceptAny(t *testing.T) *project.Session {
 	t.Helper()
 	p, err := loadTestSession(testContext(t), scaffold(t, "prefix: bare\nintegrationBranch: main\nvars: {}\n"))
 	if err != nil {

@@ -15,9 +15,9 @@ type Outcome struct {
 	Commits int
 }
 
-// RunConfigured builds the configured audit input for one repository and
+// RunHistorical builds the fixed-policy audit input for one repository and
 // returns its audit-owned report for command rendering.
-func RunConfigured(ctx context.Context, root string, cfg *config.Config, base, head string) (Outcome, error) {
+func RunHistorical(ctx context.Context, root, base, head string) (Outcome, error) {
 	generated := map[string]bool{}
 	lock, _, err := manifest.LoadOptional(config.LockPath(root))
 	if err != nil {
@@ -29,7 +29,7 @@ func RunConfigured(ctx context.Context, root string, cfg *config.Config, base, h
 		}
 	}
 	findings, commits, err := Run(ctx, root, base, head, Inputs{
-		Settings:       Resolve(config.AuditScopes(cfg.Audit)),
+		Settings:       historicalSettings(),
 		GeneratedPaths: generated,
 		DocsDir:        config.DocsDir,
 	})

@@ -32,14 +32,6 @@ Each issue below is reproducible from repository state and remains open until it
 
 **Completion criteria.** Equivalent pending batches produce the same provenance result regardless of directory order while preserving the authored order required by `invariants/current-state-authority:provenance-ordered-by-adr-number`.
 
-## Effort mutations can target the wrong checkout
-
-**Reproduction.** Associate a session with an effort worktree. An implementation child that omits `verificationCheckout` performs relative writes at the primary checkout; an explicit managed checkout aligns those relative writes with the effort worktree. Parent shell and file mutations such as `./x render` still apply wherever their explicit path or root CWD names.
-
-**Mitigation.** Effort-backed pre-integration implementation dispatch passes the exact managed-worktree path as `verificationCheckout`; parent mutations name that path explicitly. Child CWD alignment is not filesystem confinement, so deliberate outside targets remain possible.
-
-**Completion criteria.** Pre-integration effort mutations bind to or validate the managed checkout and refuse ambiguity. Read-only commands remain usable from either checkout, and integration, topology removal, retrospective, and finish remain valid from the primary checkout.
-
 ## Release assets lack independent provenance
 
 **Reproduction.** Download a release archive and `checksums.txt` from the same GitHub Release. Their comparison detects transfer corruption, but a compromised publication workflow or credential can replace both through the same channel. Exact-revision main and tag rulesets constrain accepted revisions but do not create independent artifact authenticity.

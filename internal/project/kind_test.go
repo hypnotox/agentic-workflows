@@ -4,6 +4,7 @@ import (
 	"slices"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 )
 
@@ -83,7 +84,7 @@ func TestKindAccessors(t *testing.T) {
 	}
 
 	// outPath facet: skills/agents place adapter artifacts; docs/domains are neutral (nil).
-	tgt := Target{SkillDir: ".claude/skills", AgentDir: ".claude/agents"}
+	tgt := artifactregistry.Target{SkillDir: ".claude/skills", AgentDir: ".claude/agents"}
 	if got := descriptorMust(t, "skills").outPath(tgt, "awf", "tdd"); got != ".claude/skills/awf-tdd/SKILL.md" {
 		t.Errorf("skills outPath = %q", got)
 	}

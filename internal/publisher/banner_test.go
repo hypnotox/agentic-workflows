@@ -4,6 +4,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
@@ -173,7 +174,7 @@ func TestResidentMarkerPlanPropagatesOutputPlanFailure(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	inputs := renderInputsWithTargets(p, append(p.Targets(), Target{Outputs: []TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
+	inputs := renderInputsWithTargets(p, append(p.Targets(), artifactregistry.Target{Outputs: []artifactregistry.TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
 	if _, err := outputPlan(inputs); err == nil {
 		t.Fatal("resident marker plan hid output-plan failure")
 	}

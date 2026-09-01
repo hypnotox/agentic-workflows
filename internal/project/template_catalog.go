@@ -32,6 +32,3 @@ func plainSingletons(cat *catalog.Catalog) []singletonSpec {
 	}
 	return out
 }
-
-// hookNames is a compatibility projection of the canonical registry.
-var hookNames = artifactregistry.HookNames()

@@ -12,8 +12,6 @@ import (
 
 const glossarySidecarPath = glossary.SidecarPath
 
-type glossaryRecord = glossary.Record
-
 const glossaryMeaningMax = glossary.MeaningMax
 
 // docDataTransform computes document data before rendering.
@@ -41,12 +39,12 @@ func glossaryTransform(sc config.Sidecar) (config.Sidecar, error) {
 	return out, nil
 }
 
-func glossaryRows(records []glossaryRecord) string {
+func glossaryRows(records []glossary.Record) string {
 	if len(records) == 0 {
 		return ""
 	}
 	sorted := slices.Clone(records)
-	slices.SortFunc(sorted, func(a, b glossaryRecord) int {
+	slices.SortFunc(sorted, func(a, b glossary.Record) int {
 		return strings.Compare(strings.ToLower(a.Term), strings.ToLower(b.Term))
 	})
 	var b strings.Builder

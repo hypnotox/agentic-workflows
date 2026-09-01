@@ -14,11 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
 
-type Commit = awfgit.Commit
-type FileChange = awfgit.FileChange
-type Action = awfgit.Action
-
-func ruleFindings(commits []Commit, in Inputs, rule string) []Finding {
+func ruleFindings(commits []awfgit.Commit, in Inputs, rule string) []Finding {
 	findings := slices.DeleteFunc(evaluate(commits, in), func(f Finding) bool { return f.Rule != rule })
 	if len(findings) == 0 {
 		return nil
@@ -26,27 +22,21 @@ func ruleFindings(commits []Commit, in Inputs, rule string) []Finding {
 	return findings
 }
 
-func ruleConventionalCommits(commits []Commit, in Inputs) []Finding {
+func ruleConventionalCommits(commits []awfgit.Commit, in Inputs) []Finding {
 	return ruleFindings(commits, in, "conventional-commits")
 }
 
-func rulePlainPunctuation(commits []Commit, in Inputs) []Finding {
+func rulePlainPunctuation(commits []awfgit.Commit, in Inputs) []Finding {
 	return ruleFindings(commits, in, "plain-punctuation")
 }
 
-func evaluate(commits []Commit, in Inputs) []Finding {
+func evaluate(commits []awfgit.Commit, in Inputs) []Finding {
 	evaluator := newRangeEvaluator(in)
 	for _, commit := range commits {
 		evaluator.observe(commit)
 	}
 	return evaluator.findings()
 }
-
-const (
-	Added    = awfgit.Added
-	Modified = awfgit.Modified
-	Deleted  = awfgit.Deleted
-)
 
 func countRule(findings []Finding, rule string, sev severity.Rank) int {
 	n := 0
@@ -63,20 +53,20 @@ func TestRuleConventionalCommits(t *testing.T) {
 	in := Inputs{Settings: Settings{AllowedScopes: []config.ScopeSpec{{Name: "awf"}}}}
 	cases := []struct {
 		name    string
-		commit  Commit
+		commit  awfgit.Commit
 		wantErr int
 	}{
-		{"conforming", Commit{Subject: "feat(awf): ok"}, 0},
-		{"no scope is fine", Commit{Subject: "fix: also ok"}, 0},
-		{"malformed", Commit{Subject: "not a conventional commit"}, 1},
-		{"disallowed type", Commit{Subject: "unknown(awf): nope"}, 1},
-		{"disallowed scope", Commit{Subject: "feat(core): nope"}, 1},
-		{"over length", Commit{Subject: "feat(awf): " + strings.Repeat("x", 80)}, 1},
-		{"merge exempt", Commit{Subject: "Merge branch 'x'", IsMerge: true}, 0},
+		{"conforming", awfgit.Commit{Subject: "feat(awf): ok"}, 0},
+		{"no scope is fine", awfgit.Commit{Subject: "fix: also ok"}, 0},
+		{"malformed", awfgit.Commit{Subject: "not a conventional commit"}, 1},
+		{"disallowed type", awfgit.Commit{Subject: "unknown(awf): nope"}, 1},
+		{"disallowed scope", awfgit.Commit{Subject: "feat(core): nope"}, 1},
+		{"over length", awfgit.Commit{Subject: "feat(awf): " + strings.Repeat("x", 80)}, 1},
+		{"merge exempt", awfgit.Commit{Subject: "Merge branch 'x'", IsMerge: true}, 0},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
-			got := countRule(ruleConventionalCommits([]Commit{tc.commit}, in), "conventional-commits", severity.Error)
+			got := countRule(ruleConventionalCommits([]awfgit.Commit{tc.commit}, in), "conventional-commits", severity.Error)
 			if got != tc.wantErr {
 				t.Errorf("got %d errors, want %d", got, tc.wantErr)
 			}
@@ -87,11 +77,11 @@ func TestRuleConventionalCommits(t *testing.T) {
 func TestSubjectLengthCountsRunes(t *testing.T) {
 	s := Settings{}
 	subject := "docs: präzisiere " + strings.Repeat("ä", 48) + " zwei"
-	if got := CheckConventionalCommit(Commit{Subject: subject}, s); len(got) != 0 {
+	if got := CheckConventionalCommit(awfgit.Commit{Subject: subject}, s); len(got) != 0 {
 		t.Errorf("%d-rune subject flagged: %v", utf8.RuneCountInString(subject), got)
 	}
 	over := "docs: " + strings.Repeat("ä", 70)
-	if got := CheckConventionalCommit(Commit{Subject: over}, s); len(got) != 1 {
+	if got := CheckConventionalCommit(awfgit.Commit{Subject: over}, s); len(got) != 1 {
 		t.Errorf("76-rune subject not flagged: %v", got)
 	}
 }
@@ -100,8 +90,8 @@ func TestSubjectLengthCountsRunes(t *testing.T) {
 // invariant: tooling/audit-and-snapshots:audit-plain-punctuation (TestRulePlainPunctuation)
 func TestRulePlainPunctuation(t *testing.T) {
 	in := Inputs{DocsDir: "docs", GeneratedPaths: map[string]bool{"docs/INDEX.md": true}}
-	change := func(path, oldText, newText string) []Commit {
-		return []Commit{{Hash: "abc1234", Subject: "docs: x", Changes: []FileChange{{Path: path, Action: Modified, OldText: oldText, NewText: newText}}}}
+	change := func(path, oldText, newText string) []awfgit.Commit {
+		return []awfgit.Commit{{Hash: "abc1234", Subject: "docs: x", Changes: []awfgit.FileChange{{Path: path, Action: awfgit.Modified, OldText: oldText, NewText: newText}}}}
 	}
 	dash, dots := "\u2014", "\u2026"
 	endash, ldq := "\u2013", "\u201c"
@@ -140,16 +130,16 @@ func TestRulePlainPunctuation(t *testing.T) {
 	if f := rulePlainPunctuation(change("docs/x.txt", "", "a"+endash+"b"), in); len(f) != 0 {
 		t.Errorf("non-Markdown path should be skipped, got %v", f)
 	}
-	deleted := []Commit{{Changes: []FileChange{{Path: "docs/x.md", Action: Deleted, OldText: "a" + endash + "b"}}}}
+	deleted := []awfgit.Commit{{Changes: []awfgit.FileChange{{Path: "docs/x.md", Action: awfgit.Deleted, OldText: "a" + endash + "b"}}}}
 	if f := rulePlainPunctuation(deleted, in); len(f) != 0 {
 		t.Errorf("deleted file should be skipped, got %v", f)
 	}
 }
 
 func TestEvaluatePreservesCommitAndRuleOrder(t *testing.T) {
-	findings := evaluate([]Commit{
-		{Hash: "first", Subject: "bad", Changes: []FileChange{{Path: "docs/a.md", Action: Modified, NewText: "a\u2013b"}}},
-		{Hash: "second", Subject: "also bad", Changes: []FileChange{{Path: "docs/b.md", Action: Modified, NewText: "a\u2013b"}}},
+	findings := evaluate([]awfgit.Commit{
+		{Hash: "first", Subject: "bad", Changes: []awfgit.FileChange{{Path: "docs/a.md", Action: awfgit.Modified, NewText: "a\u2013b"}}},
+		{Hash: "second", Subject: "also bad", Changes: []awfgit.FileChange{{Path: "docs/b.md", Action: awfgit.Modified, NewText: "a\u2013b"}}},
 	}, Inputs{DocsDir: "docs"})
 	if got, want := len(findings), 4; got != want {
 		t.Fatalf("findings = %v, want %d", findings, want)

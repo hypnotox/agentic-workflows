@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
 )
 
 func operationInputs(state *Session, cfg *config.Config) renderInputs {
@@ -24,7 +25,7 @@ func AdvisoryNotes(state *Session, cfg *config.Config, output outputplan.Plan, g
 // BuildCheckReport checks the selected project tree using already-derived,
 // narrow semantic values. Project deliberately has no publisher-operation
 // bundle: orchestration remains at the application boundary.
-func BuildCheckReport(state *Session, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, output outputplan.Plan, pitfalls pitfall.Corpus, effectiveSkills map[string]bool, generated generatedcheck.AdditionalInput, glossary glossarycheck.Input) (CheckReport, error) {
+func BuildCheckReport(state *Session, cfg *config.Config, repo *awfgit.Repo, ctx context.Context, output outputplan.Plan, pitfalls pitfall.Corpus, effectiveSkills map[string]bool, generated generatedcheck.AdditionalInput, glossary glossarycheck.Input) (repositorycheck.Report, error) {
 	return checkReport(operationInputs(state, cfg), repo, ctx, pitfalls, effectiveSkills, generated, glossary, &output)
 }
 
