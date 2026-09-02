@@ -102,7 +102,7 @@ declined; the generic prose renders).
 - `checkCmd`: Command that checks rendered output for drift. Leave empty to run through the always-rendered `./awf` wrapper. Consumed while a rendered artifact's template references it, and by the `{{=awf:checkCmd}}` placeholder in convention parts.
   State: set (`./x check`). Consumed by: agents-doc, hooks pre-commit, hooks pre-merge-commit, hooks pre-push.
 - `testCmd`: Command that runs the test suite. Consumed while a rendered artifact's template references it.
-  State: set (`go test ./...`). Consumed by: agents-doc.
+  State: set (`./x test`). Consumed by: agents-doc.
 
 ## Sidecar fields
 

@@ -4,7 +4,7 @@ How awf render and awf check detect and report drift: per-file config-hash input
 
 ### `invariant: agent-guide-size-advisory`
 
-GeneratedOutputChecker classifies only the deterministic expected bytes of a managed `AGENTS.md`: at a fixed 12 KiB threshold, an overage is a Warning protecting heuristic quality with zero exit. RepositoryChecker preserves its aggregate-only placement, and non-aggregate consumers remain excluded.
+`generatedcheck.GuideSizeAdvisory` classifies only the deterministic expected bytes of a managed `AGENTS.md`: at a fixed 12 KiB threshold, an overage is a Warning protecting heuristic quality with zero exit. `repositorycheck.Compose` preserves its aggregate-only placement, and non-aggregate consumers remain excluded.
 Backing: test
 
 ### `invariant: authoring-sync-transaction`

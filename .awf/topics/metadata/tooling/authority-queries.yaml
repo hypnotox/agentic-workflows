@@ -1,5 +1,5 @@
 title: Authority Queries
-summary: Read-only commands that expose current-state and ADR authority without duplicating code navigation.
+summary: Read-only commands that expose current-state authority and decision history without duplicating code navigation.
 paths:
   - cmd/awf/**
   - internal/clispec/**

@@ -12,6 +12,8 @@ query a single version or a range.
 
 - Correct the shipped workflow defaults to route unrelated defects without widening scope, describe the current Session, Publisher, repository-check, mutation, and Pi adapter boundaries, and give the executable effort-creation command.
 
+- Align AWF's active architecture and maintenance guidance with the final v0.46 owners, source-based upgrades, decision-history terminology, and complete Go behavior command.
+
 ## [0.46.0] - 2026-09-01
 
 ### Others

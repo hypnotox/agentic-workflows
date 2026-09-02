@@ -1,4 +1,4 @@
-// Package project ties config, catalog, render, and manifest together to sync rendered files into a project and check them for drift.
+// Package project owns project selection and validation and exposes immutable project Sessions.
 package project
 
 import (

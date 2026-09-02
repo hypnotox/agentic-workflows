@@ -29,8 +29,9 @@ Use `./awf edit sidecar <kind> <name> <field>` for one leaf-only dotted sidecar 
 
 Owner-managed installations support the current awf release and one previous release. The supported
 floor advances only after every managed repository pin has been upgraded to remain at or above it;
-older installed releases are unsupported. Use `bash .awf/upgrade.sh` from the repository root to
-upgrade the pinned binary and project together. Live project authority starts at schema 50. A below-floor or retired layout must first use AWF 0.44 to reach schema 50 before adopting the supported `.awf/` control pair; this release does not mutate retired layouts.
+older installed releases are unsupported. Bootstrap is disabled in this repository, so `./awf` runs
+this checkout from source. After updating the source, run `./awf upgrade` to perform the supported
+config migration. Live project authority starts at schema 50. A below-floor or retired layout must first use AWF 0.44 to reach schema 50 before adopting the supported `.awf/` control pair; this release does not mutate retired layouts.
 
 
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#config-and-overrides -->

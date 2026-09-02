@@ -1,4 +1,4 @@
-How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-binary-distribution-and-release.md) owns the distribution model.
+How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-binary-distribution-and-release.md) records the distribution-model decision.
 
 ## Release runbook
 
