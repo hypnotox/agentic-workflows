@@ -8,6 +8,8 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.46.1] - 2026-09-02
+
 ### Bug fixes
 
 - Correct the shipped workflow defaults to route unrelated defects without widening scope, describe the current Session, Publisher, repository-check, mutation, and Pi adapter boundaries, and give the executable effort-creation command.
