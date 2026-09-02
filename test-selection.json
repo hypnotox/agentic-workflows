@@ -56,6 +56,7 @@
         "internal/filepublication/**",
         "internal/filesystem/**",
         "internal/git/**",
+        "internal/projectmutation/**",
         "internal/resident/**",
         "internal/snapshot/**",
         "internal/upgrade/**",

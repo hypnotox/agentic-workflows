@@ -6,7 +6,6 @@ paths:
   - internal/render/**
   - internal/refs/**
   - internal/project/banner*.go
-  - internal/project/render.go
   - internal/project/inplace_test.go
   - internal/project/template_source_marker_test.go
   - internal/project/topics*.go

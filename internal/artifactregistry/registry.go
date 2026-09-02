@@ -19,8 +19,11 @@ import (
 type Cardinality string
 
 const (
-	CardinalityCatalog   Cardinality = "catalog"
-	CardinalityFreeform  Cardinality = "freeform"
+	// CardinalityCatalog selects artifacts from a named catalog.
+	CardinalityCatalog Cardinality = "catalog"
+	// CardinalityFreeform selects artifacts by caller-provided name.
+	CardinalityFreeform Cardinality = "freeform"
+	// CardinalitySingleton selects exactly one artifact.
 	CardinalitySingleton Cardinality = "singleton"
 )
 
@@ -28,7 +31,9 @@ const (
 type Targeting string
 
 const (
+	// TargetNeutral identifies an artifact emitted independently of targets.
 	TargetNeutral Targeting = "neutral"
+	// TargetAdapter identifies an artifact emitted for each selected target.
 	TargetAdapter Targeting = "target"
 )
 
@@ -43,10 +48,15 @@ type Participation struct {
 type Owner string
 
 const (
-	OwnerCatalog  Owner = "catalog"
-	OwnerTarget   Owner = "target"
-	OwnerCore     Owner = "core"
-	OwnerHooks    Owner = "hooks"
+	// OwnerCatalog identifies catalog-owned artifact declarations.
+	OwnerCatalog Owner = "catalog"
+	// OwnerTarget identifies target-owned artifact declarations.
+	OwnerTarget Owner = "target"
+	// OwnerCore identifies core artifact declarations.
+	OwnerCore Owner = "core"
+	// OwnerHooks identifies hook artifact declarations.
+	OwnerHooks Owner = "hooks"
+	// OwnerResident identifies resident-root artifact declarations.
 	OwnerResident Owner = "resident"
 )
 
@@ -54,21 +64,26 @@ const (
 type AgentDialect string
 
 const (
+	// MarkdownAgentDialect identifies Markdown target output.
 	MarkdownAgentDialect AgentDialect = "markdown"
-	PlainAgentDialect    AgentDialect = "plain"
+	// PlainAgentDialect identifies non-Markdown target output.
+	PlainAgentDialect AgentDialect = "plain"
 )
 
 // Capability is one closed target capability.
 type Capability string
 
 const (
-	CapabilitySubagentTools  Capability = "subagent-tools"
+	// CapabilitySubagentTools permits target-native subagent tooling.
+	CapabilitySubagentTools Capability = "subagent-tools"
+	// CapabilitySessionHandoff permits target-native session handoff.
 	CapabilitySessionHandoff Capability = "session-handoff"
 )
 
 // TargetOutputProducer identifies how a target-owned output is produced.
 type TargetOutputProducer string
 
+// TargetOutputTemplate identifies template-produced target output.
 const TargetOutputTemplate TargetOutputProducer = "template"
 
 // TargetOutputInput declares one semantic input to a target-owned output.
@@ -104,10 +119,12 @@ type Target struct {
 	Outputs        []TargetOutput
 }
 
+// SkillPath returns the target-native path for a managed skill.
 func (t Target) SkillPath(prefix, name string) string {
 	return fmt.Sprintf("%s/%s-%s/SKILL.md", t.SkillDir, prefix, name)
 }
 
+// AgentPath returns the target-native path for a managed agent.
 func (t Target) AgentPath(name string) string {
 	suffix := t.AgentSuffix
 	if suffix == "" {
@@ -137,6 +154,7 @@ var kinds = []Kind{
 // Kinds returns the canonical artifact families in stable CLI display order.
 func Kinds() []Kind { return slices.Clone(kinds) }
 
+// KindByPlural returns the artifact kind with the given plural name.
 func KindByPlural(plural string) (Kind, bool) {
 	for _, kind := range kinds {
 		if kind.Plural == plural {
@@ -146,6 +164,7 @@ func KindByPlural(plural string) (Kind, bool) {
 	return Kind{}, false
 }
 
+// KindBySingular returns the artifact kind with the given singular name.
 func KindBySingular(singular string) (Kind, bool) {
 	for _, kind := range kinds {
 		if kind.Singular == singular {
@@ -230,12 +249,21 @@ func OutputPath(cat *catalog.Catalog, target Target, prefix, plural, name string
 	}
 }
 
+// LocalDocOutputPath returns the managed output path for a local document.
 func LocalDocOutputPath(name string) string { return config.DocsDir + "/" + name + ".md" }
-func PitfallOutputPath(slug string) string  { return config.DocsDir + "/pitfalls/" + slug + ".md" }
-func TopicOutputPath(id string) string      { return config.DocsDir + "/topics/" + id + ".md" }
+
+// PitfallOutputPath returns the managed output path for a pitfall entry.
+func PitfallOutputPath(slug string) string { return config.DocsDir + "/pitfalls/" + slug + ".md" }
+
+// TopicOutputPath returns the managed output path for a current-state topic.
+func TopicOutputPath(id string) string { return config.DocsDir + "/topics/" + id + ".md" }
+
+// TopicIndexOutputPath returns the managed output path for a domain topic index.
 func TopicIndexOutputPath(domain string) string {
 	return config.DocsDir + "/topics/" + domain + "/index.md"
 }
+
+// ResidentOutputPath returns the managed marker path for a resident root.
 func ResidentOutputPath(name string) string { return config.DirName + "/" + name + "/.gitignore" }
 
 // ResidentArtifact is one registry-owned resident-root marker declaration.
@@ -334,8 +362,13 @@ type Unit struct {
 var runnerSections = []string{"runner-body"}
 var hookNames = []string{"pre-commit", "commit-msg", "pre-push", "pre-merge-commit", "reference-transaction"}
 
-func HookTemplateID(name string) string     { return "hooks/" + name + ".sh.tmpl" }
+// HookTemplateID returns the canonical template identity for a hook.
+func HookTemplateID(name string) string { return "hooks/" + name + ".sh.tmpl" }
+
+// ResidentTemplateID returns the canonical template identity for a resident marker.
 func ResidentTemplateID(name string) string { return name + "/gitignore.tmpl" }
+
+// Hooks returns the canonical hook names in stable order.
 func Hooks() []string {
 	artifacts := HookArtifacts()
 	out := make([]string, len(artifacts))
@@ -351,6 +384,7 @@ type Hook struct {
 	Checked                             bool
 }
 
+// HookArtifacts returns the registry-owned hook declarations in stable order.
 func HookArtifacts() []Hook {
 	out := make([]Hook, 0, len(hookNames))
 	for _, unit := range ConditionalUnits() {
@@ -409,6 +443,7 @@ func declaredTarget(declaration targetDeclaration) Target {
 	return target
 }
 
+// KnownTargets returns the built-in target names in stable order.
 func KnownTargets() []string {
 	declarations := Targets()
 	out := make([]string, len(declarations))
@@ -428,10 +463,12 @@ func Targets() []Target {
 	return cloneTargets(out)
 }
 
+// BuiltinTarget returns an isolated copy of the named built-in target.
 func BuiltinTarget(name string) Target {
 	return cloneTargets([]Target{declaredTarget(targets[name])})[0]
 }
 
+// ResolveTargets validates and returns isolated copies of the named targets.
 func ResolveTargets(names []string) ([]Target, error) {
 	out := make([]Target, 0, len(names))
 	for _, name := range names {
@@ -530,6 +567,7 @@ func ResolveTargetArtifacts(target Target, prefix string, selected []string) []T
 	return out
 }
 
+// ValidateTarget verifies a target declaration's closed registry contract.
 func ValidateTarget(target Target) error {
 	known := map[Capability]bool{CapabilitySubagentTools: true, CapabilitySessionHandoff: true}
 	for _, capability := range target.Capabilities {

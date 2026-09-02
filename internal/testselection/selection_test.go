@@ -99,6 +99,7 @@ func TestDynamicReaderInputsHaveExplicitOwners(t *testing.T) {
 		".goreleaser.yaml":                          {"release-archive"},
 		"changelog/CHANGELOG.md":                    {"release-archive"},
 		"internal/project/VERSION":                  {"release-archive"},
+		"internal/projectmutation/transaction.go":   {"go", "platform-sensitive"},
 		"cmd/releasecheck/testdata/archive.tar.gz":  {"go", "platform-sensitive", "release-archive"},
 	}
 	for changed, want := range cases {

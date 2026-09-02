@@ -5,7 +5,7 @@
 
 The .awf config tree schema, its serialization, and the anchored path-glob dialect.
 
-**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`. Topic selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/pathglob/**`, `internal/project/render.go`, `internal/project/staged_drift_test.go`, `internal/publisher/**`. Both domain and topic selectors must match. Run `awf read topic config/configuration --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/manifest/**`, `internal/migrate/**`, `internal/pathglob/**`, `internal/project/staged_drift_test.go`, `internal/publisher/**`. Topic selectors: `internal/config/**`, `internal/configcheck/**`, `internal/configspec/**`, `internal/pathglob/**`, `internal/project/staged_drift_test.go`, `internal/publisher/**`. Both domain and topic selectors must match. Run `awf read topic config/configuration --coverage` for current applicable and owned paths and marker sites.
 
 These packages load, validate, and describe the .awf config tree and the anchored path-glob dialect it uses. The claims below capture the current configuration contracts.
 

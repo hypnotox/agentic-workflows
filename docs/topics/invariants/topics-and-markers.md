@@ -5,7 +5,7 @@
 
 How topic inputs, claims, and proof markers are parsed and resolved, and how coverage evaluation selects its checks.
 
-**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/invariants/**`, `internal/topic/**`. Topic selectors: `internal/topic/**`. Both domain and topic selectors must match. Run `awf read topic invariants/topics-and-markers --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/topic/**`. Topic selectors: `internal/topic/**`. Both domain and topic selectors must match. Run `awf read topic invariants/topics-and-markers --coverage` for current applicable and owned paths and marker sites.
 
 The topic package parses topic metadata and claim inputs, builds the claim corpus, and resolves relevance, touches, and proof markers. The claims below capture the current topic and marker contracts.
 

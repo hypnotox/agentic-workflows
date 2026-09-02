@@ -5,7 +5,7 @@
 
 How current-state claims are loaded, checked, and transitioned as the sole active authority.
 
-**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/invariants/**`, `internal/topic/**`. Topic selectors: `internal/currentstate/**`, `internal/invariants/**`. Both domain and topic selectors must match. Run `awf read topic invariants/current-state-authority --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/currentstate/**`, `internal/topic/**`. Topic selectors: `internal/currentstate/**`. Both domain and topic selectors must match. Run `awf read topic invariants/current-state-authority --coverage` for current applicable and owned paths and marker sites.
 
 The currentstate package loads current-state topic authority from repository snapshots and reports claim-backing, coverage, and ownership obligations independently of historical decisions.
 

@@ -1,6 +1,4 @@
-// Package projectmutation owns the shared mechanics of one focused project
-// mutation. Operation packages retain validation, write order, rollback,
-// recovery, outcome, and presentation policy.
+// Package projectmutation owns the shared mechanics of focused project mutations while operation packages retain validation, write order, rollback, recovery, outcome, and presentation policy.
 package projectmutation
 
 import (
