@@ -53,6 +53,33 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 	}
 }
 
+func TestAgentsDocOwnershipScope(t *testing.T) {
+	out := renderGolden(t, "agents-doc/AGENTS.md.tmpl", map[string]any{
+		"prefix": "example",
+		"vars":   map[string]any{},
+		"layout": testLayout(),
+		"data":   map[string]any{},
+	})
+	for _, phrase := range []string{
+		"responsible for its long-term health as well as the task in front of you",
+		"Defects caused by the transaction or blocking its safe completion are repaired in the same commit",
+		"unrelated concrete defects are recorded and routed separately without expanding scope",
+	} {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected ownership boundary %q in output:\n%s", phrase, out)
+		}
+	}
+	for _, stale := range []string{
+		"Bugs you notice in passing are yours",
+		"coverage gaps are yours",
+		"documentation drift is yours to fix",
+	} {
+		if strings.Contains(out, stale) {
+			t.Errorf("guide retains stale broad ownership phrase %q:\n%s", stale, out)
+		}
+	}
+}
+
 func TestAgentsDocTemplateConfigDriven(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",

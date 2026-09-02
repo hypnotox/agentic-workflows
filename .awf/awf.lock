@@ -100,9 +100,9 @@
     },
     ".claude/skills/awf-effort-workflow/SKILL.md": {
       "templateId": "skills/effort-workflow/SKILL.md.tmpl",
-      "templateHash": "sha256:a7ecc6ea0a47bf764a352b5c7db621e11603651248d8d3a3663acaf9f8f37310",
+      "templateHash": "sha256:3cb4589189833db0604180fd653963ab82021f59597158fbcaf7879ce1df786d",
       "configHash": "sha256:5931244e62dc9202ef8bbd835e5136d21a3e9ec4a385b4c5b0a7ea067c6f5301",
-      "outputHash": "sha256:a7adbfae090cd11074b5f9907ae45065752cc1b48c526759601e9232cae9d7c2"
+      "outputHash": "sha256:aa6e2e060aa1d8a322a02555d81b0e4c701a3bb5f0882f9f271fbe97b9b1245f"
     },
     ".claude/skills/awf-implementing/SKILL.md": {
       "templateId": "skills/implementing/SKILL.md.tmpl",
@@ -202,9 +202,9 @@
     },
     ".pi/skills/awf-effort-workflow/SKILL.md": {
       "templateId": "skills/effort-workflow/SKILL.md.tmpl",
-      "templateHash": "sha256:a7ecc6ea0a47bf764a352b5c7db621e11603651248d8d3a3663acaf9f8f37310",
+      "templateHash": "sha256:3cb4589189833db0604180fd653963ab82021f59597158fbcaf7879ce1df786d",
       "configHash": "sha256:6a02df322c49e0ad4969ebbf3cb3868d1013b549f8561fc2220d97a88a3e80bd",
-      "outputHash": "sha256:a7adbfae090cd11074b5f9907ae45065752cc1b48c526759601e9232cae9d7c2"
+      "outputHash": "sha256:aa6e2e060aa1d8a322a02555d81b0e4c701a3bb5f0882f9f271fbe97b9b1245f"
     },
     ".pi/skills/awf-implementing/SKILL.md": {
       "templateId": "skills/implementing/SKILL.md.tmpl",
@@ -244,7 +244,7 @@
     },
     "AGENTS.md": {
       "templateId": "agents-doc/AGENTS.md.tmpl",
-      "templateHash": "sha256:eae92f4cfcc204201d598b8ba02410807326895b6e7ab9357dc18a9c72616a7c",
+      "templateHash": "sha256:dc210f88d4db5243df9f3f21ba9d6c9499c6d88b2b66b29434cb8293ffed5a1b",
       "configHash": "sha256:a4d96669c3e19511117442e76db6d9f8ff15f6c4aee2148dc3f7258e6b724c47",
       "outputHash": "sha256:3bb18d99d976bcdbab12e45f2b50ed5c723f0c851e1424507a4cb1bcfce17027"
     },
@@ -268,7 +268,7 @@
     },
     "docs/architecture.md": {
       "templateId": "docs/architecture.md.tmpl",
-      "templateHash": "sha256:7bc740b274b500aebcaeceffe79405748ce951bea99419a86906fe45a5ed3393",
+      "templateHash": "sha256:8894bf78b539f7024e193ed489d2472818ceb8451a0e035553fca794207821b0",
       "configHash": "sha256:5fbee92edb38b0d2a7bc0a8fe32fc1d889d070d8066d99692e93db54d387ce45",
       "outputHash": "sha256:08847b3e74bd3d9697aeeaa3621ca2de16226453cd23ce3606e06045d0615740"
     },

@@ -9,12 +9,15 @@ awf renders one standard workflow footprint from committed `.awf/` configuration
 <!-- awf:section components stub -->
 ## Components
 
-- `cmd/awf`: CLI composition root; auxiliary commands may provide repository checks and diagnostics.
-- `internal/project`: configuration loading, rendering, output planning, and repository checks.
+- `cmd/awf`: CLI composition root for parsing, invoking focused operations, presenting results, and mapping exits.
+- `internal/project`: `Loader` opens and validates selected project state to construct one immutable `Session`.
+- `internal/outputplan` and `internal/publisher`: immutable output plans and the `Publisher` that owns output planning, rendering coordination, backup decisions, and publication.
+- `internal/repositorycheck` and focused check owners: the policy-free `RepositoryChecker` preserves ordered aggregation, while each concern owner retains its classification, severity, and policy.
+- `internal/projectmutation` and focused operations: a mechanics-only transaction boundary, while focused operations retain validation, mutation and rollback order, recovery policy, outcomes, and presentation.
 - `internal/topic` and `internal/currentstate`: live-authority parsing and checks.
 - `internal/effort` and `internal/worktree`: local effort residents and Git-backed topology.
 - `internal/git`: the sole semantic Git boundary.
-- Generated Pi extensions: an awf-owned protocol-v2 profile adapter and retained effort integration; independently installed, unpinned `pi-tools` owns general Pi mechanics, and successful handshake plus final registration define no-fallback compatibility.
+- Generated Pi extensions: one awf-owned protocol-v2 profile adapter with no Pi-specific effort association or memory tools; independently installed, unpinned `pi-tools` owns general Pi mechanics, and successful handshake plus final registration define no-fallback compatibility.
 <!-- awf:end -->
 
 <!-- awf:section data-flow stub -->

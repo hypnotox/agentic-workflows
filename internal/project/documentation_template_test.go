@@ -13,8 +13,30 @@ func TestDocArchitectureTemplate(t *testing.T) {
 		"vars":   map[string]any{},
 		"data":   map[string]any{},
 	})
-	if !strings.Contains(out, "# Architecture") {
-		t.Errorf("expected '# Architecture' heading:\n%s", out)
+	for _, phrase := range []string{
+		"# Architecture",
+		"`Loader` opens and validates selected project state to construct one immutable `Session`",
+		"`internal/outputplan` and `internal/publisher`",
+		"the `Publisher` that owns output planning, rendering coordination, backup decisions, and publication",
+		"the policy-free `RepositoryChecker` preserves ordered aggregation",
+		"each concern owner retains its classification, severity, and policy",
+		"`internal/projectmutation` and focused operations: a mechanics-only transaction boundary",
+		"focused operations retain validation, mutation and rollback order, recovery policy, outcomes, and presentation",
+		"one awf-owned protocol-v2 profile adapter with no Pi-specific effort association or memory tools",
+		"`pi-tools` owns general Pi mechanics",
+	} {
+		if !strings.Contains(out, phrase) {
+			t.Errorf("expected architecture ownership phrase %q:\n%s", phrase, out)
+		}
+	}
+	for _, stale := range []string{
+		"configuration loading, rendering, output planning, and repository checks",
+		"retained effort integration",
+		"auxiliary commands may provide repository checks and diagnostics",
+	} {
+		if strings.Contains(out, stale) {
+			t.Errorf("architecture retains stale ownership phrase %q:\n%s", stale, out)
+		}
 	}
 }
 
