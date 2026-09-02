@@ -1,27 +1,23 @@
 package project
 
 import (
-	"bytes"
+	"os"
+	"strings"
 	"testing"
-
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
 // invariant: tooling/cli:pitfall-scaffold (TestPitfallScaffoldPresentationBoundary)
 func TestPitfallScaffoldPresentationBoundary(t *testing.T) {
-	document, err := PitfallScaffoldDocument(".awf/docs/pitfalls/example.md")
-	if err != nil {
-		t.Fatal(err)
-	}
-	var output bytes.Buffer
-	if err := presentation.Render(&output, document); err != nil {
-		t.Fatal(err)
-	}
-	const want = "status: pitfall created\nauthored path: .awf/docs/pitfalls/example.md\n"
-	if output.String() != want {
-		t.Fatalf("presentation = %q, want %q", output.String(), want)
-	}
-	if _, err := PitfallScaffoldDocument("bad\npath"); err == nil {
-		t.Fatal("invalid presentation path accepted")
+	for _, name := range []string{"scaffold.go", "operations.go"} {
+		raw, err := os.ReadFile(name)
+		if err != nil {
+			t.Fatal(err)
+		}
+		text := string(raw)
+		for _, forbidden := range []string{"PitfallScaffoldDocument", "NewPitfall("} {
+			if strings.Contains(text, forbidden) {
+				t.Fatalf("%s retains focused pitfall mutation or presentation symbol %q", name, forbidden)
+			}
+		}
 	}
 }

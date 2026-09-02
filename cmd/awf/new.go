@@ -10,6 +10,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/localdocop"
+	"github.com/hypnotox/agentic-workflows/internal/pitfallop"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
@@ -88,7 +89,29 @@ func derivedLocalDocTitle(name string) string {
 	return strings.Join(words, " ")
 }
 
-func newPitfall(ctx context.Context, root string, args []string, stdout io.Writer) (returnErr error) {
+func newPitfall(ctx context.Context, root string, args []string, stdout io.Writer) error {
+	return newPitfallWithFaults(ctx, root, args, stdout, nil, pitfallop.Create)
+}
+
+// newPitfallWithReleaseFault is the narrow command seam for proving a
+// post-release fault without replacing or bypassing the real lease release.
+func newPitfallWithReleaseFault(ctx context.Context, root string, args []string, stdout io.Writer, releaseFault func() error) error {
+	return newPitfallWithFaults(ctx, root, args, stdout, releaseFault, pitfallop.Create)
+}
+
+type pitfallCreate func(context.Context, string, *projectmutation.Transaction) (pitfallop.Outcome, error)
+
+func pitfallReleaseFailure(err error) error {
+	if err == nil {
+		return nil
+	}
+	if phase, ok := projectmutation.FailurePhase(err); ok && phase == projectmutation.PhaseRelease {
+		return err
+	}
+	return &projectmutation.Failure{Phase: projectmutation.PhaseRelease, Cause: err}
+}
+
+func newPitfallWithFaults(ctx context.Context, root string, args []string, stdout io.Writer, releaseFault func() error, create pitfallCreate) (returnErr error) {
 	if len(args) != 1 {
 		return &usageErr{"usage: awf new pitfall <title>"}
 	}
@@ -96,19 +119,53 @@ func newPitfall(ctx context.Context, root string, args []string, stdout io.Write
 	if err != nil {
 		return err
 	}
-	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	released := false
+	defer func() {
+		if !released {
+			returnErr = errors.Join(returnErr, pitfallReleaseFailure(lease.Release()))
+		}
+	}()
 	if err := gate(ctx, root); err != nil {
 		return err
 	}
-	session, err := loadProjectSession(ctx, root)
+	loader, err := newProjectLoader(root)
 	if err != nil {
 		return err
 	}
-	document, err := project.NewPitfall(session.Root(), args[0])
+	tx, err := projectmutation.UseTracked(ctx, root, loader, lease)
 	if err != nil {
 		return err
 	}
-	return presentation.Render(stdout, document)
+	outcome, operationErr := create(ctx, args[0], tx)
+	releaseErr := lease.Release()
+	released = true
+	if releaseFault != nil {
+		releaseErr = errors.Join(releaseErr, releaseFault())
+	}
+	releaseErr = pitfallReleaseFailure(releaseErr)
+	operationErr = pitfallop.Finish(outcome, operationErr, releaseErr)
+	if operationErr != nil {
+		var partial *pitfallop.PartialError
+		if !errors.As(operationErr, &partial) {
+			return operationErr
+		}
+		document, documentErr := partial.Document()
+		if documentErr != nil {
+			return errors.Join(operationErr, documentErr)
+		}
+		if renderErr := presentation.Render(stdout, document); renderErr != nil {
+			return errors.Join(operationErr, renderErr)
+		}
+		return &producedReportError{operationErr}
+	}
+	document, err := outcome.Document()
+	if err != nil {
+		return pitfallop.Finish(outcome, err, nil)
+	}
+	if err := presentation.Render(stdout, document); err != nil {
+		return pitfallop.Finish(outcome, err, nil)
+	}
+	return nil
 }
 
 func newTopic(ctx context.Context, root string, args []string, stdout io.Writer) (returnErr error) {

@@ -18,7 +18,6 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/referencecheck"
 	"github.com/hypnotox/agentic-workflows/internal/repositorycheck"
@@ -302,9 +301,6 @@ func advisoryNotesProject(state *Session) ([]string, error) {
 	return AdvisoryNotes(state, testConfig(state), plan, glossary)
 }
 
-func newPitfallProject(state *Session, title string) (presentation.Document, error) {
-	return NewPitfall(state.Root(), title)
-}
 func auditProject(state *Session, ctx context.Context, base, head string) ([]audit.Finding, int, error) {
 	generated := map[string]bool{}
 	lock, _, err := manifest.LoadOptional(config.LockPath(state.Root()))

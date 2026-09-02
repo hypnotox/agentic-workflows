@@ -8,6 +8,7 @@ paths:
   - internal/commitgateop/**
   - internal/domainop/**
   - internal/localdocop/**
+  - internal/pitfallop/**
   - internal/clispec/**
   - internal/commitmsg/**
   - internal/initspec/**

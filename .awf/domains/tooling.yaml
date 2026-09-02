@@ -10,6 +10,7 @@ paths:
   - internal/configop/**
   - internal/domainop/**
   - internal/localdocop/**
+  - internal/pitfallop/**
   - internal/evals/**
   - internal/clispec/**
   - internal/commitmsg/**

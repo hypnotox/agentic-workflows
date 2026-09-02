@@ -33,6 +33,3 @@ func BuildCheckReport(state *Session, cfg *config.Config, repo *awfgit.Repo, ctx
 func BuildListDocument(state *Session, cfg *config.Config, kindFilter string) (presentation.Document, error) {
 	return listDocument(cfg, state.catalog(), kindFilter)
 }
-
-// NewPitfall scaffolds one authored pitfall beneath root.
-func NewPitfall(root, title string) (presentation.Document, error) { return newPitfall(root, title) }

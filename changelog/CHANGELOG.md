@@ -14,6 +14,8 @@ query a single version or a range.
 
 - Align AWF's active architecture and maintenance guidance with the final v0.46 owners, source-based upgrades, decision-history terminology, and complete Go behavior command.
 
+- Route `awf new pitfall` through a focused transaction so cleanup and lease-release faults report the committed source and safe recovery before any success output, without rendering generated artifacts.
+
 ## [0.46.0] - 2026-09-01
 
 ### Others

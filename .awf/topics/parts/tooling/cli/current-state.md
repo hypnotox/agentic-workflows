@@ -19,7 +19,7 @@ Backing: test
 
 ### `invariant: pitfall-scaffold`
 
-`awf new pitfall <title>` accepts exactly one complete title positional, gates before project reads or writes, loads the current authored corpus, refuses empty, reserved, or whitespace-and-case-equivalent duplicate titles, uses the shared ASCII slug allocator and canonical serializer, creates exactly one selected source path exclusively, and reports that repository-relative authored path through project-owned presentation. Occupied suffix gaps choose the first free candidate; a race at the selected path refuses without advancing, while an ordinary retry reloads and recomputes. The command never renders or mutates generated output, a sidecar, or another registry.
+`awf new pitfall <title>` accepts exactly one complete title positional, gates before project reads or writes, loads the current authored corpus, refuses empty, reserved, or whitespace-and-case-equivalent duplicate titles, uses the shared ASCII slug allocator and canonical serializer, and creates exactly one selected source path exclusively through a tracked `projectmutation.Transaction`. `internal/pitfallop` owns complete and partial outcomes and their presentation; the command releases the lease before reporting, so a post-commit cleanup or release failure identifies every committed path and recovery action without first printing success. Occupied suffix gaps choose the first free candidate; a race at the selected path refuses without advancing, while an ordinary retry reloads and recomputes. The command never renders or mutates generated output, a sidecar, or another registry.
 Backing: test
 
 ### `invariant: domain-lifecycle-commands`
