@@ -14,6 +14,30 @@ Use `agentic-context` for general orientation and evidence gathering. This skill
 <!-- awf:template-source templates/skills/awf-topics/SKILL.md.tmpl -->
 ## Claims and evidence
 
-Distinguish rules and invariants from other claims. Label each claim with **Backing: test** or **Backing: unbacked**, and include **Verify:** evidence that a reader can run or inspect. Use proof markers where applicable. Treat coverage and fan-out as independent facts: name what paths a topic covers and where its claims reach, without pretending either proves a decision.
+Use exactly one of the parser's three legal claim forms. A rule has neither `Backing:` nor `Verify:`:
 
-Do not turn a decision record into current state or infer a claim from intent. If reality is uncertain, mark it unbacked and state the verification needed.
+```markdown
+### `rule: stable-policy`
+The active policy is explicit.
+```
+
+A test-backed invariant has `Backing: test` only:
+
+```markdown
+### `invariant: tested-behavior`
+The tested behavior remains stable.
+Backing: test
+```
+
+A manually verified invariant has `Backing: unbacked` plus a concrete `Verify:` procedure:
+
+```markdown
+### `invariant: inspected-behavior`
+The inspected behavior remains stable.
+Backing: unbacked
+Verify: Inspect the named active surface and confirm the stated behavior.
+```
+
+Use proof markers where applicable. Treat coverage and fan-out as independent facts: name what paths a topic covers and where its claims reach, without pretending either proves a decision.
+
+Do not turn a decision record into current state or infer a claim from intent. Resolve uncertainty before declaring current state; `unbacked` means a current invariant with a manual verification procedure, not an unresolved proposition.

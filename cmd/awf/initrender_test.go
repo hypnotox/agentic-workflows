@@ -42,6 +42,26 @@ func TestEmptyInitChecksOnUnbornHead(t *testing.T) {
 	}
 }
 
+// invariant: rendering/doc-outputs:skill-ref-unknown-ignored (TestAgenticPrefixFreshRenderChecksClean)
+func TestAgenticPrefixFreshRenderChecksClean(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	root := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
+	testsupport.WriteAwfConfig(t, root, "prefix: agentic\nintegrationBranch: main\nvars: {gateCmd: make gate}\n")
+	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
+		t.Fatalf("render prefix agentic: %v", err)
+	}
+	gitfixture.AddAll(t, repo)
+	gitfixture.Commit(t, repo, "rendered", nil)
+	var out bytes.Buffer
+	if err := runCheck(testContext(t), root, &out); err != nil {
+		t.Fatalf("check prefix agentic: %v\n%s", err, out.String())
+	}
+	if strings.Contains(out.String(), "dead-skill-reference") {
+		t.Fatalf("canonical agentic skill was treated as a legacy prefixed AWF skill:\n%s", out.String())
+	}
+}
+
 // setScaffoldGateCmd fills the scaffold's empty gateCmd var in-place: the
 // actionable follow-up the ADR-0156 command-wiring error demands of a
 // no-answer init before its first ordinary sync or check.

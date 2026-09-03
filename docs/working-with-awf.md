@@ -21,7 +21,7 @@ Use the repository `./awf` wrapper for local commands. For workflow and effort c
 [Workflow](workflow.md); for a command refusal, recovery, or upgrade residue, see
 [Debugging](debugging.md).
 
-Author one declared convention part by semantic identity with `./awf edit <kind> <name> <part> --content <text>` or `./awf edit <kind> <name> <part> --stdin`. Exactly one input mode is required, and an explicitly empty `--content` value remains an authored override. The closed kinds are `doc`, `skill`, `agent`, and `domain`; names and parts come from the selected catalog and project configuration rather than filesystem paths.
+Author one declared convention part by semantic identity with `./awf edit <kind> <name> <part> --content <text>` or `./awf edit <kind> <name> <part> --stdin`. Exactly one input mode is required, and an explicitly empty `--content` value remains an authored override. The closed kinds are `doc`, `skill`, and `domain`; names and parts come from the selected catalog and project configuration rather than filesystem paths.
 
 Use `./awf reset <kind> <name> <part>` to remove a convention-part override and restore its inherited default. A configured local document is addressed as `doc <name> body`; edit replaces only its body and reset restores the empty body while preserving its declaration and awf-owned shell. Both commands validate the complete candidate project before changing the source, then render and update the lock. If a later source or publication step fails, follow the reported residue-first recovery actions and rerun `./awf render`; no rollback is implied.
 

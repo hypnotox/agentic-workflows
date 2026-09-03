@@ -3,11 +3,13 @@ package project
 import (
 	"fmt"
 	"io/fs"
+	"regexp"
 	"sort"
 	"strings"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
+	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -49,5 +51,24 @@ func TestSkillSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	for name, spec := range cat.Skills {
 		assertSectionParity(t, "skill "+name, fmt.Sprintf("skills/%s/SKILL.md.tmpl", name), spec.Sections)
+	}
+}
+
+// TestTopicsSkillExamplesMatchParserContract applies every claim example taught
+// by the awf-topics skill to the real current-state parser.
+func TestTopicsSkillExamplesMatchParserContract(t *testing.T) {
+	src, err := fs.ReadFile(templates.FS, "skills/awf-topics/SKILL.md.tmpl")
+	if err != nil {
+		t.Fatal(err)
+	}
+	blocks := regexp.MustCompile("(?s)```markdown\\n(.*?)\\n```").FindAllSubmatch(src, -1)
+	if len(blocks) != 3 {
+		t.Fatalf("awf-topics claim examples = %d, want exactly 3", len(blocks))
+	}
+	for i, block := range blocks {
+		part := append([]byte("Current behavior.\n\n## Claims\n\n"), block[1]...)
+		if _, err := topic.ParsePart(topic.TopicID{Domain: "contract", Slug: "examples"}, "current-state.md", part); err != nil {
+			t.Errorf("claim example %d violates parser contract: %v\n%s", i+1, err, block[1])
+		}
 	}
 }

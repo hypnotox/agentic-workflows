@@ -30,7 +30,7 @@ Backing: test
 
 ### `invariant: inert-sidecar-field-rejected`
 
-A skill, agent, document, or singleton sidecar rejects paths, and a domain sidecar rejects data, dataDefaults, and sections, so no accepted sidecar field is inert for its artifact kind.
+A skill, document, or singleton sidecar rejects paths, and a domain sidecar rejects data, dataDefaults, and sections, so no accepted sidecar field is inert for its artifact kind.
 Backing: test
 
 ### `invariant: check-report-single-plan`

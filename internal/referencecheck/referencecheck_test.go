@@ -35,3 +35,19 @@ func TestCheckRecognizesFixedAndRetiredAWFSkillReferences(t *testing.T) {
 		t.Fatalf("findings = %#v", findings)
 	}
 }
+
+func TestCheckGivesCanonicalAgenticSkillsPrecedenceOverLegacyPrefix(t *testing.T) {
+	out := outputplan.NewOutput(outputplan.OutputSpec{
+		Path:    "AGENTS.md",
+		Content: "agentic-debugging agentic-planning",
+		Policy:  outputplan.Policy{ScanSkillReferences: true},
+	})
+	plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "AGENTS.md", Output: &out})})
+	got, err := Check(plan, "agentic", map[string]bool{}, map[string]bool{"awf-effort": true}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if findings := got.Findings(); len(findings) != 0 {
+		t.Fatalf("canonical external skills were reinterpreted as legacy AWF skills: %#v", findings)
+	}
+}

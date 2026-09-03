@@ -14,16 +14,19 @@ func listDocument(cfg *config.Config, cat *catalog.Catalog, kindFilter string) (
 	if kindFilter == "target" {
 		return listTargetDocument()
 	}
-	if kindFilter != "" && kindFilter != "domain" && kindFilter != "skill" && kindFilter != "agent" && kindFilter != "doc" {
-		return presentation.Document{}, fmt.Errorf("unknown kind %q", kindFilter)
-	}
 	kinds := Kinds()
 	if kindFilter != "" {
+		if _, ok := PluralKind(kindFilter); !ok {
+			return presentation.Document{}, fmt.Errorf("unknown kind %q", kindFilter)
+		}
 		kinds = []string{kindFilter}
 	}
 	categories := make([]presentation.CollectionCategory, 0, len(kinds))
 	for _, kind := range kinds {
-		plural, _ := PluralKind(kind)
+		plural, ok := PluralKind(kind)
+		if !ok {
+			return presentation.Document{}, fmt.Errorf("unknown kind %q", kind)
+		}
 		var entries []string
 		if kind == "domain" {
 			entries = slices.Sorted(slices.Values(cfg.Domains))

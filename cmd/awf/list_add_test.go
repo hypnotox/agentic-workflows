@@ -183,6 +183,9 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 		if err := runList(ctx, root, "bogus", io.Discard); err == nil {
 			t.Fatal("unknown list kind accepted")
 		}
+		if err := runList(ctx, root, "agent", io.Discard); err == nil || !strings.Contains(err.Error(), `unknown kind "agent"`) {
+			t.Fatalf("retired agent kind error = %v", err)
+		}
 		if err := runList(ctx, root, "skill", errorWriter{}); err == nil {
 			t.Fatal("list writer error was not propagated")
 		}

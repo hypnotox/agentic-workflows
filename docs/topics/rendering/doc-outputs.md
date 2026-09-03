@@ -59,7 +59,7 @@ Verify: Render a fixture whose project term and shipped term exceed the threshol
 
 ### `invariant: skill-ref-unknown-ignored`
 
-A prefix-anchored token whose trailing word matches no catalog skill name produces no dead-skill-reference finding.
+A prefix-anchored token whose trailing word matches no catalog skill name produces no dead-skill-reference finding. Canonical external `agentic-*` identities take precedence over legacy project-prefix interpretation when the configured prefix is `agentic`.
 Backing: test
 
 ### `invariant: stub-notes-path-keyed`

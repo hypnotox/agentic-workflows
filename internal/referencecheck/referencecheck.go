@@ -55,7 +55,10 @@ func Check(plan outputplan.Plan, prefix string, effectiveSkills map[string]bool,
 			seen := map[string]bool{}
 			for _, token := range skillToken.FindAllString(refs.WithoutFences(output.Content()), -1) {
 				name, relevant := token, knownSkills[token]
-				if strings.HasPrefix(token, prefix+"-") {
+				// The external agentic-* namespace is canonical. When a project uses
+				// prefix "agentic", do not reinterpret those identities as legacy
+				// project-prefixed AWF skills.
+				if prefix != "agentic" && strings.HasPrefix(token, prefix+"-") {
 					legacyName := strings.TrimPrefix(token, prefix+"-")
 					if knownSkills[legacyName] {
 						name, relevant = legacyName, true
