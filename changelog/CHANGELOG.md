@@ -8,6 +8,10 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Rename the `repository-context` skill to `context` and broaden orientation, bounded exploration, and premise challenge beyond the current repository to explicitly bounded project, dependency, external, and search-tool evidence. Schema 51 migrates authored sidecars and declared section overrides to the new skill name and refuses conflicting sources.
+
 ## [0.46.1] - 2026-09-02
 
 ### Bug fixes

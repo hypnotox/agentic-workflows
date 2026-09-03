@@ -7,8 +7,8 @@ package catalog
 // byte-identical (ADR-0060).
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
-		"repository-context": {Sections: []string{"orient", "explore", "challenge"}},
-		"brainstorming":      {Sections: []string{"procedure"}},
+		"context":       {Sections: []string{"orient", "explore", "challenge"}},
+		"brainstorming": {Sections: []string{"procedure"}},
 		"effort-workflow": {Sections: []string{
 			"continuity-and-resident", "execution-and-checkpoints", "integration-and-recovery", "close",
 		}},
@@ -24,12 +24,12 @@ var Standard = &Catalog{
 	Agents: map[string]AgentSpec{
 		"explorer": {
 			Name:        "explorer",
-			Description: "Read-only explorer for one bounded {{ .prefix }} repository question.\nReturns an evidence-grounded answer with searched boundary and uncertainty.",
+			Description: "Read-only explorer for one bounded {{ .prefix }} context question.\nReturns an evidence-grounded answer with searched boundary and uncertainty.",
 			Sections:    []string{"scope", "report"},
 		},
 		"premise-checker": {
 			Name:        "premise-checker",
-			Description: "Read-only adversarial checker for consequential {{ .prefix }} repository premises.\nReturns supported, revise, or unresolved with evidence.",
+			Description: "Read-only adversarial checker for consequential {{ .prefix }} premises.\nReturns supported, revise, or unresolved with evidence.",
 			Sections:    []string{"procedure", "report"},
 		},
 		"implementer": {

@@ -32,7 +32,13 @@ Backing: test
 
 ### `invariant: migration-ordering`
 
-awf upgrade applies only registered migrations for supported live sources whose target generation exceeds the source generation, in ascending target order. The registry begins with the schema-50 no-op seam for future supported advances; re-running at the current schema applies nothing and exits zero.
+awf upgrade applies only registered migrations for supported live sources whose target generation exceeds the source generation, in ascending target order. The registry begins with the schema-50 no-op seam and advances through supported migrations; re-running at the current schema applies nothing and exits zero.
+Backing: test
+
+
+### `invariant: context-skill-source-migration`
+
+The schema-51 migration renames authored `repository-context` skill sidecars and declared section parts to `context`, preserving content and mode. It removes an equivalent duplicate target but refuses conflicting old and new sources before mutation.
 Backing: test
 
 

@@ -35,4 +35,4 @@ Backing: test
 
 CodeGraph owns structural source discovery, architecture, callers, dependencies, and impact analysis; Git selects changed paths; `awf resolve topic` and `awf read topic` expose focused normative authority.
 Backing: unbacked
-Verify: Inspect the repository-context skill and agent guide commands, confirming structural questions route to CodeGraph, changed-path selection stays with Git, and topic resolution and reads remain the focused authority interface.
+Verify: Inspect the context skill and agent guide commands, confirming repository structural questions route to CodeGraph, changed-path selection stays with Git, and topic resolution and reads remain the focused authority interface.

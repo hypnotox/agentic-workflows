@@ -50,7 +50,7 @@ successful capability handshake and final awf profile registration establish com
 incompatible, late, or rejected negotiation reports an actionable prerequisite error and activates
 no awf fallback. `pi-tools` owns general scheduling, execution, confinement, progress presentation,
 context usage, and handoff mechanics. Awf renders the workflow-specific profile adapter and ordinary
-catalog skills. Repository-context guidance selects orientation, exploration, or premise challenge as needed. Missing or modified awf adapter files are `awf check` drift; run `./awf render` to repair them.
+catalog skills. Context guidance selects orientation, exploration, or premise challenge as needed. Missing or modified awf adapter files are `awf check` drift; run `./awf render` to repair them.
 
 ## Session replacement
 

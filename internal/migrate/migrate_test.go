@@ -66,7 +66,7 @@ func assertSnapshot(t *testing.T, root string, want map[string][]byte) {
 func TestBelowSchema50RefusesBeforePlanningOrMutation(t *testing.T) {
 	original := registry
 	called := false
-	registry = append(registry, Migration{To: 51, Name: "synthetic future", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) {
+	registry = append(registry, Migration{To: Current() + 1, Name: "synthetic future", Build: func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error) {
 		called = true
 		return []FileMutation{{Path: ".awf/future.yaml", Content: []byte("future\n"), Mode: 0o600}}, nil
 	}})
@@ -89,9 +89,9 @@ func TestBelowSchema50RefusesBeforePlanningOrMutation(t *testing.T) {
 	}
 }
 
-func TestSchema50IsCurrentWithoutAppliedMigrationOrMutation(t *testing.T) {
+func TestCurrentSchemaHasNoAppliedMigrationOrMutation(t *testing.T) {
 	root := t.TempDir()
-	writeLock(t, root, 50)
+	writeLock(t, root, Current())
 	before := snapshot(t, root)
 	applied, changes, mutations, err := Build(context.Background(), root)
 	if err != nil || len(applied) != 0 || len(changes) != 0 || len(mutations) != 0 {
@@ -101,7 +101,7 @@ func TestSchema50IsCurrentWithoutAppliedMigrationOrMutation(t *testing.T) {
 }
 
 func TestAheadSchemasRefuse(t *testing.T) {
-	for _, schema := range []int{51, 99} {
+	for _, schema := range []int{Current() + 1, 99} {
 		t.Run("schema-"+strconv.Itoa(schema), func(t *testing.T) {
 			root := t.TempDir()
 			writeLock(t, root, schema)

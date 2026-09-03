@@ -11,11 +11,11 @@ Workflow skills are conditionally applicable capabilities. They preserve reposit
 
 ## Claims
 
-### `invariant: repository-context-capability`
+### `invariant: context-capability`
 
-The rendered `repository-context` skill owns three independent lanes: orient from the guide and relevant authority, explore one bounded unknown through a fresh read-only context when inline search would pollute the parent, and challenge consequential premises before relying on them. Exact-known-file and genuinely trivial reads stay inline. The explorer and premise-checker agents are report-only and carry no mutation or workflow-transition authority.
+The rendered `context` skill owns three independent lanes: orient from applicable evidence, explore one bounded unknown through a fresh read-only context when inline search would pollute the parent, and challenge consequential premises before relying on them. Its evidence boundary may include the current repository, other projects, dependency source or documentation, authoritative external sources, and available search tools. Exact-known-source and genuinely trivial reads stay inline. The explorer and premise-checker agents are report-only and carry no mutation or workflow-transition authority.
 Backing: unbacked
-Verify: Render both supported targets, inspect the repository-context skill plus explorer and premise-checker agents, and confirm the three lanes, inline exception, report-only boundary, and absence of runtime-specific tool names.
+Verify: Render both supported targets, inspect the context skill plus explorer and premise-checker agents, and confirm the three lanes, broad source boundary, inline exception, report-only boundary, and absence of runtime-specific tool names.
 
 ### `invariant: implementation-route-adaptive`
 

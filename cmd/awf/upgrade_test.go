@@ -451,6 +451,79 @@ func TestRunUpgradeRendersSuccessfulFinalJournalMutation(t *testing.T) {
 	}
 }
 
+// invariant: config/migrations-and-locks:context-skill-source-migration (TestRunUpgradeMigratesContextSkillSourcesAndRenderedOutputs)
+func TestRunUpgradeMigratesContextSkillSourcesAndRenderedOutputs(t *testing.T) {
+	root := scaffoldProject(t)
+	lock, err := manifest.Load(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, target := range []string{".claude", ".pi"} {
+		currentRel := target + "/skills/example-context/SKILL.md"
+		retiredRel := target + "/skills/example-repository-context/SKILL.md"
+		entry, found := lock.Files[currentRel]
+		if !found {
+			t.Fatalf("fixture lock lacks %s", currentRel)
+		}
+		if err := os.MkdirAll(filepath.Dir(filepath.Join(root, filepath.FromSlash(retiredRel))), 0o755); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Rename(filepath.Join(root, filepath.FromSlash(currentRel)), filepath.Join(root, filepath.FromSlash(retiredRel))); err != nil {
+			t.Fatal(err)
+		}
+		delete(lock.Files, currentRel)
+		entry.TemplateID = "skills/repository-context/SKILL.md.tmpl"
+		lock.Files[retiredRel] = entry
+	}
+	lock.AWFVersion = "0.46.1"
+	lock.InitializedWithVersion = "0.46.1"
+	lock.SchemaVersion = 50
+	if err := lock.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+
+	retiredPart := filepath.Join(root, ".awf/skills/parts/repository-context/explore.md")
+	testsupport.WriteFile(t, retiredPart, "Custom cross-project exploration.\n")
+	if err := os.Chmod(retiredPart, 0o640); err != nil {
+		t.Fatal(err)
+	}
+
+	var stdout bytes.Buffer
+	if err := runUpgrade(testContext(t), root, &stdout); err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(stdout.String(), "rename repository-context skill to context") {
+		t.Fatalf("upgrade output = %q", stdout.String())
+	}
+	lock, err = manifest.Load(config.LockPath(root))
+	if err != nil || lock.SchemaVersion != migrate.Current() {
+		t.Fatalf("final lock schema = %v, err=%v", lock, err)
+	}
+	currentPart := filepath.Join(root, ".awf/skills/parts/context/explore.md")
+	contents, err := os.ReadFile(currentPart)
+	info, statErr := os.Stat(currentPart)
+	if err != nil || statErr != nil || string(contents) != "Custom cross-project exploration.\n" || info.Mode().Perm() != 0o640 {
+		t.Fatalf("migrated part = %q mode=%v errors=%v", contents, info, errors.Join(err, statErr))
+	}
+	if _, err := os.Stat(retiredPart); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("retired part remains: %v", err)
+	}
+	for _, target := range []string{".claude", ".pi"} {
+		current := filepath.Join(root, target, "skills/example-context/SKILL.md")
+		rendered, err := os.ReadFile(current)
+		if err != nil || !strings.Contains(string(rendered), "Custom cross-project exploration.") {
+			t.Fatalf("rendered %s = %q, err=%v", target, rendered, err)
+		}
+		retired := filepath.Join(root, target, "skills/example-repository-context/SKILL.md")
+		if _, err := os.Stat(retired); !errors.Is(err, os.ErrNotExist) {
+			t.Fatalf("retired rendered skill remains for %s: %v", target, err)
+		}
+	}
+	if journalPresence(t, root) {
+		t.Fatal("migration journal remains after successful upgrade")
+	}
+}
+
 func TestSchema47JournalRecoveryRestoresLegacyAuthorityThenRefuses(t *testing.T) {
 	// The journal format remains able to recover the last retired source shape,
 	// even though normal operations no longer migrate it. Recovery must restore

@@ -4,7 +4,7 @@ Pi workflow contracts: awf profile policy, native skills, and workflow guidance.
 
 ### `invariant: pi-dedicated-grounding-dispatch`
 
-The generated Pi adapter loads the rendered premise-checker role for independent repository-premise challenges through `subagent_grounding`, while read-only discovery uses the explorer role through `subagent_explore`. The repository-context skill owns selection between orientation, exploration, and premise challenge. Non-Pi targets contain no Pi subagent tool names.
+The generated Pi adapter loads the rendered premise-checker role for independent premise challenges through `subagent_grounding`, while read-only discovery uses the explorer role through `subagent_explore`. The context skill owns selection between orientation, exploration, and premise challenge across the stated evidence boundary. Non-Pi targets contain no Pi subagent tool names.
 Backing: test
 
 ### `invariant: pi-extension-editor-quiet-strip`

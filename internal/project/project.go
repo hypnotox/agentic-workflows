@@ -32,7 +32,7 @@ var Version = strings.TrimSuffix(versionFile, "\n")
 // minVersionBySchema maps each config-schema generation to the minimum
 // project.Version allowed to render it; adding a migration without an entry
 // here (and a matching const bump) fails the gate (ADR-0049 Decision 4).
-var minVersionBySchema = map[int]string{50: "0.44.0"}
+var minVersionBySchema = map[int]string{50: "0.44.0", 51: "0.47.0"}
 
 // ValidateSchemaMinimumVersion confirms that version is new enough to render a
 // schema generation. The command gate calls it for the current generation, so

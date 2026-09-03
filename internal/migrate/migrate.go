@@ -79,9 +79,11 @@ type Migration struct {
 // LiveSchemaFloor is the oldest source generation this binary can operate on.
 const LiveSchemaFloor = 50
 
-// registry intentionally contains only the current live generation. The no-op
-// floor entry is the explicit seam where a later supported migration is appended.
-var registry = []Migration{{To: LiveSchemaFloor, Name: "supported-schema-50"}}
+// registry begins at the live floor and advances through supported migrations.
+var registry = []Migration{
+	{To: LiveSchemaFloor, Name: "supported-schema-50"},
+	{To: contextSkillGeneration, Name: contextSkillMigration, Build: renameRepositoryContextSkill},
+}
 
 func Current() int                { return registry[len(registry)-1].To }
 func LiveSchemaRange() (int, int) { return LiveSchemaFloor, Current() }

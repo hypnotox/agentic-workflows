@@ -112,7 +112,7 @@ test("pinned Pi runtime discovers awf skills and delivers protocol-v2 routing wi
   assert.deepEqual(loader.getExtensions().errors, []);
   const discovered = loader.getSkills();
   assert.deepEqual(discovered.diagnostics, []);
-  assert.ok(discovered.skills.some((skill: any) => skill.name === "awf-repository-context"));
+  assert.ok(discovered.skills.some((skill: any) => skill.name === "awf-context"));
   assert.equal(registeredBatch.registrationId, "awf:subagent-profiles:v2");
   assert.equal(registeredBatch.suppressDefault, true);
   assert.deepEqual(registrationReceipt, { state: "pending" });

@@ -51,7 +51,7 @@ Decomposition preserves parent-owned focused evidence for each fresh unit, and t
 |---|---|
 | Brainstorming | A material choice or clarification needs resolution. |
 | Continuity/effort | Durable continuity materially helps. |
-| Repository context | Orientation, exploration, or premise challenge adds value. |
+| Context | Orientation, exploration, or premise challenge adds value. |
 | Decision record | A load-bearing choice should outlive implementation. |
 | Operational plan | Sequencing, coordination, or resumability materially helps. |
 | Review | Material risk or uncertainty warrants independent assurance. |
