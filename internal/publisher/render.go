@@ -302,7 +302,7 @@ func nonNil(m map[string]any) map[string]any {
 	return m
 }
 
-// renderKindSpec drives one catalog-backed render loop (skills/agents/docs): the
+// renderKindSpec drives one catalog-backed render loop (skills/docs): the
 // kinds that share the sort → sidecar → render → append shape. tid
 // and sections derive from the artifact name; outPath also takes the adapter
 // target (ignored by neutral kinds like docs); target is the adapter this pass
@@ -342,11 +342,6 @@ type renderKindSpec struct {
 // skillTID resolves a catalog skill's name-derived template id.
 func skillTID(p renderInputs, n string) string {
 	return mustDescriptor("skills").templateID(projectCatalog(p), n)
-}
-
-// agentTID resolves a catalog agent's name-derived template id.
-func agentTID(p renderInputs, n string) string {
-	return mustDescriptor("agents").templateID(projectCatalog(p), n)
 }
 
 // docTID resolves a catalog document's declared template id.
@@ -457,35 +452,20 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDefiniti
 		}
 	}
 	out = append(out, docsRfs...)
-	// Adapter: skills + agents render once per fixed target (inv: multi-target-render).
+	// Fixed AWF skills render once per target (inv: multi-target-render).
 	for _, t := range p.targets() {
 		skillNames := slices.Sorted(maps.Keys(projectCatalog(p).Skills))
-		skillPath := func(t artifactregistry.Target, n string) string { return t.SkillPath(p.cfg.Prefix, n) }
-		for _, spec := range []renderKindSpec{
-			{
-				kind: "skills", names: skillNames, target: t, claimed: claimed,
-				tid:      func(n string) string { return skillTID(p, n) },
-				sections: func(n string) []string { return projectCatalog(p).Skills[n].Sections },
-				outPath:  skillPath,
-				defaults: func(n string) map[string]any { return projectCatalog(p).Skills[n].Data },
-			},
-			{
-				kind: "agents", names: slices.Sorted(maps.Keys(projectCatalog(p).Agents)), target: t, claimed: claimed,
-				tid:      func(n string) string { return agentTID(p, n) },
-				sections: func(n string) []string { return projectCatalog(p).Agents[n].Sections },
-				outPath:  func(t artifactregistry.Target, n string) string { return t.AgentPath(n) },
-				defaults: func(n string) map[string]any { return projectCatalog(p).Agents[n].Data },
-				encode: func(n, body string, data map[string]any) (string, error) {
-					return encodeAgent(p, t, n, body, data)
-				},
-			},
-		} {
-			rfs, err := renderKind(p, spec, eff)
-			if err != nil {
-				return nil, err
-			}
-			out = append(out, rfs...)
+		rfs, err := renderKind(p, renderKindSpec{
+			kind: "skills", names: skillNames, target: t, claimed: claimed,
+			tid:      func(n string) string { return skillTID(p, n) },
+			sections: func(n string) []string { return projectCatalog(p).Skills[n].Sections },
+			outPath:  func(t artifactregistry.Target, n string) string { return t.SkillPath(n) },
+			defaults: func(n string) map[string]any { return projectCatalog(p).Skills[n].Data },
+		}, eff)
+		if err != nil {
+			return nil, err
 		}
+		out = append(out, rfs...)
 		for _, targetOutput := range resolvedTargetOutputs(t, p.cfg.Prefix, skillNames) {
 			if targetOutputs[targetOutput.Path].canonical != t.Name || claimed[targetOutput.Path] {
 				continue
@@ -844,20 +824,6 @@ func observeRenderInputs(p renderInputs, kind, artifact, tid, outPath string, pl
 		}
 	}
 	return normalizeOutputInputs(inputs), nil
-}
-
-// encodeAgent renders catalog metadata with normal template data and combines it
-// with the independently section-rendered instruction body in the target dialect.
-func encodeAgent(p renderInputs, t artifactregistry.Target, name, body string, data map[string]any) (string, error) {
-	description, err := render.Execute(projectCatalog(p).Agents[name].Description, data, nil, "agent description")
-	if err != nil {
-		return "", err
-	}
-	a := agent{Name: projectCatalog(p).Agents[name].Name, Description: description, Body: body}
-	if t.AgentDialect != artifactregistry.MarkdownAgentDialect {
-		return "", fmt.Errorf("unknown agent dialect %q", t.AgentDialect)
-	}
-	return encodeMarkdownAgent(a)
 }
 
 // generateLocalDocs owns the separate configured document family. It uses the

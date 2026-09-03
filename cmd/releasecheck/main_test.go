@@ -196,7 +196,7 @@ func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 		apply func(map[string]any, map[string]any)
 	}{
 		{"missing aggregate gate", func(c, _ map[string]any) { delete(workflowJobs(c), "gate") }},
-		{"missing Linux dependency", func(c, _ map[string]any) { workflowMap(workflowJobs(c)["gate"])["needs"] = []any{"macos", "pi"} }},
+		{"missing Linux dependency", func(c, _ map[string]any) { workflowMap(workflowJobs(c)["gate"])["needs"] = []any{"macos"} }},
 		{"selection loses two-dot range", func(c, _ map[string]any) {
 			step := workflowStep(workflowMap(workflowJobs(c)["selection"]), "Select typed affected lanes")
 			step["run"] = strings.Replace(stringValue(step["run"]), "${BASE_SHA}..${HEAD_SHA}", "${BASE_SHA}...${HEAD_SHA}", 1)
@@ -224,9 +224,6 @@ func TestReleaseWorkflowGatesOnTag(t *testing.T) {
 		}},
 		{"missing release archive behavior", func(c, _ map[string]any) {
 			workflowStep(workflowMap(workflowJobs(c)["linux"]), "Selected release-archive behavior")["run"] = "true"
-		}},
-		{"missing strict Pi behavior", func(c, _ map[string]any) {
-			workflowExactRunStep(workflowJobs(c)["pi"], "./x pi-test run")["run"] = "true"
 		}},
 		{"publish loses native verifier dependency", func(_, r map[string]any) {
 			workflowMap(workflowJobs(r)["publish"])["needs"] = []any{"native-linux-amd64"}
@@ -501,26 +498,28 @@ func exactRevisionWorkflowProblems(ci, release map[string]any) []string {
 		problems = append(problems, "stable workflow names")
 	}
 	ciJobs, releaseJobs := workflowJobs(ci), workflowJobs(release)
+	if _, ok := ciJobs["pi"]; ok {
+		problems = append(problems, "retired Pi lane")
+	}
 	selection := workflowMap(ciJobs["selection"])
 	if !selectionConsumerExact(selection) {
 		problems = append(problems, "typed selection consumer")
 	}
 	const candidateRef = "${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}"
-	for _, name := range []string{"linux", "macos", "pi", "gate"} {
+	for _, name := range []string{"linux", "macos", "gate"} {
 		job := workflowMap(ciJobs[name])
 		if workflowFirstStepWith(job)["ref"] != candidateRef {
 			problems = append(problems, "CI exact checkout "+name)
 		}
 	}
 
-	linux, macos, pi := workflowMap(ciJobs["linux"]), workflowMap(ciJobs["macos"]), workflowMap(ciJobs["pi"])
+	linux, macos := workflowMap(ciJobs["linux"]), workflowMap(ciJobs["macos"])
 	if linux["name"] != "native-linux-amd64" || macos["name"] != "native-darwin-arm64" || macos["runs-on"] != "macos-15" {
 		problems = append(problems, "stable CI native names and arm runner")
 	}
 	const candidateSHA = `[ "$(git rev-parse HEAD)" = "$CANDIDATE_SHA" ]`
 	if !nativeAssertionExact(workflowStep(linux, "Assert native target linux/amd64"), "Linux", "X64", "Linux", "x86_64", "linux", "amd64", candidateSHA) ||
-		!nativeAssertionExact(workflowStep(macos, "Assert native target darwin/arm64"), "macOS", "ARM64", "Darwin", "arm64", "darwin", "arm64", candidateSHA) ||
-		!nativeAssertionExact(workflowStep(pi, "Assert native target linux/amd64"), "Linux", "X64", "Linux", "x86_64", "linux", "amd64", candidateSHA) {
+		!nativeAssertionExact(workflowStep(macos, "Assert native target darwin/arm64"), "macOS", "ARM64", "Darwin", "arm64", "darwin", "arm64", candidateSHA) {
 		problems = append(problems, "native target assertion")
 	}
 	if stringValue(linux["if"]) != "${{ always() && (github.event_name != 'pull_request' || needs.selection.result == 'success') }}" || !workflowNeeds(linux, "selection") {
@@ -554,14 +553,10 @@ env TMPDIR="$temp_root" GOTMPDIR="$temp_root" go test -count=1 ./internal/filesy
 	if stringValue(macos["if"]) != "${{ always() && (github.event_name != 'pull_request' || (needs.selection.result == 'success' && needs.selection.outputs.platform_sensitive == 'true')) }}" || !workflowNeeds(macos, "selection") || stringValue(prSafety["if"]) != "${{ github.event_name == 'pull_request' }}" || strings.TrimSpace(stringValue(prSafety["run"])) != prSafetyRun {
 		problems = append(problems, "PR macOS safety")
 	}
-	macGo, macPi, macRender := workflowStep(macos, "Complete macOS Go assurance"), workflowStep(macos, "Complete Pi/runtime behavior on main"), workflowStep(macos, "Complete render and check behavior on main")
+	macGo, macRender := workflowStep(macos, "Complete macOS Go assurance"), workflowStep(macos, "Complete render and check behavior on main")
 	if stringValue(macGo["if"]) != "${{ github.event_name != 'pull_request' }}" || strings.TrimSpace(stringValue(macGo["run"])) != "./x test" ||
-		stringValue(macPi["if"]) != "${{ github.event_name != 'pull_request' }}" || strings.TrimSpace(stringValue(macPi["run"])) != "./x pi-test run" ||
 		stringValue(macRender["if"]) != "${{ github.event_name != 'pull_request' }}" || strings.TrimSpace(stringValue(macRender["run"])) != "./x check && ./x render && git diff --exit-code" {
 		problems = append(problems, "main macOS complete assurance")
-	}
-	if stringValue(pi["if"]) != "${{ always() && (github.event_name != 'pull_request' || (needs.selection.result == 'success' && needs.selection.outputs.pi_runtime == 'true')) }}" || !workflowNeeds(pi, "selection") || countExactRun(pi, "./x pi-test run") != 1 {
-		problems = append(problems, "selected Pi behavior")
 	}
 	gate := workflowMap(ciJobs["gate"])
 	const acceptance = `[ "$(git rev-parse HEAD)" = "$CANDIDATE_SHA" ]
@@ -569,14 +564,12 @@ if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
   [ '${{ needs.selection.result }}' = success ]
   [ '${{ needs.linux.result }}' = success ]
   if [ "$PLATFORM_SELECTED" = true ]; then [ '${{ needs.macos.result }}' = success ]; else [ '${{ needs.macos.result }}' = skipped ]; fi
-  if [ "$PI_SELECTED" = true ]; then [ '${{ needs.pi.result }}' = success ]; else [ '${{ needs.pi.result }}' = skipped ]; fi
 else
   [ '${{ needs.selection.result }}' = skipped ]
   [ '${{ needs.linux.result }}' = success ]
   [ '${{ needs.macos.result }}' = success ]
-  [ '${{ needs.pi.result }}' = success ]
 fi`
-	if gate["name"] != "gate" || stringValue(gate["if"]) != "${{ always() }}" || !slices.Equal(workflowNeedNames(gate), []string{"linux", "macos", "pi", "selection"}) || strings.TrimSpace(stringValue(workflowStep(gate, "Require every selected assurance lane for the exact candidate")["run"])) != acceptance {
+	if gate["name"] != "gate" || stringValue(gate["if"]) != "${{ always() }}" || !slices.Equal(workflowNeedNames(gate), []string{"linux", "macos", "selection"}) || strings.TrimSpace(stringValue(workflowStep(gate, "Require every selected assurance lane for the exact candidate")["run"])) != acceptance {
 		problems = append(problems, "stable aggregate gate")
 	}
 
@@ -634,7 +627,7 @@ git merge-base --is-ancestor HEAD origin/main`
 		assurance := strings.TrimSpace(stringValue(workflowStep(job, "Complete source assurance")["run"]))
 		smoke := strings.TrimSpace(stringValue(workflowStep(job, "Smoke exact candidate "+tc.smoke)["run"]))
 		wantSmoke := `tools/native-release-test/run.sh dist ` + tc.goos + ` ` + tc.goarch + ` "${GITHUB_REF_NAME#v}"`
-		if job["name"] != tc.name || job["runs-on"] != tc.runner || len(steps) == 0 || checkout["ref"] != "${{ github.sha }}" || checkout["persist-credentials"] != false || !workflowNeeds(job, "verify") || !nativeAssertionExact(workflowStep(job, tc.assertStep), tc.runnerOS, tc.runnerArch, tc.unameOS, tc.unameArch, tc.goos, tc.goarch, `[ "$(git rev-parse HEAD)" = '${{ github.sha }}' ]`) || !workflowArtifactExact(job, "actions/download-artifact@", candidate, "dist") || assurance != "./x test && ./x gate && ./x check && ./x render && git diff --exit-code && ./x pi-test run" || smoke != wantSmoke {
+		if job["name"] != tc.name || job["runs-on"] != tc.runner || len(steps) == 0 || checkout["ref"] != "${{ github.sha }}" || checkout["persist-credentials"] != false || !workflowNeeds(job, "verify") || !nativeAssertionExact(workflowStep(job, tc.assertStep), tc.runnerOS, tc.runnerArch, tc.unameOS, tc.unameArch, tc.goos, tc.goarch, `[ "$(git rev-parse HEAD)" = '${{ github.sha }}' ]`) || !workflowArtifactExact(job, "actions/download-artifact@", candidate, "dist") || assurance != "./x test && ./x gate && ./x check && ./x render && git diff --exit-code" || smoke != wantSmoke {
 			problems = append(problems, "native verifier "+tc.name)
 		}
 	}
@@ -658,7 +651,7 @@ func selectionConsumerExact(job map[string]any) bool {
 		return false
 	}
 	outputs := workflowMap(job["outputs"])
-	for _, key := range []string{"selection_path", "selection_status", "selection_outcome", "go", "pi_runtime", "render_template", "platform_sensitive", "release_archive"} {
+	for _, key := range []string{"selection_path", "selection_status", "selection_outcome", "go", "render_template", "platform_sensitive", "release_archive"} {
 		if stringValue(outputs[key]) == "" {
 			return false
 		}
@@ -673,10 +666,9 @@ func selectionConsumerExact(job map[string]any) bool {
 		`.outcome == "empty"`,
 		`.outcome == "widened"`,
 		`if .outcome == "widened" then`,
-		`[.lanes[].name] == ["go", "pi-runtime", "platform-sensitive", "release-archive", "render-template"]`,
+		`[.lanes[].name] == ["go", "platform-sensitive", "release-archive", "render-template"]`,
 		`.outcome == "refused"`,
 		`.name == "go"`,
-		`.name == "pi-runtime"`,
 		`.name == "render-template"`,
 		`.name == "platform-sensitive"`,
 		`.name == "release-archive"`,
@@ -691,7 +683,7 @@ func selectionConsumerExact(job map[string]any) bool {
 			return false
 		}
 	}
-	for _, forbidden := range []string{"go run ./cmd/testselection", "--execute", ".packages", ".reasons", ".diagnostics"} {
+	for _, forbidden := range []string{"go run ./cmd/testselection", "--execute", ".packages", ".reasons", ".diagnostics", "pi-runtime", "pi_runtime", "pi-test"} {
 		if strings.Contains(run, forbidden) {
 			return false
 		}

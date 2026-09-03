@@ -21,6 +21,12 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
+// newPitfallWithReleaseFault is the test seam for proving a post-release
+// fault without replacing or bypassing the real lease release.
+func newPitfallWithReleaseFault(ctx context.Context, root string, args []string, stdout io.Writer, releaseFault func() error) error {
+	return newPitfallWithFaults(ctx, root, args, stdout, releaseFault, pitfallop.Create)
+}
+
 type leaseProbeWriter struct {
 	root    string
 	checked bool

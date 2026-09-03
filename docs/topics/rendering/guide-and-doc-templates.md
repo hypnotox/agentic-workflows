@@ -74,9 +74,9 @@ Backing: test
 
 ### `invariant: working-memory-single-home`
 
-Working-memory protocol has one canonical capability-neutral workflow-document home. The root guide carries only slim native-skill routing, while `effort-workflow` alone owns creation through finish and preserves the one-user-managed-writer boundary.
+Working-memory protocol has one canonical capability-neutral workflow-document home. The root guide carries only slim native-skill routing, while `awf-effort` alone owns creation through finish and preserves the one-user-managed-writer boundary.
 Backing: unbacked
-Verify: Inspect the workflow document, root guide, and effort-workflow skill; confirm the complete protocol occurs only in the workflow document, the guide stays at routing altitude, and effort-workflow alone owns lifecycle and the one-writer rule.
+Verify: Inspect the workflow document, root guide, and `awf-effort` skill; confirm the complete protocol occurs only in the workflow document, the guide stays at routing altitude, and `awf-effort` alone owns lifecycle and the one-writer rule.
 
 ### `invariant: agent-guide-size-budgets`
 

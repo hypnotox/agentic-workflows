@@ -2,7 +2,7 @@
 // sharing awf audit's finding contract: it reports the same warn/error rank from
 // internal/severity, and exits non-zero only on an error finding. It is deliberately
 // NOT part of the shipped awf standard: it is repo-local dev tooling wired as
-// `./x audit-local` and invoked by awf-reviewing-impl (ADR-0073). It never runs the
+// `./x audit-local` for explicit repository-owner use (ADR-0073). It never runs the
 // gate. Three rules: changelog conformance - an adopter-facing change in the range with
 // no CHANGELOG [Unreleased] entry is an error.
 package main

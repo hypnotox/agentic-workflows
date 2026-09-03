@@ -22,6 +22,10 @@ type Entry struct {
 	TemplateHash string `json:"templateHash"`
 	ConfigHash   string `json:"configHash"`
 	OutputHash   string `json:"outputHash"`
+	// Mode records the managed file's permission bits so retirement can preserve
+	// a mode-only user change before deleting the formerly managed path. Older
+	// locks omit it and retain the historical regular-file 0644 expectation.
+	Mode uint32 `json:"mode,omitempty"`
 	// RegenChecked marks an entry whose drift is checked by regeneration rather
 	// than by the frozen OutputHash: generated indexes and navigation plus
 	// in-place-editable files. Omitted when false so a plain entry's

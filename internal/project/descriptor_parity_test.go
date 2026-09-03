@@ -30,9 +30,6 @@ func TestVarDescriptorParity(t *testing.T) {
 	for name := range cat.Skills {
 		paths = append(paths, "skills/"+name+"/SKILL.md.tmpl")
 	}
-	for name := range cat.Agents {
-		paths = append(paths, "agents/"+name+".md.tmpl")
-	}
 	for _, e := range cat.Docs {
 		paths = append(paths, e.TID) // merged-in singletons render from non-docs/ templates
 	}

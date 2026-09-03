@@ -584,7 +584,7 @@ func TestSyncReportsEveryCommittedPublicationCleanup(t *testing.T) {
 			t.Fatal(err)
 		}
 		const retired = "retired/output"
-		lock.Files[retired] = manifest.Entry{}
+		lock.Files[retired] = manifest.Entry{OutputHash: manifest.Hash([]byte("retired\n")), Mode: 0o644}
 		if err := lock.Save(lockFile(root)); err != nil {
 			t.Fatal(err)
 		}
@@ -613,7 +613,7 @@ func TestSyncReportsEveryCommittedPublicationCleanup(t *testing.T) {
 			t.Fatal(err)
 		}
 		const retired, cleanup = "cleanup/child/output", "cleanup/child"
-		lock.Files[retired] = manifest.Entry{}
+		lock.Files[retired] = manifest.Entry{OutputHash: manifest.Hash([]byte("retired\n")), Mode: 0o644}
 		if err := lock.Save(lockFile(root)); err != nil {
 			t.Fatal(err)
 		}
@@ -673,7 +673,7 @@ func TestSyncCommittedEffectOrderingIsStable(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, path := range retired {
-			lock.Files[path] = manifest.Entry{}
+			lock.Files[path] = manifest.Entry{OutputHash: manifest.Hash([]byte("retired\n")), Mode: 0o644}
 			testsupport.WriteFile(t, filepath.Join(root, path), "retired\n")
 		}
 		if err := lock.Save(lockFile(root)); err != nil {
@@ -851,7 +851,7 @@ func TestSyncAncestorCleanupRefusesParentSwap(t *testing.T) {
 		t.Fatal(err)
 	}
 	const retired = "cleanup/child/file"
-	lock.Files[retired] = manifest.Entry{}
+	lock.Files[retired] = manifest.Entry{OutputHash: manifest.Hash([]byte("retired\n")), Mode: 0o644}
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
@@ -961,7 +961,7 @@ func TestSyncPrunesBeforeWritingReplacementLock(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	lock.Files["retired/output.md"] = manifest.Entry{}
+	lock.Files["retired/output.md"] = manifest.Entry{OutputHash: manifest.Hash([]byte("obsolete\n")), Mode: 0o644}
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}

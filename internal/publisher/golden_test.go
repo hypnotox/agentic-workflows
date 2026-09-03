@@ -24,15 +24,15 @@ func TestEndToEndGolden(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	reviewer, err := os.ReadFile(filepath.Join(root, ".claude/agents/reviewer.md"))
+	maintenance, err := os.ReadFile(filepath.Join(root, ".claude", "skills", "awf-maintenance", "SKILL.md"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(string(reviewer), "Fresh report-only reviewer") {
-		t.Errorf("reviewer not rendered with its standard contract:\n%s", reviewer)
+	if !strings.Contains(string(maintenance), "# AWF maintenance") {
+		t.Errorf("maintenance skill not rendered with its standard contract:\n%s", maintenance)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "example-implementing", "SKILL.md")); err != nil {
-		t.Fatalf("implementing skill not rendered: %v", err)
+	if _, err := os.Stat(filepath.Join(root, ".claude", "agents")); !os.IsNotExist(err) {
+		t.Fatalf("AWF retained a Claude agents directory: %v", err)
 	}
 	if drift, err := checkProject(p, testContext(t)); err != nil || len(drift) != 0 {
 		t.Errorf("expected clean check, got drift=%#v err=%v", drift, err)
@@ -50,7 +50,7 @@ func TestTemplateHashCoversExpandedSource(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const tid = "agents/reviewer.md.tmpl"
+	const tid = "skills/awf-effort/SKILL.md.tmpl"
 	var got string
 	for _, f := range files {
 		if f.TemplateID == tid {
@@ -58,7 +58,7 @@ func TestTemplateHashCoversExpandedSource(t *testing.T) {
 		}
 	}
 	if got == "" {
-		t.Fatal("reviewer not rendered")
+		t.Fatal("awf-effort skill not rendered")
 	}
 	raw, err := fs.ReadFile(templates.FS, tid)
 	if err != nil {

@@ -134,7 +134,7 @@ func TestLocalDocPruneRejectsSymlinkAndKeepsLock(t *testing.T) {
 		t.Skipf("symlink unavailable: %v", err)
 	}
 	testConfig(p).LocalDocs = nil
-	if _, _, err := syncReportProject(p); err == nil || !strings.Contains(err.Error(), "unsafe pruned local document") {
+	if _, _, err := syncReportProject(p); err == nil || !strings.Contains(err.Error(), "unsafe pruned managed output") {
 		t.Fatalf("symlink local document error = %v", err)
 	}
 	lock, err := os.ReadFile(lockFile(root))

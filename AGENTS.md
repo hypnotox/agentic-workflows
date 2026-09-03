@@ -12,7 +12,7 @@ Use the narrowest relevant test, build, or lint command while editing, then run 
 <!-- awf:edit awf-setup: from .awf/parts/agents-doc/awf-setup.md -->
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl -->
 ## Working with awf
-awf's rendered guide, skills, agents, and docs derive from `.awf/`; edit sources, run `./x render && ./x check`, and commit generated outputs with their sources. See [docs/working-with-awf.md](docs/working-with-awf.md) for canonical commands and configuration.
+awf's rendered guide, four fixed `awf-*` skills, and docs derive from `.awf/`; edit sources, run `./x render && ./x check`, and commit generated outputs with their sources. Install `agentic-skills` globally for generic skills and roles; Pi users install `pi-tools` separately for role delegation. AWF never installs or probes either dependency. See [docs/working-with-awf.md](docs/working-with-awf.md) for canonical commands and configuration.
 
 
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl#you-and-this-project -->
@@ -26,7 +26,7 @@ You develop `awf`, its CLI and standard, and own the task and the project's long
 <!-- awf:edit identity: from .awf/parts/agents-doc/identity.md -->
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl -->
 ## Identity
-`awf` is a public pre-1.0 Go CLI (module `github.com/hypnotox/agentic-workflows`) that scaffolds, renders, and drift-checks language-agnostic agentic-workflow artifacts from `.awf/` configuration. It serves projects adopting governed native skills, agents, documentation, and current-state checks.
+`awf` is a public pre-1.0 Go CLI (module `github.com/hypnotox/agentic-workflows`) that scaffolds, renders, and drift-checks language-agnostic workflow artifacts from `.awf/` configuration. It serves projects adopting governed AWF-specific skills, documentation, and current-state checks alongside operator-installed generic agentic capabilities.
 
 
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl#invariants -->
@@ -54,13 +54,13 @@ Hard rules every change must respect:
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl -->
 ## Workflow
 
-Treat exposed native-skill descriptions as routing metadata. Before loading a skill, identify the next concrete action. Load only a skill that governs that action; a possible later edit, render, documentation update, review, or commit does not justify loading its skill now. Load multiple bodies only when each independently governs that same next action before another routing decision can occur. Before any mutation, load the native skill that governs that action. Change size, including a minimal change, never excuses this routing step. The workflow governs a change's protected contract, not its execution route. Obtain an explicitly approved proportionate outline through brainstorming when a material decision is unresolved, not because a change touches production code. Apply the clean-integration operative rule proportionally; `docs/maintainable-code-design.md` remains its canonical doctrine owner. Preserve the approved design boundary; see `docs/maintainable-code-design.md`. Route settled content by authority lifetime: durable choices belong in decision records, active rules in current-state topics, operational plans in effort scratch, and transient context in effort memory. Conventional Commits; one concern per commit. See [docs/workflow.md](docs/workflow.md) for workflow procedure.
+Treat exposed native-skill descriptions as routing metadata. Globally installed `agentic-*` skills govern general context, brainstorming, debugging, code design, planning, implementation, and review. Repository-local `awf-*` skills govern only AWF efforts, topics, durable decisions, and maintenance. Before loading a skill, identify the next concrete action. Load only a skill that governs that action; a possible later edit, render, documentation update, review, or commit does not justify loading its skill now. Load multiple bodies only when each independently governs that same next action before another routing decision can occur. Before any mutation, load the native skill that governs that action. Change size, including a minimal change, never excuses this routing step. The workflow governs a change's protected contract, not its execution route. Resolve a material choice through `agentic-brainstorming`; use `agentic-code-design`. Preserve the approved design boundary. See `docs/maintainable-code-design.md`. Route settled content by authority lifetime: durable choices belong in decision records, active rules in current-state topics, operational plans in effort scratch, and transient context in effort memory. Conventional Commits; one concern per commit. See [docs/workflow.md](docs/workflow.md) for workflow procedure.
 
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl#working-memory -->
 <!-- awf:edit working-memory: from .awf/parts/agents-doc/working-memory.md -->
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl -->
 ## Working memory
-Create an effort only when durable continuity materially helps; otherwise work remains effort-free. `effort-workflow` alone owns creation through finish, and one effort has one user-managed memory writer. [docs/workflow.md](docs/workflow.md) owns the protocol.
+Create an effort only when durable continuity materially helps; otherwise work remains effort-free. `awf-effort` alone owns creation through finish, and one effort has one user-managed memory writer. [docs/workflow.md](docs/workflow.md) owns the protocol.
 
 
 <!-- awf:template-source templates/agents-doc/AGENTS.md.tmpl#commands -->
@@ -90,7 +90,7 @@ For command flags and daily use, see [docs/working-with-awf.md](docs/working-wit
 - **Configuration Reference:** [docs/config-reference.md](docs/config-reference.md), every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state
 - **Documentation Standard:** [docs/doc-standard.md](docs/doc-standard.md), how-to-write rules for all awf-managed prose
 - **Maintainable Code Design:** [docs/maintainable-code-design.md](docs/maintainable-code-design.md), decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design
-- **Pi Runtime Reference:** [docs/pi-runtime-reference.md](docs/pi-runtime-reference.md), Pi-only runtime, subagent, model-routing, and handoff protocol
+- **Pi Runtime Reference:** [docs/pi-runtime-reference.md](docs/pi-runtime-reference.md), Pi prerequisites, external role support, and AWF effort handoff guidance
 - **Workflow:** [docs/workflow.md](docs/workflow.md), principles, conditional capabilities, continuity, review, and commit discipline
 - **Working with awf:** [docs/working-with-awf.md](docs/working-with-awf.md), day-to-day usage: commands, overrides, placeholders, and the sync/check loop
 - **Architecture:** [docs/architecture.md](docs/architecture.md), system shape, packages, key components, dependencies

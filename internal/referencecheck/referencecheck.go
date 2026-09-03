@@ -26,6 +26,15 @@ func finding(property checkresult.Property, kind, path, detail string) checkresu
 	return checkresult.Finding{Rank: severity.Error, Property: property, Evidence: checkresult.Evidence{Kind: kind, Path: path, Detail: detail}}
 }
 
+var skillToken = regexp.MustCompile(`[a-z0-9]+(?:-[a-z0-9]+)+`)
+
+var retiredAWFSkills = map[string]bool{
+	"brainstorming": true, "context": true, "current-state": true,
+	"debugging": true, "decision-records": true, "effort-workflow": true,
+	"implementing": true, "planning": true, "refactor-scope": true,
+	"reviewing": true, "using-awf": true,
+}
+
 // Check validates managed Markdown and skill references using the supplied
 // semantic output plan and the working-universe existence capability.
 func Check(plan outputplan.Plan, prefix string, effectiveSkills map[string]bool, knownSkills map[string]bool, exists Exists) (checkresult.Result, error) {
@@ -43,15 +52,22 @@ func Check(plan outputplan.Plan, prefix string, effectiveSkills map[string]bool,
 			}
 		}
 		if output.Policy().ScanSkillReferences {
-			re := regexp.MustCompile(`(?:^|[^a-zA-Z0-9_-])` + regexp.QuoteMeta(prefix) + `-([a-z0-9]+(?:-[a-z0-9]+)*)`)
 			seen := map[string]bool{}
-			for _, m := range re.FindAllStringSubmatch(refs.WithoutFences(output.Content()), -1) {
-				name := m[1]
-				if !knownSkills[name] || effectiveSkills[name] || seen[name] {
+			for _, token := range skillToken.FindAllString(refs.WithoutFences(output.Content()), -1) {
+				name, relevant := token, knownSkills[token]
+				if strings.HasPrefix(token, prefix+"-") {
+					legacyName := strings.TrimPrefix(token, prefix+"-")
+					if knownSkills[legacyName] {
+						name, relevant = legacyName, true
+					} else if retiredAWFSkills[legacyName] {
+						name, relevant = legacyName, true
+					}
+				}
+				if !relevant || effectiveSkills[name] || seen[token] {
 					continue
 				}
-				seen[name] = true
-				findings = append(findings, finding(PropertyCorrectness, "dead-skill-reference", output.Path(), prefix+"-"+name))
+				seen[token] = true
+				findings = append(findings, finding(PropertyCorrectness, "dead-skill-reference", output.Path(), token))
 			}
 		}
 	}

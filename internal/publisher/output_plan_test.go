@@ -152,9 +152,6 @@ func TestTargetDescriptorValidation(t *testing.T) {
 			t.Fatalf("planner accepted invalid target %#v", target)
 		}
 	}
-	if got := targetTemplateData(piTarget)["targetSubagentTools"]; got != true {
-		t.Fatalf("Pi subagent capability projection = %#v", got)
-	}
 	if got := targetTemplateData(piTarget)["targetSessionHandoff"]; got != true {
 		t.Fatalf("Pi handoff capability projection = %#v", got)
 	}
@@ -176,16 +173,14 @@ func TestBridgeRenderIdentity(t *testing.T) {
 	custom := artifactregistry.Target{
 		Name:           "custom",
 		SkillDir:       ".custom/workflows",
-		AgentDir:       ".custom/reviewers",
-		AgentSuffix:    ".agent.md",
 		AgentDialect:   artifactregistry.MarkdownAgentDialect,
 		BridgeFile:     "CUSTOM.md",
 		BridgeTemplate: bridgeTID,
-		Capabilities:   []artifactregistry.Capability{artifactregistry.CapabilitySubagentTools, artifactregistry.CapabilitySessionHandoff},
+		Capabilities:   []artifactregistry.Capability{artifactregistry.CapabilitySessionHandoff},
 		Outputs: []artifactregistry.TargetOutput{{
-			Path: ".custom/extension.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl",
-			Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.PlainAgentDialect,
-			Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true,
+			Path: ".custom/output.md", TemplateID: bridgeTID,
+			Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect,
+			Provenance: render.HTMLComment, Policy: outputplan.Policy{}, PolicyDeclared: true,
 		}},
 	}
 	p = setTestTargets(p, []artifactregistry.Target{claudeTarget, custom, piTarget})
@@ -235,16 +230,15 @@ func TestBridgeRenderIdentity(t *testing.T) {
 		t.Errorf("custom bridge did not use its descriptor-owned Markdown template with empty vars:\n%s", got)
 	}
 	for _, path := range []string{
-		".custom/workflows/example-implementing/SKILL.md",
-		".custom/reviewers/reviewer.agent.md",
-		".custom/extension.ts",
+		".custom/workflows/awf-effort/SKILL.md",
+		".custom/output.md",
 	} {
 		if _, ok := byPath[path]; !ok {
 			t.Errorf("custom descriptor output %s is absent", path)
 		}
 	}
-	if !targetTemplateData(custom)["targetSubagentTools"].(bool) || !targetTemplateData(custom)["targetSessionHandoff"].(bool) {
-		t.Error("custom descriptor capabilities were not projected")
+	if data := targetTemplateData(custom); data["targetSessionHandoff"] != true || len(data) != 1 {
+		t.Errorf("custom descriptor capabilities = %#v", data)
 	}
 	for _, output := range piTarget.Outputs {
 		if output.RequiresSkill != "" {
@@ -274,41 +268,38 @@ func TestOutputPlanCoalescesAndRejectsSharedTargetOutputsBeforeRendering(t *test
 	if err != nil {
 		t.Fatal(err)
 	}
-	shared := piTarget
-	shared.Name = "second-pi"
-	shared.Outputs = append([]artifactregistry.TargetOutput(nil), piTarget.Outputs...)
-	p = setTestTargets(p, append(testTargets(p), shared))
+	sharedOutput := artifactregistry.TargetOutput{
+		Path: ".pi/shared.md", TemplateID: bridgeTID, Producer: artifactregistry.TargetOutputTemplate,
+		Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true,
+	}
+	one := piTarget
+	one.Outputs = []artifactregistry.TargetOutput{sharedOutput}
+	two := one
+	two.Name = "second-pi"
+	two.Outputs = append([]artifactregistry.TargetOutput(nil), one.Outputs...)
+	p = setTestTargets(p, []artifactregistry.Target{one, two})
 	op, err := outputPlanProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
 	var sharedHash string
 	for _, n := range op.Nodes {
-		if n.Path == ".pi/extensions/awf-subagents/index.ts" {
-			if got := strings.Join(n.Declarers, ","); got != "pi,second-pi" {
-				t.Fatalf("shared declarers = %q", got)
-			}
-			if n.file.ConfigHash == n.Recipe.ConfigHash || len(n.DeclarerProjections) != 2 {
-				t.Fatal("shared declarer descriptors were not folded into drift hash")
-			}
-			sharedHash = n.file.ConfigHash
+		if n.Path != sharedOutput.Path {
+			continue
 		}
-	}
-	targets := testTargets(p)
-	targets[len(targets)-1].Name = "renamed-pi"
-	p = setTestTargets(p, targets)
-	op, err = outputPlanProject(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	for _, n := range op.Nodes {
-		if n.Path == ".pi/extensions/awf-subagents/index.ts" && n.file.ConfigHash == sharedHash {
-			t.Fatal("declarer descriptor identity did not change drift hash")
+		if got := strings.Join(n.Declarers, ","); got != "pi,second-pi" {
+			t.Fatalf("shared declarers = %q", got)
 		}
+		if len(n.DeclarerProjections) != 2 {
+			t.Fatalf("declarer projections = %#v", n.DeclarerProjections)
+		}
+		sharedHash = n.file.ConfigHash
 	}
-	targets = testTargets(p)
-	targets[len(targets)-1].Outputs[0].Policy = outputplan.Policy{Regenerate: true}
-	p = setTestTargets(p, targets)
+	if sharedHash == "" {
+		t.Fatal("shared target output was not planned")
+	}
+	two.Outputs[0].Policy = outputplan.Policy{Regenerate: true}
+	p = setTestTargets(p, []artifactregistry.Target{one, two})
 	if _, err := outputPlanProject(p); err == nil || !strings.Contains(err.Error(), "conflicting output recipes") {
 		t.Fatalf("conflicting shared output error = %v", err)
 	}
@@ -337,7 +328,7 @@ func TestDefinitionCoalescerRejectsTargetBackedRecipeMismatches(t *testing.T) {
 	t.Run("target output collides with target-backed skill", func(t *testing.T) {
 		target := piTarget
 		target.Outputs = []artifactregistry.TargetOutput{{
-			Path: target.SkillPath(testConfig(state).Prefix, "implementing"), TemplateID: skillTID(renderInputsForTest(state), "implementing"),
+			Path: target.SkillPath("awf-effort"), TemplateID: skillTID(renderInputsForTest(state), "awf-effort"),
 			Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment,
 			Policy: declaredPolicy("skills", false), PolicyDeclared: true,
 		}}
@@ -354,10 +345,13 @@ func TestRenderAllBaseMaterializesSharedTargetOutputOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	shared := piTarget
+	output := artifactregistry.TargetOutput{Path: ".pi/shared.md", TemplateID: bridgeTID, Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}
+	one := piTarget
+	one.Outputs = []artifactregistry.TargetOutput{output}
+	shared := one
 	shared.Name = "second-pi"
-	shared.Outputs = append([]artifactregistry.TargetOutput(nil), piTarget.Outputs...)
-	state = setTestTargets(state, append(testTargets(state), shared))
+	shared.Outputs = append([]artifactregistry.TargetOutput(nil), one.Outputs...)
+	state = setTestTargets(state, []artifactregistry.Target{one, shared})
 	inputs := renderInputsForTest(state)
 	eff, err := effectiveSkills(inputs)
 	if err != nil {
@@ -371,7 +365,7 @@ func TestRenderAllBaseMaterializesSharedTargetOutputOnce(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const sharedPath = ".pi/extensions/awf-subagents/index.ts"
+	const sharedPath = ".pi/shared.md"
 	count := 0
 	for _, file := range files {
 		if file.Path == sharedPath {
@@ -390,9 +384,7 @@ func TestInitCollisionsUsesPathOnlyDefinitions(t *testing.T) {
 		t.Fatal(err)
 	}
 	bad := piTarget
-	bad.Outputs = append([]artifactregistry.TargetOutput(nil), piTarget.Outputs...)
-	bad.Outputs[0].Path = "foreign/output.ts"
-	bad.Outputs[0].TemplateID = "missing/not-needed-for-init.tmpl"
+	bad.Outputs = []artifactregistry.TargetOutput{{Path: "foreign/output.ts", TemplateID: "missing/not-needed-for-init.tmpl", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}
 	state = setTestTargets(state, []artifactregistry.Target{bad})
 	testsupport.WriteFile(t, filepath.Join(root, "foreign", "output.ts"), "foreign\n")
 	collisions, err := testPublisher(renderInputsForTest(state)).InitCollisions()
@@ -405,9 +397,6 @@ func TestInitCollisionsUsesPathOnlyDefinitions(t *testing.T) {
 }
 
 func TestOutputPolicyIsExplicit(t *testing.T) {
-	if got := declaredPolicy("agents", false); !got.ValidateFrontmatter || !got.ScanReferences {
-		t.Fatalf("agent policy = %#v", got)
-	}
 	if got := declaredPolicy("target-output", false); got.ScanReferences {
 		t.Fatalf("target output policy = %#v", got)
 	}
@@ -556,8 +545,7 @@ func TestOutputPlanPropagatesConfigReferenceRenderFault(t *testing.T) {
 
 func TestTargetOutputDefinitionsRejectUnreadableTemplate(t *testing.T) {
 	bad := piTarget
-	bad.Outputs = append([]artifactregistry.TargetOutput(nil), piTarget.Outputs...)
-	bad.Outputs[0].TemplateID = "missing/target-output.tmpl"
+	bad.Outputs = []artifactregistry.TargetOutput{{Path: ".pi/missing.md", TemplateID: "missing/target-output.tmpl", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}
 	cfg := &config.Config{Prefix: "example"}
 	p := testState()
 	p = lowerWithTargets(p, []artifactregistry.Target{bad})
@@ -570,8 +558,7 @@ func TestTargetOutputDefinitionsRejectUnreadableTemplate(t *testing.T) {
 
 func TestTargetOutputDefinitionsRejectUnknownRequiredSkill(t *testing.T) {
 	bad := piTarget
-	bad.Outputs = append([]artifactregistry.TargetOutput(nil), piTarget.Outputs...)
-	bad.Outputs[0].RequiresSkill = "missing"
+	bad.Outputs = []artifactregistry.TargetOutput{{Path: ".pi/conditional.md", TemplateID: bridgeTID, RequiresSkill: "missing", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}}
 	cfg := &config.Config{Prefix: "example"}
 	p := testState()
 	p = lowerWithTargets(p, []artifactregistry.Target{bad})

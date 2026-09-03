@@ -11,22 +11,22 @@ import (
 // invariant: tooling/cli:semantic-artifact-authoring (TestSidecarAuthoringCreatesAndRemovesLeaf)
 func TestSidecarAuthoringCreatesAndRemovesLeaf(t *testing.T) {
 	root, loader := transactionFixture(t, false)
-	req := Request{Mode: Edit, Kind: "skill", Name: "using-awf", Part: "data.example", Sidecar: true, SidecarMode: "value", Value: "text"}
+	req := Request{Mode: Edit, Kind: "skill", Name: "awf-maintenance", Part: "data.example", Sidecar: true, SidecarMode: "value", Value: "text"}
 	out, err := Run(context.Background(), root, req, loader, nil)
 	if err != nil || out.Source != SourceCreated {
 		t.Fatalf("out=%#v err=%v", out, err)
 	}
-	source := filepath.Join(root, ".awf/skills/using-awf.yaml")
-	if got := string(bytesAt(t, root, ".awf/skills/using-awf.yaml")); got != "data:\n  example: text\n" {
+	source := filepath.Join(root, ".awf/skills/awf-maintenance.yaml")
+	if got := string(bytesAt(t, root, ".awf/skills/awf-maintenance.yaml")); got != "data:\n  example: text\n" {
 		t.Fatalf("source=%q", got)
 	}
 	// Repeating the exact authored scalar does not rewrite it.
-	before := bytesAt(t, root, ".awf/skills/using-awf.yaml")
+	before := bytesAt(t, root, ".awf/skills/awf-maintenance.yaml")
 	out, err = Run(context.Background(), root, req, loader, nil)
 	if err != nil || out.Source != SourceNone {
 		t.Fatalf("idempotent out=%#v err=%v", out, err)
 	}
-	if got := bytesAt(t, root, ".awf/skills/using-awf.yaml"); string(got) != string(before) {
+	if got := bytesAt(t, root, ".awf/skills/awf-maintenance.yaml"); string(got) != string(before) {
 		t.Fatal("idempotent edit rewrote source")
 	}
 	req.Mode = Reset
@@ -43,11 +43,11 @@ func TestSidecarAuthoringCreatesAndRemovesLeaf(t *testing.T) {
 
 func TestUnchangedSidecarAuthoringStillSynchronizesCommittedAuthority(t *testing.T) {
 	root, loader := transactionFixture(t, false)
-	req := Request{Mode: Edit, Kind: "skill", Name: "using-awf", Part: "data.example", Sidecar: true, SidecarMode: "value", Value: "text"}
+	req := Request{Mode: Edit, Kind: "skill", Name: "awf-maintenance", Part: "data.example", Sidecar: true, SidecarMode: "value", Value: "text"}
 	if _, err := Run(context.Background(), root, req, loader, nil); err != nil {
 		t.Fatal(err)
 	}
-	output := filepath.Join(root, ".claude/skills/example-using-awf/SKILL.md")
+	output := filepath.Join(root, ".claude/skills/awf-maintenance/SKILL.md")
 	before, err := os.ReadFile(output)
 	if err != nil {
 		t.Fatal(err)

@@ -3,35 +3,21 @@
 <!-- awf:template-source templates/topics/topic.md.tmpl -->
 # Pi runtime
 
-The Pi runtime and its boundaries.
+The retained Pi host capability and external dependency boundary.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`, `internal/catalog/**`. Both domain and topic selectors must match. Run `awf read topic rendering/pi-runtime --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `docs/pi-runtime-reference.md`, `internal/catalog/**`, `templates/skills/awf-effort/**`. Both domain and topic selectors must match. Run `awf read topic rendering/pi-runtime --coverage` for current applicable and owned paths and marker sites.
 
-The Pi runtime and awf/pi-tools ownership boundary.
+The Pi target keeps only the host capability AWF effort guidance can truthfully use.
 
 ## Claims
 
-### `invariant: pi-extension-target-render`
-
-The fixed Pi target renders only the awf subagent profile adapter and bounded model-routing module with provenance. The profile adapter owns protocol-v2 registration, role policy, model routing, and Git policy, while independently installed pi-tools owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation. Awf renders no Pi effort association, activity, memory-tool, minimum-runtime, context-usage, handoff, runner, telemetry, workflow-router, scheduler, process-supervisor, or progress-renderer extension. The ordinary catalog `effort-workflow` skill remains target-neutral, and every retained file follows normal output-plan, drift, cleanup, target-sensitive hash, generated-checkout, adopter-example, editor-quiet, and container-coverage semantics.
-Backing: test
-
-### `invariant: pi-implementation-state-boundary`
-
-The implementation profile admits at most four active calls and enforces one commit-disabled unchanged-HEAD-and-index policy against each invocation-owned verification checkout, defaulting to the project root. An explicit identity resolves relative to the project root after one leading `@` is removed, canonicalizes filesystem aliases, and must be an exact live checkout root whose Git common directory matches the project root. For a linked checkout, the absolute Git directory's `gitdir` backlink must canonically identify the selected checkout's non-symlink regular `.git` file; copied pointers, selected-entry symlinks, and other invalid identities refuse before dispatch without worktree enumeration or `git worktree list` parsing. Preparation resolves and caches the canonical live accessible parent-or-descendant checkout before dispatch, returns it as the implementation child CWD, and `beforeRun` and `afterRun` snapshot that same identity; the index snapshot is a stable NUL-framed semantic inventory of staged objects, stages, and assume-unchanged or skip-worktree control flags rather than mutable stat-cache bytes. Omission retains root/root while role loading remains rooted. This alignment does not confine deliberately targeted paths or move the parent session. Any changed selected HEAD or semantic index state is a terminal policy failure, but the adapter never reverts it; recovery requires parent inventory and explicit repair of only the offending Git state while preserving sibling and unrelated edits. Unavailable before-or-after snapshots fail closed with accurate checkout inspection and repair before retry.
-Backing: test
-
 ### `invariant: pi-session-handoff-workflow`
 
-Pi retains the host-neutral session-handoff capability and the independently installed pi-tools handoff implementation. The ordinary `effort-workflow` skill owns effort-backed checkpoint and continuation guidance: resolve memory through `./awf effort show <slug>`, update the reported Markdown with ordinary file tools under the one-writer rule, and reorient from repository authority before substantive successor work. Managed-worktree use is pre-integration only; integration, deferred lifecycle closure, worktree removal, and retrospective use the governed primary checkout. A replacement session records its actual boundary; continuation, cancellation, or failure that leaves the old session active records none. Awf provides no Pi-specific association or executable effort-handoff bridge.
+Pi retains the host-neutral `session-handoff` capability. The `awf-effort` skill owns effort-backed checkpoint and continuation guidance: resolve memory through `./awf effort show <slug>`, update the reported Markdown under the one-writer rule, and reorient from repository authority before substantive successor work. AWF provides no Pi-specific association, executable effort-handoff bridge, role adapter, or runtime implementation.
 Backing: test
 
-### `invariant: pi-real-runtime-smoke`
+### `invariant: pi-runtime-dependency-separation`
 
-The deterministic pinned-runtime smoke covers retained generated TypeScript loading, native Pi skill discovery, protocol-v2 profile negotiation through a contract double, live model-routing selection, and rendered role preparation without effort association. The strict lane directly composes source-only pi-tools/testing v0.3.0 recordings for generic Pi seams and covers the retained adapter policy at 100 percent; the real SDK smoke proves subagent extension loading, four-profile negotiation, model-routing delivery, and native skill discovery on the pinned fork. Awf neither imports nor behavior-tests an adopter pi-tools runtime.
-Backing: test
-
-### `invariant: pi-tools-integration-boundary`
-
-Awf subscribes to protocol-v2 capability and registration-result events during extension factory initialization and emits a correlated request with one stable registration id. A compatible capability atomically receives all four awf profiles with default suppression. Missing, incompatible, late, and rejected registration produce one actionable no-fallback notice. Source-only pi-tools/testing v0.3.0 owns generic test recordings, while an independently installed adopter pi-tools runtime remains protocol-v2 compatible rather than revision-pinned and owns general context usage, handoff, child execution, scheduling, confinement, execution facts, and presentation.
-Backing: test
+The AWF binary remains functional offline and does not inspect global harness installations. Operators install `agentic-skills` for generic skills and roles and install `pi-tools` separately for Pi role delegation.
+Backing: unbacked
+Verify: Run fresh initialization, render, check, and upgrade with network access unavailable and neither global dependency present; inspect the resulting output plan and production dependency graph for external installation or probing behavior.

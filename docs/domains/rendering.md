@@ -8,19 +8,17 @@
 <!-- awf:template-source templates/domains/domain.md.tmpl -->
 ## Current state
 
-Pi renders native discoverable skills and the subagent extension. Workflow templates exclusively own mandatory checkpoint persistence, approval stops, safe resumability, and truthful handoff-log timing; Pi replacement is discretionary only after an eligible persisted boundary. A replacement kickoff that restricts work to a managed worktree scopes that restriction to pre-integration execution and preserves the governed target-checkout switch for integration, deferred lifecycle closure, worktree removal, and retrospective. Every catalog skill uses the normal `.pi/skills/<prefix>-<name>/SKILL.md` layout; no router or hidden workflow body participates in selection.
+Claude and Pi each render exactly four native AWF skills under fixed literal `awf-*` names, independent of the configured project prefix. Generic skills and roles are supplied by globally installed `agentic-skills`; Pi role delegation additionally uses its adapter with separately installed `pi-tools`. AWF renders no generic role prompts, role adapter, model router, policy layer, or preference store.
 
 The topic producer renders each valid pair to `docs/topics/<domain>/<topic>.md`, emits a title-and-summary-sorted `docs/topics/<domain>/index.md`, and adds compact topic navigation to the owning domain page. Generated output follows the normal manifest, drift, and prune lifecycle. Staged drift renders from the staged config and compares against the staged output tree; its intentionally narrow result includes only stale and hand-edited rendered outputs, leaving every other repository drift kind outside that transition check.
 
-The render engine overlays authored convention parts onto embedded templates with publication-safe missing-key rendering. Rendered resident-root markers and anchored path resolution are deterministic, preserve dynamic descendants, and refuse paths outside the selected control root. The artifact registry is the canonical operational declaration of managed-artifact kinds, cardinality, targets, capabilities, templates, output paths, hooks, checks, and ownership. Catalog content and one Loader-built project Session supply Publisher's immutable inputs; one single-use Publisher operation registers complete definitions, settles collisions, and renders each accepted output once without a parallel inventory or compatibility state owner. Live template identities resolve every declared catalog, singleton, and target template and reject missing identities before publication. Catalog workflow metadata provides each artifact's kind, purpose, and trigger. Every catalog skill is independently discoverable; no neighbor graph creates required transitions.
+The render engine overlays authored convention parts onto embedded templates with publication-safe missing-key rendering. Rendered resident-root markers and anchored path resolution are deterministic, preserve dynamic descendants, and refuse paths outside the selected control root. The artifact registry is the canonical operational declaration of managed-artifact kinds, cardinality, targets, capabilities, templates, output paths, hooks, checks, and ownership. Catalog content and one Loader-built project Session supply Publisher's immutable inputs; one single-use Publisher operation registers complete definitions, settles collisions, and renders each accepted output once without a parallel inventory or compatibility state owner. Live template identities resolve every declared catalog, singleton, and target template and reject missing identities before publication. Every catalog skill is independently discoverable.
 
 The catalog-derived mandatory Maintainable Code Design guide renders as an extensible plain singleton with a document-map artifact.
 
 The glossary renders from two layers: a standard vocabulary the catalog ships into every adopter tree, overlaid by the project's authored `data.terms` records, merged into one case-insensitively sorted table. A project term overrides a shipped term of the same name, which is the only way to reword or retire one; an over-long meaning in either layer raises a non-failing advisory.
 
-Pi extension entrypoints check their required runtime APIs before registering hooks.
-
-Pi rendering governs the retained subagent profile adapter and model-routing outputs through the fixed target descriptor. Independently installed `pi-tools` owns general context usage, handoff, scheduling, execution, and presentation.
+The AWF binary remains offline and neither installs nor probes the operator-managed `agentic-skills` and `pi-tools` dependencies.
 
 
 <!-- awf:template-source templates/domains/domain.md.tmpl -->
@@ -28,15 +26,15 @@ Pi rendering governs the retained subagent profile adapter and model-routing out
 
 [All topics](../topics/rendering/index.md)
 
-- [Adapter outputs](../topics/rendering/adapter-outputs.md): Generated executable adapter-runtime outputs and their ownership boundary.
+- [Adapter outputs](../topics/rendering/adapter-outputs.md): The retired AWF adapter surface and external role ownership boundary.
 - [Catalog and targets](../topics/rendering/catalog-and-targets.md): The compile-time catalog and the tool-agnostic target seam.
 - [Companion scripts](../topics/rendering/companion-scripts.md): Rendered companion script contracts: bootstrap, upgrade, runner, hook payloads.
 - [Doc outputs](../topics/rendering/doc-outputs.md): Generated documentation outputs: domain and topic docs, layout, pitfalls, stubs, skill references.
 - [Frontmatter parsing](../topics/rendering/frontmatter.md): How authored-document frontmatter is split and validated.
 - [Guide and doc templates](../topics/rendering/guide-and-doc-templates.md): Agent-guide and documentation template contracts.
 - [Inplace and placeholders](../topics/rendering/inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
-- [Pi runtime](../topics/rendering/pi-runtime.md): The Pi runtime and its boundaries.
-- [Pi workflows](../topics/rendering/pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, native skills, exploration dispatch.
+- [Pi runtime](../topics/rendering/pi-runtime.md): The retained Pi host capability and external dependency boundary.
+- [Pi workflows](../topics/rendering/pi-workflows.md): Pi publication of AWF skills and the external generic-role boundary.
 - [Project output plan](../topics/rendering/project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.
 - [Render engine](../topics/rendering/render-engine.md): The template overlay render engine and its reference resolution.
 - [Singletons and payloads](../topics/rendering/singletons-and-payloads.md): Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, file modes.

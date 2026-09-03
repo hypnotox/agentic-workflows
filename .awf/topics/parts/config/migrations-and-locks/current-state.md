@@ -33,6 +33,12 @@ The schema-51 migration renames authored `repository-context` skill sidecars and
 Backing: test
 
 
+### `invariant: skill-extraction-source-migration`
+
+The schema-52 migration renames retained AWF skill sidecars and declared section parts to their fixed `awf-*` identities, preserving content and mode, collapsing equivalent destinations, and refusing conflicts. Authored overrides for extracted generic skills and removed generic roles move to collision-safe adjacent `.awf-bak` files rather than being discarded or installed externally. The final sync publishes only the fixed AWF skills and prunes retired managed generic outputs.
+Backing: test
+
+
 ### `invariant: schema-min-version`
 
 Every supported live config-schema generation is paired with a minimum binary version in a lookup table, and the current schema generation always has an entry. Retired historical schemas have no live minimum-version authority. The binary's own version is never below the minimum recorded for the current schema generation.

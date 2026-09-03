@@ -22,7 +22,6 @@ const PolicyVersion = 2
 
 var requiredLanes = []string{
 	"go",
-	"pi-runtime",
 	"platform-sensitive",
 	"release-archive",
 	"render-template",

@@ -83,6 +83,7 @@ const LiveSchemaFloor = 50
 var registry = []Migration{
 	{To: LiveSchemaFloor, Name: "supported-schema-50"},
 	{To: contextSkillGeneration, Name: contextSkillMigration, Build: renameRepositoryContextSkill},
+	{To: skillExtractionGeneration, Name: skillExtractionMigration, Build: migrateExtractedSkills},
 }
 
 func Current() int                { return registry[len(registry)-1].To }

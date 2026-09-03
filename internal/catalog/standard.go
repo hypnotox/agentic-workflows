@@ -1,47 +1,18 @@
 package catalog
 
 // Standard is the compile-time catalog: awf's static description of the standard
-// (skills, agents, docs, singletons, the domain-doc spec, and the fillable vars).
+// (skills, docs, singletons, the domain-doc spec, and the fillable vars).
 // Its default Data bags retain map[string]any, []any, and scalar shapes
 // compatible with yaml.v3 output, so each per-file ConfigHash stays
 // byte-identical (ADR-0060).
 var Standard = &Catalog{
 	Skills: map[string]SkillSpec{
-		"context":       {Sections: []string{"orient", "explore", "challenge"}},
-		"brainstorming": {Sections: []string{"procedure"}},
-		"effort-workflow": {Sections: []string{
+		"awf-effort": {Sections: []string{
 			"continuity-and-resident", "execution-and-checkpoints", "integration-and-recovery", "close",
 		}},
-		"planning":         {Sections: []string{"shape"}},
-		"implementing":     {Sections: []string{"ownership", "procedure", "review-handoff"}},
-		"reviewing":        {Sections: []string{"brief"}},
-		"debugging":        {Sections: []string{"oracle-and-handoff"}},
-		"decision-records": {Sections: []string{"format"}},
-		"current-state":    {Sections: []string{"claims"}},
-		"using-awf":        {Sections: []string{"generated-documents", "upgrades"}},
-		"refactor-scope":   {Sections: []string{"inventory"}},
-	},
-	Agents: map[string]AgentSpec{
-		"explorer": {
-			Name:        "explorer",
-			Description: "Read-only explorer for one bounded {{ .prefix }} context question.\nReturns an evidence-grounded answer with searched boundary and uncertainty.",
-			Sections:    []string{"scope", "report"},
-		},
-		"premise-checker": {
-			Name:        "premise-checker",
-			Description: "Read-only adversarial checker for consequential {{ .prefix }} premises.\nReturns supported, revise, or unresolved with evidence.",
-			Sections:    []string{"procedure", "report"},
-		},
-		"implementer": {
-			Name:        "implementer",
-			Description: "Commit-disabled implementation child for assigned {{ .prefix }} paths.\nReturns changed files, checks, deviations, blockers, and checkout state.",
-			Sections:    []string{"authority", "work", "receipt"},
-		},
-		"reviewer": {
-			Name:        "reviewer",
-			Description: "Fresh report-only reviewer of supplied {{ .prefix }} decision, state, implementation, integration, and verification context.",
-			Sections:    []string{"review", "report"},
-		},
+		"awf-topics":      {Sections: []string{"claims"}},
+		"awf-decisions":   {Sections: []string{"format"}},
+		"awf-maintenance": {Sections: []string{"generated-documents", "upgrades"}},
 	},
 	DomainDoc: TargetSpec{Sections: []string{"current-state"}},
 	Docs: map[string]DocEntry{
@@ -93,7 +64,7 @@ var Standard = &Catalog{
 		"working-with-awf": {Mandatory: true, DocumentMap: true, Title: "Working with awf", Desc: "day-to-day usage: commands, overrides, placeholders, and the sync/check loop", Path: "working-with-awf.md", TemplateKey: "workingWithAwf", TID: "docs/working-with-awf.md.tmpl", Sections: []string{
 			"overview", "commands", "config-and-overrides", "model-selection", "placeholders", "sync-and-drift", "upgrading",
 		}},
-		"pi-runtime-reference": {Mandatory: true, DocumentMap: true, Title: "Pi Runtime Reference", Desc: "Pi-only runtime, subagent, model-routing, and handoff protocol", Path: "pi-runtime-reference.md", TemplateKey: "piRuntimeReference", TID: "docs/pi-runtime-reference.md.tmpl"},
+		"pi-runtime-reference": {Mandatory: true, DocumentMap: true, Title: "Pi Runtime Reference", Desc: "Pi prerequisites, external role support, and AWF effort handoff guidance", Path: "pi-runtime-reference.md", TemplateKey: "piRuntimeReference", TID: "docs/pi-runtime-reference.md.tmpl"},
 		"config-reference":     {Mandatory: true, Generated: true, DocumentMap: true, Title: "Configuration Reference", Desc: "every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state", Path: "config-reference.md", TemplateKey: "configReference", TID: "docs/config-reference.md.tmpl", Sections: []string{"intro"}},
 	},
 	Vars: []VarDescriptor{

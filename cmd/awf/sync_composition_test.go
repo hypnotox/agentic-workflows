@@ -127,11 +127,11 @@ func assertProjectLeaseHeld(t *testing.T, root string) {
 	}
 }
 
-func TestRunSyncIgnoresSkillSelection(t *testing.T) {
+func TestRunSyncKeepsFixedSkillCatalog(t *testing.T) {
 	ctx := testContext(t)
 	root := scaffoldProject(t)
 
-	testsupport.WriteAwfConfig(t, root, strings.Replace(minimalYAML, "skills: [brainstorming]", "skills: []", 1))
+	testsupport.WriteAwfConfig(t, root, minimalYAML)
 	var out bytes.Buffer
 	if err := runSync(ctx, root, &out); err != nil {
 		t.Fatal(err)
@@ -140,8 +140,8 @@ func TestRunSyncIgnoresSkillSelection(t *testing.T) {
 	if out.String() != expected {
 		t.Errorf("selection-free sync bytes = %q, want %q", out.String(), expected)
 	}
-	if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "example-brainstorming", "SKILL.md")); err != nil {
-		t.Fatalf("full-catalog skill was pruned after selection edit: %v", err)
+	if _, err := os.Stat(filepath.Join(root, ".claude", "skills", "awf-maintenance", "SKILL.md")); err != nil {
+		t.Fatalf("fixed catalog skill was pruned on a clean sync: %v", err)
 	}
 	// A drift-clean re-sync emits the complete empty-success document.
 	out.Reset()

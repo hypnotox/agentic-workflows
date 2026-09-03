@@ -6,11 +6,6 @@ set -euo pipefail
 # Keep lint diagnostics scoped to this checkout. The shared cache records
 # absolute positions and otherwise leaks paths from managed worktrees.
 export GOLANGCI_LINT_CACHE="${PWD}/.cache/golangci-lint"
-# Nested Pi runtime tests need the host's NVM location when available. CI uses
-# its setup-node runtime when this path is absent.
-: "${AWF_PI_TEST_NVM_DIR:=${NVM_DIR:-$HOME/.nvm}}"
-export AWF_PI_TEST_NVM_DIR
-
 gate_timings=false
 run_gate_step() {
   local label="$1"
@@ -67,8 +62,7 @@ case "$cmd" in
     go tool golangci-lint fmt --config .golangci-advisory.yml "$@"
     ;;
   test)
-    echo "test: Pi host lane skipped; run './x pi-test run' separately" >&2
-    env -u AWF_PI_RUNTIME_SMOKE go test ./... "$@"
+    go test ./... "$@"
     ;;
   test-affected)
     go run ./cmd/testselection --execute "$@"
@@ -107,14 +101,6 @@ case "$cmd" in
   check)
     ./awf check "$@"
     ;;
-  pi-test)
-    action="${1:-run}"
-    if [ "$#" -gt 1 ] || [ "$action" != run ]; then
-      echo "usage: ./x pi-test <run>" >&2
-      exit 2
-    fi
-    tools/pi-extension-test/run.sh "$action"
-    ;;
   build)
     go build -o bin/awf ./cmd/awf
     ;;
@@ -127,7 +113,7 @@ case "$cmd" in
     go run ./cmd/repoaudit "$@"
     ;;
   *)
-    echo "usage: ./x <gate [timings]|lint|fmt|test|test-affected [--staged|--range <base>..<head>]|test-full-linux <calibrate|budget> [--artifact FILE]|clean-test-tmp [--all]|deadcode|render|check|pi-test <run>|build|install|audit-local>" >&2
+    echo "usage: ./x <gate [timings]|lint|fmt|test|test-affected [--staged|--range <base>..<head>]|test-full-linux <calibrate|budget> [--artifact FILE]|clean-test-tmp [--all]|deadcode|render|check|build|install|audit-local>" >&2
     exit 2
     ;;
 esac

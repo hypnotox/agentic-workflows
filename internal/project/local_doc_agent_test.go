@@ -142,7 +142,7 @@ func TestLocalDocReferenceChecksBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b = []byte(strings.Replace(string(b), "<!-- awf:edit-in-place body -->\n\n", "<!-- awf:edit-in-place body -->\n\n[missing](absent.md) example-debugging\n", 1))
+	b = []byte(strings.Replace(string(b), "<!-- awf:edit-in-place body -->\n\n", "<!-- awf:edit-in-place body -->\n\n[missing](absent.md) awf-maintenance\n", 1))
 	if err := os.WriteFile(path, b, 0o644); err != nil {
 		t.Fatal(err)
 	}

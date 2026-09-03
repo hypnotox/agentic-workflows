@@ -1,6 +1,6 @@
 A single-use Publisher operation consumes one project Session and its artifact-registry view. It registers and coalesces complete output definitions before rendering, rejects collisions and invalid recipes before any render closure executes, materializes every accepted definition exactly once, and shares one immutable plan with rendering, drift, generated-output checks, and publication. The registry owns canonical output paths and producer-family check policy; repository checks preserve completed owner evidence and explicit presentation order.
 
-The artifact registry's Pi target descriptor is the sole declaration of the two Pi-specific outputs: the subagent index and model-routing module. No target descriptor retains an effort index, effort client, or `using-effort` output.
+The artifact registry's target descriptors declare harness skill directories, output dialects, bridge metadata, and closed capabilities. The Pi descriptor retains only the `session-handoff` capability and declares no role prompts, subagent adapter, model router, policy module, preference store, or other target-owned output.
 
 ## Claims
 
@@ -11,12 +11,12 @@ Backing: test
 
 ### `invariant: multi-target-render`
 
-For both built-in targets, every selected catalog skill and agent renders once at its descriptor-derived path, while neutral artifacts such as AGENTS.md render once. Target-owned outputs render only for their declaring target when their predicate and selected view include them.
+For both built-in targets, every selected catalog skill renders once at its descriptor-derived fixed-name path, while neutral artifacts such as AGENTS.md render once. A target-owned output would render only for its declaring target when its predicate and selected view include it; the standard target descriptors currently declare none.
 Backing: test
 
 ### `invariant: output-plan-complete`
 
-The deterministic output plan contains exactly one node for every accepted definition: every standard catalog artifact, applicable bridge file, generated document, reservation, configured local-document output, and the three resident-root markers. Each node retains its complete declarers and dependencies plus the exact inputs observed by its sole render closure. Historical decision and plan leaves remain outside managed output ownership.
+The deterministic output plan contains exactly one node for every accepted definition: every standard catalog skill and document, applicable bridge file, generated document, reservation, configured local-document output, and the three resident-root markers. Each node retains its complete declarers and dependencies plus the exact inputs observed by its sole render closure. Historical decision and plan leaves remain outside managed output ownership.
 Backing: test
 
 ### `invariant: inert-sidecar-field-rejected`

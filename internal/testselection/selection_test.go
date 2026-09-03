@@ -15,7 +15,6 @@ func testPolicy() Policy {
 		Version: PolicyVersion,
 		Lanes: []LanePolicy{
 			{Name: "go", Patterns: []string{"**/*.go", "**/testdata/**", "go.mod"}},
-			{Name: "pi-runtime", Patterns: []string{"templates/pi/**", "templates/skills/**", "tools/pi-extension-test/**"}},
 			{Name: "render-template", Patterns: []string{".awf/**", "templates/**", "internal/publisher/**"}},
 			{Name: "platform-sensitive", Patterns: []string{"**/*_linux.go", "cmd/releasecheck/**", "internal/filesystem/**", "internal/resident/**", "internal/upgrade/**", "tools/native-release-test/**"}},
 			{Name: "release-archive", Patterns: []string{".goreleaser.yaml", "cmd/releasecheck/**", "changelog/**"}},
@@ -60,14 +59,12 @@ func TestTypedLaneChangeMatrix(t *testing.T) {
 		want []string
 	}{
 		{name: "Go", path: "internal/leaf/leaf.go", want: []string{"go"}},
-		{name: "Pi template also renders", path: "templates/pi/index.ts.tmpl", want: []string{"pi-runtime", "render-template"}},
-		{name: "generic skill drives Pi discovery and render", path: "templates/skills/implementing/SKILL.md.tmpl", want: []string{"pi-runtime", "render-template"}},
+		{name: "skill template renders", path: "templates/skills/awf-maintenance/SKILL.md.tmpl", want: []string{"render-template"}},
 		{name: "partial", path: "templates/partials/gate.md", want: []string{"render-template"}},
 		{name: "platform Go", path: "internal/filesystem/replace_linux.go", want: []string{"go", "platform-sensitive"}},
 		{name: "release Go is native-sensitive", path: "cmd/releasecheck/main.go", want: []string{"go", "platform-sensitive", "release-archive"}},
 		{name: "resident lifecycle", path: "internal/resident/resident.go", want: []string{"go", "platform-sensitive"}},
 		{name: "upgrade mutation", path: "internal/upgrade/operation.go", want: []string{"go", "platform-sensitive"}},
-		{name: "Pi script", path: "tools/pi-extension-test/run.sh", want: []string{"pi-runtime"}},
 		{name: "render authority", path: ".awf/docs/parts/testing.md", want: []string{"render-template"}},
 	}
 	for _, tc := range cases {
@@ -90,17 +87,15 @@ func TestDynamicReaderInputsHaveExplicitOwners(t *testing.T) {
 		t.Fatal(err)
 	}
 	cases := map[string][]string{
-		"templates/embed.go":                        {"go", "render-template"},
-		"templates/partials/gate-cadence.md":        {"render-template"},
-		"internal/catalog/standard.go":              {"go", "pi-runtime", "render-template"},
-		"internal/publisher/testdata/input.golden":  {"go", "render-template"},
-		"tools/pi-extension-test/run.sh":            {"pi-runtime"},
-		"tools/pi-extension-test/package-lock.json": {"pi-runtime"},
-		".goreleaser.yaml":                          {"release-archive"},
-		"changelog/CHANGELOG.md":                    {"release-archive"},
-		"internal/project/VERSION":                  {"release-archive"},
-		"internal/projectmutation/transaction.go":   {"go", "platform-sensitive"},
-		"cmd/releasecheck/testdata/archive.tar.gz":  {"go", "platform-sensitive", "release-archive"},
+		"templates/embed.go":                       {"go", "render-template"},
+		"templates/partials/gate-cadence.md":       {"render-template"},
+		"internal/catalog/standard.go":             {"go", "render-template"},
+		"internal/publisher/testdata/input.golden": {"go", "render-template"},
+		".goreleaser.yaml":                         {"release-archive"},
+		"changelog/CHANGELOG.md":                   {"release-archive"},
+		"internal/project/VERSION":                 {"release-archive"},
+		"internal/projectmutation/transaction.go":  {"go", "platform-sensitive"},
+		"cmd/releasecheck/testdata/archive.tar.gz": {"go", "platform-sensitive", "release-archive"},
 	}
 	for changed, want := range cases {
 		lanes, classified := selectedLanes(policy, []string{changed})
@@ -252,7 +247,7 @@ func TestRepositoryPolicySelectsRepresentativeGoChangeWithoutCmdAWFDefault(t *te
 
 func TestLoadRejectsUnsupportedIncompleteDuplicateAndUnknownPolicy(t *testing.T) {
 	filename := filepath.Join(t.TempDir(), "policy.json")
-	validLanes := `[{"name":"go","patterns":["**/*.go"]},{"name":"pi-runtime","patterns":["pi/**"]},{"name":"render-template","patterns":["templates/**"]},{"name":"platform-sensitive","patterns":["platform/**"]},{"name":"release-archive","patterns":["release/**"]}]`
+	validLanes := `[{"name":"go","patterns":["**/*.go"]},{"name":"render-template","patterns":["templates/**"]},{"name":"platform-sensitive","patterns":["platform/**"]},{"name":"release-archive","patterns":["release/**"]}]`
 	bodies := []string{
 		`{"version":1}`,
 		`{"version":2,"lanes":[],"shared_path_patterns":["x"],"generated_go_patterns":["*.go"]}`,

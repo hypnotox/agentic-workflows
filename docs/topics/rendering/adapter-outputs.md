@@ -3,17 +3,15 @@
 <!-- awf:template-source templates/topics/topic.md.tmpl -->
 # Adapter outputs
 
-Generated executable adapter-runtime outputs and their ownership boundary.
+The retired AWF adapter surface and external role ownership boundary.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/extensions/**`. Both domain and topic selectors must match. Run `awf read topic rendering/adapter-outputs --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/artifactregistry/**`, `templates/embed.go`. Both domain and topic selectors must match. Run `awf read topic rendering/adapter-outputs --coverage` for current applicable and owned paths and marker sites.
 
-This topic records the current ownership contract for generated executable adapter-runtime outputs.
-
-The retained Pi subagent extensions share the same generated-output ownership and whole-tree coverage exclusion.
+AWF no longer publishes executable role adapters.
 
 ## Claims
 
-### `invariant: generated-adapter-runtime-ownership`
+### `invariant: no-awf-adapter-outputs`
 
-The fixed Pi target's extension outputs under `.pi/extensions/**` are owned by this topic even though their generated-output classification excludes them from whole-tree coverage eligibility.
+The built-in Claude and Pi targets publish no role prompt or executable subagent-adapter outputs. Global `agentic-skills` owns the canonical generic roles and its separately installed Pi adapter, so AWF creates no duplicate role or tool registrations.
 Backing: test

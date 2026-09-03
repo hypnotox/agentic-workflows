@@ -36,7 +36,7 @@ func TestSyncPruneFailureKeepsLockEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(path, "resident"), "keep\n")
-	if _, _, _, err := syncReportProject(p); err == nil || !strings.Contains(err.Error(), "remove retired output") {
+	if _, _, _, err := syncReportProject(p); err == nil || !strings.Contains(err.Error(), "read retired output") {
 		t.Fatalf("prune error = %v", err)
 	}
 	lock, err = manifest.Load(lockFile(root))
@@ -54,7 +54,7 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	_ = syncProject(p)
 	// Hand-delete the rendered file before the pruning sync: the report must
 	// not claim a removal the prune did not perform.
-	if err := os.Remove(filepath.Join(root, ".claude/skills/example-debugging/SKILL.md")); err != nil {
+	if err := os.Remove(filepath.Join(root, ".claude/skills/awf-maintenance/SKILL.md")); err != nil {
 		t.Fatal(err)
 	}
 	noTDD := strings.Replace(sampleYAML, "  - debugging\n", "", 1)
@@ -64,7 +64,7 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if slices.Contains(pruned, ".claude/skills/example-debugging/SKILL.md") {
+	if slices.Contains(pruned, ".claude/skills/awf-maintenance/SKILL.md") {
 		t.Errorf("already-gone file must not be reported pruned: %v", pruned)
 	}
 }
@@ -268,7 +268,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	// Output moved + template hash moved → upstream churn.
 	mutate("AGENTS.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.TemplateHash = "x" })
 	// Output moved + config hash moved → the project's own inputs.
-	mutate(".claude/skills/example-debugging/SKILL.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.ConfigHash = "x" })
+	mutate(".claude/skills/awf-maintenance/SKILL.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.ConfigHash = "x" })
 	// Both hashes moved.
 	mutate("CLAUDE.md", func(e *manifest.Entry) { e.OutputHash = "x"; e.TemplateHash = "x"; e.ConfigHash = "x" })
 	// Output moved, real hashes unmoved → a non-hashed input.
@@ -280,7 +280,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	if err := lock.Save(lockPath(p.Root())); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"AGENTS.md", ".claude/skills/example-debugging/SKILL.md", "CLAUDE.md", ".awf/efforts/.gitignore", "docs/config-reference.md", "docs/workflow.md"} {
+	for _, path := range []string{"AGENTS.md", ".claude/skills/awf-maintenance/SKILL.md", "CLAUDE.md", ".awf/efforts/.gitignore", "docs/config-reference.md", "docs/workflow.md"} {
 		if err := os.WriteFile(filepath.Join(root, path), []byte("stale output\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
@@ -292,7 +292,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	}
 	want := []publisher.Change{
 		{Path: ".awf/efforts/.gitignore", Cause: "internal"},
-		{Path: ".claude/skills/example-debugging/SKILL.md", Cause: "config"},
+		{Path: ".claude/skills/awf-maintenance/SKILL.md", Cause: "config"},
 		{Path: "AGENTS.md", Cause: "template"},
 		{Path: "CLAUDE.md", Cause: "template+config"},
 		{Path: "docs/config-reference.md", Cause: "regenerated"},
@@ -391,7 +391,7 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	assertPerm(t, residentBackup, 0o640)
 	assertPerm(t, residentFile, 0o644)
 
-	// A managed final symlink is pruned as its entry, not by touching its target.
+	// A managed final symlink is refused without touching its target.
 	lock, err = manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
@@ -416,8 +416,8 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	roots.Resident = residentRoot
 	p = setTestRoots(p, roots)
 	_, _, pruned, err := syncReportProject(p)
-	if err != nil || !slices.Contains(pruned, retired) {
-		t.Fatalf("managed symlink prune = %v, %v", pruned, err)
+	if err == nil || !strings.Contains(err.Error(), "unsafe pruned managed output") || slices.Contains(pruned, retired) {
+		t.Fatalf("managed symlink refusal = %v, %v", pruned, err)
 	}
 	if got, err := os.ReadFile(outside); err != nil || string(got) != "outside\n" {
 		t.Fatalf("symlink target changed = %q, %v", got, err)
@@ -535,5 +535,57 @@ func TestSyncLockRefusesEscapingParent(t *testing.T) {
 	}
 	if got, err := os.ReadFile(filepath.Join(root, "saved-awf", "awf.lock")); err != nil || !reflect.DeepEqual(got, before) {
 		t.Fatalf("saved lock advanced = %q, %v", got, err)
+	}
+}
+
+func TestSyncBacksUpDivergentRetiredManagedOutput(t *testing.T) {
+	for _, tc := range []struct {
+		name   string
+		mutate func(t *testing.T, path string)
+	}{
+		{name: "bytes", mutate: func(t *testing.T, path string) { testsupport.WriteFile(t, path, "authored replacement\n") }},
+		{name: "mode", mutate: func(t *testing.T, path string) {
+			if err := os.Chmod(path, 0o600); err != nil {
+				t.Fatal(err)
+			}
+		}},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root := scaffold(t, sampleYAML)
+			p, err := loadTestSession(testContext(t), root)
+			if err != nil {
+				t.Fatal(err)
+			}
+			if err := syncProject(p); err != nil {
+				t.Fatal(err)
+			}
+			path := filepath.Join(root, ".claude", "skills", "awf-effort", "SKILL.md")
+			tc.mutate(t, path)
+			wantBytes, err := os.ReadFile(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			wantInfo, err := os.Stat(path)
+			if err != nil {
+				t.Fatal(err)
+			}
+			targets := p.Targets()
+			p = testStateWith(p, p.Root(), p.Roots(), p.Nested(), p.catalog(), targets[1:])
+			if err := syncProject(p); err != nil {
+				t.Fatal(err)
+			}
+			if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("retired output remains: %v", err)
+			}
+			backup := path + ".awf-bak"
+			gotBytes, err := os.ReadFile(backup)
+			if err != nil || !reflect.DeepEqual(gotBytes, wantBytes) {
+				t.Fatalf("backup bytes = %q, %v; want %q", gotBytes, err, wantBytes)
+			}
+			gotInfo, err := os.Stat(backup)
+			if err != nil || gotInfo.Mode().Perm() != wantInfo.Mode().Perm() {
+				t.Fatalf("backup mode = %v, %v; want %v", gotInfo, err, wantInfo.Mode().Perm())
+			}
+		})
 	}
 }

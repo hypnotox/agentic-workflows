@@ -184,12 +184,12 @@ func cloneFullCatalogForTarget(t *testing.T, cat *catalog.Catalog, target string
 
 // skillPath returns the rendered Claude SKILL.md path for existing focused evals.
 func skillPath(root, name string) string {
-	return filepath.Join(root, ".claude", "skills", evalPrefix+"-"+name, "SKILL.md")
+	return filepath.Join(root, ".claude", "skills", name, "SKILL.md")
 }
 
 // targetSkillPath returns a rendered skill path in the selected fixed target.
 func targetSkillPath(root, target, name string) string {
-	return filepath.Join(root, "."+target, "skills", evalPrefix+"-"+name, "SKILL.md")
+	return filepath.Join(root, "."+target, "skills", name, "SKILL.md")
 }
 
 // syncStandardFootprint provides the historical profile-eval call sites with
@@ -199,15 +199,9 @@ func syncStandardFootprint(t *testing.T, _ string) string {
 	return cloneFullCatalog(t, loadCatalog(t))
 }
 
-// agentPath returns the rendered Claude agent path for existing focused evals.
-func agentPath(root, name string) string {
-	return filepath.Join(root, ".claude", "agents", name+".md")
-}
-
-// TestFullCatalogCoverage proves the full-catalog fixture actually renders an
-// artifact for every catalog skill and agent, so no chain artifact is silently
-// dropped (e.g. by a requiresDoc gate). This is the guard that keeps the eval
-// suite exhaustive as the catalog grows.
+// TestFullCatalogCoverage proves the full-catalog fixture renders an artifact
+// for every catalog skill, so no catalog artifact is silently dropped. This is
+// the guard that keeps the eval suite exhaustive as the catalog grows.
 //
 // invariant: tooling/evaluations:evals-full-catalog-coverage (TestFullCatalogCoverage)
 // invariant: tooling/test-infrastructure:immutable-fixture-seeds (TestEvalFullCatalogSeedClonesAreIsolated)
@@ -246,15 +240,9 @@ func TestFullCatalogCoverage(t *testing.T) {
 			}
 			target := targetNamed(t, p.Targets(), targetName)
 			for _, s := range sortedKeys(cat.Skills) {
-				path := filepath.Join(root, filepath.FromSlash(target.SkillPath(evalPrefix, s)))
+				path := filepath.Join(root, filepath.FromSlash(target.SkillPath(s)))
 				if _, err := os.Stat(path); err != nil {
 					t.Errorf("%s catalog skill %q not rendered: %v", target.Name, s, err)
-				}
-			}
-			for _, a := range sortedKeys(cat.Agents) {
-				path := filepath.Join(root, filepath.FromSlash(target.AgentPath(a)))
-				if _, err := os.Stat(path); err != nil {
-					t.Errorf("%s catalog agent %q not rendered: %v", target.Name, a, err)
 				}
 			}
 			for name, entry := range cat.Docs {
@@ -267,7 +255,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 				t.Fatalf("initial check: drift=%v err=%v", drift, err)
 			}
 
-			missing := target.SkillPath(evalPrefix, sortedKeys(cat.Skills)[0])
+			missing := target.SkillPath(sortedKeys(cat.Skills)[0])
 			if err := os.Remove(filepath.Join(root, filepath.FromSlash(missing))); err != nil {
 				t.Fatalf("remove %s: %v", missing, err)
 			}

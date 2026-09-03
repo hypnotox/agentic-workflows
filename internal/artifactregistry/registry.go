@@ -74,8 +74,6 @@ const (
 type Capability string
 
 const (
-	// CapabilitySubagentTools permits target-native subagent tooling.
-	CapabilitySubagentTools Capability = "subagent-tools"
 	// CapabilitySessionHandoff permits target-native session handoff.
 	CapabilitySessionHandoff Capability = "session-handoff"
 )
@@ -110,8 +108,6 @@ type TargetOutput struct {
 type Target struct {
 	Name           string
 	SkillDir       string
-	AgentDir       string
-	AgentSuffix    string
 	AgentDialect   AgentDialect
 	BridgeFile     string
 	BridgeTemplate string
@@ -119,18 +115,9 @@ type Target struct {
 	Outputs        []TargetOutput
 }
 
-// SkillPath returns the target-native path for a managed skill.
-func (t Target) SkillPath(prefix, name string) string {
-	return fmt.Sprintf("%s/%s-%s/SKILL.md", t.SkillDir, prefix, name)
-}
-
-// AgentPath returns the target-native path for a managed agent.
-func (t Target) AgentPath(name string) string {
-	suffix := t.AgentSuffix
-	if suffix == "" {
-		suffix = ".md"
-	}
-	return fmt.Sprintf("%s/%s%s", t.AgentDir, name, suffix)
+// SkillPath returns the target-native path for a fixed-name managed skill.
+func (t Target) SkillPath(name string) string {
+	return fmt.Sprintf("%s/%s/SKILL.md", t.SkillDir, name)
 }
 
 // Kind declares one CLI-addressable managed-artifact family.
@@ -146,7 +133,6 @@ type Kind struct {
 
 var kinds = []Kind{
 	{Plural: "skills", Singular: "skill", Cardinality: CardinalityCatalog, Targeting: TargetAdapter, Owner: OwnerCatalog, TemplatePattern: "skills/%s/SKILL.md.tmpl", OwnsParts: true},
-	{Plural: "agents", Singular: "agent", Cardinality: CardinalityCatalog, Targeting: TargetAdapter, Owner: OwnerCatalog, TemplatePattern: "agents/%s.md.tmpl", OwnsParts: true},
 	{Plural: "docs", Singular: "doc", Cardinality: CardinalityCatalog, Targeting: TargetNeutral, Owner: OwnerCatalog, OwnsParts: true},
 	{Plural: "domains", Singular: "domain", Cardinality: CardinalityFreeform, Targeting: TargetNeutral, Owner: OwnerCatalog, TemplatePattern: "domains/domain.md.tmpl", OwnsParts: true},
 }
@@ -179,8 +165,6 @@ func Names(cat *catalog.Catalog, plural string) ([]string, bool) {
 	switch plural {
 	case "skills":
 		return slices.Sorted(maps.Keys(cat.Skills)), true
-	case "agents":
-		return slices.Sorted(maps.Keys(cat.Agents)), true
 	case "docs":
 		return slices.Sorted(maps.Keys(cat.Docs)), true
 	default:
@@ -196,9 +180,6 @@ func Sections(cat *catalog.Catalog, plural, name string) ([]string, bool) {
 	switch plural {
 	case "skills":
 		spec, ok := cat.Skills[name]
-		return slices.Clone(spec.Sections), ok
-	case "agents":
-		spec, ok := cat.Agents[name]
 		return slices.Clone(spec.Sections), ok
 	case "docs":
 		spec, ok := cat.Docs[name]
@@ -226,12 +207,10 @@ func TemplateID(cat *catalog.Catalog, plural, name string) string {
 }
 
 // OutputPath returns one catalog artifact's canonical managed output path.
-func OutputPath(cat *catalog.Catalog, target Target, prefix, plural, name string) string {
+func OutputPath(cat *catalog.Catalog, target Target, _ string, plural, name string) string {
 	switch plural {
 	case "skills":
-		return target.SkillPath(prefix, name)
-	case "agents":
-		return target.AgentPath(name)
+		return target.SkillPath(name)
 	case "docs":
 		entry := cat.Docs[name]
 		if entry.AgentsDoc {
@@ -287,7 +266,7 @@ func Resident(name string) ResidentArtifact {
 func Policy(kind string, regenerate bool) outputplan.Policy {
 	policy := outputplan.Policy{Regenerate: regenerate}
 	switch kind {
-	case "skills", "agents":
+	case "skills":
 		policy.ValidateFrontmatter, policy.ScanReferences, policy.ScanSkillReferences = true, true, true
 	case "docs", "local-doc", "agents-doc", "doc-standard", "agents-md-standard", "working-with-awf", "pi-runtime-reference", "workflow", "architecture", "development", "glossary", "pitfalls", "roadmap", "testing", "releasing", "domains", "topics":
 		policy.ScanReferences, policy.ScanSkillReferences = true, true
@@ -425,11 +404,8 @@ type targetDeclaration struct {
 }
 
 var targets = map[string]targetDeclaration{
-	"claude": {Target: Target{Name: "claude", SkillDir: ".claude/skills", AgentDir: ".claude/agents", AgentSuffix: ".md", AgentDialect: MarkdownAgentDialect, BridgeFile: "CLAUDE.md", BridgeTemplate: "claude/CLAUDE.md.tmpl"}},
-	"pi": {Target: Target{Name: "pi", SkillDir: ".pi/skills", AgentDir: ".pi/agents", AgentSuffix: ".md", AgentDialect: MarkdownAgentDialect, Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff}}, Outputs: []TargetArtifact{
-		{Output: TargetOutput{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true}, Participation: Participation{Check: true}, Owner: OwnerTarget},
-		{Output: TargetOutput{Path: ".pi/extensions/awf-subagents/model-routing.ts", TemplateID: "pi/awf-subagents/model-routing.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true}, Participation: Participation{Check: true}, Owner: OwnerTarget},
-	}},
+	"claude": {Target: Target{Name: "claude", SkillDir: ".claude/skills", AgentDialect: MarkdownAgentDialect, BridgeFile: "CLAUDE.md", BridgeTemplate: "claude/CLAUDE.md.tmpl"}},
+	"pi":     {Target: Target{Name: "pi", SkillDir: ".pi/skills", AgentDialect: MarkdownAgentDialect, Capabilities: []Capability{CapabilitySessionHandoff}}},
 }
 
 func declaredTarget(declaration targetDeclaration) Target {
@@ -488,7 +464,6 @@ func ResolveTargets(names []string) ([]Target, error) {
 // TargetTemplateData projects the closed capability set into template inputs.
 func TargetTemplateData(target Target) map[string]any {
 	return map[string]any{
-		"targetSubagentTools":  slices.Contains(target.Capabilities, CapabilitySubagentTools),
 		"targetSessionHandoff": slices.Contains(target.Capabilities, CapabilitySessionHandoff),
 	}
 }
@@ -509,11 +484,11 @@ func TargetDescriptorProjection(target Target) string {
 		return strings.Compare(fmt.Sprintf("%#v", left), fmt.Sprintf("%#v", right))
 	})
 	projection := fmt.Sprintf("%#v", struct {
-		Name, SkillDir, AgentDir, AgentSuffix, BridgeFile, BridgeTemplate string
-		AgentDialect                                                      AgentDialect
-		Capabilities                                                      []Capability
-		Outputs                                                           []TargetOutput
-	}{target.Name, target.SkillDir, target.AgentDir, target.AgentSuffix, target.BridgeFile, target.BridgeTemplate, target.AgentDialect, capabilities, outputs})
+		Name, SkillDir, BridgeFile, BridgeTemplate string
+		AgentDialect                               AgentDialect
+		Capabilities                               []Capability
+		Outputs                                    []TargetOutput
+	}{target.Name, target.SkillDir, target.BridgeFile, target.BridgeTemplate, target.AgentDialect, capabilities, outputs})
 	// Preserve the historical hash projection after moving declaration ownership.
 	// The legacy package qualifier is serialized hash input, not a live type owner.
 	return strings.ReplaceAll(projection, "artifactregistry.", "projectstate.")
@@ -546,7 +521,7 @@ func targetArtifacts(target Target) []TargetArtifact {
 
 // ResolveTargetArtifacts applies required-skill selection and skill-path translation
 // while retaining the registry's ownership and check-participation metadata.
-func ResolveTargetArtifacts(target Target, prefix string, selected []string) []TargetArtifact {
+func ResolveTargetArtifacts(target Target, _ string, selected []string) []TargetArtifact {
 	enabled := make(map[string]bool, len(selected))
 	for _, name := range selected {
 		enabled[name] = true
@@ -560,7 +535,7 @@ func ResolveTargetArtifacts(target Target, prefix string, selected []string) []T
 			continue
 		}
 		if artifact.Output.SkillName != "" {
-			artifact.Output.Path = target.SkillPath(prefix, artifact.Output.SkillName)
+			artifact.Output.Path = target.SkillPath(artifact.Output.SkillName)
 		}
 		out = append(out, artifact)
 	}
@@ -569,7 +544,7 @@ func ResolveTargetArtifacts(target Target, prefix string, selected []string) []T
 
 // ValidateTarget verifies a target declaration's closed registry contract.
 func ValidateTarget(target Target) error {
-	known := map[Capability]bool{CapabilitySubagentTools: true, CapabilitySessionHandoff: true}
+	known := map[Capability]bool{CapabilitySessionHandoff: true}
 	for _, capability := range target.Capabilities {
 		if !known[capability] {
 			return fmt.Errorf("target %q has unknown capability %q", target.Name, capability)

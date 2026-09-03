@@ -41,12 +41,12 @@ func artifactConfigHash(p renderInputs, assembled string, sc config.Sidecar, par
 		caps := slices.Clone(t.Capabilities)
 		slices.Sort(caps)
 		proj["target"] = struct {
-			SkillDir, AgentDir, AgentSuffix string
-			AgentDialect                    artifactregistry.AgentDialect
-			BridgeFile, BridgeTemplate      string
-			Capabilities                    []artifactregistry.Capability
-			Outputs                         []artifactregistry.TargetOutput
-		}{t.SkillDir, t.AgentDir, t.AgentSuffix, t.AgentDialect, t.BridgeFile, t.BridgeTemplate, caps, t.Outputs}
+			SkillDir                  string
+			AgentDialect              artifactregistry.AgentDialect
+			BridgeFile, BridgeTemplate string
+			Capabilities              []artifactregistry.Capability
+			Outputs                   []artifactregistry.TargetOutput
+		}{t.SkillDir, t.AgentDialect, t.BridgeFile, t.BridgeTemplate, caps, t.Outputs}
 	}
 	vs := map[string]any{}
 	for _, r := range refs {

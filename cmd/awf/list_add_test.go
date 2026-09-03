@@ -156,8 +156,8 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 
 	t.Run("inventory", func(t *testing.T) {
 		root := scaffoldProject(t)
-		testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "brainstorming.yaml"), "data:\n  testSurfaces: []\n")
-		for _, kind := range []string{"", "target", "domain", "skill", "agent", "doc"} {
+		testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "awf-maintenance.yaml"), "data:\n  testSurfaces: []\n")
+		for _, kind := range []string{"", "target", "domain", "skill", "doc"} {
 			var out bytes.Buffer
 			if err := runList(ctx, root, kind, &out); err != nil {
 				t.Fatalf("list %q: %v", kind, err)
@@ -233,7 +233,7 @@ func TestRunListSidecarError(t *testing.T) {
 	if err := os.MkdirAll(skillsDir, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(skillsDir, "brainstorming.yaml"), []byte("data: [not, a, map]\n"), 0o644); err != nil {
+	if err := os.WriteFile(filepath.Join(skillsDir, "awf-maintenance.yaml"), []byte("data: [not, a, map]\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	if err := runList(ctx, root, "", io.Discard); err == nil {
@@ -248,7 +248,7 @@ func TestRunListPrintsSkills(t *testing.T) {
 	if err := runList(ctx, root, "", &out); err != nil {
 		t.Fatalf("runList: %v", err)
 	}
-	if !strings.Contains(out.String(), "brainstorming") {
-		t.Errorf("expected brainstorming in listing, got %q", out.String())
+	if !strings.Contains(out.String(), "awf-maintenance") {
+		t.Errorf("expected awf-maintenance in listing, got %q", out.String())
 	}
 }

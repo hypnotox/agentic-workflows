@@ -5,7 +5,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
@@ -75,20 +74,6 @@ func assertNoLeaks(t *testing.T, out string) {
 	if strings.Contains(out, "{{") || strings.Contains(out, "}}") {
 		t.Errorf("unrendered template action:\n%s", out)
 	}
-}
-
-func renderAgentGolden(t *testing.T, name string, data map[string]any) string {
-	t.Helper()
-	body := renderGolden(t, "agents/"+name+".md.tmpl", data)
-	description, err := render.Execute(catalog.Standard.Agents[name].Description, data, nil, "agent description")
-	if err != nil {
-		t.Fatalf("render agent description: %v", err)
-	}
-	out, err := encodeMarkdownAgent(agent{Name: catalog.Standard.Agents[name].Name, Description: description, Body: body})
-	if err != nil {
-		t.Fatalf("encode agent: %v", err)
-	}
-	return out
 }
 
 func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {

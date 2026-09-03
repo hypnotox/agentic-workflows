@@ -368,9 +368,8 @@ func dataKeyRowsTyped(p renderInputs) ([]DataKeyRow, error) {
 	for _, d := range configspec.DataKeys() {
 		if d.Artifact != "agents-doc" {
 			_, skill := projectCatalog(p).Skills[d.Artifact]
-			_, agent := projectCatalog(p).Agents[d.Artifact]
 			_, doc := projectCatalog(p).Docs[d.Artifact]
-			if !skill && !agent && !doc {
+			if !skill && !doc {
 				continue
 			}
 		}
@@ -383,8 +382,6 @@ func dataKeyRowsTyped(p renderInputs) ([]DataKeyRow, error) {
 		switch d.Kind {
 		case "skills":
 			declared = projectCatalog(p).Skills[d.Artifact].Data
-		case "agents":
-			declared = projectCatalog(p).Agents[d.Artifact].Data
 		case "docs":
 			declared = projectCatalog(p).Docs[d.Artifact].Data
 		}
@@ -418,23 +415,7 @@ func dataKeyRowsTyped(p renderInputs) ([]DataKeyRow, error) {
 		case hasDefault:
 			state = " (catalog default)"
 		}
-		description := d.Description
-		if d.Kind == "agents" && d.Key == "focusItems" {
-			var names []string
-			if items, ok := defaultValue.([]any); ok {
-				for _, item := range items {
-					if record, ok := item.(map[string]any); ok {
-						if name, ok := record["name"].(string); ok {
-							names = append(names, "`"+name+"`")
-						}
-					}
-				}
-			}
-			if len(names) > 0 {
-				description = "The reviewer's project-focus lens items (list of {name, description}); the selected catalog default contains " + strings.Join(names, ", ") + "."
-			}
-		}
-		rows = append(rows, DataKeyRow{Artifact: label, Key: d.Key, Description: description, State: state})
+		rows = append(rows, DataKeyRow{Artifact: label, Key: d.Key, Description: d.Description, State: state})
 	}
 	return rows, nil
 }

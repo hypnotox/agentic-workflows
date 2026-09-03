@@ -1,10 +1,8 @@
-This topic records the current ownership contract for generated executable adapter-runtime outputs.
-
-The retained Pi subagent extensions share the same generated-output ownership and whole-tree coverage exclusion.
+AWF no longer publishes executable role adapters.
 
 ## Claims
 
-### `invariant: generated-adapter-runtime-ownership`
+### `invariant: no-awf-adapter-outputs`
 
-The fixed Pi target's extension outputs under `.pi/extensions/**` are owned by this topic even though their generated-output classification excludes them from whole-tree coverage eligibility.
+The built-in Claude and Pi targets publish no role prompt or executable subagent-adapter outputs. Global `agentic-skills` owns the canonical generic roles and its separately installed Pi adapter, so AWF creates no duplicate role or tool registrations.
 Backing: test

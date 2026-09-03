@@ -1,60 +1,41 @@
 package publisher
 
 import (
-	"io/fs"
 	"maps"
-	"os"
-	"os/exec"
-	"path/filepath"
 	"slices"
 	"strings"
-	"sync"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/outputplan"
-	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
-	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // TestClaudeTargetPaths unit-checks the claude adapter's path formulas. ADR-0016's
 // target-output-paths invariant is retired by ADR-0037 (retires_invariants); the
 // per-target rendering property is now backed by inv: multi-target-render.
 func TestClaudeTargetPaths(t *testing.T) {
-	if got := claudeTarget.SkillPath("awf", "implementing"); got != ".claude/skills/awf-implementing/SKILL.md" {
+	if got := claudeTarget.SkillPath("awf-effort"); got != ".claude/skills/awf-effort/SKILL.md" {
 		t.Fatalf("SkillPath = %q", got)
-	}
-	if got := claudeTarget.AgentPath("reviewer"); got != ".claude/agents/reviewer.md" {
-		t.Fatalf("AgentPath = %q", got)
 	}
 	if claudeTarget.BridgeFile != "CLAUDE.md" {
 		t.Fatalf("BridgeFile = %q", claudeTarget.BridgeFile)
 	}
 }
 
-// invariant: rendering/pi-workflows:pi-native-workflow-skills (TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow)
-// invariant: rendering/pi-runtime:pi-extension-target-render (TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow)
-// invariant: rendering/pi-runtime:pi-session-handoff-workflow (TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow)
-func TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow(t *testing.T) {
-	if !slices.Contains(piTarget.Capabilities, artifactregistry.CapabilitySubagentTools) || !slices.Contains(piTarget.Capabilities, artifactregistry.CapabilitySessionHandoff) {
+// invariant: rendering/pi-runtime:pi-session-handoff-workflow (TestPiTargetRetainsOnlySessionHandoffCapability)
+// invariant: rendering/pi-workflows:pi-native-awf-skills (TestPiTargetRetainsOnlySessionHandoffCapability)
+// invariant: rendering/adapter-outputs:no-awf-adapter-outputs (TestPiTargetRetainsOnlySessionHandoffCapability)
+func TestPiTargetRetainsOnlySessionHandoffCapability(t *testing.T) {
+	if !slices.Equal(piTarget.Capabilities, []artifactregistry.Capability{artifactregistry.CapabilitySessionHandoff}) {
 		t.Fatalf("Pi capabilities = %v", piTarget.Capabilities)
 	}
-	if len(piTarget.Outputs) != 2 {
-		t.Fatalf("Pi outputs = %#v, want only two subagent outputs", piTarget.Outputs)
-	}
-	for _, output := range piTarget.Outputs {
-		if !strings.HasPrefix(output.Path, ".pi/extensions/awf-subagents/") || output.SkillName != "" {
-			t.Fatalf("non-host-neutral Pi output remains: %#v", output)
-		}
+	if len(piTarget.Outputs) != 0 {
+		t.Fatalf("Pi target retained adapter outputs: %#v", piTarget.Outputs)
 	}
 	data := targetTemplateData(piTarget)
-	if data["targetSubagentTools"] != true || data["targetSessionHandoff"] != true {
+	if data["targetSessionHandoff"] != true || len(data) != 1 {
 		t.Fatalf("Pi template data = %#v", data)
-	}
-	if _, exists := data["targetEffortSessions"]; exists {
-		t.Fatalf("retired effort-session datum remains: %#v", data)
 	}
 	root := scaffold(t, sampleYAML)
 	p, err := loadTestSession(testContext(t), root)
@@ -69,206 +50,14 @@ func TestPiTargetRetainsHostNeutralOutputsAndGenericEffortWorkflow(t *testing.T)
 	for _, file := range files {
 		paths[file.Path] = true
 	}
-	if !paths[".pi/skills/example-effort-workflow/SKILL.md"] {
-		t.Fatal("generic effort-workflow skill was not rendered for Pi")
+	if !paths[".pi/skills/awf-effort/SKILL.md"] {
+		t.Fatal("awf-effort skill was not rendered for Pi")
 	}
-	for _, retired := range []string{".pi/extensions/awf-effort/index.ts", ".pi/extensions/awf-effort/client.ts", ".pi/skills/example-using-effort/SKILL.md"} {
-		if paths[retired] {
-			t.Errorf("retired Pi output rendered: %s", retired)
+	for path := range paths {
+		if strings.HasPrefix(path, ".pi/extensions/awf-subagents/") || strings.HasPrefix(path, ".pi/agents/") {
+			t.Errorf("retired Pi adapter output rendered: %s", path)
 		}
 	}
-	for _, file := range files {
-		if file.Path != ".pi/skills/example-effort-workflow/SKILL.md" {
-			continue
-		}
-		for _, want := range []string{"./awf effort show <slug>", "ordinary file tools", "one user-managed writer"} {
-			if !strings.Contains(file.Content, want) {
-				t.Errorf("effort workflow missing %q", want)
-			}
-		}
-	}
-}
-func templateSource(t *testing.T, tid string) string {
-	t.Helper()
-	src, err := fs.ReadFile(templates.FS, tid)
-	if err != nil {
-		t.Fatalf("read template %s: %v", tid, err)
-	}
-	return string(src)
-}
-
-// invariant: rendering/pi-runtime:pi-real-runtime-smoke (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-runtime:pi-implementation-state-boundary (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:pi-dedicated-grounding-dispatch (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-runtime:pi-tools-integration-boundary (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:pi-subagent-model-routing (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:pi-subagent-model-preferences (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:pi-subagent-model-wizard (TestPiRealRuntimeSmoke)
-// invariant: rendering/pi-workflows:pi-structured-exploration-contract (TestPiRealRuntimeSmoke)
-var (
-	piRuntimeSmokeOnce   sync.Once
-	piRuntimeSmokeOutput []byte
-	piRuntimeSmokeErr    error
-)
-
-func assertPiRuntimeSmoke(t *testing.T) {
-	t.Helper()
-	piRuntimeSmokeOnce.Do(func() {
-		root := repoRootDir(t)
-		cmd := exec.Command(filepath.Join(root, "x"), "pi-test", "run")
-		cmd.Dir = root
-		piRuntimeSmokeOutput, piRuntimeSmokeErr = cmd.CombinedOutput()
-	})
-	if piRuntimeSmokeErr != nil {
-		t.Fatalf("generated Pi runtime smoke failed: %v\n%s", piRuntimeSmokeErr, piRuntimeSmokeOutput)
-	}
-	const lifecycleProof = "✔ TestPiStructuredExplorationContractLifecycleSemantics uses pinned pi-tools lifecycle"
-	if !strings.Contains(string(piRuntimeSmokeOutput), lifecycleProof) {
-		t.Fatalf("generated Pi runtime smoke omitted required lifecycle proof %q\n%s", lifecycleProof, piRuntimeSmokeOutput)
-	}
-}
-
-func TestPiRealRuntimeSmoke(t *testing.T) {
-	if os.Getenv("AWF_PI_RUNTIME_SMOKE") != "1" {
-		t.Skip("Pi host lane skipped; run './x pi-test run' for focused verification")
-	}
-	assertPiRuntimeSmoke(t)
-}
-
-func TestTargetOutputRenderError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := loadTestSession(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	targets := testTargets(p)
-	var pi *artifactregistry.Target
-	for i := range targets {
-		if targets[i].Name == "pi" {
-			pi = &targets[i]
-			break
-		}
-	}
-	if pi == nil || len(pi.Outputs) == 0 {
-		t.Fatal("full built-in targets missing Pi output declarations")
-	}
-	pi.Outputs[0].TemplateID = "missing-target-output.tmpl"
-	p = setTestTargets(p, targets)
-	if _, err := renderAll(p); err == nil || !strings.Contains(err.Error(), "missing-target-output") {
-		t.Fatalf("RenderAll error = %v, want missing target-output template", err)
-	}
-}
-func piProfileDefinitionLine(t *testing.T, body, id string) string {
-	t.Helper()
-	needle := `id: "` + id + `"`
-	if id == "shared-review-factory" {
-		needle = "const reviewProfile ="
-	}
-	for _, line := range strings.Split(body, "\n") {
-		if strings.Contains(line, needle) {
-			return line
-		}
-	}
-	t.Fatalf("missing Pi profile definition %q", id)
-	return ""
-}
-
-func TestPiSubagentModelRoutingRender(t *testing.T) {
-	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
-	for _, want := range []string{
-		"maxLength: 256", `MODEL_REFERENCE_PATTERN = "^[\\x21-\\x2E\\x30-\\x7E]+/[\\x21-\\x7E]+$"`,
-		"pattern: MODEL_REFERENCE_PATTERN", "MODEL_REFERENCE_FORM = new RegExp(MODEL_REFERENCE_PATTERN)",
-		"!MODEL_REFERENCE_FORM.test(value)",
-		"Exact provider/model-id in printable ASCII", "default, auto, and inherit parent are invalid",
-		"Omit the model field to use configured or inherited routing.", "const selectModel = async", "session!.modelRegistry", "context.parent?.model ?? session!.model", "ConcreteModel",
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("Pi model routing render missing %q", want)
-		}
-	}
-	if got := strings.Count(body, "model: Type.Optional(MODEL_REFERENCE_SCHEMA)"); got != 4 {
-		t.Errorf("shared model-reference schema uses = %d, want 4", got)
-	}
-	// ADR-0176: both validating layers derive from one pattern constant, so neither can
-	// drift into a different measure or charset than the other. Scoped to the module that
-	// owns the constant, so an unrelated inline JSON-Schema pattern elsewhere is not
-	// misreported as a model-reference regression.
-	routing := renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
-	if got := strings.Count(routing, `pattern: "`); got != 0 {
-		t.Errorf("model-routing.ts inlines a literal JSON-Schema pattern %d times, want the shared MODEL_REFERENCE_PATTERN constant only", got)
-	}
-	if !strings.Contains(body, "Omission is the only default form.") {
-		t.Error("profile guidance does not preserve omission as the only default model form")
-	}
-}
-
-func TestPiSubagentModelPreferencesRender(t *testing.T) {
-	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
-	for _, want := range []string{
-		`PREFERENCE_TIERS = ["small", "standard", "large"]`,
-		`PREFERENCE_FIELDS = ["default", ...PREFERENCE_ROLES, ...PREFERENCE_TIERS]`,
-		`type SourceReason = "read-error" | "malformed-json" | "non-object" | "unknown-key"`,
-		`type FieldReason = "malformed" | "overlong" | "unregistered" | "unauthenticated" | "unavailable"`,
-		"loadPreferenceState(deps,", "session.modelRegistry", "new WeakSet<object>()", "ctx.sessionManager",
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("Pi model preference render missing %q", want)
-		}
-	}
-}
-
-func TestPiSubagentModelWizardRender(t *testing.T) {
-	body := renderPiExtensionFile(t, "awf-subagents/index.ts") + renderPiExtensionFile(t, "awf-subagents/model-routing.ts")
-	for _, want := range []string{
-		`small: "openai-codex/gpt-5.6-luna"`, `standard: "openai-codex/gpt-5.6-terra"`, `large: "openai-codex/gpt-5.6-sol"`,
-		"Role defaults:", "Tier mappings:", "Missing:", "Invalid:", "modified concurrently", "mode: 0o600", "loadPreferenceState(deps,", "session.modelRegistry",
-	} {
-		if !strings.Contains(body, want) {
-			t.Errorf("Pi model wizard render missing %q", want)
-		}
-	}
-}
-
-func explorationFixtureConfig(target string) string {
-	return "prefix: example\nintegrationBranch: main\n"
-}
-
-func explorationRenderedByPath(t *testing.T, config string) map[string]string {
-	t.Helper()
-	p, err := loadTestSession(testContext(t), scaffold(t, config))
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := renderAll(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	got := map[string]string{}
-	for _, file := range files {
-		got[file.Path] = file.Content
-	}
-	return got
-}
-
-func renderPiExtensionFile(t *testing.T, name string) string {
-	t.Helper()
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := loadTestSession(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	files, err := renderAll(p)
-	if err != nil {
-		t.Fatal(err)
-	}
-	path := ".pi/extensions/" + name
-	for _, file := range files {
-		if file.Path == path {
-			return file.Content
-		}
-	}
-	t.Fatalf("missing %s", path)
-	return ""
 }
 
 // invariant: rendering/catalog-and-targets:built-in-runtime-targets (TestTargetDescriptorCustomization)
@@ -277,27 +66,19 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 	custom := artifactregistry.Target{
 		Name:           "custom",
 		SkillDir:       ".custom/workflows",
-		AgentDir:       ".custom/reviewers",
-		AgentSuffix:    ".agent.md",
 		AgentDialect:   artifactregistry.MarkdownAgentDialect,
 		BridgeFile:     "CUSTOM.md",
 		BridgeTemplate: bridgeTID,
-		Capabilities:   []artifactregistry.Capability{artifactregistry.CapabilitySubagentTools, artifactregistry.CapabilitySessionHandoff},
-		Outputs: []artifactregistry.TargetOutput{{
-			Path: ".custom/extension.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl",
-			Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.PlainAgentDialect,
-			Provenance: render.SlashComment, Policy: outputplan.Policy{}, PolicyDeclared: true,
-		}},
+		Capabilities:   []artifactregistry.Capability{artifactregistry.CapabilitySessionHandoff},
 	}
 	if err := artifactregistry.ValidateTarget(custom); err != nil {
 		t.Fatal(err)
 	}
-	if custom.SkillPath("example", "implementing") != ".custom/workflows/example-implementing/SKILL.md" ||
-		custom.AgentPath("reviewer") != ".custom/reviewers/reviewer.agent.md" {
-		t.Fatal("custom descriptor paths were not preserved")
+	if custom.SkillPath("awf-effort") != ".custom/workflows/awf-effort/SKILL.md" {
+		t.Fatal("custom descriptor skill path was not preserved")
 	}
-	if targetTemplateData(custom)["targetSubagentTools"] != true || targetTemplateData(custom)["targetSessionHandoff"] != true {
-		t.Fatal("custom descriptor capabilities were not projected")
+	if data := targetTemplateData(custom); data["targetSessionHandoff"] != true || len(data) != 1 {
+		t.Fatalf("custom descriptor capabilities = %#v", data)
 	}
 	root := scaffold(t, sampleYAML)
 	p, err := loadTestSession(testContext(t), root)
@@ -310,10 +91,8 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := map[string]artifactregistry.AgentDialect{
-		".custom/workflows/example-implementing/SKILL.md": artifactregistry.MarkdownAgentDialect,
-		".custom/reviewers/reviewer.agent.md":             artifactregistry.MarkdownAgentDialect,
-		"CUSTOM.md":                                       artifactregistry.MarkdownAgentDialect,
-		".custom/extension.ts":                            artifactregistry.PlainAgentDialect,
+		".custom/workflows/awf-effort/SKILL.md": artifactregistry.MarkdownAgentDialect,
+		"CUSTOM.md":                             artifactregistry.MarkdownAgentDialect,
 	}
 	counts := map[string]int{}
 	for _, file := range files {
@@ -384,6 +163,7 @@ func TestClaudeMdBridgeRendered(t *testing.T) {
 // TestMultiTargetRender proves adapter artifacts render once per enabled target
 // at descriptor-owned paths while neutral artifacts render once.
 // invariant: rendering/catalog-and-targets:target-dialect-render (TestMultiTargetRender)
+// invariant: rendering/workflow-skill-templates:fixed-awf-skill-surface (TestMultiTargetRender)
 func TestMultiTargetRender(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := loadTestSession(testContext(t), root)
@@ -417,21 +197,10 @@ func TestMultiTargetRender(t *testing.T) {
 	// invariant: rendering/project-output-plan:multi-target-render (TestMultiTargetRender)
 	for _, target := range p.Targets() {
 		for name := range catalog.Standard.Skills {
-			path := target.SkillPath("example", name)
+			path := target.SkillPath(name)
 			content := byPath[path]
 			if content == "" || pathCounts[path] != 1 {
 				t.Errorf("skill %q for %s rendered %d times with %d bytes", name, target.Name, pathCounts[path], len(content))
-			}
-		}
-		for name := range catalog.Standard.Agents {
-			path := target.AgentPath(name)
-			content := byPath[path]
-			if content == "" || pathCounts[path] != 1 {
-				t.Errorf("agent %q for %s rendered %d times with %d bytes", name, target.Name, pathCounts[path], len(content))
-				continue
-			}
-			if err := validateArtifact([]byte(content), target.AgentDialect); err != nil {
-				t.Errorf("validate %q as %s: %v", path, target.AgentDialect, err)
 			}
 		}
 	}
@@ -495,97 +264,8 @@ func TestPlannedOutputsSurfacesRenderError(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Corrupt a sidecar so the RenderAll inside PlannedOutputs fails.
-	corruptSidecar(t, root, "skills/implementing.yaml")
+	corruptSidecar(t, root, "skills/awf-effort.yaml")
 	if _, err := plannedOutputsProject(p); err == nil {
 		t.Fatal("expected PlannedOutputs to surface the RenderAll error")
-	}
-}
-
-// invariant: rendering/pi-workflows:pi-implement-role-artifact (TestPiImplementRoleArtifact)
-// invariant: rendering/pi-workflows:pi-implementation-bounded-concurrency (TestPiImplementRoleArtifact)
-// invariant: rendering/workflow-skill-templates:implementation-route-adaptive (TestPiImplementRoleArtifact)
-func TestPiImplementRoleArtifact(t *testing.T) {
-	src := renderPiExtensionFile(t, "awf-subagents/index.ts")
-	for _, want := range []string{
-		".pi/agents/implementer.md",
-		"loadAgentContract",
-		"relative: IMPLEMENTER_PATH",
-		"Enable the implementer agent and run ./awf render.",
-		"has no instruction body; run ./awf render.",
-		"parseFrontmatter",
-		"const verified = state.before.available && after.available",
-		"MAX_IMPLEMENTATION_CONCURRENCY = 4",
-		"concurrency: MAX_IMPLEMENTATION_CONCURRENCY",
-		"canonical disjoint write sets",
-		"const headChanged = verified && state.before.head !== after.head",
-		"const indexChanged = verified && state.before.indexState !== after.indexState",
-		"const failure = !verified",
-		"commitVerification: verified ? \"verified\" : \"unavailable\"",
-		"commitVerification: COMMIT_VERIFICATION_SCHEMA",
-		`["ls-files", "--stage", "-v", "-z"]`,
-		"Implementation changed protected Git state",
-		"recover only the offending commit or index paths or flags",
-		"preserving sibling and unrelated edits before redispatch",
-		"Implementation verification unavailable",
-		"resolveVerificationCheckout",
-		`requested.startsWith("@") ? requested.slice(1) : requested`,
-		`["rev-parse", "--show-toplevel"]`,
-		`["rev-parse", "--path-format=absolute", "--git-common-dir"]`,
-		`["rev-parse", "--absolute-git-dir"]`,
-		`join(canonicalGitDirectory, "gitdir")`,
-		"non-symlink regular file",
-		"administrative backlink",
-		"same repository as the project root",
-		"snapshot(pi, verificationCheckout)",
-		"selected HEAD or index could not be compared before and after",
-		"invocationCheckout",
-		"cwd: verificationCheckout",
-	} {
-		if !strings.Contains(src, want) {
-			t.Errorf("rendered Pi extension missing %q", want)
-		}
-	}
-	// The literal implement prose must be gone, so a half-applied edit that adds
-	// the loader while leaving the old string in place fails here.
-	if strings.Contains(src, "You are a fresh-context implementation subagent") {
-		t.Error("the literal implement role prose survived the loader cutover")
-	}
-	implementer := explorationRenderedByPath(t, explorationFixtureConfig("pi"))[".pi/agents/implementer.md"]
-	for _, piOnly := range []string{"verificationCheckout", "verification checkout", "Pi CWD"} {
-		if strings.Contains(implementer, piOnly) {
-			t.Errorf("generic implementer role gained Pi-only verification metadata %q", piOnly)
-		}
-	}
-	for _, want := range []string{"possibly running beside independent siblings", "Do not mutate an unassigned shared path", "HEAD and index are unchanged"} {
-		if !strings.Contains(implementer, want) {
-			t.Errorf("implementer concurrency contract missing %q", want)
-		}
-	}
-	skill := renderSkillGolden(t, "implementing", map[string]any{"prefix": "example", "vars": map[string]any{}, "data": map[string]any{}})
-	for _, want := range []string{
-		"work inline, dispatch one child, use sequential children, or run a bounded same-worktree parallel wave",
-		"dependency-independent, canonical disjoint write sets",
-		"ambiguous, overlapping, shared, global, generated, or current-state path",
-		"The parent alone owns effort memory, plans, shared/global/generated/current-state files, integration, index, commits, review, and final verification",
-		"Use at most four children",
-		"let already-running siblings settle",
-		"Preserve successful sibling and unrelated edits",
-		"inventory of changed paths, checks and results, deviations, residual debt, and unresolved blockers",
-	} {
-		if !strings.Contains(skill, want) {
-			t.Errorf("implementing skill concurrency contract missing %q", want)
-		}
-	}
-	for _, want := range []string{
-		"Do not stage, commit, amend, change HEAD, alter the index or topology",
-		"preserve sibling and unrelated work",
-		"changed files; exact commands and results; deviations and rationale; blockers; ending `git status --short`; and confirmation that HEAD and index are unchanged",
-	} {
-		if !strings.Contains(implementer, want) {
-			t.Errorf("implementer route-adaptive contract missing %q", want)
-		}
-	}
-	if strings.Contains(src, "exclusiveParentBatch") {
-		t.Error("bounded implementation profile retained coarse parent-batch exclusivity")
 	}
 }

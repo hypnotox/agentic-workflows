@@ -206,8 +206,8 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\nvars: {testCmd: go test ./..., gateCmd: make gate}\n")
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "brainstorming", "procedure.md"),
-		"<!-- awf:stub -->\nstarter procedure\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "skills", "parts", "awf-maintenance", "generated-documents.md"),
+		"<!-- awf:stub -->\nstarter maintenance guidance\n")
 	if err := initializeProject(testContext(t), root, io.Discard); err != nil {
 		t.Fatalf("sync: %v", err)
 	}
@@ -218,7 +218,7 @@ func TestCheckStubNotesAreNonFailing(t *testing.T) {
 		t.Fatalf("check must stay clean with unauthored stub content, got: %v", err)
 	}
 	if !strings.Contains(out.String(), "advisory |") ||
-		!strings.Contains(out.String(), "has unauthored stub content: stub-marked parts: procedure") {
+		!strings.Contains(out.String(), "has unauthored stub content: stub-marked parts: generated-documents") {
 		t.Errorf("missing stub note, got:\n%s", out.String())
 	}
 }
@@ -259,9 +259,9 @@ func TestCheckFullySetArtifactEmitsNoUnsetVarNote(t *testing.T) {
 	if err := runCheck(ctx, root, &out); err != nil {
 		t.Fatalf("check: %v", err)
 	}
-	// The fixture sets every var the brainstorming skill references; other artifacts
+	// The fixture sets every var the fixed AWF skills reference; other artifacts
 	// (agents-doc) legitimately reference more and may still note.
-	if strings.Contains(out.String(), "skill brainstorming references unset vars") {
+	if strings.Contains(out.String(), "skill awf-maintenance references unset vars") {
 		t.Errorf("unexpected unset-var note for the fully-set skill:\n%s", out.String())
 	}
 }
@@ -271,7 +271,7 @@ func TestRunInitSyncError(t *testing.T) {
 	// Config exists (skip scaffold); a squatting output dir makes the inner
 	// runSync fail, covering runInit's runSync error return.
 	root := scaffoldProject(t)
-	out := filepath.Join(root, ".claude", "skills", "example-brainstorming", "SKILL.md")
+	out := filepath.Join(root, ".claude", "skills", "awf-maintenance", "SKILL.md")
 	if err := os.RemoveAll(out); err != nil {
 		t.Fatal(err)
 	}

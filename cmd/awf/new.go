@@ -93,12 +93,6 @@ func newPitfall(ctx context.Context, root string, args []string, stdout io.Write
 	return newPitfallWithFaults(ctx, root, args, stdout, nil, pitfallop.Create)
 }
 
-// newPitfallWithReleaseFault is the narrow command seam for proving a
-// post-release fault without replacing or bypassing the real lease release.
-func newPitfallWithReleaseFault(ctx context.Context, root string, args []string, stdout io.Writer, releaseFault func() error) error {
-	return newPitfallWithFaults(ctx, root, args, stdout, releaseFault, pitfallop.Create)
-}
-
 type pitfallCreate func(context.Context, string, *projectmutation.Transaction) (pitfallop.Outcome, error)
 
 func pitfallReleaseFailure(err error) error {

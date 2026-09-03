@@ -25,7 +25,6 @@ var identityExempt = map[string]bool{
 	"bootstrap/awf-upgrade.sh.tmpl":     true,
 	"agents-doc/AGENTS.md.tmpl":         true,
 	"docs/pi-runtime-reference.md.tmpl": true,
-	"pi/awf-subagents/index.ts.tmpl":    true,
 }
 
 // identityLiterals are the banned repo-identity tokens.
@@ -50,11 +49,7 @@ func repositoryLocalInstruction(src string) string {
 // invariant: rendering/templates:retired-config-guidance-absent (TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent)
 func TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent(t *testing.T) {
 	repoRoot := filepath.Join("..", "..")
-	allowProjectLocal := map[string]int{
-		".awf/topics/parts/config/migrations-and-locks/current-state.md": 0, // supported-floor migration policy
-		".awf/topics/parts/rendering/pi-workflows/current-state.md":      2, // Pi preference-file locality
-		"templates/pi/awf-subagents/index.ts.tmpl":                       1, // Pi preference-file locality
-	}
+	allowProjectLocal := map[string]int{}
 	bannedGuidance := []string{
 		"local: true",
 		"generated local docs",
@@ -117,12 +112,11 @@ func TestTemplateSourceResidue(t *testing.T) {
 	// The marker sits on the assertion rather than on the var it guards, so the
 	// proof site contains the check that proves the ADR-0131 invariant.
 	// invariant: rendering/sync-and-drift:residue-exemptions-pinned-three (TestTemplateSourceResidue)
-	if len(identityExempt) != 5 ||
+	if len(identityExempt) != 4 ||
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||
 		!identityExempt["bootstrap/awf-upgrade.sh.tmpl"] ||
 		!identityExempt["agents-doc/AGENTS.md.tmpl"] ||
-		!identityExempt["docs/pi-runtime-reference.md.tmpl"] ||
-		!identityExempt["pi/awf-subagents/index.ts.tmpl"] {
+		!identityExempt["docs/pi-runtime-reference.md.tmpl"] {
 		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, agents-doc, Pi reference, and pi-tools prerequisite templates")
 	}
 	used := map[string]bool{}
@@ -246,11 +240,6 @@ func TestCatalogDataResidue(t *testing.T) {
 		var strs []string
 		collectStrings(t, "skill "+name, spec.Data, &strs)
 		check("skill "+name, strs)
-	}
-	for name, spec := range cat.Agents {
-		var strs []string
-		collectStrings(t, "agent "+name, spec.Data, &strs)
-		check("agent "+name, strs)
 	}
 	var strs []string
 	collectStrings(t, "domainDoc", cat.DomainDoc.Data, &strs)

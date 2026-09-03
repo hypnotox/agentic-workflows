@@ -1,13 +1,17 @@
 <!-- awf:section overview -->
 # Working with awf
 
-awf owns this project's generated skills, agents, docs, and `AGENTS.md`. Edit the committed
+awf owns this project's four generated `awf-*` skills, docs, and `AGENTS.md`. Edit the committed
 `.awf/` sources and convention parts, never a generated output. Run `./awf render` after a
 source change and keep the regenerated outputs and `.awf/awf.lock` with that change.
 
-This is the daily guide. [Workflow](workflow.md) owns effort lifecycle and model-selection
-policy; [Debugging](debugging.md) owns recovery and failure diagnosis; and the
-[configuration reference](config-reference.md) owns configuration and override semantics. Pi adopters use the [Pi runtime reference](pi-runtime-reference.md) for runtime and subagent protocol.
+Install `agentic-skills` globally for generic skills and roles. Pi users also install `pi-tools` separately for role delegation. AWF does not install,
+update, vendor, configure, or probe either package, and all binary operations remain offline.
+
+This is the daily guide. [Workflow](workflow.md) owns AWF effort and capability routing;
+[Debugging](debugging.md) owns recovery and failure diagnosis; and the [configuration
+reference](config-reference.md) owns configuration and override semantics. Pi adopters use the
+[Pi runtime reference](pi-runtime-reference.md) for the external runtime boundary.
 <!-- awf:end -->
 
 <!-- awf:section commands -->
@@ -41,8 +45,9 @@ authorship rules.
 <!-- awf:section model-selection -->
 ## Advanced workflow
 
-For effort lifecycle, model tiers, hook and commit policy, and verification procedure, see
-[Workflow](workflow.md). Pi runtime and subagent protocol is in the [Pi runtime reference](pi-runtime-reference.md); other target-specific guidance remains with its target.
+For AWF effort lifecycle, hook and commit policy, and verification procedure, see
+[Workflow](workflow.md). Generic task behavior and role prompts come from `agentic-skills`.
+Pi dependency and handoff guidance is in the [Pi runtime reference](pi-runtime-reference.md).
 <!-- awf:end -->
 
 <!-- awf:section placeholders -->
@@ -70,5 +75,8 @@ bash .awf/upgrade.sh
 ```
 
 Then inspect the changed generated outputs, run `./awf check`, and commit the source, output, and
-lock updates together. For advanced upgrade recovery and triage, see [Debugging](debugging.md).
+lock updates together. Upgrades rename retained authored skill overrides to the four fixed AWF
+identities and preserve removed generic overrides as adjacent `.awf-bak` files. They never copy
+those overrides into the global package. Review backup residue and preserve unrelated harness
+content. For advanced recovery and triage, see [Debugging](debugging.md).
 <!-- awf:end -->

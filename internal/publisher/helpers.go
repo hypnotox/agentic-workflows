@@ -22,7 +22,7 @@ func collectVars(fsys fs.FS, path string, varSet map[string]bool) error {
 func artifactLabel(tid string) string {
 	segs := strings.Split(tid, "/")
 	switch segs[0] {
-	case "skills", "agents", "docs":
+	case "skills", "docs":
 		name := segs[1]
 		if segs[0] != "skills" {
 			name = strings.TrimSuffix(name, ".md.tmpl")

@@ -1,1 +1,1 @@
-Create an effort only when durable continuity materially helps; otherwise work remains effort-free. `effort-workflow` alone owns creation through finish, and one effort has one user-managed memory writer. [docs/workflow.md](docs/workflow.md) owns the protocol.
+Create an effort only when durable continuity materially helps; otherwise work remains effort-free. `awf-effort` alone owns creation through finish, and one effort has one user-managed memory writer. [docs/workflow.md](docs/workflow.md) owns the protocol.

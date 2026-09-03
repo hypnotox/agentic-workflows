@@ -20,7 +20,7 @@ func TestResidualKindDescriptorProjectsDocTemplateAndUnknownSections(t *testing.
 }
 
 func TestKindLookups(t *testing.T) {
-	if got := Kinds(); !slices.Equal(got, []string{"skill", "agent", "doc", "domain"}) {
+	if got := Kinds(); !slices.Equal(got, []string{"skill", "doc", "domain"}) {
 		t.Fatalf("Kinds() = %v", got)
 	}
 	if pl, ok := PluralKind("skill"); !ok || pl != "skills" {
@@ -45,16 +45,13 @@ func descriptorMust(t *testing.T, plural string) kindDescriptor {
 
 func TestKindAccessors(t *testing.T) {
 	cat := &catalog.Catalog{
-		Skills:    map[string]catalog.SkillSpec{"tdd": {Sections: []string{"a"}}},
-		Agents:    map[string]catalog.AgentSpec{"rev": {Name: "rev", Description: "reviewer", Sections: []string{"b"}}},
+		Skills:    map[string]catalog.SkillSpec{"awf-test": {Sections: []string{"a"}}},
 		Docs:      map[string]catalog.DocEntry{"arch": {Sections: []string{"c"}, TID: "docs/arch.md.tmpl"}},
 		DomainDoc: catalog.TargetSpec{Sections: []string{"d"}},
 	}
 
-	// poolNames facet (via CatalogNames) for every catalog-backed kind, plus the
-	// no-pool (domain) and unknown branches.
 	for _, c := range []struct{ kind, want string }{
-		{"skill", "tdd"}, {"agent", "rev"}, {"doc", "arch"},
+		{"skill", "awf-test"}, {"doc", "arch"},
 	} {
 		pool, ok := CatalogNames(cat, c.kind)
 		if !ok || !slices.Contains(pool, c.want) {
@@ -68,13 +65,8 @@ func TestKindAccessors(t *testing.T) {
 		t.Error("CatalogNames(bogus) should be false")
 	}
 
-	// sections facet: catalog-backed kinds report presence; domains keep the
-	// singleton's sections but report no per-name presence.
-	if s, ok := descriptorMust(t, "skills").sections(cat, "tdd"); !ok || !slices.Equal(s, []string{"a"}) {
+	if s, ok := descriptorMust(t, "skills").sections(cat, "awf-test"); !ok || !slices.Equal(s, []string{"a"}) {
 		t.Errorf("skills sections = %v,%v", s, ok)
-	}
-	if s, ok := descriptorMust(t, "agents").sections(cat, "rev"); !ok || !slices.Equal(s, []string{"b"}) {
-		t.Errorf("agents sections = %v,%v", s, ok)
 	}
 	if s, ok := descriptorMust(t, "docs").sections(cat, "arch"); !ok || !slices.Equal(s, []string{"c"}) {
 		t.Errorf("docs sections = %v,%v", s, ok)
@@ -83,13 +75,9 @@ func TestKindAccessors(t *testing.T) {
 		t.Errorf("domains sections = %v,%v", s, ok)
 	}
 
-	// outPath facet: skills/agents place adapter artifacts; docs/domains are neutral (nil).
-	tgt := artifactregistry.Target{SkillDir: ".claude/skills", AgentDir: ".claude/agents"}
-	if got := descriptorMust(t, "skills").outPath(tgt, "awf", "tdd"); got != ".claude/skills/awf-tdd/SKILL.md" {
+	tgt := artifactregistry.Target{SkillDir: ".claude/skills"}
+	if got := descriptorMust(t, "skills").outPath(tgt, "ignored", "awf-test"); got != ".claude/skills/awf-test/SKILL.md" {
 		t.Errorf("skills outPath = %q", got)
-	}
-	if got := descriptorMust(t, "agents").outPath(tgt, "awf", "rev"); got != ".claude/agents/rev.md" {
-		t.Errorf("agents outPath = %q", got)
 	}
 	for _, pl := range []string{"docs", "domains"} {
 		if descriptorMust(t, pl).outPath != nil {

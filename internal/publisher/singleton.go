@@ -89,9 +89,6 @@ func liveTemplateEncodersWithKinds(p renderInputs, kinds []kindDescriptor) map[s
 	for name := range projectCatalog(p).Skills {
 		encoders[skillTID(p, name)] = artifactregistry.MarkdownAgentDialect
 	}
-	for name := range projectCatalog(p).Agents {
-		encoders[agentTID(p, name)] = artifactregistry.MarkdownAgentDialect
-	}
 	for _, entry := range projectCatalog(p).Docs {
 		encoders[entry.TID] = artifactregistry.MarkdownAgentDialect
 	}

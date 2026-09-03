@@ -73,19 +73,19 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 		}
 	}
 
-	for _, path := range []string{".awf/hooks/pre-commit.sh", ".pi/extensions/awf-subagents/index.ts"} {
+	for _, path := range []string{".awf/hooks/pre-commit.sh"} {
 		if node := activeByPath[path]; node.file == nil || strings.Contains(node.file.Content, "awf:template-source") {
 			t.Errorf("native-format output %s gained attribution", path)
 		}
 	}
 
-	skill := activeByPath[".pi/skills/awf-reviewing/SKILL.md"].file
+	skill := activeByPath[".pi/skills/awf-maintenance/SKILL.md"].file
 	if skill == nil {
-		t.Fatal("reviewing skill missing from producer matrix")
+		t.Fatal("maintenance skill missing from producer matrix")
 	}
-	rootMarker := "<!-- awf:template-source templates/skills/reviewing/SKILL.md.tmpl -->"
+	rootMarker := "<!-- awf:template-source templates/skills/awf-maintenance/SKILL.md.tmpl -->"
 	if !strings.Contains(skill.Content, rootMarker) {
-		t.Fatalf("reviewing skill lacks template-source marker:\n%s", skill.Content)
+		t.Fatalf("maintenance skill lacks template-source marker:\n%s", skill.Content)
 	}
 	if yamlBlock, body, found := frontmatter.Split([]byte(skill.Content)); !found || strings.Contains(string(yamlBlock), "awf:template-source") || !strings.Contains(string(body), "awf:template-source") {
 		t.Fatalf("frontmatter marker placement invalid:\n%s", skill.Content)

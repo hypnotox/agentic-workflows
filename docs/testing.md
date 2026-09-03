@@ -23,16 +23,15 @@ For a nondeterministic race, stress or invariant evidence may be the strongest p
 ## Gate
 `./x gate` is the fast commit tier: version validation, one native build, blocking lint including govet, and workflow pin validation. Use focused tests while editing and `./x test-affected` for fail-closed behavioral feedback. It selects changed owners, production reverse dependents, test-only importers, and a small global smoke package set. Shared or uncertain inputs widen or refuse visibly.
 
-Hosted pull-request CI always runs complete Linux Go behavior, then consumes one typed JSON v2 selection to run applicable Pi, render, platform-sensitive, and release-archive lanes without duplicating selection policy. Hosted `main` runs complete source assurance on native Linux/amd64 and Darwin/arm64 targets. The aggregate `CI / gate` job is the definitive repository verdict. Production candidate construction and native archive lifecycle smoke stay in the release workflow.
+Hosted pull-request CI always runs complete Linux Go behavior, then consumes one typed JSON v2 selection to run applicable render, platform-sensitive, and release-archive lanes without duplicating selection policy. Hosted `main` runs complete source assurance on native Linux/amd64 and Darwin/arm64 targets. The aggregate `CI / gate` job is the definitive repository verdict. Production candidate construction and native archive lifecycle smoke stay in the release workflow.
 
 The authoritative hosted Linux/amd64 lane on the GitHub-hosted `ubuntu-latest` runner invokes `AWF_FULL_LINUX_CEILING=4m ./x test-full-linux budget --artifact "$RUNNER_TEMP/awf-full-linux-timing-v1.json"`. The approved warning ceiling derives from exact push run `33335081550`, whose five sequential all-job attempts measured `168637`, `175509`, `175600`, `170549`, and `163904` milliseconds. Nearest-rank p95 is `175600` milliseconds; adding 25 percent gives `219500` milliseconds, which rounds up to the next whole minute, `240000` milliseconds or `4m`. Exceeding `4m` records a nonfailing warning in the uploaded timing JSON artifact, while three times the ceiling enforces the `12m` hard timeout. Recalibration requires five sequential all-job attempts for one exact pushed revision on the same hosted runner class, preservation of their timing artifacts, and the same nearest-rank p95, 25 percent margin, and whole-minute round-up method before changing the ceiling.
 
 | Command | Purpose |
 |---|---|
 | `./x gate [timings]` | Fast static commit feedback. |
-| `./x test [args]` | Complete Go behavior without the Pi host lane. |
+| `./x test [args]` | Complete Go behavior. |
 | `./x test-affected [--staged\|--range <base>..<head>]` | Report and run focused affected-package feedback. |
-| `./x pi-test run` | Strict Pi extension behavior. |
 | `./x lint` | Blocking then advisory lint. |
 | `./x deadcode` | Optional whole-program dead-code analysis. |
 
@@ -45,14 +44,13 @@ Coverage percentages may be reported by external services but are informational.
 ## Tiers and lanes
 awf uses focused iteration checks, one fast commit gate, and complete terminal or hosted verification. A wired pre-commit hook owns the fast gate; pre-push remains a focused preflight rather than an exhaustive local duplicate.
 
-
 | Lane | Proves |
 |---|---|
-| Go | Unit, integration, regression, build, lint, optional dead-code, and pin checks. |
-| Pi host | Protocol-v2 profile-contract negotiation, strict TypeScript behavior, adapter policy, model routing, generated native skill routing, and selected-checkout implementation preparation. |
-| Pi runtime smoke | Generated adapter delivery through a contract double and narrow selected-checkout toolkit composition through the test-only pinned pi-tools source. |
+| Go | Unit, integration, regression, build, lint, optional dead-code, migration, publication, and pin checks. |
+| Render | Exact fixed AWF skill publication, generated documentation, collisions, conservative pruning, and drift. |
+| Platform-sensitive | Filesystem, Git, effort, worktree, and release-archive behavior on the supported native targets. |
 
-A successful capability handshake and final profile registration are the adopter `pi-tools` compatibility test; there is no awf fallback, adopter revision pin, Pi-specific effort association, or awf-owned Pi package-version floor. External general context, handoff, subprocess supervision, and rendering mechanics belong to `pi-tools` assurance. The strict lane's test-only pi-tools v0.3.0 source pin records generic Pi API, event, context, UI, model-registry, command, tool, active-tool, and execution seams. It also composes `createSubagentToolkit` narrowly to prove selected prepared-CWD transport, scheduler callback traversal, and invocation isolation without claiming confinement or general pi-tools assurance.
+`agentic-skills` and `pi-tools` are operator-managed packages with their own tests. AWF tests only its output and dependency boundary; it does not embed or behavior-test either external runtime.
 
 The release-only interactive Pi smoke is manual verification, not a deterministic gate lane.
 
@@ -63,16 +61,14 @@ The release-only interactive Pi smoke is manual verification, not a deterministi
 ## Layout and test shape
 | Area | Test location and shape |
 |---|---|
-| Go behavior | Focused package tests cover effort/worktree safety, migration, session protocol validation, Publisher definition completeness and exactly-once rendering, collision-before-render ordering, deterministic joins, resident roots, and real-Git topology. Legacy protocol residents are read-only fixtures. |
-| Pi extension | Host tests cover generated protocol-v2 profile negotiation through a contract double, adapter schemas and policy, model routing, native awf skill delivery, Git audits, the absence of effort association, and narrow selected-checkout implementation composition. The test-only pi-tools v0.3.0 source pin supplies generic Pi recordings and `createSubagentToolkit` composition for prepared-CWD transport, callback traversal, and invocation isolation; confinement, subprocess supervision, and general presentation mechanics are not reproduced. |
-| Git boundary | Behavioral tests exercise range grammar, repository status, revision and worktree reads, environment isolation, cancellation deadlines, and error identity through package and application boundaries. Native fixtures create real repositories without making backend or source topology part of the contract. |
+| Go behavior | Focused package tests cover effort/worktree safety, migration, session validation, Publisher definition completeness and exactly-once rendering, collision-before-render ordering, deterministic joins, resident roots, and real-Git topology. |
+| Harness publication | Catalog, render, and integration tests prove exactly four fixed `awf-*` skills for Claude and Pi, no AWF roles or adapter, conservative upgrade backup, unrelated-content preservation, and external-package coexistence. |
+| Git boundary | Behavioral tests exercise range grammar, repository status, revision and worktree reads, environment isolation, cancellation deadlines, and error identity through package and application boundaries. Native fixtures create real repositories without making backend topology part of the contract. |
 | Test homes | Five `TestMain` suites use canonical `home-<decimal>` homes, retain Go's default `GOPATH`, and sweep only homes older than 24 hours. Failure to remove the current home fails the suite. |
-
-The CI Pi lane and explicit `./x pi-test run` execute the host suite directly. The Go `TestPiRealRuntimeSmoke` wrapper runs only when `AWF_PI_RUNTIME_SMOKE=1` and otherwise skips to avoid duplicating that suite. It requires the named selected-checkout lifecycle proof to pass. Adapter tests prove successful and failed protocol-v2 negotiation, no-fallback behavior, profile routing delivery, generated role discovery, absent retired effort-association outputs, and the narrow toolkit lifecycle above without testing external context, handoff, subprocess supervision, or presentation internals.
 
 ### Parallelism
 
-Run tests concurrently only when their mutable state is independent. CI may execute independent Go, Pi, and platform lanes in parallel; package-global seam families remain serial within each process. `t.Setenv` blocks its calling test, not the package, and `internal/worktree` stays in-process serial because package-level filesystem-ownership swaps race.
+Run tests concurrently only when mutable state is independent. CI may execute independent Go and platform lanes in parallel; package-global seam families remain serial within each process. `t.Setenv` blocks its calling test, not the package, and `internal/worktree` stays in-process serial because package-level filesystem-ownership swaps race.
 
 ### Test shape
 

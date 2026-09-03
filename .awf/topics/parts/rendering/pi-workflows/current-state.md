@@ -1,54 +1,14 @@
-Pi workflow contracts: awf profile policy, native skills, and workflow guidance.
+Pi publishes AWF-specific skills while generic skills and role delegation remain operator-installed dependencies.
 
 ## Claims
 
-### `invariant: pi-dedicated-grounding-dispatch`
+### `invariant: pi-native-awf-skills`
 
-The generated Pi adapter loads the rendered premise-checker role for independent premise challenges through `subagent_grounding`, while read-only discovery uses the explorer role through `subagent_explore`. The context skill owns selection between orientation, exploration, and premise challenge across the stated evidence boundary. Non-Pi targets contain no Pi subagent tool names.
+The fixed Pi target renders exactly `awf-effort`, `awf-topics`, `awf-decisions`, and `awf-maintenance` under `.pi/skills/`, independent of the configured project prefix. AWF renders no Pi agents, subagent adapter, model router, role policy, or preference store.
 Backing: test
 
-### `invariant: pi-extension-editor-quiet-strip`
+### `invariant: pi-external-role-boundary`
 
-Every governed retained Pi extension file carries the ts-nocheck directive on the line immediately after the provenance banner, and the host harness deterministically strips that exact directive from every copied extension TypeScript file after source copy and before strict compilation.
-Backing: test
-
-### `invariant: pi-implementation-bounded-concurrency`
-
-The implementation profile admits at most four active calls and omits parent-batch exclusivity. One batch may contain only dependency-independent implementation units whose canonical write sets are explicit and disjoint in the same selected checkout; dependent, overlapping, ambiguous, shared, global, generated, and current-state work remains sequential or parent-owned. Pi-tools owns scheduling, cancellation, queueing, and execution confinement, while awf owns the bounded profile declaration, selected-checkout Git policy, and workflow guidance.
-Backing: test
-
-### `invariant: pi-native-workflow-skills`
-
-Pi renders every catalog skill, including the generic `effort-workflow` skill, at `.pi/skills/<prefix>-<name>/SKILL.md`; no router, hidden workflow-body output, target-owned `using-effort` companion, or effort association extension remains. Non-Pi targets retain their own ordinary catalog rendering without referring to retired Pi effort artifacts.
-Backing: test
-
-### `invariant: pi-structured-exploration-contract`
-
-The generated adapter atomically registers four closed-schema profiles with optional exact model routing: premise checking, exploration, combined report-only review, and commit-disabled implementation. The review profile has no artifact-kind argument and uses the shared `review` preference role. Implementation alone accepts optional `verificationCheckout`; preparation validates and caches one canonical accessible descendant checkout as both child CWD and unchanged-HEAD-and-index identity, while omission retains root/root. This does not confine deliberately targeted paths or move the parent session. Exploration, premise checking, and review each declare ten active calls; implementation declares four and no parent-batch exclusivity.
-Backing: test
-
-### `invariant: pi-subagent-model-preferences`
-
-The generated adapter merges user-global and gitignored project-local preferences per field for the shared default, every grounding, exploration, review, and implementation role, and the small, standard, and large tiers. Completeness requires every field explicitly after merging; missing fields remain valid and visible, while malformed, overlong, unregistered, unauthenticated, unavailable, or unreadable configured fields block all implicit routing and leave valid explicit calls usable. Preference and registry state reload once for every profile invocation before pi-tools queue acquisition; no post-queue awf reload remains.
-Backing: test
-
-### `invariant: pi-subagent-model-routing`
-
-Every profile accepts only omission or an exact registry-valid provider/model-id of at most 256 printable-ASCII characters, excluding space and DEL. The schemas and preference parser derive that form from one shared pattern constant. Omission alone requests configured role routing and parent fallback; sentinel values reject with an omit-the-field repair and are never normalized, and overlong references report overlong before form rejection. Async selection reloads preferences against the session-owned live registry, reports requested and resolved routing facts, and returns a concrete model for pi-tools to validate again before execution.
-Backing: test
-
-### `invariant: pi-subagent-model-wizard`
-
-The /awf-subagent-models command is a TUI-only atomic wizard for the shared default, all four explicit role defaults, and the small, standard, and large tiers. It preserves scope and error display, complete cancellation without writes, live registry-gated Luna/Terra/Sol preset selection, informed manual selectors, project-local gitignore enforcement, owner-only sibling-temp replacement, stale-writer detection, cleanup, and in-memory refresh, and it writes roles and tiers together as one preference transaction.
-Backing: test
-
-### `invariant: pi-implement-role-artifact`
-
-The generated adapter builds the implementation profile prompt from the rendered commit-disabled implementer agent at its `.pi/agents/` path through the shared loader and strips frontmatter. Preparation resolves and caches the validated checkout before dispatch, returns it as child CWD, and before and after Git snapshots use that same identity. Any changed or unverifiable selected HEAD or index fails closed without reverting the worktree and directs the parent to recover only the offending Git state while preserving sibling and unrelated edits. The generic implementer role contract carries no Pi-only checkout-routing duty.
-Backing: test
-
-### `invariant: pi-role-contract-loader`
-
-Every dispatched profile loads its role contract from the rendered agent artifact through one shared loader that reads the file, strips frontmatter, prepends role-specific per-call authority, and fails with an actionable enable-and-render repair naming the role when the file is missing or its instruction body is empty. No dispatched role prose remains inline in the adapter.
+Generic Pi skills and roles come from a globally installed `agentic-skills` package. Role delegation additionally requires a separately installed compatible `pi-tools`; AWF does not install, vendor, update, configure, or probe either dependency.
 Backing: unbacked
-Verify: Inspect the generated adapter for one shared loader, confirm each dispatched role path uses it, and simulate missing and body-empty agent artifacts to verify actionable role-specific refusal.
+Verify: Inspect the standard catalog and Pi target declarations, confirm only the four fixed AWF skills and session-handoff capability remain, and search production code for network, installation, package-probing, role-registration, routing, policy, profile, and preference behavior tied to either external dependency.

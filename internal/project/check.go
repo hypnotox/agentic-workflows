@@ -163,7 +163,7 @@ func markerNotes(files []RenderedFile) []string {
 func artifactLabel(tid string) string {
 	segs := strings.Split(tid, "/")
 	switch segs[0] {
-	case "skills", "agents", "docs":
+	case "skills", "docs":
 		name := segs[1]
 		if segs[0] != "skills" {
 			name = strings.TrimSuffix(name, ".md.tmpl")

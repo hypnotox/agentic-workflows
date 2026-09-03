@@ -7,6 +7,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
 func TestDomainDescriptorProjectsCatalogSections(t *testing.T) {
@@ -25,11 +26,10 @@ func TestBuildOutputDefinitionsCoversTargetAndMetadataEdges(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	sharedOutput := piTarget.Outputs[0]
-	sharedOutput.Path, sharedOutput.TemplateID = "shared", "template"
+	sharedOutput := artifactregistry.TargetOutput{Path: "shared", TemplateID: "template", Producer: artifactregistry.TargetOutputTemplate, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, PolicyDeclared: true}
 	targets := []artifactregistry.Target{{Name: "one", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{sharedOutput}}, {Name: "two", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{sharedOutput}}}
 	read := memoryProjectReader{".awf/topics/metadata/note.txt": []byte("ignored")}
-	decls, err := buildOutputDefinitions(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, targets, read)
+	decls, err := buildOutputDefinitions(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Docs: map[string]catalog.DocEntry{}}, targets, read)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -47,7 +47,7 @@ func TestBuildOutputDefinitionsCoversTargetAndMetadataEdges(t *testing.T) {
 	unknownOutput := sharedOutput
 	unknownOutput.Path, unknownOutput.RequiresSkill = "missing", "absent"
 	unknown := []artifactregistry.Target{{Name: "bad", AgentDialect: artifactregistry.MarkdownAgentDialect, Outputs: []artifactregistry.TargetOutput{unknownOutput}}}
-	if _, err := buildOutputDefinitions(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}, unknown, read); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
+	if _, err := buildOutputDefinitions(cfg, &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Docs: map[string]catalog.DocEntry{}}, unknown, read); err == nil || !strings.Contains(err.Error(), "unknown catalog skill") {
 		t.Fatalf("unknown target requirement error = %v", err)
 	}
 }

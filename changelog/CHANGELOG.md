@@ -8,6 +8,14 @@ query a single version or a range.
 
 ## [Unreleased]
 
+### Breaking changes
+
+- Extract generic skills, role prompts, and the Pi role adapter into the separately installed `agentic-skills` package. AWF now publishes only the fixed `awf-effort`, `awf-topics`, `awf-decisions`, and `awf-maintenance` skills. Schema 52 renames retained authored skill overrides, preserves removed generic skill and role overrides as adjacent `.awf-bak` files, and prunes retired managed outputs conservatively.
+
+### Others
+
+- Remove AWF's adapter-only Pi runtime test lane, Node development dependency, model-routing and profile infrastructure, while keeping the binary offline and independent of globally installed harness packages.
+
 ## [0.47.0] - 2026-09-03
 
 ### Breaking changes

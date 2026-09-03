@@ -29,8 +29,7 @@ func TestResolveSidecarUsesSemanticCapabilitiesAndOwnedLayouts(t *testing.T) {
 	cases := []struct {
 		kind, name, field, path string
 	}{
-		{"skill", "using-awf", "data.custom", ".awf/skills/using-awf.yaml"},
-		{"agent", "implementer", "dataDefaults.tools", ".awf/agents/implementer.yaml"},
+		{"skill", "awf-maintenance", "data.custom", ".awf/skills/awf-maintenance.yaml"},
 		{"doc", "architecture", "data.custom", ".awf/docs/architecture.yaml"},
 		{"doc", "working-with-awf", "data.custom", ".awf/working-with-awf.yaml"},
 		{"doc", "glossary", "data.custom", ".awf/docs/glossary.yaml"},
@@ -47,15 +46,15 @@ func TestResolveSidecarUsesSemanticCapabilitiesAndOwnedLayouts(t *testing.T) {
 			}
 		})
 	}
-	section := catalog.Standard.Skills["using-awf"].Sections[0]
+	section := catalog.Standard.Skills["awf-maintenance"].Sections[0]
 	for _, tc := range []struct{ kind, name, field string }{
 		{"bogus", "x", "data.key"},
 		{"skill", "absent", "data.key"},
 		{"domain", "absent", "paths"},
 		{"domain", "tooling", "data.key"},
-		{"skill", "using-awf", "data"},
-		{"skill", "using-awf", "sections.absent.drop"},
-		{"skill", "using-awf", "sections." + section},
+		{"skill", "awf-maintenance", "data"},
+		{"skill", "awf-maintenance", "sections.absent.drop"},
+		{"skill", "awf-maintenance", "sections." + section},
 		{"doc", "runbooks/incident", "data.key"},
 	} {
 		if _, err := ResolveSidecar(state, cfg, tc.kind, tc.name, tc.field); err == nil {
@@ -78,11 +77,11 @@ func TestResolveTargetsRejectMissingAuthoringAuthority(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			for _, resolve := range []func(*project.Session, *config.Config) error{
 				func(state *project.Session, cfg *config.Config) error {
-					_, err := project.ResolveSidecarTarget(state, cfg, "skill", "using-awf", "data.custom")
+					_, err := project.ResolveSidecarTarget(state, cfg, "skill", "awf-maintenance", "data.custom")
 					return err
 				},
 				func(state *project.Session, cfg *config.Config) error {
-					_, err := project.ResolveAuthoringTarget(state, cfg, "skill", "using-awf", "identity")
+					_, err := project.ResolveAuthoringTarget(state, cfg, "skill", "awf-maintenance", "identity")
 					return err
 				},
 			} {
@@ -100,8 +99,7 @@ func TestResolvePartUsesKindCatalogConfigurationAndLayouts(t *testing.T) {
 		kind, name, part string
 		local            bool
 	}{
-		{"skill", "using-awf", catalog.Standard.Skills["using-awf"].Sections[0], false},
-		{"agent", "implementer", catalog.Standard.Agents["implementer"].Sections[0], false},
+		{"skill", "awf-maintenance", catalog.Standard.Skills["awf-maintenance"].Sections[0], false},
 		{"doc", "architecture", catalog.Standard.Docs["architecture"].Sections[0], false},
 		{"domain", "tooling", catalog.Standard.DomainDoc.Sections[0], false},
 		{"doc", "runbooks/incident", "body", true},

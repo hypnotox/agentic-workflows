@@ -11,6 +11,5 @@ For volatile mechanisms, compose at the outer boundary that knows production and
 |---|---|
 | `golangci-lint` | Lint and format. |
 | `deadcode` | Dead-code gate (ADR-0063). |
-| Pi lane dependencies | Pinned Node, TypeScript, Pi ai/TUI test packages, TypeBox, and the checksummed test-only pi-tools source in `tools/pi-extension-test/`. The host lane installs its lockfile into a checkout-local tree with `npm ci --ignore-scripts`, validates a Node/npm/platform fingerprint, and uses narrow throwaway copies. |
 
-Pi and `hypnotox/pi-tools` are adopter-supplied, not awf binary dependencies. The strict lane directly consumes `pi-tools/testing` v0.3.0 as source-only test support; adopters install `pi-tools` independently at an unpinned revision; successful protocol-v2 negotiation and final profile registration, rather than a package revision, define compatibility. `pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation. Awf owns the rendered profile adapter and workflow policy, emits no Pi-specific effort association or memory tools, and declares no adopter Pi package-version floor.
+`agentic-skills` and `pi-tools` are operator-supplied harness packages, not AWF source, binary, or development dependencies. `agentic-skills` owns generic skills, canonical roles, and its Pi role adapter. `pi-tools` owns Pi role execution and runtime mechanics. AWF publishes only its four repository-local skills and does not vendor, install, update, pin, or probe either package.

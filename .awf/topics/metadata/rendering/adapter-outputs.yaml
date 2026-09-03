@@ -1,4 +1,5 @@
 title: Adapter outputs
-summary: Generated executable adapter-runtime outputs and their ownership boundary.
+summary: The retired AWF adapter surface and external role ownership boundary.
 paths:
-  - .pi/extensions/**
+  - internal/artifactregistry/**
+  - templates/embed.go

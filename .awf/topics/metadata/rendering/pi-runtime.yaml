@@ -1,5 +1,6 @@
 title: Pi runtime
-summary: "The Pi runtime and its boundaries."
+summary: "The retained Pi host capability and external dependency boundary."
 paths:
   - internal/catalog/**
-  - .pi/extensions/**
+  - templates/skills/awf-effort/**
+  - docs/pi-runtime-reference.md

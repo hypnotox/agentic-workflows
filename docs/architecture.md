@@ -28,7 +28,7 @@ awf renders workflow guidance from committed `.awf/` configuration. The CLI owns
 - `internal/git`: the sole semantic Git seam.
 - `internal/snapshot` and `internal/filesystem`: immutable input and confined filesystem boundaries; snapshot keeps live path-and-mode inventory distinct from selected content bytes.
 - `cmd/awf`: thin CLI composition root for command lookup, parsing, concrete construction, one focused invocation, renderer or protocol-bypass selection, streams, and exit mapping.
-- Generated Pi extensions: one awf-owned protocol-v2 profile adapter. Awf emits no Pi-specific effort association or memory tools. Independently installed, unpinned `hypnotox/pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation; successful handshake and final profile registration define compatibility, with an actionable no-fallback failure otherwise.
+- Harness outputs: Claude and Pi each receive only `awf-effort`, `awf-topics`, `awf-decisions`, and `awf-maintenance`. Operator-installed `agentic-skills` owns generic skills, canonical roles, and its Pi adapter; separately installed `pi-tools` owns Pi role execution and runtime mechanics. AWF emits no role prompts, adapter, router, policy, or preference store and never installs or probes either dependency.
 - Auxiliary commands: `cmd/deadcodecheck`, `cmd/pincheck`, `cmd/releasecheck`, `cmd/repoaudit`, `cmd/testselection`, and `cmd/versioncheck`.
 
 

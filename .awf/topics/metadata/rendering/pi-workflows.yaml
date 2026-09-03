@@ -1,6 +1,6 @@
 title: Pi workflows
-summary: "Pi workflow contracts: subagent tools, session handoff, native skills, exploration dispatch."
+summary: "Pi publication of AWF skills and the external generic-role boundary."
 paths:
-  - templates/**
+  - templates/skills/**
   - internal/catalog/**
-  - .pi/extensions/**
+  - .pi/skills/**

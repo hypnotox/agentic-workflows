@@ -11,11 +11,11 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
-// TestSkillProseToolAgnostic backs inv: skill-prose-tool-agnostic (ADR-0038):
+// TestSkillProseToolAgnostic backs the AWF skill prose boundary:
 // every rendered skill and agent body is free of runtime tool-name tokens. The
 // denylist is matched case-insensitively and word-anchored, so it does not fire
 // on the neutral "subagent" / "subagent's prompt" replacement language.
-// invariant: rendering/workflow-skill-templates:skill-prose-tool-agnostic (TestSkillProseToolAgnostic)
+// invariant: rendering/workflow-skill-templates:awf-skill-prose-tool-agnostic (TestSkillProseToolAgnostic)
 //
 // Also the tool-name half of the implementer contract's third sentence: the
 // scan covers every rendered agent body, the implementer's included.
@@ -68,8 +68,5 @@ func TestSkillProseToolAgnostic(t *testing.T) {
 	}
 	for name := range cat.Skills {
 		scan(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name))
-	}
-	for name := range cat.Agents {
-		scan(fmt.Sprintf("agents/%s.md.tmpl", name))
 	}
 }

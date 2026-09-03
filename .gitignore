@@ -11,11 +11,10 @@
 # negate the user's global CLAUDE.md ignore so the rendered artifact commits.
 !CLAUDE.md
 
-# Keep shared repository infrastructure and Pi adapter output visible despite
+# Keep shared repository infrastructure and generated Pi skills visible despite
 # common global ignores.
 !.github/
 !.pi/
-.pi/awf-subagents.local.json
 
 # Per-checkout maintainer caches, including golangci-lint
 # observability, are operator-owned and never committed.
@@ -25,8 +24,4 @@
 # clobbering it on render. That is a local rescue copy of superseded content, so
 # it is never committed; one reached main before this rule existed.
 *.awf-bak
-
-# Host Pi-lane dependencies and its successful-install identity are checkout-local.
-tools/pi-extension-test/node_modules/
-tools/pi-extension-test/.host-deps-*.ok
-tools/pi-extension-test/.host-lane.lock
+*.awf-bak.[0-9]*

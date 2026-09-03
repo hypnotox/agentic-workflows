@@ -9,8 +9,28 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
+
+func buildContextSkillMigrationForTest(t *testing.T, ctx context.Context, root string) ([]Change, []FileMutation, error) {
+	t.Helper()
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer files.Close() //nolint:errcheck // test helper reports migration behavior
+	tree := &ProposedTree{files: files, mutations: map[string]FileMutation{}}
+	changes := &Changes{}
+	planned, err := renameRepositoryContextSkill(ctx, tree, changes)
+	if err != nil {
+		return changes.Items(), nil, err
+	}
+	if err := tree.overlay(planned); err != nil {
+		return changes.Items(), nil, err
+	}
+	return changes.Items(), tree.coalesced(), nil
+}
 
 // invariant: config/migrations-and-locks:context-skill-source-migration (TestContextSkillMigrationPreservesAuthoredSources)
 func TestContextSkillMigrationPreservesAuthoredSources(t *testing.T) {
@@ -20,12 +40,9 @@ func TestContextSkillMigrationPreservesAuthoredSources(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/skills/parts/repository-context/explore.md"), "Custom exploration.\n")
 
 	before := snapshot(t, root)
-	applied, changes, mutations, err := Build(context.Background(), root)
+	changes, mutations, err := buildContextSkillMigrationForTest(t, context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
-	}
-	if !slices.Equal(applied, []string{contextSkillMigration}) {
-		t.Fatalf("applied = %v", applied)
 	}
 	if len(changes) != 1 || changes[0].Text != "renamed the repository-context skill to context" {
 		t.Fatalf("changes = %#v", changes)
@@ -53,9 +70,9 @@ func TestContextSkillMigrationHandlesAbsentAndEquivalentTargets(t *testing.T) {
 	t.Run("no authored sources", func(t *testing.T) {
 		root := t.TempDir()
 		writeLock(t, root, 50)
-		applied, changes, mutations, err := Build(context.Background(), root)
-		if err != nil || !slices.Equal(applied, []string{contextSkillMigration}) || len(changes) != 1 || len(mutations) != 0 {
-			t.Fatalf("Build() = applied=%v changes=%v mutations=%v err=%v", applied, changes, mutations, err)
+		changes, mutations, err := buildContextSkillMigrationForTest(t, context.Background(), root)
+		if err != nil || len(changes) != 1 || len(mutations) != 0 {
+			t.Fatalf("migration = changes=%v mutations=%v err=%v", changes, mutations, err)
 		}
 	})
 
@@ -65,7 +82,7 @@ func TestContextSkillMigrationHandlesAbsentAndEquivalentTargets(t *testing.T) {
 		for _, path := range []string{".awf/skills/repository-context.yaml", ".awf/skills/context.yaml"} {
 			testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(path)), "data: {}\n")
 		}
-		_, _, mutations, err := Build(context.Background(), root)
+		_, mutations, err := buildContextSkillMigrationForTest(t, context.Background(), root)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -82,7 +99,7 @@ func TestContextSkillMigrationRefusesConflictingTarget(t *testing.T) {
 	testsupport.WriteFile(t, filepath.Join(root, ".awf/skills/context.yaml"), "data:\n  note: new\n")
 	before := snapshot(t, root)
 
-	_, changes, mutations, err := Build(context.Background(), root)
+	changes, mutations, err := buildContextSkillMigrationForTest(t, context.Background(), root)
 	if err == nil || !strings.Contains(err.Error(), "already exists with different content or mode") {
 		t.Fatalf("Build() error = %v", err)
 	}
@@ -97,7 +114,7 @@ func TestContextSkillMigrationHonorsCancellation(t *testing.T) {
 	writeLock(t, root, 50)
 	ctx, cancel := context.WithCancel(context.Background())
 	cancel()
-	if _, _, _, err := Build(ctx, root); !errors.Is(err, context.Canceled) {
+	if _, _, err := buildContextSkillMigrationForTest(t, ctx, root); !errors.Is(err, context.Canceled) {
 		t.Fatalf("Build() error = %v, want cancellation", err)
 	}
 }
@@ -110,7 +127,7 @@ func TestContextSkillMigrationPreservesMode(t *testing.T) {
 	if err := os.Chmod(path, 0o640); err != nil {
 		t.Fatal(err)
 	}
-	_, _, mutations, err := Build(context.Background(), root)
+	_, mutations, err := buildContextSkillMigrationForTest(t, context.Background(), root)
 	if err != nil {
 		t.Fatal(err)
 	}

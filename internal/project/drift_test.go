@@ -38,14 +38,14 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 	if drift := checkDeadRefs(renderInputsForTest(p), []RenderedFile{link}); len(drift) != 1 || drift[0].Kind != "dead-reference" {
 		t.Fatalf("link policy drift = %#v", drift)
 	}
-	skill := RenderedFile{Path: "misleading.ts", Content: "example-debugging", Policy: outputplan.Policy{ScanSkillReferences: true}}
+	skill := RenderedFile{Path: "misleading.ts", Content: "awf-maintenance", Policy: outputplan.Policy{ScanSkillReferences: true}}
 	if drift := checkDeadSkillRefs(renderInputsForTest(p), []RenderedFile{skill}, map[string]bool{}); len(drift) != 1 || drift[0].Kind != "dead-skill-reference" {
 		t.Fatalf("skill-reference policy drift = %#v", drift)
 	}
 
 	// Conversely a Markdown-looking path remains unscanned when its declared
 	// policy says it is plain output.
-	plain := RenderedFile{Path: "misleading.md", Content: "[missing](no/such/file.md) example-debugging"}
+	plain := RenderedFile{Path: "misleading.md", Content: "[missing](no/such/file.md) awf-maintenance"}
 	if drift := checkDeadRefs(renderInputsForTest(p), []RenderedFile{plain}); len(drift) != 0 {
 		t.Fatalf("unscanned link drift = %#v", drift)
 	}
@@ -160,7 +160,7 @@ func configHashOf(t *testing.T, root, rel string) string {
 }
 
 func TestRetiredTopicMaximumDoesNotAffectProjection(t *testing.T) {
-	const unrelated = ".claude/skills/example-debugging/SKILL.md"
+	const unrelated = ".claude/skills/awf-maintenance/SKILL.md"
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n")
 	before := configHashOf(t, root, unrelated)
 	if after := configHashOf(t, root, unrelated); after != before {
@@ -170,12 +170,12 @@ func TestRetiredTopicMaximumDoesNotAffectProjection(t *testing.T) {
 
 // invariant: rendering/sync-and-drift:drift-source-set (TestPerTargetDriftProjection)
 func TestPerTargetDriftProjection(t *testing.T) {
-	const planning = ".claude/skills/example-planning/SKILL.md"
+	const planning = ".claude/skills/awf-maintenance/SKILL.md"
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\nvars: {gateCmd: make gate}\n", map[string]string{
-		"skills/parts/planning/shape.md": "ORIGINAL SHAPE\n",
+		"skills/parts/awf-maintenance/generated-documents.md": "ORIGINAL SHAPE\n",
 	})
 	before := configHashOf(t, root, planning)
-	testsupport.WriteFile(t, filepath.Join(root, ".awf/skills/parts/planning/shape.md"), "NEW SHAPE\n")
+	testsupport.WriteFile(t, filepath.Join(root, ".awf/skills/parts/awf-maintenance/generated-documents.md"), "NEW SHAPE\n")
 	if after := configHashOf(t, root, planning); after == before {
 		t.Fatal("consumed part did not change target hash")
 	}
@@ -488,7 +488,7 @@ func TestCheckDetectsHandEdit(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := loadTestSession(testContext(t), root)
 	_ = syncProject(p)
-	skill := filepath.Join(root, ".claude/skills/example-debugging/SKILL.md")
+	skill := filepath.Join(root, ".claude/skills/awf-maintenance/SKILL.md")
 	_ = os.WriteFile(skill, []byte("hand edited\n"), 0o644)
 	drift, _ := checkProject(p, testContext(t))
 	if len(drift) == 0 || drift[0].Kind != "hand-edited" {
@@ -502,7 +502,7 @@ func TestCheckStaleTakesPrecedence(t *testing.T) {
 	if err := syncProject(p); err != nil {
 		t.Fatal(err)
 	}
-	skillPath := ".claude/skills/example-debugging/SKILL.md"
+	skillPath := ".claude/skills/awf-maintenance/SKILL.md"
 	// Make the lock entry stale by corrupting its TemplateHash.
 	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
@@ -543,7 +543,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	const skillPath = ".claude/skills/example-debugging/SKILL.md"
+	const skillPath = ".claude/skills/awf-maintenance/SKILL.md"
 	broken := "---\nname: \"\"\ndescription: \"\"\n---\nbody\n"
 	// Fresh planned bytes, the locked hash, and observed bytes all agree, so
 	// frontmatter validation is the first applicable finding.

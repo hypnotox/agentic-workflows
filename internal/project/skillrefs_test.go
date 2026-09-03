@@ -29,7 +29,7 @@ func deadSkillRefs(t *testing.T, files map[string]string) []string {
 // A managed rendered artifact referencing a known skill outside the effective
 // set fails check; enabling the skill clears it.
 func TestCatalogSkillReferenceIsNeverDead(t *testing.T) {
-	part := map[string]string{"parts/agents-doc/workflow.md": "Use `example-debugging` for test-first work.\n"}
+	part := map[string]string{"parts/agents-doc/workflow.md": "Use `awf-maintenance` for test-first work.\n"}
 	if got := deadSkillRefs(t, part); len(got) != 0 {
 		t.Fatalf("full catalog reference was flagged dead: %v", got)
 	}
@@ -40,7 +40,7 @@ func TestCatalogSkillReferenceIsNeverDead(t *testing.T) {
 // invariant: rendering/doc-outputs:skill-ref-unknown-ignored (TestSkillRefScannerIgnoresUnknownAndFenced)
 func TestSkillRefScannerIgnoresUnknownAndFenced(t *testing.T) {
 	got := deadSkillRefs(t, map[string]string{
-		"parts/agents-doc/workflow.md": "This is example-specific prose about example-bootstrap.sh.\n\n```\nexample-debugging\n```\n",
+		"parts/agents-doc/workflow.md": "This is example-specific prose about example-bootstrap.sh.\n\n```\nawf-maintenance\n```\n",
 	})
 	if len(got) != 0 {
 		t.Fatalf("expected no findings, got %v", got)
@@ -57,11 +57,11 @@ func TestSkillRefScannerIgnoresRetiredUnknownToken(t *testing.T) {
 }
 
 // Whole-token matching is boundary-anchored on the left too: a prefix embedded
-// in a larger word (nonexample-debugging) is not a reference.
+// in a larger word (nonawf-maintenance) is not a reference.
 func TestSkillRefScannerRequiresLeftBoundary(t *testing.T) {
 	got := deadSkillRefs(t,
 		map[string]string{
-			"parts/agents-doc/workflow.md": "Prose about nonexample-debugging tooling.\n",
+			"parts/agents-doc/workflow.md": "Prose about nonawf-maintenance tooling.\n",
 		})
 	if len(got) != 0 {
 		t.Fatalf("expected no findings for an embedded prefix, got %v", got)

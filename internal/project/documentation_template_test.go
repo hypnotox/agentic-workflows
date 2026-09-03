@@ -22,8 +22,9 @@ func TestDocArchitectureTemplate(t *testing.T) {
 		"each concern owner retains its classification, severity, and policy",
 		"`internal/projectmutation` and focused operations: a mechanics-only transaction boundary",
 		"focused operations retain validation, mutation and rollback order, recovery policy, outcomes, and presentation",
-		"one awf-owned protocol-v2 profile adapter with no Pi-specific effort association or memory tools",
-		"`pi-tools` owns general Pi mechanics",
+		"Operator-installed `agentic-skills` owns generic skills, canonical roles, and its Pi adapter",
+		"separately installed `pi-tools` owns Pi role execution and runtime mechanics",
+		"AWF emits no role prompts, adapter, router, policy, or preference store",
 	} {
 		if !strings.Contains(out, phrase) {
 			t.Errorf("expected architecture ownership phrase %q:\n%s", phrase, out)
@@ -33,6 +34,7 @@ func TestDocArchitectureTemplate(t *testing.T) {
 		"configuration loading, rendering, output planning, and repository checks",
 		"retained effort integration",
 		"auxiliary commands may provide repository checks and diagnostics",
+		"one awf-owned protocol-v2 profile adapter",
 	} {
 		if strings.Contains(out, stale) {
 			t.Errorf("architecture retains stale ownership phrase %q:\n%s", stale, out)

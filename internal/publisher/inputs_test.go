@@ -130,7 +130,7 @@ func TestPublisherRefusesPublicationAfterReadOnlyMaterialization(t *testing.T) {
 func TestPublisherOperationFreezesGeneratedCheckSources(t *testing.T) {
 	checkFrozen := func(t *testing.T, mutate func(string)) {
 		t.Helper()
-		state := csRepo(t, sampleYAML, map[string]string{".awf/skills/implementing.yaml": "data:\n  stale: before\n"})
+		state := csRepo(t, sampleYAML, map[string]string{".awf/skills/awf-maintenance.yaml": "data:\n  stale: before\n"})
 		prepared, err := newPublisher(state, testConfig(state), NewFilesystemReader(state.Root()), project.Version).operationState()
 		if err != nil {
 			t.Fatal(err)
@@ -150,7 +150,7 @@ func TestPublisherOperationFreezesGeneratedCheckSources(t *testing.T) {
 	}
 	t.Run("sidecar key membership", func(t *testing.T) {
 		checkFrozen(t, func(root string) {
-			if err := os.WriteFile(filepath.Join(root, ".awf/skills/implementing.yaml"), []byte("data:\n  stale: before\n  added-after-prepare: value\n"), 0o644); err != nil {
+			if err := os.WriteFile(filepath.Join(root, ".awf/skills/awf-maintenance.yaml"), []byte("data:\n  stale: before\n  added-after-prepare: value\n"), 0o644); err != nil {
 				t.Fatal(err)
 			}
 		})

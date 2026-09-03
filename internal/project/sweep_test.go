@@ -53,21 +53,21 @@ func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
 // invariant: rendering/sync-and-drift:closed-config-tree (TestSweepFlagsUnclaimedEntries)
 func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
-		"notes.md":                         "stray\n",
-		"local/context-spills.log":         "repository-private state stays outside configuration\n",
-		"scratch/a.txt":                    "stray\n",
-		"scratch/b/c.txt":                  "stray\n",
-		"skills/readme.txt":                "stray\n",
-		"skills/parts/debugging/stray.txt": "stray\n",
-		"skills/parts/debugging/bogus.md":  "undeclared section\n",
-		"efforts/anything.md":              "session scratch - exempt\n",
-		"efforts/deep/file.awf-bak":        "exempt too\n",
-		"config.yaml.awf-bak.2":            "numbered backup\n",
-		"hooks/pre-commit.sh.awf-bak":      "backup beside a claimed unit\n",
-		"skills/unknown.yaml":              "data: {}\n", // unknown catalog artifact
-		"skills/parts/orphan-target/x.md":  "stray\n",    // unknown catalog artifact
-		"parts/bogus-kind/x.md":            "unknown singleton\n",
-		"parts/workflow/bogus.md":          "undeclared singleton section\n",
+		"notes.md":                               "stray\n",
+		"local/context-spills.log":               "repository-private state stays outside configuration\n",
+		"scratch/a.txt":                          "stray\n",
+		"scratch/b/c.txt":                        "stray\n",
+		"skills/readme.txt":                      "stray\n",
+		"skills/parts/awf-maintenance/stray.txt": "stray\n",
+		"skills/parts/awf-maintenance/bogus.md":  "undeclared section\n",
+		"efforts/anything.md":                    "session scratch - exempt\n",
+		"efforts/deep/file.awf-bak":              "exempt too\n",
+		"config.yaml.awf-bak.2":                  "numbered backup\n",
+		"hooks/pre-commit.sh.awf-bak":            "backup beside a claimed unit\n",
+		"skills/unknown.yaml":                    "data: {}\n", // unknown catalog artifact
+		"skills/parts/orphan-target/x.md":        "stray\n",    // unknown catalog artifact
+		"parts/bogus-kind/x.md":                  "unknown singleton\n",
+		"parts/workflow/bogus.md":                "undeclared singleton section\n",
 	})
 	// hooks enabled so .awf/hooks/*.sh are claimed render units; gateCmd and
 	// the runner keep the enabled hooks command-wiring valid (ADR-0156).
@@ -76,13 +76,13 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 	got := orphanedByPath(drift)
 
 	want := map[string]string{
-		".awf/notes.md":                         unclaimedDetail,
-		".awf/local":                            unclaimedDetail,
-		".awf/scratch":                          unclaimedDetail,
-		".awf/skills/readme.txt":                unclaimedDetail,
-		".awf/skills/parts/debugging/stray.txt": unclaimedDetail,
-		".awf/skills/parts/debugging/bogus.md":  "convention part for a section not in the target's declared set",
-		".awf/skills/unknown.yaml":              "sidecar for an artifact not in the catalog",
+		".awf/notes.md":          unclaimedDetail,
+		".awf/local":             unclaimedDetail,
+		".awf/scratch":           unclaimedDetail,
+		".awf/skills/readme.txt": unclaimedDetail,
+		".awf/skills/parts/awf-maintenance/stray.txt": unclaimedDetail,
+		".awf/skills/parts/awf-maintenance/bogus.md":  "convention part for a section not in the target's declared set",
+		".awf/skills/unknown.yaml":                    "sidecar for an artifact not in the catalog",
 		// invariant: rendering/sync-and-drift:awf-bak-flagged (.awf/config.yaml.awf-bak.2)
 		".awf/config.yaml.awf-bak.2":       bakDetail,
 		".awf/hooks/pre-commit.sh.awf-bak": bakDetail,

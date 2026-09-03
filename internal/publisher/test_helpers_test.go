@@ -22,7 +22,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/snapshot"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -214,18 +213,6 @@ func assertNoLeaks(t *testing.T, out string) {
 }
 func renderSkillGolden(t *testing.T, skill string, data map[string]any) string {
 	return renderGolden(t, "skills/"+skill+"/SKILL.md.tmpl", data)
-}
-func renderAgentGolden(t *testing.T, name string, data map[string]any) string {
-	body := renderGolden(t, "agents/"+name+".md.tmpl", data)
-	description, err := render.Execute(catalog.Standard.Agents[name].Description, data, nil, "agent description")
-	if err != nil {
-		t.Fatal(err)
-	}
-	out, err := encodeMarkdownAgent(agent{Name: catalog.Standard.Agents[name].Name, Description: description, Body: body})
-	if err != nil {
-		t.Fatal(err)
-	}
-	return out
 }
 func pitfallSource(title, extra, body string) string {
 	return "---\ntitle: " + title + "\n" + extra + "---\n" + body

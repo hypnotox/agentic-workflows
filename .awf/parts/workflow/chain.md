@@ -22,7 +22,7 @@
 
 ### Ownership
 
-- `effort-workflow` owns continuity-triggered effort creation through checkpoints, integration, divergence handling, safe topology removal, retrospective, and finish.
+- `awf-effort` owns continuity-triggered effort creation through checkpoints, integration, divergence handling, safe topology removal, retrospective, and finish.
 - Work without continuity need carries no effort or memory.
 - Existing efforts resume under fixed identity only inside their outcome, with one user-managed writer and report-only readers.
 - A distinct active effort is never silently reused. Keep it resumable or transfer necessary context before inspected safe cleanup and archival finish.

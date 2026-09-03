@@ -14,8 +14,8 @@ func TestLocalDocAuthoringGuidance(t *testing.T) {
 	for _, rel := range []string{
 		"docs/working-with-awf.md",
 		"docs/doc-standard.md",
-		".claude/skills/awf-using-awf/SKILL.md",
-		".pi/skills/awf-using-awf/SKILL.md",
+		".claude/skills/awf-maintenance/SKILL.md",
+		".pi/skills/awf-maintenance/SKILL.md",
 	} {
 		b, err := os.ReadFile(filepath.Join(root, rel))
 		if err != nil {
@@ -27,7 +27,7 @@ func TestLocalDocAuthoringGuidance(t *testing.T) {
 			}
 		}
 	}
-	for _, rel := range []string{"docs/working-with-awf.md", ".claude/skills/awf-using-awf/SKILL.md", ".pi/skills/awf-using-awf/SKILL.md"} {
+	for _, rel := range []string{"docs/working-with-awf.md", ".claude/skills/awf-maintenance/SKILL.md", ".pi/skills/awf-maintenance/SKILL.md"} {
 		b, err := os.ReadFile(filepath.Join(root, rel))
 		if err != nil {
 			t.Fatal(err)
@@ -36,7 +36,7 @@ func TestLocalDocAuthoringGuidance(t *testing.T) {
 			t.Errorf("%s lacks recovery guidance", rel)
 		}
 	}
-	for _, rel := range []string{".claude/skills/awf-using-awf/SKILL.md", ".pi/skills/awf-using-awf/SKILL.md"} {
+	for _, rel := range []string{".claude/skills/awf-maintenance/SKILL.md", ".pi/skills/awf-maintenance/SKILL.md"} {
 		b, err := os.ReadFile(filepath.Join(root, rel))
 		if err != nil {
 			t.Fatal(err)

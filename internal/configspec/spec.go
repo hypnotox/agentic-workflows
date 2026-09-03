@@ -61,7 +61,7 @@ type VarEntry struct {
 
 // DataKey describes one adopter-settable sidecar data: key of one artifact.
 type DataKey struct {
-	Kind        string // "skills", "agents", "docs"
+	Kind        string // "skills" or "docs"
 	Artifact    string // artifact name; "agents-doc" uses kind "docs"
 	Key         string
 	Fields      []string // declared record fields when the value is a list of mappings
@@ -103,7 +103,7 @@ var varAvailability = map[string]string{
 var keys = []Entry{
 	{
 		Path: "prefix", Type: "string", Default: "none: required, set at init",
-		Description:  "The name prefix for rendered skills: a skill renders to `<prefix>-<name>` (directory and frontmatter name), and rendered prose references skills by that prefixed name. Must be non-empty, without path separators.",
+		Description:  "The project's short name used in rendered prose and project identity. AWF skill identities are fixed and do not use this value. Must be non-empty, without path separators.",
 		Availability: "Always.",
 	},
 	{

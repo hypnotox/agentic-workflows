@@ -13,20 +13,6 @@
       ]
     },
     {
-      "name": "pi-runtime",
-      "patterns": [
-        ".pi/**",
-        "templates/agents/**",
-        "templates/pi/**",
-        "templates/skills/**",
-        "tools/pi-extension-test/**",
-        "internal/artifactregistry/**",
-        "internal/catalog/**",
-        "internal/project/target.go",
-        "internal/publisher/target.go"
-      ]
-    },
-    {
       "name": "render-template",
       "patterns": [
         ".awf/**",
@@ -61,8 +47,7 @@
         "internal/snapshot/**",
         "internal/upgrade/**",
         "internal/worktree/**",
-        "tools/native-release-test/**",
-        "tools/pi-extension-test/lockrun/**"
+        "tools/native-release-test/**"
       ]
     },
     {

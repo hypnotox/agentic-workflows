@@ -28,7 +28,7 @@ func syncAndReadDebugging(t *testing.T, root string) string {
 	if err := syncProject(p); err != nil {
 		t.Fatalf("Sync: %v", err)
 	}
-	rel := ".claude/skills/example-debugging/SKILL.md"
+	rel := ".claude/skills/awf-maintenance/SKILL.md"
 	b, err := os.ReadFile(filepath.Join(root, rel))
 	if err != nil {
 		t.Fatalf("read %s: %v", rel, err)

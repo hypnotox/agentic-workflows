@@ -86,4 +86,7 @@ bash .awf/upgrade.sh
 ```
 
 Then inspect the changed generated outputs, run `./awf check`, and commit the source, output, and
-lock updates together. For advanced upgrade recovery and triage, see [Debugging](debugging.md).
+lock updates together. Upgrades rename retained authored skill overrides to the four fixed AWF
+identities and preserve removed generic overrides as adjacent `.awf-bak` files. They never copy
+those overrides into the global package. Review backup residue and preserve unrelated harness
+content. For advanced recovery and triage, see [Debugging](debugging.md).

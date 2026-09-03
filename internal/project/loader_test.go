@@ -159,17 +159,17 @@ func TestLoaderOpenOwnsInjectedCompleteView(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	firstSkill := p.catalog().Skills["debugging"]
+	firstSkill := p.catalog().Skills["awf-effort"]
 	firstSkill.Sections[0] = "changed first project"
-	p.catalog().Skills["debugging"] = firstSkill
-	if projectCatalog(renderInputsForTest(second)).Skills["debugging"].Sections[0] == "changed first project" {
+	p.catalog().Skills["awf-effort"] = firstSkill
+	if projectCatalog(renderInputsForTest(second)).Skills["awf-effort"].Sections[0] == "changed first project" {
 		t.Fatal("Loader-opened projects share a mutable catalog snapshot")
 	}
 }
 
 func TestSessionDefensivelyOwnsTargetSnapshots(t *testing.T) {
 	source := []artifactregistry.Target{{
-		Name: "target", Capabilities: []artifactregistry.Capability{artifactregistry.CapabilitySubagentTools},
+		Name: "target", Capabilities: []artifactregistry.Capability{artifactregistry.CapabilitySessionHandoff},
 		Outputs: []artifactregistry.TargetOutput{{Path: "output", Inputs: []artifactregistry.TargetOutputInput{{Path: "input", Role: outputplan.ArtifactTemplate}}}},
 	}}
 	state, err := newSession("root", resident.NewRoots("root", "resident"), false, &config.Config{}, catalog.Standard, source, nil, filesystemProjectReader{root: "root"})
@@ -180,14 +180,14 @@ func TestSessionDefensivelyOwnsTargetSnapshots(t *testing.T) {
 	source[0].Outputs[0].Path = "mutated"
 	source[0].Outputs[0].Inputs[0].Path = "mutated"
 	first := state.Targets()
-	if first[0].Capabilities[0] != artifactregistry.CapabilitySubagentTools || first[0].Outputs[0].Path != "output" || first[0].Outputs[0].Inputs[0].Path != "input" {
+	if first[0].Capabilities[0] != artifactregistry.CapabilitySessionHandoff || first[0].Outputs[0].Path != "output" || first[0].Outputs[0].Inputs[0].Path != "input" {
 		t.Fatalf("project state retained a target construction alias: %#v", first)
 	}
 	first[0].Capabilities[0] = artifactregistry.CapabilitySessionHandoff
 	first[0].Outputs[0].Path = "returned mutation"
 	first[0].Outputs[0].Inputs[0].Path = "returned mutation"
 	second := state.Targets()
-	if second[0].Capabilities[0] != artifactregistry.CapabilitySubagentTools || second[0].Outputs[0].Path != "output" || second[0].Outputs[0].Inputs[0].Path != "input" {
+	if second[0].Capabilities[0] != artifactregistry.CapabilitySessionHandoff || second[0].Outputs[0].Path != "output" || second[0].Outputs[0].Inputs[0].Path != "input" {
 		t.Fatalf("resolvedTargets returned a nested alias: %#v", second)
 	}
 }
@@ -197,12 +197,10 @@ func TestLoaderOpenDoesNotMutateStandardCatalog(t *testing.T) {
 	testsupport.WriteAwfConfig(t, root, "prefix: example\nintegrationBranch: main\n")
 	injectedValue := *catalog.Standard
 	injectedValue.Skills = maps.Clone(catalog.Standard.Skills)
-	injectedValue.Agents = maps.Clone(catalog.Standard.Agents)
 	injectedValue.Docs = maps.Clone(catalog.Standard.Docs)
 	injected := &injectedValue
 	snapshotValue := injectedValue
 	snapshotValue.Skills = maps.Clone(injected.Skills)
-	snapshotValue.Agents = maps.Clone(injected.Agents)
 	snapshotValue.Docs = maps.Clone(injected.Docs)
 	snapshot := &snapshotValue
 
@@ -235,28 +233,28 @@ func TestLoaderStateDefensivelyOwnsLoadedFacts(t *testing.T) {
 	}
 	p.Config().Domains[0] = "mutated"
 	p.Config().Vars["nested"].(map[string]any)["items"].([]any)[0] = "mutated"
-	p.Targets()[0].Capabilities = append(p.Targets()[0].Capabilities, artifactregistry.CapabilitySubagentTools)
-	p.catalog().Skills["debugging"] = catalog.SkillSpec{Sections: []string{"mutated"}}
+	p.Targets()[0].Capabilities = append(p.Targets()[0].Capabilities, artifactregistry.CapabilitySessionHandoff)
+	p.catalog().Skills["awf-effort"] = catalog.SkillSpec{Sections: []string{"mutated"}}
 	got := p.Config()
 	if got.Domains[0] != "tooling" || got.Vars["nested"].(map[string]any)["items"].([]any)[0] != "original" {
 		t.Fatalf("state retained a Loader input alias: %#v", got)
 	}
 	returnedTargets := p.Targets()
 	wantCapabilities := len(returnedTargets[1].Capabilities)
-	returnedTargets[1].Capabilities = append(returnedTargets[1].Capabilities, artifactregistry.CapabilitySubagentTools)
+	returnedTargets[1].Capabilities = append(returnedTargets[1].Capabilities, artifactregistry.CapabilitySessionHandoff)
 	if len(p.Targets()[1].Capabilities) != wantCapabilities {
 		t.Fatal("resolved target accessor returned an alias")
 	}
 	returnedCatalog := p.catalog()
-	first := returnedCatalog.Skills["debugging"]
+	first := returnedCatalog.Skills["awf-effort"]
 	first.Sections[0] = "returned mutation"
-	returnedCatalog.Skills["debugging"] = first
-	if p.catalog().Skills["debugging"].Sections[0] == "returned mutation" {
+	returnedCatalog.Skills["awf-effort"] = first
+	if p.catalog().Skills["awf-effort"].Sections[0] == "returned mutation" {
 		t.Fatal("catalog accessor returned an alias")
 	}
 	complete := p.Catalog()
-	complete.Skills["debugging"] = catalog.SkillSpec{Sections: []string{"complete mutation"}}
-	if p.Catalog().Skills["debugging"].Sections[0] == "complete mutation" {
+	complete.Skills["awf-effort"] = catalog.SkillSpec{Sections: []string{"complete mutation"}}
+	if p.Catalog().Skills["awf-effort"].Sections[0] == "complete mutation" {
 		t.Fatal("complete catalog accessor returned an alias")
 	}
 	if p.Root() != root || p.Roots().Tracked != root || p.Nested() || p.Config().Source() == nil {

@@ -22,7 +22,6 @@ const fixturePolicy = `{
   "version":2,
   "lanes":[
     {"name":"go","patterns":["**/*.go","**/testdata/**","go.mod"]},
-    {"name":"pi-runtime","patterns":["templates/pi/**"]},
     {"name":"render-template","patterns":["templates/**"]},
     {"name":"platform-sensitive","patterns":["**/*_linux.go"]},
     {"name":"release-archive","patterns":["cmd/releasecheck/**"]}
@@ -213,7 +212,7 @@ func TestRangeUsesRequestedHeadPolicyGraphAndSourceTree(t *testing.T) {
 		t.Fatalf("code=%d stderr=%s", code, stderr.String())
 	}
 	result := decodeResult(t, stdout.Bytes())
-	if got, want := laneNames(result.Lanes), []string{"go", "pi-runtime", "render-template"}; !reflect.DeepEqual(got, want) {
+	if got, want := laneNames(result.Lanes), []string{"go", "render-template"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("lanes = %v, want %v; result=%#v", got, want, result)
 	}
 	if got, want := packageNames(result.Packages), []string{"./internal/newpkg"}; !reflect.DeepEqual(got, want) {
@@ -237,13 +236,6 @@ func TestAffectedAndFullCommandsUseTheSameGoTestSemanticsForSelectedPackages(t *
 	full := goTestArgs([]string{"./..."})
 	if len(affected) < 2 || !reflect.DeepEqual(affected[:2], full[:2]) {
 		t.Fatalf("affected command %v and full command %v have different Go test semantics", affected, full)
-	}
-}
-
-func TestFullSuiteEnvironmentExcludesPiRuntimeSmoke(t *testing.T) {
-	environment := environmentWithout([]string{"PATH=/bin", "AWF_PI_RUNTIME_SMOKE=1", "HOME=/tmp/home"}, "AWF_PI_RUNTIME_SMOKE")
-	if got, want := environment, []string{"PATH=/bin", "HOME=/tmp/home"}; !reflect.DeepEqual(got, want) {
-		t.Fatalf("environment = %v, want %v", got, want)
 	}
 }
 

@@ -18,7 +18,7 @@ func TestCatalogDataChangesConfigHash(t *testing.T) {
 			t.Fatal(err)
 		}
 		for _, f := range files {
-			if f.TemplateID == "skills/debugging/SKILL.md.tmpl" {
+			if f.TemplateID == "skills/awf-maintenance/SKILL.md.tmpl" {
 				return f.ConfigHash
 			}
 		}
@@ -27,11 +27,11 @@ func TestCatalogDataChangesConfigHash(t *testing.T) {
 	}
 	before := hashOf()
 	selected := p.catalog()
-	spec := selected.Skills["debugging"]
+	spec := selected.Skills["awf-maintenance"]
 	spec.Data = map[string]any{"testSurfaces": []any{
 		map[string]any{"name": "Changed", "kind": "unit", "location": "here"},
 	}}
-	selected.Skills["debugging"] = spec
+	selected.Skills["awf-maintenance"] = spec
 	p = testStateWith(p, p.Root(), p.Roots(), p.Nested(), selected, p.Targets())
 	after := hashOf()
 	if before == after {

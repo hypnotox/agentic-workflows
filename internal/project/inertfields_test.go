@@ -18,7 +18,7 @@ func TestOpenRejectsInertSidecarFields(t *testing.T) {
 		{
 			name:    "paths on a skill sidecar",
 			cfg:     "prefix: example\nintegrationBranch: main\n",
-			files:   map[string]string{"skills/debugging.yaml": "paths:\n  - '**/*.go'\n"},
+			files:   map[string]string{"skills/awf-maintenance.yaml": "paths:\n  - '**/*.go'\n"},
 			wantErr: "paths: is read only from domain sidecars",
 		},
 		{

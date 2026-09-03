@@ -10,12 +10,8 @@
 |---|---|
 | Go 1.27+ | See `go.mod`. |
 | Native Git | Required at runtime and in tests. |
-| Node v24.19.0 and npm | `.nvmrc` pins the Pi lane runtime. Local NVM selects it without downloading; run `nvm install v24.19.0` if absent. Hosted workflows set `AWF_PI_TEST_SKIP_NVM=1` after setup-node and the runner still rejects any runtime that is not the exact pin. |
-| `hypnotox/pi-tools` for Pi use | Install independently at any protocol-v2-compatible revision; awf does not pin it. |
 
-For adopter Pi sessions, compatibility means a successful protocol-v2 capability handshake and final awf profile registration. Missing, incompatible, late, or rejected negotiation reports an actionable prerequisite error and activates no awf fallback. Awf provides no Pi-specific effort association or memory extension and declares no adopter Pi package-version floor.
-
-The Pi lane requires the pinned host Node and npm, but no services, environment variables, or model credentials.
+AWF development requires no Node runtime, services, model credentials, or globally installed harness packages. Operators install `agentic-skills` globally for generic skills and roles. Pi operators install `pi-tools` separately for role delegation. Neither package is an AWF binary or test dependency, and AWF does not pin, install, update, or probe them.
 
 ```sh
 git clone <repo>
@@ -34,9 +30,8 @@ Tools in `go.mod`'s `tool` block resolve through `go tool`; do not install them 
 | Command | Purpose |
 |---|---|
 | `./x gate [timings]` | Fast commit feedback: version, build, blocking lint, and workflow pins. |
-| `./x test [args]` | Complete Go behavior without the Pi host lane. |
+| `./x test [args]` | Complete Go behavior. |
 | `./x test-affected [--staged\|--range <base>..<head>]` | Run changed owners, reverse dependents, test importers, and smoke packages; uncertain inputs widen or refuse. |
-| `./x pi-test run` | Strict Pi extension behavior. |
 | `./x lint [args]` | Blocking and advisory lint. |
 | `./x deadcode` | Optional whole-program dead-code analysis. |
 | `./x audit-local <base>..<head>` | Advisory repository conformance audit. |
@@ -59,7 +54,6 @@ For volatile mechanisms, compose at the outer boundary that knows production and
 |---|---|
 | `golangci-lint` | Lint and format. |
 | `deadcode` | Dead-code gate (ADR-0063). |
-| Pi lane dependencies | Pinned Node, TypeScript, Pi ai/TUI test packages, TypeBox, and the checksummed test-only pi-tools source in `tools/pi-extension-test/`. The host lane installs its lockfile into a checkout-local tree with `npm ci --ignore-scripts`, validates a Node/npm/platform fingerprint, and uses narrow throwaway copies. |
 
-Pi and `hypnotox/pi-tools` are adopter-supplied, not awf binary dependencies. The strict lane directly consumes `pi-tools/testing` v0.3.0 as source-only test support; adopters install `pi-tools` independently at an unpinned revision; successful protocol-v2 negotiation and final profile registration, rather than a package revision, define compatibility. `pi-tools` owns general context usage, handoff, scheduling, child execution, confinement, execution facts, and presentation. Awf owns the rendered profile adapter and workflow policy, emits no Pi-specific effort association or memory tools, and declares no adopter Pi package-version floor.
+`agentic-skills` and `pi-tools` are operator-supplied harness packages, not AWF source, binary, or development dependencies. `agentic-skills` owns generic skills, canonical roles, and its Pi role adapter. `pi-tools` owns Pi role execution and runtime mechanics. AWF publishes only its four repository-local skills and does not vendor, install, update, pin, or probe either package.
 

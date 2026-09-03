@@ -18,3 +18,20 @@ func TestCheckPreservesReferenceEvidence(t *testing.T) {
 		t.Fatalf("findings=%#v", findings)
 	}
 }
+
+func TestCheckRecognizesFixedAndRetiredAWFSkillReferences(t *testing.T) {
+	out := outputplan.NewOutput(outputplan.OutputSpec{
+		Path:    "AGENTS.md",
+		Content: "awf-effort demo-debugging agentic-debugging",
+		Policy:  outputplan.Policy{ScanSkillReferences: true},
+	})
+	plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "AGENTS.md", Output: &out})})
+	got, err := Check(plan, "demo", map[string]bool{}, map[string]bool{"awf-effort": true}, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	findings := got.Findings()
+	if len(findings) != 2 || findings[0].Evidence.Detail != "awf-effort" || findings[1].Evidence.Detail != "demo-debugging" {
+		t.Fatalf("findings = %#v", findings)
+	}
+}

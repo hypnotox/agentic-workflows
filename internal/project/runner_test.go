@@ -193,17 +193,14 @@ func TestPruneRemovesManagedSymlinkWithoutTargetAccess(t *testing.T) {
 		t.Fatal(err)
 	}
 	backups, _, pruned, err := syncReportProject(p)
-	if err != nil {
-		t.Fatal(err)
+	if err == nil || !strings.Contains(err.Error(), "unsafe pruned managed output") {
+		t.Fatalf("managed symlink refusal = %v", err)
 	}
-	if len(backups) != 0 {
-		t.Fatalf("managed symlink backups = %v", backups)
+	if len(backups) != 0 || slices.Contains(pruned, "x") {
+		t.Fatalf("managed symlink effects = backups %v, pruned %v", backups, pruned)
 	}
-	if !slices.Contains(pruned, "x") {
-		t.Fatalf("managed symlink pruned = %v", pruned)
-	}
-	if _, err := os.Lstat(filepath.Join(root, "x")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("managed symlink remains: %v", err)
+	if _, err := os.Lstat(filepath.Join(root, "x")); err != nil {
+		t.Fatalf("managed symlink removed after refusal: %v", err)
 	}
 }
 

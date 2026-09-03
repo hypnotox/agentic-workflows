@@ -1,0 +1,16 @@
+---
+name: awf-topics
+description: Maintain AWF current-state topics, selectors, claims, backing, and proof.
+---
+
+# AWF topics
+
+Use `agentic-context` for general orientation and evidence gathering. This skill owns AWF's current-state topic mechanism. Current state is separate from decision history; for changed paths, resolve the owning topics and reconcile their representation with reality.
+
+<!-- awf:section claims -->
+## Claims and evidence
+
+Distinguish rules and invariants from other claims. Label each claim with **Backing: test** or **Backing: unbacked**, and include **Verify:** evidence that a reader can run or inspect. Use proof markers where applicable. Treat coverage and fan-out as independent facts: name what paths a topic covers and where its claims reach, without pretending either proves a decision.
+
+Do not turn a decision record into current state or infer a claim from intent. If reality is uncertain, mark it unbacked and state the verification needed.
+<!-- awf:end -->

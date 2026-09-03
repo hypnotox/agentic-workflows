@@ -55,13 +55,13 @@ func assertVersionFixtureUnchanged(t *testing.T, root string, before map[string]
 // invariant: config/migrations-and-locks:schema-min-version (TestSchemaMinimumVersionAuthority)
 // invariant: tooling/cli:single-version-authority (TestSchemaMinimumVersionAuthority)
 func TestSchemaMinimumVersionAuthority(t *testing.T) {
-	if got, want := minVersionBySchema, map[int]string{50: "0.44.0", 51: "0.47.0"}; !reflect.DeepEqual(got, want) {
+	if got, want := minVersionBySchema, map[int]string{50: "0.44.0", 51: "0.47.0", 52: "0.48.0"}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("live schema minimums = %#v, want %#v", got, want)
 	}
 	if err := ValidateSchemaMinimumVersion(migrate.Current(), Version); err != nil {
 		t.Fatalf("current schema minimum: %v", err)
 	}
-	if err := ValidateSchemaMinimumVersion(migrate.Current(), "0.46.1"); err == nil || !strings.Contains(err.Error(), "requires awf 0.47.0") {
+	if err := ValidateSchemaMinimumVersion(migrate.Current(), "0.46.1"); err == nil || !strings.Contains(err.Error(), "requires awf 0.48.0") {
 		t.Fatalf("old binary minimum error = %v", err)
 	}
 	if err := ValidateSchemaMinimumVersion(migrate.LiveSchemaFloor-1, Version); err == nil || !strings.Contains(err.Error(), "no minimum") {
@@ -77,13 +77,13 @@ func TestVersionAuthority(t *testing.T) {
 		name, raw, exposed, want string
 		schema                   int
 	}{
-		{"valid", "0.47.0\n", "0.47.0", "", migrate.Current()},
-		{"missing newline", "0.47.0", "0.47.0", "canonical version file", migrate.Current()},
-		{"extra newline", "0.47.0\n\n", "0.47.0", "canonical version file", migrate.Current()},
-		{"prefixed version", "v0.47.0\n", "v0.47.0", "canonical semantic version", migrate.Current()},
+		{"valid", "0.48.0\n", "0.48.0", "", migrate.Current()},
+		{"missing newline", "0.48.0", "0.48.0", "canonical version file", migrate.Current()},
+		{"extra newline", "0.48.0\n\n", "0.48.0", "canonical version file", migrate.Current()},
+		{"prefixed version", "v0.48.0\n", "v0.48.0", "canonical semantic version", migrate.Current()},
 		{"leading zero", "0.047.0\n", "0.047.0", "canonical semantic version", migrate.Current()},
-		{"divergent exposed value", "0.47.0\n", "0.46.1", "embedded version", migrate.Current()},
-		{"missing schema mapping", "0.47.0\n", "0.47.0", "no minimum", migrate.Current() + 1},
+		{"divergent exposed value", "0.48.0\n", "0.47.0", "embedded version", migrate.Current()},
+		{"missing schema mapping", "0.48.0\n", "0.48.0", "no minimum", migrate.Current() + 1},
 		{"retired schema", "0.23.0\n", "0.23.0", "no minimum", 20},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

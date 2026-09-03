@@ -263,9 +263,6 @@ func buildOutputDefinitionsFromState(cfg *config.Config, cat *catalog.Catalog, t
 		for _, name := range slices.Sorted(maps.Keys(cat.Skills)) {
 			addTarget(artifactregistry.OutputPath(cat, target, cfg.Prefix, "skills", name), mustDescriptor("skills").templateID(cat, name), "skills:"+name, target)
 		}
-		for _, name := range slices.Sorted(maps.Keys(cat.Agents)) {
-			addTarget(artifactregistry.OutputPath(cat, target, cfg.Prefix, "agents", name), mustDescriptor("agents").templateID(cat, name), "agents:"+name, target)
-		}
 		add(target.BridgeFile, target.BridgeTemplate, target.BridgeTemplate, "bridge\x00"+target.BridgeTemplate)
 		for _, output := range resolvedTargetOutputs(target, cfg.Prefix, slices.Sorted(maps.Keys(cat.Skills))) {
 			addTarget(output.Path, output.TemplateID, "target-output", target)

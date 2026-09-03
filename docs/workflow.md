@@ -12,7 +12,10 @@
 Use the narrowest relevant test, build, or lint command while editing, then run available affected-package feedback. The fast commit tier runs at the commit boundary; terminal exhaustive verification runs at implementation completion. Rely on a wired pre-commit or pre-push hook when present rather than manually duplicating its matching gate.
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
-You own the project's long-term health, not just the task in front of you: defects caused by the transaction or blocking its safe completion are repaired in the same commit; unrelated concrete defects are recorded and routed separately without expanding scope. Three rules bind every change: reality and its docs move together, the deterministic gate is green before every commit, and each commit carries exactly one concern.
+Safety rules, the user request, and repository instructions remain authoritative. Globally installed
+`agentic-*` skills supply general context, brainstorming, debugging, code design, planning,
+implementation, and review defaults. The four repository-local `awf-*` skills specialize only AWF
+efforts, topics, decisions, and maintenance. AWF never installs or probes the external package.
 
 <!-- awf:template-source templates/partials/protected-contract.md -->
 **The protected contract.**
@@ -26,12 +29,6 @@ Precedence is decided per constraint, not per rule. A clause that bears only on 
 <!-- awf:template-source templates/partials/governance-footprints.md -->
 Awf renders one standard governance footprint. Projects apply its capabilities when relevant rather than selecting a profile or rigor mode.
 
-<!-- awf:template-source templates/docs/workflow.md.tmpl -->
-### Model selection
-
-<!-- awf:template-source templates/partials/model-selection.md -->
-Every governed subagent dispatch chooses the smallest model expected to complete reliably: `small` is for narrow, mechanical, low-ambiguity work; `standard` is for substantive but bounded work; and `large` is for broad, intricate, cross-cutting, or high-consequence work. Uncertainty, failed reasoning, or widened scope requires reconsideration and possible escalation. A runtime with model selection chooses explicitly; an unsupported runtime uses its harness default and notes that explicit selection is unavailable.
-
 <!-- awf:template-source templates/partials/semantic-owner-assurance.md -->
 **Semantic-owner assurance.**
 
@@ -44,7 +41,7 @@ Decomposition preserves parent-owned focused evidence for each fresh unit, and t
 <!-- awf:template-source templates/docs/workflow.md.tmpl#chain -->
 <!-- awf:edit chain: from .awf/parts/workflow/chain.md -->
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
-## The chain
+## Capability routing
 ### Triggers
 
 | Trigger | Fires when |
@@ -69,7 +66,7 @@ Decomposition preserves parent-owned focused evidence for each fresh unit, and t
 
 ### Ownership
 
-- `effort-workflow` owns continuity-triggered effort creation through checkpoints, integration, divergence handling, safe topology removal, retrospective, and finish.
+- `awf-effort` owns continuity-triggered effort creation through checkpoints, integration, divergence handling, safe topology removal, retrospective, and finish.
 - Work without continuity need carries no effort or memory.
 - Existing efforts resume under fixed identity only inside their outcome, with one user-managed writer and report-only readers.
 - A distinct active effort is never silently reused. Keep it resumable or transfer necessary context before inspected safe cleanup and archival finish.
@@ -81,81 +78,24 @@ Decomposition preserves parent-owned focused evidence for each fresh unit, and t
 <!-- awf:template-source templates/docs/workflow.md.tmpl -->
 ## Working memory
 
-### Creation and identity
+An AWF effort is optional. When continuity materially helps, `awf-effort` alone owns creation,
+immutable identity, one resident and writer, its managed worktree, checkpoints, integration,
+recovery, removal, retrospective, and finish ordering. Create with
+`./awf effort new --slug <slug> "<title>"` and resolve the resident through
+`./awf effort show <slug>`; do not assume a primary-checkout-relative memory path from a managed
+worktree.
 
-- Session context is volatile; repository authority is not.
+Memory is plain Markdown checkpoint context, not authority. Revalidate it against repository source,
+documentation, tests, and current-state topics on resume. Explorers, reviewers, premise checkers, and
+implementation children never edit it. Work without a continuity need creates no effort or fallback
+persistence.
 
-- Discovery creates no effort.
-
-- Analysis, exploration, prioritization, option comparison, and selection remain effort-free discovery until continuity becomes materially useful.
-
-- Evaluate continuity when brainstorming begins and whenever continuity-relevant facts change. Brainstorming may begin effort-free, but if it continues after its first settled material decision, `effort-workflow` creates or resumes ownership before proceeding further. A single-decision brainstorm may remain effort-free.
-
-- When continuity materially helps, `effort-workflow` alone chooses a faithful outcome, title, and canonical short slug, runs `./awf effort new --slug <slug> "<title>"`, reports the allocated immutable identity, and continues in the managed worktree without an approval stop.
-
-- Work without that continuity need uses neither an effort nor memory.
-
-- An existing effort resumes under its fixed identity and existing validation rules only while work remains inside its outcome. Its title and slug are never retitled, its schema and history are not changed for drift, refinements remain inside its outcome, and material outcome drift deliberately creates a fixed-identity successor that transfers necessary still-valid context, verifies resumability, then closes the obsolete effort through existing topology safety and finish/archive lifecycle.
-
-- If relevant discussion predates creation, initialize owned memory from retained evidence before any handoff: record the current outcome in Brief, every already-settled decision with required user-provenance and `Record:` evidence, relevant observations, and the current execution checkpoint. Missing exact required user evidence must be reconfirmed, not reconstructed.
-
-- A failed creation follows ordinary diagnosis and authority-preserving retry.
-
-- When a distinct effort is active, reason whether to checkpoint and keep it or transfer necessary context before inspected safe cleanup or explicit intentional discard and ordinary archival finish.
-
-- Its immutable slug is the command identity, resident directory, worktree path, and branch suffix. Creation makes a managed worktree at `.awf/worktrees/<slug>/` and reports the path; execution continues there.
-
-- Resolve the owned memory through `./awf effort show <slug>`. Its printed path is resolvable from the current checkout; from a managed worktree, do not assume the primary-root-relative `.awf/efforts/<slug>/memory.md` spelling resolves.
-
-- One effort has one user-managed writer; reviewers, explorers, grounding children, and helpers never edit its memory.
-
-- Standalone memory is forbidden.
-
-### Checkpoints and continuation
-
-- Checkpoints are durable; check-ins are deliberate.
-
-- A checkpoint never creates an effort.
-
-- For effort-backed work, revalidate existing ownership and use ordinary file tools to update the owned Markdown at the path reported by `./awf effort show <slug>` in one writer-owned transaction; effort-free work omits persistence rather than fabricating memory. Awf provides no special memory read, edit, update, owner, preview, or diff protocol.
-
-- It then routes a new material decision or changed approved boundary through the active workflow to brainstorming, while separately reporting a correctness or safety concern, blocker, or failed required verification through the active workflow only when it remains unresolved after required diagnosis and authority-guided remediation; either condition stops progression, while its absence permits a continuity notice and continuation.
-
-- `effort-workflow` owns autonomous first creation when continuity fires.
-
-- Brainstorming retains the single mandatory pre-artifact outline approval check-in, stopping for explicit approval and persisting it only when an effort exists.
-
-- At a persisted formal phase or approval checkpoint, or another safe resumable point whose immediate successor can start independently, judge retained-context relevance and successor work. Continue autonomously or through a target-native successor when one is available. Handoff is prohibited while required late-creation memory initialization remains incomplete.
-
-- Reorient from repository authority before substantive successor work. Append a log only for an actual fresh boundary; continuation, cancellation, or failure that leaves the current session active appends none. Target-specific guidance owns any executable replacement protocol.
-
-A routine implementation checkpoint occurs only at a safe resumable transaction boundary after required verification and any selected review have settled; task headings and helper returns are not checkpoint boundaries.
-
-### Memory format and logs
-
-- New memory is plain Markdown with `## Brief`, `## Checkpoint`, `## Decision log`, `## Observations`, and `## Handoff log`; each section names its contract and consumer.
-
-- The Brief states the outcome and links the effort's durable artifacts as they come to exist. The Checkpoint records the current phase, completed work, verification, next concrete action, blockers, and repository state.
-
-- The decision log is the effort-spanning consensus record: append-only entries "- D<n> <date> <phase> (user|autonomous) <decision>. Why: <one line>." use a monotonic ordinal never reused.
-
-- Settlement, not message, is the entry unit: a decision formed over several replies yields one entry when it settles; affirming presented content records the agreed substance as adjusted, never a bare approval; a refinement appends a new entry declaring "supersedes D<n>", never an edit.
-
-- A user-provenance entry whose decision changes scope, design, authority, or previously-approved output carries an indented `Record:` evidence block quoting the user's load-bearing wording verbatim, plus the referenced presented content and each participant's relevant sections when required to infer the exact meaning; any other user-provenance entry is a plain entry without one, and an autonomous entry records a choice settled under existing authority, challengeable on merit.
-
-- Observations are appended at occurrence as "- <date> <phase> <observation>.": friction, surprises, near-misses, and recurrences. Reviewers receive the pasted user entries and raise any deviation as a user-decision finding; the retrospective reads both logs as primary input.
-
-- Existing memory bytes are opaque to awf. Legacy four-key YAML frontmatter and arbitrary old `phase`, `next`, or `updated` values are accepted and preserved without runtime meaning.
-
-- Missing, symlinked, hard-linked, foreign-owned, or otherwise unsafe required memory still refuses lifecycle mutation without changing target bytes. `state.json` schema 2 remains the machine-readable owner of effort identity.
-
-### Finish and prohibitions
-
-- Never commit the file or cite a concrete owned-memory path in a durable decision record or commit message; the bare efforts directory and angle-bracket placeholder form remain legal.
-
-- Existing `activity.json` is ignored opaque data and travels byte-for-byte with the resident into its archive. Awf creates, reads, parses, validates, mutates, and deletes no activity record; activity is not a lock or source of authority.
-
-- After implementation assurance settles or is explicitly skipped, `effort-workflow` integrates a managed-worktree effort, activates review after any divergent merge, removes path, registration, and branch, invokes retrospective, and runs `./awf effort finish <slug>` last.
+Use the managed worktree for pre-integration work. At a meaningful safe boundary, record completed
+work, settled decisions and observations, verification, repository state, next action, and blockers.
+A fresh successor uses `agentic-context` to reorient before substantive work. Integrate from the
+intended clean primary checkout, resolve divergence visibly, remove managed topology without force,
+and run `./awf effort finish <slug>` last. Never cite a concrete effort-memory path in durable
+records.
 
 <!-- awf:template-source templates/docs/workflow.md.tmpl#commit-discipline -->
 <!-- awf:edit commit-discipline: from .awf/parts/workflow/commit-discipline.md -->

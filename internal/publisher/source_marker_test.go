@@ -79,11 +79,8 @@ func TestSourceMarkerFamilyMatrix(t *testing.T) {
 	for _, path := range []string{
 		"AGENTS.md",
 		"docs/working-with-awf.md",
-		".claude/skills/example-implementing/SKILL.md",
-		".pi/skills/example-implementing/SKILL.md",
-		".claude/agents/reviewer.md",
-		".pi/agents/reviewer.md",
-		".pi/extensions/awf-subagents/index.ts",
+		".claude/skills/awf-maintenance/SKILL.md",
+		".pi/skills/awf-maintenance/SKILL.md",
 		".awf/hooks/pre-commit.sh",
 	} {
 		content, ok := byPath[path]

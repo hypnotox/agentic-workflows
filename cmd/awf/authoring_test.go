@@ -28,13 +28,13 @@ func readAuthoringFile(t *testing.T, root, relative string) []byte {
 // invariant: tooling/cli:semantic-artifact-authoring (TestPartAuthoringCLI)
 func TestPartAuthoringCLI(t *testing.T) {
 	root := scaffoldProject(t)
-	part := catalog.Standard.Skills["brainstorming"].Sections[0]
-	partPath := filepath.ToSlash(filepath.Join(".awf/skills/parts/brainstorming", part+".md"))
-	outputPath := ".claude/skills/example-brainstorming/SKILL.md"
+	part := catalog.Standard.Skills["awf-maintenance"].Sections[0]
+	partPath := filepath.ToSlash(filepath.Join(".awf/skills/parts/awf-maintenance", part+".md"))
+	outputPath := ".claude/skills/awf-maintenance/SKILL.md"
 	lockBefore := readAuthoringFile(t, root, ".awf/awf.lock")
 
 	var stdout, stderr bytes.Buffer
-	if code := runAuthoringAt(root, strings.NewReader("stdin body\n"), []string{"awf", "edit", "skill", "brainstorming", part, "--stdin"}, &stdout, &stderr); code != 0 {
+	if code := runAuthoringAt(root, strings.NewReader("stdin body\n"), []string{"awf", "edit", "skill", "awf-maintenance", part, "--stdin"}, &stdout, &stderr); code != 0 {
 		t.Fatalf("stdin edit exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 	if got := string(readAuthoringFile(t, root, partPath)); got != "stdin body\n" {
@@ -49,7 +49,7 @@ func TestPartAuthoringCLI(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	if code := runAuthoringAt(root, strings.NewReader("unused"), []string{"awf", "edit", "skill", "brainstorming", part, "--content", ""}, &stdout, &stderr); code != 0 {
+	if code := runAuthoringAt(root, strings.NewReader("unused"), []string{"awf", "edit", "skill", "awf-maintenance", part, "--content", ""}, &stdout, &stderr); code != 0 {
 		t.Fatalf("empty edit exit=%d stderr=%q", code, stderr.String())
 	}
 	if got := readAuthoringFile(t, root, partPath); len(got) != 0 {
@@ -58,7 +58,7 @@ func TestPartAuthoringCLI(t *testing.T) {
 
 	stdout.Reset()
 	stderr.Reset()
-	if code := runAuthoringAt(root, strings.NewReader("unused"), []string{"awf", "reset", "skill", "brainstorming", part}, &stdout, &stderr); code != 0 {
+	if code := runAuthoringAt(root, strings.NewReader("unused"), []string{"awf", "reset", "skill", "awf-maintenance", part}, &stdout, &stderr); code != 0 {
 		t.Fatalf("reset exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
 	if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(partPath))); !os.IsNotExist(err) {
@@ -71,19 +71,19 @@ func TestPartAuthoringCLI(t *testing.T) {
 
 func TestPartAuthoringCLIRejectsInvalidModesAndTargetsWithoutMutation(t *testing.T) {
 	root := scaffoldProject(t)
-	part := catalog.Standard.Skills["brainstorming"].Sections[0]
-	outputPath := ".claude/skills/example-brainstorming/SKILL.md"
+	part := catalog.Standard.Skills["awf-maintenance"].Sections[0]
+	outputPath := ".claude/skills/awf-maintenance/SKILL.md"
 	beforeOutput := readAuthoringFile(t, root, outputPath)
 	beforeLock := readAuthoringFile(t, root, ".awf/awf.lock")
-	partPath := filepath.Join(root, ".awf", "skills", "parts", "brainstorming", part+".md")
+	partPath := filepath.Join(root, ".awf", "skills", "parts", "awf-maintenance", part+".md")
 
 	cases := [][]string{
-		{"awf", "edit", "skill", "brainstorming", part},
-		{"awf", "edit", "skill", "brainstorming", part, "--content", "x", "--stdin"},
-		{"awf", "edit", "skill", "brainstorming"},
-		{"awf", "reset", "skill", "brainstorming", part, "--content", "x"},
+		{"awf", "edit", "skill", "awf-maintenance", part},
+		{"awf", "edit", "skill", "awf-maintenance", part, "--content", "x", "--stdin"},
+		{"awf", "edit", "skill", "awf-maintenance"},
+		{"awf", "reset", "skill", "awf-maintenance", part, "--content", "x"},
 		{"awf", "edit", "skill", "absent", part, "--content", "x"},
-		{"awf", "edit", "skill", "brainstorming", part, "--content", "{{=awf:notDeclared}}"},
+		{"awf", "edit", "skill", "awf-maintenance", part, "--content", "{{=awf:notDeclared}}"},
 	}
 	for _, args := range cases {
 		var stdout, stderr bytes.Buffer
@@ -102,13 +102,13 @@ func TestPartAuthoringCLIRejectsInvalidModesAndTargetsWithoutMutation(t *testing
 // invariant: tooling/cli:semantic-artifact-authoring (TestSidecarAuthoringCLIUsesTypedIdempotentModes)
 func TestSidecarAuthoringCLIUsesTypedIdempotentModes(t *testing.T) {
 	root := scaffoldProject(t)
-	sourcePath := ".awf/skills/brainstorming.yaml"
+	sourcePath := ".awf/skills/awf-maintenance.yaml"
 	run := func(args ...string) (string, string, int) {
 		var stdout, stderr bytes.Buffer
 		code := runAuthoringAt(root, strings.NewReader("unused"), append([]string{"awf"}, args...), &stdout, &stderr)
 		return stdout.String(), stderr.String(), code
 	}
-	stdout, stderr, code := run("edit", "sidecar", "skill", "brainstorming", "data.members", "--add-json", `{"name":"api","enabled":true}`)
+	stdout, stderr, code := run("edit", "sidecar", "skill", "awf-maintenance", "data.members", "--add-json", `{"name":"api","enabled":true}`)
 	if code != 0 {
 		t.Fatalf("structured add exit=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
@@ -116,15 +116,15 @@ func TestSidecarAuthoringCLIUsesTypedIdempotentModes(t *testing.T) {
 	if !strings.Contains(string(first), "name: api") || !strings.Contains(string(first), "enabled: true") {
 		t.Fatalf("structured sidecar = %q", first)
 	}
-	stdout, stderr, code = run("edit", "sidecar", "skill", "brainstorming", "data.members", "--add-json", `{"enabled":true,"name":"api"}`)
+	stdout, stderr, code = run("edit", "sidecar", "skill", "awf-maintenance", "data.members", "--add-json", `{"enabled":true,"name":"api"}`)
 	if code != 0 || !bytes.Equal(first, readAuthoringFile(t, root, sourcePath)) || !strings.Contains(stdout, "source effect: none") {
 		t.Fatalf("idempotent add exit=%d stdout=%q stderr=%q source=%q", code, stdout, stderr, readAuthoringFile(t, root, sourcePath))
 	}
-	stdout, stderr, code = run("edit", "sidecar", "skill", "brainstorming", "data.members", "--remove-json", `{"name":"absent"}`)
+	stdout, stderr, code = run("edit", "sidecar", "skill", "awf-maintenance", "data.members", "--remove-json", `{"name":"absent"}`)
 	if code != 0 || !bytes.Equal(first, readAuthoringFile(t, root, sourcePath)) {
 		t.Fatalf("absent remove exit=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
-	stdout, stderr, code = run("reset", "sidecar", "skill", "brainstorming", "data.members")
+	stdout, stderr, code = run("reset", "sidecar", "skill", "awf-maintenance", "data.members")
 	if code != 0 {
 		t.Fatalf("final reset exit=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
@@ -142,9 +142,9 @@ func TestSidecarAuthoringCLISupportsKnownBooleanAndDomainCapabilities(t *testing
 			t.Fatalf("%v exit=%d stdout=%q stderr=%q", args, code, stdout.String(), stderr.String())
 		}
 	}
-	section := catalog.Standard.Skills["brainstorming"].Sections[0]
-	run("edit", "sidecar", "skill", "brainstorming", "sections."+section+".drop", "--json-value", "true")
-	skillSidecar := string(readAuthoringFile(t, root, ".awf/skills/brainstorming.yaml"))
+	section := catalog.Standard.Skills["awf-maintenance"].Sections[0]
+	run("edit", "sidecar", "skill", "awf-maintenance", "sections."+section+".drop", "--json-value", "true")
+	skillSidecar := string(readAuthoringFile(t, root, ".awf/skills/awf-maintenance.yaml"))
 	if !strings.Contains(skillSidecar, "drop: true") {
 		t.Fatalf("typed boolean controls = %q", skillSidecar)
 	}
@@ -158,26 +158,26 @@ func TestSidecarAuthoringCLISupportsKnownBooleanAndDomainCapabilities(t *testing
 // invariant: tooling/cli:semantic-artifact-authoring (TestSidecarAuthoringCLIRejectsModesCapabilitiesAndInvalidCandidateWithoutMutation)
 func TestSidecarAuthoringCLIRejectsModesCapabilitiesAndInvalidCandidateWithoutMutation(t *testing.T) {
 	root := scaffoldProject(t)
-	outputPath := ".claude/skills/example-brainstorming/SKILL.md"
+	outputPath := ".claude/skills/awf-maintenance/SKILL.md"
 	beforeOutput := readAuthoringFile(t, root, outputPath)
 	beforeLock := readAuthoringFile(t, root, ".awf/awf.lock")
-	section := catalog.Standard.Skills["brainstorming"].Sections[0]
+	section := catalog.Standard.Skills["awf-maintenance"].Sections[0]
 	cases := [][]string{
-		{"awf", "edit", "sidecar", "skill", "brainstorming", "data.key"},
-		{"awf", "edit", "sidecar", "skill", "brainstorming", "data.key", "--value", "x", "--json-value", `"x"`},
-		{"awf", "edit", "sidecar", "skill", "brainstorming", "data.key", "--json-value", "1 2"},
-		{"awf", "edit", "sidecar", "skill", "brainstorming", "data", "--value", "x"},
-		{"awf", "edit", "sidecar", "skill", "brainstorming", "sections.absent.drop", "--json-value", "true"},
+		{"awf", "edit", "sidecar", "skill", "awf-maintenance", "data.key"},
+		{"awf", "edit", "sidecar", "skill", "awf-maintenance", "data.key", "--value", "x", "--json-value", `"x"`},
+		{"awf", "edit", "sidecar", "skill", "awf-maintenance", "data.key", "--json-value", "1 2"},
+		{"awf", "edit", "sidecar", "skill", "awf-maintenance", "data", "--value", "x"},
+		{"awf", "edit", "sidecar", "skill", "awf-maintenance", "sections.absent.drop", "--json-value", "true"},
 		{"awf", "edit", "sidecar", "domain", "absent", "paths", "--add", "internal/**"},
-		{"awf", "edit", "sidecar", "skill", "brainstorming", "dataDefaults.invalid", "--value", "not-a-boolean"},
-		{"awf", "edit", "sidecar", "skill", "brainstorming", "sections." + section + ".drop", "--value", "true"},
+		{"awf", "edit", "sidecar", "skill", "awf-maintenance", "dataDefaults.invalid", "--value", "not-a-boolean"},
+		{"awf", "edit", "sidecar", "skill", "awf-maintenance", "sections." + section + ".drop", "--value", "true"},
 	}
 	for _, args := range cases {
 		var stdout, stderr bytes.Buffer
 		if code := runAuthoringAt(root, strings.NewReader("unused"), args, &stdout, &stderr); code == 0 {
 			t.Errorf("%v unexpectedly succeeded: %q", args, stdout.String())
 		}
-		if _, err := os.Stat(filepath.Join(root, ".awf/skills/brainstorming.yaml")); !os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(root, ".awf/skills/awf-maintenance.yaml")); !os.IsNotExist(err) {
 			t.Fatalf("%v changed source: %v", args, err)
 		}
 		if !bytes.Equal(beforeOutput, readAuthoringFile(t, root, outputPath)) || !bytes.Equal(beforeLock, readAuthoringFile(t, root, ".awf/awf.lock")) {
@@ -189,8 +189,8 @@ func TestSidecarAuthoringCLIRejectsModesCapabilitiesAndInvalidCandidateWithoutMu
 // invariant: tooling/cli:semantic-artifact-authoring (TestPartAuthoringCLIRendersPartialReportOnce)
 func TestPartAuthoringCLIRendersPartialReportOnce(t *testing.T) {
 	root := scaffoldProject(t)
-	part := catalog.Standard.Skills["brainstorming"].Sections[0]
-	output := filepath.Join(root, ".claude", "skills", "example-brainstorming", "SKILL.md")
+	part := catalog.Standard.Skills["awf-maintenance"].Sections[0]
+	output := filepath.Join(root, ".claude", "skills", "awf-maintenance", "SKILL.md")
 	if err := os.Remove(output); err != nil {
 		t.Fatal(err)
 	}
@@ -199,7 +199,7 @@ func TestPartAuthoringCLIRendersPartialReportOnce(t *testing.T) {
 	}
 
 	var stdout, stderr bytes.Buffer
-	code := runAuthoringAt(root, strings.NewReader("unused"), []string{"awf", "edit", "skill", "brainstorming", part, "--content", "committed body"}, &stdout, &stderr)
+	code := runAuthoringAt(root, strings.NewReader("unused"), []string{"awf", "edit", "skill", "awf-maintenance", part, "--content", "committed body"}, &stdout, &stderr)
 	if code != 1 {
 		t.Fatalf("partial authoring exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}

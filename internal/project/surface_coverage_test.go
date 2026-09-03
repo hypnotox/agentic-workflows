@@ -75,7 +75,7 @@ func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
 
 func TestListDocumentRetainedInventory(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\ndomains: [rendering]\n", map[string]string{
-		"skills/debugging.yaml": "data:\n  testSurfaces: []\n",
+		"skills/awf-maintenance.yaml": "data:\n  testSurfaces: []\n",
 	})
 	p, err := loadTestSession(testContext(t), root)
 	if err != nil {

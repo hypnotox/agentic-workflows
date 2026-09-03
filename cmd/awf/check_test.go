@@ -55,7 +55,7 @@ func TestRunCheckCleanThenDirty(t *testing.T) {
 	}
 
 	// Hand-edit the rendered skill.
-	skill := filepath.Join(root, ".claude/skills/example-brainstorming/SKILL.md")
+	skill := filepath.Join(root, ".claude/skills/awf-maintenance/SKILL.md")
 	if err := os.WriteFile(skill, []byte("tampered\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}

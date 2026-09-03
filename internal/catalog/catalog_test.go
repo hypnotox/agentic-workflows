@@ -19,7 +19,7 @@ func TestCatalogIsCompileTimeSingleSource(t *testing.T) {
 	if _, err := fs.Stat(templates.FS, "catalog.yaml"); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("catalog.yaml must not be embedded; got stat err = %v", err)
 	}
-	if len(Standard.Skills) == 0 || len(Standard.Agents) == 0 || len(Standard.Docs) == 0 ||
+	if len(Standard.Skills) == 0 || len(Standard.Docs) == 0 ||
 		len(SingletonKinds()) == 0 || len(Standard.Vars) == 0 || len(Standard.DomainDoc.Sections) == 0 {
 		t.Fatalf("catalog.Standard is not populated across all kinds")
 	}
@@ -48,7 +48,7 @@ func TestCompleteViewPreservesStandard(t *testing.T) {
 
 func TestViewOwnsDeepCatalogSnapshot(t *testing.T) {
 	injected := cloneCatalog(Standard)
-	injectedSkill := injected.Skills["brainstorming"]
+	injectedSkill := injected.Skills["awf-effort"]
 	injectedSkill.Data = map[string]any{}
 	injectedSkill.Data["strings"] = []string{"original"}
 	injectedSkill.Data["numbers"] = []int{1}
@@ -65,7 +65,7 @@ func TestViewOwnsDeepCatalogSnapshot(t *testing.T) {
 	injectedSkill.Data["pointer"] = &pointed
 	var nilPointer *[]string
 	injectedSkill.Data["nil-pointer"] = nilPointer
-	injected.Skills["brainstorming"] = injectedSkill
+	injected.Skills["awf-effort"] = injectedSkill
 	view := NewView(injected)
 
 	injectedSkill.Sections[0] = "changed input"
@@ -74,9 +74,9 @@ func TestViewOwnsDeepCatalogSnapshot(t *testing.T) {
 	injectedSkill.Data["labels"].(map[string]string)["value"] = "changed input"
 	injectedSkill.Data["records"].([]map[string]any)[0]["value"] = "changed input"
 	pointed[0] = "changed input"
-	injected.Skills["brainstorming"] = injectedSkill
+	injected.Skills["awf-effort"] = injectedSkill
 
-	got := view.Catalog().Skills["brainstorming"]
+	got := view.Catalog().Skills["awf-effort"]
 	gotNilMap, mapOK := got.Data["nil-map"].(map[string]string)
 	gotNilSlice, sliceOK := got.Data["nil-slice"].([]int)
 	if got.Sections[0] == "changed input" || got.Data["strings"].([]string)[0] != "original" ||
@@ -87,27 +87,27 @@ func TestViewOwnsDeepCatalogSnapshot(t *testing.T) {
 		t.Fatalf("view changed through injected reference alias: %#v", got)
 	}
 
-	standardSection := Standard.Skills["brainstorming"].Sections[0]
-	_, standardHadProbe := Standard.Skills["brainstorming"].Data["view-probe"]
+	standardSection := Standard.Skills["awf-effort"].Sections[0]
+	_, standardHadProbe := Standard.Skills["awf-effort"].Data["view-probe"]
 	complete := CompleteView().Catalog()
-	completeSkill := complete.Skills["brainstorming"]
+	completeSkill := complete.Skills["awf-effort"]
 	completeSkill.Sections[0] = "changed view"
 	completeSkill.Data = map[string]any{}
 	completeSkill.Data["view-probe"] = "changed view"
-	complete.Skills["brainstorming"] = completeSkill
-	if Standard.Skills["brainstorming"].Sections[0] != standardSection {
+	complete.Skills["awf-effort"] = completeSkill
+	if Standard.Skills["awf-effort"].Sections[0] != standardSection {
 		t.Fatal("Standard sections changed through complete view alias")
 	}
-	_, standardHasProbe := Standard.Skills["brainstorming"].Data["view-probe"]
+	_, standardHasProbe := Standard.Skills["awf-effort"].Data["view-probe"]
 	if standardHasProbe != standardHadProbe {
 		t.Fatal("Standard data changed through complete view alias")
 	}
 
 	returned := view.Catalog()
-	returnedSkill := returned.Skills["brainstorming"]
+	returnedSkill := returned.Skills["awf-effort"]
 	returnedSkill.Sections[0] = "changed returned snapshot"
-	returned.Skills["brainstorming"] = returnedSkill
-	if view.Catalog().Skills["brainstorming"].Sections[0] == "changed returned snapshot" {
+	returned.Skills["awf-effort"] = returnedSkill
+	if view.Catalog().Skills["awf-effort"].Sections[0] == "changed returned snapshot" {
 		t.Fatal("View changed through a returned catalog snapshot")
 	}
 }

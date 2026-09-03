@@ -41,19 +41,13 @@ func assertSectionParity(t *testing.T, label, tid string, sections []string) {
 	}
 }
 
-// TestSkillAndAgentSectionParity asserts that for every catalog skill and agent
-// the set of awf:section markers in its template source equals its
-// catalog-declared sections list. Without this guard a section-slug rename that
-// updates the template but not the catalog Standard value (or vice versa) renders
-// green with a blank-path provenance pointer that no other gate catches (ADR-0054).
+// TestSkillSectionParity asserts that for every catalog skill the set of
+// awf:section markers in its template source equals its catalog declaration.
 //
-// invariant: rendering/catalog-and-targets:skill-section-parity (TestSkillAndAgentSectionParity)
-func TestSkillAndAgentSectionParity(t *testing.T) {
+// invariant: rendering/catalog-and-targets:skill-section-parity (TestSkillSectionParity)
+func TestSkillSectionParity(t *testing.T) {
 	cat := catalog.Standard
 	for name, spec := range cat.Skills {
 		assertSectionParity(t, "skill "+name, fmt.Sprintf("skills/%s/SKILL.md.tmpl", name), spec.Sections)
-	}
-	for name, spec := range cat.Agents {
-		assertSectionParity(t, "agent "+name, fmt.Sprintf("agents/%s.md.tmpl", name), spec.Sections)
 	}
 }

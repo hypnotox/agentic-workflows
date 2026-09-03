@@ -158,7 +158,7 @@ func TestRunConfigRenderFault(t *testing.T) {
 		t.Fatal(err)
 	}
 	// A directory where a part file may sit makes the part read fail non-ErrNotExist.
-	if err := os.MkdirAll(filepath.Join(root, ".awf/skills/parts/brainstorming/procedure.md"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".awf/skills/parts/awf-maintenance/generated-documents.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := runConfig(ctx, root, "", io.Discard); err == nil {

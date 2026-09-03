@@ -31,11 +31,6 @@ Backing: test
 `./x test-affected` reads complete staged, working-tree, or explicit-range change evidence and reports deterministic selected targets and reasons before executing them without coverage. It runs changed package owners, production reverse dependents, test-only importing packages, and a small declared package smoke set through bounded isolated workers. Shared generators, templates, configuration, tooling, generated or build-tagged Go, deleted ownership, malformed evidence, unavailable packages, and unknown paths widen to the full Go universe or refuse explicitly.
 Backing: test
 
-### `invariant: pi-extension-container-gate`
-
-The pinned-host-Node Pi-extension lane uses the declared Node version and a checkout-local dependency tree, runs against a narrow temporary copy, and leaves operator-local Pi state untouched. The commit gate does not run this behavioral lane; CI and explicit `./x pi-test run` do.
-Backing: test
-
 ### `invariant: prose-gate-refuses-without-git`
 
 In an adopted tree that is not a git repository, the check repo prose command always scans and refuses with an error about being unable to read staged files.

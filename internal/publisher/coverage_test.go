@@ -43,7 +43,7 @@ func TestOpenRejectsEmptyPrefix(t *testing.T) {
 
 func TestOpenRejectsMalformedSkillSidecar(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
-		"skills/implementing.yaml": "bogusUnknownField: true\n",
+		"skills/awf-maintenance.yaml": "bogusUnknownField: true\n",
 	})
 	_, err := loadTestSession(testContext(t), root)
 	if err == nil {
@@ -115,11 +115,8 @@ func TestDeclaredSections(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if got := declaredSections(renderInputsForTest(p), "skills", "implementing"); len(got) == 0 {
-		t.Error("expected implementing to declare sections")
-	}
-	if got := declaredSections(renderInputsForTest(p), "agents", "reviewer"); len(got) == 0 {
-		t.Error("expected reviewer to declare sections")
+	if got := declaredSections(renderInputsForTest(p), "skills", "awf-maintenance"); len(got) == 0 {
+		t.Error("expected awf-maintenance to declare sections")
 	}
 	if got := declaredSections(renderInputsForTest(p), "docs", "architecture"); len(got) == 0 {
 		t.Error("expected architecture to declare sections")
@@ -137,8 +134,7 @@ func TestRenderAllSurfacesMalformedSidecars(t *testing.T) {
 		cfg        string
 		corruptRel string
 	}{
-		{"skills", "prefix: example\nintegrationBranch: main\n", "skills/implementing.yaml"},
-		{"agents", "prefix: example\nintegrationBranch: main\n", "agents/reviewer.yaml"},
+		{"skills", "prefix: example\nintegrationBranch: main\n", "skills/awf-effort.yaml"},
 		{"docs", "prefix: example\nintegrationBranch: main\n", "docs/architecture.yaml"},
 		{"agents-doc", "prefix: example\nintegrationBranch: main\n", "agents-doc.yaml"},
 	}
@@ -255,7 +251,7 @@ func TestSyncMkdirAllErrorWhenParentIsFile(t *testing.T) {
 func TestSyncWriteFileErrorWhenOutputIsDir(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	// A directory squatting on the SKILL.md output path makes WriteFile fail.
-	if err := os.MkdirAll(filepath.Join(root, ".claude", "skills", "example-implementing", "SKILL.md"), 0o755); err != nil {
+	if err := os.MkdirAll(filepath.Join(root, ".claude", "skills", "awf-maintenance", "SKILL.md"), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	p, err := loadTestSession(testContext(t), root)
@@ -290,7 +286,7 @@ func TestCheckSurfacesRenderError(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Corrupt a sidecar so the post-lock RenderAll inside Check fails.
-	corruptSidecar(t, root, "skills/implementing.yaml")
+	corruptSidecar(t, root, "skills/awf-maintenance.yaml")
 	if _, err := checkProject(p, testContext(t)); err == nil {
 		t.Fatal("expected Check to surface the RenderAll error")
 	}
@@ -343,9 +339,8 @@ func TestSyncPrunesRemovedTargetTree(t *testing.T) {
 		t.Fatal(err)
 	}
 	for _, path := range []string{
-		filepath.Join(root, ".claude", "skills", "example-implementing", "SKILL.md"),
+		filepath.Join(root, ".claude", "skills", "awf-maintenance", "SKILL.md"),
 		filepath.Join(root, ".claude", "skills"),
-		filepath.Join(root, ".claude", "agents"),
 	} {
 		if _, err := os.Stat(path); !os.IsNotExist(err) {
 			t.Errorf("removed target path %s remains: %v", path, err)
@@ -366,7 +361,7 @@ func TestCheckReportsMissingRenderedFile(t *testing.T) {
 		t.Fatal(err)
 	}
 	// Delete an in-sync rendered file so Check's on-disk read reports it missing.
-	if err := os.Remove(filepath.Join(root, ".claude", "skills", "example-implementing", "SKILL.md")); err != nil {
+	if err := os.Remove(filepath.Join(root, ".claude", "skills", "awf-maintenance", "SKILL.md")); err != nil {
 		t.Fatal(err)
 	}
 	drift, err := checkProject(p, testContext(t))
@@ -375,7 +370,7 @@ func TestCheckReportsMissingRenderedFile(t *testing.T) {
 	}
 	found := false
 	for _, d := range drift {
-		if d.Path == ".claude/skills/example-implementing/SKILL.md" && d.Kind == "missing" {
+		if d.Path == ".claude/skills/awf-maintenance/SKILL.md" && d.Kind == "missing" {
 			found = true
 		}
 	}

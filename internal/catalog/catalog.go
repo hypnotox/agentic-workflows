@@ -1,4 +1,4 @@
-// Package catalog is the compile-time Go value declaring the standard's skills, agents, and docs.
+// Package catalog is the compile-time Go value declaring the standard's skills and docs.
 package catalog
 
 import (
@@ -13,16 +13,6 @@ import (
 type TargetSpec struct {
 	Sections []string       `yaml:"sections"`
 	Data     map[string]any `yaml:"data"`
-}
-
-// AgentSpec declares an output-format-neutral agent. Name is literal while
-// Description is a normally rendered template fragment; the instruction body
-// comes from the section-rendered agent template.
-type AgentSpec struct {
-	Name        string
-	Description string
-	Sections    []string       `yaml:"sections"`
-	Data        map[string]any `yaml:"data"`
 }
 
 // SkillSpec declares a skill's render sections and default data.
@@ -101,7 +91,6 @@ type VarDescriptor struct {
 
 type Catalog struct {
 	Skills    map[string]SkillSpec `yaml:"skills"`
-	Agents    map[string]AgentSpec `yaml:"agents"`
 	DomainDoc TargetSpec           `yaml:"domainDoc"`
 	Docs      map[string]DocEntry  `yaml:"docs"`
 	Vars      []VarDescriptor      `yaml:"vars"`
@@ -130,7 +119,6 @@ func (v View) Catalog() *Catalog { return cloneCatalog(v.catalog) }
 func cloneCatalog(src *Catalog) *Catalog {
 	out := &Catalog{
 		Skills:    maps.Clone(src.Skills),
-		Agents:    maps.Clone(src.Agents),
 		DomainDoc: src.DomainDoc,
 		Docs:      maps.Clone(src.Docs),
 		Vars:      slices.Clone(src.Vars),
@@ -141,11 +129,6 @@ func cloneCatalog(src *Catalog) *Catalog {
 		spec.Sections = slices.Clone(spec.Sections)
 		spec.Data = cloneData(spec.Data)
 		out.Skills[name] = spec
-	}
-	for name, spec := range out.Agents {
-		spec.Sections = slices.Clone(spec.Sections)
-		spec.Data = cloneData(spec.Data)
-		out.Agents[name] = spec
 	}
 	for name, entry := range out.Docs {
 		entry.Sections = slices.Clone(entry.Sections)

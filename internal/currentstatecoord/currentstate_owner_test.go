@@ -130,7 +130,7 @@ func TestPrepareStagedOutputValidatesSidecarsFromSelectedIndex(t *testing.T) {
 	for _, tc := range []struct {
 		name, path, contents string
 	}{
-		{name: "catalog validation", path: ".awf/skills/debugging.yaml", contents: "data: [\n"},
+		{name: "catalog validation", path: ".awf/skills/awf-maintenance.yaml", contents: "data: [\n"},
 		{name: "output planning", path: ".awf/docs/glossary.yaml", contents: "data:\n  terms: not-a-list\n"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {

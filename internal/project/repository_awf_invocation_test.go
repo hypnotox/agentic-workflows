@@ -16,7 +16,7 @@ import (
 // "awf" token. Bare product names, CLI grammar, historical descriptions, and
 // wrapper/PATH resolution are the explicit allowances in ADR-unconditional-
 // repository-awf-invocation; none directs a repository-local execution.
-var bareRepositoryAwfExecution = regexp.MustCompile(`(?i)(?:\b(?:run|runs|use|execute|invoke|calls?)\s+(?:the\s+)?` + "`awf\\b" + `|\brun awf\b)`)
+var bareRepositoryAwfExecution = regexp.MustCompile(`(?i)(?:\b(?:run|runs|use|execute|invoke|calls?)\s+(?:the\s+)?` + "`awf(?:`|\\s)" + `|\brun awf(?:\s|$))`)
 
 func invocationRenderData() map[string]any {
 	layout := testLayout()
@@ -92,9 +92,6 @@ func TestRepositoryAwfInvocation(t *testing.T) {
 		for name, skill := range catalog.Standard.Skills {
 			assertNoBareRepositoryAwfExecution(t, target.Name+" skill "+name, renderSkillGolden(t, name, withInvocationData(targetData, skill.Data)))
 		}
-		for name, agent := range catalog.Standard.Agents {
-			assertNoBareRepositoryAwfExecution(t, target.Name+" agent "+name, renderAgentGolden(t, name, withInvocationData(targetData, agent.Data)))
-		}
 		for name, doc := range catalog.Standard.Docs {
 			if doc.TID == "" {
 				continue
@@ -107,19 +104,6 @@ func TestRepositoryAwfInvocation(t *testing.T) {
 		"hooks/pre-push.sh.tmpl", "hooks/reference-transaction.sh.tmpl",
 	} {
 		assertNoBareRepositoryAwfExecution(t, template, renderGolden(t, template, data))
-	}
-
-	pi := renderPiExtensionFile(t, "awf-subagents/index.ts")
-	for _, want := range []string{
-		"has no instruction body; run ./awf render.",
-		"Enable the reviewer agent and run ./awf render.",
-		"Enable the implementer agent and run ./awf render.",
-		"Enable the explorer agent and run ./awf render.",
-		"Enable the premise-checker agent and run ./awf render.",
-	} {
-		if !strings.Contains(pi, want) {
-			t.Errorf("Pi runtime lacks repository wrapper repair %q", want)
-		}
 	}
 }
 

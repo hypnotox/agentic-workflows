@@ -17,7 +17,7 @@ awf renders one standard workflow footprint from committed `.awf/` configuration
 - `internal/topic` and `internal/currentstate`: live-authority parsing and checks.
 - `internal/effort` and `internal/worktree`: local effort residents and Git-backed topology.
 - `internal/git`: the sole semantic Git boundary.
-- Generated Pi extensions: one awf-owned protocol-v2 profile adapter with no Pi-specific effort association or memory tools; independently installed, unpinned `pi-tools` owns general Pi mechanics, and successful handshake plus final registration define no-fallback compatibility.
+- Harness outputs: Claude and Pi each receive only `awf-effort`, `awf-topics`, `awf-decisions`, and `awf-maintenance`. Operator-installed `agentic-skills` owns generic skills, canonical roles, and its Pi adapter; separately installed `pi-tools` owns Pi role execution and runtime mechanics. AWF emits no role prompts, adapter, router, policy, or preference store.
 <!-- awf:end -->
 
 <!-- awf:section data-flow stub -->
@@ -36,5 +36,6 @@ A command loads `.awf/`, derives an output plan, and renders or checks the manag
 | `github.com/go-git/go-git/v5` and Git | Git seam backends. |
 | `github.com/bmatcuk/doublestar/v4` | Anchored path glob matching. |
 | Pi APIs | Adopter-supplied runtime APIs for awf-owned outputs, not CLI dependencies. |
-| `pi-tools` | Independently installed general context, handoff, and subagent mechanics; protocol-v2 compatible, not revision-pinned. |
+| `agentic-skills` | Operator-installed generic skills, canonical roles, and harness packaging; never an AWF binary dependency. |
+| `pi-tools` | Separately operator-installed Pi role execution and runtime mechanics; never installed or probed by AWF. |
 <!-- awf:end -->

@@ -66,9 +66,6 @@ func TestScaffoldVarsCoverAllReferenced(t *testing.T) {
 	for name := range standard.Skills {
 		paths = append(paths, "skills/"+name+"/SKILL.md.tmpl")
 	}
-	for name := range standard.Agents {
-		paths = append(paths, "agents/"+name+".md.tmpl")
-	}
 	for _, e := range standard.Docs {
 		paths = append(paths, e.TID)
 	}

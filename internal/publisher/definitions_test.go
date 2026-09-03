@@ -95,7 +95,7 @@ func TestBuildOutputDefinitionsPropagatesEnumerationFaults(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Agents: map[string]catalog.AgentSpec{}, Docs: map[string]catalog.DocEntry{}}
+	cat := &catalog.Catalog{Skills: map[string]catalog.SkillSpec{}, Docs: map[string]catalog.DocEntry{}}
 	// Definitions enumerate the pitfall sources and the flat topic metadata set.
 	// Each path-only population read must surface its own fault.
 	for site := 1; site <= 2; site++ {
@@ -201,8 +201,8 @@ func TestPitfallDefinitionsPreserveDependencies(t *testing.T) {
 
 func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n"+debuggingVars+"", map[string]string{
-		"skills/debugging.yaml":                        "data: {}\n",
-		"skills/parts/debugging/debugging-surfaces.md": "Observed part.\n",
+		"skills/awf-maintenance.yaml":                         "data: {}\n",
+		"skills/parts/awf-maintenance/generated-documents.md": "Observed part.\n",
 	})
 	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
@@ -212,15 +212,16 @@ func TestOutputPlanObservesConsumedInputsIndependently(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	path := p.Targets()[0].SkillPath(testConfig(p).Prefix, "debugging")
+	path := p.Targets()[0].SkillPath("awf-maintenance")
 	idx := slices.IndexFunc(plan.Nodes, func(node OutputNode) bool { return node.Path == path })
 	if idx < 0 {
 		t.Fatalf("missing node %s", path)
 	}
 	want := normalizeOutputInputs([]OutputInput{
 		{Path: ".awf/config.yaml", Role: outputplan.ArtifactConfig},
-		{Path: ".awf/skills/debugging.yaml", Role: outputplan.ArtifactAuthoredData},
-		{Path: "templates/skills/debugging/SKILL.md.tmpl", Role: outputplan.ArtifactTemplate},
+		{Path: ".awf/skills/awf-maintenance.yaml", Role: outputplan.ArtifactAuthoredData},
+		{Path: ".awf/skills/parts/awf-maintenance/generated-documents.md", Role: outputplan.ArtifactConventionPart},
+		{Path: "templates/skills/awf-maintenance/SKILL.md.tmpl", Role: outputplan.ArtifactTemplate},
 	})
 	if !reflect.DeepEqual(plan.Nodes[idx].ConsumedInputs, want) {
 		t.Fatalf("consumed inputs = %#v, want %#v", plan.Nodes[idx].ConsumedInputs, want)
@@ -244,7 +245,7 @@ func TestResolvedTargetOutputsFiltersRequiredSkills(t *testing.T) {
 		t.Fatalf("filtered outputs = %#v", outputs)
 	}
 	outputs = resolvedTargetOutputs(target, "example", []string{"effort-workflow"})
-	if len(outputs) != 2 || outputs[1].Path != ".target/skills/example-workflow/SKILL.md" {
+	if len(outputs) != 2 || outputs[1].Path != ".target/skills/workflow/SKILL.md" {
 		t.Fatalf("skill-path outputs = %#v", outputs)
 	}
 }

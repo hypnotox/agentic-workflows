@@ -160,7 +160,7 @@ func sweep(input AdditionalInput, files []outputplan.Output) []manifest.Drift {
 			m.files[file.Path()] = true
 		}
 	}
-	for _, kind := range []string{"skills", "agents", "docs", "domains"} {
+	for _, kind := range []string{"skills", "docs", "domains"} {
 		m.dirs[awfDir+"/"+kind], m.dirs[awfDir+"/"+kind+"/parts"] = true, true
 		m.artifacts[kind] = map[string]bool{}
 	}

@@ -85,14 +85,11 @@ jobs:
     name: native-linux-amd64
     needs: verify
     runs-on: ubuntu-latest
-    env: {AWF_PI_TEST_SKIP_NVM: '1'}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with: {go-version-file: go.mod}
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with: {node-version-file: .nvmrc, cache: npm, cache-dependency-path: tools/pi-extension-test/package-lock.json}
       - name: Assert native target linux/amd64
         run: |
           printf 'native target: linux/amd64\n'
@@ -104,7 +101,7 @@ jobs:
           [ "$(go env GOARCH)" = amd64 ]
           [ "$(git rev-parse HEAD)" = '${{ github.sha }}' ]
       - name: Complete source assurance
-        run: ./x test && ./x gate && ./x check && ./x render && git diff --exit-code && ./x pi-test run
+        run: ./x test && ./x gate && ./x check && ./x render && git diff --exit-code
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: release-candidate-${{ github.sha }}
@@ -116,14 +113,11 @@ jobs:
     name: native-darwin-arm64
     needs: verify
     runs-on: macos-15
-    env: {AWF_PI_TEST_SKIP_NVM: '1'}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
         with: {ref: '${{ github.sha }}', fetch-depth: 0, persist-credentials: false}
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
         with: {go-version-file: go.mod}
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with: {node-version-file: .nvmrc, cache: npm, cache-dependency-path: tools/pi-extension-test/package-lock.json}
       - name: Assert native target darwin/arm64
         run: |
           printf 'native target: darwin/arm64\n'
@@ -135,7 +129,7 @@ jobs:
           [ "$(go env GOARCH)" = arm64 ]
           [ "$(git rev-parse HEAD)" = '${{ github.sha }}' ]
       - name: Complete source assurance
-        run: ./x test && ./x gate && ./x check && ./x render && git diff --exit-code && ./x pi-test run
+        run: ./x test && ./x gate && ./x check && ./x render && git diff --exit-code
       - uses: actions/download-artifact@d3f86a106a0bac45b974a628896c90dbdf5c8093 # v4.3.0
         with:
           name: release-candidate-${{ github.sha }}

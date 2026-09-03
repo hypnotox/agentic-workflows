@@ -450,7 +450,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 		lock.Files[f.Path()] = manifest.Entry{
 			TemplateID: f.TemplateID(), TemplateHash: f.TemplateHash(),
 			ConfigHash: f.ConfigHash(), OutputHash: manifest.Hash([]byte(f.Content())),
-			RegenChecked: f.RegenChecked(),
+			Mode: uint32(perm.Perm()), RegenChecked: f.RegenChecked(),
 		}
 		want[f.Path()] = true
 	}
@@ -478,27 +478,41 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 			if observeErr != nil && !errors.Is(observeErr, fs.ErrNotExist) {
 				return backups, changes, pruned, effects, fmt.Errorf("inspect retired output %s: %w", path, observeErr)
 			}
-			if entry.TemplateID == localDocTID {
-				if removeIdentity != nil {
-					if removeIdentity.Mode()&fs.ModeSymlink != 0 {
-						_ = removeIdentity.Release()
-						return backups, changes, pruned, effects, fmt.Errorf("unsafe pruned local document %s", path)
-					}
+			if removeIdentity != nil {
+				if removeIdentity.Mode()&fs.ModeSymlink != 0 {
+					_ = removeIdentity.Release()
+					return backups, changes, pruned, effects, fmt.Errorf("unsafe pruned managed output %s", path)
+				}
+				present, mode, readErr := filesystem.ReadWithMode(outputPath)
+				if readErr != nil {
+					_ = removeIdentity.Release()
+					return backups, changes, pruned, effects, fmt.Errorf("read retired output %s: %w", path, readErr)
+				}
+				expectedMode := fs.FileMode(entry.Mode)
+				if expectedMode == 0 {
+					expectedMode = 0o644
+				}
+				diverged := manifest.Hash(present) != entry.OutputHash || mode.Perm() != expectedMode.Perm()
+				if entry.TemplateID == localDocTID || diverged {
 					bak, bakErr := backupFileConfined(outputPath, filesystem)
 					if bakErr != nil {
 						_ = removeIdentity.Release()
 						if committedPath, residuePath, committed := committedPublication(bakErr); committed {
 							bak = committedPath
 							backups = append(backups, Backup{Path: path, Bak: bak})
-							effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: "retain as recovery for the local document"})
+							effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: "retain as recovery for the retired managed output"})
 							if residuePath != "" {
 								effects = append(effects, Effect{Kind: "publication-residue", Path: residuePath, Recovery: "remove this temporary residue, then rerun awf render"})
 							}
 						}
-						return backups, changes, pruned, effects, fmt.Errorf("back up pruned local document %s: %w", path, bakErr)
+						return backups, changes, pruned, effects, fmt.Errorf("back up retired managed output %s: %w", path, bakErr)
 					}
 					backups = append(backups, Backup{Path: path, Bak: bak})
-					effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: "retain as recovery for the removed local document"})
+					recovery := "retain as recovery for the retired managed output"
+					if entry.TemplateID == localDocTID {
+						recovery = "retain as recovery for the removed local document"
+					}
+					effects = append(effects, Effect{Kind: "backup-created", Path: bak, Recovery: recovery})
 				}
 			}
 			// Report only an actual removal - a path whose file is already gone

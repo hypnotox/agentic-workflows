@@ -14,7 +14,7 @@ Backing: test
 
 ### `invariant: catalog-go-single-source`
 
-The standard catalog exists only as the compile-time Go value in the catalog package: no catalog.yaml is embedded and no catalog is parsed at runtime, and that Go value is populated across every kind - skills, agents, docs, singletons, the domain-doc spec, and vars.
+The standard catalog exists only as the compile-time Go value in the catalog package: no catalog.yaml is embedded and no catalog is parsed at runtime, and that Go value is populated across skills, docs, singletons, the domain-doc spec, and vars.
 Backing: test
 
 ### `invariant: claude-md-bridge`
@@ -29,17 +29,12 @@ Backing: test
 
 ### `invariant: skill-section-parity`
 
-For every catalog skill and agent, the set of awf:section markers in its template source equals the sections list its catalog entry declares, as order-independent set equality, so a section rename cannot half-land with a blank-path provenance pointer.
-Backing: test
-
-### `invariant: structured-agent-encoding`
-
-Agent rendering consumes structured metadata - a literal name, a separately rendered description, and a rendered instruction body - before a target encoder emits its artifact. The Markdown encoder never parses another rendered agent artifact, and arbitrary target-owned outputs retain their separately declared encoding.
+For every catalog skill, the set of awf:section markers in its template source equals the sections list its catalog entry declares, as order-independent set equality, so a section rename cannot half-land with a blank-path provenance pointer.
 Backing: test
 
 ### `invariant: target-dialect-render`
 
-Each built-in target renders every standard skill and agent exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. A target-owned derived skill uses the same declaration path and is emitted only for its owning target.
+Each built-in target renders every standard skill exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. Arbitrary target-owned outputs retain their separately declared encoding.
 Backing: test
 
 ### `invariant: unified-doc-model`

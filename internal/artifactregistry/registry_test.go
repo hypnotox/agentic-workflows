@@ -6,7 +6,6 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
-	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
 func TestRegistryStableUniqueMetadata(t *testing.T) {
@@ -49,7 +48,7 @@ func TestRegistryStableUniqueMetadata(t *testing.T) {
 
 func TestCatalogProjectionPreservesCatalogAuthority(t *testing.T) {
 	cat := catalog.CompleteView().Catalog()
-	for _, kind := range []string{"skills", "agents", "docs"} {
+	for _, kind := range []string{"skills", "docs"} {
 		names, ok := CatalogNames(cat, kind)
 		if !ok || !slices.IsSorted(names) || len(names) == 0 {
 			t.Fatalf("catalog names for %s = %v, %v", kind, names, ok)
@@ -75,7 +74,7 @@ func TestRegistryTargetOutputNormalizationPreservesCollisionInputs(t *testing.T)
 	two := Target{SkillDir: ".two/skills", Outputs: []TargetOutput{{SkillName: "workflow", RequiresSkill: "workflow"}}}
 	oneOutput := ResolveTargetArtifacts(one, "acme", []string{"workflow"})
 	twoOutput := ResolveTargetArtifacts(two, "acme", []string{"workflow"})
-	if got, want := oneOutput[0].Output.Path, ".one/skills/acme-workflow/SKILL.md"; got != want {
+	if got, want := oneOutput[0].Output.Path, ".one/skills/workflow/SKILL.md"; got != want {
 		t.Fatalf("first resolved path = %q, want %q", got, want)
 	}
 	if oneOutput[0].Output.Path == twoOutput[0].Output.Path {
@@ -97,7 +96,6 @@ func TestUnknownRequiredSkillPreservesExactRefusal(t *testing.T) {
 func TestRegistryCanonicalMetadata(t *testing.T) {
 	if got, want := Kinds(), []Kind{
 		{Plural: "skills", Singular: "skill", Cardinality: CardinalityCatalog, Targeting: TargetAdapter, Owner: OwnerCatalog, TemplatePattern: "skills/%s/SKILL.md.tmpl", OwnsParts: true},
-		{Plural: "agents", Singular: "agent", Cardinality: CardinalityCatalog, Targeting: TargetAdapter, Owner: OwnerCatalog, TemplatePattern: "agents/%s.md.tmpl", OwnsParts: true},
 		{Plural: "docs", Singular: "doc", Cardinality: CardinalityCatalog, Targeting: TargetNeutral, Owner: OwnerCatalog, OwnsParts: true},
 		{Plural: "domains", Singular: "domain", Cardinality: CardinalityFreeform, Targeting: TargetNeutral, Owner: OwnerCatalog, TemplatePattern: "domains/domain.md.tmpl", OwnsParts: true},
 	}; !slices.Equal(got, want) {
@@ -113,11 +111,8 @@ func TestRegistryCanonicalMetadata(t *testing.T) {
 		t.Fatalf("HookArtifacts() = %#v, want %#v", got, want)
 	}
 	if got, want := Targets(), []Target{
-		{Name: "claude", SkillDir: ".claude/skills", AgentDir: ".claude/agents", AgentSuffix: ".md", AgentDialect: MarkdownAgentDialect, BridgeFile: "CLAUDE.md", BridgeTemplate: "claude/CLAUDE.md.tmpl"},
-		{Name: "pi", SkillDir: ".pi/skills", AgentDir: ".pi/agents", AgentSuffix: ".md", AgentDialect: MarkdownAgentDialect, Capabilities: []Capability{CapabilitySubagentTools, CapabilitySessionHandoff}, Outputs: []TargetOutput{
-			{Path: ".pi/extensions/awf-subagents/index.ts", TemplateID: "pi/awf-subagents/index.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, PolicyDeclared: true},
-			{Path: ".pi/extensions/awf-subagents/model-routing.ts", TemplateID: "pi/awf-subagents/model-routing.ts.tmpl", Producer: TargetOutputTemplate, Encoder: PlainAgentDialect, Provenance: render.SlashComment, PolicyDeclared: true},
-		}},
+		{Name: "claude", SkillDir: ".claude/skills", AgentDialect: MarkdownAgentDialect, BridgeFile: "CLAUDE.md", BridgeTemplate: "claude/CLAUDE.md.tmpl"},
+		{Name: "pi", SkillDir: ".pi/skills", AgentDialect: MarkdownAgentDialect, Capabilities: []Capability{CapabilitySessionHandoff}},
 	}; !reflect.DeepEqual(got, want) {
 		t.Fatalf("Targets() = %#v, want %#v", got, want)
 	}
@@ -129,9 +124,8 @@ func TestRegistryOperationalOwnershipAndParticipation(t *testing.T) {
 		t.Fatalf("resident declaration = %#v", resident)
 	}
 	target := BuiltinTarget("pi")
-	artifacts := ResolveTargetArtifacts(target, "awf", nil)
-	if len(artifacts) == 0 || artifacts[0].Owner != OwnerTarget || !artifacts[0].Participation.Check {
-		t.Fatalf("target artifact declarations = %#v", artifacts)
+	if target.Name != "pi" || !slices.Equal(target.Capabilities, []Capability{CapabilitySessionHandoff}) || len(ResolveTargetArtifacts(target, "awf", nil)) != 0 {
+		t.Fatalf("Pi target declaration = %#v", target)
 	}
 }
 

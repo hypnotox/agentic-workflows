@@ -29,12 +29,12 @@ func targetRecipeProjection(target artifactregistry.Target) string {
 	capabilities := slices.Clone(target.Capabilities)
 	slices.Sort(capabilities)
 	return fmt.Sprintf("%#v", struct {
-		SkillDir, AgentDir, AgentSuffix string
-		AgentDialect                    artifactregistry.AgentDialect
-		BridgeFile, BridgeTemplate      string
-		Capabilities                    []artifactregistry.Capability
-		Outputs                         []artifactregistry.TargetOutput
-	}{target.SkillDir, target.AgentDir, target.AgentSuffix, target.AgentDialect, target.BridgeFile, target.BridgeTemplate, capabilities, target.Outputs})
+		SkillDir                  string
+		AgentDialect              artifactregistry.AgentDialect
+		BridgeFile, BridgeTemplate string
+		Capabilities              []artifactregistry.Capability
+		Outputs                   []artifactregistry.TargetOutput
+	}{target.SkillDir, target.AgentDialect, target.BridgeFile, target.BridgeTemplate, capabilities, target.Outputs})
 }
 
 func agentCommentStyle(artifactregistry.Target) render.CommentStyle { return render.HTMLComment }

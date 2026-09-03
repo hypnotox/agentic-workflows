@@ -76,9 +76,6 @@ func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {
 	for name := range cat.Skills {
 		sweep(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name))
 	}
-	for name := range cat.Agents {
-		sweep(fmt.Sprintf("agents/%s.md.tmpl", name))
-	}
 }
 
 // conditionalActionRe matches any template conditional carrying fallback
@@ -110,9 +107,6 @@ func TestConditionalTemplatesHaveFallbackCases(t *testing.T) {
 	}
 	for name := range catalog.Standard.Skills {
 		check(fmt.Sprintf("skills/%s/SKILL.md.tmpl", name))
-	}
-	for name := range catalog.Standard.Agents {
-		check(fmt.Sprintf("agents/%s.md.tmpl", name))
 	}
 }
 

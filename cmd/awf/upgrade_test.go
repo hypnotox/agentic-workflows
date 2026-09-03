@@ -451,16 +451,16 @@ func TestRunUpgradeRendersSuccessfulFinalJournalMutation(t *testing.T) {
 	}
 }
 
-// invariant: config/migrations-and-locks:context-skill-source-migration (TestRunUpgradeMigratesContextSkillSourcesAndRenderedOutputs)
-func TestRunUpgradeMigratesContextSkillSourcesAndRenderedOutputs(t *testing.T) {
+// invariant: config/migrations-and-locks:skill-extraction-source-migration (TestRunUpgradeExtractsGenericSkillsAndPublishesFixedOutputs)
+func TestRunUpgradeExtractsGenericSkillsAndPublishesFixedOutputs(t *testing.T) {
 	root := scaffoldProject(t)
 	lock, err := manifest.Load(config.LockPath(root))
 	if err != nil {
 		t.Fatal(err)
 	}
 	for _, target := range []string{".claude", ".pi"} {
-		currentRel := target + "/skills/example-context/SKILL.md"
-		retiredRel := target + "/skills/example-repository-context/SKILL.md"
+		currentRel := target + "/skills/awf-maintenance/SKILL.md"
+		retiredRel := target + "/skills/example-using-awf/SKILL.md"
 		entry, found := lock.Files[currentRel]
 		if !found {
 			t.Fatalf("fixture lock lacks %s", currentRel)
@@ -472,51 +472,73 @@ func TestRunUpgradeMigratesContextSkillSourcesAndRenderedOutputs(t *testing.T) {
 			t.Fatal(err)
 		}
 		delete(lock.Files, currentRel)
-		entry.TemplateID = "skills/repository-context/SKILL.md.tmpl"
+		entry.TemplateID = "skills/using-awf/SKILL.md.tmpl"
 		lock.Files[retiredRel] = entry
+
+		genericRel := target + "/skills/example-context/SKILL.md"
+		genericBody := []byte("retired generic skill\n")
+		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(genericRel)), string(genericBody))
+		lock.Files[genericRel] = manifest.Entry{TemplateID: "skills/context/SKILL.md.tmpl", OutputHash: manifest.Hash(genericBody), Mode: 0o644}
 	}
-	lock.AWFVersion = "0.46.1"
-	lock.InitializedWithVersion = "0.46.1"
-	lock.SchemaVersion = 50
+	lock.SchemaVersion = 51
 	if err := lock.Save(config.LockPath(root)); err != nil {
 		t.Fatal(err)
 	}
 
-	retiredPart := filepath.Join(root, ".awf/skills/parts/repository-context/explore.md")
-	testsupport.WriteFile(t, retiredPart, "Custom cross-project exploration.\n")
-	if err := os.Chmod(retiredPart, 0o640); err != nil {
+	retainedPart := filepath.Join(root, ".awf/skills/parts/using-awf/generated-documents.md")
+	testsupport.WriteFile(t, retainedPart, "Custom maintenance guidance.\n")
+	if err := os.Chmod(retainedPart, 0o640); err != nil {
 		t.Fatal(err)
 	}
+	removedPart := filepath.Join(root, ".awf/skills/parts/context/explore.md")
+	testsupport.WriteFile(t, removedPart, "Custom generic exploration.\n")
+	removedRolePart := filepath.Join(root, ".awf/agents/parts/reviewer/review.md")
+	testsupport.WriteFile(t, removedRolePart, "Custom generic review role.\n")
 
 	var stdout bytes.Buffer
 	if err := runUpgrade(testContext(t), root, &stdout); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(stdout.String(), "rename repository-context skill to context") {
+	if !strings.Contains(stdout.String(), "renamed AWF skills and preserved extracted generic skill and role overrides") {
 		t.Fatalf("upgrade output = %q", stdout.String())
 	}
 	lock, err = manifest.Load(config.LockPath(root))
 	if err != nil || lock.SchemaVersion != migrate.Current() {
 		t.Fatalf("final lock schema = %v, err=%v", lock, err)
 	}
-	currentPart := filepath.Join(root, ".awf/skills/parts/context/explore.md")
+	currentPart := filepath.Join(root, ".awf/skills/parts/awf-maintenance/generated-documents.md")
 	contents, err := os.ReadFile(currentPart)
 	info, statErr := os.Stat(currentPart)
-	if err != nil || statErr != nil || string(contents) != "Custom cross-project exploration.\n" || info.Mode().Perm() != 0o640 {
-		t.Fatalf("migrated part = %q mode=%v errors=%v", contents, info, errors.Join(err, statErr))
+	if err != nil || statErr != nil || string(contents) != "Custom maintenance guidance.\n" || info.Mode().Perm() != 0o640 {
+		t.Fatalf("migrated retained part = %q mode=%v errors=%v", contents, info, errors.Join(err, statErr))
 	}
-	if _, err := os.Stat(retiredPart); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("retired part remains: %v", err)
+	if _, err := os.Stat(retainedPart); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("retired retained part remains: %v", err)
+	}
+	backup := removedPart + ".awf-bak"
+	if contents, err := os.ReadFile(backup); err != nil || string(contents) != "Custom generic exploration.\n" {
+		t.Fatalf("generic override backup = %q, %v", contents, err)
+	}
+	if _, err := os.Stat(removedPart); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("removed generic part remains: %v", err)
+	}
+	roleBackup := removedRolePart + ".awf-bak"
+	if contents, err := os.ReadFile(roleBackup); err != nil || string(contents) != "Custom generic review role.\n" {
+		t.Fatalf("generic role override backup = %q, %v", contents, err)
+	}
+	if _, err := os.Stat(removedRolePart); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("removed generic role part remains: %v", err)
 	}
 	for _, target := range []string{".claude", ".pi"} {
-		current := filepath.Join(root, target, "skills/example-context/SKILL.md")
+		current := filepath.Join(root, target, "skills/awf-maintenance/SKILL.md")
 		rendered, err := os.ReadFile(current)
-		if err != nil || !strings.Contains(string(rendered), "Custom cross-project exploration.") {
-			t.Fatalf("rendered %s = %q, err=%v", target, rendered, err)
+		if err != nil || !strings.Contains(string(rendered), "Custom maintenance guidance.") {
+			t.Fatalf("rendered %s maintenance = %q, err=%v", target, rendered, err)
 		}
-		retired := filepath.Join(root, target, "skills/example-repository-context/SKILL.md")
-		if _, err := os.Stat(retired); !errors.Is(err, os.ErrNotExist) {
-			t.Fatalf("retired rendered skill remains for %s: %v", target, err)
+		for _, retired := range []string{"skills/example-using-awf/SKILL.md", "skills/example-context/SKILL.md"} {
+			if _, err := os.Stat(filepath.Join(root, target, retired)); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("retired rendered output %s remains for %s: %v", retired, target, err)
+			}
 		}
 	}
 	if journalPresence(t, root) {

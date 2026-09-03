@@ -26,7 +26,6 @@ func (l Layout) templateMap() map[string]any {
 
 func targetTemplateData(target artifactregistry.Target) map[string]any {
 	return map[string]any{
-		"targetSubagentTools":  slices.Contains(target.Capabilities, artifactregistry.CapabilitySubagentTools),
 		"targetSessionHandoff": slices.Contains(target.Capabilities, artifactregistry.CapabilitySessionHandoff),
 	}
 }

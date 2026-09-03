@@ -19,7 +19,6 @@ jobs:
       selection_status: ${{ steps.select.outputs.selection_status }}
       selection_outcome: ${{ steps.select.outputs.selection_outcome }}
       go: ${{ steps.select.outputs.go }}
-      pi_runtime: ${{ steps.select.outputs.pi_runtime }}
       render_template: ${{ steps.select.outputs.render_template }}
       platform_sensitive: ${{ steps.select.outputs.platform_sensitive }}
       release_archive: ${{ steps.select.outputs.release_archive }}
@@ -63,14 +62,13 @@ jobs:
             (.lanes | type == "array") and
             all(.lanes[];
               .name == "go" or
-              .name == "pi-runtime" or
               .name == "render-template" or
               .name == "platform-sensitive" or
               .name == "release-archive"
             ) and
             ([.lanes[].name] == ([.lanes[].name] | sort | unique)) and
             (if .outcome == "widened" then
-              [.lanes[].name] == ["go", "pi-runtime", "platform-sensitive", "release-archive", "render-template"]
+              [.lanes[].name] == ["go", "platform-sensitive", "release-archive", "render-template"]
             elif .outcome == "empty" or .outcome == "refused" then
               (.lanes | length) == 0
             else
@@ -89,7 +87,7 @@ jobs:
             echo "selection_status=$producer_status"
             echo "selection_outcome=$outcome"
           } >>"$GITHUB_OUTPUT"
-          for mapping in go=go pi_runtime=pi-runtime render_template=render-template platform_sensitive=platform-sensitive release_archive=release-archive; do
+          for mapping in go=go render_template=render-template platform_sensitive=platform-sensitive release_archive=release-archive; do
             key="${mapping%%=*}"
             lane="${mapping#*=}"
             if jq -e --arg lane "$lane" 'any(.lanes[]; .name == $lane)' "$selection_path" >/dev/null; then
@@ -152,7 +150,6 @@ jobs:
     if: ${{ always() && (github.event_name != 'pull_request' || (needs.selection.result == 'success' && needs.selection.outputs.platform_sensitive == 'true')) }}
     runs-on: macos-15
     env:
-      AWF_PI_TEST_SKIP_NVM: '1'
       CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -174,50 +171,17 @@ jobs:
         run: |
           temp_root="$(cd "$RUNNER_TEMP" && pwd -P)"
           env TMPDIR="$temp_root" GOTMPDIR="$temp_root" go test -count=1 ./internal/filesystem ./internal/filepublication ./internal/projectmutation ./internal/git ./internal/effort ./internal/effort/application ./internal/worktree
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        if: ${{ github.event_name != 'pull_request' }}
-        with: {node-version-file: .nvmrc, cache: npm, cache-dependency-path: tools/pi-extension-test/package-lock.json}
       - name: Complete macOS Go assurance
         if: ${{ github.event_name != 'pull_request' }}
         run: ./x test
-      - name: Complete Pi/runtime behavior on main
-        if: ${{ github.event_name != 'pull_request' }}
-        run: ./x pi-test run
       - name: Complete render and check behavior on main
         if: ${{ github.event_name != 'pull_request' }}
         run: ./x check && ./x render && git diff --exit-code
 
-  pi:
-    name: pi-linux-amd64
-    needs: selection
-    if: ${{ always() && (github.event_name != 'pull_request' || (needs.selection.result == 'success' && needs.selection.outputs.pi_runtime == 'true')) }}
-    runs-on: ubuntu-latest
-    env:
-      AWF_PI_TEST_SKIP_NVM: '1'
-      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with: {ref: '${{ github.event_name == ''pull_request'' && github.event.pull_request.head.sha || github.sha }}'}
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
-        with: {go-version-file: go.mod}
-      - uses: actions/setup-node@49933ea5288caeca8642d1e84afbd3f7d6820020 # v4.4.0
-        with: {node-version-file: .nvmrc, cache: npm, cache-dependency-path: tools/pi-extension-test/package-lock.json}
-      - name: Assert native target linux/amd64
-        run: |
-          printf 'native target: linux/amd64\n'
-          [ '${{ runner.os }}' = Linux ]
-          [ '${{ runner.arch }}' = X64 ]
-          [ "$(uname -s)" = Linux ]
-          [ "$(uname -m)" = x86_64 ]
-          [ "$(go env GOOS)" = linux ]
-          [ "$(go env GOARCH)" = amd64 ]
-          [ "$(git rev-parse HEAD)" = "$CANDIDATE_SHA" ]
-      - run: ./x pi-test run
-
   gate:
     name: gate
     if: ${{ always() }}
-    needs: [selection, linux, macos, pi]
+    needs: [selection, linux, macos]
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
@@ -226,17 +190,14 @@ jobs:
         env:
           CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
           PLATFORM_SELECTED: ${{ needs.selection.outputs.platform_sensitive }}
-          PI_SELECTED: ${{ needs.selection.outputs.pi_runtime }}
         run: |
           [ "$(git rev-parse HEAD)" = "$CANDIDATE_SHA" ]
           if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
             [ '${{ needs.selection.result }}' = success ]
             [ '${{ needs.linux.result }}' = success ]
             if [ "$PLATFORM_SELECTED" = true ]; then [ '${{ needs.macos.result }}' = success ]; else [ '${{ needs.macos.result }}' = skipped ]; fi
-            if [ "$PI_SELECTED" = true ]; then [ '${{ needs.pi.result }}' = success ]; else [ '${{ needs.pi.result }}' = skipped ]; fi
           else
             [ '${{ needs.selection.result }}' = skipped ]
             [ '${{ needs.linux.result }}' = success ]
             [ '${{ needs.macos.result }}' = success ]
-            [ '${{ needs.pi.result }}' = success ]
           fi

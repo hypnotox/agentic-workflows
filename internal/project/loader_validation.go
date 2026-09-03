@@ -117,8 +117,6 @@ func catalogData(cat *catalog.Catalog, kind, name string) map[string]any {
 	switch kind {
 	case "skills":
 		return cat.Skills[name].Data
-	case "agents":
-		return cat.Agents[name].Data
 	case "docs":
 		return cat.Docs[name].Data
 	default:

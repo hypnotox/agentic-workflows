@@ -3,15 +3,15 @@
 <!-- awf:template-source templates/topics/index.md.tmpl -->
 # rendering topics
 
-- [Adapter outputs](adapter-outputs.md): Generated executable adapter-runtime outputs and their ownership boundary.
+- [Adapter outputs](adapter-outputs.md): The retired AWF adapter surface and external role ownership boundary.
 - [Catalog and targets](catalog-and-targets.md): The compile-time catalog and the tool-agnostic target seam.
 - [Companion scripts](companion-scripts.md): Rendered companion script contracts: bootstrap, upgrade, runner, hook payloads.
 - [Doc outputs](doc-outputs.md): Generated documentation outputs: domain and topic docs, layout, pitfalls, stubs, skill references.
 - [Frontmatter parsing](frontmatter.md): How authored-document frontmatter is split and validated.
 - [Guide and doc templates](guide-and-doc-templates.md): Agent-guide and documentation template contracts.
 - [Inplace and placeholders](inplace-and-placeholders.md): In-place sections, authoring comments, part placeholders, and var and data hygiene.
-- [Pi runtime](pi-runtime.md): The Pi runtime and its boundaries.
-- [Pi workflows](pi-workflows.md): Pi workflow contracts: subagent tools, session handoff, native skills, exploration dispatch.
+- [Pi runtime](pi-runtime.md): The retained Pi host capability and external dependency boundary.
+- [Pi workflows](pi-workflows.md): Pi publication of AWF skills and the external generic-role boundary.
 - [Project output plan](project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.
 - [Render engine](render-engine.md): The template overlay render engine and its reference resolution.
 - [Singletons and payloads](singletons-and-payloads.md): Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, file modes.
