@@ -42,7 +42,7 @@ claude plugin install agentic-skills@agentic-skills
 For Pi, install [`pi-tools`](https://github.com/hypnotox/pi-tools) first, then `agentic-skills`:
 
 ```sh
-pi install git:github.com/hypnotox/pi-tools@v0.3.0
+pi install git:github.com/hypnotox/pi-tools
 pi install git:github.com/hypnotox/agentic-skills
 ```
 
