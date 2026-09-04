@@ -56,27 +56,23 @@ that structural navigation cannot infer.
 
 ## Install
 
-Download a binary from the
-[latest awf release](https://github.com/hypnotox/agentic-workflows/releases/latest),
-extract it, and place `awf` on your `PATH`. Linux tarballs carry portable
-`root:root` ownership and ordinary executable and regular-file modes, so a
-restricted rootless user namespace can extract them without mapping the release
-builder's account.
-
-To install from source with Go 1.27 or later:
+Download and extract the archive for your platform from the
+[latest awf release](https://github.com/hypnotox/agentic-workflows/releases/latest).
+From the repository you want awf to manage, use the extracted binary once to initialize awf:
 
 ```sh
-go install github.com/hypnotox/agentic-workflows/cmd/awf@latest
+/path/to/extracted/awf init
 ```
+
+Initialization creates the repository-local `./awf` wrapper pinned to that release.
 
 ## Quickstart
 
-From the repository you want awf to manage:
+After initialization, use the repository-local wrapper:
 
 ```sh
-awf init
-awf check
-awf list
+./awf check
+./awf list
 ```
 
 `awf init` creates the standard `.awf/` tree and renders the workflow, including durable
@@ -84,8 +80,8 @@ decision guidance and current-state authority. Commit both the source tree and i
 After changing `.awf/`, render and check again:
 
 ```sh
-awf render
-awf check
+./awf render
+./awf check
 ```
 
 If initialization finds an existing file it would replace, it stops before mutation and reports the collision.
