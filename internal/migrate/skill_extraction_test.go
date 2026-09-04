@@ -127,9 +127,17 @@ func TestSkillExtractionMigrationBacksUpRemovedAuthoredSourcesWithoutOverwrite(t
 			testsupport.WriteFile(t, source+".awf-bak", "older recovery\n")
 			testsupport.WriteFile(t, source+".awf-bak.1", "another recovery\n")
 
-			_, _, mutations, err := Build(context.Background(), root)
+			_, changes, mutations, err := Build(context.Background(), root)
 			if err != nil {
 				t.Fatal(err)
+			}
+			wantRecovery := "preserved extracted authored source at " + tc.rel + ".awf-bak.2; review its content, then delete the backup when no longer needed and remove any empty retired parent directories"
+			foundRecovery := false
+			for _, change := range changes {
+				foundRecovery = foundRecovery || change.Text == wantRecovery
+			}
+			if !foundRecovery {
+				t.Errorf("changes omit exact recovery action %q: %#v", wantRecovery, changes)
 			}
 			if len(mutations) != 2 {
 				t.Fatalf("mutations = %#v", mutations)

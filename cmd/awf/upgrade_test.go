@@ -499,8 +499,18 @@ func TestRunUpgradeExtractsGenericSkillsAndPublishesFixedOutputs(t *testing.T) {
 	if err := runUpgrade(testContext(t), root, &stdout); err != nil {
 		t.Fatal(err)
 	}
-	if !strings.Contains(stdout.String(), "renamed AWF skills and preserved extracted generic skill and role overrides") {
-		t.Fatalf("upgrade output = %q", stdout.String())
+	output := stdout.String()
+	if !strings.Contains(output, "renamed AWF skills and preserved extracted generic skill and role overrides") {
+		t.Fatalf("upgrade output = %q", output)
+	}
+	for _, backupPath := range []string{
+		".awf/skills/parts/context/explore.md.awf-bak",
+		".awf/agents/parts/reviewer/review.md.awf-bak",
+	} {
+		want := "preserved extracted authored source at " + backupPath + "; review its content, then delete the backup when no longer needed and remove any empty retired parent directories"
+		if !strings.Contains(output, want) {
+			t.Errorf("upgrade output omits exact recovery action %q:\n%s", want, output)
+		}
 	}
 	lock, err = manifest.Load(config.LockPath(root))
 	if err != nil || lock.SchemaVersion != migrate.Current() {
@@ -543,6 +553,25 @@ func TestRunUpgradeExtractsGenericSkillsAndPublishesFixedOutputs(t *testing.T) {
 	}
 	if journalPresence(t, root) {
 		t.Fatal("migration journal remains after successful upgrade")
+	}
+	if err := runCheck(testContext(t), root, io.Discard); err == nil {
+		t.Fatal("check unexpectedly accepted extracted-source backups before operator review")
+	}
+	for _, backupPath := range []string{backup, roleBackup} {
+		if err := os.Remove(backupPath); err != nil {
+			t.Fatal(err)
+		}
+		if err := os.Remove(filepath.Dir(backupPath)); err != nil {
+			t.Fatalf("remove reviewed empty retired source directory: %v", err)
+		}
+	}
+	for _, emptyParent := range []string{".awf/agents/parts", ".awf/agents"} {
+		if err := os.Remove(filepath.Join(root, filepath.FromSlash(emptyParent))); err != nil {
+			t.Fatalf("remove reviewed empty retired source ancestor %s: %v", emptyParent, err)
+		}
+	}
+	if err := runCheck(testContext(t), root, io.Discard); err != nil {
+		t.Fatalf("reviewed schema-52 backups did not converge: %v", err)
 	}
 }
 

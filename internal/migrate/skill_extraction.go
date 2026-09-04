@@ -88,6 +88,11 @@ func migrateExtractedSkills(ctx context.Context, tree *ProposedTree, changes *Ch
 				if err != nil {
 					return nil, err
 				}
+				for _, mutation := range moves {
+					if !mutation.Remove {
+						changes.items = append(changes.items, Change{Text: fmt.Sprintf("preserved extracted authored source at %s; review its content, then delete the backup when no longer needed and remove any empty retired parent directories", mutation.Path)})
+					}
+				}
 				planned = append(planned, moves...)
 			}
 		}
