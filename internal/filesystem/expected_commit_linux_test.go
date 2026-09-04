@@ -4,7 +4,6 @@ package filesystem
 
 import (
 	"errors"
-	"io"
 	"os"
 	"path/filepath"
 	"testing"
@@ -153,50 +152,6 @@ func TestExactExpectedMutationReportsCommittedResidueWhenMismatchCannotBeRestore
 	}
 	if got, readErr := os.ReadFile(filepath.Join(rootPath, "temporary")); readErr != nil || string(got) != "external\n" {
 		t.Fatalf("retained displaced residue = %q, %v", got, readErr)
-	}
-}
-
-func TestExpectedDirectoryChildAfterValidationIsGuaranteedUncommitted(t *testing.T) {
-	rootPath := t.TempDir()
-	for _, name := range []string{"destination", "temporary"} {
-		if err := os.Mkdir(filepath.Join(rootPath, name), 0o755); err != nil {
-			t.Fatal(err)
-		}
-	}
-	h, err := Open(rootPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer h.Close()
-	expected, err := h.ExpectedIdentity("destination")
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer expected.Release() //nolint:errcheck // test cleanup
-	consumed, err := exchangeExpectedWithHook(h.root, "temporary", "destination", expected, nil, true, false, func(root *os.Root, displaced string) error {
-		directory, err := root.Open(displaced)
-		if err != nil {
-			return err
-		}
-		_, readErr := directory.Readdirnames(1)
-		if !errors.Is(readErr, io.EOF) {
-			_ = directory.Close()
-			return readErr
-		}
-		if err := directory.Close(); err != nil {
-			return err
-		}
-		child, err := root.OpenFile(filepath.ToSlash(filepath.Join(displaced, "external")), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-		if err != nil {
-			return err
-		}
-		return child.Close()
-	})
-	if consumed || !errors.Is(err, ErrDirectoryNotEmpty) {
-		t.Fatalf("directory exchange = consumed %t, error %v; want guaranteed-uncommitted refusal", consumed, err)
-	}
-	if _, err := os.Stat(filepath.Join(rootPath, "destination", "external")); err != nil {
-		t.Fatalf("original directory with concurrent child was not restored: %v", err)
 	}
 }
 

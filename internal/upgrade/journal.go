@@ -155,15 +155,7 @@ func withJournalFilesystem(root string, run func(*filesystem.Handle) error) erro
 	return errors.Join(run(files), files.Close())
 }
 
-type directoryExpectation struct {
-	apply    *filesystem.ExpectedIdentity
-	rollback *filesystem.ExpectedIdentity
-}
-
-type journalFilesystemState struct {
-	files                 *filesystem.Handle
-	directoryExpectations map[string]directoryExpectation
-}
+type journalFilesystemState struct{ files *filesystem.Handle }
 
 func (s *journalFilesystemState) with(root string, run func(*filesystem.Handle) error) error {
 	if s.files != nil {
@@ -184,48 +176,9 @@ func withBoundJournalOperation(root string, operation journalOperation, run func
 		operation.state = &journalFilesystemState{}
 	}
 	operation.state.files = files
-	operation.state.directoryExpectations = make(map[string]directoryExpectation)
 	runErr := run(operation)
-	var releaseErr error
-	for _, expected := range operation.state.directoryExpectations {
-		releaseErr = errors.Join(releaseErr, expected.apply.Release(), expected.rollback.Release())
-	}
-	operation.state.directoryExpectations = nil
 	operation.state.files = nil
-	return errors.Join(runErr, releaseErr, files.Close())
-}
-
-func (o journalOperation) captureDirectoryExpectation(root, path string) ([]fs.DirEntry, error) {
-	var entries []fs.DirEntry
-	err := o.state.with(root, func(files *filesystem.Handle) (returnErr error) {
-		apply, err := files.ExpectedIdentity(path)
-		if err != nil {
-			return err
-		}
-		defer func() {
-			if returnErr != nil {
-				returnErr = errors.Join(returnErr, apply.Release())
-			}
-		}()
-		if !apply.IsDir() {
-			return fmt.Errorf("%s is not a directory: %w", path, filesystem.ErrIdentityChanged)
-		}
-		entries, err = files.ReadDirExpected(path, apply)
-		if err != nil {
-			return err
-		}
-		rollback, err := files.ExpectedIdentity(path)
-		if err != nil {
-			return err
-		}
-		current, err := files.LinkInfo(path)
-		if err != nil || !apply.SameFile(current) || !rollback.SameFile(current) {
-			return errors.Join(fmt.Errorf("%s changed while capturing its directory identity", path), err, rollback.Release(), filesystem.ErrIdentityChanged)
-		}
-		o.state.directoryExpectations[path] = directoryExpectation{apply: apply, rollback: rollback}
-		return nil
-	})
-	return entries, err
+	return errors.Join(runErr, files.Close())
 }
 
 // quarantineTree renames a resident tree aside. An absent source is already in
@@ -429,12 +382,16 @@ func applyOperation(root string, op Operation, operation journalOperation) error
 		return quarantineTree(root, op, operation)
 	}
 	if op.emptyDirectory() {
-		expected, ok := operation.state.directoryExpectations[op.Path]
-		if !ok || expected.apply == nil {
-			return fmt.Errorf("%s has no retained preflight directory identity: %w", op.Path, filesystem.ErrIdentityChanged)
-		}
 		return operation.state.with(root, func(files *filesystem.Handle) error {
-			return files.RemoveExpectedEmptyDirectory(op.Path, expected.apply, os.FileMode(op.Prior.Mode))
+			expected, err := files.ExpectedIdentity(op.Path)
+			if err != nil {
+				return err
+			}
+			if !expected.IsDir() || expected.Mode().Perm() != os.FileMode(op.Prior.Mode).Perm() {
+				_ = expected.Release()
+				return fmt.Errorf("%s: %w", op.Path, filesystem.ErrIdentityChanged)
+			}
+			return files.RemoveExpected(op.Path, expected)
 		})
 	}
 	return operation.applyExpected(root, op.Path, op.Prior, op.Replacement)
@@ -886,7 +843,7 @@ func commitTransactionBound(root string, ops []Operation, operation journalOpera
 }
 
 func guaranteedUncommittedIdentityRefusal(err error) bool {
-	if !errors.Is(err, filesystem.ErrIdentityChanged) && !errors.Is(err, filesystem.ErrDirectoryNotEmpty) {
+	if !errors.Is(err, filesystem.ErrIdentityChanged) {
 		return false
 	}
 	var committed *filepublication.CommittedCleanupError
@@ -1002,69 +959,30 @@ func recordIndeterminateResidue(j *Journal, cleanup *filepublication.CommittedCl
 	return fmt.Errorf("committed cleanup destination %q is not journaled", cleanup.DestinationPath)
 }
 
-func directoryRemovalApplied(root string, op Operation, operation journalOperation) (bool, error) {
+func directoryPresent(root string, op Operation, operation journalOperation) (bool, error) {
 	info, err := operation.lstat(root, op.Path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return true, nil
+		return false, nil
 	}
 	if err != nil {
 		return false, err
 	}
 	if !info.IsDir() || info.Mode().Perm() != os.FileMode(op.Prior.Mode).Perm() {
-		return false, fmt.Errorf("path %s no longer has the planned directory shape: %w", op.Path, filesystem.ErrIdentityChanged)
+		return false, fmt.Errorf("path %s no longer has the expected directory image: %w", op.Path, filesystem.ErrIdentityChanged)
 	}
-	return false, nil
-}
-
-func evidencePaths(evidence []Evidence) map[string]bool {
-	paths := make(map[string]bool, len(evidence))
-	for _, fact := range evidence {
-		if fact.Action == "applied" || fact.Action == "pending" {
-			paths[fact.Path] = true
-		}
-	}
-	return paths
-}
-
-func verifyDirectoryRestoreBarriers(root string, j Journal, changed map[string]bool, operation journalOperation) error {
-	for _, op := range j.Operations {
-		if !op.emptyDirectory() || changed[op.Path] {
-			continue
-		}
-		hasChangedDescendant := false
-		prefix := op.Path + "/"
-		for path := range changed {
-			if strings.HasPrefix(path, prefix) {
-				hasChangedDescendant = true
-				break
-			}
-		}
-		if !hasChangedDescendant {
-			continue
-		}
-		expected, ok := operation.state.directoryExpectations[op.Path]
-		if !ok || expected.rollback == nil {
-			return fmt.Errorf("cannot safely restore descendants through %s after interruption because its preflight directory identity is unavailable; %s", op.Path, gitRestorationGuidance)
-		}
-		info, err := operation.lstat(root, op.Path)
-		if err != nil {
-			return fmt.Errorf("inspect rollback directory %s: %w", op.Path, err)
-		}
-		if !expected.rollback.SameFile(info) {
-			return fmt.Errorf("cannot safely restore descendants through replaced directory %s: %w", op.Path, filesystem.ErrIdentityChanged)
-		}
-	}
-	return nil
+	return true, nil
 }
 
 // restorePriors restores only operations known to have applied, walking them in
 // reverse. The remaining set is the terminal changed set if restoration halts.
 func restorePriors(root string, j Journal, applied []Evidence, operation journalOperation) ([]Evidence, []Evidence, error) {
-	byPath := evidencePaths(applied)
-	remaining := append([]Evidence(nil), applied...)
-	if err := verifyDirectoryRestoreBarriers(root, j, byPath, operation); err != nil {
-		return nil, remaining, err
+	byPath := map[string]bool{}
+	for _, fact := range applied {
+		if fact.Action == "applied" || fact.Action == "pending" {
+			byPath[fact.Path] = true
+		}
 	}
+	remaining := append([]Evidence(nil), applied...)
 	var evidence []Evidence
 	for i := len(j.Operations) - 1; i >= 0; i-- {
 		op := j.Operations[i]
@@ -1072,13 +990,14 @@ func restorePriors(root string, j Journal, applied []Evidence, operation journal
 			continue
 		}
 		if op.emptyDirectory() {
-			if _, err := operation.lstat(root, op.Path); err == nil {
-				return evidence, remaining, fmt.Errorf("cannot restore %s because it already exists; %s", op.Path, gitRestorationGuidance)
-			} else if !errors.Is(err, fs.ErrNotExist) {
+			present, err := directoryPresent(root, op, operation)
+			if err != nil {
 				return evidence, remaining, fmt.Errorf("inspect %s: %w", op.Path, err)
 			}
-			if err := operation.createDirectory(root, op.Path, os.FileMode(op.Prior.Mode)); err != nil {
-				return evidence, remaining, fmt.Errorf("restore %s: %w", op.Path, err)
+			if !present {
+				if err := operation.createDirectory(root, op.Path, os.FileMode(op.Prior.Mode)); err != nil {
+					return evidence, remaining, fmt.Errorf("restore %s: %w", op.Path, err)
+				}
 			}
 			evidence = append(evidence, Evidence{Action: "restored", Path: op.Path})
 			remaining = removeChangedPath(remaining, op.Path)
@@ -1263,11 +1182,11 @@ func appliedOperations(root string, j Journal, operation journalOperation) ([]Ev
 	var applied []Evidence
 	for _, op := range j.Operations {
 		if op.emptyDirectory() {
-			removed, err := directoryRemovalApplied(root, op, operation)
+			present, err := directoryPresent(root, op, operation)
 			if err != nil {
 				return nil, err
 			}
-			if removed {
+			if !present {
 				applied = append(applied, Evidence{Action: "applied", Path: op.Path})
 			}
 			continue
@@ -1291,9 +1210,6 @@ func appliedOperations(root string, j Journal, operation journalOperation) ([]Ev
 			// edit; retain it as a safety candidate so restoration verifies it.
 			applied = append(applied, Evidence{Action: "pending", Path: op.Path})
 		}
-	}
-	if err := verifyDirectoryRestoreBarriers(root, j, evidencePaths(applied), operation); err != nil {
-		return nil, err
 	}
 	return applied, nil
 }

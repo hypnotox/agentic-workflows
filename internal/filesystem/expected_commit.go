@@ -88,9 +88,6 @@ func finishExpectedExchange(root *os.Root, temporary, destination string, expect
 			cause := errors.Join(err, fmt.Errorf("restore expected entry at %q: %w", destination, rollbackErr))
 			return true, &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: temporary, Cause: cause}
 		}
-		if expected.IsDir() {
-			return false, errors.Join(ErrDirectoryNotEmpty, err)
-		}
 		return false, err
 	}
 	if remove {

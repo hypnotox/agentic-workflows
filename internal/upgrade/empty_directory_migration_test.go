@@ -73,6 +73,95 @@ func TestCommitMigrationRefusesChangedDirectoryInventoryBeforeJournal(t *testing
 	}
 }
 
+// invariant: config/migrations-and-locks:migration-preimage-safe (TestCommitMigrationUsesApplicationTimeEmptyDirectoryShape)
+func TestCommitMigrationUsesApplicationTimeEmptyDirectoryShape(t *testing.T) {
+	for _, tc := range []struct {
+		name     string
+		mode     os.FileMode
+		wantFail bool
+	}{
+		{name: "same-mode replacement is pruned", mode: 0o777},
+		{name: "changed-mode replacement is preserved", mode: 0o750, wantFail: true},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			root, lock, lockImage, mutations := emptyDirectoryFixture(t)
+			operation := productionJournalOperation()
+			applyExpected := operation.applyExpected
+			replaced := false
+			operation.applyExpected = func(root, path string, prior, replacement Image) error {
+				err := applyExpected(root, path, prior, replacement)
+				if err == nil && path == ".awf/old/nested/part.md" && !replaced {
+					replaced = true
+					directory := filepath.Join(root, ".awf", "old", "nested")
+					if err := os.Remove(directory); err != nil {
+						return err
+					}
+					if err := os.Mkdir(directory, tc.mode); err != nil {
+						return err
+					}
+					if err := os.Chmod(directory, tc.mode); err != nil {
+						return err
+					}
+				}
+				return err
+			}
+			outcome, err := commitMigrationWith(root, lock, lockImage, 51, mutations, operation)
+			directory := filepath.Join(root, ".awf", "old", "nested")
+			if !tc.wantFail {
+				if err != nil {
+					t.Fatal(err)
+				}
+				if _, statErr := os.Lstat(directory); !errors.Is(statErr, os.ErrNotExist) {
+					t.Fatalf("application-time empty replacement remains: %v", statErr)
+				}
+				return
+			}
+			if err == nil || !errors.Is(err, filesystem.ErrIdentityChanged) {
+				t.Fatalf("changed-mode replacement error = %v", err)
+			}
+			if len(outcome.Changed) != 0 {
+				t.Fatalf("rollback retained changed axes: %#v (error %v)", outcome.Changed, err)
+			}
+			info, statErr := os.Stat(directory)
+			part, readErr := os.ReadFile(filepath.Join(directory, "part.md"))
+			if statErr != nil || readErr != nil || info.Mode().Perm() != tc.mode || string(part) != "custom\n" {
+				t.Fatalf("preserved replacement and rollback child: info=%v part=%q errors=%v", info, part, errors.Join(statErr, readErr))
+			}
+		})
+	}
+}
+
+// invariant: config/migrations-and-locks:migration-preimage-safe (TestCommitMigrationPreservesApplicationTimeNonDirectory)
+func TestCommitMigrationPreservesApplicationTimeNonDirectory(t *testing.T) {
+	root, lock, lockImage, mutations := emptyDirectoryFixture(t)
+	operation := productionJournalOperation()
+	applyExpected := operation.applyExpected
+	replaced := false
+	operation.applyExpected = func(root, path string, prior, replacement Image) error {
+		err := applyExpected(root, path, prior, replacement)
+		if err == nil && path == ".awf/old/nested/part.md" && !replaced {
+			replaced = true
+			directory := filepath.Join(root, ".awf", "old", "nested")
+			if err := os.Remove(directory); err != nil {
+				return err
+			}
+			return os.WriteFile(directory, []byte("external replacement\n"), 0o600)
+		}
+		return err
+	}
+	outcome, err := commitMigrationWith(root, lock, lockImage, 51, mutations, operation)
+	if err == nil || !errors.Is(err, filesystem.ErrIdentityChanged) || !strings.Contains(err.Error(), "rollback halted") {
+		t.Fatalf("non-directory replacement error = %v", err)
+	}
+	replacement := filepath.Join(root, ".awf", "old", "nested")
+	if contents, readErr := os.ReadFile(replacement); readErr != nil || string(contents) != "external replacement\n" {
+		t.Fatalf("non-directory replacement = %q err=%v", contents, readErr)
+	}
+	if !journalPresence(t, root) || len(outcome.Changed) == 0 {
+		t.Fatalf("blocked rollback did not retain recovery evidence: %#v", outcome)
+	}
+}
+
 // invariant: config/migrations-and-locks:migration-preimage-safe (TestCommitMigrationPreservesChildAddedDuringDirectoryPrune)
 func TestCommitMigrationPreservesChildAddedDuringDirectoryPrune(t *testing.T) {
 	root, lock, lockImage, mutations := emptyDirectoryFixture(t)
@@ -102,83 +191,6 @@ func TestCommitMigrationPreservesChildAddedDuringDirectoryPrune(t *testing.T) {
 	}
 	if found, journalErr := JournalPresent(root); journalErr != nil || found {
 		t.Fatalf("journal after rollback found=%t err=%v", found, journalErr)
-	}
-}
-
-// invariant: config/migrations-and-locks:migration-preimage-safe (TestCommitMigrationRefusesDirectoryReplacementBeforePrune)
-func TestCommitMigrationRefusesDirectoryReplacementBeforePrune(t *testing.T) {
-	root, lock, lockImage, mutations := emptyDirectoryFixture(t)
-	operation := productionJournalOperation()
-	applyExpected := operation.applyExpected
-	operation.applyExpected = func(root, path string, prior, replacement Image) error {
-		err := applyExpected(root, path, prior, replacement)
-		if err == nil && path == ".awf/old/nested/part.md" {
-			current := filepath.Join(root, ".awf", "old", "nested")
-			if err := os.Remove(current); err != nil {
-				return err
-			}
-			if err := os.Mkdir(current, 0o777); err != nil {
-				return err
-			}
-			if err := os.Chmod(current, 0o777); err != nil {
-				return err
-			}
-		}
-		return err
-	}
-	outcome, err := commitMigrationWith(root, lock, lockImage, 51, mutations, operation)
-	if err == nil || !errors.Is(err, filesystem.ErrIdentityChanged) {
-		t.Fatalf("commit error = %v", err)
-	}
-	replacement := filepath.Join(root, ".awf", "old", "nested")
-	if info, statErr := os.Stat(replacement); statErr != nil || !info.IsDir() || info.Mode().Perm() != 0o777 {
-		t.Fatalf("replacement directory was not preserved: info=%v err=%v", info, statErr)
-	}
-	if _, readErr := os.Lstat(filepath.Join(replacement, "part.md")); !errors.Is(readErr, os.ErrNotExist) {
-		t.Fatalf("prior child was restored into replacement directory: %v", readErr)
-	}
-	if !journalPresence(t, root) || len(outcome.Changed) == 0 {
-		t.Fatalf("unsafe rollback did not retain recovery evidence: %#v", outcome)
-	}
-}
-
-// invariant: config/migrations-and-locks:migration-preimage-safe (TestCommitMigrationRefusesRecreatedDirectoryDuringRollbackAndRecovery)
-func TestCommitMigrationRefusesRecreatedDirectoryDuringRollbackAndRecovery(t *testing.T) {
-	root, lock, lockImage, mutations := emptyDirectoryFixture(t)
-	operation := productionJournalOperation()
-	applyExpected := operation.applyExpected
-	operation.applyExpected = func(root, path string, prior, replacement Image) error {
-		if path == LockRel() {
-			recreated := filepath.Join(root, ".awf", "old", "nested")
-			if err := os.Mkdir(recreated, 0o777); err != nil {
-				return err
-			}
-			if err := os.Chmod(recreated, 0o777); err != nil {
-				return err
-			}
-			return errors.New("injected lock failure")
-		}
-		return applyExpected(root, path, prior, replacement)
-	}
-	outcome, err := commitMigrationWith(root, lock, lockImage, 51, mutations, operation)
-	if err == nil || !strings.Contains(err.Error(), "already exists") {
-		t.Fatalf("commit error = %v", err)
-	}
-	part := filepath.Join(root, ".awf", "old", "nested", "part.md")
-	if _, readErr := os.Lstat(part); !errors.Is(readErr, os.ErrNotExist) {
-		t.Fatalf("prior child was restored into recreated directory: %v", readErr)
-	}
-	if !journalPresence(t, root) || len(outcome.Changed) == 0 {
-		t.Fatalf("unsafe rollback did not retain recovery evidence: %#v", outcome)
-	}
-	if recovered, recoverErr := Recover(root); recoverErr == nil || !strings.Contains(recoverErr.Error(), "preflight directory identity is unavailable") {
-		t.Fatalf("recovery = %#v, %v; want recreated-directory refusal", recovered, recoverErr)
-	}
-	if _, readErr := os.Lstat(part); !errors.Is(readErr, os.ErrNotExist) {
-		t.Fatalf("recovery restored prior child into recreated directory: %v", readErr)
-	}
-	if !journalPresence(t, root) {
-		t.Fatal("recovery removed journal despite unsafe recreated directory")
 	}
 }
 

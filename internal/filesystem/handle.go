@@ -360,24 +360,17 @@ func (h *Handle) RetireExpected(destination string, expected *ExpectedIdentity) 
 
 // RemoveExpected removes path only while it still has expected's identity.
 func (h *Handle) RemoveExpected(destination string, expected *ExpectedIdentity) error {
-	return h.removeExpected(destination, expected, nil, nil)
+	return h.removeExpected(destination, expected, nil)
 }
 
 // RemoveExpectedRegularFile removes path only if the displaced entry retains
 // both expected's identity and the exact regular-file bytes and permission mode.
 func (h *Handle) RemoveExpectedRegularFile(destination string, expected *ExpectedIdentity, expectedContents []byte, expectedMode fs.FileMode) error {
 	exact := &expectedRegularFile{contents: expectedContents, mode: expectedMode.Perm()}
-	return h.removeExpected(destination, expected, exact, nil)
+	return h.removeExpected(destination, expected, exact)
 }
 
-// RemoveExpectedEmptyDirectory removes an empty directory only if the displaced
-// entry retains expected's identity and exact permission mode at exchange time.
-func (h *Handle) RemoveExpectedEmptyDirectory(destination string, expected *ExpectedIdentity, expectedMode fs.FileMode) error {
-	mode := expectedMode.Perm()
-	return h.removeExpected(destination, expected, nil, &mode)
-}
-
-func (h *Handle) removeExpected(destination string, expected *ExpectedIdentity, exact *expectedRegularFile, expectedDirectoryMode *fs.FileMode) (returnErr error) {
+func (h *Handle) removeExpected(destination string, expected *ExpectedIdentity, exact *expectedRegularFile) (returnErr error) {
 	if expected != nil {
 		defer expected.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	}
@@ -390,16 +383,18 @@ func (h *Handle) removeExpected(destination string, expected *ExpectedIdentity, 
 	if exact != nil && expected.IsDir() {
 		return fmt.Errorf("filesystem: remove %q: expected entry is not a regular file: %w", destination, ErrIdentityChanged)
 	}
-	if expectedDirectoryMode != nil && !expected.IsDir() {
-		return fmt.Errorf("filesystem: remove %q: expected entry is not a directory: %w", destination, ErrIdentityChanged)
-	}
 	if expected.IsDir() {
-		entries, err := h.ReadDirExpected(destination, expected)
+		directory, err := h.root.Open(destination)
 		if err != nil {
 			return fmt.Errorf("filesystem: inspect removable directory %q: %w", destination, err)
 		}
-		if len(entries) != 0 {
+		_, readErr := directory.Readdirnames(1)
+		closeErr := directory.Close()
+		if readErr == nil {
 			return fmt.Errorf("filesystem: remove %q: %w", destination, ErrDirectoryNotEmpty)
+		}
+		if !errors.Is(readErr, io.EOF) || closeErr != nil {
+			return fmt.Errorf("filesystem: inspect removable directory %q: %w", destination, errors.Join(readErr, closeErr))
 		}
 	}
 	var temporary string
@@ -441,34 +436,7 @@ func (h *Handle) removeExpected(destination string, expected *ExpectedIdentity, 
 			}
 		}
 	}()
-	var afterExchange afterExpectedExchange
-	if expectedDirectoryMode != nil {
-		afterExchange = func(root *os.Root, displaced string) error {
-			directory, err := openExpectedEntry(root, displaced)
-			if err != nil {
-				return err
-			}
-			info, err := directory.Stat()
-			if err != nil {
-				_ = directory.Close()
-				return err
-			}
-			if !expected.SameFile(info) || !info.IsDir() || info.Mode().Perm() != expectedDirectoryMode.Perm() {
-				_ = directory.Close()
-				return fmt.Errorf("displaced directory identity or mode changed: %w", ErrIdentityChanged)
-			}
-			_, readErr := directory.Readdirnames(1)
-			closeErr := directory.Close()
-			if readErr == nil {
-				return errors.Join(ErrDirectoryNotEmpty, closeErr)
-			}
-			if !errors.Is(readErr, io.EOF) || closeErr != nil {
-				return errors.Join(readErr, closeErr)
-			}
-			return nil
-		}
-	}
-	consumed, err := exchangeExpectedWithHook(h.root, temporary, destination, expected, exact, true, false, afterExchange)
+	consumed, err := exchangeExpected(h.root, temporary, destination, expected, exact, true, false)
 	if consumed {
 		temporary = ""
 	}
