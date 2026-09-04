@@ -142,7 +142,7 @@ func TestLocalDocReferenceChecksBody(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	b = []byte(strings.Replace(string(b), "<!-- awf:edit-in-place body -->\n\n", "<!-- awf:edit-in-place body -->\n\n[missing](absent.md) awf-maintenance\n", 1))
+	b = []byte(strings.Replace(string(b), "<!-- awf:edit-in-place body -->\n\n", "<!-- awf:edit-in-place body -->\n\n[missing](absent.md) example-debugging\n", 1))
 	if err := os.WriteFile(path, b, 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -156,7 +156,7 @@ func TestLocalDocReferenceChecksBody(t *testing.T) {
 	}
 	skillDrift := checkDeadSkillRefs(renderInputsForTest(p), []RenderedFile{{
 		Path: path, Content: string(b), Policy: outputplan.Policy{ScanSkillReferences: true},
-	}}, map[string]bool{})
+	}})
 	if !link || len(skillDrift) != 1 || skillDrift[0].Path != path || skillDrift[0].Kind != "dead-skill-reference" {
 		t.Fatalf("local body reference drift = %#v; skill drift = %#v", reportDrift(report), skillDrift)
 	}

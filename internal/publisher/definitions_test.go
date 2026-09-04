@@ -146,7 +146,7 @@ func TestEnabledDefinitionMissingBridgeTemplateRefusesBeforeOutput(t *testing.T)
 	if err != nil {
 		t.Fatal(err)
 	}
-	state = setTestTargets(state, []artifactregistry.Target{{Name: "broken", BridgeFile: "BRIDGE.md", BridgeTemplate: "missing/bridge.md.tmpl", AgentDialect: artifactregistry.MarkdownAgentDialect}})
+	state = setTestTargets(state, []artifactregistry.Target{{Name: "broken", SkillDir: ".broken/skills", BridgeFile: "BRIDGE.md", BridgeTemplate: "missing/bridge.md.tmpl"}})
 	if _, err := outputPlanProject(state); err == nil || !strings.Contains(err.Error(), "read template missing/bridge.md.tmpl") {
 		t.Fatalf("missing enabled bridge template error = %v", err)
 	}
@@ -235,18 +235,6 @@ func TestNormalizeOutputInputsOrdersRolesAtOnePath(t *testing.T) {
 	rolesAtOnePath := normalizeOutputInputs([]OutputInput{{Path: "same", Role: outputplan.ArtifactTemplate}, {Path: "same", Role: outputplan.ArtifactConfig}})
 	if !reflect.DeepEqual(rolesAtOnePath, []OutputInput{{Path: "same", Role: outputplan.ArtifactConfig}, {Path: "same", Role: outputplan.ArtifactTemplate}}) {
 		t.Fatalf("same-path role ordering = %#v", rolesAtOnePath)
-	}
-}
-
-func TestResolvedTargetOutputsFiltersRequiredSkills(t *testing.T) {
-	target := artifactregistry.Target{SkillDir: ".target/skills", Outputs: []artifactregistry.TargetOutput{{Path: "always"}, {Path: "conditional", RequiresSkill: "implementing"}, {SkillName: "workflow", RequiresSkill: "effort-workflow"}}}
-	outputs := resolvedTargetOutputs(target, "example", []string{"implementing"})
-	if len(outputs) != 2 || outputs[0].Path != "always" || outputs[1].Path != "conditional" {
-		t.Fatalf("filtered outputs = %#v", outputs)
-	}
-	outputs = resolvedTargetOutputs(target, "example", []string{"effort-workflow"})
-	if len(outputs) != 2 || outputs[1].Path != ".target/skills/workflow/SKILL.md" {
-		t.Fatalf("skill-path outputs = %#v", outputs)
 	}
 }
 

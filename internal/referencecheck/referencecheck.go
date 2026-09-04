@@ -37,7 +37,7 @@ var retiredAWFSkills = map[string]bool{
 
 // Check validates managed Markdown and skill references using the supplied
 // semantic output plan and the working-universe existence capability.
-func Check(plan outputplan.Plan, prefix string, effectiveSkills map[string]bool, knownSkills map[string]bool, exists Exists) (checkresult.Result, error) {
+func Check(plan outputplan.Plan, prefix string, availableSkills map[string]bool, exists Exists) (checkresult.Result, error) {
 	var findings []checkresult.Finding
 	for _, output := range plan.Outputs() {
 		if output.Policy().ScanReferences {
@@ -54,19 +54,19 @@ func Check(plan outputplan.Plan, prefix string, effectiveSkills map[string]bool,
 		if output.Policy().ScanSkillReferences {
 			seen := map[string]bool{}
 			for _, token := range skillToken.FindAllString(refs.WithoutFences(output.Content()), -1) {
-				name, relevant := token, knownSkills[token]
+				name, relevant := token, availableSkills[token]
 				// The external agentic-* namespace is canonical. When a project uses
 				// prefix "agentic", do not reinterpret those identities as legacy
 				// project-prefixed AWF skills.
 				if prefix != "agentic" && strings.HasPrefix(token, prefix+"-") {
 					legacyName := strings.TrimPrefix(token, prefix+"-")
-					if knownSkills[legacyName] {
+					if availableSkills[legacyName] {
 						name, relevant = legacyName, true
 					} else if retiredAWFSkills[legacyName] {
 						name, relevant = legacyName, true
 					}
 				}
-				if !relevant || effectiveSkills[name] || seen[token] {
+				if !relevant || availableSkills[name] || seen[token] {
 					continue
 				}
 				seen[token] = true

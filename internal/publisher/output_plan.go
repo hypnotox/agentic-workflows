@@ -19,7 +19,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
-	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -257,16 +256,10 @@ func buildOutputDefinitionsFromState(cfg *config.Config, cat *catalog.Catalog, t
 		if err := artifactregistry.ValidateTarget(target); err != nil {
 			return nil, err
 		}
-		if err := validateTargetOutputRequirements(target, cat); err != nil {
-			return nil, err
-		}
 		for _, name := range slices.Sorted(maps.Keys(cat.Skills)) {
 			addTarget(artifactregistry.OutputPath(cat, target, cfg.Prefix, "skills", name), mustDescriptor("skills").templateID(cat, name), "skills:"+name, target)
 		}
 		add(target.BridgeFile, target.BridgeTemplate, target.BridgeTemplate, "bridge\x00"+target.BridgeTemplate)
-		for _, output := range resolvedTargetOutputs(target, cfg.Prefix, slices.Sorted(maps.Keys(cat.Skills))) {
-			addTarget(output.Path, output.TemplateID, "target-output", target)
-		}
 	}
 	for _, name := range slices.Sorted(maps.Keys(cat.Docs)) {
 		entry := cat.Docs[name]
@@ -385,8 +378,6 @@ func coalesceDefinitions(cfg *config.Config, definitions []outputDefinition) ([]
 type OutputRecipe struct {
 	TemplateID, TemplateHash, ConfigHash string
 	Policy                               outputplan.Policy
-	Encoder                              artifactregistry.AgentDialect
-	Provenance                           string
 }
 
 // OutputNode is one path in the deterministic internal output plan.
@@ -424,93 +415,20 @@ func declaredPolicy(kind string, regen bool) outputplan.Policy {
 	return artifactregistry.Policy(kind, regen)
 }
 
-// targetOutputDefinition is a pre-render, normalized descriptor for an
-// extension output. It lets the planner settle compatibility before Execute.
-type targetOutputDefinition struct {
-	recipe    OutputRecipe
-	inputs    []OutputInput
-	canonical string
-}
-
-// resolvedTargetOutputs is the single selection and path translation point for
-// target-owned outputs. Planning, rendering, and prune all consume it.
-func validateTargetOutputRequirements(t artifactregistry.Target, cat *catalog.Catalog) error {
-	return artifactregistry.ValidateTargetRequirements(t, cat)
-}
-
-func resolvedTargetOutputs(t artifactregistry.Target, prefix string, selected []string) []artifactregistry.TargetOutput {
-	artifacts := artifactregistry.ResolveTargetArtifacts(t, prefix, selected)
-	outputs := make([]artifactregistry.TargetOutput, len(artifacts))
-	for i, artifact := range artifacts {
-		outputs[i] = artifact.Output
-	}
-	return outputs
-}
-
-// targetOutputDefinitions reads recipe inputs but never executes a template.
-// Thus a collision is reported before any producer renders its output.
-func targetOutputDefinitions(p renderInputs, eff map[string]bool) (map[string]targetOutputDefinition, error) {
-	out := map[string]targetOutputDefinition{}
-	for _, t := range p.targets() {
-		if err := artifactregistry.ValidateTarget(t); err != nil {
-			return nil, err
-		}
-		if err := validateTargetOutputRequirements(t, projectCatalog(p)); err != nil {
-			return nil, err
-		}
-		for _, o := range resolvedTargetOutputs(t, p.cfg.Prefix, slices.Sorted(maps.Keys(projectCatalog(p).Skills))) {
-			src, err := fs.ReadFile(templates.FS, o.TemplateID)
-			if err != nil {
-				return nil, fmt.Errorf("read template %s: %w", o.TemplateID, err)
-			}
-			expanded, err := render.ExpandIncludes(string(src), templates.FS)
-			if err != nil {
-				return nil, fmt.Errorf("render %s: %w", o.TemplateID, err)
-			}
-			stripped, err := render.StripAuthoringComments(expanded)
-			if err != nil {
-				return nil, fmt.Errorf("render %s: %w", o.TemplateID, err)
-			}
-			configHash, err := artifactConfigHash(p, stripped, config.Sidecar{}, nil, eff, t)
-			if err != nil {
-				return nil, err
-			}
-			templateInput := []byte(expanded)
-			recipe := OutputRecipe{TemplateID: o.TemplateID, TemplateHash: manifest.Hash(templateInput), ConfigHash: configHash, Policy: o.Policy, Encoder: o.Encoder, Provenance: fmt.Sprintf("%d", o.Provenance)}
-			decl := out[o.Path]
-			if decl.canonical != "" && decl.recipe != recipe {
-				return nil, fmt.Errorf("two artifacts render to the same output path %q: conflicting output recipes", o.Path)
-			}
-			if decl.canonical == "" {
-				decl.recipe, decl.canonical = recipe, t.Name
-			}
-			for _, input := range o.Inputs {
-				decl.inputs = append(decl.inputs, OutputInput(input))
-			}
-			out[o.Path] = decl
-		}
-	}
-	for path, decl := range out {
-		decl.inputs = normalizeOutputInputs(decl.inputs)
-		out[path] = decl
-	}
-	return out, nil
-}
-
 // OutputPlan compiles all output producers. Generated nodes are constructed in
 // dependency order; config reference observes ordinary/domain metadata but is
 // deliberately excluded from its own input.
-// OutputPlan derives the topic corpus and effective skill set once and threads them
-// to every producer that needs them.
+// OutputPlan derives the topic and pitfall corpora once and threads them to
+// every producer that needs them.
 func outputPlan(p renderInputs) (*OutputPlan, error) {
-	pitfalls, topics, eff, err := deriveOperationStateWithPitfalls(p)
+	pitfalls, topics, err := deriveOperationStateWithPitfalls(p)
 	if err != nil {
 		return nil, err
 	}
-	return outputPlanWithPitfalls(p, pitfalls, topics, eff)
+	return outputPlanWithPitfalls(p, pitfalls, topics)
 }
 
-func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topic.Corpus, eff map[string]bool) (*OutputPlan, error) {
+func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topic.Corpus) (*OutputPlan, error) {
 	definitions, err := buildOutputDefinitionsFromState(p.cfg, projectCatalog(p), p.targets(), pitfalls, definitionTopicsFromCorpus(p.root(), topics))
 	if err != nil {
 		return nil, err
@@ -520,19 +438,12 @@ func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topi
 	if err := validateLiveTemplates(p); err != nil {
 		return nil, err
 	}
-	// Extension recipes include policy, encoder, and provenance in addition to
-	// template identity. Settle their compatibility before choosing the one
-	// canonical target whose closure will execute.
-	targetOutputs, err := targetOutputDefinitions(p, eff)
-	if err != nil {
-		return nil, err
-	}
 	definitionByPath := make(map[string]outputDefinition, len(definitions))
 	for _, definition := range definitions {
 		definitionByPath[definition.Path] = definition
 	}
 
-	base, err := renderAllBase(p, targetOutputs, eff, pitfalls)
+	base, err := renderAllBase(p, pitfalls)
 	if err != nil {
 		return nil, err
 	}
@@ -550,7 +461,7 @@ func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topi
 		if f.ObservedTemplateID != "" && f.ObservedTemplateID != definition.TemplateID {
 			return fmt.Errorf("output %q materialized template %q, want definition %q", f.Path, f.ObservedTemplateID, definition.TemplateID)
 		}
-		recipe := OutputRecipe{TemplateID: f.TemplateID, TemplateHash: f.TemplateHash, ConfigHash: f.ConfigHash, Policy: f.Policy, Encoder: f.Encoder, Provenance: fmt.Sprintf("%d", f.Provenance)}
+		recipe := OutputRecipe{TemplateID: f.TemplateID, TemplateHash: f.TemplateHash, ConfigHash: f.ConfigHash, Policy: f.Policy}
 		projections := []string{f.DeclarerProjection}
 		if len(definition.Projections) != 0 {
 			projections = slices.Clone(definition.Projections)
@@ -569,7 +480,7 @@ func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topi
 			return nil, err
 		}
 	}
-	localDocs, err := generateLocalDocs(p, eff)
+	localDocs, err := generateLocalDocs(p)
 	if err != nil {
 		return nil, err
 	}
@@ -578,7 +489,7 @@ func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topi
 			return nil, err
 		}
 	}
-	pitfallLeaves, err := generatePitfallLeaves(p, pitfalls, eff)
+	pitfallLeaves, err := generatePitfallLeaves(p, pitfalls)
 	if err != nil {
 		return nil, err
 	}
@@ -596,7 +507,7 @@ func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topi
 			return nil, err
 		}
 	}
-	domains, err := generateDomainDocs(p, topics, eff)
+	domains, err := generateDomainDocs(p, topics)
 	if err != nil {
 		return nil, err
 	}
@@ -606,7 +517,7 @@ func outputPlanWithPitfalls(p renderInputs, pitfalls pitfall.Corpus, topics topi
 		}
 	}
 	inputs := slices.Concat(base, localDocs, pitfallLeaves, domains, topicFiles)
-	if cref, ok, err := generateConfigReference(p, inputs, eff); err != nil {
+	if cref, ok, err := generateConfigReference(p, inputs); err != nil {
 		return nil, err
 	} else if ok {
 		if err := add(*cref); err != nil {

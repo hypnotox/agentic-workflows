@@ -65,10 +65,9 @@ func TestCheckReportUsesPreparedAdvisorySources(t *testing.T) {
 		t.Fatal(planErr)
 	}
 	pitfalls, _ := operation.Pitfalls()
-	skills, _ := operation.EffectiveSkills()
 	generated, _ := operation.GeneratedOutput()
 	glossary, _ := operation.Glossary()
-	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), plan, pitfalls, skills, generated, glossary); err != nil {
+	if _, err := BuildCheckReport(p, cfg, testRepo(p), testContext(t), plan, pitfalls, generated, glossary); err != nil {
 		t.Fatalf("project report changed after operation construction: %v after %d glossary reads", err, reader.reads)
 	}
 }

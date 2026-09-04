@@ -1,10 +1,8 @@
 package project
 
 import (
-	"slices"
 	"strings"
 
-	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 )
 
@@ -22,12 +20,6 @@ func (l Layout) templateMap() map[string]any {
 		out[key] = value
 	}
 	return out
-}
-
-func targetTemplateData(target artifactregistry.Target) map[string]any {
-	return map[string]any{
-		"targetSessionHandoff": slices.Contains(target.Capabilities, artifactregistry.CapabilitySessionHandoff),
-	}
 }
 
 func gatedCommandsDisplay() string {

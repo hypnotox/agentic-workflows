@@ -1,11 +1,6 @@
-The Pi target keeps only the host capability AWF effort guidance can truthfully use.
+AWF documents the external Pi dependency boundary without declaring a runtime capability or implementation.
 
 ## Claims
-
-### `invariant: pi-session-handoff-workflow`
-
-Pi retains the host-neutral `session-handoff` capability. The `awf-effort` skill owns effort-backed checkpoint and continuation guidance: resolve memory through `./awf effort show <slug>`, update the reported Markdown under the one-writer rule, and reorient from repository authority before substantive successor work. AWF provides no Pi-specific association, executable effort-handoff bridge, role adapter, or runtime implementation.
-Backing: test
 
 ### `invariant: pi-runtime-dependency-separation`
 

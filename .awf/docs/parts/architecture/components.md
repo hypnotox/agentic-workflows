@@ -1,4 +1,4 @@
-- `internal/artifactregistry`: owns canonical managed-artifact declarations and stable projections for kind, cardinality, target and capability metadata, catalog templates, output paths, hooks, check participation, and ownership.
+- `internal/artifactregistry`: owns canonical managed-artifact declarations and stable projections for kind, cardinality, fixed target metadata, catalog templates, output paths, hooks, check participation, and ownership.
 - `internal/outputplan`: owns neutral immutable output policies, recipes, rendered outputs, nodes, and operation plans shared below application coordination.
 - `internal/publisher`: the application-level, single-use Publisher consumes one immutable project Session, registers and coalesces complete output definitions, renders each accepted node once, and shares its immutable plan with checking and publication. It owns publication Results plus an explicit tree reader.
 - `internal/checkresult`: owns immutable ranked findings with explicit protected properties and separately unranked information.

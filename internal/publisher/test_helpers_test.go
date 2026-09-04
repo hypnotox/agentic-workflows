@@ -155,7 +155,7 @@ func csRepo(t *testing.T, cfg string, files map[string]string) *project.Session 
 }
 func mustDeriveTopics(t *testing.T, state *project.Session) topic.Corpus {
 	t.Helper()
-	_, topics, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(state))
+	_, topics, err := deriveOperationStateWithPitfalls(renderInputsForTest(state))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -372,41 +372,29 @@ func declaredSections(p renderInputs, kind, name string) []string {
 	}
 	return nil
 }
-func mustDeriveSkills(t *testing.T, state *project.Session) map[string]bool {
-	t.Helper()
-	out, err := effectiveSkills(renderInputsForTest(state))
-	if err != nil {
-		t.Fatal(err)
-	}
-	return out
-}
-func operationCheckInputs(operation *Publisher) (outputplan.Plan, pitfall.Corpus, map[string]bool, generatedcheck.AdditionalInput, glossarycheck.Input, error) {
+func operationCheckInputs(operation *Publisher) (outputplan.Plan, pitfall.Corpus, generatedcheck.AdditionalInput, glossarycheck.Input, error) {
 	plan, err := operation.Plan()
 	if err != nil {
-		return outputplan.Plan{}, pitfall.Corpus{}, nil, generatedcheck.AdditionalInput{}, glossarycheck.Input{}, err
+		return outputplan.Plan{}, pitfall.Corpus{}, generatedcheck.AdditionalInput{}, glossarycheck.Input{}, err
 	}
 	pitfalls, err := operation.Pitfalls()
 	if err != nil {
-		return outputplan.Plan{}, pitfall.Corpus{}, nil, generatedcheck.AdditionalInput{}, glossarycheck.Input{}, err
-	}
-	skills, err := operation.EffectiveSkills()
-	if err != nil {
-		return outputplan.Plan{}, pitfall.Corpus{}, nil, generatedcheck.AdditionalInput{}, glossarycheck.Input{}, err
+		return outputplan.Plan{}, pitfall.Corpus{}, generatedcheck.AdditionalInput{}, glossarycheck.Input{}, err
 	}
 	generated, err := operation.GeneratedOutput()
 	if err != nil {
-		return outputplan.Plan{}, pitfall.Corpus{}, nil, generatedcheck.AdditionalInput{}, glossarycheck.Input{}, err
+		return outputplan.Plan{}, pitfall.Corpus{}, generatedcheck.AdditionalInput{}, glossarycheck.Input{}, err
 	}
 	glossary, err := operation.Glossary()
-	return plan, pitfalls, skills, generated, glossary, err
+	return plan, pitfalls, generated, glossary, err
 }
 func checkProject(state *project.Session, _ ...context.Context) ([]manifest.Drift, error) {
 	cfg := testConfig(state)
-	plan, pitfalls, skills, generated, glossary, err := operationCheckInputs(newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version))
+	plan, pitfalls, generated, glossary, err := operationCheckInputs(newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version))
 	if err != nil {
 		return nil, err
 	}
-	report, err := project.BuildCheckReport(state, cfg, nil, context.Background(), plan, pitfalls, skills, generated, glossary)
+	report, err := project.BuildCheckReport(state, cfg, nil, context.Background(), plan, pitfalls, generated, glossary)
 	if err != nil {
 		return nil, err
 	}

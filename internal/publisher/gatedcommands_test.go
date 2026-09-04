@@ -42,7 +42,7 @@ func TestGatedCommandsDisplay(t *testing.T) {
 	if got := registry["gatedCommands"]; got != want {
 		t.Errorf("placeholder gatedCommands = %q, want %q", got, want)
 	}
-	if got := projectData(inputs, config.Sidecar{}, map[string]bool{})["gatedCommands"]; got != want {
+	if got := projectData(inputs, config.Sidecar{})["gatedCommands"]; got != want {
 		t.Errorf("agent-guide gatedCommands = %q, want %q", got, want)
 	}
 }

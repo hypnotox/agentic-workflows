@@ -2,17 +2,14 @@
 package artifactregistry
 
 import (
-	"errors"
 	"fmt"
 	"maps"
-	"path/filepath"
 	"slices"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
-	"github.com/hypnotox/agentic-workflows/internal/render"
 )
 
 // Cardinality describes how a managed artifact family is selected.
@@ -50,8 +47,6 @@ type Owner string
 const (
 	// OwnerCatalog identifies catalog-owned artifact declarations.
 	OwnerCatalog Owner = "catalog"
-	// OwnerTarget identifies target-owned artifact declarations.
-	OwnerTarget Owner = "target"
 	// OwnerCore identifies core artifact declarations.
 	OwnerCore Owner = "core"
 	// OwnerHooks identifies hook artifact declarations.
@@ -60,59 +55,12 @@ const (
 	OwnerResident Owner = "resident"
 )
 
-// AgentDialect names the target-native output representation.
-type AgentDialect string
-
-const (
-	// MarkdownAgentDialect identifies Markdown target output.
-	MarkdownAgentDialect AgentDialect = "markdown"
-	// PlainAgentDialect identifies non-Markdown target output.
-	PlainAgentDialect AgentDialect = "plain"
-)
-
-// Capability is one closed target capability.
-type Capability string
-
-const (
-	// CapabilitySessionHandoff permits target-native session handoff.
-	CapabilitySessionHandoff Capability = "session-handoff"
-)
-
-// TargetOutputProducer identifies how a target-owned output is produced.
-type TargetOutputProducer string
-
-// TargetOutputTemplate identifies template-produced target output.
-const TargetOutputTemplate TargetOutputProducer = "template"
-
-// TargetOutputInput declares one semantic input to a target-owned output.
-type TargetOutputInput struct {
-	Path string
-	Role outputplan.ArtifactRole
-}
-
-// TargetOutput is one target-owned non-catalog managed artifact.
-type TargetOutput struct {
-	Path           string
-	SkillName      string
-	RequiresSkill  string
-	TemplateID     string
-	Producer       TargetOutputProducer
-	Inputs         []TargetOutputInput
-	Encoder        AgentDialect
-	Provenance     render.CommentStyle
-	Policy         outputplan.Policy
-	PolicyDeclared bool
-}
-
-// Target places adapter artifacts for one runtime.
+// Target places fixed AWF skills and an optional guide bridge for one harness.
 type Target struct {
 	Name           string
 	SkillDir       string
-	AgentDialect   AgentDialect
 	BridgeFile     string
 	BridgeTemplate string
-	Capabilities   []Capability
-	Outputs        []TargetOutput
 }
 
 // SkillPath returns the target-native path for a fixed-name managed skill.
@@ -331,8 +279,6 @@ type Unit struct {
 	TemplateID    string
 	Sections      []string
 	Enabled       func(*config.Config) bool
-	Encoder       AgentDialect
-	Provenance    render.CommentStyle
 	Policy        outputplan.Policy
 	Participation Participation
 	Owner         Owner
@@ -381,42 +327,19 @@ func ConditionalUnits() []Unit {
 	enabledBootstrap := func(c *config.Config) bool { return c.Bootstrap != nil && c.Bootstrap.Enabled }
 	always := func(*config.Config) bool { return true }
 	units := []Unit{
-		{ID: "bootstrap", Kind: "bootstrap", Path: config.DirName + "/bootstrap.sh", TemplateID: "bootstrap/awf-bootstrap.sh.tmpl", Enabled: enabledBootstrap, Encoder: PlainAgentDialect, Provenance: render.HTMLComment, Participation: Participation{Check: true}, Owner: OwnerCore},
-		{ID: "upgrade", Kind: "bootstrap", Path: config.DirName + "/upgrade.sh", TemplateID: "bootstrap/awf-upgrade.sh.tmpl", Enabled: enabledBootstrap, Encoder: PlainAgentDialect, Provenance: render.HTMLComment, Participation: Participation{Check: true}, Owner: OwnerCore},
-		{ID: "runner", Kind: "runner", Path: "awf", TemplateID: "runner/awf.tmpl", Sections: slices.Clone(runnerSections), Enabled: always, Encoder: PlainAgentDialect, Provenance: render.HTMLComment, Participation: Participation{Check: true}, Owner: OwnerCore},
+		{ID: "bootstrap", Kind: "bootstrap", Path: config.DirName + "/bootstrap.sh", TemplateID: "bootstrap/awf-bootstrap.sh.tmpl", Enabled: enabledBootstrap, Participation: Participation{Check: true}, Owner: OwnerCore},
+		{ID: "upgrade", Kind: "bootstrap", Path: config.DirName + "/upgrade.sh", TemplateID: "bootstrap/awf-upgrade.sh.tmpl", Enabled: enabledBootstrap, Participation: Participation{Check: true}, Owner: OwnerCore},
+		{ID: "runner", Kind: "runner", Path: "awf", TemplateID: "runner/awf.tmpl", Sections: slices.Clone(runnerSections), Enabled: always, Participation: Participation{Check: true}, Owner: OwnerCore},
 	}
 	for _, name := range hookNames {
-		units = append(units, Unit{ID: "hook:" + name, Kind: "hooks", Path: config.DirName + "/hooks/" + name + ".sh", TemplateID: HookTemplateID(name), Enabled: always, Encoder: PlainAgentDialect, Provenance: render.HTMLComment, Participation: Participation{Hook: true, Check: true}, Owner: OwnerHooks})
+		units = append(units, Unit{ID: "hook:" + name, Kind: "hooks", Path: config.DirName + "/hooks/" + name + ".sh", TemplateID: HookTemplateID(name), Enabled: always, Participation: Participation{Hook: true, Check: true}, Owner: OwnerHooks})
 	}
 	return units
 }
 
-// TargetArtifact attaches registry governance metadata to one target output.
-type TargetArtifact struct {
-	Output        TargetOutput
-	Participation Participation
-	Owner         Owner
-}
-
-type targetDeclaration struct {
-	Target  Target
-	Outputs []TargetArtifact
-}
-
-var targets = map[string]targetDeclaration{
-	"claude": {Target: Target{Name: "claude", SkillDir: ".claude/skills", AgentDialect: MarkdownAgentDialect, BridgeFile: "CLAUDE.md", BridgeTemplate: "claude/CLAUDE.md.tmpl"}},
-	"pi":     {Target: Target{Name: "pi", SkillDir: ".pi/skills", AgentDialect: MarkdownAgentDialect, Capabilities: []Capability{CapabilitySessionHandoff}}},
-}
-
-func declaredTarget(declaration targetDeclaration) Target {
-	target := declaration.Target
-	if len(declaration.Outputs) != 0 {
-		target.Outputs = make([]TargetOutput, len(declaration.Outputs))
-		for i, artifact := range declaration.Outputs {
-			target.Outputs[i] = artifact.Output
-		}
-	}
-	return target
+var targets = map[string]Target{
+	"claude": {Name: "claude", SkillDir: ".claude/skills", BridgeFile: "CLAUDE.md", BridgeTemplate: "claude/CLAUDE.md.tmpl"},
+	"pi":     {Name: "pi", SkillDir: ".pi/skills"},
 }
 
 // KnownTargets returns the built-in target names in stable order.
@@ -434,15 +357,13 @@ func Targets() []Target {
 	names := slices.Sorted(maps.Keys(targets))
 	out := make([]Target, 0, len(names))
 	for _, name := range names {
-		out = append(out, declaredTarget(targets[name]))
+		out = append(out, targets[name])
 	}
-	return cloneTargets(out)
+	return slices.Clone(out)
 }
 
 // BuiltinTarget returns an isolated copy of the named built-in target.
-func BuiltinTarget(name string) Target {
-	return cloneTargets([]Target{declaredTarget(targets[name])})[0]
-}
+func BuiltinTarget(name string) Target { return targets[name] }
 
 // ResolveTargets validates and returns isolated copies of the named targets.
 func ResolveTargets(names []string) ([]Target, error) {
@@ -452,155 +373,29 @@ func ResolveTargets(names []string) ([]Target, error) {
 		if !ok {
 			return nil, fmt.Errorf("unknown target %q (known: %s)", name, strings.Join(KnownTargets(), ", "))
 		}
-		target := declaredTarget(declaration)
-		if err := ValidateTarget(target); err != nil {
+		if err := ValidateTarget(declaration); err != nil {
 			return nil, err
 		}
-		out = append(out, cloneTargets([]Target{target})[0])
+		out = append(out, declaration)
 	}
 	return out, nil
 }
 
-// TargetTemplateData projects the closed capability set into template inputs.
-func TargetTemplateData(target Target) map[string]any {
-	return map[string]any{
-		"targetSessionHandoff": slices.Contains(target.Capabilities, CapabilitySessionHandoff),
-	}
-}
-
-// AnyTargetHasCapability reports whether any selected target declares capability.
-func AnyTargetHasCapability(targets []Target, capability Capability) bool {
-	return slices.ContainsFunc(targets, func(target Target) bool {
-		return slices.Contains(target.Capabilities, capability)
-	})
-}
-
 // TargetDescriptorProjection returns the stable output-affecting target identity.
 func TargetDescriptorProjection(target Target) string {
-	capabilities := slices.Clone(target.Capabilities)
-	slices.Sort(capabilities)
-	outputs := slices.Clone(target.Outputs)
-	slices.SortFunc(outputs, func(left, right TargetOutput) int {
-		return strings.Compare(fmt.Sprintf("%#v", left), fmt.Sprintf("%#v", right))
-	})
 	projection := fmt.Sprintf("%#v", struct {
 		Name, SkillDir, BridgeFile, BridgeTemplate string
-		AgentDialect                               AgentDialect
-		Capabilities                               []Capability
-		Outputs                                    []TargetOutput
-	}{target.Name, target.SkillDir, target.BridgeFile, target.BridgeTemplate, target.AgentDialect, capabilities, outputs})
-	// Preserve the historical hash projection after moving declaration ownership.
-	// The legacy package qualifier is serialized hash input, not a live type owner.
+	}{target.Name, target.SkillDir, target.BridgeFile, target.BridgeTemplate})
 	return strings.ReplaceAll(projection, "artifactregistry.", "projectstate.")
 }
 
-// ValidateTargetRequirements rejects outputs that name an absent catalog skill.
-func ValidateTargetRequirements(target Target, cat *catalog.Catalog) error {
-	for _, output := range target.Outputs {
-		if output.RequiresSkill != "" {
-			if _, ok := cat.Skills[output.RequiresSkill]; !ok {
-				return fmt.Errorf("target %q output %q requires unknown catalog skill %q", target.Name, output.Path, output.RequiresSkill)
-			}
-		}
-	}
-	return nil
-}
-
-func targetArtifacts(target Target) []TargetArtifact {
-	metadata := targets[target.Name].Outputs
-	out := make([]TargetArtifact, len(target.Outputs))
-	for i, output := range target.Outputs {
-		out[i] = TargetArtifact{Output: output, Participation: Participation{Check: true}, Owner: OwnerTarget}
-		if i < len(metadata) && metadata[i].Output.TemplateID == output.TemplateID {
-			out[i].Participation = metadata[i].Participation
-			out[i].Owner = metadata[i].Owner
-		}
-	}
-	return out
-}
-
-// ResolveTargetArtifacts applies required-skill selection and skill-path translation
-// while retaining the registry's ownership and check-participation metadata.
-func ResolveTargetArtifacts(target Target, _ string, selected []string) []TargetArtifact {
-	enabled := make(map[string]bool, len(selected))
-	for _, name := range selected {
-		enabled[name] = true
-	}
-	out := []TargetArtifact{}
-	for _, artifact := range targetArtifacts(target) {
-		if artifact.Output.RequiresSkill != "" && !enabled[artifact.Output.RequiresSkill] {
-			continue
-		}
-		if !artifact.Participation.Check {
-			continue
-		}
-		if artifact.Output.SkillName != "" {
-			artifact.Output.Path = target.SkillPath(artifact.Output.SkillName)
-		}
-		out = append(out, artifact)
-	}
-	return out
-}
-
-// ValidateTarget verifies a target declaration's closed registry contract.
+// ValidateTarget verifies the fixed target declaration.
 func ValidateTarget(target Target) error {
-	known := map[Capability]bool{CapabilitySessionHandoff: true}
-	for _, capability := range target.Capabilities {
-		if !known[capability] {
-			return fmt.Errorf("target %q has unknown capability %q", target.Name, capability)
-		}
+	if target.Name == "" || target.SkillDir == "" {
+		return fmt.Errorf("target name and skill directory must be present")
 	}
 	if (target.BridgeFile == "") != (target.BridgeTemplate == "") {
 		return fmt.Errorf("target %q bridge path and template must be both present or absent", target.Name)
 	}
-	if target.AgentDialect != MarkdownAgentDialect {
-		return fmt.Errorf("target %q has unknown agent encoder %q", target.Name, target.AgentDialect)
-	}
-	for _, artifact := range targetArtifacts(target) {
-		if artifact.Owner != OwnerTarget {
-			return fmt.Errorf("target %q output %q has invalid owner %q", target.Name, artifact.Output.Path, artifact.Owner)
-		}
-	}
-	for _, out := range target.Outputs {
-		if (out.Path == "") == (out.SkillName == "") || out.TemplateID == "" || (out.Path != "" && !filepath.IsLocal(filepath.FromSlash(out.Path))) {
-			return fmt.Errorf("target %q has unsafe output %q", target.Name, out.Path)
-		}
-		if out.SkillName != "" {
-			if err := config.ValidateArtifactName("skill", out.SkillName); err != nil {
-				return fmt.Errorf("target %q has unsafe skill output %q: %w", target.Name, out.SkillName, err)
-			}
-		}
-		if out.Producer != TargetOutputTemplate {
-			return fmt.Errorf("target %q output %q has unknown producer %q", target.Name, out.Path, out.Producer)
-		}
-		if len(out.Inputs) != 0 {
-			return fmt.Errorf("target %q template output %q declares producer inputs", target.Name, out.Path)
-		}
-		if out.Encoder != MarkdownAgentDialect && out.Encoder != PlainAgentDialect {
-			return fmt.Errorf("target %q output %q has unknown encoder %q", target.Name, out.Path, out.Encoder)
-		}
-		if !out.PolicyDeclared {
-			return fmt.Errorf("target %q output %q has no declared policy", target.Name, out.Path)
-		}
-		validProvenance := (out.Encoder == MarkdownAgentDialect && out.Provenance == render.HTMLComment) || (out.Encoder == PlainAgentDialect && out.Provenance == render.SlashComment)
-		if !validProvenance {
-			return fmt.Errorf("target %q output %q: encoder %q is incompatible with provenance", target.Name, out.Path, out.Encoder)
-		}
-		if out.Encoder == PlainAgentDialect && (out.Policy.ValidateFrontmatter || out.Policy.ScanReferences || out.Policy.ScanSkillReferences) {
-			return fmt.Errorf("target %q output %q: %w", target.Name, out.Path, errors.New("plain encoder is incompatible with frontmatter or Markdown reference policy"))
-		}
-	}
 	return nil
-}
-
-func cloneTargets(source []Target) []Target {
-	out := slices.Clone(source)
-	for i := range out {
-		out[i].Capabilities = slices.Clone(out[i].Capabilities)
-		out[i].Outputs = slices.Clone(out[i].Outputs)
-		for j := range out[i].Outputs {
-			out[i].Outputs[j].Inputs = slices.Clone(out[i].Outputs[j].Inputs)
-		}
-	}
-	return out
 }

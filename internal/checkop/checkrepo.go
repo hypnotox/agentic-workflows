@@ -100,10 +100,6 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 			if err != nil {
 				return repositorycheck.Report{}, err
 			}
-			skills, err := operation.EffectiveSkills()
-			if err != nil {
-				return repositorycheck.Report{}, err
-			}
 			generated, err := operation.GeneratedOutput()
 			if err != nil {
 				return repositorycheck.Report{}, err
@@ -112,7 +108,7 @@ func productionRepoCheckDependencies() repoCheckDependencies {
 			if err != nil {
 				return repositorycheck.Report{}, err
 			}
-			return project.BuildCheckReport(session, session.Config(), session.Repository(), ctx, plan, pitfalls, skills, generated, glossary)
+			return project.BuildCheckReport(session, session.Config(), session.Repository(), ctx, plan, pitfalls, generated, glossary)
 		},
 		currentState: func(ctx context.Context, session *project.Session) (currentstatecoord.CurrentStateReport, error) {
 			return currentstatecoord.CheckWorking(session.Root(), session.Repository(), ctx)

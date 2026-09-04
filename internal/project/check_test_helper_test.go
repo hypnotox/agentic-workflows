@@ -54,19 +54,9 @@ func mustPitfallCorpus(t *testing.T, p *Session) pitfall.Corpus {
 // mustDeriveTopics derives the operation-owned topic corpus the same way.
 func mustDeriveTopics(t *testing.T, p *Session) topic.Corpus {
 	t.Helper()
-	_, topics, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
+	_, topics, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
 	if err != nil {
 		t.Fatalf("derive operation state: %v", err)
 	}
 	return topics
-}
-
-// mustDeriveSkills derives the operation-owned effective skill set the same way.
-func mustDeriveSkills(t *testing.T, p *Session) map[string]bool {
-	t.Helper()
-	_, _, eff, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
-	if err != nil {
-		t.Fatalf("derive operation state: %v", err)
-	}
-	return eff
 }

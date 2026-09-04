@@ -58,10 +58,9 @@ func checkProject(p *project.Session, ctx context.Context) ([]manifest.Drift, er
 		return nil, err
 	}
 	pitfalls, _ := operation.Pitfalls()
-	skills, _ := operation.EffectiveSkills()
 	generated, _ := operation.GeneratedOutput()
 	glossary, _ := operation.Glossary()
-	report, err := project.BuildCheckReport(p, cfg, nil, ctx, plan, pitfalls, skills, generated, glossary)
+	report, err := project.BuildCheckReport(p, cfg, nil, ctx, plan, pitfalls, generated, glossary)
 	if err != nil {
 		return nil, err
 	}

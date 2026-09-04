@@ -42,8 +42,6 @@ type RenderedFile struct {
 	// Declarer identifies the producer requesting this output.
 	Declarer           string
 	DeclarerProjection string
-	Encoder            artifactregistry.AgentDialect
-	Provenance         render.CommentStyle
 	// assembled is the executed template source (post section-overlay, pre
 	// execution); unsetVarNotes scans it for referenced-but-unset vars (ADR-0045).
 	assembled string
@@ -70,14 +68,13 @@ type RenderedFile struct {
 
 // data assembles the template data namespace for a target: the prefix, the
 // project vars, the sidecar's structured data, and the awf-given docs layout.
-func projectData(p renderInputs, sc config.Sidecar, eff map[string]bool) map[string]any {
+func projectData(p renderInputs, sc config.Sidecar) map[string]any {
 	return map[string]any{
 		"prefix":               p.cfg.Prefix,
 		"vars":                 nonNil(p.cfg.Vars),
 		"data":                 nonNil(sc.Data),
 		"layout":               layout(p).templateMap(),
 		"version":              p.version,
-		"skills":               eff,
 		"commitScopes":         commitScopesDisplay(p),
 		"integrationBranch":    p.cfg.IntegrationBranch,
 		"integrationBranchHex": fmt.Sprintf("%x", p.cfg.IntegrationBranch),
@@ -85,10 +82,6 @@ func projectData(p renderInputs, sc config.Sidecar, eff map[string]bool) map[str
 		// safe for publication templates: `with` and `if` treat it as absent.
 		"commitPolicy":  p.cfg.CommitPolicy,
 		"gatedCommands": gatedCommandsDisplay(),
-		// Project-level session-handoff signal for the neutral (guide/singleton
-		// doc) render; per-target renders overwrite it from targetTemplateData
-		// (ADR-0157 Decision 6).
-		"targetSessionHandoff": anyTargetHasCapability(p.targets(), artifactregistry.CapabilitySessionHandoff),
 	}
 }
 
@@ -106,18 +99,6 @@ func commitScopesDisplay(p renderInputs) string {
 		quoted[i] = "`" + s.Name + "`"
 	}
 	return strings.Join(quoted, ", ")
-}
-
-// effectiveSkills returns the unconditional full catalog skill set.
-func effectiveSkills(p renderInputs) (map[string]bool, error) {
-	eff := map[string]bool{}
-	for name := range projectCatalog(p).Skills {
-		if _, err := p.cfg.Sidecar("skills", name); err != nil {
-			return nil, err
-		}
-		eff[name] = true
-	}
-	return eff, nil
 }
 
 // partRel is the project-relative convention part path the awf:edit pointer names,
@@ -308,14 +289,10 @@ func nonNil(m map[string]any) map[string]any {
 // target (ignored by neutral kinds like docs); target is the adapter this pass
 // renders for (zero for neutral kinds).
 type renderOutputOptions struct {
-	encode      func(string) (string, error)
-	bannerStyle render.CommentStyle
 	// sources are producer-selected reader guidance, separate from machine inputs.
 	sources []string
 	target  *artifactregistry.Target
-	// encoder is the output node's declared representation policy. Structural
-	// heading parsing follows it rather than target identity or filename shape.
-	encoder artifactregistry.AgentDialect
+	plain   bool
 }
 
 type renderKindSpec struct {
@@ -332,9 +309,6 @@ type renderKindSpec struct {
 	// merge, upstream of BOTH renderTarget and artifactConfigHash so the
 	// computation participates in the drift signal (ADR-0089; nil = none).
 	transform func(name string, sc config.Sidecar) (config.Sidecar, error)
-	// encode projects the rendered instruction body into an output dialect before
-	// provenance injection (nil leaves ordinary skill/doc rendering unchanged).
-	encode func(name, body string, data map[string]any) (string, error)
 	// sources supplies compact reader-facing provenance for this producer only.
 	sources func(name string) []string
 }
@@ -347,7 +321,7 @@ func skillTID(p renderInputs, n string) string {
 // docTID resolves a catalog document's declared template id.
 func docTID(p renderInputs, n string) string { return projectCatalog(p).Docs[n].TID }
 
-func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]RenderedFile, error) {
+func renderKind(p renderInputs, spec renderKindSpec) ([]RenderedFile, error) {
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(spec.names)) {
 		outPath := spec.outPath(spec.target, name)
@@ -369,7 +343,7 @@ func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]Ren
 				return nil, err
 			}
 		}
-		data := projectData(p, sc, eff)
+		data := projectData(p, sc)
 		var options *renderOutputOptions
 		if spec.target.Name != "" || spec.sources != nil {
 			options = &renderOutputOptions{}
@@ -378,34 +352,19 @@ func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]Ren
 			options.sources = spec.sources(name)
 		}
 		if spec.target.Name != "" {
-			for key, value := range targetTemplateData(spec.target) {
-				data[key] = value
-			}
 			target := spec.target
 			sources := options.sources
-			options = &renderOutputOptions{bannerStyle: render.HTMLComment, target: &target, encoder: artifactregistry.MarkdownAgentDialect}
-			options.sources = sources
+			options = &renderOutputOptions{target: &target, sources: sources}
 		}
-		if spec.encode != nil {
-			options.bannerStyle = agentCommentStyle(spec.target)
-			options.encoder = spec.target.AgentDialect
-			options.encode = func(body string) (string, error) { return spec.encode(name, body, data) }
-		}
-		rf, err := renderTarget(p, spec.kind, name, spec.tid(name), spec.sections(name), sc, data, outPath, eff, options)
+		rf, err := renderTarget(p, spec.kind, name, spec.tid(name), spec.sections(name), sc, data, outPath, options)
 		if err != nil {
 			return nil, err
 		}
 		if spec.target.Name != "" {
 			rf.Declarer = spec.target.Name
 			rf.DeclarerProjection = targetDescriptorProjection(spec.target)
-			rf.Provenance = options.bannerStyle
-			if spec.encode != nil {
-				rf.Encoder = spec.target.AgentDialect
-			} else {
-				rf.Encoder = artifactregistry.MarkdownAgentDialect
-			}
 		} else {
-			rf.Declarer, rf.DeclarerProjection, rf.Encoder, rf.Provenance = rf.TemplateID, rf.TemplateID, artifactregistry.MarkdownAgentDialect, render.HTMLComment
+			rf.Declarer, rf.DeclarerProjection = rf.TemplateID, rf.TemplateID
 		}
 		out = append(out, rf)
 	}
@@ -414,7 +373,7 @@ func renderKind(p renderInputs, spec renderKindSpec, eff map[string]bool) ([]Ren
 
 // renderAllBase renders declarative catalog and singleton producers. OutputPlan
 // owns the public render/sync/check lifecycle and adds generated producers.
-func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDefinition, eff map[string]bool, pitfalls pitfall.Corpus) ([]RenderedFile, error) {
+func renderAllBase(p renderInputs, pitfalls pitfall.Corpus) ([]RenderedFile, error) {
 	var out []RenderedFile
 	claimed := map[string]bool{}
 	// Neutral: docs render once - the output path is docsDir-relative, not adapter-placed.
@@ -439,7 +398,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDefiniti
 			}
 			return nil
 		},
-	}, eff)
+	})
 	if err != nil {
 		return nil, err
 	}
@@ -461,44 +420,11 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDefiniti
 			sections: func(n string) []string { return projectCatalog(p).Skills[n].Sections },
 			outPath:  func(t artifactregistry.Target, n string) string { return t.SkillPath(n) },
 			defaults: func(n string) map[string]any { return projectCatalog(p).Skills[n].Data },
-		}, eff)
+		})
 		if err != nil {
 			return nil, err
 		}
 		out = append(out, rfs...)
-		for _, targetOutput := range resolvedTargetOutputs(t, p.cfg.Prefix, skillNames) {
-			if targetOutputs[targetOutput.Path].canonical != t.Name || claimed[targetOutput.Path] {
-				continue
-			}
-			claimed[targetOutput.Path] = true
-			target := t
-			data := projectData(p, config.Sidecar{}, eff)
-
-			for key, value := range targetTemplateData(t) {
-				data[key] = value
-			}
-			rf, err := renderTarget(p, "target-output", "", targetOutput.TemplateID, nil,
-				config.Sidecar{}, data, targetOutput.Path, eff, &renderOutputOptions{
-					bannerStyle: targetOutput.Provenance,
-					target:      &target,
-					encoder:     targetOutput.Encoder,
-				})
-			if err != nil {
-				return nil, err
-			}
-			rf.Policy = targetOutput.Policy
-			rf.Declarer = t.Name
-			rf.DeclarerProjection = targetDescriptorProjection(t)
-			rf.Encoder = targetOutput.Encoder
-			rf.Provenance = targetOutput.Provenance
-			// The canonical target executes the closure once, but its coalesced
-			// definitions all remain observed inputs of that one output.
-			for _, input := range targetOutputs[targetOutput.Path].inputs {
-				rf.ConsumedInputs = append(rf.ConsumedInputs, input)
-			}
-			rf.ConsumedInputs = normalizeOutputInputs(rf.ConsumedInputs)
-			out = append(out, rf)
-		}
 	}
 	// agents-doc / AGENTS.md, neutral - once.
 	ad, err := p.cfg.Sidecar("agents-doc", "")
@@ -506,14 +432,14 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDefiniti
 		return nil, err
 	}
 	ad = withDefaultData(ad, projectCatalog(p).Docs["agents-doc"].Data)
-	data := projectData(p, ad, eff)
+	data := projectData(p, ad)
 	data["docs"] = resolvedDocs(p)
 	data["mandatoryDocs"] = documentMapDocs(p)
 	data["localDocs"] = localDocumentMapDocs(p)
 	data["documentMapFallbackHeading"] = len(p.cfg.LocalDocs) != 0 && ad.Sections["document-map"].Drop
 	claimed["AGENTS.md"] = true
 	rf, err := renderTarget(p, "agents-doc", "", projectCatalog(p).Docs["agents-doc"].TID,
-		projectCatalog(p).Docs["agents-doc"].Sections, ad, data, "AGENTS.md", eff)
+		projectCatalog(p).Docs["agents-doc"].Sections, ad, data, "AGENTS.md")
 	if err != nil {
 		return nil, err
 	}
@@ -538,7 +464,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDefiniti
 		}
 		claimed[t.BridgeFile] = true
 		brf, err := renderTarget(p, targetBridgeKind, "", t.BridgeTemplate,
-			nil, config.Sidecar{}, projectData(p, config.Sidecar{}, eff), t.BridgeFile, eff,
+			nil, config.Sidecar{}, projectData(p, config.Sidecar{}), t.BridgeFile,
 			&renderOutputOptions{sources: []string{"AGENTS.md"}})
 		if err != nil {
 			return nil, err
@@ -556,7 +482,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDefiniti
 			sections: func(string) []string { return sg.sections(projectCatalog(p)) },
 			outPath:  func(artifactregistry.Target, string) string { return sg.outPath(lay) },
 			defaults: func(string) map[string]any { return projectCatalog(p).Docs[sg.kind].Data },
-		}, eff)
+		})
 		if err != nil {
 			return nil, err
 		}
@@ -570,8 +496,8 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDefiniti
 		}
 		claimed[unit.path] = true
 		rf, err := renderTarget(p, unit.kind, "", unit.tid, unit.sections,
-			config.Sidecar{}, projectData(p, config.Sidecar{}, eff), unit.path, eff,
-			&renderOutputOptions{encoder: unit.encoder, bannerStyle: unit.provenance})
+			config.Sidecar{}, projectData(p, config.Sidecar{}), unit.path,
+			&renderOutputOptions{plain: true})
 		if err != nil {
 			return nil, err
 		}
@@ -586,7 +512,7 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDefiniti
 			continue
 		}
 		claimed[artifact.OutputPath] = true
-		rf, err := renderResidentMarker(p, artifact, eff)
+		rf, err := renderResidentMarker(p, artifact)
 		if err != nil {
 			return nil, err
 		}
@@ -600,17 +526,17 @@ func renderAllBase(p renderInputs, targetOutputs map[string]targetOutputDefiniti
 // renderResidentMarker is the single resident-marker renderer. It owns template
 // execution and provenance-banner injection, so every caller sees the exact bytes
 // ordinary rendering plans and publishes.
-func renderResidentMarker(p renderInputs, artifact artifactregistry.ResidentArtifact, eff map[string]bool) (RenderedFile, error) {
+func renderResidentMarker(p renderInputs, artifact artifactregistry.ResidentArtifact) (RenderedFile, error) {
 	if artifact.Owner != artifactregistry.OwnerResident {
 		return RenderedFile{}, fmt.Errorf("resident artifact %q has invalid owner %q", artifact.Name, artifact.Owner)
 	}
-	return renderTarget(p, artifact.Name, "", artifact.TemplateID, nil, config.Sidecar{}, projectData(p, config.Sidecar{}, eff), artifact.OutputPath, eff, &renderOutputOptions{encoder: artifactregistry.PlainAgentDialect})
+	return renderTarget(p, artifact.Name, "", artifact.TemplateID, nil, config.Sidecar{}, projectData(p, config.Sidecar{}), artifact.OutputPath, &renderOutputOptions{plain: true})
 }
 
 // renderTarget assembles an artifact (sidecar sections + convention parts), executes
 // the template, rejects publication-unsafe <no value> output, and projects the
 // per-artifact ConfigHash over the artifact's effective inputs.
-func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, eff map[string]bool, outputOptions ...*renderOutputOptions) (RenderedFile, error) {
+func renderTarget(p renderInputs, kind, artifact, tid string, declared []string, sc config.Sidecar, data map[string]any, outPath string, outputOptions ...*renderOutputOptions) (RenderedFile, error) {
 	var options *renderOutputOptions
 	if len(outputOptions) != 0 {
 		options = outputOptions[0]
@@ -629,15 +555,10 @@ func renderTarget(p renderInputs, kind, artifact, tid string, declared []string,
 	}
 	expanded := expandedSource.AuthoredText()
 	stripped := strippedSource.AuthoredText()
-	// Ordinary catalog and neutral Markdown producers retain the declared
-	// Markdown default. Explicit producers supply their representation directly.
-	encoder := artifactregistry.MarkdownAgentDialect
-	if options != nil && options.encoder != "" {
-		encoder = options.encoder
-	}
-	segs := render.ParseSourceSections(strippedSource, encoder == artifactregistry.MarkdownAgentDialect)
+	plain := options != nil && options.plain
+	segs := render.ParseSourceSections(strippedSource, !plain)
 	provenance := render.TemplateSource{}
-	if encoder == artifactregistry.MarkdownAgentDialect && p.cfg.Render != nil {
+	if !plain && p.cfg.Render != nil {
 		provenance.Root = p.cfg.Render.TemplateSourceRoot
 		if provenance.Root != "" {
 			if err := validateTemplateSources(p, expandedSource, provenance.Root); err != nil {
@@ -691,26 +612,18 @@ func renderTarget(p renderInputs, kind, artifact, tid string, declared []string,
 	if err != nil {
 		return RenderedFile{}, fmt.Errorf("render %s: %w", tid, err)
 	}
-	if options != nil && options.encode != nil {
-		content, err = options.encode(content)
-		if err != nil {
-			return RenderedFile{}, fmt.Errorf("render %s: encode artifact: %w", tid, err)
-		}
-	}
 	if strings.Contains(content, "<no value>") {
 		return RenderedFile{}, fmt.Errorf("render %s: output contains \"<no value>\"; a referenced var or data key is unset", outPath)
 	}
+	content = injectBanner(content, tid)
 	if options != nil {
-		content = injectBanner(content, tid, options.bannerStyle)
 		content = injectSourceMarker(content, options.sources)
-	} else {
-		content = injectBanner(content, tid)
 	}
 	var targetInput []artifactregistry.Target
 	if options != nil && options.target != nil {
 		targetInput = []artifactregistry.Target{*options.target}
 	}
-	cfgHash, err := artifactConfigHash(p, assembled, sc, consumedParts(p, kind, artifact, plan), eff, targetInput...)
+	cfgHash, err := artifactConfigHash(p, assembled, sc, consumedParts(p, kind, artifact, plan), targetInput...)
 	if provenance.Root != "" {
 		cfgHash = manifest.Hash([]byte(cfgHash + "\x00templateSourceRoot=" + provenance.Root))
 	}
@@ -726,7 +639,6 @@ func renderTarget(p renderInputs, kind, artifact, tid string, declared []string,
 		// regeneration-with-read-back, never the frozen OutputHash (ADR-0100).
 		RegenChecked: anyInPlace(plan),
 		Policy:       declaredPolicy(kind, anyInPlace(plan)),
-		Encoder:      encoder,
 		assembled:    assembled, stubDefaults: stubDefaults, stubParts: stubParts,
 		markerParts: markerParts, kind: kind, artifact: artifact, partVarRefs: partVarRefs,
 		ConsumedInputs: consumedInputs, ObservedTemplateID: tid,
@@ -795,7 +707,7 @@ func observeRenderInputs(p renderInputs, kind, artifact, tid, outPath string, pl
 	if tid != "" {
 		inputs = append(inputs, OutputInput{Path: "templates/" + tid, Role: outputplan.ArtifactTemplate})
 	}
-	if kind != "target-output" && kind != targetBridgeKind && kind != "bootstrap" && kind != "hooks" && kind != "runner" && kind != "pitfall-entry" && !resident.IsResidentKind(kind) {
+	if kind != targetBridgeKind && kind != "bootstrap" && kind != "hooks" && kind != "runner" && kind != "pitfall-entry" && !resident.IsResidentKind(kind) {
 		has, err := p.cfg.HasSidecar(kind, artifact)
 		if err != nil {
 			return nil, err
@@ -828,12 +740,12 @@ func observeRenderInputs(p renderInputs, kind, artifact, tid, outPath string, pl
 
 // generateLocalDocs owns the separate configured document family. It uses the
 // ordinary in-place renderer but has no catalog entry, sidecar, or layout slot.
-func generateLocalDocs(p renderInputs, eff map[string]bool) ([]RenderedFile, error) {
+func generateLocalDocs(p renderInputs) ([]RenderedFile, error) {
 	out := make([]RenderedFile, 0, len(p.cfg.LocalDocs))
 	for _, local := range p.cfg.NormalizedLocalDocs() {
 		sc := config.Sidecar{Data: map[string]any{"title": local.Title}}
 		rf, err := renderTarget(p, "local-doc", local.Name, localDocTID, []string{"body"}, sc,
-			projectData(p, sc, eff), artifactregistry.LocalDocOutputPath(local.Name), eff)
+			projectData(p, sc), artifactregistry.LocalDocOutputPath(local.Name))
 		if err != nil {
 			return nil, err
 		}
@@ -845,12 +757,12 @@ func generateLocalDocs(p renderInputs, eff map[string]bool) ([]RenderedFile, err
 	return out, nil
 }
 
-func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus, eff map[string]bool) ([]RenderedFile, error) {
+func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus) ([]RenderedFile, error) {
 	out := make([]RenderedFile, 0, corpus.Len())
 	for _, entry := range corpus.All() {
 		sc := config.Sidecar{Data: pitfallLeafData(entry)}
 		rf, err := renderTarget(p, "pitfall-entry", entry.Slug, pitfallEntryTID, nil, sc,
-			projectData(p, sc, eff), artifactregistry.PitfallOutputPath(entry.Slug), eff,
+			projectData(p, sc), artifactregistry.PitfallOutputPath(entry.Slug),
 			&renderOutputOptions{sources: []string{entry.SourcePath}})
 		if err != nil {
 			return nil, err
@@ -869,15 +781,15 @@ func generatePitfallLeaves(p renderInputs, corpus pitfall.Corpus, eff map[string
 // per-domain ADR index is gone (ADR-0135 item 8): a domain doc points at topics,
 // not decisions. Like INDEX.md the result carries no TemplateID/Hash - drift is
 // checked by regeneration, since the topic navigation depends on external state.
-func generateDomainDocs(p renderInputs, topics topic.Corpus, eff map[string]bool) ([]RenderedFile, error) {
+func generateDomainDocs(p renderInputs, topics topic.Corpus) ([]RenderedFile, error) {
 	lay := layout(p)
 	var out []RenderedFile
 	for _, name := range slices.Sorted(slices.Values(p.cfg.Domains)) {
-		data := projectData(p, config.Sidecar{}, eff)
+		data := projectData(p, config.Sidecar{})
 		data["data"] = map[string]any{"domain": name, "topics": topic.BuildNavigationModel(name, topics.ForDomain(name))}
 		rf, err := renderTarget(p, "domains", name, mustDescriptor("domains").templateID(projectCatalog(p), name),
 			projectCatalog(p).DomainDoc.Sections, config.Sidecar{}, data,
-			lay.DomainsDir+"/"+name+".md", eff, &renderOutputOptions{sources: []string{
+			lay.DomainsDir+"/"+name+".md", &renderOutputOptions{sources: []string{
 				".awf/topics/metadata/" + name + "/*.yaml",
 				".awf/topics/parts/" + name + "/*/current-state.md",
 			}})
@@ -894,7 +806,7 @@ func generateDomainDocs(p renderInputs, topics topic.Corpus, eff map[string]bool
 			stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 			markerParts: rf.markerParts, assembled: rf.assembled,
 			partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
-			RegenChecked: true, Policy: outputplan.Policy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}, Encoder: rf.Encoder,
+			RegenChecked: true, Policy: outputplan.Policy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true},
 			ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID}
 		if templateSourceRoot(p) != "" {
 			wrapped.TemplateID, wrapped.TemplateHash, wrapped.ConfigHash = rf.TemplateID, rf.TemplateHash, rf.ConfigHash

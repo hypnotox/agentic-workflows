@@ -3,7 +3,6 @@ package publisher
 import (
 	"errors"
 	"fmt"
-	"maps"
 	"slices"
 	"sync"
 
@@ -55,20 +54,16 @@ func deriveAuthoritySemantics(p renderInputs) (topic.Corpus, error) {
 	return topics, nil
 }
 
-func deriveOperationStateWithPitfalls(p renderInputs) (pitfall.Corpus, topic.Corpus, map[string]bool, error) {
+func deriveOperationStateWithPitfalls(p renderInputs) (pitfall.Corpus, topic.Corpus, error) {
 	topics, err := deriveAuthoritySemantics(p)
 	if err != nil {
-		return pitfall.Corpus{}, topic.Corpus{}, nil, err
+		return pitfall.Corpus{}, topic.Corpus{}, err
 	}
 	pitfalls, err := loadPitfallCorpus(p)
 	if err != nil {
-		return pitfall.Corpus{}, topic.Corpus{}, nil, err
+		return pitfall.Corpus{}, topic.Corpus{}, err
 	}
-	eff, err := effectiveSkills(p)
-	if err != nil {
-		return pitfall.Corpus{}, topic.Corpus{}, nil, err
-	}
-	return pitfalls, topics, eff, nil
+	return pitfalls, topics, nil
 }
 
 // Publisher is the sole output-plan construction and rendering coordinator.
@@ -91,7 +86,6 @@ type operation struct {
 	files     []RenderedFile
 	pitfalls  pitfall.Corpus
 	topics    topic.Corpus
-	skills    map[string]bool
 	generated generatedcheck.AdditionalInput
 	glossary  glossarycheck.Input
 }
@@ -113,12 +107,12 @@ func (p *Publisher) operationState() (*operation, error) {
 	p.opStarted = true
 	p.mu.Unlock()
 	p.once.Do(func() {
-		pitfalls, topics, skills, err := deriveOperationStateWithPitfalls(p.inputs)
+		pitfalls, topics, err := deriveOperationStateWithPitfalls(p.inputs)
 		if err != nil {
 			p.opErr = err
 			return
 		}
-		built, err := outputPlanWithPitfalls(p.inputs, pitfalls, topics, skills)
+		built, err := outputPlanWithPitfalls(p.inputs, pitfalls, topics)
 		if err != nil {
 			p.opErr = err
 			return
@@ -135,7 +129,7 @@ func (p *Publisher) operationState() (*operation, error) {
 		}
 		p.op = operation{
 			plan: freezePlan(built), files: built.writeFiles(),
-			pitfalls: clonePitfallCorpus(pitfalls), topics: topics.Clone(), skills: maps.Clone(skills),
+			pitfalls: clonePitfallCorpus(pitfalls), topics: topics.Clone(),
 			generated: cloneGeneratedOutput(generated), glossary: cloneGlossaryInput(glossary),
 		}
 	})
@@ -185,15 +179,6 @@ func (p *Publisher) Pitfalls() (pitfall.Corpus, error) {
 		return pitfall.Corpus{}, err
 	}
 	return clonePitfallCorpus(op.pitfalls), nil
-}
-
-// EffectiveSkills returns the operation's frozen effective skill projection.
-func (p *Publisher) EffectiveSkills() (map[string]bool, error) {
-	op, err := p.operationState()
-	if err != nil {
-		return nil, err
-	}
-	return maps.Clone(op.skills), nil
 }
 
 // GeneratedOutput returns the operation's frozen generated-output input.
@@ -273,7 +258,6 @@ func freezeOutput(file RenderedFile) outputplan.Output {
 		TemplateHash: file.TemplateHash, ConfigHash: file.ConfigHash,
 		RegenChecked: file.RegenChecked, Policy: file.Policy,
 		Declarer: file.Declarer, DeclarerProjection: file.DeclarerProjection,
-		Encoder: string(file.Encoder), Provenance: int(file.Provenance),
 		Assembled: file.assembled, StubDefaults: file.stubDefaults,
 		StubParts: file.stubParts, MarkerParts: file.markerParts,
 		Kind: file.kind, Artifact: file.artifact, PartVarRefs: file.partVarRefs,
@@ -284,7 +268,7 @@ func freezeOutput(file RenderedFile) outputplan.Output {
 func freezePlan(plan *OutputPlan) outputplan.Plan {
 	nodes := make([]outputplan.Node, 0, len(plan.Nodes))
 	for _, node := range plan.Nodes {
-		recipe := outputplan.NewRecipe(node.Recipe.TemplateID, node.Recipe.TemplateHash, node.Recipe.ConfigHash, node.Recipe.Policy, string(node.Recipe.Encoder), node.Recipe.Provenance)
+		recipe := outputplan.NewRecipe(node.Recipe.TemplateID, node.Recipe.TemplateHash, node.Recipe.ConfigHash, node.Recipe.Policy)
 		var output *outputplan.Output
 		if node.file != nil {
 			value := freezeOutput(*node.file)

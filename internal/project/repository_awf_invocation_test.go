@@ -37,12 +37,8 @@ func withInvocationData(data map[string]any, value map[string]any) map[string]an
 	return copy
 }
 
-func withInvocationTarget(data map[string]any, target artifactregistry.Target) map[string]any {
-	copy := withInvocationData(data, data["data"].(map[string]any))
-	for key, value := range targetTemplateData(target) {
-		copy[key] = value
-	}
-	return copy
+func withInvocationTarget(data map[string]any, _ artifactregistry.Target) map[string]any {
+	return withInvocationData(data, data["data"].(map[string]any))
 }
 
 // renderInvocationSurface deliberately permits literal template syntax that is

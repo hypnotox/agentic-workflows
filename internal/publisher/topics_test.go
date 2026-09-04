@@ -107,7 +107,7 @@ func TestTopicsPropagatesMalformedCorpus(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p)); err == nil {
+	if _, _, err := deriveOperationStateWithPitfalls(renderInputsForTest(p)); err == nil {
 		t.Fatal("malformed topic corpus accepted")
 	}
 

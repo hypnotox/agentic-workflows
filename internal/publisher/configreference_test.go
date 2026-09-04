@@ -296,7 +296,7 @@ func TestConfigReferenceNoBareVars(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cref, ok, err := generateConfigReference(renderInputsForTest(p), files, mustDeriveSkills(t, p))
+	cref, ok, err := generateConfigReference(renderInputsForTest(p), files)
 	if err != nil {
 		t.Fatal(err)
 	}

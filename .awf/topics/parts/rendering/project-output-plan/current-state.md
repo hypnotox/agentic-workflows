@@ -1,6 +1,6 @@
 A single-use Publisher operation consumes one project Session and its artifact-registry view. It registers and coalesces complete output definitions before rendering, rejects collisions and invalid recipes before any render closure executes, materializes every accepted definition exactly once, and shares one immutable plan with rendering, drift, generated-output checks, and publication. The registry owns canonical output paths and producer-family check policy; repository checks preserve completed owner evidence and explicit presentation order.
 
-The artifact registry's target descriptors declare harness skill directories, output dialects, bridge metadata, and closed capabilities. The Pi descriptor retains only the `session-handoff` capability and declares no role prompts, subagent adapter, model router, policy module, preference store, or other target-owned output.
+The artifact registry's target descriptors declare only fixed harness skill directories and optional bridge metadata. The built-in Pi descriptor has no bridge, role prompt, subagent adapter, model router, policy module, preference store, capability flags, or other target-owned output.
 
 ## Claims
 
@@ -11,7 +11,7 @@ Backing: test
 
 ### `invariant: multi-target-render`
 
-For both built-in targets, every selected catalog skill renders once at its descriptor-derived fixed-name path, while neutral artifacts such as AGENTS.md render once. A target-owned output would render only for its declaring target when its predicate and selected view include it; the standard target descriptors currently declare none.
+For both built-in targets, every fixed catalog skill renders once at its descriptor-derived fixed-name path, while neutral artifacts such as AGENTS.md render once and only Claude emits the optional target bridge.
 Backing: test
 
 ### `invariant: output-plan-complete`
@@ -39,11 +39,6 @@ Backing: test
 ScaffoldConfig seeds every var referenced by templates in the selected catalog view, so each selected unconditional render starts without an unresolved value.
 Backing: test
 
-### `invariant: shared-output-coalesced`
-
-An output produced by more than one target at the same path with an identical recipe is coalesced before rendering, materialized once, and represented by a single plan node whose declarer set unions the contributing target names. Its recipe ConfigHash remains independently available, while its final drift ConfigHash additionally folds in every declarer's projection. Two definitions that declare the same path with conflicting recipes fail before any renderer executes.
-Backing: test
-
 ### `invariant: sidecar-key-overrides-default`
 
 When merging an artifact's catalog default data with its sidecar, a non-list top-level key present in the sidecar - even when set to null or empty - fully replaces the catalog default for that key, while a key absent from the sidecar falls through to the catalog default; there is no deep merge.
@@ -54,17 +49,11 @@ Backing: test
 A same-key catalog list and project list compose shallowly as catalog entries followed by authored entries, preserving both orders without generic deduplication or identity merging. An absent or empty project list keeps the catalog list; dataDefaults false suppresses that default and yields only authored entries or an empty list, while differently keyed specialized transforms such as glossary standardTerms and terms stay outside this generic path.
 Backing: test
 
-### `invariant: target-capabilities-closed`
-
-A target descriptor is validated against closed sets: unknown capabilities, unknown agent dialects, unknown output encoders, out-of-set provenance values, path traversal in output paths, and undeclared or inconsistent output policies are all rejected, both when the descriptor is validated and again when the output plan is built.
-Backing: test
-
-
 ### `invariant: conditional-unit-single-source`
 
 Each config-tree render unit derives its enablement, path, template identity, render kind, and fixed
 sections from one bounded descriptor consumed by output definition registration and render dispatch.
 Hook payloads and the runner are unconditional members, while bootstrap is the only member whose
-enablement is conditional. Unit-specific data construction, policy, encoding, and lifecycle behavior
-remain at their owning render seams.
+enablement is conditional. Unit-specific data construction, policy, and lifecycle behavior remain at
+their owning render seams.
 Backing: test

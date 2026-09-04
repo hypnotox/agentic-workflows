@@ -3,18 +3,13 @@
 <!-- awf:template-source templates/topics/topic.md.tmpl -->
 # Pi runtime
 
-The retained Pi host capability and external dependency boundary.
+The Pi external dependency boundary and effort continuity guidance.
 
 **Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `docs/pi-runtime-reference.md`, `internal/catalog/**`, `templates/skills/awf-effort/**`. Both domain and topic selectors must match. Run `awf read topic rendering/pi-runtime --coverage` for current applicable and owned paths and marker sites.
 
-The Pi target keeps only the host capability AWF effort guidance can truthfully use.
+AWF documents the external Pi dependency boundary without declaring a runtime capability or implementation.
 
 ## Claims
-
-### `invariant: pi-session-handoff-workflow`
-
-Pi retains the host-neutral `session-handoff` capability. The `awf-effort` skill owns effort-backed checkpoint and continuation guidance: resolve memory through `./awf effort show <slug>`, update the reported Markdown under the one-writer rule, and reorient from repository authority before substantive successor work. AWF provides no Pi-specific association, executable effort-handoff bridge, role adapter, or runtime implementation.
-Backing: test
 
 ### `invariant: pi-runtime-dependency-separation`
 

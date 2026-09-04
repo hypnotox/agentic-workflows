@@ -13,7 +13,6 @@ func composePublisher(session *project.Session) *publisher.Publisher {
 	return publisher.New(session, project.Version)
 }
 
-
 func stagedDriftResult(ctx context.Context, root string) (checkresult.Result, error) {
 	prep, err := currentstatecoord.PrepareStagedOutput(ctx, root)
 	if err != nil {

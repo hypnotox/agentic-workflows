@@ -21,23 +21,19 @@ func outputPlan(p renderInputs) (*outputplan.Plan, error) {
 	plan, err := testPublisher(p).Plan()
 	return &plan, err
 }
-func deriveOperationStateWithPitfalls(p renderInputs) (pitfall.Corpus, topic.Corpus, map[string]bool, error) {
+func deriveOperationStateWithPitfalls(p renderInputs) (pitfall.Corpus, topic.Corpus, error) {
 	operation := testPublisher(p)
 	pitfalls, err := operation.Pitfalls()
 	if err != nil {
-		return pitfall.Corpus{}, topic.Corpus{}, nil, err
+		return pitfall.Corpus{}, topic.Corpus{}, err
 	}
 	topics, err := topic.LoadCorpusFromReader(p.read, p.cfg)
-	if err != nil {
-		return pitfall.Corpus{}, topic.Corpus{}, nil, err
-	}
-	skills, err := operation.EffectiveSkills()
-	return pitfalls, topics, skills, err
+	return pitfalls, topics, err
 }
-func outputPlanWithPitfalls(p renderInputs, _ pitfall.Corpus, _ topic.Corpus, _ map[string]bool) (*outputplan.Plan, error) {
+func outputPlanWithPitfalls(p renderInputs, _ pitfall.Corpus, _ topic.Corpus) (*outputplan.Plan, error) {
 	return outputPlan(p)
 }
-func generateDomainDocs(p renderInputs, _ topic.Corpus, _ map[string]bool) ([]RenderedFile, error) {
+func generateDomainDocs(p renderInputs, _ topic.Corpus) ([]RenderedFile, error) {
 	plan, err := outputPlan(p)
 	if err != nil {
 		return nil, err
@@ -51,7 +47,7 @@ func generateDomainDocs(p renderInputs, _ topic.Corpus, _ map[string]bool) ([]Re
 	}
 	return files, nil
 }
-func generateConfigReference(p renderInputs, _ []RenderedFile, _ map[string]bool) (*RenderedFile, bool, error) {
+func generateConfigReference(p renderInputs, _ []RenderedFile) (*RenderedFile, bool, error) {
 	plan, err := outputPlan(p)
 	if err != nil {
 		return nil, false, err

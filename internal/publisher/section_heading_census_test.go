@@ -7,13 +7,12 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
 // TestLiveMarkdownSectionHeadingCensus follows the declaration-owned live
-// identity and encoder population, expands includes, and excludes historical
+// Markdown population, expands includes, and excludes historical
 // recognition-only identities by construction.
 func TestLiveMarkdownSectionHeadingCensus(t *testing.T) {
 	root, err := filepath.Abs(filepath.Join("..", ".."))
@@ -25,10 +24,7 @@ func TestLiveMarkdownSectionHeadingCensus(t *testing.T) {
 		t.Fatal(err)
 	}
 	visited, sections := 0, 0
-	for tid, encoder := range liveTemplateEncoders(renderInputsForTest(p)) {
-		if encoder != artifactregistry.MarkdownAgentDialect {
-			continue
-		}
+	for tid := range liveMarkdownTemplateIDs(renderInputsForTest(p)) {
 		visited++
 		source, err := fs.ReadFile(templates.FS, tid)
 		if err != nil {

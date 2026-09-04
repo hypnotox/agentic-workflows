@@ -257,10 +257,6 @@ func checkReportProject(state *Session, ctx context.Context) (repositorycheck.Re
 	if err != nil {
 		return repositorycheck.Report{}, err
 	}
-	skills, err := operation.EffectiveSkills()
-	if err != nil {
-		return repositorycheck.Report{}, err
-	}
 	generated, err := operation.GeneratedOutput()
 	if err != nil {
 		return repositorycheck.Report{}, err
@@ -269,7 +265,7 @@ func checkReportProject(state *Session, ctx context.Context) (repositorycheck.Re
 	if err != nil {
 		return repositorycheck.Report{}, err
 	}
-	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx, plan, pitfalls, skills, generated, glossary)
+	return BuildCheckReport(state, testConfig(state), testRepo(state), ctx, plan, pitfalls, generated, glossary)
 }
 func configReferenceProject(state *Session) (publisher.ConfigReference, error) {
 	return testPublisher(operationInputs(state, testConfig(state))).BuildConfigReference()
@@ -347,22 +343,22 @@ func checkDeadRefs(p renderInputs, files []RenderedFile) []manifest.Drift {
 	for _, file := range files {
 		rendered[file.Path] = file
 	}
-	result, err := referencecheck.Check(testOutputPlan(rendered), p.cfg.Prefix, nil, nil, func(path string) bool { _, err := os.Stat(filepath.Join(p.root(), path)); return err == nil })
+	result, err := referencecheck.Check(testOutputPlan(rendered), p.cfg.Prefix, nil, func(path string) bool { _, err := os.Stat(filepath.Join(p.root(), path)); return err == nil })
 	if err != nil {
 		panic(err)
 	}
 	return testReferenceDrift(result)
 }
 
-func checkDeadSkillRefs(p renderInputs, files []RenderedFile, effective map[string]bool) []manifest.Drift {
-	rendered, known := make(map[string]RenderedFile, len(files)), map[string]bool{}
+func checkDeadSkillRefs(p renderInputs, files []RenderedFile) []manifest.Drift {
+	rendered, available := make(map[string]RenderedFile, len(files)), map[string]bool{}
 	for _, file := range files {
 		rendered[file.Path] = file
 	}
 	for name := range p.catalog().Skills {
-		known[name] = true
+		available[name] = true
 	}
-	result, err := referencecheck.Check(testOutputPlan(rendered), p.cfg.Prefix, effective, known, func(string) bool { return true })
+	result, err := referencecheck.Check(testOutputPlan(rendered), p.cfg.Prefix, available, func(string) bool { return true })
 	if err != nil {
 		panic(err)
 	}

@@ -424,19 +424,19 @@ func dataKeyRowsTyped(p renderInputs) ([]DataKeyRow, error) {
 // (ADR-class: generated index, no template/config hashes - drift is checked
 // by regeneration). files is the consumption input (the plan write files plus
 // generated domain docs).
-func generateConfigReference(p renderInputs, files []RenderedFile, eff map[string]bool) (*RenderedFile, bool, error) {
+func generateConfigReference(p renderInputs, files []RenderedFile) (*RenderedFile, bool, error) {
 	sc, err := p.cfg.Sidecar("config-reference", "")
 	if err != nil {
 		return nil, false, err
 	}
-	data := projectData(p, sc, eff)
+	data := projectData(p, sc)
 	collections, err := configReferenceData(p, files)
 	if err != nil {
 		return nil, false, err
 	}
 	data["data"] = collections
 	rf, err := renderTarget(p, "config-reference", "", projectCatalog(p).Docs["config-reference"].TID,
-		projectCatalog(p).Docs["config-reference"].Sections, sc, data, crefRel(p), eff,
+		projectCatalog(p).Docs["config-reference"].Sections, sc, data, crefRel(p),
 		&renderOutputOptions{sources: []string{"derived:configspec", "derived:project-configuration"}})
 	if err != nil {
 		return nil, false, err
@@ -445,7 +445,7 @@ func generateConfigReference(p renderInputs, files []RenderedFile, eff map[strin
 		stubDefaults: rf.stubDefaults, stubParts: rf.stubParts,
 		markerParts: rf.markerParts, assembled: rf.assembled,
 		partVarRefs: rf.partVarRefs, kind: rf.kind, artifact: rf.artifact,
-		RegenChecked: true, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID, Encoder: rf.Encoder,
+		RegenChecked: true, ConsumedInputs: rf.ConsumedInputs, ObservedTemplateID: rf.ObservedTemplateID,
 		Policy: outputplan.Policy{Regenerate: true, ScanReferences: true, ScanSkillReferences: true}}
 	if templateSourceRoot(p) != "" {
 		wrapped.TemplateID, wrapped.TemplateHash, wrapped.ConfigHash = rf.TemplateID, rf.TemplateHash, rf.ConfigHash

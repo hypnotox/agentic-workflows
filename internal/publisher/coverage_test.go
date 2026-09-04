@@ -1,7 +1,6 @@
 package publisher
 
 import (
-	"errors"
 	"os"
 	"path/filepath"
 	"strings"
@@ -9,7 +8,6 @@ import (
 	"testing/fstest"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
@@ -191,20 +189,6 @@ func TestRenderAllAssembleErrorOnUnreadablePart(t *testing.T) {
 
 // --- renderTarget: template-read error (direct) ---
 
-func TestRenderTargetEncoderError(t *testing.T) {
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
-	p, err := loadTestSession(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	sc := config.Sidecar{}
-	if _, err := renderTarget(renderInputsForTest(p), resident.RootNames()[0], "", residentGitignoreTID(resident.RootNames()[0]), nil, sc, projectData(renderInputsForTest(p), sc, mustDeriveSkills(t, p)), ".awf/efforts/.gitignore", mustDeriveSkills(t, p), &renderOutputOptions{encode: func(string) (string, error) {
-		return "", errors.New("encode failure")
-	}}); err == nil {
-		t.Fatal("expected renderTarget to return the encoder error")
-	}
-}
-
 func TestRenderTargetMissingTemplate(t *testing.T) {
 	root := scaffold(t, "prefix: example\nintegrationBranch: main\n")
 	p, err := loadTestSession(testContext(t), root)
@@ -212,7 +196,7 @@ func TestRenderTargetMissingTemplate(t *testing.T) {
 		t.Fatal(err)
 	}
 	sc := config.Sidecar{}
-	if _, err := renderTarget(renderInputsForTest(p), "skills", "ghost", "skills/ghost/SKILL.md.tmpl", nil, sc, projectData(renderInputsForTest(p), sc, mustDeriveSkills(t, p)), ".claude/skills/example-ghost/SKILL.md", mustDeriveSkills(t, p)); err == nil {
+	if _, err := renderTarget(renderInputsForTest(p), "skills", "ghost", "skills/ghost/SKILL.md.tmpl", nil, sc, projectData(renderInputsForTest(p), sc), ".claude/skills/example-ghost/SKILL.md"); err == nil {
 		t.Fatal("expected renderTarget to fail reading a nonexistent template")
 	}
 }
@@ -225,7 +209,7 @@ func TestArtifactConfigHashUnreadablePart(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, err := artifactConfigHash(renderInputsForTest(p), "body", config.Sidecar{}, []string{filepath.Join(root, "does", "not", "exist.md")}, mustDeriveSkills(t, p)); err == nil {
+	if _, err := artifactConfigHash(renderInputsForTest(p), "body", config.Sidecar{}, []string{filepath.Join(root, "does", "not", "exist.md")}); err == nil {
 		t.Fatal("expected artifactConfigHash to fail reading a missing part file")
 	}
 }

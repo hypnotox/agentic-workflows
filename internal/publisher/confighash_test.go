@@ -5,7 +5,6 @@ import (
 	"path/filepath"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
@@ -17,16 +16,15 @@ func TestDataDefaultsConfigurationChangesConfigHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eff := mustDeriveSkills(t, p)
-	without, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{}, nil, eff)
+	without, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	withTrue, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{DataDefaults: map[string]bool{"items": true}}, nil, eff)
+	withTrue, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{DataDefaults: map[string]bool{"items": true}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	withFalse, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{DataDefaults: map[string]bool{"items": false}}, nil, eff)
+	withFalse, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{DataDefaults: map[string]bool{"items": false}}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -41,16 +39,15 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eff := mustDeriveSkills(t, p)
-	consumerBefore, err := artifactConfigHash(renderInputsForTest(p), "{{ with .commitPolicy }}{{ .GrandfatheredThrough }}{{ end }}", config.Sidecar{}, nil, eff)
+	consumerBefore, err := artifactConfigHash(renderInputsForTest(p), "{{ with .commitPolicy }}{{ .GrandfatheredThrough }}{{ end }}", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unrelatedBefore, err := artifactConfigHash(renderInputsForTest(p), "plain prose mentioning .commitPolicy", config.Sidecar{}, nil, eff)
+	unrelatedBefore, err := artifactConfigHash(renderInputsForTest(p), "plain prose mentioning .commitPolicy", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	commentBefore, err := artifactConfigHash(renderInputsForTest(p), "{{/* .commitPolicy */}}", config.Sidecar{}, nil, eff)
+	commentBefore, err := artifactConfigHash(renderInputsForTest(p), "{{/* .commitPolicy */}}", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +59,7 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 	previous := consumerBefore
 	for i, policy := range policies {
 		testConfig(p).CommitPolicy = policy
-		got, err := artifactConfigHash(renderInputsForTest(p), "{{ with .commitPolicy }}{{ .GrandfatheredThrough }}{{ end }}", config.Sidecar{}, nil, eff)
+		got, err := artifactConfigHash(renderInputsForTest(p), "{{ with .commitPolicy }}{{ .GrandfatheredThrough }}{{ end }}", config.Sidecar{}, nil)
 		if err != nil {
 			t.Fatal(err)
 		}
@@ -71,11 +68,11 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 		}
 		previous = got
 	}
-	unrelatedAfter, err := artifactConfigHash(renderInputsForTest(p), "plain prose mentioning .commitPolicy", config.Sidecar{}, nil, eff)
+	unrelatedAfter, err := artifactConfigHash(renderInputsForTest(p), "plain prose mentioning .commitPolicy", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	commentAfter, err := artifactConfigHash(renderInputsForTest(p), "{{/* .commitPolicy */}}", config.Sidecar{}, nil, eff)
+	commentAfter, err := artifactConfigHash(renderInputsForTest(p), "{{/* .commitPolicy */}}", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -89,13 +86,13 @@ func TestCommitPolicyConsumerConfigHash(t *testing.T) {
 	if err := os.WriteFile(part, []byte("{{=awf:commitScopes}}"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{}, []string{part}, eff); err != nil {
+	if _, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{}, []string{part}); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(part, []byte("<!-- awf:comment no close\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{}, []string{part}, eff); err == nil {
+	if _, err := artifactConfigHash(renderInputsForTest(p), "plain", config.Sidecar{}, []string{part}); err == nil {
 		t.Fatal("malformed authoring comment did not fail config hashing")
 	}
 }
@@ -106,29 +103,28 @@ func TestIntegrationBranchConsumerConfigHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	eff := mustDeriveSkills(t, p)
-	consumerBefore, err := artifactConfigHash(renderInputsForTest(p), `{{ .integrationBranchHex }}`, config.Sidecar{}, nil, eff)
+	consumerBefore, err := artifactConfigHash(renderInputsForTest(p), `{{ .integrationBranchHex }}`, config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unrelatedBefore, err := artifactConfigHash(renderInputsForTest(p), "plain prose mentioning .integrationBranch", config.Sidecar{}, nil, eff)
+	unrelatedBefore, err := artifactConfigHash(renderInputsForTest(p), "plain prose mentioning .integrationBranch", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	commentBefore, err := artifactConfigHash(renderInputsForTest(p), "{{/* .integrationBranch */}}", config.Sidecar{}, nil, eff)
+	commentBefore, err := artifactConfigHash(renderInputsForTest(p), "{{/* .integrationBranch */}}", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	testConfig(p).IntegrationBranch = "release/next"
-	consumerAfter, err := artifactConfigHash(renderInputsForTest(p), `{{ .integrationBranchHex }}`, config.Sidecar{}, nil, eff)
+	consumerAfter, err := artifactConfigHash(renderInputsForTest(p), `{{ .integrationBranchHex }}`, config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	unrelatedAfter, err := artifactConfigHash(renderInputsForTest(p), "plain prose mentioning .integrationBranch", config.Sidecar{}, nil, eff)
+	unrelatedAfter, err := artifactConfigHash(renderInputsForTest(p), "plain prose mentioning .integrationBranch", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	commentAfter, err := artifactConfigHash(renderInputsForTest(p), "{{/* .integrationBranch */}}", config.Sidecar{}, nil, eff)
+	commentAfter, err := artifactConfigHash(renderInputsForTest(p), "{{/* .integrationBranch */}}", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -169,24 +165,24 @@ func TestTemplateSourceRootChangesOnlyActivatedMarkdownConfigHash(t *testing.T) 
 		}
 	}
 	sc := config.Sidecar{}
-	plain, err := renderTarget(renderInputsForTest(p), "docs", "architecture", tid, projectCatalog(renderInputsForTest(p)).Docs["architecture"].Sections, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "out.md", map[string]bool{})
+	plain, err := renderTarget(renderInputsForTest(p), "docs", "architecture", tid, projectCatalog(renderInputsForTest(p)).Docs["architecture"].Sections, sc, projectData(renderInputsForTest(p), sc), "out.md")
 	if err != nil {
 		t.Fatal(err)
 	}
 	testConfig(p).Render = &config.RenderConfig{TemplateSourceRoot: "templates"}
-	active, err := renderTarget(renderInputsForTest(p), "docs", "architecture", tid, projectCatalog(renderInputsForTest(p)).Docs["architecture"].Sections, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "out.md", map[string]bool{})
+	active, err := renderTarget(renderInputsForTest(p), "docs", "architecture", tid, projectCatalog(renderInputsForTest(p)).Docs["architecture"].Sections, sc, projectData(renderInputsForTest(p), sc), "out.md")
 	if err != nil {
 		t.Fatal(err)
 	}
 	if plain.ConfigHash == active.ConfigHash || plain.TemplateHash != active.TemplateHash {
 		t.Fatalf("root projection hashes plain=%#v active=%#v", plain, active)
 	}
-	nativeBefore, err := renderTarget(renderInputsForTest(p), "hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: artifactregistry.PlainAgentDialect})
+	nativeBefore, err := renderTarget(renderInputsForTest(p), "hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, projectData(renderInputsForTest(p), sc), "hook", &renderOutputOptions{plain: true})
 	if err != nil {
 		t.Fatal(err)
 	}
 	testConfig(p).Render = nil
-	nativeAbsent, err := renderTarget(renderInputsForTest(p), "hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, projectData(renderInputsForTest(p), sc, map[string]bool{}), "hook", map[string]bool{}, &renderOutputOptions{encoder: artifactregistry.PlainAgentDialect})
+	nativeAbsent, err := renderTarget(renderInputsForTest(p), "hooks", "", "hooks/pre-commit.sh.tmpl", nil, sc, projectData(renderInputsForTest(p), sc), "hook", &renderOutputOptions{plain: true})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -201,11 +197,11 @@ func TestRetiredTelemetryTemplateValuesDoNotAffectConfigHash(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	before, err := artifactConfigHash(renderInputsForTest(p), "{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil, mustDeriveSkills(t, p))
+	before, err := artifactConfigHash(renderInputsForTest(p), "{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	after, err := artifactConfigHash(renderInputsForTest(p), "{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil, mustDeriveSkills(t, p))
+	after, err := artifactConfigHash(renderInputsForTest(p), "{{ .telemetryWidgetEnabled }} {{ .telemetryWidgetShowCost }}", config.Sidecar{}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

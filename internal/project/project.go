@@ -213,16 +213,7 @@ func (s *Session) Targets() []artifactregistry.Target { return s.Registry().Targ
 func (s *Session) catalog() *catalog.Catalog { return s.Catalog() }
 
 func cloneTargets(source []artifactregistry.Target) []artifactregistry.Target {
-	out := make([]artifactregistry.Target, len(source))
-	copy(out, source)
-	for i := range out {
-		out[i].Capabilities = append([]artifactregistry.Capability(nil), out[i].Capabilities...)
-		out[i].Outputs = append([]artifactregistry.TargetOutput(nil), out[i].Outputs...)
-		for j := range out[i].Outputs {
-			out[i].Outputs[j].Inputs = append([]artifactregistry.TargetOutputInput(nil), out[i].Outputs[j].Inputs...)
-		}
-	}
-	return out
+	return append([]artifactregistry.Target(nil), source...)
 }
 
 func newSession(root string, roots resident.Roots, nested bool, cfg *config.Config, selected *catalog.Catalog, targets []artifactregistry.Target, repo *awfgit.Repo, reader outputplan.TreeReader) (*Session, error) {

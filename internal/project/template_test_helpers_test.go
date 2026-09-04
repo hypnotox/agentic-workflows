@@ -35,11 +35,6 @@ func renderGolden(t *testing.T, tmplPath string, data map[string]any) string {
 // carries the docs the templates cite so guarded clauses render as before; a test
 // that needs different values sets them explicitly and this leaves them untouched.
 func withLayoutDefaults(data map[string]any) {
-	if _, ok := data["skills"]; !ok {
-		// The real render context always carries the effective-skills set
-		// (ADR-0046); a typed nil map keeps chained .skills.X access safe.
-		data["skills"] = map[string]bool{}
-	}
 	l, _ := data["layout"].(map[string]any)
 	if l == nil {
 		l = map[string]any{}

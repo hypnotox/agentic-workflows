@@ -2,7 +2,6 @@ package publisher
 
 import (
 	"path/filepath"
-	"slices"
 	"sort"
 
 	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
@@ -28,7 +27,7 @@ func consumedParts(p renderInputs, kind, artifact string, plan map[string]render
 // artifactConfigHash projects the drift signal onto one rendered file: the prefix, the
 // subset of vars the assembled template references, the artifact's sidecar (marshalled),
 // and the bytes of every convention part it consumed - in deterministic order.
-func artifactConfigHash(p renderInputs, assembled string, sc config.Sidecar, partPaths []string, _ map[string]bool, targets ...artifactregistry.Target) (string, error) {
+func artifactConfigHash(p renderInputs, assembled string, sc config.Sidecar, partPaths []string, targets ...artifactregistry.Target) (string, error) {
 	refs := render.ReferencedVars(assembled)
 	proj := map[string]any{
 		"prefix": p.cfg.Prefix,
@@ -38,15 +37,9 @@ func artifactConfigHash(p renderInputs, assembled string, sc config.Sidecar, par
 		// Identity is a declarer property of an output-plan node, not part of
 		// its recipe. Hash only output-affecting target descriptor fields.
 		t := targets[0]
-		caps := slices.Clone(t.Capabilities)
-		slices.Sort(caps)
 		proj["target"] = struct {
-			SkillDir                  string
-			AgentDialect              artifactregistry.AgentDialect
-			BridgeFile, BridgeTemplate string
-			Capabilities              []artifactregistry.Capability
-			Outputs                   []artifactregistry.TargetOutput
-		}{t.SkillDir, t.AgentDialect, t.BridgeFile, t.BridgeTemplate, caps, t.Outputs}
+			SkillDir, BridgeFile, BridgeTemplate string
+		}{t.SkillDir, t.BridgeFile, t.BridgeTemplate}
 	}
 	vs := map[string]any{}
 	for _, r := range refs {

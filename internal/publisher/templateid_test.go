@@ -6,10 +6,8 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/catalog"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -49,7 +47,7 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 		t.Fatal("no freeform domain descriptor")
 	}
 	kinds[domainIndex].templateID = func(*catalog.Catalog, string) string { return "missing/domain.tmpl" }
-	domainIDs := liveTemplateEncodersWithKinds(inputs, kinds)
+	domainIDs := liveMarkdownTemplateIDsWithKinds(inputs, kinds)
 	if _, ok := domainIDs["missing/domain.tmpl"]; !ok {
 		t.Error("a missing kind-derived domain identity escaped the live population")
 	}
@@ -65,41 +63,6 @@ func TestLiveTemplateIDsResolve(t *testing.T) {
 	lower := deriveSession(base, testConfig(p), NewFilesystemReader(p.Root()), selected, base.Targets())
 	if _, err := New(lower, project.Version).Plan(); err == nil || !strings.Contains(err.Error(), "missing/live-template.tmpl") {
 		t.Fatalf("missing live template error = %v", err)
-	}
-}
-
-func TestLiveTemplateEncodersFollowDeclarations(t *testing.T) {
-	root, err := filepath.Abs(filepath.Join("..", ".."))
-	if err != nil {
-		t.Fatal(err)
-	}
-	p, err := loadTestSession(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	encoders := liveTemplateEncoders(renderInputsForTest(p))
-	for _, unit := range conditionalUnits() {
-		if encoders[unit.tid] != artifactregistry.PlainAgentDialect {
-			t.Errorf("conditional template %q encoder = %q, want plain", unit.tid, encoders[unit.tid])
-		}
-	}
-	for _, rootName := range resident.RootNames() {
-		tid := residentGitignoreTID(rootName)
-		if encoders[tid] != artifactregistry.PlainAgentDialect {
-			t.Errorf("resident template %q encoder = %q, want plain", tid, encoders[tid])
-		}
-	}
-	for _, entry := range projectCatalog(renderInputsForTest(p)).Docs {
-		if encoders[entry.TID] != artifactregistry.MarkdownAgentDialect {
-			t.Errorf("catalog doc template %q encoder = %q, want Markdown", entry.TID, encoders[entry.TID])
-		}
-	}
-	for _, target := range p.Targets() {
-		for _, output := range target.Outputs {
-			if encoders[output.TemplateID] != output.Encoder {
-				t.Errorf("target output %q encoder = %q, want %q", output.TemplateID, encoders[output.TemplateID], output.Encoder)
-			}
-		}
 	}
 }
 

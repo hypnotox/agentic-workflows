@@ -6,4 +6,4 @@ paths:
   - internal/publisher/**
   - internal/catalog/**
   - internal/project/target.go
-  - internal/project/target_test.go
+  - internal/publisher/target_test.go

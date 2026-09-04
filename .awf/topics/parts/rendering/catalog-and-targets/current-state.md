@@ -1,4 +1,4 @@
-The artifact registry holds the canonical operational declarations for every managed-artifact kind and built-in target, including stable ordering, cardinality, targeting, capabilities, template and output-path projections, and ownership. The catalog remains the single compile-time content authority for standard artifact entries, sections, defaults, and variables. One project Session carries the registry's defensive catalog and target projection to Publisher without a parallel declaration table or compatibility state owner. The claims below capture the current catalog and target contracts.
+The artifact registry holds the canonical operational declarations for every managed-artifact kind and built-in target, including stable ordering, cardinality, targeting, fixed skill directories, bridge metadata, and ownership. The catalog remains the single compile-time content authority for standard artifact entries, sections, defaults, and variables. One project Session carries the registry's defensive catalog and target projection to Publisher without a parallel declaration table or compatibility state owner. The claims below capture the current catalog and target contracts.
 
 ## Claims
 
@@ -32,9 +32,9 @@ Backing: test
 For every catalog skill, the set of awf:section markers in its template source equals the sections list its catalog entry declares, as order-independent set equality, so a section rename cannot half-land with a blank-path provenance pointer.
 Backing: test
 
-### `invariant: target-dialect-render`
+### `invariant: fixed-target-skill-render`
 
-Each built-in target renders every standard skill exactly once at that target's declared path and dialect, and the emitted artifact parses under that runtime's native format. Arbitrary target-owned outputs retain their separately declared encoding.
+Each built-in target renders every standard skill exactly once as Markdown at its fixed target-owned skill path. Claude additionally renders the sole target bridge at `CLAUDE.md`; Pi renders no bridge or other target-owned output.
 Backing: test
 
 ### `invariant: unified-doc-model`

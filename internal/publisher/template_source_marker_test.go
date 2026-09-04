@@ -6,7 +6,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
@@ -37,7 +36,7 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	for _, node := range plain.Nodes {
 		plainByPath[node.Path] = node
 	}
-	encoders := liveTemplateEncoders(renderInputsForTest(p))
+	markdownTemplates := liveMarkdownTemplateIDs(renderInputsForTest(p))
 	activeByPath := map[string]OutputNode{}
 	for _, node := range active.Nodes {
 		activeByPath[node.Path] = node
@@ -45,11 +44,10 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 			t.Fatalf("planned output %s has no rendered file", node.Path)
 		}
 		content := node.file.Content
-		declaredEncoder, declared := encoders[node.ObservedTemplateID]
-		wantMarker := node.ObservedTemplateID != "" && declared && declaredEncoder == artifactregistry.MarkdownAgentDialect
+		wantMarker := node.ObservedTemplateID != "" && markdownTemplates[node.ObservedTemplateID]
 		hasMarker := strings.Contains(content, "<!-- awf:template-source ")
 		if hasMarker != wantMarker {
-			t.Errorf("%s marker participation = %t, want %t (template %q encoder %q)", node.Path, hasMarker, wantMarker, node.ObservedTemplateID, declaredEncoder)
+			t.Errorf("%s marker participation = %t, want %t (template %q)", node.Path, hasMarker, wantMarker, node.ObservedTemplateID)
 		}
 		before, ok := plainByPath[node.Path]
 		if !ok || before.file == nil {
@@ -112,7 +110,7 @@ func TestTemplateSourceMarkerProducerMatrix(t *testing.T) {
 	// This proves the matrix follows render-seam evidence rather than inferring
 	// behavior from a filename suffix.
 	for _, node := range active.Nodes {
-		if node.ObservedTemplateID == "" || encoders[node.ObservedTemplateID] != artifactregistry.MarkdownAgentDialect {
+		if node.ObservedTemplateID == "" || !markdownTemplates[node.ObservedTemplateID] {
 			continue
 		}
 		if !slices.Contains(node.ConsumedInputs, OutputInput{Path: "templates/" + node.ObservedTemplateID, Role: outputplan.ArtifactTemplate}) {

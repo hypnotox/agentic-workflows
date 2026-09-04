@@ -4,8 +4,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
-	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 )
 
@@ -32,20 +30,6 @@ func TestInjectBannerPlain(t *testing.T) {
 	// invariant: rendering/sync-and-drift:provenance-banner (TestInjectBannerPlain)
 	if !strings.HasPrefix(got, "<!-- "+bannerText+" -->\n") {
 		t.Fatalf("plain content missing leading HTML banner: %q", got)
-	}
-}
-
-func TestInjectBannerExplicitCommentStyles(t *testing.T) {
-	for _, tc := range []struct {
-		style render.CommentStyle
-		want  string
-	}{
-		{render.HashComment, "# " + bannerText + "\n"},
-		{render.SlashComment, "// " + bannerText + "\n"},
-	} {
-		if got := injectBanner("body\n", "", tc.style); got != tc.want+"body\n" {
-			t.Errorf("style %v banner = %q", tc.style, got)
-		}
 	}
 }
 
@@ -166,18 +150,6 @@ func TestResidentMarkerCompositionMatchesPlannedOutput(t *testing.T) {
 		}
 	}
 	t.Fatal("planned effort archive marker is absent")
-}
-
-func TestResidentMarkerPlanPropagatesOutputPlanFailure(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	p, err := loadTestSession(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	inputs := renderInputsWithTargets(p, append(p.Targets(), artifactregistry.Target{Outputs: []artifactregistry.TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
-	if _, err := outputPlan(inputs); err == nil {
-		t.Fatal("resident marker plan hid output-plan failure")
-	}
 }
 
 func TestInjectBannerResidentGitignore(t *testing.T) {

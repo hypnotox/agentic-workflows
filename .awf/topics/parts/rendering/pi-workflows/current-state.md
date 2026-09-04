@@ -11,4 +11,4 @@ Backing: test
 
 Generic Pi skills and roles come from a globally installed `agentic-skills` package. Role delegation additionally requires a separately installed compatible `pi-tools`; AWF does not install, vendor, update, configure, or probe either dependency.
 Backing: unbacked
-Verify: Inspect the standard catalog and Pi target declarations, confirm only the four fixed AWF skills and session-handoff capability remain, and search production code for network, installation, package-probing, role-registration, routing, policy, profile, and preference behavior tied to either external dependency.
+Verify: Inspect the standard catalog and Pi target declarations, confirm only the four fixed AWF skills remain, and search production code for network, installation, package-probing, role-registration, routing, policy, profile, preference, and runtime-capability behavior tied to either external dependency.

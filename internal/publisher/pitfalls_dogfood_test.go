@@ -251,8 +251,6 @@ func testPitfallStagedPlanParity(t *testing.T) {
 				aOutput.Policy() == bOutput.Policy() &&
 				aOutput.Declarer() == bOutput.Declarer() &&
 				aOutput.DeclarerProjection() == bOutput.DeclarerProjection() &&
-				aOutput.Encoder() == bOutput.Encoder() &&
-				aOutput.Provenance() == bOutput.Provenance() &&
 				aOutput.Assembled() == bOutput.Assembled() &&
 				slices.Equal(aOutput.StubDefaults(), bOutput.StubDefaults()) &&
 				slices.Equal(aOutput.StubParts(), bOutput.StubParts()) &&

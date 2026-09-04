@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
@@ -28,7 +27,7 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 
 	// The .ts suffix is irrelevant: the declared Markdown policy selects
 	// frontmatter validation, link scanning, and skill-reference scanning.
-	frontmatter := RenderedFile{Path: "misleading.ts", Content: "not frontmatter\n", Policy: outputplan.Policy{ValidateFrontmatter: true}, Encoder: artifactregistry.MarkdownAgentDialect}
+	frontmatter := RenderedFile{Path: "misleading.ts", Content: "not frontmatter\n", Policy: outputplan.Policy{ValidateFrontmatter: true}}
 	testsupport.WriteFile(t, filepath.Join(root, frontmatter.Path), frontmatter.Content)
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{"misleading.ts": {OutputHash: manifest.Hash([]byte(frontmatter.Content))}}}
 	if drift := checkLockedDrift(renderInputsForTest(p).residentRoots(), lock, map[string]RenderedFile{frontmatter.Path: frontmatter}, nil); len(drift) != 1 || drift[0].Kind != "invalid-frontmatter" {
@@ -38,8 +37,8 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 	if drift := checkDeadRefs(renderInputsForTest(p), []RenderedFile{link}); len(drift) != 1 || drift[0].Kind != "dead-reference" {
 		t.Fatalf("link policy drift = %#v", drift)
 	}
-	skill := RenderedFile{Path: "misleading.ts", Content: "awf-maintenance", Policy: outputplan.Policy{ScanSkillReferences: true}}
-	if drift := checkDeadSkillRefs(renderInputsForTest(p), []RenderedFile{skill}, map[string]bool{}); len(drift) != 1 || drift[0].Kind != "dead-skill-reference" {
+	skill := RenderedFile{Path: "misleading.ts", Content: "example-debugging", Policy: outputplan.Policy{ScanSkillReferences: true}}
+	if drift := checkDeadSkillRefs(renderInputsForTest(p), []RenderedFile{skill}); len(drift) != 1 || drift[0].Kind != "dead-skill-reference" {
 		t.Fatalf("skill-reference policy drift = %#v", drift)
 	}
 
@@ -49,7 +48,7 @@ func TestOutputPolicyRoutesMisleadingPathsEndToEnd(t *testing.T) {
 	if drift := checkDeadRefs(renderInputsForTest(p), []RenderedFile{plain}); len(drift) != 0 {
 		t.Fatalf("unscanned link drift = %#v", drift)
 	}
-	if drift := checkDeadSkillRefs(renderInputsForTest(p), []RenderedFile{plain}, map[string]bool{}); len(drift) != 0 {
+	if drift := checkDeadSkillRefs(renderInputsForTest(p), []RenderedFile{plain}); len(drift) != 0 {
 		t.Fatalf("unscanned skill drift = %#v", drift)
 	}
 
@@ -548,7 +547,7 @@ func TestCheckDetectsInvalidFrontmatter(t *testing.T) {
 	// Fresh planned bytes, the locked hash, and observed bytes all agree, so
 	// frontmatter validation is the first applicable finding.
 	testsupport.WriteFile(t, filepath.Join(root, skillPath), broken)
-	file := RenderedFile{Path: skillPath, Content: broken, Policy: outputplan.Policy{ValidateFrontmatter: true}, Encoder: artifactregistry.MarkdownAgentDialect}
+	file := RenderedFile{Path: skillPath, Content: broken, Policy: outputplan.Policy{ValidateFrontmatter: true}}
 	lock := &manifest.Lock{Files: map[string]manifest.Entry{
 		skillPath: {OutputHash: manifest.Hash([]byte(broken))},
 	}}
@@ -569,7 +568,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 		t.Fatal(err)
 	}
 	// invariant: rendering/sync-and-drift:regeneration-checked-attribute (TestRegenCheckedAttribute)
-	dds, err := generateDomainDocs(renderInputsForTest(p), mustDeriveTopics(t, p), mustDeriveSkills(t, p))
+	dds, err := generateDomainDocs(renderInputsForTest(p), mustDeriveTopics(t, p))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -585,7 +584,7 @@ func TestRegenCheckedAttribute(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	cref, ok, err := generateConfigReference(renderInputsForTest(p), slices.Concat(files, dds), mustDeriveSkills(t, p))
+	cref, ok, err := generateConfigReference(renderInputsForTest(p), slices.Concat(files, dds))
 	if err != nil {
 		t.Fatal(err)
 	}

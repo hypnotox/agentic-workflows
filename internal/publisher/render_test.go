@@ -8,7 +8,6 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/artifactregistry"
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/render"
@@ -180,7 +179,7 @@ func TestCommitPolicyRenderDataProjection(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	data := projectData(renderInputsForTest(p), config.Sidecar{}, map[string]bool{})
+	data := projectData(renderInputsForTest(p), config.Sidecar{})
 	if got := data["integrationBranch"]; got != "main" {
 		t.Fatalf("integrationBranch projection = %#v, want main", got)
 	}
@@ -195,7 +194,7 @@ func TestCommitPolicyRenderDataProjection(t *testing.T) {
 		AllowedIdentities:    []config.CommitPolicyIdentity{{Name: "Ada", Email: "ada@example.test"}},
 	}
 	testConfig(p).CommitPolicy = policy
-	if got := projectData(renderInputsForTest(p), config.Sidecar{}, map[string]bool{})["commitPolicy"]; !reflect.DeepEqual(got, policy) {
+	if got := projectData(renderInputsForTest(p), config.Sidecar{})["commitPolicy"]; !reflect.DeepEqual(got, policy) {
 		t.Fatalf("commitPolicy projection = %#v, want typed policy %#v", got, policy)
 	}
 }
@@ -335,7 +334,7 @@ func TestValidateTemplateSourcesUsesSelectedTree(t *testing.T) {
 	}
 }
 
-func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
+func TestRenderTargetStructuralHeadingFollowsFormat(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
@@ -358,12 +357,8 @@ func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
 		options     *renderOutputOptions
 		wantHeading bool
 	}{
-		{"ordinary Markdown", nil, true},
-		{"generated Markdown", &renderOutputOptions{encoder: artifactregistry.MarkdownAgentDialect}, true},
-		{"Markdown target", &renderOutputOptions{encoder: artifactregistry.MarkdownAgentDialect, bannerStyle: render.HTMLComment}, true},
-		{"plain target", &renderOutputOptions{encoder: artifactregistry.PlainAgentDialect, bannerStyle: render.SlashComment}, false},
-		{"plain conditional", &renderOutputOptions{encoder: artifactregistry.PlainAgentDialect}, false},
-		{"plain resident", &renderOutputOptions{encoder: artifactregistry.PlainAgentDialect}, false},
+		{"Markdown", nil, true},
+		{"plain", &renderOutputOptions{plain: true}, false},
 	}
 	for _, tc := range cases {
 		t.Run(tc.name, func(t *testing.T) {
@@ -372,7 +367,7 @@ func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
 				args = append(args, tc.options)
 			}
 			file, err := renderTarget(renderInputsForTest(p), "docs", "architecture", entry.TID, entry.Sections, sc,
-				projectData(renderInputsForTest(p), sc, map[string]bool{}), "out.md", map[string]bool{}, args...)
+				projectData(renderInputsForTest(p), sc), "out.md", args...)
 			if err != nil {
 				t.Fatal(err)
 			}
@@ -386,9 +381,6 @@ func TestRenderTargetStructuralHeadingFollowsOutputEncoder(t *testing.T) {
 	}
 }
 
-// TestRenderProducerCallsitesForwardEncoder is the mutation-sensitive wiring
-// complement to the behavior test above: every actual producer family must pass
-// its declaration into the shared renderTarget seam.
 func TestCaptureStructuralHeadingsReportsDefaultExpressionOmittedByOverride(t *testing.T) {
 	// Capture executes the complete template skeleton before assembly, so this
 	// invalid default expression is observable even though the convention-part

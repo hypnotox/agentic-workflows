@@ -11,9 +11,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-// TestClaudeTargetPaths unit-checks the claude adapter's path formulas. ADR-0016's
-// target-output-paths invariant is retired by ADR-0037 (retires_invariants); the
-// per-target rendering property is now backed by inv: multi-target-render.
+// TestClaudeTargetPaths unit-checks the fixed Claude target paths.
 func TestClaudeTargetPaths(t *testing.T) {
 	if got := claudeTarget.SkillPath("awf-effort"); got != ".claude/skills/awf-effort/SKILL.md" {
 		t.Fatalf("SkillPath = %q", got)
@@ -23,20 +21,9 @@ func TestClaudeTargetPaths(t *testing.T) {
 	}
 }
 
-// invariant: rendering/pi-runtime:pi-session-handoff-workflow (TestPiTargetRetainsOnlySessionHandoffCapability)
-// invariant: rendering/pi-workflows:pi-native-awf-skills (TestPiTargetRetainsOnlySessionHandoffCapability)
-// invariant: rendering/adapter-outputs:no-awf-adapter-outputs (TestPiTargetRetainsOnlySessionHandoffCapability)
-func TestPiTargetRetainsOnlySessionHandoffCapability(t *testing.T) {
-	if !slices.Equal(piTarget.Capabilities, []artifactregistry.Capability{artifactregistry.CapabilitySessionHandoff}) {
-		t.Fatalf("Pi capabilities = %v", piTarget.Capabilities)
-	}
-	if len(piTarget.Outputs) != 0 {
-		t.Fatalf("Pi target retained adapter outputs: %#v", piTarget.Outputs)
-	}
-	data := targetTemplateData(piTarget)
-	if data["targetSessionHandoff"] != true || len(data) != 1 {
-		t.Fatalf("Pi template data = %#v", data)
-	}
+// invariant: rendering/pi-workflows:pi-native-awf-skills (TestPiTargetPublishesOnlyFixedSkills)
+// invariant: rendering/adapter-outputs:no-awf-adapter-outputs (TestPiTargetPublishesOnlyFixedSkills)
+func TestPiTargetPublishesOnlyFixedSkills(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
@@ -46,17 +33,20 @@ func TestPiTargetRetainsOnlySessionHandoffCapability(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	paths := map[string]bool{}
+	var piPaths []string
 	for _, file := range files {
-		paths[file.Path] = true
-	}
-	if !paths[".pi/skills/awf-effort/SKILL.md"] {
-		t.Fatal("awf-effort skill was not rendered for Pi")
-	}
-	for path := range paths {
-		if strings.HasPrefix(path, ".pi/extensions/awf-subagents/") || strings.HasPrefix(path, ".pi/agents/") {
-			t.Errorf("retired Pi adapter output rendered: %s", path)
+		if strings.HasPrefix(file.Path, ".pi/") {
+			piPaths = append(piPaths, file.Path)
 		}
+	}
+	want := []string{
+		".pi/skills/awf-decisions/SKILL.md",
+		".pi/skills/awf-effort/SKILL.md",
+		".pi/skills/awf-maintenance/SKILL.md",
+		".pi/skills/awf-topics/SKILL.md",
+	}
+	if !slices.Equal(piPaths, want) {
+		t.Fatalf("Pi outputs = %v, want %v", piPaths, want)
 	}
 }
 
@@ -66,19 +56,14 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 	custom := artifactregistry.Target{
 		Name:           "custom",
 		SkillDir:       ".custom/workflows",
-		AgentDialect:   artifactregistry.MarkdownAgentDialect,
 		BridgeFile:     "CUSTOM.md",
 		BridgeTemplate: bridgeTID,
-		Capabilities:   []artifactregistry.Capability{artifactregistry.CapabilitySessionHandoff},
 	}
 	if err := artifactregistry.ValidateTarget(custom); err != nil {
 		t.Fatal(err)
 	}
 	if custom.SkillPath("awf-effort") != ".custom/workflows/awf-effort/SKILL.md" {
 		t.Fatal("custom descriptor skill path was not preserved")
-	}
-	if data := targetTemplateData(custom); data["targetSessionHandoff"] != true || len(data) != 1 {
-		t.Fatalf("custom descriptor capabilities = %#v", data)
 	}
 	root := scaffold(t, sampleYAML)
 	p, err := loadTestSession(testContext(t), root)
@@ -90,17 +75,14 @@ func TestTargetDescriptorCustomization(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := map[string]artifactregistry.AgentDialect{
-		".custom/workflows/awf-effort/SKILL.md": artifactregistry.MarkdownAgentDialect,
-		"CUSTOM.md":                             artifactregistry.MarkdownAgentDialect,
+	want := map[string]bool{
+		".custom/workflows/awf-effort/SKILL.md": true,
+		"CUSTOM.md":                             true,
 	}
 	counts := map[string]int{}
 	for _, file := range files {
-		if encoder, ok := want[file.Path]; ok {
+		if want[file.Path] {
 			counts[file.Path]++
-			if file.Encoder != encoder {
-				t.Errorf("%s encoder = %q, want %q", file.Path, file.Encoder, encoder)
-			}
 		}
 	}
 	for path := range want {
@@ -162,7 +144,7 @@ func TestClaudeMdBridgeRendered(t *testing.T) {
 
 // TestMultiTargetRender proves adapter artifacts render once per enabled target
 // at descriptor-owned paths while neutral artifacts render once.
-// invariant: rendering/catalog-and-targets:target-dialect-render (TestMultiTargetRender)
+// invariant: rendering/catalog-and-targets:fixed-target-skill-render (TestMultiTargetRender)
 // invariant: rendering/workflow-skill-templates:fixed-awf-skill-surface (TestMultiTargetRender)
 func TestMultiTargetRender(t *testing.T) {
 	root := scaffold(t, sampleYAML)

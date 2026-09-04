@@ -169,7 +169,7 @@ func cloneRenderData(in map[string]any) map[string]any {
 	return cloneTemplateValue(in).(map[string]any)
 }
 
-func singletonTemplateContexts(t *testing.T, p *project.Session, eff map[string]bool) []singletonTemplateContext {
+func singletonTemplateContexts(t *testing.T, p *project.Session) []singletonTemplateContext {
 	t.Helper()
 	var contexts []singletonTemplateContext
 	for _, kind := range catalog.SingletonKindsFor(projectCatalog(renderInputsForTest(p))) {
@@ -179,7 +179,7 @@ func singletonTemplateContexts(t *testing.T, p *project.Session, eff map[string]
 			t.Fatalf("read %s sidecar: %v", kind, err)
 		}
 		sc = withDefaultData(sc, entry.Data)
-		data := projectData(renderInputsForTest(p), sc, eff)
+		data := projectData(renderInputsForTest(p), sc)
 		switch {
 		case entry.AgentsDoc:
 			data["docs"] = resolvedDocs(renderInputsForTest(p))
@@ -200,7 +200,7 @@ func singletonTemplateContexts(t *testing.T, p *project.Session, eff map[string]
 		contexts = append(contexts, singletonTemplateContext{tid: entry.TID, data: data, dataArtifact: kind})
 	}
 	for _, unit := range conditionalUnits() {
-		contexts = append(contexts, singletonTemplateContext{tid: unit.tid, data: projectData(renderInputsForTest(p), config.Sidecar{}, eff)})
+		contexts = append(contexts, singletonTemplateContext{tid: unit.tid, data: projectData(renderInputsForTest(p), config.Sidecar{})})
 	}
 	return contexts
 }
@@ -589,12 +589,8 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, eff, err := deriveOperationStateWithPitfalls(renderInputsForTest(p))
-	if err != nil {
-		t.Fatal(err)
-	}
 	seenTemplates, seenConditions := 0, 0
-	for _, context := range singletonTemplateContexts(t, p, eff) {
+	for _, context := range singletonTemplateContexts(t, p) {
 		raw, err := fs.ReadFile(templates.FS, context.tid)
 		if err != nil {
 			t.Fatal(err)

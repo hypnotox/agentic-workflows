@@ -7,9 +7,9 @@ import (
 )
 
 func TestCheckPreservesReferenceEvidence(t *testing.T) {
-	out := outputplan.NewOutput(outputplan.OutputSpec{Path: "docs/a.md", Content: "[bad](missing.md) demo-tdd", Policy: outputplan.Policy{ScanReferences: true, ScanSkillReferences: true}})
+	out := outputplan.NewOutput(outputplan.OutputSpec{Path: "docs/a.md", Content: "[bad](missing.md) demo-debugging", Policy: outputplan.Policy{ScanReferences: true, ScanSkillReferences: true}})
 	plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "docs/a.md", Output: &out})})
-	got, err := Check(plan, "demo", map[string]bool{}, map[string]bool{"tdd": true}, func(string) bool { return false })
+	got, err := Check(plan, "demo", map[string]bool{"awf-effort": true}, func(string) bool { return false })
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -26,12 +26,12 @@ func TestCheckRecognizesFixedAndRetiredAWFSkillReferences(t *testing.T) {
 		Policy:  outputplan.Policy{ScanSkillReferences: true},
 	})
 	plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "AGENTS.md", Output: &out})})
-	got, err := Check(plan, "demo", map[string]bool{}, map[string]bool{"awf-effort": true}, nil)
+	got, err := Check(plan, "demo", map[string]bool{"awf-effort": true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
 	findings := got.Findings()
-	if len(findings) != 2 || findings[0].Evidence.Detail != "awf-effort" || findings[1].Evidence.Detail != "demo-debugging" {
+	if len(findings) != 1 || findings[0].Evidence.Detail != "demo-debugging" {
 		t.Fatalf("findings = %#v", findings)
 	}
 }
@@ -43,7 +43,7 @@ func TestCheckGivesCanonicalAgenticSkillsPrecedenceOverLegacyPrefix(t *testing.T
 		Policy:  outputplan.Policy{ScanSkillReferences: true},
 	})
 	plan := outputplan.New([]outputplan.Node{outputplan.NewNode(outputplan.NodeSpec{Path: "AGENTS.md", Output: &out})})
-	got, err := Check(plan, "agentic", map[string]bool{}, map[string]bool{"awf-effort": true}, nil)
+	got, err := Check(plan, "agentic", map[string]bool{"awf-effort": true}, nil)
 	if err != nil {
 		t.Fatal(err)
 	}

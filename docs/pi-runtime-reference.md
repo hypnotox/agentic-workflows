@@ -24,12 +24,11 @@ project prefix. AWF renders no role prompts, subagent extension, model router, r
 preference file, or tool registration. Repository-local and globally installed skills therefore
 coexist without naming or registration collisions.
 
-## Session replacement
+## Session continuity
 
-Pi exposes a host-neutral session-handoff capability that `awf-effort` may use at a safe resumable
-checkpoint. Resolve the effort memory path with `./awf effort show <slug>`, update that Markdown
-under the one-writer rule, and let the successor use `agentic-context` to reorient from repository
-authority before substantive work. Managed worktree use ends before integration, deferred lifecycle
-closure, worktree removal, and retrospective. A replacement records its actual boundary;
-continuation, cancellation, or a failed replacement that leaves the current session active records
-none. AWF owns this effort guidance, not an executable Pi handoff implementation.
+Before work continues in another session at a safe resumable checkpoint, resolve the effort memory
+path with `./awf effort show <slug>` and update that Markdown under the one-writer rule. The successor
+uses `agentic-context` to reorient from repository authority before substantive work. Managed
+worktree use ends before integration, deferred lifecycle closure, worktree removal, and
+retrospective. AWF owns this continuity guidance and provides no executable handoff
+implementation.

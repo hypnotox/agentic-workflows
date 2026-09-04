@@ -230,7 +230,7 @@ func TestPublisherStagedTreeOwnsADRAndTopicDerivation(t *testing.T) {
 func TestPublisherResidentMarkerPropagatesPlanningFailure(t *testing.T) {
 	state := csRepo(t, sampleYAML, map[string]string{})
 	cfg := testConfig(state)
-	lower := lowerWithTargets(state, append(state.Targets(), artifactregistry.Target{Outputs: []artifactregistry.TargetOutput{{TemplateID: "missing/live-template.tmpl"}}}))
+	lower := lowerWithTargets(state, append(state.Targets(), artifactregistry.Target{Name: "broken", SkillDir: ".broken/skills", BridgeFile: "BROKEN.md", BridgeTemplate: "missing/live-template.tmpl"}))
 	publisher := newPublisher(lower, cfg, NewFilesystemReader(state.Root()), project.Version)
 	if _, err := publisher.operationState(); err == nil {
 		t.Fatal("resident-marker preparation hid planning failure")
@@ -336,13 +336,6 @@ func TestPublisherOperationProjectionsAreDeeplyDefensive(t *testing.T) {
 		return value
 	}
 	topicsProjection := func() topic.Corpus { return prepared.topics.Clone() }
-	skillsProjection := func() map[string]bool {
-		value, err := publisher.EffectiveSkills()
-		if err != nil {
-			t.Fatal(err)
-		}
-		return value
-	}
 	planProjection := func() outputplan.Plan {
 		value, err := publisher.Plan()
 		if err != nil {
@@ -358,7 +351,7 @@ func TestPublisherOperationProjectionsAreDeeplyDefensive(t *testing.T) {
 		return value
 	}
 	beforePitfalls, beforeTopics := pitfallsProjection(), topicsProjection()
-	beforeSkills, beforePlan := skillsProjection(), planProjection()
+	beforePlan := planProjection()
 	beforeGlossary := glossaryProjection()
 
 	projectedPitfalls := pitfallsProjection().All()
@@ -371,12 +364,6 @@ func TestPublisherOperationProjectionsAreDeeplyDefensive(t *testing.T) {
 	allTopics[0].Metadata.Paths[0] = "mutated"
 	allTopics[0].Claims[0].References = append(allTopics[0].Claims[0].References, "mutated")
 
-	projectedSkills := skillsProjection()
-	for skill := range projectedSkills {
-		projectedSkills[skill] = !projectedSkills[skill]
-		projectedSkills["mutated"] = true
-		break
-	}
 	projectedGlossary := glossaryProjection()
 	projectedGlossary.Authored[0].Domains[0] = "mutated"
 	projectedGlossary.Merged[0].Domains[0] = "mutated"
@@ -406,11 +393,10 @@ func TestPublisherOperationProjectionsAreDeeplyDefensive(t *testing.T) {
 	}
 
 	for name, values := range map[string][2]any{
-		"Pitfalls":        {pitfallsProjection(), beforePitfalls},
-		"Topics":          {topicsProjection(), beforeTopics},
-		"EffectiveSkills": {skillsProjection(), beforeSkills},
-		"Plan":            {planProjection(), beforePlan},
-		"Glossary":        {glossaryProjection(), beforeGlossary},
+		"Pitfalls": {pitfallsProjection(), beforePitfalls},
+		"Topics":   {topicsProjection(), beforeTopics},
+		"Plan":     {planProjection(), beforePlan},
+		"Glossary": {glossaryProjection(), beforeGlossary},
 	} {
 		if !reflect.DeepEqual(values[0], values[1]) {
 			t.Errorf("mutating the %s projection changed a second projection or Publisher-owned state", name)

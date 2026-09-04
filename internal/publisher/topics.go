@@ -11,7 +11,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
-	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/internal/topic"
 	"github.com/hypnotox/agentic-workflows/templates"
 	"gopkg.in/yaml.v3"
@@ -56,7 +55,7 @@ func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFil
 		path := artifactregistry.TopicOutputPath(t.ID.String())
 		cfgHash = templateSourceConfigHash(cfgHash, templateSourceRoot(p))
 		observed := normalizeOutputInputs(append([]OutputInput{{Path: config.DirName + "/config.yaml", Role: outputplan.ArtifactConfig}, {Path: "templates/" + topicTID, Role: outputplan.ArtifactTemplate}, {Path: metadataPath, Role: outputplan.ArtifactTopicMetadata}, {Path: partPath, Role: outputplan.ArtifactClaimPart}}, templateInputs...))
-		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicTID, TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: observed, ObservedTemplateID: topicTID})
+		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicTID, TemplateHash: manifest.Hash(topicTemplate), ConfigHash: cfgHash, Policy: declaredPolicy("topics", false), Declarer: "topic:" + t.ID.String(), DeclarerProjection: t.ID.String() + "\x00" + strings.Join(referenceProjection, "\x00"), ConsumedInputs: observed, ObservedTemplateID: topicTID})
 		deps[path] = []string{metadataPath, partPath}
 	}
 	for _, domain := range slices.Sorted(slices.Values(p.cfg.Domains)) {
@@ -85,7 +84,7 @@ func generateTopicDocs(p renderInputs, corpus topic.Corpus) (files []RenderedFil
 			deps[path] = append(deps[path], metadataPath, partPath)
 			observed = append(observed, OutputInput{Path: metadataPath, Role: outputplan.ArtifactTopicMetadata}, OutputInput{Path: partPath, Role: outputplan.ArtifactClaimPart})
 		}
-		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicIndexTID, TemplateHash: manifest.Hash(indexTemplate), ConfigHash: templateSourceConfigHash(manifest.Hash(enc), templateSourceRoot(p)), Policy: declaredPolicy("topics", false), Declarer: "topic-index:" + domain, DeclarerProjection: domain, Encoder: artifactregistry.MarkdownAgentDialect, Provenance: render.HTMLComment, ConsumedInputs: normalizeOutputInputs(append(observed, templateInputs...)), ObservedTemplateID: topicIndexTID})
+		files = append(files, RenderedFile{Path: path, Content: content, TemplateID: topicIndexTID, TemplateHash: manifest.Hash(indexTemplate), ConfigHash: templateSourceConfigHash(manifest.Hash(enc), templateSourceRoot(p)), Policy: declaredPolicy("topics", false), Declarer: "topic-index:" + domain, DeclarerProjection: domain, ConsumedInputs: normalizeOutputInputs(append(observed, templateInputs...)), ObservedTemplateID: topicIndexTID})
 	}
 	return files, deps, nil
 }

@@ -177,7 +177,7 @@ func artifactLabel(tid string) string {
 }
 
 // checkReport performs one ordinary project check from prepared semantic inputs.
-func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, pitfalls pitfall.Corpus, eff map[string]bool, generatedInput generatedcheck.AdditionalInput, glossary glossarycheck.Input, op *outputplan.Plan) (repositorycheck.Report, error) {
+func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, pitfalls pitfall.Corpus, generatedInput generatedcheck.AdditionalInput, glossary glossarycheck.Input, op *outputplan.Plan) (repositorycheck.Report, error) {
 	if err := configcheck.ValidateCommandWiring(p.cfg); err != nil {
 		return repositorycheck.Report{}, err
 	}
@@ -185,7 +185,7 @@ func checkReport(p renderInputs, repo *awfgit.Repo, ctx context.Context, pitfall
 	if err != nil {
 		return repositorycheck.Report{}, err
 	}
-	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, pitfalls, eff, generatedInput, op, glossaryResults)
+	trackingResult, producerResults, tracking, err := checkWithTrackingState(p, repo, ctx, pitfalls, generatedInput, op, glossaryResults)
 	if err != nil {
 		return repositorycheck.Report{}, err
 	}
@@ -208,7 +208,7 @@ const (
 	propertyHeuristic       checkresult.Property = "heuristic-quality"
 )
 
-func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, pitfalls pitfall.Corpus, eff map[string]bool, generatedInput generatedcheck.AdditionalInput, op *outputplan.Plan, glossaryResult checkresult.Result) (repositorycheck.Slot, []repositorycheck.Slot, checkresult.Result, error) {
+func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Context, pitfalls pitfall.Corpus, generatedInput generatedcheck.AdditionalInput, op *outputplan.Plan, glossaryResult checkresult.Result) (repositorycheck.Slot, []repositorycheck.Slot, checkresult.Result, error) {
 	var indexPaths generatedcheck.IndexPaths
 	if repo != nil {
 		indexPaths = repo.IndexPaths
@@ -238,7 +238,7 @@ func checkWithTrackingState(p renderInputs, repo *awfgit.Repo, ctx context.Conte
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
 	results = append(results, repositorycheck.Slot{Result: generated, IncludeInformationInDirect: true})
-	references, err := referenceResult(p, *op, eff)
+	references, err := referenceResult(p, *op)
 	if err != nil {
 		return repositorycheck.Slot{}, nil, checkresult.Result{}, err
 	}
@@ -272,12 +272,12 @@ func trackingInformation(result checkresult.Result) checkresult.Result {
 	return tracking
 }
 
-func referenceResult(p renderInputs, op outputplan.Plan, effective map[string]bool) (checkresult.Result, error) {
-	known := map[string]bool{}
+func referenceResult(p renderInputs, op outputplan.Plan) (checkresult.Result, error) {
+	available := map[string]bool{}
 	for name := range projectCatalog(p).Skills {
-		known[name] = true
+		available[name] = true
 	}
-	return referencecheck.Check(op, p.cfg.Prefix, effective, known, func(path string) bool { _, err := os.Stat(filepath.Join(p.root(), path)); return err == nil })
+	return referencecheck.Check(op, p.cfg.Prefix, available, func(path string) bool { _, err := os.Stat(filepath.Join(p.root(), path)); return err == nil })
 }
 
 // Result adapters preserve owner-classified results for ordinary repository

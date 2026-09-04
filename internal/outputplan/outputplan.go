@@ -38,11 +38,10 @@ type Policy struct {
 type Recipe struct {
 	templateID, templateHash, configHash string
 	policy                               Policy
-	encoder, provenance                  string
 }
 
-func NewRecipe(templateID, templateHash, configHash string, policy Policy, encoder, provenance string) Recipe {
-	return Recipe{templateID: templateID, templateHash: templateHash, configHash: configHash, policy: policy, encoder: encoder, provenance: provenance}
+func NewRecipe(templateID, templateHash, configHash string, policy Policy) Recipe {
+	return Recipe{templateID: templateID, templateHash: templateHash, configHash: configHash, policy: policy}
 }
 
 // OutputSpec is the construction projection for one rendered output. Publisher
@@ -51,8 +50,7 @@ type OutputSpec struct {
 	Path, Content, TemplateID, TemplateHash, ConfigHash string
 	RegenChecked                                        bool
 	Policy                                              Policy
-	Declarer, DeclarerProjection, Encoder               string
-	Provenance                                          int
+	Declarer, DeclarerProjection                        string
 	Assembled, Kind, Artifact                           string
 	StubDefaults, StubParts, MarkerParts, PartVarRefs   []string
 	ObservedTemplateID                                  string
@@ -79,8 +77,6 @@ func (o Output) RegenChecked() bool         { return o.spec.RegenChecked }
 func (o Output) Policy() Policy             { return o.spec.Policy }
 func (o Output) Declarer() string           { return o.spec.Declarer }
 func (o Output) DeclarerProjection() string { return o.spec.DeclarerProjection }
-func (o Output) Encoder() string            { return o.spec.Encoder }
-func (o Output) Provenance() int            { return o.spec.Provenance }
 func (o Output) Assembled() string          { return o.spec.Assembled }
 func (o Output) StubDefaults() []string     { return slices.Clone(o.spec.StubDefaults) }
 func (o Output) StubParts() []string        { return slices.Clone(o.spec.StubParts) }
