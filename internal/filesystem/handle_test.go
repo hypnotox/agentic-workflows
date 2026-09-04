@@ -917,6 +917,35 @@ func TestExpectedMutationRefusesDisappearedDestination(t *testing.T) {
 	}
 }
 
+func TestExpectedEmptyDirectoryRemovalVerifiesExactMode(t *testing.T) {
+	root := t.TempDir()
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	path := filepath.Join(root, "owned")
+	if err := os.Mkdir(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	expected, err := h.ExpectedIdentity("owned")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	if err := h.RemoveExpectedEmptyDirectory("owned", expected, 0o755); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("changed-mode directory removal error = %v", err)
+	}
+	if info, err := os.Stat(path); err != nil || info.Mode().Perm() != 0o700 {
+		t.Fatalf("changed-mode directory was not preserved: info=%v err=%v", info, err)
+	}
+}
+
 func TestExpectedIdentityRemovalPreservesNonemptyDirectory(t *testing.T) {
 	root := t.TempDir()
 	h, err := Open(root)

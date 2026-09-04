@@ -151,6 +151,23 @@ func commitMigrationBound(root string, lock *manifest.Lock, lockExpected Image, 
 			return Outcome{}, fmt.Errorf("planned migration path %q expected image: %w", mutation.Path, err)
 		}
 		seen[mutation.Path] = true
+		if mutation.EmptyDirectory {
+			entries, readErr := operation.captureDirectoryExpectation(root, mutation.Path)
+			if readErr != nil {
+				return Outcome{}, fmt.Errorf("capture planned migration directory %s: %w", mutation.Path, readErr)
+			}
+			names := make([]string, len(entries))
+			for i, entry := range entries {
+				names[i] = entry.Name()
+			}
+			sort.Strings(names)
+			expected := operation.state.directoryExpectations[mutation.Path].apply
+			if expected.Mode().Perm() != os.FileMode(mutation.Expected.Mode).Perm() || !slices.Equal(names, mutation.ExpectedEntries) {
+				return Outcome{}, fmt.Errorf("planned migration path %s changed after planning", mutation.Path)
+			}
+			ops = append(ops, Operation{Path: mutation.Path, Kind: KindEmptyDirectory, Prior: mutation.Expected, Replacement: Image{}, ExpectedEntries: append([]string(nil), mutation.ExpectedEntries...)})
+			continue
+		}
 		info, statErr := operation.lstat(root, mutation.Path)
 		switch {
 		case errors.Is(statErr, os.ErrNotExist):
@@ -161,28 +178,10 @@ func commitMigrationBound(root string, lock *manifest.Lock, lockExpected Image, 
 			return Outcome{}, fmt.Errorf("inspect planned migration path %s: %w", mutation.Path, statErr)
 		case info.Mode()&os.ModeSymlink != 0:
 			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: final symlinks are unsupported", mutation.Path)
-		case mutation.EmptyDirectory && !info.IsDir():
-			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: final entry is not a directory", mutation.Path)
-		case !mutation.EmptyDirectory && !info.Mode().IsRegular():
+		case !info.Mode().IsRegular():
 			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: final entry is not a regular file", mutation.Path)
 		case !mutation.Expected.Present:
 			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: expected absent", mutation.Path)
-		}
-		if mutation.EmptyDirectory {
-			entries, readErr := operation.readDir(root, mutation.Path)
-			if readErr != nil {
-				return Outcome{}, fmt.Errorf("read planned migration directory %s: %w", mutation.Path, readErr)
-			}
-			names := make([]string, len(entries))
-			for i, entry := range entries {
-				names[i] = entry.Name()
-			}
-			sort.Strings(names)
-			if info.Mode().Perm() != os.FileMode(mutation.Expected.Mode).Perm() || !slices.Equal(names, mutation.ExpectedEntries) {
-				return Outcome{}, fmt.Errorf("planned migration path %s changed after planning", mutation.Path)
-			}
-			ops = append(ops, Operation{Path: mutation.Path, Kind: KindEmptyDirectory, Prior: mutation.Expected, Replacement: Image{}, ExpectedEntries: append([]string(nil), mutation.ExpectedEntries...)})
-			continue
 		}
 		prior, err := operation.imageOf(root, mutation.Path)
 		if err != nil {
