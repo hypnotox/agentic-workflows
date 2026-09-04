@@ -8,6 +8,28 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.50.0] - 2026-09-04
+
+### Breaking changes
+
+- Replace journaled, rollback-oriented mutation with rerunnable partial-effect handling. `awf upgrade --recover`, upgrade journals, automatic `.awf-bak` backups, the repository-wide mutation embargo, and transactional rollback guarantees are removed. On failure, inspect the reported paths and Git diff, correct the blocker, and rerun the command to converge.
+
+- Remove `awf init --force`. Initialization and generated-file publication now refuse conflicting content rather than backing it up or replacing it through a rollback transaction; ignored and untracked worktree data is preserved and reported as a collision.
+
+- Make bare `awf check` inspect working-tree state only. Use `awf check staged` explicitly for the index, including pre-commit validation.
+
+### Bug fixes
+
+- Acquire writer leases before loading mutable project authority, including effort operations, so concurrent writers cannot act from stale configuration or lock state.
+
+- Make effort creation rerunnable after partial success and converge concurrent attempts for the same slug without clobbering existing resident or worktree data.
+
+### Others
+
+- Simplify mutation, publication, upgrade, and effort internals around exclusive creation and ordered root-confined writes while retaining schema 53 and the temporary schema-50-through-53 upgrade bridge.
+
+- Improve README installation guidance for prebuilt releases, the install wrapper, and source builds.
+
 ## [0.49.0] - 2026-09-04
 
 ### Breaking changes
