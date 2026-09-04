@@ -8,15 +8,22 @@ import (
 	"testing"
 )
 
-var standalonePiToken = regexp.MustCompile(`(?i)\bpi\b`)
+var (
+	standalonePiToken    = regexp.MustCompile(`(?i)\bpi\b`)
+	runtimeAuthorityTerm = regexp.MustCompile(`(?i)\b(typescript|javascript|ts|js|node(?:\.js)?|harness)\b|\bagent[- ](runtime|host)\b|\bruntime[- ]host\b`)
+	assuranceTerm        = regexp.MustCompile(`(?i)\b(lane|tests?|testing|suites?|smoke|assurance|behavior|ci|hosted|validation|verification|checks?|checking|jobs?|workflows?)\b`)
+)
 
 func retainsRetiredRuntimeAssurance(text string) bool {
 	if standalonePiToken.MatchString(text) {
 		return true
 	}
-	normalized := strings.ToLower(strings.Join(strings.Fields(text), " "))
-	return containsAny(normalized, []string{"typescript", "javascript", "agent runtime", "agent-runtime", "harness runtime", "harness"}) &&
-		containsAny(normalized, []string{"lane", "test", "suite", "smoke", "assurance", "behavior", " ci ", "hosted"})
+	for _, paragraph := range strings.Split(text, "\n\n") {
+		if runtimeAuthorityTerm.MatchString(paragraph) && assuranceTerm.MatchString(paragraph) {
+			return true
+		}
+	}
+	return false
 }
 
 func presentsHarnessPackagePrerequisite(text string) bool {
@@ -25,18 +32,21 @@ func presentsHarnessPackagePrerequisite(text string) bool {
 		if !containsAny(normalized, []string{"agentic-skills", "pi-tools"}) {
 			continue
 		}
-		namesBinaryOperation := strings.Contains(normalized, " init") || strings.Contains(normalized, "initializ") || strings.Contains(normalized, "upgrad")
+		namesBinaryOperation := containsAny(normalized, []string{" init", "initializ", "upgrad", "setup", "bootstrap"})
 		namesPrerequisite := containsAny(normalized, []string{
 			"before",
 			"must",
 			"requir",
 			"prerequisite",
-			"depends on",
-			"dependent on",
+			"depend",
 			"need",
 			"necessary",
 			"only after",
 			"prior to",
+			"cannot",
+			"without",
+			"has to",
+			"present for",
 		})
 		if namesBinaryOperation && namesPrerequisite {
 			return true
@@ -245,6 +255,10 @@ func TestRetiredRuntimeAssuranceDetection(t *testing.T) {
 		{name: "pi lane", text: "Select the applicable Pi validation lane.", want: true},
 		{name: "typescript assurance", text: "Run the TypeScript harness assurance lane.", want: true},
 		{name: "javascript smoke", text: "Hosted JavaScript agent-runtime smoke tests run here.", want: true},
+		{name: "javascript validation", text: "Run JavaScript validation checks in the release job.", want: true},
+		{name: "harness verification", text: "The harness verification job covers the agent host.", want: true},
+		{name: "ts runtime", text: "Hosted TS checks provide runtime validation.", want: true},
+		{name: "node suite", text: "The Node.js behavior suite runs in CI.", want: true},
 		{name: "closed inventory", text: "The closed CI lane inventory is go, platform-sensitive, release-archive, and render-template.", want: false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -289,6 +303,10 @@ func TestHarnessPackagePrerequisiteDetection(t *testing.T) {
 		{name: "only after", text: "Upgrade AWF only after installing pi-tools.", want: true},
 		{name: "needed", text: "agentic-skills is needed to initialize AWF.", want: true},
 		{name: "prior to", text: "Install pi-tools prior to an AWF upgrade.", want: true},
+		{name: "cannot without", text: "AWF cannot be initialized without agentic-skills.", want: true},
+		{name: "has to", text: "pi-tools has to be present for awf init.", want: true},
+		{name: "depends upon setup", text: "AWF setup depends upon agentic-skills.", want: true},
+		{name: "bootstrap requires", text: "Bootstrapping AWF requires pi-tools.", want: true},
 		{name: "optional", text: "For Pi harness use, optionally install pi-tools and agentic-skills.", want: false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
