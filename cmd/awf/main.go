@@ -408,17 +408,15 @@ func projectGuardState(ctx context.Context, root string, staged bool) (present b
 		if journalFound, err = upgrade.JournalPresent(root); err != nil {
 			return false, nil, false, nil, false, false, false, nil, err
 		}
-		_, configErr := os.Stat(config.ConfigPath(root))
-		if configErr != nil && !errors.Is(configErr, os.ErrNotExist) {
-			return false, nil, false, nil, false, false, false, nil, fmt.Errorf("stat .awf/config.yaml: %w", configErr)
+		currentConfig, currentLock, err = migrate.CurrentAuthorityPresence(root)
+		if err != nil {
+			return false, nil, false, nil, false, false, false, nil, err
 		}
-		currentConfig = configErr == nil
-		_, lockErr := os.Stat(config.LockPath(root))
-		if lockErr != nil && !errors.Is(lockErr, os.ErrNotExist) {
-			return false, nil, false, nil, false, false, false, nil, fmt.Errorf("stat .awf/awf.lock: %w", lockErr)
+		live, found, lockErr := manifest.LoadLiveFileOptional(root, config.DirName+"/awf.lock", migrate.LiveSchemaFloor, migrate.Current())
+		lockFound, loadErr = found, lockErr
+		if found {
+			lock = live.Lock
 		}
-		currentLock = lockErr == nil
-		lock, lockFound, loadErr = manifest.LoadLiveOptional(config.LockPath(root), migrate.LiveSchemaFloor, migrate.Current())
 		return
 	}
 	tree, err := stagedTree(ctx, root)

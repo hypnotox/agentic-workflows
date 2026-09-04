@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 )
 
@@ -65,16 +66,19 @@ type Image struct {
 }
 
 // Operation records one path's prior and replacement images. The final journal
-// operation is always the lock replacement. A resident-tree operation carries no
-// images and instead names the quarantine path its tree is renamed to; the
-// rename is the mutation, so it is reversible before the lock commits and only
-// needs deleting after.
+// operation is always the lock replacement. A file operation temporarily names
+// an indeterminate exchange residue when committed cleanup could not restore a
+// mismatch. A resident-tree operation carries no images and instead names the
+// quarantine path its tree is renamed to; the rename is the mutation, so it is
+// reversible before the lock commits and only needs deleting after.
 type Operation struct {
-	Path        string `json:"path"`
-	Kind        string `json:"kind,omitempty"`
-	Prior       Image  `json:"prior"`
-	Replacement Image  `json:"replacement"`
-	Quarantine  string `json:"quarantine,omitempty"`
+	Path            string `json:"path"`
+	Kind            string `json:"kind,omitempty"`
+	Prior           Image  `json:"prior"`
+	Replacement     Image  `json:"replacement"`
+	Quarantine      string `json:"quarantine,omitempty"`
+	Residue         string `json:"residue,omitempty"`
+	PossibleResidue bool   `json:"possibleResidue,omitempty"`
 }
 
 // residentTree reports whether op quarantines a tree rather than imaging a file.
@@ -98,8 +102,8 @@ type Outcome struct {
 }
 
 // Journal is the durable transaction record. Version is always 1; Operations
-// are unique, sorted, and end with the lock operation; FinalLockSHA256 is the
-// SHA-256 of the sealed lock content the transaction commits.
+// are unique, sorted, and end with the lock operation; FinalLockSHA256 seals
+// that operation's content while its recorded image also binds the exact mode.
 type Journal struct {
 	Version         int         `json:"version"`
 	Phase           string      `json:"phase"`
@@ -120,12 +124,16 @@ func LockRel() string { return config.DirName + "/awf.lock" }
 func JournalPresent(root string) (bool, error) {
 	var present bool
 	err := withJournalFilesystem(root, func(files *filesystem.Handle) error {
-		_, err := files.Info(JournalRel)
+		expected, err := files.ExpectedIdentity(JournalRel)
 		if errors.Is(err, fs.ErrNotExist) {
 			return nil
 		}
 		if err != nil {
 			return err
+		}
+		defer expected.Release() //nolint:errcheck // read-only journal inspection owns no mutation
+		if !expected.Mode().IsRegular() {
+			return fmt.Errorf("%s is not a regular file: %w", JournalRel, filesystem.ErrIdentityChanged)
 		}
 		present = true
 		return nil
@@ -221,15 +229,16 @@ func restoreTree(root string, op Operation, operation journalOperation) error {
 // journalOperation owns volatile filesystem dependencies for one transaction
 // or recovery. Tests compose a faulting value without mutable package state.
 type journalOperation struct {
-	state      *journalFilesystemState
-	removeAll  func(string, string) error
-	remove     func(string, string) error
-	imageOf    func(string, string) (Image, error)
-	applyImage func(string, string, Image) error
-	write      func(string, Journal) error
-	lstat      func(string, string) (os.FileInfo, error)
-	mkdirAll   func(string, string, os.FileMode) error
-	rename     func(string, string, string) error
+	state         *journalFilesystemState
+	removeAll     func(string, string) error
+	remove        func(string, string) error
+	imageOf       func(string, string) (Image, error)
+	applyExpected func(string, string, Image, Image) error
+	write         func(string, Journal) error
+	lstat         func(string, string) (os.FileInfo, error)
+	mkdirAll      func(string, string, os.FileMode) error
+	rename        func(string, string, string) error
+	readDir       func(string, string) ([]fs.DirEntry, error)
 }
 
 func productionJournalOperation() journalOperation {
@@ -243,11 +252,19 @@ func productionJournalOperation() journalOperation {
 		},
 		imageOf: func(root, path string) (image Image, err error) {
 			err = state.with(root, func(files *filesystem.Handle) error {
-				content, mode, readErr := files.ReadWithMode(path)
-				if errors.Is(readErr, fs.ErrNotExist) {
+				expected, identityErr := files.ExpectedIdentity(path)
+				if errors.Is(identityErr, fs.ErrNotExist) {
 					image = Image{}
 					return nil
 				}
+				if identityErr != nil {
+					return identityErr
+				}
+				defer expected.Release() //nolint:errcheck // read-only image capture owns no mutation
+				if !expected.Mode().IsRegular() {
+					return fmt.Errorf("%s is not a regular file: %w", path, filesystem.ErrIdentityChanged)
+				}
+				content, mode, readErr := files.ReadExpected(path, expected)
 				if readErr != nil {
 					return readErr
 				}
@@ -256,19 +273,41 @@ func productionJournalOperation() journalOperation {
 			})
 			return image, err
 		},
-		applyImage: func(root, path string, img Image) error {
+		applyExpected: func(root, path string, prior, replacement Image) error {
 			return state.with(root, func(files *filesystem.Handle) error {
-				if !img.Present {
-					if err := files.Remove(path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+				if !prior.Present {
+					if _, err := files.LinkInfo(path); err == nil {
+						return fmt.Errorf("%s: %w", path, filesystem.ErrIdentityChanged)
+					} else if !errors.Is(err, fs.ErrNotExist) {
 						return err
 					}
-					return nil
+					if !replacement.Present {
+						return nil
+					}
+					parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(path)))
+					if err := files.MkdirAll(parent, 0o755); err != nil {
+						return err
+					}
+					return files.ReplaceExpected(path, nil, replacement.Content, os.FileMode(replacement.Mode))
 				}
-				parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(path)))
-				if err := files.MkdirAll(parent, 0o755); err != nil {
+				expected, err := files.ExpectedIdentity(path)
+				if err != nil {
 					return err
 				}
-				return files.Replace(path, img.Content, os.FileMode(img.Mode))
+				content, mode, err := files.ReadExpected(path, expected)
+				if err != nil {
+					_ = expected.Release()
+					return err
+				}
+				current := Image{Present: true, Mode: uint32(mode.Perm()), Content: content}
+				if !imagesEqual(current, prior) {
+					_ = expected.Release()
+					return fmt.Errorf("%s: %w", path, filesystem.ErrIdentityChanged)
+				}
+				if !replacement.Present {
+					return files.RemoveExpectedRegularFile(path, expected, prior.Content, os.FileMode(prior.Mode))
+				}
+				return files.ReplaceExpectedRegularFile(path, expected, prior.Content, os.FileMode(prior.Mode), replacement.Content, os.FileMode(replacement.Mode))
 			})
 		},
 		write: func(root string, j Journal) error {
@@ -290,6 +329,13 @@ func productionJournalOperation() journalOperation {
 		},
 		rename: func(root, oldPath, newPath string) error {
 			return state.with(root, func(files *filesystem.Handle) error { return files.Rename(oldPath, newPath) })
+		},
+		readDir: func(root, path string) (entries []fs.DirEntry, err error) {
+			err = state.with(root, func(files *filesystem.Handle) error {
+				entries, err = files.ReadDir(path)
+				return err
+			})
+			return entries, err
 		},
 	}
 }
@@ -322,7 +368,34 @@ func applyOperation(root string, op Operation, operation journalOperation) error
 	if op.residentTree() {
 		return quarantineTree(root, op, operation)
 	}
-	return operation.applyImage(root, op.Path, op.Replacement)
+	return operation.applyExpected(root, op.Path, op.Prior, op.Replacement)
+}
+
+// applyJournaledOperation predeclares the possibility of an exchange residue
+// before a file mutation. A successful application clears the marker durably.
+// The returned booleans report whether filesystem application was attempted
+// and whether it succeeded. cleanup is populated only by the target mutation,
+// never by a journal-marker write.
+func applyJournaledOperation(root string, j *Journal, index int, operation journalOperation) (attempted, applied bool, cleanup *filepublication.CommittedCleanupError, err error) {
+	op := j.Operations[index]
+	if op.residentTree() {
+		err := applyOperation(root, op, operation)
+		return true, err == nil, nil, err
+	}
+	j.Operations[index].PossibleResidue = true
+	if err := operation.write(root, *j); err != nil {
+		return false, false, nil, fmt.Errorf("predeclare possible exchange residue for %s: %w", op.Path, err)
+	}
+	if err := applyOperation(root, op, operation); err != nil {
+		var cleanup *filepublication.CommittedCleanupError
+		_ = errors.As(err, &cleanup)
+		return true, false, cleanup, err
+	}
+	j.Operations[index].PossibleResidue = false
+	if err := operation.write(root, *j); err != nil {
+		return true, true, nil, fmt.Errorf("clear possible exchange residue for %s: %w", op.Path, err)
+	}
+	return true, true, nil, nil
 }
 
 // imagesEqual reports whether two images are byte-for-byte and mode-for-mode
@@ -387,11 +460,23 @@ func validateOperations(ops []Operation) error {
 func validateKind(op Operation, seen map[string]bool) error {
 	switch op.Kind {
 	case KindFile:
+		if op.Residue != "" && op.PossibleResidue {
+			return errors.New("a file operation carries both exact and possible residue")
+		}
 		if op.Quarantine != "" {
 			return fmt.Errorf("a file operation carries quarantine %q", op.Quarantine)
 		}
+		if op.Residue != "" && !safeRelPath(op.Residue) {
+			return fmt.Errorf("unsafe indeterminate residue %q", op.Residue)
+		}
 		return nil
 	case KindResidentTree:
+		if op.PossibleResidue {
+			return errors.New("a resident-tree operation carries possible residue")
+		}
+		if op.Residue != "" {
+			return fmt.Errorf("a resident-tree operation carries residue %q", op.Residue)
+		}
 		if op.Prior.Present || op.Replacement.Present {
 			return errors.New("a resident-tree operation carries file images")
 		}
@@ -441,6 +526,16 @@ func safeRelPath(p string) bool {
 	return true
 }
 
+func readJournal(files *filesystem.Handle) ([]byte, error) {
+	expected, err := files.ExpectedIdentity(JournalRel)
+	if err != nil {
+		return nil, err
+	}
+	defer expected.Release() //nolint:errcheck // read-only journal capture owns no mutation
+	content, _, err := files.ReadExpected(JournalRel, expected)
+	return content, err
+}
+
 // LoadJournal reads and validates the journal under root. A malformed or
 // contract-violating journal is a hard error naming the Git-restoration escape,
 // so no caller mutates the tree on a journal it cannot trust.
@@ -448,7 +543,7 @@ func LoadJournal(root string) (Journal, error) {
 	var b []byte
 	err := withJournalFilesystem(root, func(files *filesystem.Handle) error {
 		var readErr error
-		b, readErr = files.Read(JournalRel)
+		b, readErr = readJournal(files)
 		return readErr
 	})
 	if err != nil {
@@ -526,13 +621,38 @@ func ParseJournal(b []byte) (Journal, error) {
 	if err := validateOperations(j.Operations); err != nil {
 		return Journal{}, fmt.Errorf("invalid upgrade journal: %w; %s", err, gitRestorationGuidance)
 	}
+	if err := validateIndeterminateResidue(j); err != nil {
+		return Journal{}, fmt.Errorf("invalid upgrade journal: %w; %s", err, gitRestorationGuidance)
+	}
 	if err := validateFinalLock(j); err != nil {
 		return Journal{}, fmt.Errorf("invalid upgrade journal: %w; %s", err, gitRestorationGuidance)
 	}
 	return j, nil
 }
 
-// validateFinalLock binds recovery's commitment proof to the actual final lock replacement.
+func validateIndeterminateResidue(j Journal) error {
+	count := 0
+	for _, op := range j.Operations {
+		if op.Residue != "" {
+			count++
+			if j.Phase != phaseRollingBack {
+				return fmt.Errorf("phase %q carries an exact indeterminate residue", j.Phase)
+			}
+		}
+		if op.PossibleResidue {
+			count++
+			if j.Phase != phaseApplying && j.Phase != phaseRollingBack {
+				return fmt.Errorf("phase %q carries a possible indeterminate residue", j.Phase)
+			}
+		}
+	}
+	if count > 1 {
+		return errors.New("journal carries more than one indeterminate residue")
+	}
+	return nil
+}
+
+// validateFinalLock binds the content seal to the recorded final lock image.
 func validateFinalLock(j Journal) error {
 	lock := j.Operations[len(j.Operations)-1]
 	if lock.Kind != KindFile || !lock.Replacement.Present {
@@ -603,17 +723,31 @@ func commitTransactionBound(root string, ops []Operation, operation journalOpera
 		return outcomeWithRetainedJournal(root, nil, nil), err
 	}
 	evidence := make([]Evidence, 0, len(ops)+1)
-	lockOp := ops[len(ops)-1]
-	for _, op := range ops[:len(ops)-1] {
-		if err := applyOperation(root, op, operation); err != nil {
-			candidate := appendEvidence(evidence, Evidence{Action: "pending", Path: op.Path})
-			return rollBack(root, j, fmt.Errorf("apply %s: %w", op.Path, err), candidate, operation)
+	lockIndex := len(j.Operations) - 1
+	lockOp := j.Operations[lockIndex]
+	for i := range j.Operations[:lockIndex] {
+		op := j.Operations[i]
+		attempted, applied, cleanup, err := applyJournaledOperation(root, &j, i, operation)
+		if err != nil {
+			candidate := evidence
+			if applied {
+				candidate = appendEvidence(evidence, Evidence{Action: "applied", Path: op.Path})
+			} else if attempted && !guaranteedUncommittedIdentityRefusal(err) {
+				candidate = appendEvidence(evidence, Evidence{Action: "pending", Path: op.Path})
+			}
+			return rollBack(root, j, fmt.Errorf("apply %s: %w", op.Path, err), candidate, cleanup, operation)
 		}
 		evidence = append(evidence, Evidence{Action: "applied", Path: op.Path})
 	}
-	if err := operation.applyImage(root, lockOp.Path, lockOp.Replacement); err != nil {
-		candidate := appendEvidence(evidence, Evidence{Action: "pending", Path: lockOp.Path})
-		return rollBack(root, j, fmt.Errorf("apply %s: %w", lockOp.Path, err), candidate, operation)
+	attempted, applied, cleanup, err := applyJournaledOperation(root, &j, lockIndex, operation)
+	if err != nil {
+		candidate := evidence
+		if applied {
+			candidate = appendEvidence(evidence, Evidence{Action: "applied", Path: lockOp.Path})
+		} else if attempted && !guaranteedUncommittedIdentityRefusal(err) {
+			candidate = appendEvidence(evidence, Evidence{Action: "pending", Path: lockOp.Path})
+		}
+		return rollBack(root, j, fmt.Errorf("apply %s: %w", lockOp.Path, err), candidate, cleanup, operation)
 	}
 	evidence = append(evidence, Evidence{Action: "applied", Path: lockOp.Path})
 	evidence = append(evidence, Evidence{Action: "committed", Path: LockRel()})
@@ -635,13 +769,34 @@ func commitTransactionBound(root string, ops []Operation, operation journalOpera
 	return Outcome{Evidence: evidence, Changed: changed}, nil
 }
 
+func guaranteedUncommittedIdentityRefusal(err error) bool {
+	if !errors.Is(err, filesystem.ErrIdentityChanged) {
+		return false
+	}
+	var committed *filepublication.CommittedCleanupError
+	return !errors.As(err, &committed)
+}
+
 // rollBack enters the rolling-back phase and restores every prior image in
 // reverse. It preserves the journal and reports the exact path on a third-party
 // image or a failed restore; on full restoration it clears the journal.
-func rollBack(root string, j Journal, cause error, applied []Evidence, operation journalOperation) (Outcome, error) {
+func rollBack(root string, j Journal, cause error, applied []Evidence, committed *filepublication.CommittedCleanupError, operation journalOperation) (Outcome, error) {
 	j.Phase = phaseRollingBack
+	if committed != nil {
+		if err := recordIndeterminateResidue(&j, committed); err != nil {
+			return outcomeWithRetainedJournal(root, applied, applied), fmt.Errorf("%w; and committed cleanup could not be recorded: %w", cause, err)
+		}
+	} else if err := clearUnmaterializedPossibleResidue(root, &j, operation); err != nil {
+		changed := appendPossibleResidueEvidence(applied, j)
+		writeErr := operation.write(root, j)
+		return outcomeWithRetainedJournal(root, changed, changed), fmt.Errorf("%w; possible exchange cleanup is indeterminate: %w", cause, errors.Join(err, writeErr))
+	}
 	if err := operation.write(root, j); err != nil {
-		return outcomeWithRetainedJournal(root, applied, applied), fmt.Errorf("%w; and the journal could not record rollback: %w", cause, err)
+		changed := appendPossibleResidueEvidence(applied, j)
+		return outcomeWithRetainedJournal(root, changed, changed), fmt.Errorf("%w; and the journal could not record rollback: %w", cause, err)
+	}
+	if committed != nil {
+		return outcomeWithRetainedJournal(root, applied, applied), fmt.Errorf("%w; committed cleanup is indeterminate at %s; run `awf upgrade --recover`", cause, committed.ResiduePath)
 	}
 	restored, remaining, err := restorePriors(root, j, applied, operation)
 	evidence := appendEvidence(applied, restored...)
@@ -652,6 +807,83 @@ func rollBack(root string, j Journal, cause error, applied []Evidence, operation
 		return outcomeWithRetainedJournal(root, evidence, nil), fmt.Errorf("%w; rollback done but journal cleanup failed: %w", cause, err)
 	}
 	return Outcome{Evidence: evidence, Changed: []Evidence{}}, cause
+}
+
+func clearUnmaterializedPossibleResidue(root string, j *Journal, operation journalOperation) error {
+	for i := range j.Operations {
+		op := &j.Operations[i]
+		if !op.PossibleResidue {
+			continue
+		}
+		paths, err := possibleResiduePaths(root, *op, operation)
+		if err != nil {
+			return err
+		}
+		if len(paths) != 0 {
+			return fmt.Errorf("possible exchange residue for %s remains at %s", op.Path, strings.Join(paths, ", "))
+		}
+		op.PossibleResidue = false
+	}
+	return nil
+}
+
+func possibleResiduePaths(root string, op Operation, operation journalOperation) ([]string, error) {
+	parent := filepath.ToSlash(filepath.Dir(filepath.FromSlash(op.Path)))
+	prefix := ".awf-remove-"
+	if op.Replacement.Present && !op.Prior.Present {
+		prefix = ".filepublication-"
+	} else if op.Replacement.Present {
+		prefix = ".awf-atomic-"
+	}
+	entries, err := operation.readDir(root, parent)
+	if err != nil {
+		return nil, fmt.Errorf("inspect possible exchange residues for %s: %w", op.Path, err)
+	}
+	var matches []string
+	for _, entry := range entries {
+		if strings.HasPrefix(entry.Name(), prefix) {
+			matches = append(matches, filepath.ToSlash(filepath.Join(filepath.FromSlash(parent), entry.Name())))
+		}
+	}
+	return matches, nil
+}
+
+func appendPossibleResidueEvidence(evidence []Evidence, j Journal) []Evidence {
+	out := append([]Evidence(nil), evidence...)
+	for _, op := range j.Operations {
+		if !op.PossibleResidue {
+			continue
+		}
+		found := false
+		for _, fact := range out {
+			if (fact.Action == "applied" || fact.Action == "pending") && fact.Path == op.Path {
+				found = true
+				break
+			}
+		}
+		if !found {
+			out = append(out, Evidence{Action: "pending", Path: op.Path})
+		}
+	}
+	return out
+}
+
+func recordIndeterminateResidue(j *Journal, cleanup *filepublication.CommittedCleanupError) error {
+	if cleanup == nil || !safeRelPath(cleanup.DestinationPath) || !safeRelPath(cleanup.ResiduePath) {
+		return errors.New("committed cleanup has unsafe or missing paths")
+	}
+	for i := range j.Operations {
+		if j.Operations[i].Path != cleanup.DestinationPath {
+			continue
+		}
+		if j.Operations[i].residentTree() {
+			return fmt.Errorf("committed cleanup destination %q is not a file operation", cleanup.DestinationPath)
+		}
+		j.Operations[i].PossibleResidue = false
+		j.Operations[i].Residue = cleanup.ResiduePath
+		return nil
+	}
+	return fmt.Errorf("committed cleanup destination %q is not journaled", cleanup.DestinationPath)
 }
 
 // restorePriors restores only operations known to have applied, walking them in
@@ -682,10 +914,15 @@ func restorePriors(root string, j Journal, applied []Evidence, operation journal
 		if err != nil {
 			return evidence, remaining, fmt.Errorf("read %s: %w", op.Path, err)
 		}
-		if !imagesEqual(current, op.Prior) && !imagesEqual(current, op.Replacement) {
+		if imagesEqual(current, op.Prior) {
+			evidence = append(evidence, Evidence{Action: "restored", Path: op.Path})
+			remaining = removeChangedPath(remaining, op.Path)
+			continue
+		}
+		if !imagesEqual(current, op.Replacement) {
 			return evidence, remaining, fmt.Errorf("path %s was modified outside the transaction; %s", op.Path, gitRestorationGuidance)
 		}
-		if err := operation.applyImage(root, op.Path, op.Prior); err != nil {
+		if err := operation.applyExpected(root, op.Path, op.Replacement, op.Prior); err != nil {
 			return evidence, remaining, fmt.Errorf("restore %s: %w", op.Path, err)
 		}
 		evidence = append(evidence, Evidence{Action: "restored", Path: op.Path})
@@ -726,7 +963,7 @@ func recoverBound(root string, operation journalOperation) (Outcome, error) {
 	var bytes []byte
 	if err := operation.state.with(root, func(files *filesystem.Handle) error {
 		var readErr error
-		bytes, readErr = files.Read(JournalRel)
+		bytes, readErr = readJournal(files)
 		return readErr
 	}); err != nil {
 		return Outcome{}, err
@@ -735,19 +972,22 @@ func recoverBound(root string, operation journalOperation) (Outcome, error) {
 	if err != nil {
 		return Outcome{}, err
 	}
+	if outcome, blocked, err := reconcileIndeterminateResidue(root, &j, operation); blocked || err != nil {
+		return outcome, err
+	}
 	current, err := operation.imageOf(root, LockRel())
 	if err != nil {
 		return outcomeWithRetainedJournal(root, nil, nil), err
 	}
-	lockIsFinal := current.Present && imageSHA(current) == j.FinalLockSHA256
+	lockIsFinal := imagesEqual(current, j.Operations[len(j.Operations)-1].Replacement)
 	if j.Phase == phaseLockCommitted {
 		if lockIsFinal {
 			return finishCommitted(root, j, operation)
 		}
-		return outcomeWithRetainedJournal(root, nil, nil), fmt.Errorf("journal is lock-committed but the lock hash differs; refusing to roll committed authority back; %s", gitRestorationGuidance)
+		return outcomeWithRetainedJournal(root, nil, nil), fmt.Errorf("journal is lock-committed but the exact lock image differs; refusing to roll committed authority back; %s", gitRestorationGuidance)
 	}
-	if lockIsFinal {
-		// The lock was written before the phase advanced; treat it as committed.
+	if lockIsFinal && j.Phase != phaseRollingBack {
+		// The lock was written before the applying phase advanced; treat it as committed.
 		return finishCommitted(root, j, operation)
 	}
 	applied, err := appliedOperations(root, j, operation)
@@ -766,12 +1006,54 @@ func recoverBound(root string, operation journalOperation) (Outcome, error) {
 	return cleanupJournal(root, evidence, nil, operation)
 }
 
+func reconcileIndeterminateResidue(root string, j *Journal, operation journalOperation) (Outcome, bool, error) {
+	for i := range j.Operations {
+		op := &j.Operations[i]
+		if op.Residue == "" && !op.PossibleResidue {
+			continue
+		}
+		pending := []Evidence{{Action: "pending", Path: op.Path}}
+		if op.Residue != "" {
+			if _, err := operation.lstat(root, op.Residue); err == nil {
+				outcome := outcomeWithRetainedJournal(root, nil, pending)
+				return outcome, true, fmt.Errorf("indeterminate exchange residue %s is preserved for %s; move or reconcile it, then rerun `awf upgrade --recover`", op.Residue, op.Path)
+			} else if !errors.Is(err, fs.ErrNotExist) {
+				outcome := outcomeWithRetainedJournal(root, nil, pending)
+				return outcome, true, fmt.Errorf("inspect indeterminate exchange residue %s: %w", op.Residue, err)
+			}
+			op.Residue = ""
+			j.Phase = phaseRollingBack
+		} else {
+			paths, err := possibleResiduePaths(root, *op, operation)
+			if err != nil {
+				outcome := outcomeWithRetainedJournal(root, nil, pending)
+				return outcome, true, err
+			}
+			if len(paths) != 0 {
+				outcome := outcomeWithRetainedJournal(root, nil, pending)
+				return outcome, true, fmt.Errorf("possible exchange residue for %s remains at %s; move or reconcile it, then rerun `awf upgrade --recover`", op.Path, strings.Join(paths, ", "))
+			}
+			op.PossibleResidue = false
+			// A durable in-flight marker predates proof that the operation
+			// completed. Recovery therefore resolves it toward rollback even
+			// when the destination happens to match the replacement.
+			j.Phase = phaseRollingBack
+		}
+		if err := operation.write(root, *j); err != nil {
+			outcome := outcomeWithRetainedJournal(root, nil, pending)
+			return outcome, true, fmt.Errorf("record reconciled exchange residue %s: %w", op.Path, err)
+		}
+		return Outcome{}, false, nil
+	}
+	return Outcome{}, false, nil
+}
+
 // finishCommitted completes a transaction whose lock is already the sealed
 // authority: quarantined trees are discarded, never restored, and then the
 // journal residue is cleared.
 func finishCommitted(root string, j Journal, operation journalOperation) (Outcome, error) {
-	// A final lock hash is the commitment proof. Reconstruct the journal's
-	// ordered operations even when the crash happened before its phase update.
+	// An exact final lock image is the commitment proof. Reconstruct the
+	// journal's ordered operations even when the crash happened before its phase update.
 	evidence := make([]Evidence, 0, len(j.Operations)+2)
 	for _, op := range j.Operations {
 		evidence = append(evidence, Evidence{Action: "applied", Path: op.Path})
@@ -822,7 +1104,7 @@ func appliedOperations(root string, j Journal, operation journalOperation) ([]Ev
 }
 
 // imageSHA is the SHA-256 of a present image's content (empty for an absent
-// image), used to compare a committed lock against the journal's final hash.
+// image), used to seal the journal's recorded final lock content.
 func imageSHA(img Image) string {
 	sum := sha256.Sum256(img.Content)
 	return hex.EncodeToString(sum[:])

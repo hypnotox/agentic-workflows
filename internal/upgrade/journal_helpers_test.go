@@ -4,10 +4,6 @@ func imageOf(root, path string) (Image, error) {
 	return productionJournalOperation().imageOf(root, path)
 }
 
-func applyImage(root, path string, image Image) error {
-	return productionJournalOperation().applyImage(root, path, image)
-}
-
 func commitTransaction(root string, operations []Operation) (Outcome, error) {
 	return commitTransactionWith(root, operations, productionJournalOperation())
 }

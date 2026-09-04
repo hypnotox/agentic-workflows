@@ -27,6 +27,12 @@ awf upgrade applies only registered migrations for supported live sources whose 
 Backing: test
 
 
+### `invariant: migration-preimage-safe`
+
+Every planned file mutation retains its original absent or exact content-and-mode preimage across ordered migration steps. Planning and recovery read only retained, no-follow regular-file entries; commit validates every mutation and the original authority-lock image before writing the journal. Initial application, final lock publication, and rollback predeclare possible residue, then use atomic exchange with post-exchange verification of the displaced regular file's identity, bytes, and permission mode. A guaranteed-uncommitted mismatch preserves the external image and rolls back earlier paths; an indeterminate cleanup retains its pending axis plus an exact or fail-closed possible-residue marker in the journal until the operator reconciles the residue. Non-regular final sources refuse because file-image migrations do not preserve their topology. Recovery recognizes the final lock only by its exact content and mode and resolves an in-flight marker toward rollback rather than inferred commitment. A multi-step planning failure reports completed step descriptions as planned, not applied changes.
+Backing: test
+
+
 ### `invariant: context-skill-source-migration`
 
 The schema-51 migration renames authored `repository-context` skill sidecars and declared section parts to `context`, preserving content and mode. It removes an equivalent duplicate target but refuses conflicting old and new sources before mutation.

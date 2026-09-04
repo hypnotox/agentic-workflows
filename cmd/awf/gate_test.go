@@ -6,10 +6,10 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -309,7 +309,7 @@ func TestValidateCurrentAuthorityHandlesConcurrentLockDisappearance(t *testing.T
 	}
 }
 
-func TestProjectGuardStateSurfacesControlStatErrors(t *testing.T) {
+func TestProjectGuardStateRejectsControlSymlinksWithoutFollowingThem(t *testing.T) {
 	for _, rel := range []string{"config.yaml", "awf.lock"} {
 		t.Run(rel, func(t *testing.T) {
 			root := t.TempDir()
@@ -331,9 +331,12 @@ func TestProjectGuardStateSurfacesControlStatErrors(t *testing.T) {
 					t.Fatal(err)
 				}
 			}
-			_, _, _, _, _, _, _, _, err := projectGuardState(testContext(t), root, false)
-			if !errors.Is(err, syscall.ELOOP) {
-				t.Fatalf("projectGuardState() error = %v, want symlink-loop stat error", err)
+			_, _, _, _, _, _, _, loadErr, err := projectGuardState(testContext(t), root, false)
+			if err != nil || loadErr == nil {
+				t.Fatalf("projectGuardState() errors = load %v, operation %v; want safe authority refusal", loadErr, err)
+			}
+			if rel == "awf.lock" && !errors.Is(loadErr, filesystem.ErrIdentityChanged) {
+				t.Fatalf("lock load error = %v, want no-follow identity refusal", loadErr)
 			}
 		})
 	}

@@ -110,7 +110,11 @@ func upgradeMigration(ctx context.Context, root string) (upgrade.MigrationResult
 	}
 	mutations := make([]upgrade.FileMutation, len(planned))
 	for i, mutation := range planned {
-		mutations[i] = upgrade.FileMutation{Path: mutation.Path, Content: mutation.Content, Mode: mutation.Mode, Remove: mutation.Remove}
+		mutations[i] = upgrade.FileMutation{
+			Path:     mutation.Path,
+			Expected: upgrade.Image{Present: mutation.Expected.Present, Mode: uint32(mutation.Expected.Mode.Perm()), Content: mutation.Expected.Content},
+			Content:  mutation.Content, Mode: mutation.Mode, Remove: mutation.Remove,
+		}
 	}
 	return upgrade.MigrationResult{Planned: applied, Changes: texts, Mutations: mutations}, err
 }

@@ -10,6 +10,7 @@ import (
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
@@ -293,8 +294,8 @@ func TestRunPreservesInitialLockStatFailure(t *testing.T) {
 		func(string) (bool, error) { return true, nil }, testLiveSchemaRange,
 		func(string) (string, int, error) { called = true; return "ok", 50, nil },
 		func(context.Context, string) (MigrationResult, error) { called = true; return MigrationResult{}, nil }, nil)
-	if !errors.Is(err, syscall.ELOOP) || called {
-		t.Fatalf("Run() error = %v, dispatch = %t, want initial lock stat failure", err, called)
+	if !errors.Is(err, filesystem.ErrIdentityChanged) || called {
+		t.Fatalf("Run() error = %v, dispatch = %t, want initial no-follow lock refusal", err, called)
 	}
 }
 
@@ -333,8 +334,8 @@ func TestRunRevalidatesCurrentAuthorityAfterSchemaClassification(t *testing.T) {
 			},
 			check: func(t *testing.T, err error) {
 				t.Helper()
-				if !errors.Is(err, syscall.ELOOP) {
-					t.Fatalf("Run() error = %v, want lock stat failure", err)
+				if !errors.Is(err, filesystem.ErrIdentityChanged) {
+					t.Fatalf("Run() error = %v, want no-follow lock identity refusal", err)
 				}
 			},
 		},
@@ -449,6 +450,27 @@ func TestRunFailureBeforeChangesUsesRetryDiagnostic(t *testing.T) {
 		t.Fatal(diagnosticErr)
 	}
 	if len(diagnostic.Changed) != 0 || len(diagnostic.Steps) != 1 {
+		t.Fatalf("diagnostic = %#v", diagnostic)
+	}
+}
+
+// invariant: config/migrations-and-locks:migration-preimage-safe (TestRunMultiStepPlanningFailureDoesNotReportAppliedChanges)
+func TestRunMultiStepPlanningFailureDoesNotReportAppliedChanges(t *testing.T) {
+	root := t.TempDir()
+	operationLock(t, root)
+	failure := errors.New("second migration planning failed")
+	_, err := runOperation(t, root, nil, nil, func(context.Context, string) (MigrationResult, error) {
+		return MigrationResult{Planned: []string{"first"}, Changes: []string{"first change"}}, failure
+	}, func(string) (string, int, error) { return "behind", 13, nil })
+	var partial upgradeFailure
+	if !errors.Is(err, failure) || !errors.As(err, &partial) {
+		t.Fatalf("error = %T %v", err, err)
+	}
+	diagnostic, diagnosticErr := partial.Diagnostic()
+	if diagnosticErr != nil {
+		t.Fatal(diagnosticErr)
+	}
+	if len(diagnostic.Planned) != 2 || len(diagnostic.Changed) != 0 || len(diagnostic.Steps) != 1 {
 		t.Fatalf("diagnostic = %#v", diagnostic)
 	}
 }

@@ -8,6 +8,7 @@ import (
 	"sort"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
@@ -37,15 +38,17 @@ type Migration func(context.Context, string) (MigrationResult, error)
 // CurrentSchemaChange describes stamping the current schema generation.
 type CurrentSchemaChange func() string
 
-// FileMutation is one journal-owned replacement or removal.
+// FileMutation is one journal-owned replacement or removal with the exact
+// planning preimage that must still be present before any journal is written.
 type FileMutation struct {
-	Path    string
-	Content []byte
-	Mode    os.FileMode
-	Remove  bool
+	Path     string
+	Expected Image
+	Content  []byte
+	Mode     os.FileMode
+	Remove   bool
 }
 
-// MigrationResult records applied migration steps and user-facing changes.
+// MigrationResult records planned migration steps, user-facing changes, and mutations.
 type MigrationResult struct {
 	Planned   []string
 	Changes   []string
@@ -91,34 +94,38 @@ func currentConfigPresent(root string) (bool, error) {
 	return false, nil
 }
 
-func requireCurrentConfig(root string) error {
-	found, err := currentConfigPresent(root)
-	if err != nil {
-		return err
-	}
-	if !found {
-		return &manifest.PartialAuthorityError{Config: false, Lock: true}
-	}
-	return nil
+func currentLockPresent(root string) (present bool, err error) {
+	err = withJournalFilesystem(root, func(files *filesystem.Handle) error {
+		_, infoErr := files.LinkInfo(LockRel())
+		if errors.Is(infoErr, os.ErrNotExist) {
+			return nil
+		}
+		if infoErr != nil {
+			return infoErr
+		}
+		present = true
+		return nil
+	})
+	return present, err
 }
 
 // commitMigration converts planned migration file replacements into the existing
 // journal transaction. The replacement current-schema lock is deliberately the
 // final operation, making rollback and --recover use the same safety boundary.
-func commitMigration(root string, lock *manifest.Lock, current int, mutations []FileMutation) (Outcome, error) {
-	return commitMigrationWith(root, lock, current, mutations, productionJournalOperation())
+func commitMigration(root string, lock *manifest.Lock, lockExpected Image, current int, mutations []FileMutation) (Outcome, error) {
+	return commitMigrationWith(root, lock, lockExpected, current, mutations, productionJournalOperation())
 }
 
-func commitMigrationWith(root string, lock *manifest.Lock, current int, mutations []FileMutation, operation journalOperation) (outcome Outcome, err error) {
+func commitMigrationWith(root string, lock *manifest.Lock, lockExpected Image, current int, mutations []FileMutation, operation journalOperation) (outcome Outcome, err error) {
 	err = withBoundJournalOperation(root, operation, func(bound journalOperation) error {
 		var runErr error
-		outcome, runErr = commitMigrationBound(root, lock, current, mutations, bound)
+		outcome, runErr = commitMigrationBound(root, lock, lockExpected, current, mutations, bound)
 		return runErr
 	})
 	return outcome, err
 }
 
-func commitMigrationBound(root string, lock *manifest.Lock, current int, mutations []FileMutation, operation journalOperation) (Outcome, error) {
+func commitMigrationBound(root string, lock *manifest.Lock, lockExpected Image, current int, mutations []FileMutation, operation journalOperation) (Outcome, error) {
 	seen := make(map[string]bool, len(mutations))
 	ops := make([]Operation, 0, len(mutations)+1)
 	for _, mutation := range mutations {
@@ -131,10 +138,31 @@ func commitMigrationBound(root string, lock *manifest.Lock, current int, mutatio
 		if mutation.Remove && (mutation.Mode != 0 || len(mutation.Content) != 0) {
 			return Outcome{}, fmt.Errorf("planned removal %q carries replacement data", mutation.Path)
 		}
+		if err := validateImage(mutation.Expected); err != nil {
+			return Outcome{}, fmt.Errorf("planned migration path %q expected image: %w", mutation.Path, err)
+		}
 		seen[mutation.Path] = true
+		info, statErr := operation.lstat(root, mutation.Path)
+		switch {
+		case errors.Is(statErr, os.ErrNotExist):
+			if mutation.Expected.Present {
+				return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: expected present", mutation.Path)
+			}
+		case statErr != nil:
+			return Outcome{}, fmt.Errorf("inspect planned migration path %s: %w", mutation.Path, statErr)
+		case info.Mode()&os.ModeSymlink != 0:
+			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: final symlinks are unsupported", mutation.Path)
+		case !info.Mode().IsRegular():
+			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: final entry is not a regular file", mutation.Path)
+		case !mutation.Expected.Present:
+			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: expected absent", mutation.Path)
+		}
 		prior, err := operation.imageOf(root, mutation.Path)
 		if err != nil {
 			return Outcome{}, fmt.Errorf("read planned migration path %s: %w", mutation.Path, err)
+		}
+		if !imagesEqual(prior, mutation.Expected) {
+			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning", mutation.Path)
 		}
 		replacement := Image{Present: !mutation.Remove, Mode: uint32(mutation.Mode.Perm()), Content: mutation.Content}
 		ops = append(ops, Operation{Path: mutation.Path, Prior: prior, Replacement: replacement})
@@ -146,27 +174,47 @@ func commitMigrationBound(root string, lock *manifest.Lock, current int, mutatio
 	if err != nil {
 		return Outcome{}, err
 	}
+	if err := validateImage(lockExpected); err != nil {
+		return Outcome{}, fmt.Errorf("planned authority lock expected image is invalid: %w", err)
+	}
+	if !lockExpected.Present {
+		return Outcome{}, errors.New("planned authority lock expected image is invalid: lock must be present")
+	}
+	info, err := operation.lstat(root, LockRel())
+	if err != nil {
+		return Outcome{}, fmt.Errorf("inspect planned authority lock: %w", err)
+	}
+	if !info.Mode().IsRegular() {
+		return Outcome{}, errors.New("planned authority lock changed after planning: expected a regular file")
+	}
 	prior, err := operation.imageOf(root, LockRel())
 	if err != nil {
-		return Outcome{}, err
+		return Outcome{}, fmt.Errorf("read planned authority lock: %w", err)
 	}
-	ops = append(ops, Operation{Path: LockRel(), Prior: prior, Replacement: Image{Present: true, Mode: 0o644, Content: bytes}})
+	if !imagesEqual(prior, lockExpected) {
+		return Outcome{}, errors.New("planned authority lock changed after planning")
+	}
+	ops = append(ops, Operation{Path: LockRel(), Prior: lockExpected, Replacement: Image{Present: true, Mode: 0o644, Content: bytes}})
 	return commitTransactionBound(root, ops, operation)
 }
 
-func reloadCurrentAuthority(root string, floor, current int) (*manifest.Lock, error) {
-	lock, found, err := manifest.LoadLiveOptional(config.LockPath(root), floor, current)
+func reloadCurrentAuthority(root string, floor, current int) (*manifest.Lock, Image, error) {
+	live, found, err := manifest.LoadLiveFileOptional(root, LockRel(), floor, current)
 	if err != nil {
-		return nil, err
+		return nil, Image{}, err
 	}
 	configFound, err := currentConfigPresent(root)
 	if err != nil {
-		return nil, err
+		return nil, Image{}, err
 	}
-	if !found || !configFound {
-		return nil, &manifest.PartialAuthorityError{Config: configFound, Lock: found}
+	if !found {
+		return nil, Image{}, &manifest.PartialAuthorityError{Config: configFound, Lock: false}
 	}
-	return lock, nil
+	if !configFound {
+		return nil, Image{}, &manifest.PartialAuthorityError{Config: false, Lock: true}
+	}
+	lockImage := Image{Present: true, Mode: uint32(live.Mode.Perm()), Content: live.Content}
+	return live.Lock, lockImage, nil
 }
 
 // Run executes the normal upgrade use case. Migration, authority and journal
@@ -180,7 +228,6 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 	if !projectFound {
 		return OperationOutcome{}, errors.New("not an awf project (run `awf init`)")
 	}
-	lockPath := config.LockPath(root)
 	floor, current := liveSchemaRange()
 	// A retired layout has neither current control file. Classify it before
 	// loading authority so its removed representation is never decoded.
@@ -188,10 +235,9 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 	if configErr != nil {
 		return OperationOutcome{}, configErr
 	}
-	_, lockStatErr := os.Stat(lockPath)
-	lockFoundOnDisk := lockStatErr == nil
-	if lockStatErr != nil && !errors.Is(lockStatErr, os.ErrNotExist) {
-		return OperationOutcome{}, fmt.Errorf("stat .awf/awf.lock: %w", lockStatErr)
+	lockFoundOnDisk, lockInspectErr := currentLockPresent(root)
+	if lockInspectErr != nil {
+		return OperationOutcome{}, fmt.Errorf("inspect .awf/awf.lock: %w", lockInspectErr)
 	}
 	state := ""
 	if !configFound && !lockFoundOnDisk && schemaGate != nil {
@@ -201,11 +247,7 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 			return OperationOutcome{}, err
 		}
 	}
-	_, found, err := manifest.LoadLiveOptional(lockPath, floor, current)
-	if err != nil {
-		return OperationOutcome{}, err
-	}
-	if !found {
+	if !lockFoundOnDisk {
 		configFound, statErr := currentConfigPresent(root)
 		if statErr != nil {
 			return OperationOutcome{}, statErr
@@ -215,7 +257,7 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 		}
 		return OperationOutcome{}, errors.New("not an awf project")
 	}
-	if err := requireCurrentConfig(root); err != nil {
+	if _, _, err := reloadCurrentAuthority(root, floor, current); err != nil {
 		return OperationOutcome{}, err
 	}
 	if schemaGate != nil {
@@ -224,7 +266,7 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 			return OperationOutcome{}, err
 		}
 	}
-	lock, err := reloadCurrentAuthority(root, floor, current)
+	lock, lockExpected, err := reloadCurrentAuthority(root, floor, current)
 	if err != nil {
 		return OperationOutcome{}, err
 	}
@@ -234,11 +276,11 @@ func Run(ctx context.Context, root string, sync Sync, gate Gate, present Project
 	migration, err := migrate(ctx, root)
 	planned, applied, changes := migration.Planned, []string(nil), migration.Changes
 	if err != nil {
-		return OperationOutcome{}, newUpgradeFailure(applied, changes, presentation.Mutation{}, err)
+		return OperationOutcome{}, newUpgradePlanningFailure(planned, changes, err)
 	}
 	schemaCurrent := state == "ok"
 	if len(migration.Mutations) > 0 || len(planned) > 0 {
-		journalOutcome, journalErr := commitMigration(root, lock, current, migration.Mutations)
+		journalOutcome, journalErr := commitMigration(root, lock, lockExpected, current, migration.Mutations)
 		if journalErr != nil {
 			return OperationOutcome{}, newJournalFailure("migration has not reached terminal state", journalOutcome, journalErr)
 		}

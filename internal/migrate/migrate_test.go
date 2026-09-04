@@ -8,7 +8,6 @@ import (
 	"slices"
 	"strconv"
 	"strings"
-	"syscall"
 	"testing"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -175,7 +174,7 @@ func TestOrderedMigrationStepsReadAndCoalesceTheProposedTree(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(mutations) != 1 || mutations[0].Path != ".awf/future.yaml" || string(mutations[0].Content) != "final\n" || mutations[0].Mode != 0o600 {
+	if len(mutations) != 1 || mutations[0].Path != ".awf/future.yaml" || string(mutations[0].Content) != "final\n" || mutations[0].Mode != 0o600 || mutations[0].Expected.Present {
 		t.Fatalf("coalesced mutations = %#v", mutations)
 	}
 }
@@ -256,7 +255,7 @@ func TestBuildRejectsInvalidMigrationRegistry(t *testing.T) {
 	}
 }
 
-func TestProjectPresentAndGenerationPreserveControlPathStatFailures(t *testing.T) {
+func TestProjectPresenceDoesNotFollowControlSymlink(t *testing.T) {
 	root := t.TempDir()
 	path := config.ConfigPath(root)
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -265,10 +264,10 @@ func TestProjectPresentAndGenerationPreserveControlPathStatFailures(t *testing.T
 	if err := os.Symlink(filepath.Base(path), path); err != nil {
 		t.Fatal(err)
 	}
-	if present, err := ProjectPresent(root); present || !errors.Is(err, syscall.ELOOP) {
-		t.Fatalf("ProjectPresent = %t, %v; want false, stat loop", present, err)
+	if present, err := ProjectPresent(root); !present || err != nil {
+		t.Fatalf("ProjectPresent = %t, %v; want no-follow presence", present, err)
 	}
-	if _, err := Generation(root); !errors.Is(err, syscall.ELOOP) {
-		t.Fatalf("Generation error = %v, want stat loop", err)
+	if generation, err := Generation(root); err != nil || generation != Current() {
+		t.Fatalf("Generation = %d, %v; want current generation without following config", generation, err)
 	}
 }

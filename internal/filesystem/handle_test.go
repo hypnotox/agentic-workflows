@@ -653,7 +653,7 @@ func TestCreateDirectoryReturnsPublishedIdentityAndRefusesExistingDestination(t 
 			t.Fatal("directory publication through escaping parent succeeded")
 		}
 	}
-	if _, err := exchangeExpected(h.root, "temporary", "other/destination", created, false, false); err == nil {
+	if _, err := exchangeExpected(h.root, "temporary", "other/destination", created, nil, false, false); err == nil {
 		t.Fatal("different-parent expected mutation succeeded")
 	}
 	relocated := filepath.Join(container, "relocated")
@@ -845,7 +845,7 @@ func TestExpectedMutationRootAnchorRefusesRelocatedParent(t *testing.T) {
 			if err := os.Rename(filepath.Join(rootPath, "parent"), relocated); err != nil {
 				t.Fatal(err)
 			}
-			consumed, err := exchangeExpected(h.root, "parent/temporary", "parent/destination", expected, remove, false)
+			consumed, err := exchangeExpected(h.root, "parent/temporary", "parent/destination", expected, nil, remove, false)
 			if err == nil || consumed {
 				t.Fatalf("relocated-parent commit = consumed %v, error %v; want uncommitted refusal", consumed, err)
 			}
@@ -882,7 +882,7 @@ func TestExpectedMutationRefusesDisappearedDestination(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "destination")); err != nil {
 		t.Fatal(err)
 	}
-	consumed, err := exchangeExpected(h.root, "temporary", "destination", expected, false, false)
+	consumed, err := exchangeExpected(h.root, "temporary", "destination", expected, nil, false, false)
 	if err == nil || consumed {
 		t.Fatalf("disappeared-destination commit = consumed %v, error %v; want uncommitted refusal", consumed, err)
 	}

@@ -132,6 +132,7 @@ func (r Report) Document() (Document, error) {
 type Diagnostic struct {
 	Condition string
 	State     string
+	Planned   []Field
 	Changed   []Field
 	Cause     string
 	Steps     []Value
@@ -171,6 +172,13 @@ func (d Diagnostic) Document() (Document, error) {
 		nodes = append(nodes, cause)
 	}
 	children := []Node{}
+	if len(d.Planned) > 0 {
+		planned, err := NewSection("planned", fieldsAsNodes(d.Planned)...)
+		if err != nil {
+			return Document{}, err
+		}
+		children = append(children, planned)
+	}
 	if len(d.Changed) > 0 {
 		changed, err := NewSection("changed", fieldsAsNodes(d.Changed)...)
 		if err != nil {

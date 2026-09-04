@@ -15,6 +15,9 @@ import (
 	"strconv"
 	"strings"
 	"testing"
+
+	"github.com/hypnotox/agentic-workflows/internal/filepublication"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 )
 
 func JournalPath(root string) string {
@@ -52,48 +55,6 @@ func TestJournalPresentSeparatesAbsenceFromFault(t *testing.T) {
 	t.Cleanup(func() { _ = os.Chmod(awfDir, 0o755) })
 	if found, err := JournalPresent(root); err == nil || found {
 		t.Fatalf("unreadable journal location: found=%v err=%v, want a fault", found, err)
-	}
-}
-
-// TestApplyImageRestoresContentAndModeAtomically pins that a restore keeps the
-// image's recorded mode and leaves no temp residue. applyImage writes through
-// the same atomic path as the journal that records it, so a crash mid-restore
-// cannot leave a truncated file where recovery promised a whole image.
-func TestApplyImageRestoresContentAndModeAtomically(t *testing.T) {
-	root := t.TempDir()
-	mustWrite(t, filepath.Join(root, "a.txt"), []byte("current"))
-	before, err := os.Stat(filepath.Join(root, "a.txt"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := applyImage(root, "a.txt", Image{Present: true, Mode: 0o600, Content: []byte("prior")}); err != nil {
-		t.Fatal(err)
-	}
-	// A rename-replaced target is a different file; truncating the original in
-	// place would keep identity, which is exactly the window a crash could catch
-	// half-written. os.SameFile compares inode identity portably.
-	after, err := os.Stat(filepath.Join(root, "a.txt"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if os.SameFile(before, after) {
-		t.Fatal("restore truncated the existing file in place instead of renaming a replacement over it")
-	}
-	got, err := os.ReadFile(filepath.Join(root, "a.txt"))
-	if err != nil || string(got) != "prior" {
-		t.Fatalf("content = %q, err = %v", got, err)
-	}
-	info, err := os.Stat(filepath.Join(root, "a.txt"))
-	if err != nil || info.Mode().Perm() != 0o600 {
-		t.Fatalf("perm = %v, err = %v (want 0600)", info.Mode().Perm(), err)
-	}
-	ents, err := os.ReadDir(root)
-	if err != nil || len(ents) != 1 {
-		t.Fatalf("temp residue left behind: %v (err %v)", ents, err)
-	}
-	mustWrite(t, filepath.Join(root, "blocking-parent"), []byte("file"))
-	if err := applyImage(root, "blocking-parent/child", Image{Present: true, Mode: 0o600, Content: []byte("prior")}); err == nil {
-		t.Fatal("restore created a child beneath a regular file")
 	}
 }
 
@@ -237,6 +198,13 @@ func TestJournalLoadRejections(t *testing.T) {
 			j.Operations[0].Replacement = Image{Present: true, Mode: 0o4000, Content: []byte("x")}
 		}, "invalid mode"},
 		{"absent-with-content", func(j *Journal) { j.Operations[0].Prior = Image{Present: false, Content: []byte("x")} }, "carries"},
+		{"unsafe-residue", func(j *Journal) { j.Phase = phaseRollingBack; j.Operations[0].Residue = "../residue" }, "unsafe indeterminate residue"},
+		{"residue-before-rollback", func(j *Journal) { j.Operations[0].Residue = ".awf-residue" }, "carries an exact indeterminate residue"},
+		{"multiple-residues", func(j *Journal) {
+			j.Phase = phaseRollingBack
+			j.Operations[0].Residue = ".awf-residue-a"
+			j.Operations[1].Residue = ".awf-residue-lock"
+		}, "more than one indeterminate residue"},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			j := lockJournal(phasePrepared)
@@ -423,9 +391,6 @@ func TestJournalHelpers(t *testing.T) {
 		t.Fatal("directory imaged as a file")
 	}
 	mustWrite(t, filepath.Join(root, "adir", "child"), []byte("x"))
-	if err := applyImage(root, "adir", Image{Present: false}); err == nil {
-		t.Fatal("non-empty directory removed as absent image")
-	}
 	if journalPresence(t, root) {
 		t.Fatal("phantom journal")
 	}
@@ -468,7 +433,7 @@ func TestJournalCommitRetainsEvidenceWhenLockPhaseWriteFails(t *testing.T) {
 	priorWrite := operation.write
 	operation.write = func(root string, j Journal) error {
 		writes++
-		if writes == 3 {
+		if writes == 7 {
 			return failure
 		}
 		return priorWrite(root, j)
@@ -609,7 +574,7 @@ func TestJournalWriteFailuresReportTerminalJournalAxis(t *testing.T) {
 	}{
 		{"initial", 1, nil},
 		{"applying", 2, []Evidence{{Action: "retained", Path: ""}}},
-		{"rollback", 3, []Evidence{{Action: "applied", Path: "a.txt"}, {Action: "pending", Path: "blocked"}, {Action: "retained", Path: ""}}},
+		{"rollback", 6, []Evidence{{Action: "applied", Path: "a.txt"}, {Action: "retained", Path: ""}}},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := t.TempDir()
@@ -1138,7 +1103,7 @@ func TestJournalResidentCollisionRefusals(t *testing.T) {
 	})
 }
 
-func TestJournalCommitLockFailureHaltsRollback(t *testing.T) {
+func TestJournalCommitLockIdentityRefusalRollsBackEarlierFiles(t *testing.T) {
 	root := t.TempDir()
 	mustMkdir(t, filepath.Join(root, ".awf"))
 	mustMkdir(t, filepath.Join(root, LockRel()))
@@ -1146,12 +1111,18 @@ func TestJournalCommitLockFailureHaltsRollback(t *testing.T) {
 		{Path: "a.txt", Prior: Image{}, Replacement: presentImg("alpha")},
 		{Path: LockRel(), Prior: Image{}, Replacement: presentImg("final")},
 	}
-	_, err := commitTransaction(root, ops)
-	if err == nil || !strings.Contains(err.Error(), "apply .awf/awf.lock") || !strings.Contains(err.Error(), "rollback halted") {
-		t.Fatalf("want a halted rollback, got %v", err)
+	outcome, err := commitTransaction(root, ops)
+	if !errors.Is(err, filesystem.ErrIdentityChanged) || !strings.Contains(err.Error(), "apply .awf/awf.lock") {
+		t.Fatalf("want a lock identity refusal, got %v", err)
 	}
-	if !journalPresence(t, root) {
-		t.Fatal("journal cleared despite a halted rollback")
+	if len(outcome.Changed) != 0 {
+		t.Fatalf("changed = %#v, want fully rolled back", outcome.Changed)
+	}
+	if journalPresence(t, root) {
+		t.Fatal("journal retained after a completed rollback")
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "a.txt")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("earlier file survived rollback: %v", statErr)
 	}
 }
 
@@ -1268,6 +1239,7 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 	t.Run("post-commit-removal-retains-committed-axes", func(t *testing.T) {
 		root := t.TempDir()
 		mustMkdir(t, filepath.Join(root, ".awf"))
+		mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
 		failure := errors.New("remove committed journal")
 		operation := productionJournalOperation()
 		operation.remove = func(string, string) error { return failure }
@@ -1293,7 +1265,7 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 		operation := productionJournalOperation()
 		operation.remove = func(string, string) error { return failure }
 
-		outcome, err := rollBack(root, lockJournal(phaseApplying), errors.New("apply blocked"), []Evidence{{Action: "applied", Path: "a.txt"}}, operation)
+		outcome, err := rollBack(root, lockJournal(phaseApplying), errors.New("apply blocked"), []Evidence{{Action: "applied", Path: "a.txt"}}, nil, operation)
 		if !errors.Is(err, failure) {
 			t.Fatalf("error = %v, want %v", err, failure)
 		}
@@ -1388,6 +1360,312 @@ func TestJournalCleanupFaultOutcomes(t *testing.T) {
 	})
 }
 
+func TestCommittedCleanupIdentityFailureRetainsPendingAxisAndJournal(t *testing.T) {
+	root := t.TempDir()
+	mustMkdir(t, filepath.Join(root, ".awf"))
+	mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
+	operation := productionJournalOperation()
+	apply := operation.applyExpected
+	operation.applyExpected = func(root, path string, prior, replacement Image) error {
+		if path != "a.txt" {
+			return apply(root, path, prior, replacement)
+		}
+		if err := apply(root, path, prior, replacement); err != nil {
+			return err
+		}
+		mustWrite(t, filepath.Join(root, ".awf-atomic-residue"), []byte("external displaced image"))
+		return &filepublication.CommittedCleanupError{
+			DestinationPath: path,
+			ResiduePath:     ".awf-atomic-residue",
+			Cause:           filesystem.ErrIdentityChanged,
+		}
+	}
+	outcome, err := commitTransactionWith(root, lockJournal(phasePrepared).Operations, operation)
+	var cleanup *filepublication.CommittedCleanupError
+	if !errors.As(err, &cleanup) || !errors.Is(err, filesystem.ErrIdentityChanged) {
+		t.Fatalf("error = %v, want committed identity cleanup failure", err)
+	}
+	want := []Evidence{{Action: "pending", Path: "a.txt"}, retainedJournal(root)}
+	if !slices.Equal(outcome.Changed, want) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+	}
+	if !journalPresence(t, root) {
+		t.Fatal("committed cleanup failure removed recovery journal")
+	}
+	journal, loadErr := LoadJournal(root)
+	if loadErr != nil || journal.Operations[0].Residue != ".awf-atomic-residue" {
+		t.Fatalf("recorded residue = %#v, %v", journal.Operations[0], loadErr)
+	}
+	recovered, recoverErr := Recover(root)
+	if recoverErr == nil || !strings.Contains(recoverErr.Error(), "indeterminate exchange residue") {
+		t.Fatalf("recovery error = %v, want preserved-residue refusal", recoverErr)
+	}
+	if !slices.Equal(recovered.Changed, want) {
+		t.Fatalf("recovery changed = %#v, want %#v", recovered.Changed, want)
+	}
+	if err := os.Remove(filepath.Join(root, ".awf-atomic-residue")); err != nil {
+		t.Fatal(err)
+	}
+	if _, recoverErr := Recover(root); recoverErr != nil {
+		t.Fatalf("recovery after residue reconciliation: %v", recoverErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "a.txt")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("ordinary destination after rollback = %v", statErr)
+	}
+	if journalPresence(t, root) {
+		t.Fatal("journal retained after residue reconciliation and rollback")
+	}
+}
+
+func TestFinalLockCommittedCleanupDoesNotCommitDuringRecovery(t *testing.T) {
+	root := t.TempDir()
+	mustMkdir(t, filepath.Join(root, ".awf"))
+	mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
+	operation := productionJournalOperation()
+	apply := operation.applyExpected
+	operation.applyExpected = func(rootArg, path string, prior, replacement Image) error {
+		if err := apply(rootArg, path, prior, replacement); err != nil {
+			return err
+		}
+		if path != LockRel() {
+			return nil
+		}
+		const residue = ".awf/.awf-atomic-lock-residue"
+		mustWrite(t, filepath.Join(root, filepath.FromSlash(residue)), []byte("external displaced lock"))
+		return &filepublication.CommittedCleanupError{
+			DestinationPath: path,
+			ResiduePath:     residue,
+			Cause:           filesystem.ErrIdentityChanged,
+		}
+	}
+	outcome, err := commitTransactionWith(root, lockJournal(phasePrepared).Operations, operation)
+	var cleanup *filepublication.CommittedCleanupError
+	if !errors.As(err, &cleanup) {
+		t.Fatalf("error = %v, want committed lock cleanup failure", err)
+	}
+	want := []Evidence{{Action: "applied", Path: "a.txt"}, {Action: "pending", Path: LockRel()}, retainedJournal(root)}
+	if !slices.Equal(outcome.Changed, want) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+	}
+	if recovered, recoverErr := Recover(root); recoverErr == nil || !strings.Contains(recoverErr.Error(), "indeterminate exchange residue") {
+		t.Fatalf("recovery = %#v, %v; want preserved-residue refusal", recovered, recoverErr)
+	}
+	if got, readErr := os.ReadFile(filepath.Join(root, LockRel())); readErr != nil || string(got) != "FINAL" {
+		t.Fatalf("final lock changed while residue pending = %q, %v", got, readErr)
+	}
+	if err := os.Remove(filepath.Join(root, ".awf", ".awf-atomic-lock-residue")); err != nil {
+		t.Fatal(err)
+	}
+	if _, recoverErr := Recover(root); recoverErr != nil {
+		t.Fatalf("recovery after lock residue reconciliation: %v", recoverErr)
+	}
+	if got, readErr := os.ReadFile(filepath.Join(root, LockRel())); readErr != nil || string(got) != "old-lock" {
+		t.Fatalf("lock after rollback = %q, %v", got, readErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, "a.txt")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("earlier mutation after rollback = %v", statErr)
+	}
+	if journalPresence(t, root) {
+		t.Fatal("journal retained after final-lock residue reconciliation")
+	}
+}
+
+func TestPossibleResidueMarkerFailsClosedWhenRollbackJournalWriteFails(t *testing.T) {
+	root := t.TempDir()
+	mustMkdir(t, filepath.Join(root, ".awf"))
+	mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
+	failure := errors.New("rollback journal write failed")
+	operation := productionJournalOperation()
+	write := operation.write
+	operation.write = func(rootArg string, journal Journal) error {
+		if journal.Phase == phaseRollingBack {
+			return failure
+		}
+		return write(rootArg, journal)
+	}
+	apply := operation.applyExpected
+	operation.applyExpected = func(rootArg, path string, prior, replacement Image) error {
+		if err := apply(rootArg, path, prior, replacement); err != nil {
+			return err
+		}
+		const residue = ".awf/.awf-atomic-lock-residue"
+		mustWrite(t, filepath.Join(root, filepath.FromSlash(residue)), []byte("external displaced lock"))
+		return &filepublication.CommittedCleanupError{
+			DestinationPath: path,
+			ResiduePath:     residue,
+			Cause:           filesystem.ErrIdentityChanged,
+		}
+	}
+	ops := []Operation{{Path: LockRel(), Prior: presentImg("old-lock"), Replacement: presentImg("FINAL")}}
+	outcome, err := commitTransactionWith(root, ops, operation)
+	if !errors.Is(err, failure) {
+		t.Fatalf("commit error = %v, want rollback journal failure", err)
+	}
+	want := []Evidence{{Action: "pending", Path: LockRel()}, retainedJournal(root)}
+	if !slices.Equal(outcome.Changed, want) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+	}
+	journal, loadErr := LoadJournal(root)
+	if loadErr != nil || journal.Phase != phaseApplying || !journal.Operations[0].PossibleResidue || journal.Operations[0].Residue != "" {
+		t.Fatalf("durable predeclared journal = %#v, %v", journal, loadErr)
+	}
+	if recovered, recoverErr := Recover(root); recoverErr == nil || !strings.Contains(recoverErr.Error(), "possible exchange residue") {
+		t.Fatalf("recovery = %#v, %v; want possible-residue refusal", recovered, recoverErr)
+	}
+	if got, readErr := os.ReadFile(filepath.Join(root, LockRel())); readErr != nil || string(got) != "FINAL" {
+		t.Fatalf("lock changed while possible residue pending = %q, %v", got, readErr)
+	}
+	if err := os.Remove(filepath.Join(root, ".awf", ".awf-atomic-lock-residue")); err != nil {
+		t.Fatal(err)
+	}
+	if _, recoverErr := Recover(root); recoverErr != nil {
+		t.Fatalf("recovery after possible residue reconciliation: %v", recoverErr)
+	}
+	if got, readErr := os.ReadFile(filepath.Join(root, LockRel())); readErr != nil || string(got) != "old-lock" {
+		t.Fatalf("lock after fail-closed rollback = %q, %v", got, readErr)
+	}
+	if journalPresence(t, root) {
+		t.Fatal("journal retained after possible residue reconciliation")
+	}
+}
+
+func TestInitialRollbackUsesExactExpectedImageAndPreservesExternalReplacement(t *testing.T) {
+	root := t.TempDir()
+	mustMkdir(t, filepath.Join(root, ".awf"))
+	mustWrite(t, filepath.Join(root, "a.txt"), []byte("old"))
+	mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
+	ops := []Operation{
+		{Path: "a.txt", Prior: presentImg("old"), Replacement: presentImg("new")},
+		{Path: "b.txt", Prior: Image{}, Replacement: presentImg("new-b")},
+		{Path: LockRel(), Prior: presentImg("old-lock"), Replacement: presentImg("FINAL")},
+	}
+	failure := errors.New("second apply failed")
+	operation := productionJournalOperation()
+	apply := operation.applyExpected
+	restoredWithExpected := false
+	operation.applyExpected = func(rootArg, path string, prior, replacement Image) error {
+		if path == "b.txt" && replacement.Present && string(replacement.Content) == "new-b" {
+			return failure
+		}
+		if path == "a.txt" && string(prior.Content) == "new" {
+			restoredWithExpected = true
+			external := filepath.Join(root, "external")
+			mustWrite(t, external, []byte("external"))
+			if err := os.Rename(external, filepath.Join(root, "a.txt")); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return apply(rootArg, path, prior, replacement)
+	}
+	outcome, err := commitTransactionWith(root, ops, operation)
+	if !errors.Is(err, filesystem.ErrIdentityChanged) || !errors.Is(err, failure) {
+		t.Fatalf("error = %v, want apply failure plus rollback identity refusal", err)
+	}
+	if !restoredWithExpected {
+		t.Fatal("rollback did not use expected-image application")
+	}
+	if got, readErr := os.ReadFile(filepath.Join(root, "a.txt")); readErr != nil || string(got) != "external" {
+		t.Fatalf("external replacement = %q, %v", got, readErr)
+	}
+	want := []Evidence{{Action: "applied", Path: "a.txt"}, retainedJournal(root)}
+	if !slices.Equal(outcome.Changed, want) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+	}
+}
+
+func TestRecoveryExactRestorePreservesExternalReplacement(t *testing.T) {
+	root := t.TempDir()
+	writeRawJournal(t, root, lockJournal(phaseApplying))
+	mustWrite(t, filepath.Join(root, "a.txt"), []byte("new"))
+	mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
+	operation := productionJournalOperation()
+	apply := operation.applyExpected
+	operation.applyExpected = func(rootArg, path string, prior, replacement Image) error {
+		if path == "a.txt" {
+			external := filepath.Join(root, "external")
+			mustWrite(t, external, []byte("external"))
+			if err := os.Rename(external, filepath.Join(root, "a.txt")); err != nil {
+				t.Fatal(err)
+			}
+		}
+		return apply(rootArg, path, prior, replacement)
+	}
+	outcome, err := recoverWith(root, operation)
+	if !errors.Is(err, filesystem.ErrIdentityChanged) {
+		t.Fatalf("error = %v, want identity refusal", err)
+	}
+	if got, readErr := os.ReadFile(filepath.Join(root, "a.txt")); readErr != nil || string(got) != "external" {
+		t.Fatalf("external replacement = %q, %v", got, readErr)
+	}
+	want := []Evidence{{Action: "applied", Path: "a.txt"}, retainedJournal(root)}
+	if !slices.Equal(outcome.Changed, want) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+	}
+}
+
+func TestRecoveryRefusesSymlinkImages(t *testing.T) {
+	for _, content := range []string{"old", "new"} {
+		t.Run("ordinary-"+content, func(t *testing.T) {
+			root := t.TempDir()
+			writeRawJournal(t, root, lockJournal(phaseApplying))
+			mustWrite(t, filepath.Join(root, "target"), []byte(content))
+			if err := os.Symlink("target", filepath.Join(root, "a.txt")); err != nil {
+				t.Skipf("symlink unsupported: %v", err)
+			}
+			mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
+			outcome, err := Recover(root)
+			if !errors.Is(err, filesystem.ErrIdentityChanged) {
+				t.Fatalf("recovery error = %v, want non-regular image refusal", err)
+			}
+			if info, statErr := os.Lstat(filepath.Join(root, "a.txt")); statErr != nil || info.Mode()&os.ModeSymlink == 0 {
+				t.Fatalf("ordinary symlink changed: %v, %v", info, statErr)
+			}
+			if want := []Evidence{retainedJournal(root)}; !slices.Equal(outcome.Changed, want) {
+				t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+			}
+		})
+	}
+
+	t.Run("final-lock", func(t *testing.T) {
+		root := t.TempDir()
+		writeRawJournal(t, root, lockJournal(phaseLockCommitted))
+		mustWrite(t, filepath.Join(root, ".awf", "target-lock"), []byte("FINAL"))
+		if err := os.Symlink("target-lock", filepath.Join(root, LockRel())); err != nil {
+			t.Skipf("symlink unsupported: %v", err)
+		}
+		outcome, err := Recover(root)
+		if !errors.Is(err, filesystem.ErrIdentityChanged) {
+			t.Fatalf("recovery error = %v, want final-lock symlink refusal", err)
+		}
+		if info, statErr := os.Lstat(filepath.Join(root, LockRel())); statErr != nil || info.Mode()&os.ModeSymlink == 0 {
+			t.Fatalf("lock symlink changed: %v, %v", info, statErr)
+		}
+		if want := []Evidence{retainedJournal(root)}; !slices.Equal(outcome.Changed, want) {
+			t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+		}
+	})
+}
+
+func TestRecoveryRequiresExactFinalLockMode(t *testing.T) {
+	root := t.TempDir()
+	writeRawJournal(t, root, lockJournal(phaseApplying))
+	mustWrite(t, filepath.Join(root, LockRel()), []byte("FINAL"))
+	if err := os.Chmod(filepath.Join(root, LockRel()), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	outcome, err := Recover(root)
+	if err == nil || !strings.Contains(err.Error(), "modified outside the transaction") {
+		t.Fatalf("recovery error = %v, want exact lock-image refusal", err)
+	}
+	if info, statErr := os.Stat(filepath.Join(root, LockRel())); statErr != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("external lock mode = %v, %v", info, statErr)
+	}
+	want := []Evidence{{Action: "pending", Path: LockRel()}, retainedJournal(root)}
+	if !slices.Equal(outcome.Changed, want) {
+		t.Fatalf("changed = %#v, want %#v", outcome.Changed, want)
+	}
+}
+
 func TestRecoverRestoreWriteHaltRetainsAppliedAxes(t *testing.T) {
 	root := t.TempDir()
 	writeRawJournal(t, root, lockJournal(phaseApplying))
@@ -1395,7 +1673,7 @@ func TestRecoverRestoreWriteHaltRetainsAppliedAxes(t *testing.T) {
 	mustWrite(t, filepath.Join(root, LockRel()), []byte("old-lock"))
 	failure := errors.New("restore image")
 	operation := productionJournalOperation()
-	operation.applyImage = func(string, string, Image) error { return failure }
+	operation.applyExpected = func(string, string, Image, Image) error { return failure }
 	outcome, err := recoverWith(root, operation)
 	if !errors.Is(err, failure) {
 		t.Fatalf("error = %v, want %v", err, failure)

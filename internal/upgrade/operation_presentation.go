@@ -57,10 +57,16 @@ type migrationDiagnostic interface {
 }
 
 type upgradeFailure struct {
-	applied []string
-	changes []string
-	sync    presentation.Mutation
-	cause   error
+	planning bool
+	planned  []string
+	applied  []string
+	changes  []string
+	sync     presentation.Mutation
+	cause    error
+}
+
+func newUpgradePlanningFailure(planned []string, changes []string, cause error) error {
+	return upgradeFailure{planning: true, planned: append([]string(nil), planned...), changes: append([]string(nil), changes...), cause: cause}
 }
 
 func newUpgradeFailure(applied []string, changes []string, sync presentation.Mutation, cause error) error {
@@ -73,6 +79,18 @@ func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
 	var special migrationDiagnostic
 	if errors.As(e.cause, &special) {
 		return special.UpgradeDiagnostic(e.changes)
+	}
+	planned := make([]presentation.Field, 0, len(e.planned)+len(e.changes))
+	for _, name := range e.planned {
+		value, err := presentation.Prose("planned: " + name)
+		if err != nil {
+			return presentation.Diagnostic{}, err
+		}
+		field, err := presentation.NewField("planned migration", value)
+		if err != nil {
+			return presentation.Diagnostic{}, err
+		}
+		planned = append(planned, field)
 	}
 	changed := make([]presentation.Field, 0, len(e.applied)+len(e.changes))
 	for _, name := range e.applied {
@@ -90,12 +108,17 @@ func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
 		if _, err := presentation.Prose(change); err != nil {
 			return presentation.Diagnostic{}, err
 		}
-		value, _ := presentation.Prose("change: " + change)
-		field, err := presentation.NewField("migration", value)
+		prefix, label := "change: ", "migration"
+		destination := &changed
+		if e.planning {
+			prefix, label, destination = "planned: ", "migration change", &planned
+		}
+		value, _ := presentation.Prose(prefix + change)
+		field, err := presentation.NewField(label, value)
 		if err != nil {
 			return presentation.Diagnostic{}, err
 		}
-		changed = append(changed, field)
+		*destination = append(*destination, field)
 	}
 	for _, group := range e.sync.Changes {
 		for _, value := range group.Values {
@@ -118,5 +141,5 @@ func (e upgradeFailure) Diagnostic() (presentation.Diagnostic, error) {
 		}
 		steps = append(steps, value)
 	}
-	return presentation.Diagnostic{Condition: "upgrade has not reached terminal sync", State: "operation", Changed: changed, Cause: e.cause.Error(), Steps: steps}, nil
+	return presentation.Diagnostic{Condition: "upgrade has not reached terminal sync", State: "operation", Planned: planned, Changed: changed, Cause: e.cause.Error(), Steps: steps}, nil
 }

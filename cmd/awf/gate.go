@@ -135,14 +135,14 @@ func stagedLock(ctx context.Context, root string) (*manifest.Lock, error) {
 // lock now errors upstream via the LoadOptional choke point (ADR-0076 partially
 // supersedes ADR-0039 Decision 5).
 func lockVsBinary(root string) (lockV, binV string, ok bool, err error) {
-	l, found, err := manifest.LoadLiveOptional(config.LockPath(root), migrate.LiveSchemaFloor, migrate.Current())
+	live, found, err := manifest.LoadLiveFileOptional(root, config.DirName+"/awf.lock", migrate.LiveSchemaFloor, migrate.Current())
 	if err != nil {
 		return "", "", false, presentLiveSourceRefusal(err)
 	}
 	if !found {
 		return "", "", false, nil
 	}
-	lockV, binV, ok = lockVsBinaryLock(l)
+	lockV, binV, ok = lockVsBinaryLock(live.Lock)
 	return lockV, binV, ok, nil
 }
 

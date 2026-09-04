@@ -17,13 +17,22 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
-// FileMutation is a planned replacement. migrate owns the semantic plan, while
-// its caller owns the transaction that applies it.
-type FileMutation struct {
-	Path    string
+// FileImage is the exact regular-file state observed while planning. An absent
+// image has Present false, zero mode, and no content.
+type FileImage struct {
+	Present bool
 	Content []byte
 	Mode    os.FileMode
-	Remove  bool
+}
+
+// FileMutation is a planned replacement with the original preimage that must
+// still be present when the caller commits the transaction.
+type FileMutation struct {
+	Path     string
+	Expected FileImage
+	Content  []byte
+	Mode     os.FileMode
+	Remove   bool
 }
 
 // ProposedTree is the read-only tree view supplied to one migration step. It
@@ -34,7 +43,8 @@ type ProposedTree struct {
 	mutations map[string]FileMutation
 }
 
-// Read returns the proposed bytes and mode for path.
+// Read returns the proposed bytes and mode for path. A non-regular final entry
+// is rejected because file-image migrations cannot preserve its topology.
 func (t *ProposedTree) Read(path string) ([]byte, os.FileMode, error) {
 	if mutation, ok := t.mutations[path]; ok {
 		if mutation.Remove {
@@ -42,14 +52,43 @@ func (t *ProposedTree) Read(path string) ([]byte, os.FileMode, error) {
 		}
 		return append([]byte(nil), mutation.Content...), mutation.Mode.Perm(), nil
 	}
-	return t.files.ReadWithMode(path)
+	expected, err := t.files.ExpectedIdentity(path)
+	if err != nil {
+		return nil, 0, err
+	}
+	defer expected.Release() //nolint:errcheck // planning read owns no mutation
+	if expected.Mode()&fs.ModeSymlink != 0 {
+		return nil, 0, fmt.Errorf("migration source %s is a final symlink; replace it with a regular file and retry", path)
+	}
+	if !expected.Mode().IsRegular() {
+		return nil, 0, fmt.Errorf("migration source %s is not a regular file; replace it with a regular file and retry", path)
+	}
+	return t.files.ReadExpected(path, expected)
+}
+
+func proposedImage(content []byte, mode os.FileMode, err error) (FileImage, error) {
+	if errors.Is(err, fs.ErrNotExist) {
+		return FileImage{}, nil
+	}
+	if err != nil {
+		return FileImage{}, err
+	}
+	return FileImage{Present: true, Content: append([]byte(nil), content...), Mode: mode.Perm()}, nil
 }
 
 func (t *ProposedTree) overlay(planned []FileMutation) error {
 	for _, mutation := range planned {
-		if _, _, err := t.Read(mutation.Path); err != nil && !errors.Is(err, fs.ErrNotExist) {
+		content, mode, err := t.Read(mutation.Path)
+		current, err := proposedImage(content, mode, err)
+		if err != nil {
 			return err
 		}
+		if prior, ok := t.mutations[mutation.Path]; ok {
+			mutation.Expected = prior.Expected
+		} else {
+			mutation.Expected = current
+		}
+		mutation.Expected.Content = append([]byte(nil), mutation.Expected.Content...)
 		mutation.Content = append([]byte(nil), mutation.Content...)
 		t.mutations[mutation.Path] = mutation
 	}
@@ -64,7 +103,10 @@ func (t *ProposedTree) coalesced() []FileMutation {
 	sort.Strings(paths)
 	mutations := make([]FileMutation, 0, len(paths))
 	for _, path := range paths {
-		mutations = append(mutations, t.mutations[path])
+		mutation := t.mutations[path]
+		mutation.Expected.Content = append([]byte(nil), mutation.Expected.Content...)
+		mutation.Content = append([]byte(nil), mutation.Content...)
+		mutations = append(mutations, mutation)
 	}
 	return mutations
 }
@@ -135,10 +177,31 @@ func retiredLayout(root string) (string, error) {
 	return "", nil
 }
 
+// CurrentAuthorityPresence inspects the two current control entries without
+// following their final path components.
+func CurrentAuthorityPresence(root string) (currentConfig, currentLock bool, returnErr error) {
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return false, false, err
+	}
+	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
+	for path, destination := range map[string]*bool{
+		config.DirName + "/config.yaml": &currentConfig,
+		config.DirName + "/awf.lock":    &currentLock,
+	} {
+		if _, err := files.LinkInfo(path); err == nil {
+			*destination = true
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			return false, false, fmt.Errorf("inspect %s: %w", path, err)
+		}
+	}
+	return currentConfig, currentLock, nil
+}
+
 // Generation reads only a current-layout lock schema. Retired layouts receive a
 // typed refusal before their authority representation can be decoded.
 func Generation(root string) (int, error) {
-	currentConfig, err := currentConfigPresent(root)
+	currentConfig, _, err := CurrentAuthorityPresence(root)
 	if err != nil {
 		return 0, err
 	}
@@ -152,7 +215,7 @@ func Generation(root string) (int, error) {
 	if !currentConfig {
 		return Current(), nil
 	}
-	generation, found, err := manifest.LoadSchemaOptional(config.LockPath(root))
+	generation, found, err := manifest.LoadSchemaConfinedOptional(root, config.DirName+"/awf.lock")
 	if err != nil {
 		return 0, err
 	}
@@ -163,13 +226,18 @@ func Generation(root string) (int, error) {
 }
 
 // ProjectPresent recognizes current control files and retired layouts without
-// interpreting their content.
-func ProjectPresent(root string) (bool, error) {
-	for _, path := range []string{config.ConfigPath(root), config.LockPath(root), filepath.Join(root, ".claude", "awf.yaml"), filepath.Join(root, ".claude", "awf")} {
-		if _, err := os.Stat(path); err == nil {
+// interpreting content or following final path components.
+func ProjectPresent(root string) (present bool, returnErr error) {
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return false, err
+	}
+	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
+	for _, path := range []string{config.DirName + "/config.yaml", config.DirName + "/awf.lock", ".claude/awf.yaml", ".claude/awf"} {
+		if _, err := files.LinkInfo(path); err == nil {
 			return true, nil
-		} else if !errors.Is(err, os.ErrNotExist) {
-			return false, fmt.Errorf("stat project authority %s: %w", path, err)
+		} else if !errors.Is(err, fs.ErrNotExist) {
+			return false, fmt.Errorf("inspect project authority %s: %w", path, err)
 		}
 	}
 	return false, nil

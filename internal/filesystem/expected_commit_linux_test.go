@@ -30,7 +30,7 @@ func TestRetirementReservationRemovalFailureRestoresDestinationAndReportsResidue
 		t.Fatal(err)
 	}
 
-	consumed, err := exchangeExpected(h.root, "temporary", "destination", expected, true, true)
+	consumed, err := exchangeExpected(h.root, "temporary", "destination", expected, nil, true, true)
 	var cleanup *filepublication.CommittedCleanupError
 	if !consumed || !errors.As(err, &cleanup) {
 		t.Fatalf("retirement failure = consumed %t, error %v; want structured committed residue", consumed, err)
@@ -43,6 +43,115 @@ func TestRetirementReservationRemovalFailureRestoresDestinationAndReportsResidue
 	}
 	if _, err := os.Stat(filepath.Join(rootPath, "temporary", "concurrent")); err != nil {
 		t.Fatalf("concurrent residue was not preserved: %v", err)
+	}
+}
+
+func TestExactExpectedMutationRestoresSameInodeImageChangesAtExchangeBoundary(t *testing.T) {
+	for _, tc := range []struct {
+		name string
+		hook afterExpectedExchange
+		want []byte
+		mode os.FileMode
+	}{
+		{
+			name: "content",
+			hook: func(root *os.Root, temporary string) error {
+				file, err := root.OpenFile(temporary, os.O_WRONLY|os.O_TRUNC, 0)
+				if err != nil {
+					return err
+				}
+				_, writeErr := file.Write([]byte("external content\n"))
+				return errors.Join(writeErr, file.Close())
+			},
+			want: []byte("external content\n"),
+			mode: 0o640,
+		},
+		{
+			name: "mode",
+			hook: func(root *os.Root, temporary string) error {
+				file, err := root.Open(temporary)
+				if err != nil {
+					return err
+				}
+				return errors.Join(file.Chmod(0o600), file.Close())
+			},
+			want: []byte("planned\n"),
+			mode: 0o600,
+		},
+	} {
+		t.Run(tc.name, func(t *testing.T) {
+			rootPath := t.TempDir()
+			if err := os.WriteFile(filepath.Join(rootPath, "destination"), []byte("planned\n"), 0o640); err != nil {
+				t.Fatal(err)
+			}
+			if err := os.WriteFile(filepath.Join(rootPath, "temporary"), []byte("replacement\n"), 0o644); err != nil {
+				t.Fatal(err)
+			}
+			h, err := Open(rootPath)
+			if err != nil {
+				t.Fatal(err)
+			}
+			defer h.Close()
+			expected, err := h.ExpectedIdentity("destination")
+			if err != nil {
+				t.Fatal(err)
+			}
+			exact := &expectedRegularFile{contents: []byte("planned\n"), mode: 0o640}
+			consumed, err := exchangeExpectedWithHook(h.root, "temporary", "destination", expected, exact, false, false, tc.hook)
+			if consumed || !errors.Is(err, ErrIdentityChanged) {
+				t.Fatalf("exact exchange = consumed %t, error %v; want uncommitted identity refusal", consumed, err)
+			}
+			if got, err := os.ReadFile(filepath.Join(rootPath, "destination")); err != nil || string(got) != string(tc.want) {
+				t.Fatalf("restored external content = %q, %v", got, err)
+			}
+			if info, err := os.Stat(filepath.Join(rootPath, "destination")); err != nil || info.Mode().Perm() != tc.mode {
+				t.Fatalf("restored external mode = %v, %v", info, err)
+			}
+		})
+	}
+}
+
+func TestExactExpectedMutationReportsCommittedResidueWhenMismatchCannotBeRestored(t *testing.T) {
+	rootPath := t.TempDir()
+	if err := os.WriteFile(filepath.Join(rootPath, "destination"), []byte("planned\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(rootPath, "temporary"), []byte("replacement\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	h, err := Open(rootPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	expected, err := h.ExpectedIdentity("destination")
+	if err != nil {
+		t.Fatal(err)
+	}
+	exact := &expectedRegularFile{contents: []byte("planned\n"), mode: 0o640}
+	consumed, err := exchangeExpectedWithHook(h.root, "temporary", "destination", expected, exact, false, false, func(root *os.Root, temporary string) error {
+		file, err := root.OpenFile(temporary, os.O_WRONLY|os.O_TRUNC, 0)
+		if err != nil {
+			return err
+		}
+		if _, err := file.Write([]byte("external\n")); err != nil {
+			_ = file.Close()
+			return err
+		}
+		if err := file.Close(); err != nil {
+			return err
+		}
+		return root.Remove("destination")
+	})
+	var cleanup *filepublication.CommittedCleanupError
+	if !consumed || !errors.Is(err, ErrIdentityChanged) || !errors.As(err, &cleanup) {
+		t.Fatalf("exact exchange = consumed %t, error %v; want committed identity residue", consumed, err)
+	}
+	if cleanup.DestinationPath != "destination" || cleanup.ResiduePath != "temporary" {
+		t.Fatalf("cleanup paths = destination %q, residue %q", cleanup.DestinationPath, cleanup.ResiduePath)
+	}
+	if got, readErr := os.ReadFile(filepath.Join(rootPath, "temporary")); readErr != nil || string(got) != "external\n" {
+		t.Fatalf("retained displaced residue = %q, %v", got, readErr)
 	}
 }
 
@@ -90,7 +199,7 @@ func TestExpectedMutationNeverTouchesRelocatedParentThroughEscapingSymlink(t *te
 				t.Fatal(err)
 			}
 
-			consumed, err := exchangeExpected(h.root, "parent/temporary", "parent/destination", expected, remove, false)
+			consumed, err := exchangeExpected(h.root, "parent/temporary", "parent/destination", expected, nil, remove, false)
 			if err == nil || consumed {
 				t.Fatalf("escaping-parent commit = consumed %v, error %v; want uncommitted refusal", consumed, err)
 			}

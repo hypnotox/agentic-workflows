@@ -141,13 +141,48 @@ func TestSkillExtractionMigrationBacksUpRemovedAuthoredSourcesWithoutOverwrite(t
 					replacement = mutation
 				}
 			}
-			if replacement.Path != tc.rel+".awf-bak.2" || string(replacement.Content) != tc.content || replacement.Mode != 0o640 {
+			if replacement.Path != tc.rel+".awf-bak.2" || string(replacement.Content) != tc.content || replacement.Mode != 0o640 || replacement.Expected.Present {
 				t.Fatalf("replacement = %#v", replacement)
 			}
-			if removal.Path != tc.rel {
+			if removal.Path != tc.rel || !removal.Expected.Present || string(removal.Expected.Content) != tc.content || removal.Expected.Mode != 0o640 {
 				t.Fatalf("removal = %#v", removal)
 			}
 		})
+	}
+}
+
+// invariant: config/migrations-and-locks:migration-preimage-safe (TestSkillExtractionMigrationRejectsFinalSymlinkSource)
+func TestSkillExtractionMigrationRejectsFinalSymlinkSource(t *testing.T) {
+	root := t.TempDir()
+	writeLock(t, root, 51)
+	testsupport.WriteFile(t, filepath.Join(root, ".awf", "authored.yaml"), "data:\n  note: custom\n")
+	link := filepath.Join(root, ".awf", "skills", "debugging.yaml")
+	if err := os.MkdirAll(filepath.Dir(link), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Symlink("../authored.yaml", link); err != nil {
+		t.Skipf("symlink unsupported: %v", err)
+	}
+	if _, _, mutations, err := Build(context.Background(), root); err == nil || !strings.Contains(err.Error(), "final symlink") || len(mutations) != 0 {
+		t.Fatalf("Build() mutations=%#v error=%v", mutations, err)
+	}
+	if info, err := os.Lstat(link); err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("source symlink changed: info=%v err=%v", info, err)
+	}
+}
+
+func TestSkillExtractionMigrationRejectsNonRegularSource(t *testing.T) {
+	root := t.TempDir()
+	writeLock(t, root, 51)
+	directory := filepath.Join(root, ".awf", "skills", "debugging.yaml")
+	if err := os.MkdirAll(directory, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, mutations, err := Build(context.Background(), root); err == nil || !strings.Contains(err.Error(), "not a regular file") || len(mutations) != 0 {
+		t.Fatalf("Build() mutations=%#v error=%v", mutations, err)
+	}
+	if info, err := os.Stat(directory); err != nil || !info.IsDir() {
+		t.Fatalf("source directory changed: info=%v err=%v", info, err)
 	}
 }
 

@@ -186,7 +186,18 @@ func (h *Handle) Replace(destination string, contents []byte, mode fs.FileMode) 
 
 // ReplaceExpected publishes only while destination still has expected's entry
 // identity. A nil expected identity creates exclusively rather than clobbering.
-func (h *Handle) ReplaceExpected(destination string, expected *ExpectedIdentity, contents []byte, mode fs.FileMode) (returnErr error) {
+func (h *Handle) ReplaceExpected(destination string, expected *ExpectedIdentity, contents []byte, mode fs.FileMode) error {
+	return h.replaceExpected(destination, expected, nil, contents, mode)
+}
+
+// ReplaceExpectedRegularFile publishes only if the displaced entry retains both
+// expected's identity and the exact regular-file bytes and permission mode.
+func (h *Handle) ReplaceExpectedRegularFile(destination string, expected *ExpectedIdentity, expectedContents []byte, expectedMode fs.FileMode, contents []byte, mode fs.FileMode) error {
+	exact := &expectedRegularFile{contents: expectedContents, mode: expectedMode.Perm()}
+	return h.replaceExpected(destination, expected, exact, contents, mode)
+}
+
+func (h *Handle) replaceExpected(destination string, expected *ExpectedIdentity, exact *expectedRegularFile, contents []byte, mode fs.FileMode) (returnErr error) {
 	if expected != nil {
 		defer expected.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	}
@@ -254,7 +265,7 @@ func (h *Handle) ReplaceExpected(destination string, expected *ExpectedIdentity,
 		return fmt.Errorf("filesystem: close replacement temporary for %q: %w", destination, err)
 	}
 	file = nil
-	consumed, err := exchangeExpected(h.root, temporary, destination, expected, false, false)
+	consumed, err := exchangeExpected(h.root, temporary, destination, expected, exact, false, false)
 	if consumed {
 		temporary = ""
 	}
@@ -326,7 +337,7 @@ func (h *Handle) RetireExpected(destination string, expected *ExpectedIdentity) 
 			}
 		}
 	}()
-	consumed, err := exchangeExpected(h.root, temporary, destination, expected, true, true)
+	consumed, err := exchangeExpected(h.root, temporary, destination, expected, nil, true, true)
 	if err != nil {
 		if consumed {
 			// The platform owner reports the retained residue. Do not let deferred
@@ -348,7 +359,18 @@ func (h *Handle) RetireExpected(destination string, expected *ExpectedIdentity) 
 }
 
 // RemoveExpected removes path only while it still has expected's identity.
-func (h *Handle) RemoveExpected(destination string, expected *ExpectedIdentity) (returnErr error) {
+func (h *Handle) RemoveExpected(destination string, expected *ExpectedIdentity) error {
+	return h.removeExpected(destination, expected, nil)
+}
+
+// RemoveExpectedRegularFile removes path only if the displaced entry retains
+// both expected's identity and the exact regular-file bytes and permission mode.
+func (h *Handle) RemoveExpectedRegularFile(destination string, expected *ExpectedIdentity, expectedContents []byte, expectedMode fs.FileMode) error {
+	exact := &expectedRegularFile{contents: expectedContents, mode: expectedMode.Perm()}
+	return h.removeExpected(destination, expected, exact)
+}
+
+func (h *Handle) removeExpected(destination string, expected *ExpectedIdentity, exact *expectedRegularFile) (returnErr error) {
 	if expected != nil {
 		defer expected.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	}
@@ -357,6 +379,9 @@ func (h *Handle) RemoveExpected(destination string, expected *ExpectedIdentity) 
 	}
 	if !expected.valid() {
 		return fmt.Errorf("filesystem: remove %q: %w", destination, ErrIdentityChanged)
+	}
+	if exact != nil && expected.IsDir() {
+		return fmt.Errorf("filesystem: remove %q: expected entry is not a regular file: %w", destination, ErrIdentityChanged)
 	}
 	if expected.IsDir() {
 		directory, err := h.root.Open(destination)
@@ -411,7 +436,7 @@ func (h *Handle) RemoveExpected(destination string, expected *ExpectedIdentity) 
 			}
 		}
 	}()
-	consumed, err := exchangeExpected(h.root, temporary, destination, expected, true, false)
+	consumed, err := exchangeExpected(h.root, temporary, destination, expected, exact, true, false)
 	if consumed {
 		temporary = ""
 	}
@@ -432,19 +457,40 @@ func (h *Handle) Remove(path string) error {
 	return nil
 }
 
-// ReadDir lists direct children beneath the selected root.
+// ReadDir lists direct children beneath the selected root without following a
+// replacement final entry.
 func (h *Handle) ReadDir(path string) ([]fs.DirEntry, error) {
-	if err := validPath(path); err != nil {
-		return nil, fmt.Errorf("filesystem: read directory %q: %w", path, err)
-	}
-	directory, err := h.root.Open(path)
+	expected, err := h.ExpectedIdentity(path)
 	if err != nil {
 		return nil, fmt.Errorf("filesystem: read directory %q: %w", path, err)
+	}
+	defer expected.Release() //nolint:errcheck // read-only directory capture owns no mutation
+	return h.ReadDirExpected(path, expected)
+}
+
+// ReadDirExpected lists children only while path retains expected's directory
+// identity. A nonblocking no-follow open prevents a replacement special file
+// from hanging recovery before identity validation.
+func (h *Handle) ReadDirExpected(path string, expected *ExpectedIdentity) ([]fs.DirEntry, error) {
+	if err := validPath(path); err != nil {
+		return nil, fmt.Errorf("filesystem: read expected directory %q: %w", path, err)
+	}
+	if expected == nil || !expected.valid() || !expected.IsDir() {
+		return nil, fmt.Errorf("filesystem: read expected directory %q: %w", path, ErrIdentityChanged)
+	}
+	directory, err := openExpectedEntry(h.root, path)
+	if err != nil {
+		return nil, fmt.Errorf("filesystem: read expected directory %q: %w", path, err)
+	}
+	info, statErr := directory.Stat()
+	if statErr != nil || !expected.SameFile(info) || !info.IsDir() {
+		closeErr := directory.Close()
+		return nil, fmt.Errorf("filesystem: read expected directory %q: %w", path, errors.Join(ErrIdentityChanged, statErr, closeErr))
 	}
 	entries, readErr := directory.ReadDir(-1)
 	closeErr := directory.Close()
 	if readErr != nil || closeErr != nil {
-		return nil, fmt.Errorf("filesystem: read directory %q: %w", path, errors.Join(readErr, closeErr))
+		return nil, fmt.Errorf("filesystem: read expected directory %q: %w", path, errors.Join(readErr, closeErr))
 	}
 	return entries, nil
 }
@@ -467,10 +513,10 @@ func (h *Handle) ReadExpected(path string, expected *ExpectedIdentity) ([]byte, 
 	if err := validPath(path); err != nil {
 		return nil, 0, fmt.Errorf("filesystem: read expected %q: %w", path, err)
 	}
-	if expected == nil || !expected.valid() {
+	if expected == nil || !expected.valid() || !expected.Mode().IsRegular() {
 		return nil, 0, fmt.Errorf("filesystem: read expected %q: %w", path, ErrIdentityChanged)
 	}
-	file, err := h.root.Open(path)
+	file, err := openExpectedEntry(h.root, path)
 	if err != nil {
 		return nil, 0, fmt.Errorf("filesystem: read expected %q: %w", path, err)
 	}
