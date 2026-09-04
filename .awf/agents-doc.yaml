@@ -1,7 +1,7 @@
 data:
     commands:
         - cmd: ./x test
-          desc: run complete Go behavior without the Pi host lane
+          desc: run complete Go behavior
         - cmd: ./x gate
           desc: run the fast commit gate before committing
         - cmd: ./x check

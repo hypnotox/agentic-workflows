@@ -5,8 +5,6 @@ The topic producer renders each valid pair to `docs/topics/<domain>/<topic>.md`,
 
 The render engine overlays authored convention parts onto embedded templates with publication-safe missing-key rendering. Rendered resident-root markers and anchored path resolution are deterministic, preserve dynamic descendants, and refuse paths outside the selected control root. The artifact registry is the canonical operational declaration of managed-artifact kinds, cardinality, fixed targets, templates, output paths, hooks, checks, and ownership. Catalog content and one Loader-built project Session supply Publisher's immutable inputs; one single-use Publisher operation registers complete definitions, settles collisions, and renders each accepted output once without a parallel inventory or compatibility state owner. Live template identities resolve every declared catalog, singleton, and target template and reject missing identities before publication. Every catalog skill is independently discoverable.
 
-The catalog-derived mandatory Maintainable Code Design guide renders as an extensible plain singleton with a document-map artifact.
-
 The glossary renders from two layers: a standard vocabulary the catalog ships into every adopter tree, overlaid by the project's authored `data.terms` records, merged into one case-insensitively sorted table. A project term overrides a shipped term of the same name, which is the only way to reword or retire one; an over-long meaning in either layer raises a non-failing advisory.
 
 The AWF binary remains offline and neither installs nor probes the operator-managed `agentic-skills` and `pi-tools` dependencies.

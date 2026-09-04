@@ -52,8 +52,6 @@ awf uses focused iteration checks, one fast commit gate, and complete terminal o
 
 `agentic-skills` and `pi-tools` are operator-managed packages with their own tests. AWF tests only its output and dependency boundary; it does not embed or behavior-test either external runtime.
 
-The release-only interactive Pi smoke is manual verification, not a deterministic gate lane.
-
 
 <!-- awf:template-source templates/docs/testing.md.tmpl#layout -->
 <!-- awf:edit layout: from .awf/docs/parts/testing/layout.md -->

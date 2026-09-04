@@ -72,6 +72,45 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	}
 }
 
+func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
+	root := repoRootDir(t)
+	paths := []string{
+		".awf/topics/parts/tooling/quality-gates/current-state.md",
+		".awf/topics/parts/code-design/test-design/current-state.md",
+		".awf/topics/parts/code-design/package-composition/current-state.md",
+		".awf/domains/parts/rendering/current-state.md",
+		".awf/docs/parts/testing/tiers.md",
+		".awf/agents-doc.yaml",
+		"docs/topics/tooling/quality-gates.md",
+		"docs/topics/code-design/test-design.md",
+		"docs/topics/code-design/package-composition.md",
+		"docs/domains/rendering.md",
+		"docs/testing.md",
+		"AGENTS.md",
+	}
+	banned := []string{"typed Pi", "TypeScript lane", "Maintainable Code Design guide", "Pi host lane", "interactive Pi smoke"}
+	for _, path := range paths {
+		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		for _, phrase := range banned {
+			if strings.Contains(string(body), phrase) {
+				t.Errorf("active authority %s retains retired workflow surface %q", path, phrase)
+			}
+		}
+	}
+
+	qualitySource, err := os.ReadFile(filepath.Join(root, ".awf", "topics", "parts", "tooling", "quality-gates", "current-state.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	const laneContract = "select applicable render, platform-sensitive, and release-archive lanes from one typed JSON v2 result"
+	if !strings.Contains(string(qualitySource), laneContract) {
+		t.Errorf("quality-gate authority does not name the live typed lane contract %q", laneContract)
+	}
+}
+
 func TestReleaseProvidesRestrictedRootlessExtraction(t *testing.T) {
 	release, err := os.ReadFile(filepath.Join(repoRootDir(t), ".github/workflows/release.yml"))
 	if err != nil {

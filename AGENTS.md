@@ -69,7 +69,7 @@ Create an effort only when durable continuity materially helps; otherwise work r
 ## Commands
 
 ```
-./x test: run complete Go behavior without the Pi host lane
+./x test: run complete Go behavior
 ./x gate: run the fast commit gate before committing
 ./x check: check rendered-file drift
 ./awf upgrade: migrate the config tree after upgrading awf

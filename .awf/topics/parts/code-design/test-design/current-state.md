@@ -1,6 +1,5 @@
 This topic governs Go tests introduced by new work and sites deliberately converted under
-its authority; the TypeScript lane sits outside `currentState.testGlobs` and outside these
-claims. The existing global-seam census (30 package-level swap variables across 11
+its authority. The existing global-seam census (30 package-level swap variables across 11
 production packages) remains a set of bounded future conversion candidates, and a test may
 swap an existing census seam until that seam is deliberately converted. Shared fixture
 homes are governed by `code-design/single-home`; error-identity assertion detail is

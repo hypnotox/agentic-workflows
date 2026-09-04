@@ -54,7 +54,7 @@ Backing: test
 
 ### `invariant: exact-revision-repository-acceptance`
 
-Repository wiring exposes one stable `CI / gate` conclusion for the exact revision. Pull requests always run complete Linux Go behavior and select typed Pi, render, platform-sensitive, and release-archive lanes from one JSON v2 result; `main` runs complete Linux/amd64 and Darwin/arm64 source assurance. Release tags remain protected by that conclusion, while the release workflow constructs one credential-free candidate and publishes it only after Linux/amd64 and Darwin/arm64 native verification.
+Repository wiring exposes one stable `CI / gate` conclusion for the exact revision. Pull requests always run complete Linux Go behavior and select applicable render, platform-sensitive, and release-archive lanes from one typed JSON v2 result; `main` runs complete Linux/amd64 and Darwin/arm64 source assurance. Release tags remain protected by that conclusion, while the release workflow constructs one credential-free candidate and publishes it only after Linux/amd64 and Darwin/arm64 native verification.
 Backing: test
 
 ### `rule: hosted-main-acceptance-settings`
