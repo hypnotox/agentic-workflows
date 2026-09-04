@@ -28,31 +28,26 @@ func singletonSourcePaths(name string, sections []string) []string {
 	return paths
 }
 
-func retireWorkflowSurface(ctx context.Context, tree *ProposedTree, changes *Changes) ([]FileMutation, error) {
+func retireWorkflowSurface(ctx context.Context, tree *proposedTree, changes *Changes) ([]fileMutation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	var planned []FileMutation
-	backup := func(source string) error {
-		moves, err := planAuthoredBackup(ctx, tree, source, planned)
+	var planned []fileMutation
+	remove := func(source string) error {
+		removal, err := planAuthoredRemoval(ctx, tree, source)
 		if err != nil {
 			return err
 		}
-		planned = append(planned, moves...)
-		for _, mutation := range moves {
-			if !mutation.Remove {
-				changes.items = append(changes.items, Change{Text: fmt.Sprintf("preserved retired authored source at %s; review its content, then delete the backup when no longer needed and remove its retired parent directory if empty", mutation.Path)})
-			}
-		}
+		planned = append(planned, removal...)
 		return nil
 	}
 
 	for _, source := range singletonSourcePaths("maintainable-code-design", maintainableCodeDesignSections) {
-		if err := backup(source); err != nil {
+		if err := remove(source); err != nil {
 			return nil, err
 		}
 	}
-	if err := backup(".awf/parts/working-with-awf/model-selection.md"); err != nil {
+	if err := remove(".awf/parts/working-with-awf/model-selection.md"); err != nil {
 		return nil, err
 	}
 
@@ -68,11 +63,10 @@ func retireWorkflowSurface(ctx context.Context, tree *ProposedTree, changes *Cha
 			return nil, fmt.Errorf("remove retired section setting from %s: %w", workingSidecar, editErr)
 		}
 		if changed {
-			if err := backup(workingSidecar); err != nil {
-				return nil, err
-			}
 			if present {
-				planned = append(planned, FileMutation{Path: workingSidecar, Content: edited, Mode: mode})
+				planned = append(planned, fileMutation{Path: workingSidecar, Content: edited, Mode: mode})
+			} else {
+				planned = append(planned, fileMutation{Path: workingSidecar, Remove: true})
 			}
 		}
 	}

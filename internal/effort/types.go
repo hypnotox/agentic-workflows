@@ -64,49 +64,11 @@ type Record struct {
 	MemoryPath    string    `json:"memoryPath"`
 }
 
-// FinishResidentState identifies the resident namespace proven at return.
-type FinishResidentState string
-
-const (
-	FinishStateActive   FinishResidentState = "active"
-	FinishStateReserved FinishResidentState = "reserved"
-	FinishStateArchived FinishResidentState = "archived"
-)
-
-// FinishResult reports each observable namespace and durability boundary.
+// FinishResult identifies the archived resident after a successful move.
 type FinishResult struct {
-	State                    FinishResidentState
-	Reserved                 bool
-	Archived                 bool
-	DestinationSyncAvailable bool
-	SourceSyncAvailable      bool
-	DestinationSynced        bool
-	SourceSynced             bool
-	ArchivePath              string
-}
-
-// RollbackResult reports the narrow failed-creation deletion transition.
-type RollbackResult struct {
-	Reserved        bool
-	Removed         bool
-	ReservationPath string
-	ResiduePath     string
+	ArchivePath string
 }
 
 // RecoveryAction is one independently executable ordered remedy for a failed
 // effort operation. Its meaning remains model-owned until presentation maps it.
 type RecoveryAction struct{ Text string }
-
-// PartialFinishError preserves a failed restartable finish's observed state,
-// mechanism cause, and site-specific recovery actions.
-type PartialFinishError struct {
-	Result  FinishResult
-	Cause   error
-	Actions []RecoveryAction
-}
-
-// Error preserves the failed mechanism's message for legacy error callers.
-func (e *PartialFinishError) Error() string { return e.Cause.Error() }
-
-// Unwrap exposes the failed mechanism for identity-aware callers.
-func (e *PartialFinishError) Unwrap() error { return e.Cause }

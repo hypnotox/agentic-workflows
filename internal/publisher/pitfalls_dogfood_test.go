@@ -71,7 +71,7 @@ func TestPitfallDogfoodSourceOutputParity(t *testing.T) {
 
 // This named integration stack exercises the complete pitfall output family:
 // corpus-to-index/leaf parity and navigation, source guidance, definitions and
-// dependencies, hash isolation, lock/drift/backup/prune lifecycle, staged plan
+// dependencies, hash isolation, lock/drift/ownership/prune lifecycle, staged plan
 // parity, and malformed-source refusal.
 // invariant: rendering/doc-outputs:pitfall-output-complete (TestPitfallOutputCompleteIntegration)
 func TestPitfallOutputCompleteIntegration(t *testing.T) {
@@ -80,7 +80,7 @@ func TestPitfallOutputCompleteIntegration(t *testing.T) {
 	t.Run("markdown-safe-metadata-projection", TestPitfallMetadataProjectionKeepsMarkdownStructure)
 	t.Run("working-definition-dependencies", TestPitfallDefinitionsPreserveDependencies)
 	t.Run("source-guidance", TestSourceMarkerFamilyMatrix)
-	t.Run("hash-lock-drift-backup-prune", testPitfallHashAndOutputLifecycle)
+	t.Run("hash-lock-drift-ownership-prune", testPitfallHashAndOutputLifecycle)
 	t.Run("staged-plan", testPitfallStagedPlanParity)
 	t.Run("malformed-source", TestPitfallCorpusMalformedSourceFailsRender)
 }
@@ -134,12 +134,20 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 
 	foreign := filepath.Join(root, "docs/pitfalls/alpha.md")
 	testsupport.WriteFile(t, foreign, "foreign output\n")
-	if err := syncProject(p); err != nil {
+	if err := syncProject(p); err == nil {
+		t.Fatal("sync accepted a differing unmanaged pitfall output")
+	}
+	if got, err := os.ReadFile(foreign); err != nil || string(got) != "foreign output\n" {
+		t.Fatalf("unmanaged pitfall output changed after refusal: %q, %v", got, err)
+	}
+	if _, err := os.Stat(foreign + ".awf-bak"); !os.IsNotExist(err) {
+		t.Fatalf("unexpected safety copy: %v", err)
+	}
+	if err := os.Remove(foreign); err != nil {
 		t.Fatal(err)
 	}
-	backup, err := os.ReadFile(foreign + ".awf-bak")
-	if err != nil || string(backup) != "foreign output\n" {
-		t.Fatalf("foreign pitfall backup = %q, %v", backup, err)
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
 	}
 	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
@@ -176,7 +184,7 @@ func testPitfallHashAndOutputLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, pruned, err := syncReportProject(p)
+	pruned, err := syncReportProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}

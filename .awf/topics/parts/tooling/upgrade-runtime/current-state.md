@@ -1,17 +1,16 @@
-The upgrade package plans supported live-schema migrations and commits them through a root-confined journal with the replacement lock last. When a schema advance discards resident state, the journal records each proven resident as a quarantine-by-rename operation alongside tracked file images, so failure restores the resident whole and successful cleanup discards it only after the lock commits. The claims below capture the current upgrade-runtime contracts.
+The upgrade package plans supported live-schema migrations as ordered root-confined mutations and publishes the replacement lock last. It protects content it cannot prove it owns, stops on the first failed mutation, and leaves earlier successful effects visible for inspection and rerun. The claims below capture the current upgrade-runtime contracts.
 
 ## Claims
 
 ### `invariant: initial-adoption-version-immutable`
 
-The first-adoption binary version is sealed once and preserved unchanged by ordinary sync, zero-migration upgrade, staged authority checks, and forced initialization. ADR format is authored in each record and no cutoff or legacy-gap set forms permanent lock authority.
+The first-adoption binary version is sealed once and preserved unchanged by ordinary sync, zero-migration upgrade, and staged authority checks. ADR format is authored in each record and no cutoff or legacy-gap set forms permanent lock authority.
 Backing: test
 
-### `invariant: upgrade-failure-is-recoverable`
+### `invariant: upgrade-partial-progress-visible`
 
-A failed upgrade either restores the pre-transaction bytes and modes or preserves a journal from which recovery completes before any project command may run. Recovery accepts only one complete known-field journal whose validated operation order ends in a present lock replacement matching its recorded digest, and rejects any invalid journal before mutation. Every valid journal permits only awf upgrade --recover, and postcommit recovery never rolls authority back.
-Backing: unbacked
-Verify: Failures injected during preparation, rename, prune, lock replacement, rollback, and cleanup recover to matching tree digests; truncated, trailing, reordered, non-lock-final, missing-digest, mismatched-digest, and forged-commit journals leave the complete project tree unchanged; every other project command refuses in every journal phase including lock-committed; and postcommit recovery removes only transaction residue.
+A supported upgrade acquires its writer lease before mutable-authority reads, strictly parses and validates the live configuration and lock, refuses a future schema, and completely preflights every collision and destructive path it can derive before mutation. Its ordered Git-backed mutations are not cross-file transactional. It stops on the first failed mutation, preserves earlier successful effects, reports every affected path, and directs the operator to inspect the tree and rerun the ordinary upgrade.
+Backing: test
 
 ### `invariant: upgraded-runtime-has-one-authority-engine`
 
@@ -29,4 +28,4 @@ Compatibility removal remains blocked while any managed adopter pin or live sour
 
 ### `rule: managed-cutover-format-support`
 
-Retain the generic journaled upgrade commit point, rollback, quarantine, postcommit cleanup, and recovery as current mutation safety. Permanent locks are the only live authority; unsupported lock fields refuse before upgrade mutation. Hypothetical external adoption is not retention evidence.
+Retain the temporary schema-50-through-53 live migration bridge until the external managed-adopter rollout permits removal. This does not advance the live schema floor. Permanent locks are the only live authority, and unsupported lock fields refuse before upgrade mutation. Hypothetical external adoption is not retention evidence.

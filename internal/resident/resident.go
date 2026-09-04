@@ -27,7 +27,7 @@ import (
 )
 
 // roots is the closed set of repository-wide resident-root names awf owns
-// under the config dir. Output planning, render, drift, backup detection,
+// under the config dir. Output planning, render, drift, ownership detection,
 // current-state and context discovery, sweep, nested-adopter filtering,
 // install, and uninstall all read this single table, so a root joins or leaves
 // awf's ownership here and only here. Everything below a root is dynamic local
@@ -113,46 +113,30 @@ func CollisionsAt(root string, planned []string) ([]string, error) {
 	return collisions, nil
 }
 
-// Backup records one local document preserved during uninstall. Both paths are
-// lock-relative and Bak is the exact first-free sibling chosen by Backup.
-type Backup struct {
-	Path string
-	Bak  string
-}
-
-// UninstallReport records every stable root-relative effect committed by an
-// uninstall. Removed remains the compatibility summary; callers that need to
-// recover or present the result use the exact effect lists.
+// UninstallReport records the simple path facts committed by an uninstall.
+// Removed remains the compatibility summary.
 type UninstallReport struct {
 	Removed          int
 	RemovedGenerated []string
 	PreservedRoots   []string
-	Backups          []Backup
 	RemovedEmptyDirs []string
 	LockRemoved      bool
 }
 
-// PartialUninstallError retains the committed uninstall report when a later
-// removal fails. It preserves the mechanism error for errors.Is/As and names
-// the convergent recovery the resident operation owns.
+// PartialUninstallError retains removed path facts when a later mutation fails.
 type PartialUninstallError struct {
-	Report   UninstallReport
-	Cause    error
-	Recovery []string
+	Report UninstallReport
+	Cause  error
 }
 
 func (e *PartialUninstallError) Error() string { return e.Cause.Error() }
 func (e *PartialUninstallError) Unwrap() error { return e.Cause }
 func (e *PartialUninstallError) Document() (presentation.Document, error) {
-	recovery := e.Recovery
-	if len(recovery) == 0 {
-		recovery = []string{"inspect the reported cause, then retry awf uninstall"}
-	}
-	return e.Report.partialDocument(recovery)
+	return e.Report.PartialDocument()
 }
 
 func partialUninstall(report UninstallReport, cause error) error {
-	return &PartialUninstallError{Report: report, Cause: cause, Recovery: []string{"inspect the reported cause, then retry awf uninstall"}}
+	return &PartialUninstallError{Report: report, Cause: cause}
 }
 
 // Document maps an uninstall result into its complete ordinary presentation.
@@ -164,22 +148,14 @@ func (r UninstallReport) Document() (presentation.Document, error) {
 	return r.document("uninstall completed", []presentation.Value{note}, nil)
 }
 
-// PartialDocument retains every completed uninstall fact when a later removal
-// fails and gives the caller a convergent retry action.
+// PartialDocument retains completed path facts and tells the operator how to
+// converge after inspecting the failure.
 func (r UninstallReport) PartialDocument() (presentation.Document, error) {
-	return r.partialDocument([]string{"inspect the reported cause, then retry awf uninstall"})
-}
-
-func (r UninstallReport) partialDocument(recovery []string) (presentation.Document, error) {
-	next := make([]presentation.Value, 0, len(recovery))
-	for _, action := range recovery {
-		value, err := presentation.Prose(action)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		next = append(next, value)
+	next, err := presentation.Prose("inspect the reported cause, then rerun awf uninstall")
+	if err != nil {
+		return presentation.Document{}, err
 	}
-	return r.document("uninstall partially committed", nil, next)
+	return r.document("uninstall stopped", nil, []presentation.Value{next})
 }
 
 func (r UninstallReport) document(status string, prefix, next []presentation.Value) (presentation.Document, error) {
@@ -207,11 +183,6 @@ func (r UninstallReport) document(status string, prefix, next []presentation.Val
 	}
 	for _, path := range r.RemovedGenerated {
 		if err := appendNote("removed generated " + path); err != nil {
-			return presentation.Document{}, err
-		}
-	}
-	for _, backup := range r.Backups {
-		if err := appendNote("backed up " + backup.Path + " to " + backup.Bak); err != nil {
 			return presentation.Document{}, err
 		}
 	}
@@ -289,13 +260,32 @@ func PreserveRemoval(path string, preserved []string) bool {
 }
 
 type uninstallHandle interface {
-	Read(string) ([]byte, error)
 	ReadDir(string) ([]fs.DirEntry, error)
 	LinkInfo(string) (fs.FileInfo, error)
-	Backup(string) (string, error)
 	ExpectedIdentity(string) (*filesystem.ExpectedIdentity, error)
+	ReadExpected(string, *filesystem.ExpectedIdentity) ([]byte, fs.FileMode, error)
 	RemoveExpected(string, *filesystem.ExpectedIdentity) error
+	RemoveExpectedRegularFile(string, *filesystem.ExpectedIdentity, []byte, fs.FileMode) error
 	Close() error
+}
+
+type uninstallCandidate struct {
+	path     string
+	handle   uninstallHandle
+	identity *filesystem.ExpectedIdentity
+	contents []byte
+	mode     fs.FileMode
+}
+
+func emptyLocalDocumentShell(contents []byte) bool {
+	const boundary = "<!-- awf:edit-in-place body -->"
+	lines := strings.Split(string(contents), "\n")
+	for index, line := range lines {
+		if strings.TrimSpace(line) == boundary {
+			return strings.TrimSpace(strings.Join(lines[index+1:], "\n")) == ""
+		}
+	}
+	return false
 }
 
 type uninstallOps struct {
@@ -361,11 +351,15 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 	if err != nil {
 		return report, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
 	}
-	defer lockInfo.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
+	defer func() {
+		if lockInfo != nil {
+			_ = lockInfo.Release()
+		}
+	}()
 	if lockInfo.Mode()&fs.ModeSymlink != 0 || !lockInfo.Mode().IsRegular() {
 		return report, fmt.Errorf("unreadable .awf/awf.lock (unsafe lock): restore it from version control, or delete it deliberately to re-adopt")
 	}
-	lockBytes, err := tracked.Read(uninstallLockPath)
+	lockBytes, lockMode, err := tracked.ReadExpected(uninstallLockPath, lockInfo)
 	if err != nil {
 		return report, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
 	}
@@ -381,6 +375,18 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 	paths := slices.Collect(maps.Keys(lock.Files))
 	slices.Sort(paths)
 	dirs := map[string]uninstallHandle{}
+	candidates := make([]uninstallCandidate, 0, len(paths))
+	defer func() {
+		for _, candidate := range candidates {
+			if candidate.identity != nil {
+				_ = candidate.identity.Release()
+			}
+		}
+	}()
+
+	// Preflight every locked output before removing any of them. The retained
+	// identities and exact images make the later removal conditional on the same
+	// regular files still being present with the lock-owned bytes and mode.
 	for _, path := range paths {
 		if PreserveRemoval(path, preserved) {
 			continue
@@ -389,32 +395,49 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 		if IsResidentPath(path) {
 			handle = resident
 		}
-		info, infoErr := handle.ExpectedIdentity(path)
-		if infoErr != nil && !errors.Is(infoErr, fs.ErrNotExist) {
-			return report, partialUninstall(report, fmt.Errorf("inspect generated file %s: %w", path, infoErr))
+		identity, identityErr := handle.ExpectedIdentity(path)
+		if errors.Is(identityErr, fs.ErrNotExist) {
+			continue
 		}
-		if preserveTemplate != nil && preserveTemplate(lock.Files[path].TemplateID) && infoErr == nil {
-			if info.Mode()&fs.ModeSymlink != 0 || !info.Mode().IsRegular() {
-				_ = info.Release()
-				return report, partialUninstall(report, fmt.Errorf("unsafe local document %s", path))
-			}
-			bak, backupErr := handle.Backup(path)
-			if backupErr != nil {
-				_ = info.Release()
-				return report, partialUninstall(report, fmt.Errorf("back up local document %s: %w", path, backupErr))
-			}
-			report.Backups = append(report.Backups, Backup{Path: path, Bak: bak})
+		if identityErr != nil {
+			return report, fmt.Errorf("inspect generated file %s: %w", path, identityErr)
 		}
-		if infoErr == nil {
-			if err := handle.RemoveExpected(path, info); err != nil {
-				return report, partialUninstall(report, fmt.Errorf("remove generated file %s: %w", path, err))
-			}
-			report.Removed++
-			report.RemovedGenerated = append(report.RemovedGenerated, path)
+		if identity.Mode()&fs.ModeSymlink != 0 || !identity.Mode().IsRegular() {
+			_ = identity.Release()
+			return report, fmt.Errorf("refuse unsafe locked output %s: expected an ordinary file", path)
 		}
+		contents, mode, readErr := handle.ReadExpected(path, identity)
+		if readErr != nil {
+			_ = identity.Release()
+			return report, fmt.Errorf("inspect generated file %s: %w", path, readErr)
+		}
+		entry := lock.Files[path]
+		expectedMode := fs.FileMode(entry.Mode)
+		if expectedMode == 0 {
+			expectedMode = 0o644
+		}
+		if manifest.Hash(contents) != entry.OutputHash || mode.Perm() != expectedMode.Perm() {
+			_ = identity.Release()
+			return report, fmt.Errorf("refuse diverged locked output %s: current bytes and mode must match the lock-owned image", path)
+		}
+		if preserveTemplate != nil && preserveTemplate(entry.TemplateID) && !emptyLocalDocumentShell(contents) {
+			_ = identity.Release()
+			return report, fmt.Errorf("refuse local document %s: protected authored body is present", path)
+		}
+		candidates = append(candidates, uninstallCandidate{path: path, handle: handle, identity: identity, contents: contents, mode: mode})
 		for dir := filepath.ToSlash(filepath.Dir(path)); dir != "." && dir != "/"; dir = filepath.ToSlash(filepath.Dir(dir)) {
 			dirs[dir] = handle
 		}
+	}
+	for index := range candidates {
+		candidate := &candidates[index]
+		removeErr := candidate.handle.RemoveExpectedRegularFile(candidate.path, candidate.identity, candidate.contents, candidate.mode)
+		candidate.identity = nil // RemoveExpectedRegularFile consumes the identity even on failure.
+		if removeErr != nil {
+			return report, partialUninstall(report, fmt.Errorf("remove generated file %s: %w", candidate.path, removeErr))
+		}
+		report.Removed++
+		report.RemovedGenerated = append(report.RemovedGenerated, candidate.path)
 	}
 	dirList := slices.Collect(maps.Keys(dirs))
 	slices.SortFunc(dirList, func(a, b string) int {
@@ -443,8 +466,10 @@ func uninstallWith(ctx context.Context, root string, preserveTemplate func(strin
 		}
 		report.RemovedEmptyDirs = append(report.RemovedEmptyDirs, filepath.ToSlash(dir))
 	}
-	if err := tracked.RemoveExpected(uninstallLockPath, lockInfo); err != nil {
-		return report, partialUninstall(report, fmt.Errorf("remove lock: %w", err))
+	removeLockErr := tracked.RemoveExpectedRegularFile(uninstallLockPath, lockInfo, lockBytes, lockMode)
+	lockInfo = nil // RemoveExpectedRegularFile consumes the identity even on failure.
+	if removeLockErr != nil {
+		return report, partialUninstall(report, fmt.Errorf("remove lock: %w", removeLockErr))
 	}
 	report.LockRemoved = true
 	if resident != tracked {

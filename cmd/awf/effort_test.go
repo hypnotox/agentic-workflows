@@ -97,7 +97,7 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 		sub:    "new",
 		inv:    invocation{positionals: []string{"Missing slug"}, bools: map[string]bool{}, values: map[string]string{}},
 		stdout: &bytes.Buffer{},
-	}, func(context.Context, string, application.Request, func() ([]byte, error)) (application.Result, error) {
+	}, func(context.Context, string, application.Request, func() ([]byte, error), application.Admission) (application.Result, error) {
 		composed = true
 		return application.Result{}, errors.New("application invoked")
 	})
@@ -163,6 +163,8 @@ func TestEffortNewExplicitSlugGrammarAndFlagCombinations(t *testing.T) {
 		t.Fatalf("same 33-byte persisted slug is not selectable: %q", shown)
 	}
 }
+func allowEffortAdmission(context.Context, string) error { return nil }
+
 func runEffortCLI(t *testing.T, root string, args ...string) (int, string, string) {
 	return runEffortCLIWithInput(t, root, os.Stdin, args...)
 }
@@ -262,7 +264,7 @@ func TestEffortPublicTextProtocol(t *testing.T) {
 		{[]string{"effort", "finish", "public-output"}, ""},
 	} {
 		if got := run(test.args...); test.want == "" {
-			for _, want := range []string{"status: archived", "effort: public-output", "archive: .awf/effort-archive/", "archived resident", "archive parent synced", "efforts parent synced", "delete the local archive manually"} {
+			for _, want := range []string{"status: archived", "effort: public-output", "archive: .awf/effort-archive/", "archived resident", "delete the local archive manually"} {
 				if !strings.Contains(got, want) {
 					t.Fatalf("%v output = %q, missing %q", test.args, got, want)
 				}
@@ -272,7 +274,7 @@ func TestEffortPublicTextProtocol(t *testing.T) {
 		}
 	}
 	code, stdout, stderr := runEffortCLI(t, root, "effort", "finish", "public-output")
-	const restart = "condition: effort \"public-output\" has no active resident or finishing reservation\nstate: resident\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: run `awf effort list` and use an active slug\n"
+	const restart = "condition: effort \"public-output\" has no active resident\nstate: resident\n\ndiagnostic:\n  changed:\n    bytes: no\n  steps:\n    step 1: run `awf effort list` and use an active slug\n"
 	if code != 1 || stdout != "" || stderr != restart {
 		t.Fatalf("restarted finish: code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}

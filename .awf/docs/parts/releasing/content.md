@@ -65,9 +65,9 @@ The archive and `checksums.txt` travel through the same GitHub Release channel. 
 
 `.goreleaser.yaml` and workflow files are hand-maintained outside the awf render/lock set, like `.golangci.yml` and `./x`.
 
-## Adopter upgrade recovery
+## Adopter upgrade failure
 
-Adopter projects use permanent lock authority. A supported schema upgrade journals its mutations and publishes the replacement lock last. If `.awf/current-state-upgrade.journal` remains after interruption, run only `awf upgrade --recover`; precommit recovery restores prior bytes and residents, while postcommit recovery cleans transaction residue without rolling authority back. If the journal is unusable, restore the project from Git and retry from a supported source.
+Adopter projects use permanent lock authority. The temporary schema-50-through-53 bridge remains until external managed adopters complete rollout; this does not advance the schema-50 floor. A supported schema upgrade completely preflights every collision and destructive path it can derive, applies ordered root-confined mutations, and publishes the replacement lock last. It is not cross-file transactional. On failure, inspect the reported affected paths and Git diff, correct the blocking condition, and rerun `awf upgrade` to converge.
 
 ### Exact revision acceptance
 

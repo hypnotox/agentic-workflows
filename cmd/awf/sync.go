@@ -14,10 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
-// newProjectLoader composes the project-opening policy for one invocation: the
-// standard catalog, the seam's one resident-root resolution, and the Git handle
-// the opened project reads through. A fresh non-repository tree takes the
-// explicit no-repository constructor; malformed repositories are returned.
+// newProjectLoader composes the project-opening policy for one invocation.
 func newProjectLoader(root string) (*project.Loader, error) {
 	repo, _, err := awfgit.OpenContaining(root)
 	if err != nil {
@@ -43,25 +40,39 @@ func runSyncPrinting(ctx context.Context, loader *project.Loader, root string, s
 	if err != nil {
 		return err
 	}
+	if err := guardMutationSession(ctx, root); err != nil {
+		return errors.Join(err, lease.Release())
+	}
+	if err := gate(ctx, root); err != nil {
+		return errors.Join(err, lease.Release())
+	}
 	session, err := loader.Load(ctx, root)
 	if err != nil {
 		return errors.Join(err, lease.Release())
 	}
-	composed := composePublisher(session)
-	result, syncErr := composed.SyncLeased(ctx, lease)
+	result, syncErr := composePublisher(session).SyncLeased(ctx, lease)
 	return finishSyncPrinting(stdout, result, syncErr, lease.Release())
 }
 
-func finishSyncPrinting(stdout io.Writer, result publisher.Result, syncErr, releaseErr error) error {
-	combined := errors.Join(syncErr, releaseErr)
-	if syncErr == nil && releaseErr != nil {
-		combined = &publisher.PartialError{Result: result, Cause: releaseErr}
-	}
-	if combined != nil {
-		if presentErr := renderPartialSync(stdout, combined); presentErr != nil {
-			return errors.Join(combined, presentErr)
+func gatedLeaseAcquirer(loader *project.Loader) func(context.Context, string) (*filesystem.Lease, func() error, error) {
+	return func(ctx context.Context, root string) (*filesystem.Lease, func() error, error) {
+		lease, err := loader.AcquireProjectLease(ctx, root)
+		if err != nil {
+			return nil, nil, err
 		}
-		return combined
+		if err := guardMutationSession(ctx, root); err != nil {
+			return nil, nil, errors.Join(err, lease.Release())
+		}
+		if err := gate(ctx, root); err != nil {
+			return nil, nil, errors.Join(err, lease.Release())
+		}
+		return lease, lease.Release, nil
+	}
+}
+
+func finishSyncPrinting(stdout io.Writer, result publisher.Result, syncErr, releaseErr error) error {
+	if combined := errors.Join(syncErr, releaseErr); combined != nil {
+		return syncFailure{result: result, cause: combined}
 	}
 	mutation, err := result.Mutation()
 	if err != nil {
@@ -70,16 +81,41 @@ func finishSyncPrinting(stdout io.Writer, result publisher.Result, syncErr, rele
 	return renderSyncMutation(stdout, mutation)
 }
 
-func renderPartialSync(stdout io.Writer, syncErr error) error {
-	var partial *publisher.PartialError
-	if !errors.As(syncErr, &partial) {
-		return nil
+type syncFailure struct {
+	result publisher.Result
+	cause  error
+}
+
+func (e syncFailure) Error() string { return e.cause.Error() }
+func (e syncFailure) Unwrap() error { return e.cause }
+
+func (e syncFailure) Diagnostic() (presentation.Diagnostic, error) {
+	changed := make([]presentation.Field, 0, len(e.result.Touched()))
+	for _, path := range e.result.Touched() {
+		value, err := presentation.Literal(path)
+		if err != nil {
+			return presentation.Diagnostic{}, err
+		}
+		field, err := presentation.NewField("touched path", value)
+		if err != nil {
+			return presentation.Diagnostic{}, err
+		}
+		changed = append(changed, field)
 	}
-	mutation, err := partial.Result.PartialMutation()
-	if err != nil {
-		return err
+	texts := []string{
+		"run git status --short and git diff to inspect visible changes",
+		"correct or restore the desired paths",
+		"rerun awf render",
 	}
-	return renderSyncMutation(stdout, mutation)
+	steps := make([]presentation.Value, len(texts))
+	for i, text := range texts {
+		value, err := presentation.Prose(text)
+		if err != nil {
+			return presentation.Diagnostic{}, err
+		}
+		steps[i] = value
+	}
+	return presentation.Diagnostic{Condition: "render did not complete", State: "operation", Changed: changed, Cause: e.cause.Error(), Steps: steps}, nil
 }
 
 func renderSyncMutation(stdout io.Writer, mutation presentation.Mutation) error {

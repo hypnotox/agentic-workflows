@@ -331,20 +331,17 @@ func TestTopicRenderLifecycle(t *testing.T) {
 		t.Fatalf("part drift: %#v", drift)
 	}
 }
-func TestTopicBrownfieldCollisionUsesSharedBackup(t *testing.T) {
+func TestTopicBrownfieldCollisionIsRefused(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root, "contracts", "Contracts", "paths: [\"internal/**\"]\n")
-	testsupport.WriteFile(t, filepath.Join(root, "docs/topics/rendering/contracts.md"), "foreign\n")
+	output := filepath.Join(root, "docs/topics/rendering/contracts.md")
+	testsupport.WriteFile(t, output, "foreign\n")
 	p, _ := loadTestSession(testContext(t), root)
-	backups, _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version})
-	if err != nil {
-		t.Fatal(err)
+	if _, _, err := initializeReportProject(p, InitAuthority{InitializedWithVersion: Version}); err == nil {
+		t.Fatal("initialization accepted a differing foreign topic output")
 	}
-	if len(backups) != 1 || backups[0].Path != "docs/topics/rendering/contracts.md" {
-		t.Fatalf("backups = %#v", backups)
-	}
-	if string(mustRead(t, filepath.Join(root, backups[0].Bak))) != "foreign\n" {
-		t.Fatal("foreign topic output was not preserved")
+	if string(mustRead(t, output)) != "foreign\n" {
+		t.Fatal("foreign topic output changed after refusal")
 	}
 }
 
@@ -363,7 +360,7 @@ func TestTopicPruneRemoveAndRename(t *testing.T) {
 	}
 	writeProjectTopic(t, root, "new", "New", "paths: [\"internal/**\"]\n")
 	p2, _ := loadTestSession(testContext(t), root)
-	_, pruned, err := syncReportProject(p2)
+	pruned, err := syncReportProject(p2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -537,7 +534,7 @@ Backing: test
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, pruned, err := syncReportProject(p)
+	pruned, err := syncReportProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}

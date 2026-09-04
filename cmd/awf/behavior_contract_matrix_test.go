@@ -2,9 +2,6 @@ package main
 
 import (
 	"bytes"
-	"crypto/sha256"
-	"encoding/json"
-	"fmt"
 	"os"
 	"path/filepath"
 	"strings"
@@ -12,7 +9,6 @@ import (
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
 type applicationContractCase struct {
@@ -25,7 +21,6 @@ func TestApplicationBehaviorContractMatrix(t *testing.T) {
 		{name: "effort lifecycle", run: contractEffortLifecycle},
 		{name: "render and check fixpoint", run: contractRenderCheckFixpoint},
 		{name: "upgrade and refusal safety", run: contractUpgradeAndRefusal},
-		{name: "journal recovery", run: contractJournalRecovery},
 	}
 	for _, test := range cases {
 		t.Run(test.name, test.run)
@@ -111,47 +106,4 @@ func contractUpgradeAndRefusal(t *testing.T) {
 		t.Fatalf("below-floor upgrade: code=%d stdout=%q stderr=%q", code, stdout, stderr)
 	}
 	assertUpgradeFixtureUnchanged(t, root, before)
-}
-
-func contractJournalRecovery(t *testing.T) {
-	root := scaffoldProject(t)
-	lockPath := config.LockPath(root)
-	lockBytes, err := os.ReadFile(lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	info, err := os.Stat(lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	finalLock := append(bytes.Clone(lockBytes), []byte("\n# interrupted\n")...)
-	prepared := filepath.Join(root, "prepared.txt")
-	if err := os.WriteFile(prepared, []byte("new"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	journal := upgrade.Journal{
-		Version:         upgrade.JournalVersion,
-		Phase:           "applying",
-		FinalLockSHA256: fmt.Sprintf("%x", sha256.Sum256(finalLock)),
-		Operations: []upgrade.Operation{
-			{Path: "prepared.txt", Prior: upgrade.Image{Present: false}, Replacement: upgrade.Image{Present: true, Mode: 0o644, Content: []byte("new")}},
-			{Path: upgrade.LockRel(), Prior: upgrade.Image{Present: true, Mode: uint32(info.Mode().Perm()), Content: lockBytes}, Replacement: upgrade.Image{Present: true, Mode: 0o644, Content: finalLock}},
-		},
-	}
-	encoded, err := json.MarshalIndent(journal, "", "  ")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(upgradeJournalPath(root), append(encoded, '\n'), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if code, stdout, stderr := contractCommand(t, root, "upgrade", "--recover"); code != 0 || stderr != "" || !strings.Contains(stdout, "recovered") {
-		t.Fatalf("recover: code=%d stdout=%q stderr=%q", code, stdout, stderr)
-	}
-	if _, err := os.Stat(prepared); !os.IsNotExist(err) {
-		t.Fatalf("prepared file survives recovery: %v", err)
-	}
-	if journalPresence(t, root) {
-		t.Fatal("journal survives recovery")
-	}
 }

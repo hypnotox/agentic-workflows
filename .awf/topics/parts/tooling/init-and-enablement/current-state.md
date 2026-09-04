@@ -14,12 +14,7 @@ Backing: test
 
 ### `invariant: init-collision-guard`
 
-Before writing anything, `awf init` pre-flights every path it would create and, if any already exists, writes nothing and reports the offending paths; `awf init --force` backs up each colliding file to `<path>.awf-bak` and overwrites.
-Backing: test
-
-### `invariant: init-force-backs-up`
-
-Running init with --force copies every colliding non-managed file to <path>.awf-bak before any managed output overwrites it, and reports the backup on stdout.
+`awf init` acquires its writer lease before reading mutable authority or planning destinations. Before first config creation it probes every planned output path and reports the complete collision set; any existing output refuses without mutation. Creation is exclusive and no-clobber, so a race at a preflighted destination also refuses rather than overwriting content. If an interrupted first adoption leaves a valid config without its lock, rerun uses that config unchanged, fully preflights all outputs, adopts only exact desired regular files, refuses differing content or mode, and publishes the permanent lock last.
 Backing: test
 
 ### `invariant: init-noninteractive-default`

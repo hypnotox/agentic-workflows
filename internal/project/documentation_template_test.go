@@ -17,11 +17,11 @@ func TestDocArchitectureTemplate(t *testing.T) {
 		"# Architecture",
 		"`Loader` opens and validates selected project state to construct one immutable `Session`",
 		"`internal/outputplan` and `internal/publisher`",
-		"the `Publisher` that owns output planning, rendering coordination, backup decisions, and publication",
+		"the `Publisher` that owns output planning, rendering coordination, ownership and collision preflight, and lock-last publication without effect or recovery ledgers",
 		"the policy-free `RepositoryChecker` preserves ordered aggregation",
 		"each concern owner retains its classification, severity, and policy",
-		"`internal/projectmutation` and focused operations: a mechanics-only transaction boundary",
-		"focused operations retain validation, mutation and rollback order, recovery policy, outcomes, and presentation",
+		"Focused operation packages: directly compose writer leases, confined authority access, fresh committed Session reload, and one-attempt Publisher synchronization",
+		"owning validation, ordered mutation, ownership policy, affected-path outcomes, release handling, and presentation",
 		"Operator-installed `agentic-skills` owns generic skills, canonical roles, and its Pi adapter",
 		"separately installed `pi-tools` owns Pi role execution and runtime mechanics",
 		"AWF emits no role prompts, adapter, router, policy, or preference store",
@@ -35,6 +35,7 @@ func TestDocArchitectureTemplate(t *testing.T) {
 		"retained effort integration",
 		"auxiliary commands may provide repository checks and diagnostics",
 		"one awf-owned protocol-v2 profile adapter",
+		"internal/projectmutation",
 	} {
 		if strings.Contains(out, stale) {
 			t.Errorf("architecture retains stale ownership phrase %q:\n%s", stale, out)

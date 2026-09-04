@@ -59,7 +59,7 @@ func TestUnchangedSidecarAuthoringStillSynchronizesCommittedAuthority(t *testing
 	if err != nil {
 		t.Fatal(err)
 	}
-	if outcome.Source != SourceNone || !outcome.Publisher.HasCommittedEffects() {
+	if outcome.Source != SourceNone || len(outcome.Publisher.Changes()) == 0 {
 		t.Fatalf("unchanged synchronized outcome = %#v", outcome)
 	}
 	after, err := os.ReadFile(output)

@@ -36,6 +36,6 @@ The AWF binary remains offline and neither installs nor probes the operator-mana
 - [Project output plan](../topics/rendering/project-output-plan.md): How a project assembles its render set, output plan, drift check, and prune behaviour.
 - [Render engine](../topics/rendering/render-engine.md): The template overlay render engine and its reference resolution.
 - [Singletons and payloads](../topics/rendering/singletons-and-payloads.md): Singleton outputs and script payloads: bootstrap, hooks, memory gitignore, file modes.
-- [Sync and drift](../topics/rendering/sync-and-drift.md): How sync and check detect and report: drift hash inputs, attribution, backups, residue, pruning, cleanup, and current-state coverage and fan-out evaluation.
+- [Sync and drift](../topics/rendering/sync-and-drift.md): How sync and check detect and report: drift hash inputs, attribution, ownership, collisions, pruning, cleanup, and current-state coverage and fan-out evaluation.
 - [Templates](../topics/rendering/templates.md): The embedded template source and its rendered content contracts.
 - [Workflow skill templates](../topics/rendering/workflow-skill-templates.md): Workflow-chain and task-skill template contracts.

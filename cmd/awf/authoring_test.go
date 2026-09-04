@@ -186,8 +186,8 @@ func TestSidecarAuthoringCLIRejectsModesCapabilitiesAndInvalidCandidateWithoutMu
 	}
 }
 
-// invariant: tooling/cli:semantic-artifact-authoring (TestPartAuthoringCLIRendersPartialReportOnce)
-func TestPartAuthoringCLIRendersPartialReportOnce(t *testing.T) {
+// invariant: tooling/cli:semantic-artifact-authoring (TestPartAuthoringCLIRendersFailureDiagnosticOnce)
+func TestPartAuthoringCLIRendersFailureDiagnosticOnce(t *testing.T) {
 	root := scaffoldProject(t)
 	part := catalog.Standard.Skills["awf-maintenance"].Sections[0]
 	output := filepath.Join(root, ".claude", "skills", "awf-maintenance", "SKILL.md")
@@ -203,14 +203,16 @@ func TestPartAuthoringCLIRendersPartialReportOnce(t *testing.T) {
 	if code != 1 {
 		t.Fatalf("partial authoring exit=%d stdout=%q stderr=%q", code, stdout.String(), stderr.String())
 	}
-	if !strings.Contains(stdout.String(), "status: artifact part partially committed") || !strings.Contains(stdout.String(), "source effect: created") {
-		t.Fatalf("partial report = %q", stdout.String())
+	if stdout.Len() != 0 {
+		t.Fatalf("failure rendered false success: %q", stdout.String())
 	}
-	// handlerReport recognizes the producedReportError returned after the
-	// successful report render, so the driver preserves its failing exit without
-	// emitting a second diagnostic.
-	if stderr.Len() != 0 {
-		t.Fatalf("produced partial report was also diagnosed: %q", stderr.String())
+	for _, want := range []string{"touched path:", "git status --short", "git diff", "rerun awf edit"} {
+		if !strings.Contains(stderr.String(), want) {
+			t.Errorf("failure diagnostic missing %q: %q", want, stderr.String())
+		}
+	}
+	if strings.Contains(strings.ToLower(stderr.String()), "recovery") || strings.Contains(strings.ToLower(stderr.String()), "rollback") {
+		t.Fatalf("failure diagnostic made recovery claim: %q", stderr.String())
 	}
 }
 

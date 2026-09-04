@@ -18,15 +18,13 @@ A new or deliberately converted refusal or partial-progress outcome that observe
 repository, worktree, or effort state carries the actionable outcome protocol: a category
 from the closed state-kind vocabulary (`cleanliness`, `operation`, `topology`, `ancestry`,
 `repository-identity`, `merge-conflict`), a present-tense condition stating the observed
-state rather than what the command attempted (a failed mechanism call is itself an
-observed state whose detail rides along as the cause), one boolean changed-observation per
-axis whose movement would make a naive retry unsafe, an ordered remedy whose steps are
-each independently executable and render through central `Steps` as `step 1: ...`, `step 2: ...`,
-and so on, and a cause present exactly when the condition observes a failed call.
-When no axis moved, the steps address only the condition; when any axis moved, the steps
-address the residue before retrying.
-Backing: unbacked
-Verify: For each changed outcome site, check the category against the vocabulary, the condition's tense against observed state, each changed axis against what the operation could move, rendering through central Steps with independently executable numbered entries, and the remedy against the movement rule: condition-only steps when nothing moved, residue-first steps when anything did.
+state rather than what the command attempted, the exact affected paths known from the
+operation, an ordered remedy whose steps are each independently executable and render
+through central `Steps` as `step 1: ...`, `step 2: ...`, and so on, and a cause present
+exactly when the condition observes a failed call. A mutation failure does not infer hidden
+state or claim rollback. Its steps direct the operator to inspect the reported paths and
+Git state, correct the blocking condition, and rerun the ordinary command to converge.
+Backing: test
 ### `invariant: typed-outcome-for-caller-branching`
 
 A cause a caller must branch on in new or deliberately converted code is a distinct error

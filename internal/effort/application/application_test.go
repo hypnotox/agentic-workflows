@@ -46,11 +46,12 @@ func applicationRepo(t *testing.T) string {
 	return root
 }
 
-func markerRenderer() ([]byte, error) { return []byte(archiveMarker), nil }
+func markerRenderer() ([]byte, error)              { return []byte(archiveMarker), nil }
+func allowAdmission(context.Context, string) error { return nil }
 
 func executeAndRelease(t *testing.T, root string, request Request) Result {
 	t.Helper()
-	result, err := Execute(testContext(t), root, request, markerRenderer)
+	result, err := Execute(testContext(t), root, request, markerRenderer, allowAdmission)
 	if err != nil {
 		if result.Release != nil {
 			_ = result.Release()
@@ -110,7 +111,7 @@ func TestApplicationBoundaryOwnsTheCompleteEffortLifecycle(t *testing.T) {
 
 func TestApplicationRetainsMutationLeaseForSuccessAndTypedFailure(t *testing.T) {
 	root := applicationRepo(t)
-	result, err := Execute(testContext(t), root, Request{Kind: New, Slug: strings.Repeat("s", 33), Title: "Invalid"}, markerRenderer)
+	result, err := Execute(testContext(t), root, Request{Kind: New, Slug: strings.Repeat("s", 33), Title: "Invalid"}, markerRenderer, allowAdmission)
 	if err == nil || result.Release == nil {
 		t.Fatalf("typed refusal err=%v release-present=%t", err, result.Release != nil)
 	}
@@ -127,9 +128,34 @@ func TestApplicationRetainsMutationLeaseForSuccessAndTypedFailure(t *testing.T) 
 	failure := errors.New("lease failure")
 	deps := ProductionDependencies()
 	deps.AcquireProjectLease = func(context.Context, string, string) (Lease, error) { return nil, failure }
-	result, err = ExecuteWith(testContext(t), root, Request{Kind: Finish, Slug: "missing"}, markerRenderer, deps)
+	result, err = ExecuteWith(testContext(t), root, Request{Kind: Finish, Slug: "missing"}, markerRenderer, allowAdmission, deps)
 	if !errors.Is(err, failure) || result.Release != nil {
 		t.Fatalf("lease failure result=%#v err=%v", result, err)
+	}
+
+	deps = ProductionDependencies()
+	originalAcquire := deps.AcquireProjectLease
+	acquired := false
+	deps.AcquireProjectLease = func(ctx context.Context, tracked, resident string) (Lease, error) {
+		lease, err := originalAcquire(ctx, tracked, resident)
+		acquired = err == nil
+		return lease, err
+	}
+	admissionFailure := errors.New("admission failure")
+	result, err = ExecuteWith(testContext(t), root, Request{Kind: Finish, Slug: "missing"}, markerRenderer, func(context.Context, string) error {
+		if !acquired {
+			t.Fatal("mutation admission ran before lease acquisition")
+		}
+		return admissionFailure
+	}, deps)
+	if !errors.Is(err, admissionFailure) || result.Release == nil {
+		t.Fatalf("admission failure result=%#v err=%v", result, err)
+	}
+	if releaseErr := result.Release(); releaseErr != nil {
+		t.Fatal(releaseErr)
+	}
+	if _, err := ExecuteWith(testContext(t), root, Request{Kind: Finish, Slug: "missing"}, markerRenderer, nil, ProductionDependencies()); err == nil || !strings.Contains(err.Error(), "mutation admission") {
+		t.Fatalf("missing mutation admission error = %v", err)
 	}
 }
 
@@ -151,12 +177,12 @@ func TestApplicationDependencyAndCompositionFailures(t *testing.T) {
 		t.Run(test.name, func(t *testing.T) {
 			deps := valid
 			test.edit(&deps)
-			if _, err := ExecuteWith(testContext(t), "unused", Request{Kind: List}, markerRenderer, deps); err == nil || !strings.Contains(err.Error(), "missing") {
+			if _, err := ExecuteWith(testContext(t), "unused", Request{Kind: List}, markerRenderer, allowAdmission, deps); err == nil || !strings.Contains(err.Error(), "missing") {
 				t.Fatalf("missing dependency error = %v", err)
 			}
 		})
 	}
-	if _, err := ExecuteWith(testContext(t), "unused", Request{Kind: List}, nil, valid); err == nil || !strings.Contains(err.Error(), "archive marker") {
+	if _, err := ExecuteWith(testContext(t), "unused", Request{Kind: List}, nil, allowAdmission, valid); err == nil || !strings.Contains(err.Error(), "archive marker") {
 		t.Fatalf("missing marker error = %v", err)
 	}
 
@@ -164,16 +190,16 @@ func TestApplicationDependencyAndCompositionFailures(t *testing.T) {
 	failure := errors.New("composition failure")
 	deps := valid
 	deps.ResolveRoots = func(context.Context, string) (awfgit.ControlRoots, error) { return awfgit.ControlRoots{}, failure }
-	if _, err := ExecuteWith(testContext(t), root, Request{Kind: List}, markerRenderer, deps); !errors.Is(err, failure) {
+	if _, err := ExecuteWith(testContext(t), root, Request{Kind: List}, markerRenderer, allowAdmission, deps); !errors.Is(err, failure) {
 		t.Fatalf("root failure = %v", err)
 	}
 	deps = valid
 	deps.OpenCheckout = func(string) (Checkout, error) { return nil, failure }
-	if _, err := ExecuteWith(testContext(t), root, Request{Kind: List}, markerRenderer, deps); !errors.Is(err, failure) {
+	if _, err := ExecuteWith(testContext(t), root, Request{Kind: List}, markerRenderer, allowAdmission, deps); !errors.Is(err, failure) {
 		t.Fatalf("checkout failure = %v", err)
 	}
 
-	result, err := Execute(testContext(t), root, Request{Kind: Kind(255)}, markerRenderer)
+	result, err := Execute(testContext(t), root, Request{Kind: Kind(255)}, markerRenderer, allowAdmission)
 	if err == nil || !strings.Contains(err.Error(), "unknown request kind") || result.Release != nil {
 		t.Fatalf("unknown request result=%#v err=%v", result, err)
 	}
@@ -215,7 +241,7 @@ func TestIntegrateResolvesMalformedGateBeforeEffortLookup(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, ".awf", "config.yaml"), []byte("unknown: value\n"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	result, err := Execute(testContext(t), root, Request{Kind: Integrate, Slug: "missing-effort"}, markerRenderer)
+	result, err := Execute(testContext(t), root, Request{Kind: Integrate, Slug: "missing-effort"}, markerRenderer, allowAdmission)
 	if err == nil || !strings.Contains(err.Error(), "unknown") || strings.Contains(err.Error(), "missing-effort") || result.Release == nil {
 		t.Fatalf("integration precedence result=%#v err=%v", result, err)
 	}
@@ -244,7 +270,7 @@ func TestApplicationOpenResidentFailureIsReportedByWorktreeUseCase(t *testing.T)
 	failure := errors.New("resident open failure")
 	deps := ProductionDependencies()
 	deps.OpenResident = func(string) (worktree.ResidentHandle, error) { return nil, failure }
-	result, err := ExecuteWith(testContext(t), root, Request{Kind: AddWorktree, Slug: "resident-open"}, markerRenderer, deps)
+	result, err := ExecuteWith(testContext(t), root, Request{Kind: AddWorktree, Slug: "resident-open"}, markerRenderer, allowAdmission, deps)
 	if !errors.Is(err, failure) || result.Release == nil {
 		t.Fatalf("resident failure result=%#v err=%v", result, err)
 	}

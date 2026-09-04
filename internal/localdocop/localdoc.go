@@ -5,49 +5,28 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
+	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
-// Outcome retains the declaration replacement and Publisher result for a local-document transaction.
+// Outcome retains visible declaration and publication facts even on an ordinary error.
 type Outcome struct {
 	DocumentPath        string
 	DeclarationReplaced bool
 	Publisher           publisher.Result
 }
-type PartialError struct {
-	projectmutation.Partial[Outcome]
-}
 
-func newPartial(outcome Outcome, cause error, recovery ...string) *PartialError {
-	return &PartialError{Partial: projectmutation.NewPartial(outcome, cause, recovery)}
-}
+// LeaseAcquirer is the narrow mechanism seam used by focused lease tests.
+type LeaseAcquirer func(context.Context, string) (*filesystem.Lease, func() error, error)
 
-func committed(outcome Outcome) bool {
-	return outcome.DeclarationReplaced || outcome.Publisher.HasCommittedEffects()
-}
-
-// Finish retains committed local-document effects when presentation cleanup or
-// the caller-held lease release fails after the focused mutation returns.
-func Finish(outcome Outcome, operationErr, releaseErr error) error {
-	makePartial := func(outcome Outcome, cause error, phase projectmutation.Phase) error {
-		recovery := "repair the post-commit fault, then retry awf new doc"
-		if phase == projectmutation.PhaseRelease {
-			recovery = "repair the lease-release fault, then retry awf new doc"
-		}
-		return newPartial(outcome, cause, recovery)
-	}
-	operationErr = projectmutation.Promote(outcome, operationErr, projectmutation.PhaseCleanup, committed, makePartial)
-	return projectmutation.Finish(outcome, operationErr, releaseErr, committed, makePartial)
-}
-
-func localDocument(status string, o Outcome, recovery []string) (presentation.Document, error) {
+func (o Outcome) Document() (presentation.Document, error) {
 	value, err := presentation.Literal(fmt.Sprintf("%t", o.DeclarationReplaced))
 	if err != nil {
 		return presentation.Document{}, err
@@ -58,89 +37,169 @@ func localDocument(status string, o Outcome, recovery []string) (presentation.Do
 	}
 	identity := []presentation.Field{field}
 	if o.DocumentPath != "" {
-		path, err := presentation.Literal(o.DocumentPath)
+		value, err := presentation.Literal(o.DocumentPath)
 		if err != nil {
 			return presentation.Document{}, err
 		}
-		document, err := presentation.NewField("local document", path)
+		field, err := presentation.NewField("local document", value)
 		if err != nil {
 			return presentation.Document{}, err
 		}
-		identity = append(identity, document)
+		identity = append(identity, field)
 	}
 	changes := []presentation.MutationChange{}
-	for _, effect := range o.Publisher.Effects() {
-		value, err := presentation.Literal(fmt.Sprintf("%s %s; recovery: %s", effect.Kind, effect.Path, effect.Recovery))
-		if err != nil {
-			return presentation.Document{}, err
+	for _, group := range []struct {
+		label string
+		paths []string
+	}{{"outputs", changePaths(o.Publisher)}, {"pruned", o.Publisher.Pruned()}} {
+		values := []presentation.Value{}
+		for _, path := range group.paths {
+			value, err := presentation.Literal(path)
+			if err != nil {
+				return presentation.Document{}, err
+			}
+			values = append(values, value)
 		}
-		changes = append(changes, presentation.MutationChange{Label: "publisher effects", Values: []presentation.Value{value}})
-	}
-	next := make([]presentation.Value, 0, len(recovery))
-	for _, action := range recovery {
-		value, err := presentation.Prose(action)
-		if err != nil {
-			return presentation.Document{}, err
+		if len(values) != 0 {
+			changes = append(changes, presentation.MutationChange{Label: group.label, Values: values})
 		}
-		next = append(next, value)
 	}
-	return (presentation.Mutation{Status: status, Identity: identity, Changes: changes, NextActions: next}).Document()
-}
-func (o Outcome) Document() (presentation.Document, error) {
-	return localDocument("local document created", o, nil)
-}
-func (e *PartialError) Document() (presentation.Document, error) {
-	recovery := e.Recovery
-	if len(recovery) == 0 {
-		recovery = []string{"inspect the reported cause, then retry awf new doc"}
-	}
-	return localDocument("local document partially committed", e.Outcome, recovery)
+	return (presentation.Mutation{Status: "local document created", Identity: identity, Changes: changes}).Document()
 }
 
-// Run adds doc after checking its output collision, then synchronizes under the caller's complete project transaction.
-func Run(_ context.Context, doc config.LocalDoc, tx *projectmutation.Transaction) (outcome Outcome, err error) {
-	if tx == nil || tx.Scope() != projectmutation.ProjectScope {
+func changePaths(result publisher.Result) []string {
+	changes := result.Changes()
+	paths := make([]string, len(changes))
+	for i := range changes {
+		paths[i] = changes[i].Path
+	}
+	return paths
+}
+
+// Run adds doc after complete collision preflight, replaces the exact observed
+// declaration, reloads fresh authority, and synchronizes once under one lease.
+func Run(ctx context.Context, root string, doc config.LocalDoc, loader *project.Loader, acquire LeaseAcquirer) (outcome Outcome, returnErr error) {
+	if loader == nil {
+		return Outcome{}, errors.New("local document operation requires a project loader")
+	}
+	if acquire == nil {
+		acquire = func(ctx context.Context, root string) (*filesystem.Lease, func() error, error) {
+			lease, err := loader.AcquireProjectLease(ctx, root)
+			if err != nil {
+				return nil, nil, err
+			}
+			return lease, lease.Release, nil
+		}
+	}
+	lease, release, err := acquire(ctx, root)
+	if err != nil {
+		return Outcome{}, fmt.Errorf("acquire project lease for %s: %w", root, err)
+	}
+	if lease == nil || release == nil || !loader.CoversProjectLease(ctx, root, lease) {
+		if release != nil {
+			_ = release()
+		} else if lease != nil {
+			_ = lease.Release()
+		}
 		return Outcome{}, errors.New("local document operation requires a covering project lease")
 	}
-	files, err := tx.Open()
+	defer func() {
+		if err := release(); err != nil {
+			returnErr = errors.Join(returnErr, fmt.Errorf("release project lease for %s: %w", root, err))
+		}
+	}()
+	files, err := filesystem.Open(root)
 	if err != nil {
-		return Outcome{}, err
+		return Outcome{}, fmt.Errorf("open project root %s: %w", root, err)
 	}
-	defer files.Close()
-	session, configIdentity, err := tx.LoadForMutation(files)
+	defer func() {
+		if err := files.Close(); err != nil {
+			returnErr = errors.Join(returnErr, fmt.Errorf("close project root %s: %w", root, err))
+		}
+	}()
+	session, identity, err := loader.LoadForMutation(ctx, root, files)
 	if err != nil {
-		return Outcome{}, err
+		return Outcome{}, fmt.Errorf("load local-document authority: %w", err)
 	}
-	defer configIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
+	defer identity.Release() //nolint:errcheck
 	cfg := session.Config()
-	composed := publisher.New(session, project.Version)
-	if err := composed.PreflightLocalDoc(doc); err != nil {
-		return Outcome{}, err
+	declared := false
+	for _, existing := range cfg.LocalDocs {
+		if existing.Name != doc.Name {
+			continue
+		}
+		if existing != doc {
+			return Outcome{}, fmt.Errorf("local document %q is already declared differently", doc.Name)
+		}
+		declared = true
+		break
 	}
-	updated, err := config.AppendLocalDoc(cfg.Source(), doc)
-	if err != nil {
-		return Outcome{}, err
+	updated := cfg.Source()
+	if !declared {
+		composed := publisher.New(session, project.Version)
+		if err := composed.PreflightLocalDoc(doc); err != nil {
+			return Outcome{}, err
+		}
+		updated, err = config.AppendLocalDoc(cfg.Source(), doc)
+		if err != nil {
+			return Outcome{}, err
+		}
 	}
 	relative := filepath.ToSlash(filepath.Join("docs", doc.Name+".md"))
-	output := filepath.Join(tx.Root(), "docs", filepath.FromSlash(doc.Name)+".md")
-	if _, err := os.Lstat(output); err == nil {
-		return Outcome{}, fmt.Errorf("local document destination already exists: %s", relative)
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return Outcome{}, fmt.Errorf("inspect local document destination: %w", err)
-	}
-	if err := files.ReplaceExpected(".awf/config.yaml", configIdentity, updated, 0o644); err != nil {
+	if err := validateCandidate(ctx, root, loader, updated, lease); err != nil {
 		return Outcome{}, err
 	}
 	outcome.DocumentPath = relative
-	outcome.DeclarationReplaced = true
-	result, syncErr := tx.Synchronize()
-	outcome.Publisher = result
-	if syncErr != nil {
-		phase, _ := projectmutation.FailurePhase(syncErr)
-		if phase == projectmutation.PhaseReload {
-			return outcome, newPartial(outcome, syncErr, "repair config authority, then retry")
+	if !declared {
+		if err := files.ReplaceExpected(".awf/config.yaml", identity, updated, 0o644); err != nil {
+			return outcome, fmt.Errorf("replace observed local-document declaration %s: %w", config.ConfigPath(root), err)
 		}
-		return outcome, newPartial(outcome, syncErr, "repair the reported publication fault, then retry")
+		outcome.DeclarationReplaced = true
+	}
+	fresh, err := loader.Load(ctx, root)
+	if err != nil {
+		return outcome, fmt.Errorf("reload committed local-document declaration %s: %w", config.ConfigPath(root), err)
+	}
+	result, err := publisher.New(fresh, project.Version).SyncLeased(ctx, lease)
+	outcome.Publisher = result
+	if err != nil {
+		return outcome, fmt.Errorf("publish committed local document %s: %w", relative, err)
 	}
 	return outcome, nil
+}
+
+func validateCandidate(ctx context.Context, root string, loader *project.Loader, updated []byte, lease *filesystem.Lease) error {
+	tree := publisher.NewFilesystemReader(root)
+	candidateConfig, err := config.ParseTree(config.RootDir(root), updated, configTreeReader{tree: tree})
+	if err != nil {
+		return fmt.Errorf("validate candidate local-document config: %w", err)
+	}
+	candidate, err := loader.WithSelection(func(string) (*config.Config, error) { return candidateConfig, nil }, tree).Load(ctx, root)
+	if err != nil {
+		return fmt.Errorf("validate candidate local-document authority: %w", err)
+	}
+	if err := publisher.New(candidate, project.Version).PreflightSyncLeased(ctx, lease); err != nil {
+		return fmt.Errorf("preflight complete candidate local-document project: %w", err)
+	}
+	return nil
+}
+
+type configTreeReader struct{ tree outputplan.TreeReader }
+
+func (r configTreeReader) ReadFile(name string) ([]byte, bool) {
+	bytes, found, err := r.tree.ReadFile(filepath.ToSlash(filepath.Join(config.DirName, name)))
+	return bytes, found && err == nil
+}
+func (r configTreeReader) Paths(prefix string) []string {
+	paths, err := r.tree.Paths(filepath.ToSlash(filepath.Join(config.DirName, prefix)))
+	if err != nil {
+		return nil
+	}
+	out := make([]string, 0, len(paths))
+	for _, value := range paths {
+		if relative, found := strings.CutPrefix(value, config.DirName+"/"); found {
+			out = append(out, relative)
+		}
+	}
+	return out
 }

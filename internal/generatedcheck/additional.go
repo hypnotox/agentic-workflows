@@ -3,7 +3,6 @@ package generatedcheck
 import (
 	"fmt"
 	"maps"
-	"regexp"
 	"slices"
 	"sort"
 	"strings"
@@ -151,7 +150,7 @@ func (m claimed) directory(path string) bool {
 }
 
 func sweep(input AdditionalInput, files []outputplan.Output) []manifest.Drift {
-	m := claimed{files: map[string]bool{awfDir + "/config.yaml": true, awfDir + "/awf.lock": true, awfDir + "/current-state-upgrade.journal": true}, dirs: map[string]bool{awfDir: true, awfDir + "/parts": true, awfDir + "/memory": true}, artifacts: map[string]map[string]bool{}, singletons: map[string]bool{}}
+	m := claimed{files: map[string]bool{awfDir + "/config.yaml": true, awfDir + "/awf.lock": true}, dirs: map[string]bool{awfDir: true, awfDir + "/parts": true, awfDir + "/memory": true}, artifacts: map[string]map[string]bool{}, singletons: map[string]bool{}}
 	for _, name := range resident.RootNames() {
 		m.dirs[awfDir+"/"+name] = true
 	}
@@ -232,14 +231,10 @@ func sweep(input AdditionalInput, files []outputplan.Output) []manifest.Drift {
 	return drift
 }
 
-var backup = regexp.MustCompile(`\.awf-bak(\.\d+)?$`)
-
 func (m claimed) classify(rel string, dir bool) manifest.Drift {
 	d := manifest.Drift{Path: rel, Kind: "orphaned"}
 	segs := strings.Split(rel, "/")
 	switch {
-	case !dir && backup.MatchString(rel):
-		d.Detail = "stale awf-bak backup: review and delete"
 	case len(segs) == 3 && segs[1] == "parts" && dir && !m.singletons[segs[2]]:
 		d.Detail = "convention parts for an unknown singleton kind"
 	case len(segs) == 4 && segs[1] == "parts" && !dir && strings.HasSuffix(segs[3], ".md"):

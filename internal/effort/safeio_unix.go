@@ -53,7 +53,3 @@ func platformOpenRegularNoFollow(path string, create bool, mode os.FileMode) (*o
 }
 
 func validateOpenedFile(string, *os.File) error { return nil }
-
-func directorySyncAvailable() bool { return true }
-
-func openDirectoryForSync(path string) (durableFile, error) { return os.Open(path) }

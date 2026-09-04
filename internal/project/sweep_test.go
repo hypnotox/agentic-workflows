@@ -21,7 +21,6 @@ func orphanedByPath(drift []manifest.Drift) map[string]string {
 }
 
 const unclaimedDetail = "unclaimed file or directory: not part of the .awf config tree; delete it or move it out"
-const bakDetail = "stale awf-bak backup: review and delete"
 
 func checkDrift(t *testing.T, root string) []manifest.Drift {
 	t.Helper()
@@ -39,14 +38,13 @@ func checkDrift(t *testing.T, root string) []manifest.Drift {
 	return drift
 }
 
-func TestSweepClaimsOnlyUpgradeJournalAfterCutover(t *testing.T) {
+func TestSweepRejectsRetiredMigrationArtifacts(t *testing.T) {
 	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{"current-state-migration.yaml": "version: 1\ninvariantApprovals: []\n", "current-state-upgrade.journal": "{}\n"})
 	orphans := orphanedByPath(checkDrift(t, root))
-	if orphans[".awf/current-state-migration.yaml"] != unclaimedDetail {
-		t.Fatalf("reintroduced migration approval was not unclaimed: %#v", orphans)
-	}
-	if orphans[".awf/current-state-upgrade.journal"] != "" {
-		t.Fatalf("upgrade journal must remain transaction-owned: %#v", orphans)
+	for _, path := range []string{".awf/current-state-migration.yaml", ".awf/current-state-upgrade.journal"} {
+		if orphans[path] != unclaimedDetail {
+			t.Fatalf("retired migration artifact %s was not unclaimed: %#v", path, orphans)
+		}
 	}
 }
 
@@ -83,12 +81,11 @@ func TestSweepFlagsUnclaimedEntries(t *testing.T) {
 		".awf/skills/parts/awf-maintenance/stray.txt": unclaimedDetail,
 		".awf/skills/parts/awf-maintenance/bogus.md":  "convention part for a section not in the target's declared set",
 		".awf/skills/unknown.yaml":                    "sidecar for an artifact not in the catalog",
-		// invariant: rendering/sync-and-drift:awf-bak-flagged (.awf/config.yaml.awf-bak.2)
-		".awf/config.yaml.awf-bak.2":       bakDetail,
-		".awf/hooks/pre-commit.sh.awf-bak": bakDetail,
-		".awf/skills/parts/orphan-target":  "convention parts for an artifact not in the catalog",
-		".awf/parts/bogus-kind":            "convention parts for an unknown singleton kind",
-		".awf/parts/workflow/bogus.md":     "convention part for a section not in the singleton's declared set",
+		".awf/config.yaml.awf-bak.2":                  unclaimedDetail,
+		".awf/hooks/pre-commit.sh.awf-bak":            unclaimedDetail,
+		".awf/skills/parts/orphan-target":             "convention parts for an artifact not in the catalog",
+		".awf/parts/bogus-kind":                       "convention parts for an unknown singleton kind",
+		".awf/parts/workflow/bogus.md":                "convention part for a section not in the singleton's declared set",
 	}
 	for path, detail := range want {
 		if got[path] != detail {

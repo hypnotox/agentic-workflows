@@ -10,10 +10,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
-// upgradeSyncDependencies keeps the former command-composition fault seam in
-// tests. Production upgrade composition now passes its covering lease directly
-// to Publisher, so this test helper must not ship as an alternate publication
-// route.
 type upgradeSyncDependencies struct {
 	publisherSync func(context.Context, *project.Session) (publisher.Result, error)
 }
@@ -28,17 +24,11 @@ func upgradeSyncMutationWith(ctx context.Context, root string, dependencies upgr
 		return presentation.Mutation{}, err
 	}
 	result, syncErr := dependencies.publisherSync(ctx, state)
-	if syncErr != nil {
-		mutation, mutationErr := result.PartialMutation()
-		if mutationErr != nil {
-			return presentation.Mutation{}, mutationErr
-		}
-		return mutation, syncErr
-	}
-	return result.Mutation()
+	mutation, mutationErr := result.Mutation()
+	return mutation, errors.Join(syncErr, mutationErr)
 }
 
-func TestUpgradeSyncMutationWithPreservesPartialPublisherOutcome(t *testing.T) {
+func TestUpgradeSyncMutationWithPreservesSuccessfulPublisherFactsOnError(t *testing.T) {
 	root := scaffoldProject(t)
 	cause := errors.New("late publication failure")
 	mutation, err := upgradeSyncMutationWith(testContext(t), root, upgradeSyncDependencies{
@@ -51,9 +41,9 @@ func TestUpgradeSyncMutationWithPreservesPartialPublisherOutcome(t *testing.T) {
 		},
 	})
 	if !errors.Is(err, cause) {
-		t.Fatalf("error = %v, want late publication cause", err)
+		t.Fatalf("error = %v, want cause", err)
 	}
-	if mutation.Status != "partially committed" || len(mutation.Changes) == 0 {
-		t.Fatalf("mutation = %#v, want partial publisher effects", mutation)
+	if mutation.Status != "completed" {
+		t.Fatalf("mutation = %#v, want ordinary successful facts for diagnostic adaptation", mutation)
 	}
 }

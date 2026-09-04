@@ -12,7 +12,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/effort"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/worktree"
 )
 
@@ -113,110 +112,25 @@ func TestCreationFixtureMatchesDarwinVarAlias(t *testing.T) {
 	}
 }
 
-func TestCreationRollbackRemovesOnlyWhenTopologyIsProvenAbsent(t *testing.T) {
-	t.Run("rolled back", func(t *testing.T) {
-		root := applicationRepo(t)
-		cause := errors.New("worktree add")
-		application := creationApp(t, root, func(runner *faultRunner) {
-			runner.add = func(context.Context, string, string, string) error { return cause }
-		}, nil)
-		_, _, err := application.newEffort(testContext(t), effort.NewInput{Slug: "rolled-back", Title: "Rolled back"}, "")
-		var creation *CreationError
-		if !errors.As(err, &creation) || !errors.Is(err, cause) || creation.RollbackCause != nil || creation.ChangedEffort || creation.ChangedTopology {
-			t.Fatalf("rollback outcome = %#v, error=%v", creation, err)
-		}
-		if _, statErr := os.Lstat(filepath.Join(root, ".awf", "efforts", "rolled-back")); !errors.Is(statErr, os.ErrNotExist) {
-			t.Fatalf("rolled-back resident remains: %v", statErr)
-		}
-	})
-
-	t.Run("retained with topology", func(t *testing.T) {
-		root := applicationRepo(t)
-		cause := errors.New("post-add failure")
-		application := creationApp(t, root, func(runner *faultRunner) {
-			runner.add = func(ctx context.Context, path, branch, base string) error {
-				if err := runner.Runner.WorktreeAdd(ctx, path, branch, base); err != nil {
-					return err
-				}
-				return cause
-			}
-		}, nil)
-		_, _, err := application.newEffort(testContext(t), effort.NewInput{Slug: "retained-topology", Title: "Retained topology"}, "")
-		var creation *CreationError
-		if !errors.As(err, &creation) || !errors.Is(err, cause) || !errors.Is(err, effort.ErrManagedTopologyPresent) || !creation.ChangedEffort {
-			t.Fatalf("retained outcome = %#v, error=%v", creation, err)
-		}
-		want := worktree.TopologyEffects{ManagedPath: true, GitRegistration: true, Branch: true}
-		if creation.Topology != want {
-			t.Fatalf("retained topology = %#v, want %#v", creation.Topology, want)
-		}
-		if _, showErr := application.service.Show("retained-topology"); showErr != nil {
-			t.Fatalf("retained resident absent: %v", showErr)
-		}
-		var diagnostic interface {
-			Diagnostic() (presentation.Diagnostic, error)
-		}
-		if !errors.As(presentError(err), &diagnostic) {
-			t.Fatal("creation error lost outer application diagnostic")
-		}
-		mapped, mapErr := diagnostic.Diagnostic()
-		if mapErr != nil || mapped.Condition != "managed worktree creation failed and topology remains" {
-			t.Fatalf("outer diagnostic = %#v, %v", mapped, mapErr)
-		}
-	})
-}
-
-func TestCreationRollbackPreservesUncertaintyAndInterruptionStates(t *testing.T) {
-	t.Run("unknown topology", func(t *testing.T) {
-		root := applicationRepo(t)
-		probe := errors.New("topology probe")
-		application := creationApp(t, root, func(runner *faultRunner) {
-			runner.worktreeList = func(context.Context) ([]awfgit.WorktreeRegistration, error) { return nil, probe }
-			runner.branchExists = func(context.Context, string) (bool, error) { return false, probe }
-		}, nil)
-		_, _, err := application.newEffort(testContext(t), effort.NewInput{Slug: "unknown-creation", Title: "Unknown creation"}, "")
-		var creation *CreationError
-		if !errors.As(err, &creation) || !creation.Topology.Uncertain || !creation.ChangedEffort {
-			t.Fatalf("uncertain creation = %#v, error=%v", creation, err)
-		}
-	})
-
-	for _, test := range []struct {
-		stage         string
-		wantCondition string
-		residentGone  bool
-		reservation   bool
-	}{
-		{"rollback.rename", "managed worktree creation failed and effort rollback failed", false, false},
-		{"rollback.root-fsync", "managed worktree creation failed and effort deletion rollback was interrupted", true, true},
-		{"rollback.delete-fsync", "managed worktree creation failed after effort deletion with durability uncertainty", true, false},
-	} {
-		t.Run(test.stage, func(t *testing.T) {
-			root := applicationRepo(t)
-			application := creationApp(t, root, func(runner *faultRunner) {
-				runner.add = func(context.Context, string, string, string) error { return errors.New("worktree add") }
-			}, func(stage string) error {
-				if stage == test.stage {
-					return errors.New("injected " + stage)
-				}
-				return nil
-			})
-			_, _, err := application.newEffort(testContext(t), effort.NewInput{Slug: "faulted-rollback", Title: "Faulted rollback"}, "")
-			var creation *CreationError
-			if !errors.As(err, &creation) || creation.Condition != test.wantCondition || creation.RollbackCause == nil {
-				t.Fatalf("faulted creation = %#v, error=%v", creation, err)
-			}
-			active := filepath.Join(root, ".awf", "efforts", "faulted-rollback")
-			_, activeErr := os.Lstat(active)
-			if errors.Is(activeErr, os.ErrNotExist) != test.residentGone {
-				t.Fatalf("active resident error=%v, want gone=%t", activeErr, test.residentGone)
-			}
-			reservation := filepath.Join(root, ".awf", "efforts", ".finishing-"+creationTestID+"-faulted-rollback")
-			_, reservationErr := os.Lstat(reservation)
-			if (!errors.Is(reservationErr, os.ErrNotExist)) != test.reservation {
-				t.Fatalf("reservation error=%v, want present=%t", reservationErr, test.reservation)
-			}
-		})
+func TestCreationAddFailureRetainsResidentForOrdinaryRetry(t *testing.T) {
+	root := applicationRepo(t)
+	cause := errors.New("worktree add")
+	application := creationApp(t, root, func(runner *faultRunner) {
+		runner.add = func(context.Context, string, string, string) error { return cause }
+	}, nil)
+	record, result, err := application.newEffort(testContext(t), effort.NewInput{Slug: "retained", Title: "Retained"}, "")
+	var creation *CreationError
+	if !errors.As(err, &creation) || !errors.Is(err, cause) || !creation.ChangedEffort || record.Slug != "retained" || result != (worktree.Result{}) {
+		t.Fatalf("creation record=%#v result=%#v outcome=%#v error=%v", record, result, creation, err)
+	}
+	if creation.Condition != "managed worktree creation failed and the effort resident was retained" {
+		t.Fatalf("condition=%q", creation.Condition)
+	}
+	if _, showErr := application.service.Show("retained"); showErr != nil {
+		t.Fatalf("retained resident absent: %v", showErr)
+	}
+	if len(creation.Steps) < 2 || !strings.Contains(creation.Steps[1], "worktree add retained") {
+		t.Fatalf("recovery steps=%#v", creation.Steps)
 	}
 }
 

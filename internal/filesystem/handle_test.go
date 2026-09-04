@@ -316,40 +316,6 @@ func TestHandleOperations(t *testing.T) {
 	}
 }
 
-func TestHandleBackupCopiesConfinedSource(t *testing.T) {
-	h, root := openFixture(t)
-	if err := os.WriteFile(filepath.Join(root, "source"), []byte("source bytes"), 0o640); err != nil {
-		t.Fatal(err)
-	}
-	backup, err := h.Backup("source")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if backup != "source.awf-bak" {
-		t.Fatalf("backup path = %q", backup)
-	}
-	contents, err := os.ReadFile(filepath.Join(root, backup))
-	if err != nil || string(contents) != "source bytes" {
-		t.Fatalf("backup contents = %q, %v", contents, err)
-	}
-	if _, err := h.Backup("../escaping"); err == nil {
-		t.Fatal("backup accepted escaping source")
-	}
-}
-
-func TestBackupPropagatesSourceReadError(t *testing.T) {
-	failure := errors.New("source read failed")
-	_, err := Backup("source", func(string) ([]byte, fs.FileMode, error) {
-		return nil, 0, failure
-	}, func(string, []byte, fs.FileMode) error {
-		t.Fatal("publish called after source read failure")
-		return nil
-	})
-	if !errors.Is(err, failure) {
-		t.Fatalf("backup error = %v, want %v", err, failure)
-	}
-}
-
 // invariant: tooling/filesystem-access:root-confined-paths (TestReadWithModeReturnsOneObservedGeneration)
 func TestReadWithModeReturnsOneObservedGeneration(t *testing.T) {
 	h, root := openFixture(t)
@@ -401,61 +367,6 @@ func TestReadWithModeReturnsOneObservedGeneration(t *testing.T) {
 	case err := <-writerErr:
 		t.Fatalf("replace generation: %v", err)
 	default:
-	}
-}
-
-func TestBackupPreservesModeAndSelectsAvailablePath(t *testing.T) {
-	h, root := openFixture(t)
-	if err := os.WriteFile(filepath.Join(root, "source"), []byte("source bytes"), 0o640); err != nil {
-		t.Fatal(err)
-	}
-	backup, err := Backup("source", h.ReadWithMode, h.Publish)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if backup != "source.awf-bak" {
-		t.Fatalf("backup path = %q, want source.awf-bak", backup)
-	}
-	contents, err := os.ReadFile(filepath.Join(root, backup))
-	info, statErr := os.Stat(filepath.Join(root, backup))
-	if err != nil || statErr != nil || string(contents) != "source bytes" || info.Mode().Perm() != 0o640 {
-		t.Fatalf("backup = %q, %v, %v", contents, info, errors.Join(err, statErr))
-	}
-}
-
-func TestBackupRetriesOccupiedSuffix(t *testing.T) {
-	h, root := openFixture(t)
-	if err := os.WriteFile(filepath.Join(root, "source"), []byte("source bytes"), 0o640); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "source.awf-bak"), []byte("occupied"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	backup, err := Backup("source", h.ReadWithMode, h.Publish)
-	if err != nil {
-		t.Fatal(err)
-	}
-	if backup != "source.awf-bak.1" {
-		t.Fatalf("backup path = %q, want source.awf-bak.1", backup)
-	}
-	occupied, occupiedErr := os.ReadFile(filepath.Join(root, "source.awf-bak"))
-	contents, readErr := os.ReadFile(filepath.Join(root, backup))
-	if occupiedErr != nil || readErr != nil || string(occupied) != "occupied" || string(contents) != "source bytes" {
-		t.Fatalf("backup collision result = occupied %q backup %q errors %v", occupied, contents, errors.Join(occupiedErr, readErr))
-	}
-}
-
-func TestBackupPropagatesNonCollisionPublicationFailure(t *testing.T) {
-	failure := errors.New("publication failed")
-	calls := 0
-	_, err := Backup("source", func(string) ([]byte, fs.FileMode, error) {
-		return []byte("source bytes"), 0o640, nil
-	}, func(string, []byte, fs.FileMode) error {
-		calls++
-		return failure
-	})
-	if !errors.Is(err, failure) || calls != 1 {
-		t.Fatalf("backup error = %v, publication calls = %d", err, calls)
 	}
 }
 
@@ -679,9 +590,6 @@ func TestCreateDirectoryReturnsPublishedIdentityAndRefusesExistingDestination(t 
 			t.Fatal("directory publication through escaping parent succeeded")
 		}
 	}
-	if _, err := exchangeExpected(h.root, "temporary", "other/destination", created, nil, false, false); err == nil {
-		t.Fatal("different-parent expected mutation succeeded")
-	}
 	relocated := filepath.Join(container, "relocated")
 	if err := os.Rename(owned, relocated); err != nil {
 		t.Fatal(err)
@@ -701,43 +609,6 @@ func TestCreateDirectoryReturnsPublishedIdentityAndRefusesExistingDestination(t 
 	}
 	if info, err := os.Lstat(owned); err != nil || os.SameFile(created, info) {
 		t.Fatalf("replacement directory was claimed or removed: %v, %v", info, err)
-	}
-}
-
-func TestRetireExpectedRemovesOnlyTheObservedNonemptyDirectory(t *testing.T) {
-	root := t.TempDir()
-	h, err := Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer h.Close()
-	if err := os.Mkdir(filepath.Join(root, "retired"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "retired", "payload"), []byte("old"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	expected, err := h.ExpectedIdentity("retired")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := h.RetireExpected("retired", expected); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := os.Lstat(filepath.Join(root, "retired")); !errors.Is(err, fs.ErrNotExist) {
-		t.Fatalf("retired directory remains: %v", err)
-	}
-	if err := os.Mkdir(filepath.Join(root, "retired"), 0o700); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "retired", "successor"), []byte("keep"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	if err := h.RetireExpected("retired", expected); !errors.Is(err, ErrIdentityChanged) {
-		t.Fatalf("successor retirement = %v, want identity change", err)
-	}
-	if got, err := os.ReadFile(filepath.Join(root, "retired", "successor")); err != nil || string(got) != "keep" {
-		t.Fatalf("successor changed: bytes=%q error=%v", got, err)
 	}
 }
 
@@ -838,9 +709,6 @@ func TestExpectedIdentityReplacementAndRemovalCommitFilesAndEmptyDirectories(t *
 }
 
 func TestExpectedMutationRootAnchorRefusesRelocatedParent(t *testing.T) {
-	if runtime.GOOS != "linux" && runtime.GOOS != "darwin" && runtime.GOOS != "windows" {
-		t.Skip("native expected mutation is unavailable")
-	}
 	for _, remove := range []bool{false, true} {
 		t.Run(map[bool]string{false: "replace", true: "remove"}[remove], func(t *testing.T) {
 			container := t.TempDir()
@@ -860,9 +728,6 @@ func TestExpectedMutationRootAnchorRefusesRelocatedParent(t *testing.T) {
 			if err := os.WriteFile(filepath.Join(rootPath, "parent", "destination"), []byte("observed"), 0o600); err != nil {
 				t.Fatal(err)
 			}
-			if err := os.WriteFile(filepath.Join(rootPath, "parent", "temporary"), []byte("replacement"), 0o640); err != nil {
-				t.Fatal(err)
-			}
 			expected, err := h.ExpectedIdentity("parent/destination")
 			if err != nil {
 				t.Fatal(err)
@@ -871,24 +736,22 @@ func TestExpectedMutationRootAnchorRefusesRelocatedParent(t *testing.T) {
 			if err := os.Rename(filepath.Join(rootPath, "parent"), relocated); err != nil {
 				t.Fatal(err)
 			}
-			consumed, err := exchangeExpected(h.root, "parent/temporary", "parent/destination", expected, nil, remove, false)
-			if err == nil || consumed {
-				t.Fatalf("relocated-parent commit = consumed %v, error %v; want uncommitted refusal", consumed, err)
+			if remove {
+				err = h.RemoveExpected("parent/destination", expected)
+			} else {
+				err = h.ReplaceExpected("parent/destination", expected, []byte("replacement"), 0o640)
+			}
+			if err == nil {
+				t.Fatal("relocated-parent mutation succeeded")
 			}
 			if got, err := os.ReadFile(filepath.Join(relocated, "destination")); err != nil || string(got) != "observed" {
 				t.Fatalf("relocated destination = %q, %v", got, err)
-			}
-			if got, err := os.ReadFile(filepath.Join(relocated, "temporary")); err != nil || string(got) != "replacement" {
-				t.Fatalf("relocated temporary = %q, %v", got, err)
 			}
 		})
 	}
 }
 
 func TestExpectedMutationRefusesDisappearedDestination(t *testing.T) {
-	if runtime.GOOS != "linux" {
-		t.Skip("covers the Linux exchange syscall refusal")
-	}
 	root := t.TempDir()
 	h, err := Open(root)
 	if err != nil {
@@ -898,9 +761,6 @@ func TestExpectedMutationRefusesDisappearedDestination(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "destination"), []byte("observed"), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "temporary"), []byte("replacement"), 0o640); err != nil {
-		t.Fatal(err)
-	}
 	expected, err := h.ExpectedIdentity("destination")
 	if err != nil {
 		t.Fatal(err)
@@ -908,12 +768,11 @@ func TestExpectedMutationRefusesDisappearedDestination(t *testing.T) {
 	if err := os.Remove(filepath.Join(root, "destination")); err != nil {
 		t.Fatal(err)
 	}
-	consumed, err := exchangeExpected(h.root, "temporary", "destination", expected, nil, false, false)
-	if err == nil || consumed {
-		t.Fatalf("disappeared-destination commit = consumed %v, error %v; want uncommitted refusal", consumed, err)
+	if err := h.ReplaceExpected("destination", expected, []byte("replacement"), 0o640); !errors.Is(err, ErrIdentityChanged) {
+		t.Fatalf("disappeared-destination replacement = %v, want identity refusal", err)
 	}
-	if got, err := os.ReadFile(filepath.Join(root, "temporary")); err != nil || string(got) != "replacement" {
-		t.Fatalf("temporary after refusal = %q, %v", got, err)
+	if _, err := os.Stat(filepath.Join(root, "destination")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("replacement created disappeared destination: %v", err)
 	}
 }
 
@@ -942,8 +801,8 @@ func TestExpectedIdentityRemovalPreservesNonemptyDirectory(t *testing.T) {
 	}
 }
 
-func TestHandleIdentityAndRetirementInputRefusals(t *testing.T) {
-	h, root := openFixture(t)
+func TestHandleIdentityInputRefusals(t *testing.T) {
+	h, _ := openFixture(t)
 	if _, err := h.RootMatches(filepath.Join(t.TempDir(), "missing")); err == nil {
 		t.Fatal("missing root identity comparison succeeded")
 	}
@@ -953,19 +812,6 @@ func TestHandleIdentityAndRetirementInputRefusals(t *testing.T) {
 	}
 	if _, err := h.RootMatches(fileRoot); err == nil {
 		t.Fatal("file root identity comparison succeeded")
-	}
-	if err := h.RetireExpected("../outside", nil); err == nil {
-		t.Fatal("invalid retirement path succeeded")
-	}
-	if err := os.WriteFile(filepath.Join(root, "file"), []byte("content"), 0o600); err != nil {
-		t.Fatal(err)
-	}
-	regular, err := h.ExpectedIdentity("file")
-	if err != nil {
-		t.Fatal(err)
-	}
-	if err := h.RetireExpected("file", regular); !errors.Is(err, ErrIdentityChanged) {
-		t.Fatalf("regular-file retirement = %v, want identity change", err)
 	}
 	if _, err := h.ReadDir("../outside"); err == nil {
 		t.Fatal("invalid read-directory path succeeded")

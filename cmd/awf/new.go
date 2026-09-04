@@ -2,18 +2,15 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/localdocop"
 	"github.com/hypnotox/agentic-workflows/internal/pitfallop"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/topicop"
 )
 
@@ -38,7 +35,7 @@ func runNew(ctx context.Context, root, kind string, args []string, stdout io.Wri
 	}
 }
 
-func newDoc(ctx context.Context, root string, args []string, title *string, stdout io.Writer) (returnErr error) {
+func newDoc(ctx context.Context, root string, args []string, title *string, stdout io.Writer) error {
 	if len(args) != 2 {
 		return &usageErr{"usage: awf new doc <name> <description> [--title <title>]"}
 	}
@@ -46,30 +43,17 @@ func newDoc(ctx context.Context, root string, args []string, title *string, stdo
 	if title != nil {
 		resolvedTitle = *title
 	}
-	var outcome localdocop.Outcome
 	loader, err := newProjectLoader(root)
 	if err != nil {
 		return err
 	}
-	tx, err := projectmutation.AcquireProject(ctx, root, loader, nil)
+	outcome, err := localdocop.Run(ctx, root, config.LocalDoc{Name: args[0], Title: resolvedTitle, Description: args[1]}, loader, gatedLeaseAcquirer(loader))
 	if err != nil {
-		return err
-	}
-	defer func() { returnErr = localdocop.Finish(outcome, returnErr, tx.Release()) }()
-	if err := gate(ctx, root); err != nil {
-		return err
-	}
-	outcome, err = localdocop.Run(ctx, config.LocalDoc{Name: args[0], Title: resolvedTitle, Description: args[1]}, tx)
-	if err != nil {
-		var partial *localdocop.PartialError
-		if !errors.As(err, &partial) {
-			return err
+		touched := publisherPaths(outcome.Publisher)
+		if outcome.DeclarationReplaced {
+			touched = append([]string{".awf/config.yaml"}, touched...)
 		}
-		document, documentErr := partial.Document()
-		if documentErr != nil {
-			return errors.Join(err, documentErr)
-		}
-		return errors.Join(err, presentation.Render(stdout, document))
+		return mutationFailure{condition: "local document creation did not complete", cause: err, touched: touched, rerun: "awf new doc " + args[0]}
 	}
 	document, err := outcome.Document()
 	if err != nil {
@@ -90,110 +74,48 @@ func derivedLocalDocTitle(name string) string {
 }
 
 func newPitfall(ctx context.Context, root string, args []string, stdout io.Writer) error {
-	return newPitfallWithFaults(ctx, root, args, stdout, nil, pitfallop.Create)
+	return newPitfallWith(ctx, root, args, stdout, nil, pitfallop.Create)
 }
 
-type pitfallCreate func(context.Context, string, *projectmutation.Transaction) (pitfallop.Outcome, error)
+type pitfallCreate func(context.Context, string, string, *project.Loader, pitfallop.LeaseAcquirer) (pitfallop.Outcome, error)
 
-func pitfallReleaseFailure(err error) error {
-	if err == nil {
-		return nil
-	}
-	if phase, ok := projectmutation.FailurePhase(err); ok && phase == projectmutation.PhaseRelease {
-		return err
-	}
-	return &projectmutation.Failure{Phase: projectmutation.PhaseRelease, Cause: err}
-}
-
-func newPitfallWithFaults(ctx context.Context, root string, args []string, stdout io.Writer, releaseFault func() error, create pitfallCreate) (returnErr error) {
+func newPitfallWith(ctx context.Context, root string, args []string, stdout io.Writer, acquire pitfallop.LeaseAcquirer, create pitfallCreate) error {
 	if len(args) != 1 {
 		return &usageErr{"usage: awf new pitfall <title>"}
 	}
-	lease, err := filesystem.AcquireTrackedLease(ctx, root)
-	if err != nil {
-		return err
-	}
-	released := false
-	defer func() {
-		if !released {
-			returnErr = errors.Join(returnErr, pitfallReleaseFailure(lease.Release()))
-		}
-	}()
-	if err := gate(ctx, root); err != nil {
-		return err
-	}
 	loader, err := newProjectLoader(root)
 	if err != nil {
 		return err
 	}
-	tx, err := projectmutation.UseTracked(ctx, root, loader, lease)
+	if acquire == nil {
+		acquire = gatedLeaseAcquirer(loader)
+	}
+	outcome, err := create(ctx, root, args[0], loader, acquire)
 	if err != nil {
-		return err
-	}
-	outcome, operationErr := create(ctx, args[0], tx)
-	releaseErr := lease.Release()
-	released = true
-	if releaseFault != nil {
-		releaseErr = errors.Join(releaseErr, releaseFault())
-	}
-	releaseErr = pitfallReleaseFailure(releaseErr)
-	operationErr = pitfallop.Finish(outcome, operationErr, releaseErr)
-	if operationErr != nil {
-		var partial *pitfallop.PartialError
-		if !errors.As(operationErr, &partial) {
-			return operationErr
+		touched := []string(nil)
+		if outcome.SourcePath != "" {
+			touched = append(touched, outcome.SourcePath)
 		}
-		document, documentErr := partial.Document()
-		if documentErr != nil {
-			return errors.Join(operationErr, documentErr)
-		}
-		if renderErr := presentation.Render(stdout, document); renderErr != nil {
-			return errors.Join(operationErr, renderErr)
-		}
-		return &producedReportError{operationErr}
+		return mutationFailure{condition: "pitfall creation did not complete", cause: err, touched: touched, rerun: "awf new pitfall"}
 	}
 	document, err := outcome.Document()
 	if err != nil {
-		return pitfallop.Finish(outcome, err, nil)
+		return err
 	}
-	if err := presentation.Render(stdout, document); err != nil {
-		return pitfallop.Finish(outcome, err, nil)
-	}
-	return nil
+	return presentation.Render(stdout, document)
 }
 
-func newTopic(ctx context.Context, root string, args []string, stdout io.Writer) (returnErr error) {
+func newTopic(ctx context.Context, root string, args []string, stdout io.Writer) error {
 	if len(args) < 2 {
 		return &usageErr{"usage: awf new topic <domain> <title>"}
-	}
-	var outcome topicop.Outcome
-	lease, err := filesystem.AcquireTrackedLease(ctx, root)
-	if err != nil {
-		return err
-	}
-	defer func() { returnErr = topicop.Finish(outcome, returnErr, lease.Release()) }()
-	if err := gate(ctx, root); err != nil {
-		return err
 	}
 	loader, err := newProjectLoader(root)
 	if err != nil {
 		return err
 	}
-	tx, err := projectmutation.UseTracked(ctx, root, loader, lease)
+	outcome, err := topicop.Create(ctx, root, args[0], strings.Join(args[1:], " "), loader, gatedLeaseAcquirer(loader))
 	if err != nil {
-		return err
-	}
-	outcome, err = topicop.Create(ctx, args[0], strings.Join(args[1:], " "), tx)
-	if err != nil {
-		var partial *topicop.PartialScaffoldError
-		if !errors.As(err, &partial) {
-			return err
-		}
-		partialDocument, documentErr := partial.Document()
-		if documentErr != nil {
-			return errors.Join(err, documentErr)
-		}
-		return errors.Join(err, presentation.Render(stdout, partialDocument))
+		return mutationFailure{condition: "topic creation did not complete", cause: err, touched: outcome.Created, rerun: "awf new topic"}
 	}
 	return presentation.Render(stdout, outcome.Document)
 }

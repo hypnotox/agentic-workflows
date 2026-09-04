@@ -9,7 +9,7 @@ Install `agentic-skills` globally for generic skills and roles. Pi users also in
 update, vendor, configure, or probe either package, and all binary operations remain offline.
 
 This is the daily guide. [Workflow](workflow.md) owns AWF effort and capability routing;
-[Debugging](debugging.md) owns recovery and failure diagnosis; and the [configuration
+[Debugging](debugging.md) owns failure inspection and retry guidance; and the [configuration
 reference](config-reference.md) owns configuration and override semantics. Pi adopters use the
 [Pi runtime reference](pi-runtime-reference.md) for the external runtime boundary.
 <!-- awf:end -->
@@ -24,7 +24,7 @@ reference](config-reference.md) owns configuration and override semantics. Pi ad
 - `./awf config [<key-or-var>]`: inspect effective configuration.
 
 Use the repository `./awf` wrapper for local commands. For workflow and effort commands, see
-[Workflow](workflow.md); for a command refusal, recovery, or upgrade residue, see
+[Workflow](workflow.md); for a command refusal or failed upgrade, see
 [Debugging](debugging.md).
 <!-- awf:end -->
 
@@ -76,7 +76,7 @@ bash .awf/upgrade.sh
 
 Then inspect the changed generated outputs, run `./awf check`, and commit the source, output, and
 lock updates together. Upgrades rename retained authored skill overrides to the four fixed AWF
-identities and preserve removed generic overrides as adjacent `.awf-bak` files. They never copy
-those overrides into the global package. Review backup residue and preserve unrelated harness
-content. For advanced recovery and triage, see [Debugging](debugging.md).
+identities only when ownership and collision checks permit it. Content AWF cannot prove it owns
+blocks mutation rather than being overwritten, moved, or copied aside. If an upgrade fails, inspect
+the reported paths and Git diff, correct the blocker, and rerun it. See [Debugging](debugging.md).
 <!-- awf:end -->

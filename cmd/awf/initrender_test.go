@@ -298,7 +298,7 @@ func TestRunInitSyncError(t *testing.T) {
 	if err := os.MkdirAll(out, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err == nil {
+	if err := runInit(ctx, root, false, nil, "", io.Discard); err == nil {
 		t.Error("expected runInit to surface the sync error")
 	}
 }

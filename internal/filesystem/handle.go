@@ -2,6 +2,7 @@
 package filesystem
 
 import (
+	"bytes"
 	"crypto/rand"
 	"encoding/hex"
 	"errors"
@@ -42,14 +43,9 @@ var ErrIdentityChanged = errors.New("filesystem: observed identity changed")
 // directory containing another entry.
 var ErrDirectoryNotEmpty = errors.New("filesystem: directory not empty")
 
-// CommittedPublication reports the confined destination and cleanup residue
-// carried by a committed exclusive-publication error.
-func CommittedPublication(err error) (destination, residue string, committed bool) {
-	var cleanup *filepublication.CommittedCleanupError
-	if !errors.As(err, &cleanup) {
-		return "", "", false
-	}
-	return cleanup.DestinationPath, cleanup.ResiduePath, true
+type expectedRegularFile struct {
+	contents []byte
+	mode     fs.FileMode
 }
 
 // Open opens root as a root-confined filesystem handle.
@@ -139,38 +135,6 @@ func (h *Handle) Publish(path string, contents []byte, mode fs.FileMode) error {
 	return nil
 }
 
-// Backup reads source once, preserving its permission mode, then exclusively
-// publishes a complete sibling backup at source.awf-bak or its first available
-// numbered suffix. The supplied confined callbacks keep source access and
-// publication policy with the caller while this package owns the shared naming
-// and collision protocol.
-// Backup copies a source beneath this handle to its first free sibling backup.
-func (h *Handle) Backup(source string) (string, error) {
-	if err := validPath(source); err != nil {
-		return "", fmt.Errorf("filesystem: backup %q: %w", source, err)
-	}
-	return Backup(source, h.ReadWithMode, h.Publish)
-}
-
-func Backup(source string, readWithMode func(string) ([]byte, fs.FileMode, error), publish func(string, []byte, fs.FileMode) error) (string, error) {
-	contents, mode, err := readWithMode(source)
-	if err != nil {
-		return "", err
-	}
-	for suffix := 0; ; suffix++ {
-		destination := source + ".awf-bak"
-		if suffix != 0 {
-			destination = fmt.Sprintf("%s.%d", destination, suffix)
-		}
-		if err := publish(destination, contents, mode); errors.Is(err, fs.ErrExist) {
-			continue
-		} else if err != nil {
-			return "", err
-		}
-		return destination, nil
-	}
-}
-
 // Replace atomically replaces path with one complete file beneath the selected
 // root, preserving the requested final mode. Callers that previously observed
 // the destination should use ReplaceExpected.
@@ -213,8 +177,8 @@ func (h *Handle) replaceExpected(destination string, expected *ExpectedIdentity,
 		}
 		return nil
 	}
-	if !expected.valid() {
-		return fmt.Errorf("filesystem: replace %q: %w", destination, ErrIdentityChanged)
+	if err := h.validateExpected(destination, expected, exact); err != nil {
+		return fmt.Errorf("filesystem: replace %q: %w", destination, err)
 	}
 	if expected.IsDir() {
 		return fmt.Errorf("filesystem: replace %q: destination is a directory", destination)
@@ -226,14 +190,13 @@ func (h *Handle) replaceExpected(destination string, expected *ExpectedIdentity,
 		if _, err := rand.Read(token[:]); err != nil {
 			return fmt.Errorf("filesystem: name replacement temporary for %q: %w", destination, err)
 		}
-		temporary = path.Join(path.Dir(destination), ".awf-atomic-"+hex.EncodeToString(token[:]))
-		var err error
-		file, err = h.root.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-		if errors.Is(err, fs.ErrExist) {
+		temporary = path.Join(path.Dir(destination), ".awf-write-"+hex.EncodeToString(token[:]))
+		file, returnErr = h.root.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
+		if errors.Is(returnErr, fs.ErrExist) {
 			continue
 		}
-		if err != nil {
-			return fmt.Errorf("filesystem: create replacement temporary for %q: %w", destination, err)
+		if returnErr != nil {
+			return fmt.Errorf("filesystem: create replacement temporary for %q: %w", destination, returnErr)
 		}
 		break
 	}
@@ -258,19 +221,40 @@ func (h *Handle) replaceExpected(destination string, expected *ExpectedIdentity,
 	if err := file.Chmod(mode); err != nil {
 		return fmt.Errorf("filesystem: set replacement mode for %q: %w", destination, err)
 	}
-	if err := file.Sync(); err != nil {
-		return fmt.Errorf("filesystem: sync replacement temporary for %q: %w", destination, err)
-	}
 	if err := file.Close(); err != nil {
 		return fmt.Errorf("filesystem: close replacement temporary for %q: %w", destination, err)
 	}
 	file = nil
-	consumed, err := exchangeExpected(h.root, temporary, destination, expected, exact, false, false)
-	if consumed {
-		temporary = ""
-	}
-	if err != nil {
+	if err := h.validateExpected(destination, expected, exact); err != nil {
 		return fmt.Errorf("filesystem: replace %q: %w", destination, err)
+	}
+	if err := h.root.Rename(temporary, destination); err != nil {
+		return fmt.Errorf("filesystem: replace %q: %w", destination, err)
+	}
+	temporary = ""
+	return nil
+}
+
+func (h *Handle) validateExpected(destination string, expected *ExpectedIdentity, exact *expectedRegularFile) error {
+	if !expected.valid() {
+		return ErrIdentityChanged
+	}
+	info, err := h.root.Lstat(destination)
+	if err != nil || !expected.same(info) {
+		return errors.Join(ErrIdentityChanged, err)
+	}
+	if exact == nil {
+		return nil
+	}
+	if !info.Mode().IsRegular() {
+		return fmt.Errorf("expected entry is not a regular file: %w", ErrIdentityChanged)
+	}
+	got, mode, err := h.ReadExpected(destination, expected)
+	if err != nil {
+		return err
+	}
+	if mode.Perm() != exact.mode.Perm() || !bytes.Equal(got, exact.contents) {
+		return ErrIdentityChanged
 	}
 	return nil
 }
@@ -300,64 +284,6 @@ func (h *Handle) RemoveAll(path string) error {
 	return nil
 }
 
-// RetireExpected atomically detaches the expected directory before deleting its
-// contents. A same-name successor installed after the exchange is never
-// traversed or removed.
-func (h *Handle) RetireExpected(destination string, expected *ExpectedIdentity) (returnErr error) {
-	if expected != nil {
-		defer expected.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
-	}
-	if err := validPath(destination); err != nil {
-		return fmt.Errorf("filesystem: retire %q: %w", destination, err)
-	}
-	if !expected.valid() || !expected.IsDir() {
-		return fmt.Errorf("filesystem: retire %q: %w", destination, ErrIdentityChanged)
-	}
-	var temporary string
-	for range 100 {
-		var token [16]byte
-		if _, err := rand.Read(token[:]); err != nil {
-			return fmt.Errorf("filesystem: name retirement temporary for %q: %w", destination, err)
-		}
-		temporary = path.Join(path.Dir(destination), ".awf-retire-"+hex.EncodeToString(token[:]))
-		if err := h.root.Mkdir(temporary, 0o700); errors.Is(err, fs.ErrExist) {
-			continue
-		} else if err != nil {
-			return fmt.Errorf("filesystem: create retirement temporary for %q: %w", destination, err)
-		}
-		break
-	}
-	if temporary == "" {
-		return fmt.Errorf("filesystem: create retirement temporary for %q: collisions exhausted", destination)
-	}
-	defer func() {
-		if temporary != "" {
-			if err := h.root.RemoveAll(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {
-				returnErr = errors.Join(returnErr, fmt.Errorf("filesystem: retire cleanup residue %q: %w", temporary, err))
-			}
-		}
-	}()
-	consumed, err := exchangeExpected(h.root, temporary, destination, expected, nil, true, true)
-	if err != nil {
-		if consumed {
-			// The platform owner reports the retained residue. Do not let deferred
-			// cleanup erase committed recovery evidence.
-			temporary = ""
-		}
-		return fmt.Errorf("filesystem: retire %q: %w", destination, err)
-	}
-	if !consumed {
-		return fmt.Errorf("filesystem: retire %q: expected mutation was not committed", destination)
-	}
-	residue := temporary
-	if err := h.root.RemoveAll(residue); err != nil {
-		temporary = ""
-		return &filepublication.CommittedCleanupError{DestinationPath: destination, ResiduePath: residue, Cause: fmt.Errorf("remove retired tree: %w", err)}
-	}
-	temporary = ""
-	return nil
-}
-
 // RemoveExpected removes path only while it still has expected's identity.
 func (h *Handle) RemoveExpected(destination string, expected *ExpectedIdentity) error {
 	return h.removeExpected(destination, expected, nil)
@@ -370,18 +296,15 @@ func (h *Handle) RemoveExpectedRegularFile(destination string, expected *Expecte
 	return h.removeExpected(destination, expected, exact)
 }
 
-func (h *Handle) removeExpected(destination string, expected *ExpectedIdentity, exact *expectedRegularFile) (returnErr error) {
+func (h *Handle) removeExpected(destination string, expected *ExpectedIdentity, exact *expectedRegularFile) error {
 	if expected != nil {
 		defer expected.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
 	}
 	if err := validPath(destination); err != nil {
 		return fmt.Errorf("filesystem: remove %q: %w", destination, err)
 	}
-	if !expected.valid() {
-		return fmt.Errorf("filesystem: remove %q: %w", destination, ErrIdentityChanged)
-	}
-	if exact != nil && expected.IsDir() {
-		return fmt.Errorf("filesystem: remove %q: expected entry is not a regular file: %w", destination, ErrIdentityChanged)
+	if err := h.validateExpected(destination, expected, exact); err != nil {
+		return fmt.Errorf("filesystem: remove %q: %w", destination, err)
 	}
 	if expected.IsDir() {
 		directory, err := h.root.Open(destination)
@@ -396,51 +319,11 @@ func (h *Handle) removeExpected(destination string, expected *ExpectedIdentity, 
 		if !errors.Is(readErr, io.EOF) || closeErr != nil {
 			return fmt.Errorf("filesystem: inspect removable directory %q: %w", destination, errors.Join(readErr, closeErr))
 		}
+		if err := h.validateExpected(destination, expected, exact); err != nil {
+			return fmt.Errorf("filesystem: remove %q: %w", destination, err)
+		}
 	}
-	var temporary string
-	created := false
-	for range 100 {
-		var token [16]byte
-		if _, err := rand.Read(token[:]); err != nil {
-			return fmt.Errorf("filesystem: name removal temporary for %q: %w", destination, err)
-		}
-		temporary = path.Join(path.Dir(destination), ".awf-remove-"+hex.EncodeToString(token[:]))
-		if expected.IsDir() {
-			returnErr = h.root.Mkdir(temporary, 0o700)
-		} else {
-			var file *os.File
-			file, returnErr = h.root.OpenFile(temporary, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o600)
-			if returnErr == nil {
-				if closeErr := file.Close(); closeErr != nil {
-					removeErr := h.root.Remove(temporary)
-					return fmt.Errorf("filesystem: close removal temporary for %q: %w", destination, errors.Join(closeErr, removeErr))
-				}
-			}
-		}
-		if errors.Is(returnErr, fs.ErrExist) {
-			continue
-		}
-		if returnErr != nil {
-			return fmt.Errorf("filesystem: create removal temporary for %q: %w", destination, returnErr)
-		}
-		created = true
-		break
-	}
-	if !created {
-		return fmt.Errorf("filesystem: create removal temporary for %q: collisions exhausted", destination)
-	}
-	defer func() {
-		if temporary != "" {
-			if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {
-				returnErr = errors.Join(returnErr, fmt.Errorf("filesystem: remove removal temporary %q: %w", temporary, err))
-			}
-		}
-	}()
-	consumed, err := exchangeExpected(h.root, temporary, destination, expected, exact, true, false)
-	if consumed {
-		temporary = ""
-	}
-	if err != nil {
+	if err := h.root.Remove(destination); err != nil {
 		return fmt.Errorf("filesystem: remove %q: %w", destination, err)
 	}
 	return nil

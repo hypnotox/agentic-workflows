@@ -12,19 +12,16 @@ import (
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
-// TopologyEffects records independently observable Git topology axes. Git
-// remains the reconciliation owner: uncertainty is explicit when a probe could
-// not establish an axis after a failed native operation.
+// TopologyEffects records independently completed Git topology changes.
 type TopologyEffects struct {
 	ManagedPath     bool
 	GitRegistration bool
 	Branch          bool
 	ReceivingHEAD   bool
-	Uncertain       bool
 }
 
 func (e TopologyEffects) Changed() bool {
-	return e.ManagedPath || e.GitRegistration || e.Branch || e.ReceivingHEAD || e.Uncertain
+	return e.ManagedPath || e.GitRegistration || e.Branch || e.ReceivingHEAD
 }
 
 func (e TopologyEffects) merge(other TopologyEffects) TopologyEffects {
@@ -33,25 +30,6 @@ func (e TopologyEffects) merge(other TopologyEffects) TopologyEffects {
 		GitRegistration: e.GitRegistration || other.GitRegistration,
 		Branch:          e.Branch || other.Branch,
 		ReceivingHEAD:   e.ReceivingHEAD || other.ReceivingHEAD,
-		Uncertain:       e.Uncertain || other.Uncertain,
-	}
-}
-
-// changedSince retains only the axes whose observed presence changed between
-// two topology snapshots. A failed removal command is therefore not credited
-// with an axis that was already present before it ran.
-func (e TopologyEffects) changedSince(before TopologyEffects) TopologyEffects {
-	if e.Uncertain || before.Uncertain {
-		// TopologyEffects deliberately does not claim which probe was unavailable.
-		// Without that provenance, comparing a false value could fabricate a
-		// removal axis, so preserve uncertainty alone.
-		return TopologyEffects{Uncertain: true}
-	}
-	return TopologyEffects{
-		ManagedPath:     e.ManagedPath != before.ManagedPath,
-		GitRegistration: e.GitRegistration != before.GitRegistration,
-		Branch:          e.Branch != before.Branch,
-		ReceivingHEAD:   e.ReceivingHEAD != before.ReceivingHEAD,
 	}
 }
 

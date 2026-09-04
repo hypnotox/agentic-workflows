@@ -16,7 +16,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
@@ -34,67 +33,68 @@ type Request struct {
 	Mode             Mode
 	Kind, Name, Part string
 	Content          []byte
-	// Sidecar selects a configuration-owned sidecar leaf. SidecarMode is value,
-	// add, remove, or reset; Value is already typed by the CLI boundary.
-	Sidecar     bool
-	SidecarMode string
-	Value       any
+	Sidecar          bool
+	SidecarMode      string
+	Value            any
 }
 
-// Run executes one complete semantic authoring transaction. The lease acquirer
-// remains injectable so tests can exercise release faults without mutable globals.
-func Run(ctx context.Context, root string, request Request, loader *project.Loader, acquire projectmutation.LeaseAcquirer) (Outcome, error) {
+// LeaseAcquirer is the narrow mechanism seam used by focused lease tests.
+type LeaseAcquirer func(context.Context, string) (*filesystem.Lease, func() error, error)
+
+// Run validates and applies one authored source change while holding the
+// complete project lease from the first mutable authority read through sync.
+func Run(ctx context.Context, root string, request Request, loader *project.Loader, acquire LeaseAcquirer) (outcome Outcome, returnErr error) {
 	if loader == nil {
 		return Outcome{}, errors.New("authoring operation requires a project loader")
 	}
 	if request.Mode != Edit && request.Mode != Reset {
 		return Outcome{}, fmt.Errorf("unknown authoring mode %q", request.Mode)
 	}
-	tx, err := projectmutation.AcquireProject(ctx, root, loader, acquire)
-	if err != nil {
-		if errors.Is(err, projectmutation.ErrProjectLeaseCoverage) {
-			return Outcome{}, errors.New("authoring operation requires a covering project lease")
+	if acquire == nil {
+		acquire = func(ctx context.Context, root string) (*filesystem.Lease, func() error, error) {
+			lease, err := loader.AcquireProjectLease(ctx, root)
+			if err != nil {
+				return nil, nil, err
+			}
+			return lease, lease.Release, nil
 		}
-		return Outcome{}, err
 	}
-	outcome, operationErr := runLeased(ctx, root, request, loader, tx)
-	operationErr = normalizePostRunError(outcome, operationErr)
-	return outcome, projectmutation.Finish(outcome, operationErr, tx.Release(), committed, func(outcome Outcome, cause error, phase projectmutation.Phase) error {
-		return partialForPhase(outcome, cause, phase)
-	})
-}
-
-func committed(outcome Outcome) bool {
-	return outcome.Source != SourceNone || len(outcome.CreatedParents) != 0 || len(outcome.Residue) != 0 || outcome.Publisher.HasCommittedEffects()
-}
-
-// normalizePostRunError retains committed effects when deferred cleanup turns an
-// otherwise successful leased operation into a plain error.
-func normalizePostRunError(outcome Outcome, err error) error {
-	return projectmutation.Promote(outcome, err, projectmutation.PhaseCleanup, committed, func(outcome Outcome, cause error, phase projectmutation.Phase) error {
-		return partialForPhase(outcome, cause, phase)
-	})
-}
-
-func partialForPhase(outcome Outcome, cause error, phase projectmutation.Phase) *PartialError {
-	action := "repair the post-commit fault, then rerun awf render"
-	if phase == projectmutation.PhaseRelease {
-		action = "remove reported residue first, then rerun awf render after the lease-release fault is repaired"
-	}
-	return partial(outcome, cause, action)
-}
-
-func runLeased(ctx context.Context, root string, request Request, loader *project.Loader, tx *projectmutation.Transaction) (outcome Outcome, returnErr error) {
-	files, err := tx.Open()
+	lease, release, err := acquire(ctx, root)
 	if err != nil {
-		return Outcome{}, err
+		return Outcome{}, fmt.Errorf("acquire project lease for %s: %w", root, err)
 	}
-	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
+	if lease == nil || release == nil || !loader.CoversProjectLease(ctx, root, lease) {
+		if release != nil {
+			_ = release()
+		} else if lease != nil {
+			_ = lease.Release()
+		}
+		return Outcome{}, errors.New("authoring operation requires a covering project lease")
+	}
+	defer func() {
+		if err := release(); err != nil {
+			returnErr = errors.Join(returnErr, fmt.Errorf("release project lease for %s: %w", root, err))
+		}
+	}()
 
-	session, err := tx.LoadAuthority()
+	files, err := filesystem.Open(root)
 	if err != nil {
-		return Outcome{}, err
+		return Outcome{}, fmt.Errorf("open project root %s: %w", root, err)
 	}
+	defer func() {
+		if err := files.Close(); err != nil {
+			returnErr = errors.Join(returnErr, fmt.Errorf("close project root %s: %w", root, err))
+		}
+	}()
+	return runLeased(ctx, root, request, loader, lease, files)
+}
+
+func runLeased(ctx context.Context, root string, request Request, loader *project.Loader, lease *filesystem.Lease, files *filesystem.Handle) (outcome Outcome, returnErr error) {
+	session, identity, err := loader.LoadForMutation(ctx, root, files)
+	if err != nil {
+		return Outcome{}, fmt.Errorf("load authoring authority: %w", err)
+	}
+	defer identity.Release() //nolint:errcheck // descriptor cleanup only
 	cfg := session.Config()
 	var target project.AuthoringTarget
 	if request.Sidecar {
@@ -107,141 +107,107 @@ func runLeased(ctx context.Context, root string, request Request, loader *projec
 	}
 	outcome = Outcome{Kind: target.Kind, Name: target.Name, Part: target.Part, SourcePath: target.SourcePath, Source: SourceNone}
 
-	identity, identityErr := files.ExpectedIdentity(target.SourcePath)
+	sourceIdentity, identityErr := files.ExpectedIdentity(target.SourcePath)
 	if identityErr != nil && !errors.Is(identityErr, fs.ErrNotExist) {
 		return outcome, fmt.Errorf("observe authoring source %s: %w", target.SourcePath, identityErr)
 	}
 	if errors.Is(identityErr, fs.ErrNotExist) {
-		identity = nil
+		sourceIdentity = nil
 	}
-	defer identity.Release() //nolint:errcheck // replacement/removal consumes it; cleanup cannot alter the mutation outcome
-
+	if sourceIdentity != nil {
+		defer sourceIdentity.Release() //nolint:errcheck // consumed by exact mutation or descriptor cleanup
+	}
 	var before []byte
 	mode := fs.FileMode(0o644)
-	if identity != nil {
-		before, mode, err = files.ReadExpected(target.SourcePath, identity)
+	if sourceIdentity != nil {
+		before, mode, err = files.ReadExpected(target.SourcePath, sourceIdentity)
 		if err != nil {
-			return outcome, err
+			return outcome, fmt.Errorf("read observed authoring source %s: %w", target.SourcePath, err)
 		}
 	}
-	if target.Local && identity == nil {
+	if target.Local && sourceIdentity == nil {
 		return outcome, fmt.Errorf("configured local document output %s is absent; run awf render first", target.SourcePath)
 	}
 
-	var candidateBytes []byte
-	var candidatePresent, changed bool
+	var candidate []byte
+	var present, changed bool
 	if request.Sidecar {
-		candidateBytes, candidatePresent, changed, err = config.EditSidecar(before, config.SidecarEdit{Field: request.Part, Mode: request.SidecarMode, Value: request.Value})
+		candidate, present, changed, err = config.EditSidecar(before, config.SidecarEdit{Field: request.Part, Mode: request.SidecarMode, Value: request.Value})
 	} else {
-		candidateBytes, candidatePresent, err = candidateSource(request, target.Local, before)
+		candidate, present, err = candidateSource(request, target.Local, before)
 		changed = true
 	}
 	if err != nil {
 		return outcome, err
 	}
-	overlay := candidateOverlay{
-		base: publisher.NewFilesystemReader(root), path: target.SourcePath,
-		bytes: slices.Clone(candidateBytes), present: candidatePresent,
-	}
+	overlay := candidateOverlay{base: publisher.NewFilesystemReader(root), path: target.SourcePath, bytes: slices.Clone(candidate), present: present}
 	candidateConfig, err := config.ParseTree(config.RootDir(root), cfg.Source(), configOverlay{tree: overlay})
 	if err != nil {
 		return outcome, fmt.Errorf("validate candidate config tree: %w", err)
 	}
-	candidateLoad := func(string) (*config.Config, error) { return candidateConfig, nil }
-	candidateSession, err := loader.WithSelection(candidateLoad, overlay).Load(ctx, root)
+	candidateSession, err := loader.WithSelection(func(string) (*config.Config, error) { return candidateConfig, nil }, overlay).Load(ctx, root)
 	if err != nil {
 		return outcome, fmt.Errorf("validate candidate project authority: %w", err)
 	}
-	candidatePublisher := publisher.New(candidateSession, project.Version)
-	if _, err := candidatePublisher.Plan(); err != nil {
+	if _, err := publisher.New(candidateSession, project.Version).Plan(); err != nil {
 		return outcome, fmt.Errorf("validate complete candidate project: %w", err)
 	}
 
 	if request.Sidecar && !changed {
-		return synchronizeCommitted(tx, outcome)
+		return synchronize(ctx, root, target.SourcePath, loader, lease, outcome)
 	}
-
 	if !target.Local && (request.Mode == Edit || request.Sidecar) {
 		parents := missingParents(files, path.Dir(target.SourcePath))
-		if len(parents) != 0 {
-			if err := files.MkdirAll(path.Dir(target.SourcePath), 0o755); err != nil {
-				outcome.CreatedParents = existingDirectories(files, parents)
-				if committed(outcome) {
-					return outcome, partial(outcome, err, "repair the source parent, then retry the edit")
-				}
-				return outcome, err
-			}
+		if err := files.MkdirAll(path.Dir(target.SourcePath), 0o755); err != nil {
 			outcome.CreatedParents = existingDirectories(files, parents)
+			return outcome, fmt.Errorf("create parent for authoring source %s: %w", target.SourcePath, err)
 		}
+		outcome.CreatedParents = existingDirectories(files, parents)
 	}
 
 	switch {
 	case target.Local:
-		err = files.ReplaceExpected(target.SourcePath, identity, candidateBytes, mode)
+		err = files.ReplaceExpected(target.SourcePath, sourceIdentity, candidate, mode)
 		if err == nil {
 			outcome.Source = SourceLocalBody
 		}
-	case request.Sidecar && !candidatePresent && identity != nil:
-		err = files.RemoveExpected(target.SourcePath, identity)
+	case request.Sidecar && !present && sourceIdentity != nil:
+		err = files.RemoveExpected(target.SourcePath, sourceIdentity)
 		if err == nil {
 			outcome.Source = SourceRemoved
 		}
 	case request.Mode == Edit || request.Sidecar:
-		err = files.ReplaceExpected(target.SourcePath, identity, candidateBytes, mode)
+		err = files.ReplaceExpected(target.SourcePath, sourceIdentity, candidate, mode)
 		if err == nil {
-			if identity == nil {
+			if sourceIdentity == nil {
 				outcome.Source = SourceCreated
 			} else {
 				outcome.Source = SourceReplaced
 			}
 		}
-	case identity != nil:
-		err = files.RemoveExpected(target.SourcePath, identity)
+	case sourceIdentity != nil:
+		err = files.RemoveExpected(target.SourcePath, sourceIdentity)
 		if err == nil {
 			outcome.Source = SourceRemoved
 		}
 	}
 	if err != nil {
-		if committedPath, residue, didCommit := filesystem.CommittedPublication(err); didCommit {
-			_ = committedPath
-			outcome.Source = committedSourceEffect(request, target.Local, identity != nil)
-			if residue != "" {
-				outcome.Residue = append(outcome.Residue, residue)
-			}
-		}
-		if committed(outcome) {
-			return outcome, partial(outcome, err, "remove reported residue first, inspect the committed source, then retry")
-		}
-		return outcome, err
+		return outcome, fmt.Errorf("mutate observed authoring source %s: %w", target.SourcePath, err)
 	}
-
-	return synchronizeCommitted(tx, outcome)
+	return synchronize(ctx, root, target.SourcePath, loader, lease, outcome)
 }
 
-func synchronizeCommitted(tx *projectmutation.Transaction, outcome Outcome) (Outcome, error) {
-	result, syncErr := tx.Synchronize()
+func synchronize(ctx context.Context, root, sourcePath string, loader *project.Loader, lease *filesystem.Lease, outcome Outcome) (Outcome, error) {
+	fresh, err := loader.Load(ctx, root)
+	if err != nil {
+		return outcome, fmt.Errorf("reload committed authoring source %s: %w", sourcePath, err)
+	}
+	result, err := publisher.New(fresh, project.Version).SyncLeased(ctx, lease)
 	outcome.Publisher = result
-	if syncErr == nil {
-		return outcome, nil
+	if err != nil {
+		return outcome, fmt.Errorf("publish committed authoring source %s: %w", sourcePath, err)
 	}
-	phase, _ := projectmutation.FailurePhase(syncErr)
-	if phase == projectmutation.PhaseReload {
-		return outcome, partial(outcome, syncErr, "repair committed source authority, then rerun awf render")
-	}
-	return outcome, partial(outcome, syncErr, "remove reported residue first, repair the publisher fault, then rerun awf render")
-}
-
-func committedSourceEffect(request Request, local, existed bool) SourceEffect {
-	if local {
-		return SourceLocalBody
-	}
-	if request.Mode == Reset {
-		return SourceRemoved
-	}
-	if existed {
-		return SourceReplaced
-	}
-	return SourceCreated
+	return outcome, nil
 }
 
 func candidateSource(request Request, local bool, before []byte) ([]byte, bool, error) {
@@ -257,22 +223,6 @@ func candidateSource(request Request, local bool, before []byte) ([]byte, bool, 
 		return nil, false, nil
 	}
 	return slices.Clone(request.Content), true, nil
-}
-
-func partial(outcome Outcome, cause error, action string) *PartialError {
-	var recovery []string
-	if action != "" {
-		recovery = recoveryFor(outcome, action)
-	}
-	return &PartialError{Partial: projectmutation.NewPartial(outcome, cause, recovery)}
-}
-
-func recoveryFor(outcome Outcome, action string) []string {
-	recovery := []string{}
-	if len(outcome.Residue) != 0 {
-		recovery = append(recovery, "remove the reported publication residue")
-	}
-	return append(recovery, action)
 }
 
 func missingParents(files *filesystem.Handle, directory string) []string {
@@ -299,8 +249,7 @@ func existingDirectories(files *filesystem.Handle, candidates []string) []string
 	return existing
 }
 
-// candidateOverlay supplies the exact same candidate replacement/removal to
-// both the project-tree and config-tree reader contracts.
+// candidateOverlay supplies the same candidate to project and config readers.
 type candidateOverlay struct {
 	base    outputplan.TreeReader
 	path    string
@@ -314,7 +263,6 @@ func (r candidateOverlay) ReadFile(name string) ([]byte, bool, error) {
 	}
 	return r.base.ReadFile(name)
 }
-
 func (r candidateOverlay) Paths(prefix string) ([]string, error) {
 	paths, err := r.base.Paths(prefix)
 	if err != nil {
@@ -334,10 +282,8 @@ func (r configOverlay) ReadFile(name string) ([]byte, bool) {
 	bytes, found, err := r.tree.ReadFile(filepath.ToSlash(filepath.Join(config.DirName, name)))
 	return bytes, found && err == nil
 }
-
 func (r configOverlay) Paths(prefix string) []string {
-	rooted := filepath.ToSlash(filepath.Join(config.DirName, prefix))
-	paths, err := r.tree.Paths(rooted)
+	paths, err := r.tree.Paths(filepath.ToSlash(filepath.Join(config.DirName, prefix)))
 	if err != nil {
 		return nil
 	}

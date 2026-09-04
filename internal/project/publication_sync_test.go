@@ -36,7 +36,7 @@ func TestSyncPruneFailureKeepsLockEntry(t *testing.T) {
 		t.Fatal(err)
 	}
 	testsupport.WriteFile(t, filepath.Join(path, "resident"), "keep\n")
-	if _, _, _, err := syncReportProject(p); err == nil || !strings.Contains(err.Error(), "read retired output") {
+	if _, _, err := syncReportProject(p); err == nil || !strings.Contains(err.Error(), "inspect retired output") {
 		t.Fatalf("prune error = %v", err)
 	}
 	lock, err = manifest.Load(lockFile(root))
@@ -60,7 +60,7 @@ func TestSyncPruneReportSkipsAlreadyGoneFile(t *testing.T) {
 	noTDD := strings.Replace(sampleYAML, "  - debugging\n", "", 1)
 	_ = os.WriteFile(configPath(root), []byte(noTDD), 0o644)
 	p2, _ := loadTestSession(testContext(t), root)
-	_, _, pruned, err := syncReportProject(p2)
+	_, pruned, err := syncReportProject(p2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -75,7 +75,7 @@ func TestSyncReportOpensDistinctResidentRootBeforeTrackedMutation(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	agents := filepath.Join(root, "AGENTS.md")
@@ -99,7 +99,7 @@ func TestSyncReportOpensDistinctResidentRootBeforeTrackedMutation(t *testing.T) 
 	}
 	roots := p.Roots()
 	p = setTestRoots(p, resident.NewRoots(roots.Tracked, missingResident))
-	if _, _, _, err := syncReportProject(p); err == nil {
+	if _, _, err := syncReportProject(p); err == nil {
 		t.Fatal("sync accepted missing distinct resident root")
 	}
 	if got, err := os.ReadFile(agents); err != nil || string(got) != "hand edit\n" {
@@ -114,7 +114,7 @@ func TestSyncReportOpensDistinctResidentRootBeforeTrackedMutation(t *testing.T) 
 func TestSyncReportReportsContentAndModeOnce(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := loadTestSession(testContext(t), root)
-	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	agents := filepath.Join(root, "AGENTS.md")
@@ -125,7 +125,7 @@ func TestSyncReportReportsContentAndModeOnce(t *testing.T) {
 		t.Fatal(err)
 	}
 	p, _ = loadTestSession(testContext(t), root)
-	_, changes, _, err := syncReportProject(p)
+	changes, _, err := syncReportProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -135,12 +135,11 @@ func TestSyncReportReportsContentAndModeOnce(t *testing.T) {
 	assertPerm(t, agents, 0o644)
 }
 
-// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestSyncReportForeignFinalSymlinkPolicy)
+// invariant: rendering/sync-and-drift:sync-protects-unowned-content (TestSyncReportForeignFinalSymlinkPolicy)
 func TestSyncReportForeignFinalSymlinkPolicy(t *testing.T) {
 	for _, tc := range []struct {
-		name    string
-		target  func(t *testing.T, root string) string
-		wantErr bool
+		name   string
+		target func(t *testing.T, root string) string
 	}{
 		{"in root", func(t *testing.T, root string) string {
 			path := filepath.Join(root, "foreign")
@@ -148,15 +147,15 @@ func TestSyncReportForeignFinalSymlinkPolicy(t *testing.T) {
 				t.Fatal(err)
 			}
 			return "foreign"
-		}, false},
+		}},
 		{"escaping", func(t *testing.T, _ string) string {
 			path := filepath.Join(t.TempDir(), "foreign")
 			if err := os.WriteFile(path, []byte("outside\n"), 0o640); err != nil {
 				t.Fatal(err)
 			}
 			return path
-		}, true},
-		{"broken", func(*testing.T, string) string { return "missing" }, true},
+		}},
+		{"broken", func(*testing.T, string) string { return "missing" }},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
 			root := scaffold(t, sampleYAML)
@@ -164,7 +163,7 @@ func TestSyncReportForeignFinalSymlinkPolicy(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
+			if _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 				t.Fatal(err)
 			}
 			lock, err := manifest.Load(lockPath(p.Root()))
@@ -182,42 +181,91 @@ func TestSyncReportForeignFinalSymlinkPolicy(t *testing.T) {
 			if err := os.Symlink(tc.target(t, root), agents); err != nil {
 				t.Skipf("symlink unavailable: %v", err)
 			}
-			backups, _, _, err := syncReportProject(p)
-			if tc.wantErr {
-				if err == nil {
-					t.Fatal("foreign unsafe symlink was replaced")
-				}
-				if _, statErr := os.Lstat(agents); statErr != nil {
-					t.Fatalf("unsafe link changed: %v", statErr)
-				}
-				if _, statErr := os.Stat(agents + ".awf-bak"); !errors.Is(statErr, os.ErrNotExist) {
-					t.Fatalf("unsafe link backup = %v", statErr)
-				}
-				return
-			}
+			before, err := os.Lstat(agents)
 			if err != nil {
 				t.Fatal(err)
 			}
-			if len(backups) == 0 || backups[0].Bak != "AGENTS.md.awf-bak" {
-				t.Fatalf("backups = %v", backups)
+			beforeTarget, err := os.Readlink(agents)
+			if err != nil {
+				t.Fatal(err)
 			}
-			contents, readErr := os.ReadFile(agents + ".awf-bak")
-			info, statErr := os.Stat(agents + ".awf-bak")
-			if readErr != nil || statErr != nil || string(contents) != "foreign bytes\n" || info.Mode().Perm() != 0o640 {
-				t.Fatalf("backup = %q, %v, %v", contents, info, errors.Join(readErr, statErr))
+			if _, _, err := syncReportProject(p); err == nil {
+				t.Fatal("foreign final symlink was replaced")
 			}
-			info, statErr = os.Lstat(agents)
-			if statErr != nil || info.Mode()&os.ModeSymlink != 0 {
-				t.Fatalf("foreign link not replaced: %v, %v", info, statErr)
+			after, statErr := os.Lstat(agents)
+			afterTarget, readlinkErr := os.Readlink(agents)
+			if statErr != nil || readlinkErr != nil || after.Mode() != before.Mode() || afterTarget != beforeTarget {
+				t.Fatalf("foreign link changed: before %v -> %q, after %v -> %q, errors %v", before.Mode(), beforeTarget, after, afterTarget, errors.Join(statErr, readlinkErr))
+			}
+			if _, statErr := os.Stat(agents + ".awf-bak"); !errors.Is(statErr, os.ErrNotExist) {
+				t.Fatalf("foreign link backup = %v", statErr)
 			}
 		})
 	}
 }
 
-func TestSyncReportReplacesManagedFinalSymlinkWithoutTargetAccess(t *testing.T) {
+func TestSyncReportAdoptsExactUnmanagedDesiredFile(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	p, err := loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
+		t.Fatal(err)
+	}
+	agents := filepath.Join(root, "AGENTS.md")
+	beforeBytes, err := os.ReadFile(agents)
+	if err != nil {
+		t.Fatal(err)
+	}
+	beforeInfo, err := os.Stat(agents)
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	delete(lock.Files, "AGENTS.md")
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+
+	p, err = loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	changes, _, err := syncReportProject(p)
+	if err != nil {
+		t.Fatalf("adopt exact unmanaged output: %v", err)
+	}
+	if slices.ContainsFunc(changes, func(change publisher.Change) bool { return change.Path == "AGENTS.md" }) {
+		t.Fatalf("exact adoption reported a file mutation: %v", changes)
+	}
+	afterBytes, err := os.ReadFile(agents)
+	if err != nil || !reflect.DeepEqual(afterBytes, beforeBytes) {
+		t.Fatalf("adopted bytes = %q, %v; want %q", afterBytes, err, beforeBytes)
+	}
+	afterInfo, err := os.Stat(agents)
+	if err != nil || afterInfo.Mode().Perm() != beforeInfo.Mode().Perm() {
+		t.Fatalf("adopted mode = %v, %v; want %v", afterInfo, err, beforeInfo.Mode().Perm())
+	}
+	if _, err := os.Stat(agents + ".awf-bak"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("exact adoption backup = %v", err)
+	}
+	lock, err = manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, ok := lock.Files["AGENTS.md"]; !ok {
+		t.Fatal("exact unmanaged output was not adopted into the lock")
+	}
+}
+
+func TestSyncReportRefusesManagedFinalSymlinkWithoutTargetAccess(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := loadTestSession(testContext(t), root)
-	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	agents := filepath.Join(root, "AGENTS.md")
@@ -228,12 +276,15 @@ func TestSyncReportReplacesManagedFinalSymlinkWithoutTargetAccess(t *testing.T) 
 		t.Skipf("symlink unavailable: %v", err)
 	}
 	p, _ = loadTestSession(testContext(t), root)
-	if _, _, _, err := syncReportProject(p); err != nil {
-		t.Fatalf("SyncReport: %v", err)
+	if _, _, err := syncReportProject(p); err == nil {
+		t.Fatal("SyncReport accepted a managed final symlink")
 	}
 	info, err := os.Lstat(agents)
-	if err != nil || info.Mode()&os.ModeSymlink != 0 {
-		t.Fatalf("managed symlink = %v, %v", info, err)
+	if err != nil || info.Mode()&os.ModeSymlink == 0 {
+		t.Fatalf("managed symlink changed = %v, %v", info, err)
+	}
+	if _, err := os.Stat(agents + ".awf-bak"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("managed symlink backup = %v", err)
 	}
 }
 
@@ -245,12 +296,12 @@ func TestSyncReportReplacesManagedFinalSymlinkWithoutTargetAccess(t *testing.T) 
 func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, _ := loadTestSession(testContext(t), root)
-	_, changes, pruned, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version})
+	changes, pruned, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(changes) != 0 || len(pruned) != 0 {
-		t.Errorf("first sync has no baseline and must report no changes or prunes, got changes %v, pruned %v", changes, pruned)
+	if !slices.Contains(changes, publisher.Change{Path: "AGENTS.md", Cause: "added"}) || len(pruned) != 0 {
+		t.Errorf("first sync changes = %v, pruned = %v", changes, pruned)
 	}
 	lock, err := manifest.Load(lockPath(p.Root()))
 	if err != nil {
@@ -280,13 +331,16 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 	if err := lock.Save(lockPath(p.Root())); err != nil {
 		t.Fatal(err)
 	}
-	for _, path := range []string{"AGENTS.md", ".claude/skills/awf-maintenance/SKILL.md", "CLAUDE.md", ".awf/efforts/.gitignore", "docs/config-reference.md", "docs/workflow.md"} {
+	for _, path := range []string{"AGENTS.md", ".claude/skills/awf-maintenance/SKILL.md", "CLAUDE.md", ".awf/efforts/.gitignore", "docs/config-reference.md"} {
 		if err := os.WriteFile(filepath.Join(root, path), []byte("stale output\n"), 0o644); err != nil {
 			t.Fatal(err)
 		}
 	}
+	if err := os.Remove(filepath.Join(root, "docs/workflow.md")); err != nil {
+		t.Fatal(err)
+	}
 	p2, _ := loadTestSession(testContext(t), root)
-	_, changes, _, err = syncReportProject(p2)
+	changes, _, err = syncReportProject(p2)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -304,7 +358,7 @@ func TestSyncReportClassifiesChangedOutput(t *testing.T) {
 }
 
 // invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncMutationsStayWithinSelectedRoots)
-// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestSyncMutationsStayWithinSelectedRoots)
+// invariant: rendering/sync-and-drift:sync-protects-unowned-content (TestSyncMutationsStayWithinSelectedRoots)
 func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	residentRoot := t.TempDir()
@@ -314,7 +368,7 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	}
 	roots := p.Roots()
 	p = setTestRoots(p, resident.NewRoots(roots.Tracked, residentRoot))
-	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	for _, tc := range []struct{ root, path string }{
@@ -326,8 +380,8 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 		}
 	}
 
-	// A foreign ordinary output keeps its bytes, mode, and report through the
-	// tracked handle before replacement.
+	// A differing foreign ordinary output is refused through the tracked
+	// handle without changing its bytes or mode or creating a sibling backup.
 	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
@@ -336,28 +390,43 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filepath.Join(root, "AGENTS.md"), []byte("foreign\n"), 0o640); err != nil {
+	beforeCollisionLock, err := os.ReadFile(lockFile(root))
+	if err != nil {
 		t.Fatal(err)
 	}
-	if err := os.Chmod(filepath.Join(root, "AGENTS.md"), 0o640); err != nil {
+	agents := filepath.Join(root, "AGENTS.md")
+	if err := os.WriteFile(agents, []byte("foreign\n"), 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(agents, 0o640); err != nil {
 		t.Fatal(err)
 	}
 	p, _ = loadTestSession(testContext(t), root)
 	roots = p.Roots()
 	roots.Resident = residentRoot
 	p = setTestRoots(p, roots)
-	backups, _, _, err := syncReportProject(p)
-	if err != nil || !slices.Contains(backups, publisher.Backup{Path: "AGENTS.md", Bak: "AGENTS.md.awf-bak"}) {
-		t.Fatalf("foreign backup = %v, error = %v", backups, err)
+	if _, _, err := syncReportProject(p); err == nil {
+		t.Fatal("sync replaced a differing foreign tracked output")
 	}
-	backup := filepath.Join(root, "AGENTS.md.awf-bak")
-	if got, err := os.ReadFile(backup); err != nil || string(got) != "foreign\n" {
-		t.Fatalf("backup bytes = %q, %v", got, err)
+	if got, err := os.ReadFile(agents); err != nil || string(got) != "foreign\n" {
+		t.Fatalf("foreign tracked bytes = %q, %v", got, err)
 	}
-	assertPerm(t, backup, 0o640)
+	assertPerm(t, agents, 0o640)
+	if _, err := os.Stat(agents + ".awf-bak"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("foreign tracked backup = %v", err)
+	}
+	if got, err := os.ReadFile(lockFile(root)); err != nil || !reflect.DeepEqual(got, beforeCollisionLock) {
+		t.Fatalf("lock changed after tracked collision refusal = %q, %v", got, err)
+	}
+	if err := os.Remove(agents); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := syncReportProject(p); err != nil {
+		t.Fatal(err)
+	}
 
-	// A foreign resident output keeps the same lock-relative report while its
-	// backup, replacement bytes, and final mode stay under the resident root.
+	// A differing foreign resident output receives the same refusal under the
+	// resident handle, with no mutation or sibling backup.
 	lock, err = manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
@@ -365,6 +434,10 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	const residentOutput = ".awf/efforts/.gitignore"
 	delete(lock.Files, residentOutput)
 	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	beforeCollisionLock, err = os.ReadFile(lockFile(root))
+	if err != nil {
 		t.Fatal(err)
 	}
 	residentFile := filepath.Join(residentRoot, filepath.FromSlash(residentOutput))
@@ -377,19 +450,25 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	p, _ = loadTestSession(testContext(t), root)
 	roots = p.Roots()
 	p = setTestRoots(p, resident.NewRoots(roots.Tracked, residentRoot))
-	backups, _, _, err = syncReportProject(p)
-	wantResidentBackup := publisher.Backup{Path: residentOutput, Bak: residentOutput + ".awf-bak"}
-	if err != nil || !slices.Contains(backups, wantResidentBackup) {
-		t.Fatalf("resident backup = %v, error = %v", backups, err)
+	if _, _, err := syncReportProject(p); err == nil {
+		t.Fatal("sync replaced a differing foreign resident output")
 	}
-	residentBackup := residentFile + ".awf-bak"
-	residentBackupBytes, residentBackupErr := os.ReadFile(residentBackup)
-	residentOutputBytes, residentOutputErr := os.ReadFile(residentFile)
-	if residentBackupErr != nil || residentOutputErr != nil || string(residentBackupBytes) != "resident foreign\n" || string(residentOutputBytes) == "resident foreign\n" {
-		t.Fatalf("resident publication = backup %q output %q errors %v", residentBackupBytes, residentOutputBytes, errors.Join(residentBackupErr, residentOutputErr))
+	if got, err := os.ReadFile(residentFile); err != nil || string(got) != "resident foreign\n" {
+		t.Fatalf("foreign resident bytes = %q, %v", got, err)
 	}
-	assertPerm(t, residentBackup, 0o640)
-	assertPerm(t, residentFile, 0o644)
+	assertPerm(t, residentFile, 0o640)
+	if _, err := os.Stat(residentFile + ".awf-bak"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("foreign resident backup = %v", err)
+	}
+	if got, err := os.ReadFile(lockFile(root)); err != nil || !reflect.DeepEqual(got, beforeCollisionLock) {
+		t.Fatalf("lock changed after resident collision refusal = %q, %v", got, err)
+	}
+	if err := os.Remove(residentFile); err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := syncReportProject(p); err != nil {
+		t.Fatal(err)
+	}
 
 	// A managed final symlink is refused without touching its target.
 	lock, err = manifest.Load(lockFile(root))
@@ -415,8 +494,8 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	roots = p.Roots()
 	roots.Resident = residentRoot
 	p = setTestRoots(p, roots)
-	_, _, pruned, err := syncReportProject(p)
-	if err == nil || !strings.Contains(err.Error(), "unsafe pruned managed output") || slices.Contains(pruned, retired) {
+	_, pruned, err := syncReportProject(p)
+	if err == nil || !strings.Contains(err.Error(), "inspect retired output") || slices.Contains(pruned, retired) {
 		t.Fatalf("managed symlink refusal = %v, %v", pruned, err)
 	}
 	if got, err := os.ReadFile(outside); err != nil || string(got) != "outside\n" {
@@ -450,7 +529,7 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	roots = p.Roots()
 	roots.Resident = residentRoot
 	p = setTestRoots(p, roots)
-	if _, _, _, err := syncReportProject(p); err == nil {
+	if _, _, err := syncReportProject(p); err == nil {
 		t.Fatal("sync accepted escaping prune parent")
 	}
 	if got, err := os.ReadFile(outsideVictim); err != nil || string(got) != "outside prune\n" {
@@ -493,7 +572,7 @@ func TestSyncMutationsStayWithinSelectedRoots(t *testing.T) {
 	roots = p.Roots()
 	roots.Resident = residentRoot
 	p = setTestRoots(p, roots)
-	if _, _, _, err := syncReportProject(p); err == nil {
+	if _, _, err := syncReportProject(p); err == nil {
 		t.Fatal("sync accepted escaping output parent")
 	}
 	if got, err := os.ReadFile(sentinel); err != nil || string(got) != "outside bytes\n" {
@@ -511,7 +590,7 @@ func TestSyncLockRefusesEscapingParent(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	before, err := os.ReadFile(lockFile(root))
@@ -527,7 +606,7 @@ func TestSyncLockRefusesEscapingParent(t *testing.T) {
 	}
 	// The selected handle refuses the symlinked lock parent before it can load
 	// or advance authority; outside receives neither lock bytes nor a mode change.
-	if _, _, _, err := syncReportProject(p); err == nil {
+	if _, _, err := syncReportProject(p); err == nil {
 		t.Fatal("sync accepted escaping lock parent")
 	}
 	if _, err := os.Stat(filepath.Join(outside, "awf.lock")); !errors.Is(err, os.ErrNotExist) {
@@ -538,7 +617,58 @@ func TestSyncLockRefusesEscapingParent(t *testing.T) {
 	}
 }
 
-func TestSyncBacksUpDivergentRetiredManagedOutput(t *testing.T) {
+// invariant: rendering/sync-and-drift:local-doc-prune-protects-authored-body (TestSyncRefusesDivergentLocalDocumentRetirement)
+func TestSyncRefusesDivergentLocalDocumentRetirement(t *testing.T) {
+	const configured = "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n"
+	const retired = "prefix: example\nintegrationBranch: main\nvars: {gateCmd: test-gate}\n"
+	root := scaffold(t, configured)
+	p, err := loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := syncProject(p); err != nil {
+		t.Fatal(err)
+	}
+	output := filepath.Join(root, "docs/runbooks/incident.md")
+	before, err := os.ReadFile(output)
+	if err != nil {
+		t.Fatal(err)
+	}
+	edited := append(slices.Clone(before), []byte("operator-authored body\n")...)
+	if err := os.WriteFile(output, edited, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(output, 0o640); err != nil {
+		t.Fatal(err)
+	}
+	beforeLock, err := os.ReadFile(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(configPath(root), []byte(retired), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	p, err = loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if _, _, err := syncReportProject(p); err == nil || !strings.Contains(err.Error(), "refuse retired output docs/runbooks/incident.md") {
+		t.Fatalf("divergent local document retirement error = %v", err)
+	}
+	got, err := os.ReadFile(output)
+	if err != nil || !reflect.DeepEqual(got, edited) {
+		t.Fatalf("local document bytes = %q, %v; want %q", got, err, edited)
+	}
+	assertPerm(t, output, 0o640)
+	if _, err := os.Stat(output + ".awf-bak"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("local document retirement backup = %v", err)
+	}
+	if got, err := os.ReadFile(lockFile(root)); err != nil || !reflect.DeepEqual(got, beforeLock) {
+		t.Fatalf("lock changed after local document retirement refusal = %q, %v", got, err)
+	}
+}
+
+func TestSyncRefusesDivergentRetiredManagedOutput(t *testing.T) {
 	for _, tc := range []struct {
 		name   string
 		mutate func(t *testing.T, path string)
@@ -569,22 +699,28 @@ func TestSyncBacksUpDivergentRetiredManagedOutput(t *testing.T) {
 			if err != nil {
 				t.Fatal(err)
 			}
-			targets := p.Targets()
-			p = testStateWith(p, p.Root(), p.Roots(), p.Nested(), p.catalog(), targets[1:])
-			if err := syncProject(p); err != nil {
+			beforeLock, err := os.ReadFile(lockFile(root))
+			if err != nil {
 				t.Fatal(err)
 			}
-			if _, err := os.Stat(path); !errors.Is(err, os.ErrNotExist) {
-				t.Fatalf("retired output remains: %v", err)
+			targets := p.Targets()
+			p = testStateWith(p, p.Root(), p.Roots(), p.Nested(), p.catalog(), targets[1:])
+			if err := syncProject(p); err == nil {
+				t.Fatal("sync removed a divergent retired managed output")
 			}
-			backup := path + ".awf-bak"
-			gotBytes, err := os.ReadFile(backup)
+			gotBytes, err := os.ReadFile(path)
 			if err != nil || !reflect.DeepEqual(gotBytes, wantBytes) {
-				t.Fatalf("backup bytes = %q, %v; want %q", gotBytes, err, wantBytes)
+				t.Fatalf("retired output bytes = %q, %v; want %q", gotBytes, err, wantBytes)
 			}
-			gotInfo, err := os.Stat(backup)
+			gotInfo, err := os.Stat(path)
 			if err != nil || gotInfo.Mode().Perm() != wantInfo.Mode().Perm() {
-				t.Fatalf("backup mode = %v, %v; want %v", gotInfo, err, wantInfo.Mode().Perm())
+				t.Fatalf("retired output mode = %v, %v; want %v", gotInfo, err, wantInfo.Mode().Perm())
+			}
+			if _, err := os.Stat(path + ".awf-bak"); !errors.Is(err, os.ErrNotExist) {
+				t.Fatalf("divergent retirement backup = %v", err)
+			}
+			if got, err := os.ReadFile(lockFile(root)); err != nil || !reflect.DeepEqual(got, beforeLock) {
+				t.Fatalf("lock changed after divergent retirement refusal = %q, %v", got, err)
 			}
 		})
 	}

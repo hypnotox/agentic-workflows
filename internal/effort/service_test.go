@@ -23,14 +23,14 @@ func TestRefusalDiagnosticsPreserveErrorIdentityAndSeparateFacts(t *testing.T) {
 	root := initEffortRepo(t)
 	service := openTestService(t, root, nil)
 	_, err := service.Finish(testContext(t), "absent-finish")
-	if err == nil || err.Error() != "effort \"absent-finish\" has no active resident or finishing reservation; changed bytes: no; next action: run `awf effort list` and use an active slug" {
+	if err == nil || err.Error() != "effort \"absent-finish\" has no active resident; changed bytes: no; next action: run `awf effort list` and use an active slug" {
 		t.Fatalf("absent finish error = %v", err)
 	}
 	var refused *refusalError
 	if !errors.As(err, &refused) {
 		t.Fatalf("absent finish error lost refusal identity: %v", err)
 	}
-	assertDiagnosticInfo(t, refused, "effort \"absent-finish\" has no active resident or finishing reservation", "resident", "", "bytes", "run `awf effort list` and use an active slug")
+	assertDiagnosticInfo(t, refused, "effort \"absent-finish\" has no active resident", "resident", "", "bytes", "run `awf effort list` and use an active slug")
 
 	_, err = service.New(testContext(t), NewInput{Slug: strings.Repeat("s", 33), Title: "Overlong slug"})
 	if err == nil || !strings.Contains(err.Error(), "changed bytes: no") {
@@ -65,30 +65,17 @@ func assertDiagnosticInfo(t *testing.T, err error, condition, state, cause, chan
 	}
 }
 
-func TestPartialFinishDiagnosticPrecedesTypedMechanismCause(t *testing.T) {
-	nested := refusal("nested refusal", "nested", "mechanism", "cause", []RecoveryAction{{Text: "nested action"}}, nil)
-	partial := &PartialFinishError{
-		Result:  FinishResult{State: FinishStateReserved, Reserved: true},
-		Cause:   nested,
-		Actions: []RecoveryAction{{Text: "inspect reservation"}},
-	}
-	info, ok := DiagnosticFor(partial)
-	if !ok || info.Condition != "effort finish was interrupted" || info.State != "operation" || len(info.Changed) < 2 || info.Changed[1].Label != "finishing reservation" || info.Changed[1].Value != "yes" || len(info.Actions) != 1 || info.Actions[0].Text != "inspect reservation" {
-		t.Fatalf("partial diagnostic = %#v, present=%t", info, ok)
-	}
-}
-
-func TestFinishRenamesCleansAndRetries(t *testing.T) {
-	// invariant: tooling/effort-management:effort-record-authority (TestFinishRenamesCleansAndRetries)
+func TestFinishMoveFailureLeavesActiveResidentAndRetryConverges(t *testing.T) {
+	// invariant: tooling/effort-management:effort-record-authority (TestFinishMoveFailureLeavesActiveResidentAndRetryConverges)
 	root := initEffortRepo(t)
-	failDelete := true
+	failMove := true
 	service := openTestService(t, root, func(deps *Dependencies) {
 		noTopology(deps)
 		deps.Clock = func() time.Time { return time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC) }
 		deps.UUID = func() (string, error) { return testIDA, nil }
 		deps.Fault = func(stage string) error {
-			if stage == "finish.archive" && failDelete {
-				failDelete = false
+			if stage == "finish.move" && failMove {
+				failMove = false
 				return errors.New("interrupted")
 			}
 			return nil
@@ -98,26 +85,18 @@ func TestFinishRenamesCleansAndRetries(t *testing.T) {
 		t.Fatal(err)
 	}
 	result, err := service.Finish(testContext(t), "restartable-finish")
-	var partial *PartialFinishError
-	if err == nil || !result.Reserved || result.Archived || !errors.As(err, &partial) || !strings.Contains(partial.Cause.Error(), "archive move interrupted before completion") || len(partial.Actions) != 1 || partial.Actions[0].Text != "retry `awf effort finish restartable-finish`" {
-		t.Fatalf("first finish result=%#v err=%v partial=%#v", result, err, partial)
+	if err == nil || result != (FinishResult{}) || !strings.Contains(err.Error(), "changed bytes: no") {
+		t.Fatalf("first finish result=%#v err=%v", result, err)
 	}
-	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", "restartable-finish")); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("active directory remains: %v", err)
+	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", "restartable-finish")); err != nil {
+		t.Fatalf("active resident was not retained: %v", err)
 	}
 	result, err = service.Finish(testContext(t), "restartable-finish")
-	if err != nil {
-		t.Fatal(err)
+	if err != nil || result.ArchivePath == "" {
+		t.Fatalf("retry result=%#v err=%v", result, err)
 	}
-	if result.Reserved || !result.Archived {
-		t.Fatalf("retry result = %#v", result)
-	}
-	entries, err := os.ReadDir(filepath.Join(root, ".awf", "efforts"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if len(entries) != 0 {
-		t.Fatalf("finish residue: %v", entries)
+	if _, err := os.Lstat(filepath.Join(root, ".awf", "efforts", "restartable-finish")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("active resident remains after success: %v", err)
 	}
 }
 
@@ -174,56 +153,8 @@ func TestFinishRefusesEveryManagedTopologyFact(t *testing.T) {
 	}
 }
 
-func TestFinishPreservesMismatchedAndMultipleTombstones(t *testing.T) {
-	root := initEffortRepo(t)
-	service := openTestService(t, root, func(deps *Dependencies) {
-		noTopology(deps)
-		deps.UUID = func() (string, error) { return testIDA, nil }
-		deps.Fault = func(stage string) error {
-			if stage == "finish.archive" {
-				return errors.New("stop")
-			}
-			return nil
-		}
-	})
-	if _, err := service.New(testContext(t), NewInput{Slug: "foreign-tombstone", Title: "Foreign tombstone"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.Finish(testContext(t), "foreign-tombstone"); err == nil {
-		t.Fatal("finish unexpectedly cleaned tombstone")
-	}
-	entries, err := os.ReadDir(filepath.Join(root, ".awf", "efforts"))
-	if err != nil || len(entries) != 1 {
-		t.Fatalf("tombstone entries=%v err=%v", entries, err)
-	}
-	original := filepath.Join(root, ".awf", "efforts", entries[0].Name())
-	duplicate := filepath.Join(root, ".awf", "efforts", finishingPrefix+testIDB+"-foreign-tombstone")
-	if err := copyResidentDirectory(original, duplicate); err != nil {
-		t.Fatal(err)
-	}
-	statePath := filepath.Join(duplicate, "state.json")
-	raw, err := os.ReadFile(statePath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	raw = []byte(strings.Replace(string(raw), testIDA, testIDB, 1))
-	if err := os.WriteFile(statePath, raw, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	_, err = service.Finish(testContext(t), "foreign-tombstone")
-	if err == nil || !strings.Contains(err.Error(), "multiple finishing reservations") {
-		t.Fatalf("multiple tombstone error = %v", err)
-	}
-	if _, statErr := os.Stat(original); statErr != nil {
-		t.Fatalf("original tombstone changed: %v", statErr)
-	}
-	if _, statErr := os.Stat(duplicate); statErr != nil {
-		t.Fatalf("duplicate tombstone changed: %v", statErr)
-	}
-}
-
 func TestFinishFaultAndTopologyErrorBranches(t *testing.T) {
-	for _, stage := range []string{"finish.rename", "finish.root-fsync", "finish.archive", "finish.archive-parent-fsync", "finish.source-parent-fsync"} {
+	for _, stage := range []string{"finish.move"} {
 		t.Run(stage, func(t *testing.T) {
 			root := initEffortRepo(t)
 			service := openTestService(t, root, func(deps *Dependencies) {
@@ -240,13 +171,8 @@ func TestFinishFaultAndTopologyErrorBranches(t *testing.T) {
 				t.Fatal(err)
 			}
 			result, err := service.Finish(testContext(t), "finish-faults")
-			syncStage := stage == "finish.root-fsync" || stage == "finish.archive-parent-fsync" || stage == "finish.source-parent-fsync"
-			if syncStage && !directorySyncAvailable() {
-				if err != nil || !result.Archived || result.DestinationSyncAvailable || result.SourceSyncAvailable || result.DestinationSynced || result.SourceSynced {
-					t.Fatalf("unavailable parent sync result=%#v err=%v", result, err)
-				}
-			} else if err == nil {
-				t.Fatal("fault was ignored")
+			if err == nil || result != (FinishResult{}) {
+				t.Fatalf("fault result=%#v err=%v", result, err)
 			}
 		})
 	}
@@ -319,55 +245,6 @@ func TestServiceResidentAndCorruptFinishBranches(t *testing.T) {
 	}
 	if _, err := service.Finish(testContext(t), "corrupt-finish"); err == nil {
 		t.Fatal("corrupt active effort finished")
-	}
-}
-
-func TestFinishReservationRefusesArchiveCollisionAndPreservesBoth(t *testing.T) {
-	root := initEffortRepo(t)
-	service := openTestService(t, root, func(deps *Dependencies) {
-		noTopology(deps)
-		deps.UUID = func() (string, error) { return testIDA, nil }
-		deps.Fault = func(stage string) error {
-			if stage == "finish.archive" {
-				return errors.New("retain reservation")
-			}
-			return nil
-		}
-	})
-	if _, err := service.New(testContext(t), NewInput{Slug: "reserved-finish", Title: "Reserved finish"}); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := service.Finish(testContext(t), "reserved-finish"); err == nil {
-		t.Fatal("finish fault ignored")
-	}
-	if _, err := service.New(testContext(t), NewInput{Slug: "reserved-finish", Title: "Reserved finish"}); err == nil || !strings.Contains(err.Error(), "reserved by finishing") {
-		t.Fatalf("reservation error = %v", err)
-	}
-	entries, err := os.ReadDir(filepath.Join(root, ".awf", "efforts"))
-	if err != nil || len(entries) != 1 {
-		t.Fatalf("entries=%v err=%v", entries, err)
-	}
-	reservation := filepath.Join(root, ".awf", "efforts", entries[0].Name())
-	destination := filepath.Join(root, ".awf", "effort-archive", testIDA+"-reserved-finish")
-	if err := os.Mkdir(destination, 0o700); err != nil {
-		t.Fatal(err)
-	}
-	service.store.fault = nil
-	result, err := service.Finish(testContext(t), "reserved-finish")
-	var partial *PartialFinishError
-	wantActions := []RecoveryAction{
-		{Text: "inspect " + reservation},
-		{Text: "inspect " + destination},
-		{Text: "preserve both residents and resolve the collision manually before retrying"},
-	}
-	if err == nil || result.State != FinishStateReserved || result.Reserved || result.Archived || result.ArchivePath != filepath.ToSlash(filepath.Join(".awf", "effort-archive", testIDA+"-reserved-finish")) || result.DestinationSyncAvailable != directorySyncAvailable() || result.SourceSyncAvailable != directorySyncAvailable() || result.DestinationSynced || result.SourceSynced || !errors.As(err, &partial) || partial.Result != result || !slices.Equal(partial.Actions, wantActions) {
-		t.Fatalf("collision result=%#v err=%v partial=%#v, want actions %#v", result, err, partial, wantActions)
-	}
-	if _, err := os.Stat(reservation); err != nil {
-		t.Fatalf("reservation changed: %v", err)
-	}
-	if _, err := os.Stat(destination); err != nil {
-		t.Fatalf("destination changed: %v", err)
 	}
 }
 

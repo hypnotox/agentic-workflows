@@ -13,6 +13,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/initspec"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -223,51 +224,13 @@ func (w *nthInitErrorWriter) Write(p []byte) (int, error) {
 
 func TestInitProjectLoaderPropagatesFailure(t *testing.T) {
 	want := errors.New("loader failed")
-	err := runInitWithProjectLoader(testContext(t), scaffoldProject(t), true, false, nil, "", strings.NewReader(""), false, io.Discard, func(string) (*project.Loader, error) {
+	err := runInitWithProjectLoader(testContext(t), scaffoldProject(t), false, nil, "", strings.NewReader(""), false, io.Discard, func(string) (*project.Loader, error) {
 		return nil, want
 	}, func(context.Context, string) error { return nil })
 	if !errors.Is(err, want) {
 		t.Fatalf("loader error = %v, want %v", err, want)
 	}
 }
-
-func TestInitSyncFailureKeepsExistingAuthorityAndPresentsPartialOutcome(t *testing.T) {
-	root := scaffoldProject(t)
-	configPath := config.ConfigPath(root)
-	lockPath := config.LockPath(root)
-	beforeConfig, err := os.ReadFile(configPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	beforeLock, err := os.ReadFile(lockPath)
-	if err != nil {
-		t.Fatal(err)
-	}
-	preparePublicSyncLaterFailure(t, root)
-
-	var out bytes.Buffer
-	err = runInit(testContext(t), root, true, false, nil, "", &out)
-	if err == nil {
-		t.Fatal("init accepted a later sync failure")
-	}
-	if got := out.String(); !strings.Contains(got, "status: initialization partially committed") || !strings.Contains(got, "output-replaced AGENTS.md") || !strings.Contains(got, "recovery:") {
-		t.Fatalf("init stdout = %q, want complete partial outcome", got)
-	}
-	if got, readErr := os.ReadFile(configPath); readErr != nil || !bytes.Equal(got, beforeConfig) {
-		t.Fatalf("config after sync failure = %q, read error = %v", got, readErr)
-	}
-	if got, readErr := os.ReadFile(lockPath); readErr != nil || !bytes.Equal(got, beforeLock) {
-		t.Fatalf("lock after sync failure = %q, read error = %v", got, readErr)
-	}
-	info, statErr := os.Stat(filepath.Join(root, "AGENTS.md"))
-	if statErr != nil {
-		t.Fatal(statErr)
-	}
-	if got, want := info.Mode().Perm(), os.FileMode(0o644); got != want {
-		t.Fatalf("AGENTS.md mode = %o, want earlier correction committed as %o", got, want)
-	}
-}
-
 func TestRenderInitOutcomePropagatesFailures(t *testing.T) {
 	if err := renderInitOutcome(initspec.Outcome{ConfigPath: "bad\npath"}, io.Discard); err == nil {
 		t.Fatal("invalid outcome accepted")
@@ -290,7 +253,7 @@ func TestInitPropagatesOrdinaryPresentationWriteFailures(t *testing.T) {
 	} {
 		t.Run(test.name, func(t *testing.T) {
 			writer := &nthInitErrorWriter{failAt: test.failAt}
-			err := runInit(testContext(t), test.root(t), true, false, test.sets, "", writer)
+			err := runInit(testContext(t), test.root(t), false, test.sets, "", writer)
 			if err == nil || !strings.Contains(err.Error(), "write failed") {
 				t.Fatalf("write error = %v after %d writes", err, writer.writes)
 			}
@@ -308,11 +271,10 @@ func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 		"status: initialization completed",
 		"references unset vars",
 		"next actions:",
-		"step 1: continue with the rendered project state",
-		"step 2: fill the Identity section at .awf/parts/agents-doc/identity.md, then run awf render",
-		"step 3: set still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render",
-		"step 4: wire rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself",
-		"step 5: commit .awf/ and the rendered files together",
+		"step 1: fill the Identity section at .awf/parts/agents-doc/identity.md, then run awf render",
+		"step 2: set still-empty vars in .awf/config.yaml (the notes above list what each artifact misses), then run awf render",
+		"step 3: wire rendered hook payloads under .awf/hooks/ into git hooks you own (see the workflow doc's local-hooks section); awf never activates hooks itself",
+		"step 4: commit .awf/ and the rendered files together",
 	} {
 		if !strings.Contains(out.String(), want) {
 			t.Errorf("init output missing %q:\n%s", want, out.String())
@@ -323,7 +285,7 @@ func TestInitPrintsNotesAndNextSteps(t *testing.T) {
 func TestInitCollisionProbeOpenError(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, "prefix: [bad\n")
-	if err := runInit(testContext(t), root, false, false, nil, "", io.Discard); err == nil {
+	if err := runInit(testContext(t), root, false, nil, "", io.Discard); err == nil {
 		t.Fatal("expected init probe error")
 	}
 }
@@ -332,71 +294,15 @@ func TestRunInitOnExistingConfigSkipsScaffold(t *testing.T) {
 	ctx := testContext(t)
 	// Pre-existing config -> scaffold branch is skipped; init still syncs.
 	root := scaffoldProject(t)
-	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err != nil {
+	if err := runInit(ctx, root, false, nil, "", io.Discard); err != nil {
 		t.Fatalf("runInit on existing config: %v", err)
 	}
 }
-
-// invariant: tooling/init-and-enablement:init-collision-guard (TestInitGuardBlocksAndForceOverrides)
-func TestInitGuardBlocksAndForceOverrides(t *testing.T) {
-	root := t.TempDir()
-	// A pre-existing, non-awf CLAUDE.md is a collision.
-	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var out, errb bytes.Buffer
-	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code == 0 {
-		t.Fatal("expected init to fail on collision")
-	}
-	if !strings.Contains(errb.String(), "refusing to overwrite") {
-		t.Fatalf("stderr = %q", errb.String())
-	}
-	// Nothing written: the scaffolded config tree was rolled back.
-	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !os.IsNotExist(err) {
-		t.Fatal("expected .awf to be rolled back")
-	}
-	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) != "mine\n" {
-		t.Fatalf("CLAUDE.md clobbered: %q", b)
-	}
-	// --force backs up the colliding file, then overwrites and completes.
-	out.Reset()
-	errb.Reset()
-	if code := runFrom(root, []string{"awf", "init", "--force"}, &out, &errb); code != 0 {
-		t.Fatalf("init --force failed: %s", errb.String())
-	}
-	// The original is preserved at <path>.awf-bak.
-	// invariant: tooling/init-and-enablement:init-force-backs-up (TestInitGuardBlocksAndForceOverrides)
-	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak")); string(b) != "mine\n" {
-		t.Fatalf("CLAUDE.md.awf-bak = %q, want original %q", b, "mine\n")
-	}
-	// And the live file was overwritten with managed content.
-	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md")); string(b) == "mine\n" {
-		t.Fatalf("CLAUDE.md should have been overwritten, still %q", b)
-	}
-	const initForcePrefix = "status: initialization completed\n\nmutation:\n  identity:\n    config: "
-	if !strings.HasPrefix(out.String(), initForcePrefix) {
-		t.Errorf("init --force lost its scaffold identity or backup report:\n%s", out.String())
-	}
-	for _, want := range []string{
-		"docs/architecture.md has unauthored stub content",
-		"step 5: commit .awf/ and the rendered files together",
-	} {
-		if !strings.Contains(out.String(), want) {
-			t.Errorf("init --force report missing %q:\n%s", want, out.String())
-		}
-	}
-	// Regression: init delegates its backup to the chained sync (one BackupFile path,
-	// ADR-0035), so the colliding file is backed up exactly once - no double-backup.
-	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md.awf-bak.1")); !os.IsNotExist(err) {
-		t.Error("expected exactly one backup; CLAUDE.md.awf-bak.1 should not exist")
-	}
-}
-
-func TestInitRollbackPreservesExistingAwf(t *testing.T) {
+func TestInitCollisionPreflightPreservesExistingAwf(t *testing.T) {
 	ctx := testContext(t)
 	root := t.TempDir()
-	// Pre-existing authored .awf/ content but no config.yaml -> init scaffolds config,
-	// then a collision (non-managed CLAUDE.md) forces a refusal + rollback.
+	// Pre-existing authored .awf/ content and a non-managed CLAUDE.md collision
+	// are both observed before initialization creates config authority.
 	part := filepath.Join(root, ".awf", "skills", "parts", "foo", "extra.md")
 	if err := os.MkdirAll(filepath.Dir(part), 0o755); err != nil {
 		t.Fatal(err)
@@ -407,40 +313,17 @@ func TestInitRollbackPreservesExistingAwf(t *testing.T) {
 	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("mine\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(ctx, root, false, false, nil, "", io.Discard); err == nil {
+	if err := runInit(ctx, root, false, nil, "", io.Discard); err == nil {
 		t.Fatal("expected init to refuse on collision")
 	}
-	// The scaffolded config.yaml is rolled back...
-	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !os.IsNotExist(err) {
-		t.Error("config.yaml should have been removed on rollback")
+	// No config was created, and the pre-existing authored content survives.
+	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !errors.Is(err, os.ErrNotExist) {
+		t.Error("config.yaml should not have been created")
 	}
-	// ...but the pre-existing authored content survives.
 	if _, err := os.Stat(part); err != nil {
 		t.Errorf("pre-existing .awf content must be preserved, got: %v", err)
 	}
 }
-
-func TestInitForceBackupDoesNotClobberPriorBak(t *testing.T) {
-	root := t.TempDir()
-	// A colliding CLAUDE.md plus a pre-existing backup from an earlier --force.
-	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md"), []byte("v2\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filepath.Join(root, "CLAUDE.md.awf-bak"), []byte("v1\n"), 0o644); err != nil {
-		t.Fatal(err)
-	}
-	var out, errb bytes.Buffer
-	if code := runFrom(root, []string{"awf", "init", "--force"}, &out, &errb); code != 0 {
-		t.Fatalf("init --force: %s", errb.String())
-	}
-	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak")); string(b) != "v1\n" {
-		t.Errorf("prior .awf-bak clobbered: %q", b)
-	}
-	if b, _ := os.ReadFile(filepath.Join(root, "CLAUDE.md.awf-bak.1")); string(b) != "v2\n" {
-		t.Errorf("CLAUDE.md.awf-bak.1 = %q, want v2", b)
-	}
-}
-
 func TestInitIdempotentReinitNoCollision(t *testing.T) {
 	root := scaffoldProject(t)
 	var out, errb bytes.Buffer
@@ -448,7 +331,7 @@ func TestInitIdempotentReinitNoCollision(t *testing.T) {
 		t.Fatalf("first init failed: %s", errb.String())
 	}
 	// Re-init over the now-managed tree: every planned path is in the prior lock,
-	// so p.InitCollisions skips them all and init proceeds without --force.
+	// so p.InitCollisions skips them all.
 	out.Reset()
 	errb.Reset()
 	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code != 0 {
@@ -474,11 +357,6 @@ func TestInitCollisionsOpenError(t *testing.T) {
 	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code == 0 {
 		t.Fatal("expected init to fail when Session loading errors")
 	}
-	// --force skips the probe, so the same malformed config now fails at
-	// Keep runInit's own post-scaffold Session loading branch covered.
-	if code := runFrom(root, []string{"awf", "init", "--force"}, &out, &errb); code == 0 {
-		t.Fatal("expected init --force to fail when Session loading errors")
-	}
 }
 
 func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
@@ -490,7 +368,7 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	writeMalformedPitfall(t, root)
 
 	var out bytes.Buffer
-	err := runInit(testContext(t), root, true, false, nil, "", &out)
+	err := runInit(testContext(t), root, false, nil, "", &out)
 	if err == nil || !strings.Contains(err.Error(), "bad.md") || !strings.Contains(err.Error(), "missing frontmatter") {
 		t.Fatalf("init collision error = %v, want malformed pitfall", err)
 	}
@@ -502,6 +380,61 @@ func TestInitAbortsWhenInitCollisionsFails(t *testing.T) {
 	}
 	if got := mustReadCLIFile(t, lockPath); got != beforeLock {
 		t.Fatalf("lock changed after collision error")
+	}
+}
+
+// invariant: tooling/init-and-enablement:init-collision-guard (TestInitCollisionRefusesWithoutBackupOrMutation)
+func TestInitCollisionRefusesWithoutBackupOrMutation(t *testing.T) {
+	root := t.TempDir()
+	collision := filepath.Join(root, "CLAUDE.md")
+	if err := os.WriteFile(collision, []byte("mine\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	var out, errb bytes.Buffer
+	if code := runFrom(root, []string{"awf", "init"}, &out, &errb); code == 0 {
+		t.Fatal("collision accepted")
+	}
+	if !strings.Contains(errb.String(), "refusing to overwrite") {
+		t.Fatalf("stderr = %q", errb.String())
+	}
+	if body, err := os.ReadFile(collision); err != nil || string(body) != "mine\n" {
+		t.Fatalf("collision changed: %q %v", body, err)
+	}
+	if _, err := os.Stat(collision + ".awf-bak"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("backup unexpectedly created: %v", err)
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf", "config.yaml")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("config unexpectedly created: %v", err)
+	}
+}
+
+func TestRemovedInitForceFlagIsUnknown(t *testing.T) {
+	root := t.TempDir()
+	var out, errb bytes.Buffer
+	if code := runFrom(root, []string{"awf", "init", "--force"}, &out, &errb); code != 2 || !strings.Contains(errb.String(), "unknown flag") {
+		t.Fatalf("code=%d stdout=%q stderr=%q", code, out.String(), errb.String())
+	}
+	if _, err := os.Stat(filepath.Join(root, ".awf")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("removed flag mutated project: %v", err)
+	}
+}
+
+func TestInitSyncFailureReturnsOrdinaryErrorWithoutSuccessReport(t *testing.T) {
+	root := scaffoldProject(t)
+	preparePublicSyncLaterFailure(t, root)
+	var out bytes.Buffer
+	err := runInit(testContext(t), root, false, nil, "", &out)
+	if err == nil {
+		t.Fatal("init accepted later sync failure")
+	}
+	if out.Len() != 0 {
+		t.Fatalf("init rendered false success: %q", out.String())
+	}
+	var diagnostic interface {
+		Diagnostic() (presentation.Diagnostic, error)
+	}
+	if !errors.As(err, &diagnostic) {
+		t.Fatalf("error = %v, want ordinary command diagnostic", err)
 	}
 }
 

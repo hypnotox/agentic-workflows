@@ -34,7 +34,7 @@ func TestSyncNeverPrunesResidentEffortsDescendants(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	_, _, pruned, err := syncReportProject(p)
+	_, pruned, err := syncReportProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -62,7 +62,7 @@ func TestSyncRejectsUnsafeResidentEffortsRoot(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), efforts); err != nil {
 		t.Skipf("symlink unavailable: %v", err)
 	}
-	if _, _, _, err := syncReportProject(p); err == nil {
+	if _, _, err := syncReportProject(p); err == nil {
 		t.Fatal("sync accepted an unsafe resident efforts root")
 	}
 }

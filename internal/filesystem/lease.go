@@ -51,7 +51,7 @@ type leaseIdentity struct {
 
 // Lease is an acquired, ordered set of advisory identities. Keeping this value
 // explicit lets an operation prove that authority loading and publication share
-// the same transaction without making the mechanism own operation policy.
+// the same writer exclusion without making the mechanism own operation policy.
 type Lease struct {
 	identities []leaseIdentity
 	locks      []*flock.Flock
@@ -101,7 +101,7 @@ func AcquireTrackedLease(ctx context.Context, root string) (*Lease, error) {
 	return acquire(ctx, []leaseRequest{{scope: "project-tracked-locks", root: root}})
 }
 
-// AcquireProjectLease returns the transaction identity for an operation that
+// AcquireProjectLease returns the writer identity for an operation that
 // changes both checkout-local and primary-resident state. acquire canonicalizes
 // and orders both identities before taking either lock.
 func AcquireProjectLease(ctx context.Context, tracked, resident string) (*Lease, error) {

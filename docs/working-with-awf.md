@@ -18,12 +18,12 @@ Generated files are owned by awf. Edit `.awf/`, then render and check. See [work
 - `./awf config [<key-or-var>]`: inspect effective configuration.
 
 Use the repository `./awf` wrapper for local commands. For workflow and effort commands, see
-[Workflow](workflow.md); for a command refusal, recovery, or upgrade residue, see
+[Workflow](workflow.md); for a command refusal or failed upgrade, see
 [Debugging](debugging.md).
 
 Author one declared convention part by semantic identity with `./awf edit <kind> <name> <part> --content <text>` or `./awf edit <kind> <name> <part> --stdin`. Exactly one input mode is required, and an explicitly empty `--content` value remains an authored override. The closed kinds are `doc`, `skill`, and `domain`; names and parts come from the selected catalog and project configuration rather than filesystem paths.
 
-Use `./awf reset <kind> <name> <part>` to remove a convention-part override and restore its inherited default. A configured local document is addressed as `doc <name> body`; edit replaces only its body and reset restores the empty body while preserving its declaration and awf-owned shell. Both commands validate the complete candidate project before changing the source, then render and update the lock. If a later source or publication step fails, follow the reported residue-first recovery actions and rerun `./awf render`; no rollback is implied.
+Use `./awf reset <kind> <name> <part>` to remove a convention-part override and restore its inherited default. A configured local document is addressed as `doc <name> body`; edit replaces only its body and reset restores the empty body while preserving its declaration and awf-owned shell. Both commands validate the complete candidate project before changing the source, then render and update the lock. If a later source or publication step fails, earlier successful effects remain visible. Inspect the reported affected paths and Git diff, correct the blocking condition, and rerun `./awf render` to converge.
 
 Use `./awf edit sidecar <kind> <name> <field>` for one leaf-only dotted sidecar field and exactly one of `--value`, `--json-value`, `--add`, `--add-json`, `--remove`, or `--remove-json`. Scalar modes author strings; JSON modes accept one complete JSON value and preserve structured values. Add and remove operate on the authored list only, are structurally idempotent, and retain order. `./awf reset sidecar <kind> <name> <field>` removes the authored leaf and cleans empty parents and a final empty sidecar. Fields include `data.<key>`, valid `dataDefaults.<key>` controls, declared `sections.<section>.drop`, and domain `paths`; unsupported or intermediate fields refuse.
 
@@ -40,7 +40,7 @@ config migration. Live project authority starts at schema 50. A below-floor or r
 ## Config and overrides
 Configuration keys and placeholder semantics are in the [configuration reference](config-reference.md). Sidecar leaves can be authored without reconstructing YAML: `./awf edit sidecar <kind> <name> <field> --value <text>` writes a string, while `--json-value <json>` preserves one structured JSON value. For authored lists use `--add` or `--add-json`, and safely retry duplicate additions or absent removals; `--remove-json` requires the complete structural value. `./awf reset sidecar <kind> <name> <field>` removes only that leaf and deletes an otherwise empty sidecar. A convention part replaces its section body; `awf:edit` names its source and `sectionDefault` extends a default. Prefer `./awf edit <kind> <name> <part> --content <text>` or `--stdin` to replace one declared part, and `./awf reset <kind> <name> <part>` to restore its inherited default. These commands resolve catalog and configured identities without exposing `.awf` paths, validate the complete candidate, and synchronize generated output and the lock.
 
-Local documents are declared in `localDocs` or with `./awf new doc <name> <description> [--title <title>]`. It creates `docs/<name>.md` (`api-v2` becomes `Api V2` without `--title`). Address its only authorable part as `./awf edit doc <name> body`; reset empties only that body. Direct editing remains confined after the `awf:edit-in-place` pointer through end-of-file, followed by render and check. Removal or uninstall preserves a present body as `.awf-bak`.
+Local documents are declared in `localDocs` or with `./awf new doc <name> <description> [--title <title>]`. It creates `docs/<name>.md` (`api-v2` becomes `Api V2` without `--title`). Address its only authorable part as `./awf edit doc <name> body`; reset empties only that body. Direct editing remains confined after the `awf:edit-in-place` pointer through end-of-file, followed by render and check. Removal or uninstall refuses to destroy a present authored body and reports its path for inspection.
 
 For generated guidance, `awf:edit` names the owning convention part and `awf:source` names reader authority. Use `./awf new pitfall "<Title>"` for an authored pitfall source, then render; never edit its generated index or leaf.
 
@@ -89,6 +89,6 @@ bash .awf/upgrade.sh
 
 Then inspect the changed generated outputs, run `./awf check`, and commit the source, output, and
 lock updates together. Upgrades rename retained authored skill overrides to the four fixed AWF
-identities and preserve removed generic overrides as adjacent `.awf-bak` files. They never copy
-those overrides into the global package. Review backup residue and preserve unrelated harness
-content. For advanced recovery and triage, see [Debugging](debugging.md).
+identities only when ownership and collision checks permit it. Content AWF cannot prove it owns
+blocks mutation rather than being overwritten, moved, or copied aside. If an upgrade fails, inspect
+the reported paths and Git diff, correct the blocker, and rerun it. See [Debugging](debugging.md).

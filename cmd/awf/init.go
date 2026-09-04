@@ -3,7 +3,6 @@ package main
 import (
 	"bytes"
 	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
@@ -15,7 +14,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
-func runInitWithProjectLoader(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, promptInput io.Reader, interactive bool, stdout io.Writer, loadProject initop.LoadProject, compatibilityGate initop.Gate) error {
+func runInitWithProjectLoader(ctx context.Context, root string, describe bool, sets []string, answersFile string, promptInput io.Reader, interactive bool, stdout io.Writer, loadProject initop.LoadProject, compatibilityGate initop.Gate) error {
 	if describe {
 		out, err := initspec.Describe(catalog.Standard.Vars)
 		if err != nil {
@@ -37,17 +36,15 @@ func runInitWithProjectLoader(ctx context.Context, root string, force, describe 
 		return err
 	}
 	outcome, err := initop.Run(ctx, initop.Input{
-		Root: root, ResidentRoot: awfgit.ProjectResidentRoot(ctx, root), Force: force, Answers: answers,
+		Root: root, ResidentRoot: awfgit.ProjectResidentRoot(ctx, root), Answers: answers,
 		PromptInput: promptInput, PromptOutput: stdout, Interactive: interactive,
 	}, loadProject, compatibilityGate)
 	if err != nil {
-		var partial *initop.PartialError
-		if errors.As(err, &partial) {
-			if presentErr := renderInitOutcome(partial.Outcome, stdout); presentErr != nil {
-				return errors.Join(err, presentErr)
-			}
+		touched := append([]string(nil), outcome.Touched...)
+		if outcome.ConfigPath != "" && !outcome.ExistingConfig {
+			touched = append(touched, outcome.ConfigPath)
 		}
-		return err
+		return mutationFailure{condition: "initialization did not complete", cause: err, touched: touched, rerun: "awf init"}
 	}
 	return renderInitOutcome(outcome, stdout)
 }

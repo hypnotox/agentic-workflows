@@ -10,13 +10,13 @@ import (
 )
 
 // executeEffort is the CLI adapter's one application-boundary contract.
-type executeEffort func(context.Context, string, application.Request, func() ([]byte, error)) (application.Result, error)
+type executeEffort func(context.Context, string, application.Request, func() ([]byte, error), application.Admission) (application.Result, error)
 
 // openEffortComposition binds the registered effort handler to the production
 // application boundary. The historical name remains local to command wiring;
 // no effort or worktree service is exposed through it.
-func openEffortComposition(ctx context.Context, root string, request application.Request, marker func() ([]byte, error)) (application.Result, error) {
-	return application.Execute(ctx, root, request, marker)
+func openEffortComposition(ctx context.Context, root string, request application.Request, marker func() ([]byte, error), admit application.Admission) (application.Result, error) {
+	return application.Execute(ctx, root, request, marker, admit)
 }
 
 func runEffort(c *cmdCtx, execute executeEffort) (returnErr error) {
@@ -27,7 +27,7 @@ func runEffort(c *cmdCtx, execute executeEffort) (returnErr error) {
 	if err != nil {
 		return err
 	}
-	result, err := execute(c.ctx, c.root, request, expectedEffortArchiveMarker(c.ctx, c.root))
+	result, err := execute(c.ctx, c.root, request, expectedEffortArchiveMarker(c.ctx, c.root), admitEffortMutation)
 	if result.Release != nil {
 		// The application chooses and acquires mutation scope before opening any
 		// effort state. The adapter retains that capability through final output.
@@ -41,6 +41,13 @@ func runEffort(c *cmdCtx, execute executeEffort) (returnErr error) {
 		return err
 	}
 	return presentation.Render(c.stdout, result.Document)
+}
+
+func admitEffortMutation(ctx context.Context, root string) error {
+	if err := guardMutationSession(ctx, root); err != nil {
+		return err
+	}
+	return gate(ctx, root)
 }
 
 func effortRequest(c *cmdCtx) (application.Request, error) {

@@ -82,18 +82,24 @@ func ProductionDependencies() Dependencies {
 	}
 }
 
+// Admission validates mutable project authority while a mutation lease is held.
+type Admission func(context.Context, string) error
+
 // Execute runs one request against production dependencies.
-func Execute(ctx context.Context, root string, request Request, expectedArchiveMarker func() ([]byte, error)) (Result, error) {
-	return ExecuteWith(ctx, root, request, expectedArchiveMarker, ProductionDependencies())
+func Execute(ctx context.Context, root string, request Request, expectedArchiveMarker func() ([]byte, error), admit Admission) (Result, error) {
+	return ExecuteWith(ctx, root, request, expectedArchiveMarker, admit, ProductionDependencies())
 }
 
 // ExecuteWith runs one request against explicitly selected dependencies.
-func ExecuteWith(ctx context.Context, root string, request Request, expectedArchiveMarker func() ([]byte, error), deps Dependencies) (Result, error) {
+func ExecuteWith(ctx context.Context, root string, request Request, expectedArchiveMarker func() ([]byte, error), admit Admission, deps Dependencies) (Result, error) {
 	if err := validateDependencies(deps, expectedArchiveMarker); err != nil {
 		return Result{}, err
 	}
 	var lease Lease
 	if request.mutates() {
+		if admit == nil {
+			return Result{}, errors.New("effort application: missing mutation admission")
+		}
 		var err error
 		lease, err = deps.AcquireProjectLease(ctx, root, awfgit.ProjectResidentRoot(ctx, root))
 		if err != nil {
@@ -103,6 +109,9 @@ func ExecuteWith(ctx context.Context, root string, request Request, expectedArch
 	result := Result{}
 	if lease != nil {
 		result.Release = lease.Release
+		if err := admit(ctx, root); err != nil {
+			return result, err
+		}
 	}
 	app, err := open(ctx, root, expectedArchiveMarker, deps)
 	if err != nil {

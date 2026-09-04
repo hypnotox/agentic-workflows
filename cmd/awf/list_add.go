@@ -2,47 +2,26 @@ package main
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"io"
 
 	"github.com/hypnotox/agentic-workflows/internal/domainop"
-	"github.com/hypnotox/agentic-workflows/internal/filesystem"
-	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 )
 
-func runNewDomain(ctx context.Context, root, name string, stdout io.Writer) (returnErr error) {
-	var outcome domainop.Outcome
-	lease, err := filesystem.AcquireProjectLease(ctx, root, awfgit.ProjectResidentRoot(ctx, root))
-	if err != nil {
-		return err
-	}
-	defer func() { returnErr = domainop.Finish(outcome, returnErr, lease.Release()) }()
-	if err := gate(ctx, root); err != nil {
-		return err
-	}
+func runNewDomain(ctx context.Context, root, name string, stdout io.Writer) error {
 	loader, err := newProjectLoader(root)
 	if err != nil {
 		return err
 	}
-	tx, err := projectmutation.UseProject(ctx, root, loader, lease)
+	outcome, err := domainop.Add(ctx, root, name, loader, gatedLeaseAcquirer(loader))
 	if err != nil {
-		return err
-	}
-	outcome, err = domainop.Add(ctx, name, tx)
-	if err != nil {
-		var partial *domainop.PartialError
-		if !errors.As(err, &partial) {
-			return err
+		touched := publisherPaths(outcome.Publisher)
+		if outcome.ConfigReplaced {
+			touched = append([]string{".awf/config.yaml"}, touched...)
 		}
-		document, documentErr := partial.Document()
-		if documentErr != nil {
-			return errors.Join(err, documentErr)
-		}
-		return errors.Join(err, presentation.Render(stdout, document))
+		return mutationFailure{condition: "domain creation did not complete", cause: err, touched: touched, rerun: "awf new domain " + name}
 	}
 	document, err := outcome.Document()
 	if err != nil {
@@ -51,35 +30,18 @@ func runNewDomain(ctx context.Context, root, name string, stdout io.Writer) (ret
 	return presentation.Render(stdout, document)
 }
 
-func runRemoveDomain(ctx context.Context, root, name string, stdout io.Writer) (returnErr error) {
-	var outcome domainop.Outcome
-	lease, err := filesystem.AcquireProjectLease(ctx, root, awfgit.ProjectResidentRoot(ctx, root))
-	if err != nil {
-		return err
-	}
-	defer func() { returnErr = domainop.Finish(outcome, returnErr, lease.Release()) }()
-	if err := gate(ctx, root); err != nil {
-		return err
-	}
+func runRemoveDomain(ctx context.Context, root, name string, stdout io.Writer) error {
 	loader, err := newProjectLoader(root)
 	if err != nil {
 		return err
 	}
-	tx, err := projectmutation.UseProject(ctx, root, loader, lease)
+	outcome, err := domainop.Remove(ctx, root, name, loader, gatedLeaseAcquirer(loader))
 	if err != nil {
-		return err
-	}
-	outcome, err = domainop.Remove(ctx, name, tx)
-	if err != nil {
-		var partial *domainop.PartialError
-		if !errors.As(err, &partial) {
-			return err
+		touched := publisherPaths(outcome.Publisher)
+		if outcome.ConfigReplaced {
+			touched = append([]string{".awf/config.yaml"}, touched...)
 		}
-		document, documentErr := partial.Document()
-		if documentErr != nil {
-			return errors.Join(err, documentErr)
-		}
-		return errors.Join(err, presentation.Render(stdout, document))
+		return mutationFailure{condition: "domain removal did not complete", cause: err, touched: touched, rerun: "awf remove domain " + name}
 	}
 	document, err := outcome.Document()
 	if err != nil {

@@ -21,42 +21,26 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 )
 
-// LoadProject is the command-composed project loader constructor used after the
-// initialization operation has established or selected configuration authority.
+// LoadProject constructs the project loader used after configuration authority exists.
 type LoadProject func(string) (*project.Loader, error)
 
-// Gate is the command-composed compatibility gate that must pass before an
-// existing project is republished.
+// Gate validates the selected live command universe.
 type Gate func(context.Context, string) error
-
-// PartialError carries the complete initialization outcome after a committed
-// config or publication effect, while preserving the underlying error identity.
-type PartialError struct {
-	Outcome initspec.Outcome
-	Cause   error
-}
-
-func (e *PartialError) Error() string {
-	return "initialization partially committed: " + e.Cause.Error()
-}
-func (e *PartialError) Unwrap() error { return e.Cause }
 
 // Input contains parsed initialization values and CLI-selected prompt streams.
 type Input struct {
-	Root         string
-	ResidentRoot string
-	Force        bool
-	Answers      map[string]string
-	PromptInput  io.Reader
-	PromptOutput io.Writer
-	Interactive  bool
+	Root, ResidentRoot string
+	Answers            map[string]string
+	PromptInput        io.Reader
+	PromptOutput       io.Writer
+	Interactive        bool
 }
 
 type advisoryNotesFunc func(*project.Session, *config.Config, *publisher.Publisher) ([]string, error)
 type releaseLeaseFunc func(*filesystem.Lease) error
 
-// Run performs one complete initialization operation and returns its semantic
-// outcome. Rendering and protocol selection remain with the command.
+// Run initializes without overwriting collisions. Once config or output is
+// created, later failures leave it visible and return an ordinary error.
 func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (initspec.Outcome, error) {
 	return runWithDependencies(ctx, input, loadProject, gate, func(state *project.Session, cfg *config.Config, operation *publisher.Publisher) ([]string, error) {
 		plan, err := operation.Plan()
@@ -72,140 +56,135 @@ func Run(ctx context.Context, input Input, loadProject LoadProject, gate Gate) (
 }
 
 func runWithDependencies(ctx context.Context, input Input, loadProject LoadProject, gate Gate, advisoryNotes advisoryNotesFunc, releaseLease releaseLeaseFunc) (outcome initspec.Outcome, returnErr error) {
-	root := input.Root
-	residentRoot := input.ResidentRoot
-	var result publisher.Result
-	var scaffold scaffoldCommit
+	root, residentRoot := input.Root, input.ResidentRoot
 	if residentRoot == "" {
 		residentRoot = root
 	}
 	lease, err := filesystem.AcquireProjectLease(ctx, root, residentRoot)
 	if err != nil {
-		return initspec.Outcome{}, err
+		return initspec.Outcome{}, fmt.Errorf("acquire project lease for %s: %w", root, err)
 	}
 	defer func() {
-		if releaseErr := releaseLease(lease); releaseErr != nil {
-			joined := errors.Join(returnErr, releaseErr)
-			if outcome.ConfigPath != "" && len(result.Effects()) > 0 {
-				outcome, returnErr = publisherPartialOutcome(outcome, scaffold, result, joined)
-			} else if outcome.ConfigPath != "" {
-				returnErr = &PartialError{Outcome: outcome, Cause: joined}
-			} else {
-				returnErr = joined
-			}
+		if err := releaseLease(lease); err != nil {
+			returnErr = errors.Join(returnErr, fmt.Errorf("release project lease for %s: %w", root, err))
 		}
 	}()
-	cfgPath := config.ConfigPath(root)
-	lockPath := config.LockPath(root)
+
+	cfgPath, lockPath := config.ConfigPath(root), config.LockPath(root)
 	_, statErr := os.Stat(cfgPath)
 	configExists := statErr == nil
+	if statErr != nil && !errors.Is(statErr, fs.ErrNotExist) {
+		return outcome, fmt.Errorf("inspect config path %s: %w", cfgPath, statErr)
+	}
 	_, lockStatErr := os.Stat(lockPath)
 	lockExists := lockStatErr == nil
-	if !input.Force {
-		collisions, err := probeCollisions(ctx, root, loadProject)
-		if err != nil {
-			return initspec.Outcome{}, err
-		}
-		if len(collisions) > 0 {
-			return initspec.Outcome{}, collisionRefusal(collisions)
-		}
+	if lockStatErr != nil && !errors.Is(lockStatErr, fs.ErrNotExist) {
+		return outcome, fmt.Errorf("inspect lock path %s: %w", lockPath, lockStatErr)
 	}
-	if configExists || lockExists {
-		lock, found, err := manifest.LoadOptional(lockPath)
+
+	if lockExists {
+		_, found, err := manifest.LoadOptional(lockPath)
 		if err != nil {
-			return initspec.Outcome{}, fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", err)
+			return outcome, fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", err)
 		}
 		if !found {
-			return initspec.Outcome{}, errors.New("pre-tracking authority: restore a supported permanent .awf/awf.lock from version control before initializing")
+			return outcome, errors.New("pre-tracking authority: restore a supported permanent .awf/awf.lock from version control before initializing")
 		}
-		state, err := lock.AuthorityState()
-		if err != nil {
-			return initspec.Outcome{}, fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", err)
-		}
-		if state != manifest.AuthorityPermanent {
-			return initspec.Outcome{}, errors.New("pre-tracking authority: restore a supported permanent .awf/awf.lock from version control before initializing")
+		if !configExists {
+			return outcome, errors.New("pre-tracking authority: restore a supported permanent .awf/awf.lock from version control before initializing")
 		}
 	}
 
-	var vars map[string]string
-	var scopes []string
+	var collisions []string
+	if !configExists {
+		collisions, err = probeCollisions(ctx, root, loadProject)
+		if err != nil {
+			return outcome, err
+		}
+		if len(collisions) > 0 {
+			return outcome, collisionRefusal(collisions)
+		}
+	}
+
 	ignoredAnswers := configExists && len(input.Answers) > 0
 	if !configExists {
-		var err error
-		vars, scopes, err = initspec.Resolve(catalog.Standard.Vars, input.Answers, input.PromptInput, input.PromptOutput, input.Interactive, project.NeededVars)
+		vars, scopes, err := initspec.Resolve(catalog.Standard.Vars, input.Answers, input.PromptInput, input.PromptOutput, input.Interactive, project.NeededVars)
 		if err != nil {
-			return initspec.Outcome{}, err
+			return outcome, err
 		}
-	}
-
-	if !configExists {
 		contents, err := project.ScaffoldConfig(filepath.Base(root), vars, scopes)
 		if err != nil {
-			return initspec.Outcome{}, err
+			return outcome, err
 		}
-		handle, openErr := filesystem.Open(root)
-		if openErr != nil {
-			return initspec.Outcome{}, openErr
+		handle, err := filesystem.Open(root)
+		if err != nil {
+			return outcome, fmt.Errorf("open initialization root %s: %w", root, err)
 		}
-		scaffold, err = createScaffold(handle, contents)
-		defer func() {
-			_ = scaffold.configInfo.Release()
-			_ = scaffold.dirInfo.Release()
-		}()
+		created, createErr := createScaffold(handle, contents)
 		closeErr := handle.Close()
-		if err != nil || closeErr != nil {
-			return rollbackScaffold(root, cfgPath, scaffold, errors.Join(err, closeErr))
+		if closeErr != nil {
+			closeErr = fmt.Errorf("close initialization root %s: %w", root, closeErr)
+		}
+		if created {
+			outcome.ConfigPath = cfgPath
+		}
+		if createErr != nil || closeErr != nil {
+			return outcome, errors.Join(createErr, closeErr)
 		}
 	}
+	outcome.ConfigPath, outcome.ExistingConfig, outcome.IgnoredAnswers = cfgPath, configExists, ignoredAnswers
 
-	failScaffold := func(cause error) (initspec.Outcome, error) {
-		return rollbackScaffold(root, cfgPath, scaffold, cause)
-	}
 	loader, err := loadProject(root)
 	if err != nil {
-		return failScaffold(err)
+		return outcome, fmt.Errorf("construct loader for %s: %w", root, err)
 	}
 	session, err := loader.Load(ctx, root)
 	if err != nil {
-		return failScaffold(err)
+		return outcome, fmt.Errorf("load initialized config %s: %w", cfgPath, err)
 	}
 	cfg := session.Config()
 	composed := composePublisher(session)
-	collisions, err := composed.InitCollisions()
-	if err != nil {
-		return failScaffold(err)
-	}
-	if len(collisions) > 0 && !input.Force {
-		return failScaffold(collisionRefusal(collisions))
+	if !configExists {
+		collisions, err = composed.InitCollisions()
+		if err != nil {
+			return outcome, fmt.Errorf("preflight initialization outputs: %w", err)
+		}
+		if len(collisions) > 0 {
+			return outcome, collisionRefusal(collisions)
+		}
 	}
 	if err := gate(ctx, root); err != nil {
-		return failScaffold(err)
+		return outcome, fmt.Errorf("gate initialized project %s: %w", root, err)
 	}
 
-	if !configExists && !lockExists {
+	var result publisher.Result
+	if !lockExists {
+		// A prior attempt may already have committed config.yaml. Its strictly
+		// loaded contents select the same first-adoption plan; initialization
+		// publishes the permanent lock last without recreating the config.
 		result, err = composed.InitializeLeased(ctx, lease, publisher.InitAuthority{InitializedWithVersion: project.Version})
 	} else {
 		result, err = composed.SyncLeased(ctx, lease)
 	}
+	mutation, mutationErr := resultMutation(result)
+	outcome.Sync = mutation
+	outcome.Touched = result.Touched()
 	if err != nil {
-		var publisherPartial *publisher.PartialError
-		if errors.As(err, &publisherPartial) || scaffold.committed() {
-			return publisherPartialOutcome(initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}, scaffold, result, err)
-		}
-		return failScaffold(err)
+		err = fmt.Errorf("publish initialized project %s: %w", root, err)
 	}
-	mutation, err := result.Mutation()
-	if err != nil {
-		return publisherPartialOutcome(initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}, scaffold, result, err)
+	if mutationErr != nil {
+		mutationErr = fmt.Errorf("render initialization result for %s: %w", root, mutationErr)
+	}
+	if err != nil || mutationErr != nil {
+		return outcome, errors.Join(err, mutationErr)
 	}
 	advisories, err := advisoryNotes(session, cfg, composed)
 	if err != nil {
-		return publisherPartialOutcome(initspec.Outcome{ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers}, scaffold, result, err)
+		return outcome, fmt.Errorf("derive advisories for %s: %w", cfgPath, err)
 	}
-	return initspec.Outcome{
-		ConfigPath: cfgPath, ExistingConfig: configExists, IgnoredAnswers: ignoredAnswers,
-		Sync: mutation, Advisories: advisories, NextActions: append([]string(nil), nextActions[:]...),
-	}, nil
+	outcome.Advisories = advisories
+	outcome.NextActions = append([]string(nil), nextActions[:]...)
+	return outcome, nil
 }
 
 func composePublisher(session *project.Session) *publisher.Publisher {
@@ -216,150 +195,58 @@ type scaffoldFilesystem interface {
 	CreateDirectory(string, fs.FileMode) (*filesystem.ExpectedIdentity, error)
 	Publish(string, []byte, fs.FileMode) error
 	LinkInfo(string) (fs.FileInfo, error)
-	ExpectedIdentity(string) (*filesystem.ExpectedIdentity, error)
 }
 
-type scaffoldCommit struct {
-	configCommitted bool
-	createdDir      bool
-	configInfo      *filesystem.ExpectedIdentity
-	dirInfo         *filesystem.ExpectedIdentity
-	residue         []string
-}
-
-func (s scaffoldCommit) committed() bool {
-	return s.configCommitted || s.createdDir || len(s.residue) > 0
-}
-
-func createScaffold(handle scaffoldFilesystem, contents []byte) (scaffold scaffoldCommit, returnErr error) {
+func createScaffold(handle scaffoldFilesystem, contents []byte) (bool, error) {
 	_, dirErr := handle.LinkInfo(config.DirName)
 	if dirErr != nil && !errors.Is(dirErr, fs.ErrNotExist) {
-		return scaffold, dirErr
+		return false, fmt.Errorf("inspect initialization directory %s: %w", config.DirName, dirErr)
 	}
 	if errors.Is(dirErr, fs.ErrNotExist) {
-		createdInfo, createErr := handle.CreateDirectory(
-			config.DirName, 0o755,
-		)
-		if createErr == nil {
-			scaffold.createdDir = true
-			scaffold.dirInfo = createdInfo
-		} else if !errors.Is(createErr, fs.ErrExist) {
-			return scaffold, createErr
-		} else if _, dirErr = handle.LinkInfo(config.DirName); dirErr != nil {
-			return scaffold, errors.Join(createErr, dirErr)
+		identity, err := handle.CreateDirectory(config.DirName, 0o755)
+		if identity != nil {
+			defer func() { _ = identity.Release() }()
+		}
+		if err != nil {
+			return false, fmt.Errorf("create initialization directory %s exclusively: %w", config.DirName, err)
 		}
 	}
 	configRel := filepath.ToSlash(filepath.Join(config.DirName, "config.yaml"))
 	if err := handle.Publish(configRel, contents, 0o644); err != nil {
-		_, residue, committed := filesystem.CommittedPublication(err)
-		scaffold.configCommitted = committed
-		if residue != "" {
-			scaffold.residue = append(scaffold.residue, residue)
-		}
-		return scaffold, err
+		return false, fmt.Errorf("create initialization config %s exclusively: %w", configRel, err)
 	}
-	scaffold.configCommitted = true
-	configInfo, err := handle.ExpectedIdentity(configRel)
-	if err != nil {
-		return scaffold, err
-	}
-	scaffold.configInfo = configInfo
-	return scaffold, nil
+	return true, nil
 }
 
-func rollbackScaffold(root, cfgPath string, scaffold scaffoldCommit, cause error) (initspec.Outcome, error) {
-	if !scaffold.committed() {
-		return initspec.Outcome{}, cause
-	}
-	handle, openErr := filesystem.Open(root)
-	if openErr != nil {
-		return scaffoldPartialOutcome(cfgPath, scaffold.configCommitted, scaffold.createdDir, scaffold.residue, errors.Join(cause, openErr))
-	}
-	configRel := filepath.ToSlash(filepath.Join(config.DirName, "config.yaml"))
-	configRemains := scaffold.configCommitted
-	var removeConfigErr error
-	if scaffold.configCommitted && scaffold.configInfo != nil {
-		removeConfigErr = handle.RemoveExpected(configRel, scaffold.configInfo)
-		if removeConfigErr == nil {
-			configRemains = false
+func resultMutation(result publisher.Result) (presentation.Mutation, error) {
+	groups := []presentation.MutationChange{}
+	if changes := result.Changes(); len(changes) != 0 {
+		values := make([]presentation.Value, 0, len(changes))
+		for _, change := range changes {
+			value, err := presentation.Literal(change.Path)
+			if err != nil {
+				return presentation.Mutation{}, err
+			}
+			values = append(values, value)
 		}
+		groups = append(groups, presentation.MutationChange{Label: "outputs", Values: values})
 	}
-	dirRemains := scaffold.createdDir
-	var removeDirErr error
-	if !configRemains && scaffold.createdDir && scaffold.dirInfo != nil {
-		removeDirErr = handle.RemoveExpected(config.DirName, scaffold.dirInfo)
-		if removeDirErr == nil {
-			dirRemains = false
+	if pruned := result.Pruned(); len(pruned) != 0 {
+		values := make([]presentation.Value, 0, len(pruned))
+		for _, path := range pruned {
+			value, err := presentation.Literal(path)
+			if err != nil {
+				return presentation.Mutation{}, err
+			}
+			values = append(values, value)
 		}
+		groups = append(groups, presentation.MutationChange{Label: "pruned", Values: values})
 	}
-	closeErr := handle.Close()
-	rollbackErr := errors.Join(removeConfigErr, removeDirErr, closeErr)
-	if rollbackErr == nil {
-		return initspec.Outcome{}, cause
-	}
-	return scaffoldPartialOutcome(cfgPath, configRemains, dirRemains, scaffold.residue, errors.Join(cause, rollbackErr))
-}
-
-func publisherPartialOutcome(base initspec.Outcome, scaffold scaffoldCommit, result publisher.Result, cause error) (initspec.Outcome, error) {
-	mutation, mutationErr := result.PartialMutation()
-	if mutationErr != nil {
-		return scaffoldPartialOutcome(base.ConfigPath, scaffold.configCommitted, scaffold.createdDir, scaffold.residue, errors.Join(cause, mutationErr))
-	}
-	if scaffold.committed() {
-		values, valueErr := scaffoldEffectValues(scaffold.configCommitted, scaffold.createdDir, scaffold.residue)
-		if valueErr != nil {
-			base.Status = "initialization partially committed"
-			base.Sync = mutation
-			return base, &PartialError{Outcome: base, Cause: errors.Join(cause, valueErr)}
-		}
-		mutation.Changes = append([]presentation.MutationChange{{Label: "committed init effects", Values: values}}, mutation.Changes...)
-	}
-	base.Status = "initialization partially committed"
-	base.Sync = mutation
-	return base, &PartialError{Outcome: base, Cause: cause}
-}
-
-func scaffoldEffectValues(configRemains, dirRemains bool, residue []string) ([]presentation.Value, error) {
-	values := make([]presentation.Value, 0, 2+len(residue))
-	if configRemains {
-		value, err := presentation.Literal("config-created " + filepath.ToSlash(filepath.Join(config.DirName, "config.yaml")) + "; recovery: retain it and rerun awf init --force, or remove it only after restoring the pre-init tree")
-		if err != nil {
-			return nil, err
-		}
-		values = append(values, value)
-	}
-	if dirRemains {
-		value, err := presentation.Literal("directory-created " + config.DirName + "; recovery: remove only if empty after restoring the pre-init tree")
-		if err != nil {
-			return nil, err
-		}
-		values = append(values, value)
-	}
-	for _, path := range residue {
-		value, err := presentation.Literal("publication-residue " + path + "; recovery: remove this temporary residue, then rerun awf init --force")
-		if err != nil {
-			return nil, err
-		}
-		values = append(values, value)
-	}
-	return values, nil
-}
-
-func scaffoldPartialOutcome(cfgPath string, configRemains, dirRemains bool, residue []string, cause error) (initspec.Outcome, error) {
-	values, valueErr := scaffoldEffectValues(configRemains, dirRemains, residue)
-	if valueErr != nil {
-		return initspec.Outcome{}, errors.Join(cause, valueErr)
-	}
-	mutation := presentation.Mutation{Status: "partially committed"}
-	if len(values) > 0 {
-		mutation.Changes = []presentation.MutationChange{{Label: "committed init effects", Values: values}}
-	}
-	outcome := initspec.Outcome{Status: "initialization partially committed", ConfigPath: cfgPath, Sync: mutation}
-	return outcome, &PartialError{Outcome: outcome, Cause: cause}
+	return presentation.Mutation{Status: "completed", Changes: groups}, nil
 }
 
 func collisionRefusal(collisions []string) error {
-	return fmt.Errorf("awf init: refusing to overwrite existing files (use --force):\n  %s", strings.Join(collisions, "\n  "))
+	return fmt.Errorf("awf init: refusing to overwrite existing files:\n  %s", strings.Join(collisions, "\n  "))
 }
 
 func probeCollisions(ctx context.Context, root string, loadProject LoadProject) ([]string, error) {

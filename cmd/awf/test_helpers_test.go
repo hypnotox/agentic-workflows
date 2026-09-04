@@ -22,10 +22,19 @@ func runFrom(root string, args []string, stdout, stderr io.Writer) int {
 	return newRunner(func() (string, error) { return root, nil }, os.Stdin, func() bool { return false }).run(args, stdout, stderr)
 }
 
+func mustReadCLIFile(t *testing.T, path string) string {
+	t.Helper()
+	body, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return string(body)
+}
+
 // runInit supplies real process inputs only for focused operation tests. CLI
 // dispatch tests construct an instance-owned runner with their own inputs.
-func runInit(ctx context.Context, root string, force, describe bool, sets []string, answersFile string, stdout io.Writer) error {
-	return runInitWithProjectLoader(ctx, root, force, describe, sets, answersFile, os.Stdin, false, stdout, newProjectLoader, gate)
+func runInit(ctx context.Context, root string, describe bool, sets []string, answersFile string, stdout io.Writer) error {
+	return runInitWithProjectLoader(ctx, root, describe, sets, answersFile, os.Stdin, false, stdout, newProjectLoader, gate)
 }
 
 // minimalYAML is a valid tree-config for a scaffolded fixture project.

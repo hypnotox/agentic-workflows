@@ -38,7 +38,7 @@ func (h *Handle) CreateDirectory(destination string, mode fs.FileMode) (created 
 		return nil, fmt.Errorf("filesystem: create directory temporary for %q: temporary name collisions exhausted", destination)
 	}
 	// Mkdir applies the process umask. Restore the requested permission image
-	// before publication so rollback does not silently weaken directory modes.
+	// before publication so the temporary directory does not weaken final modes.
 	if err := h.root.Chmod(temporary, mode.Perm()); err != nil {
 		return nil, fmt.Errorf("filesystem: set directory mode for %q: %w", destination, err)
 	}

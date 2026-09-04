@@ -11,9 +11,9 @@ awf renders one standard workflow footprint from committed `.awf/` configuration
 
 - `cmd/awf`: CLI composition root for parsing, invoking focused operations, presenting results, and mapping exits.
 - `internal/project`: `Loader` opens and validates selected project state to construct one immutable `Session`.
-- `internal/outputplan` and `internal/publisher`: immutable output plans and the `Publisher` that owns output planning, rendering coordination, backup decisions, and publication.
+- `internal/outputplan` and `internal/publisher`: immutable output plans and the `Publisher` that owns output planning, rendering coordination, ownership and collision preflight, and lock-last publication without effect or recovery ledgers.
 - `internal/repositorycheck` and focused check owners: the policy-free `RepositoryChecker` preserves ordered aggregation, while each concern owner retains its classification, severity, and policy.
-- `internal/projectmutation` and focused operations: a mechanics-only transaction boundary, while focused operations retain validation, mutation and rollback order, recovery policy, outcomes, and presentation.
+- Focused operation packages: directly compose writer leases, confined authority access, fresh committed Session reload, and one-attempt Publisher synchronization while owning validation, ordered mutation, ownership policy, affected-path outcomes, release handling, and presentation. Earlier successful effects are not rolled back.
 - `internal/topic` and `internal/currentstate`: live-authority parsing and checks.
 - `internal/effort` and `internal/worktree`: local effort residents and Git-backed topology.
 - `internal/git`: the sole semantic Git boundary.
@@ -23,7 +23,7 @@ awf renders one standard workflow footprint from committed `.awf/` configuration
 <!-- awf:section data-flow stub -->
 ## Data flow
 
-A command loads `.awf/`, derives an output plan, and renders or checks the managed files. `.awf/awf.lock` records the render transaction. Current-state checks read working or staged authority; audit reads selected committed history through `internal/git`. Effort residents and worktrees remain local state outside rendered output.
+A command loads `.awf/`, derives an output plan, and renders or checks the managed files. Mutations acquire a writer lease before mutable-authority reads, protect paths without sufficient ownership evidence, completely preflight every collision and destructive path they can derive, and write `.awf/awf.lock` last. Git-backed multi-file changes are ordered rather than transactional: a failure stops at the first failed mutation and reports affected paths for inspection and rerun. Current-state checks read working or staged authority; audit reads selected committed history through `internal/git`. Effort residents and worktrees remain local state outside rendered output.
 <!-- awf:end -->
 
 <!-- awf:section dependencies stub -->

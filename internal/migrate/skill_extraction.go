@@ -59,11 +59,11 @@ func skillSourcePaths(name string, sections []string) []string {
 	return artifactSourcePaths("skills", name, sections)
 }
 
-func migrateExtractedSkills(ctx context.Context, tree *ProposedTree, changes *Changes) ([]FileMutation, error) {
+func migrateExtractedSkills(ctx context.Context, tree *proposedTree, changes *Changes) ([]fileMutation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	var planned []FileMutation
+	var planned []fileMutation
 	for _, migration := range retainedSkillSources {
 		oldPaths := skillSourcePaths(migration.old, migration.sections)
 		newPaths := skillSourcePaths(migration.new, migration.sections)
@@ -84,24 +84,19 @@ func migrateExtractedSkills(ctx context.Context, tree *ProposedTree, changes *Ch
 	} {
 		for _, removed := range family.sources {
 			for _, source := range artifactSourcePaths(family.kind, removed.name, removed.sections) {
-				moves, err := planAuthoredBackup(ctx, tree, source, planned)
+				removal, err := planAuthoredRemoval(ctx, tree, source)
 				if err != nil {
 					return nil, err
 				}
-				for _, mutation := range moves {
-					if !mutation.Remove {
-						changes.items = append(changes.items, Change{Text: fmt.Sprintf("preserved extracted authored source at %s; review its content, then delete the backup when no longer needed and remove any empty retired parent directories", mutation.Path)})
-					}
-				}
-				planned = append(planned, moves...)
+				planned = append(planned, removal...)
 			}
 		}
 	}
-	changes.items = append(changes.items, Change{Text: "renamed AWF skills and preserved extracted generic skill and role overrides as .awf-bak files"})
+	changes.items = append(changes.items, Change{Text: "renamed AWF skills and removed retired generic skill and role authored sources"})
 	return planned, nil
 }
 
-func planAuthoredMove(ctx context.Context, tree *ProposedTree, oldPath, newPath string) ([]FileMutation, error) {
+func planAuthoredMove(ctx context.Context, tree *proposedTree, oldPath, newPath string) ([]fileMutation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
@@ -115,57 +110,27 @@ func planAuthoredMove(ctx context.Context, tree *ProposedTree, oldPath, newPath 
 	newContent, newMode, newErr := tree.Read(newPath)
 	switch {
 	case errors.Is(newErr, fs.ErrNotExist):
-		return []FileMutation{
+		return []fileMutation{
 			{Path: newPath, Content: oldContent, Mode: oldMode},
 			{Path: oldPath, Remove: true},
 		}, nil
 	case newErr != nil:
 		return nil, fmt.Errorf("read %s: %w", newPath, newErr)
 	case bytes.Equal(oldContent, newContent) && oldMode == newMode:
-		return []FileMutation{{Path: oldPath, Remove: true}}, nil
+		return []fileMutation{{Path: oldPath, Remove: true}}, nil
 	default:
 		return nil, fmt.Errorf("cannot migrate %s: %s already exists with different content or mode; reconcile the two authored sources and retry", oldPath, newPath)
 	}
 }
 
-func planAuthoredBackup(ctx context.Context, tree *ProposedTree, source string, planned []FileMutation) ([]FileMutation, error) {
+func planAuthoredRemoval(ctx context.Context, tree *proposedTree, source string) ([]fileMutation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	content, mode, err := tree.Read(source)
-	if errors.Is(err, fs.ErrNotExist) {
+	if _, _, err := tree.Read(source); errors.Is(err, fs.ErrNotExist) {
 		return nil, nil
-	}
-	if err != nil {
+	} else if err != nil {
 		return nil, fmt.Errorf("read %s: %w", source, err)
 	}
-	occupied := make(map[string]bool, len(planned))
-	for _, mutation := range planned {
-		if !mutation.Remove {
-			occupied[mutation.Path] = true
-		}
-	}
-	for n := 0; ; n++ {
-		if err := ctx.Err(); err != nil {
-			return nil, err
-		}
-		destination := source + ".awf-bak"
-		if n > 0 {
-			destination = fmt.Sprintf("%s.%d", destination, n)
-		}
-		if occupied[destination] {
-			continue
-		}
-		_, _, readErr := tree.Read(destination)
-		if readErr == nil {
-			continue
-		}
-		if !errors.Is(readErr, fs.ErrNotExist) {
-			return nil, fmt.Errorf("inspect recovery destination %s: %w", destination, readErr)
-		}
-		return []FileMutation{
-			{Path: destination, Content: content, Mode: mode},
-			{Path: source, Remove: true},
-		}, nil
-	}
+	return []fileMutation{{Path: source, Remove: true}}, nil
 }

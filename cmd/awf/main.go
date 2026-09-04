@@ -16,7 +16,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/upgrade"
 )
 
 func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) }
@@ -232,20 +231,21 @@ func (r runner) run(args []string, stdout, stderr io.Writer) int {
 	if err != nil {
 		return dispatchFailure(stdout, stderr, err) // parseArgs only returns usageErr → exit 2
 	}
-	// Process guards own interruption before dispatch so independently invocable
-	// handlers receive only operational project state. Capability interpretation
-	// follows live-source admission and reads the same working or staged universe
-	// as the command rather than allowing config parsing to precede schema refusal.
-	guardCtx, cancel := newGitCommandContext()
-	if err := guardSession(guardCtx, cwd, cmd, top, sub, inv); err != nil {
+	// Read-only commands are admitted against their selected universe here.
+	// Mutations instead acquire their writer lease before authority admission and
+	// gating inside the focused handler path.
+	ownedAdmission := operationOwnsAdmission(top, sub, inv)
+	if !ownedAdmission {
+		guardCtx, cancel := newGitCommandContext()
+		if err := guardSession(guardCtx, cwd, top, sub, inv); err != nil {
+			cancel()
+			return dispatchFailure(stdout, stderr, err)
+		}
 		cancel()
-		return dispatchFailure(stdout, stderr, err)
 	}
-	cancel()
-	// The driver gates every Gated command before its handler; config/context/topic/new
-	// self-gate in-handler after their static-fallback / name-validation checks.
-	// Group children inherit the top-level command's classification.
-	if top.Gating == clispec.Gated {
+	// The driver gates read-only Gated commands. Mutating handlers gate under
+	// their covering lease; group children inherit the top-level classification.
+	if top.Gating == clispec.Gated && !ownedAdmission {
 		gateFn := gate
 		if top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged ")) {
 			gateFn = gateStaged
@@ -266,6 +266,26 @@ func (r runner) run(args []string, stdout, stderr io.Writer) int {
 	defer cancel()
 	result := r.handlers[top.Name](&cmdCtx{ctx: handlerCtx, root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: r.stdin})
 	return completeHandlerResult(stdout, stderr, result)
+}
+
+func guardMutationSession(ctx context.Context, root string) error {
+	return guardSession(ctx, root, clispec.Command{Name: "mutation"}, "", invocation{})
+}
+
+func operationOwnsAdmission(top clispec.Command, sub string, inv invocation) bool {
+	switch top.Name {
+	case "render", "edit", "reset", "new", "remove", "upgrade", "uninstall":
+		return true
+	case "init":
+		return !inv.bools["--describe"]
+	case "effort":
+		if sub == "new" || sub == "finish" || sub == "integrate" {
+			return true
+		}
+		return sub == "worktree" && len(inv.positionals) > 0 && (inv.positionals[0] == "add" || inv.positionals[0] == "remove")
+	default:
+		return false
+	}
 }
 
 // completeHandlerResult ends a command operation only after the command has
@@ -301,21 +321,10 @@ func newGitCommandContext() (context.Context, context.CancelFunc) {
 	return context.WithTimeout(context.Background(), gitCommandTimeout)
 }
 
-// guardSession enforces the current-state upgrade command-state matrix.
-// Exemption is the resolved command's StateExempt property, not a name list, so
-// a group child carries it independently of its parent. Only `check staged
-// commit` remains exempt while bare `check` and both repo scan children are not,
-// which keeps the commit-msg hook working during a committed journal (ADR-0159
-// Decision 5). The read-only init descriptor query bypasses it too; outside an
-// adopted tree it is a no-op so config/context/topic keep their static fallback.
-// Inside a tree:
-//   - a valid journal permits only `awf upgrade --recover`; every other command
-//     refuses with a run-recover diagnostic;
-//   - a malformed journal refuses every mode, recovery included, with the
-//     Git-restoration guidance the journal loader carries;
-//   - without a journal, complete permanent authority proceeds and a recovery
-//     request refuses because there is no journal;
-//   - a corrupt lock with no journal defers to the existing ADR-0076 refusal.
+// guardSession preserves ordinary live-schema and permanent-authority admission.
+// Commands that do not consume project authority bypass it explicitly. Legacy
+// upgrade journals are intentionally not global state; only `awf upgrade`
+// interprets their presence below this command boundary.
 func selectsStagedDrift(top clispec.Command, sub string) bool {
 	return top.Name == "check" && (sub == "staged" || sub == "staged drift")
 }
@@ -334,40 +343,16 @@ func validateCurrentAuthority(found, currentConfig, currentLock bool) error {
 	return nil
 }
 
-func guardSession(ctx context.Context, root string, cmd clispec.Command, top clispec.Command, sub string, inv invocation) error {
-	if cmd.StateExempt {
-		return nil
-	}
-	if top.Name == "init" && inv.bools["--describe"] {
+func guardSession(ctx context.Context, root string, top clispec.Command, sub string, inv invocation) error {
+	if top.Name == "version" || top.Name == "changelog" ||
+		(top.Name == "init" && inv.bools["--describe"]) {
 		return nil
 	}
 	staged := selectsStagedProjectUniverse(top, sub, inv)
-	present, journal, journalFound, lock, found, currentConfig, currentLock, loadErr, err := projectGuardState(ctx, root, staged)
-	if err != nil {
+	present, lock, found, currentConfig, currentLock, loadErr, err := projectGuardState(ctx, root, staged)
+	if err != nil || !present {
 		return err
 	}
-	if !present {
-		return nil
-	}
-	isUpgrade := top.Name == "upgrade"
-	isRecover := isUpgrade && inv.bools["--recover"]
-	if journalFound {
-		if staged {
-			_, err = upgrade.ParseJournal(journal)
-		} else {
-			_, err = upgrade.LoadJournal(root)
-		}
-		if err != nil {
-			return err // malformed journal: refuse every mode, recovery included
-		}
-		if isRecover {
-			return nil
-		}
-		return errors.New("a current-state upgrade journal is present; run `awf upgrade --recover` before any other command")
-	}
-	// No journal: admit complete live authority before permanent authority
-	// interpretation. Retired layouts and below-floor locks cannot reach
-	// AuthorityState, and an incomplete current control pair is partial authority.
 	if loadErr != nil {
 		if errors.Is(loadErr, manifest.ErrUnsupportedLiveSource) {
 			return presentLiveSourceRefusal(loadErr)
@@ -387,30 +372,21 @@ func guardSession(ctx context.Context, root string, cmd clispec.Command, top cli
 		}
 		return fmt.Errorf("retired project layout is unsupported at live floor %d; restore a supported .awf control pair", migrate.LiveSchemaFloor)
 	}
-	if _, err := lock.AuthorityState(); err != nil {
-		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", err)
-	}
-	if isRecover {
-		return errors.New("no current-state upgrade journal to recover")
-	}
-	return nil
+	lockV, binV, ok := lockVsBinaryLock(lock)
+	return gateLockVersion(lockV, binV, ok)
 }
 
-// projectGuardState captures the presence, journal, and lock used by the
-// command-state guard. A staged check derives all three from the index snapshot;
-// every other command derives all three from the working project.
-func projectGuardState(ctx context.Context, root string, staged bool) (present bool, journal []byte, journalFound bool, lock *manifest.Lock, lockFound, currentConfig, currentLock bool, loadErr, err error) {
+// projectGuardState captures only the live authority consumed by the ordinary
+// project guard, from either the working tree or the staged snapshot.
+func projectGuardState(ctx context.Context, root string, staged bool) (present bool, lock *manifest.Lock, lockFound, currentConfig, currentLock bool, loadErr, err error) {
 	if !staged {
 		present, err = migrate.ProjectPresent(root)
 		if err != nil {
-			return false, nil, false, nil, false, false, false, nil, err
-		}
-		if journalFound, err = upgrade.JournalPresent(root); err != nil {
-			return false, nil, false, nil, false, false, false, nil, err
+			return
 		}
 		currentConfig, currentLock, err = migrate.CurrentAuthorityPresence(root)
 		if err != nil {
-			return false, nil, false, nil, false, false, false, nil, err
+			return
 		}
 		live, found, lockErr := manifest.LoadLiveFileOptional(root, config.DirName+"/awf.lock", migrate.LiveSchemaFloor, migrate.Current())
 		lockFound, loadErr = found, lockErr
@@ -419,19 +395,14 @@ func projectGuardState(ctx context.Context, root string, staged bool) (present b
 		}
 		return
 	}
-	tree, err := stagedTree(ctx, root)
-	if err != nil {
-		return false, nil, false, nil, false, false, false, nil, err
+	tree, treeErr := stagedTree(ctx, root)
+	if treeErr != nil {
+		err = treeErr
+		return
 	}
-	present = migrate.ProjectPresentFromFiles(func(path string) bool {
-		_, ok := tree.Lookup(path)
-		return ok
-	})
+	present = migrate.ProjectPresentFromFiles(func(path string) bool { _, ok := tree.Lookup(path); return ok })
 	_, currentConfig = tree.Lookup(config.DirName + "/config.yaml")
 	_, currentLock = tree.Lookup(config.DirName + "/awf.lock")
-	if file, ok := tree.Lookup(config.DirName + "/current-state-upgrade.journal"); ok {
-		journal, journalFound = file.Bytes, true
-	}
 	if file, ok := tree.Lookup(config.DirName + "/awf.lock"); ok {
 		lockFound = true
 		lock, loadErr = manifest.ParseLive(file.Bytes, migrate.LiveSchemaFloor, migrate.Current())

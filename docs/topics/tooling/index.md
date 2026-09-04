@@ -18,4 +18,4 @@
 - [Project license](project-license.md): The repository license text, public references, and packaged-license contract.
 - [Quality gates](quality-gates.md): Focused local feedback, repository checks, and the aggregate CI gate.
 - [Test infrastructure](test-infrastructure.md): Observable safety for reusable test fixtures.
-- [Upgrade runtime](upgrade-runtime.md): The supported live-schema migration and journaled recovery runtime.
+- [Upgrade runtime](upgrade-runtime.md): The supported ordered live-schema migration runtime.

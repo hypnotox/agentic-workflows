@@ -181,7 +181,7 @@ func TestInitialAdoptionVersionImmutableAcrossCommands(t *testing.T) {
 	repo := gitfixture.InitRepo(t)
 	root := repo.Root()
 	gitfixture.Commit(t, repo, "base", map[string]string{"README.md": "base\n"})
-	if err := runInit(ctx, root, false, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
+	if err := runInit(ctx, root, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	initial, err := manifest.Load(config.LockPath(root))
@@ -206,7 +206,7 @@ func TestInitialAdoptionVersionImmutableAcrossCommands(t *testing.T) {
 		t.Fatal(err)
 	}
 	assertVersion("zero-migration upgrade")
-	if err := runInit(ctx, root, true, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
+	if err := runInit(ctx, root, false, []string{"gateCmd=make gate"}, "", io.Discard); err != nil {
 		t.Fatal(err)
 	}
 	assertVersion("forced initialization")

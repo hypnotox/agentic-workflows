@@ -11,8 +11,6 @@ import (
 	"path/filepath"
 	"time"
 
-	"github.com/hypnotox/agentic-workflows/internal/filepublication"
-	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 )
 
@@ -127,54 +125,31 @@ func (s *Service) Finish(ctx context.Context, slug string) (FinishResult, error)
 	if err := validateSlug(slug); err != nil {
 		return FinishResult{}, invalidSlugRefusal(slug, err)
 	}
+	record, err := s.store.load(slug)
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return FinishResult{}, refusal(fmt.Sprintf("effort %q has no active resident; changed bytes: no; next action: run `awf effort list` and use an active slug", slug), fmt.Sprintf("effort %q has no active resident", slug), "resident", "", []RecoveryAction{{Text: "run `awf effort list` and use an active slug"}}, nil)
+		}
+		return FinishResult{}, err
+	}
+	if err := s.requireNoManagedTopology(ctx, slug); err != nil {
+		return FinishResult{}, err
+	}
 	if err := s.validateArchive(); err != nil {
 		return FinishResult{}, err
 	}
 	active := s.paths.effort(slug)
-	if _, err := os.Lstat(active); err == nil {
-		record, loadErr := s.store.load(slug)
-		if loadErr != nil {
-			return FinishResult{}, loadErr
-		}
-		if topologyErr := s.requireNoManagedTopology(ctx, slug); topologyErr != nil {
-			return FinishResult{}, topologyErr
-		}
-		activeResult := newFinishResult(FinishStateActive, false, s.paths.publicArchivePath(record))
-		if err := s.requireArchiveDestinationAbsent(record, activeResult); err != nil {
-			return activeResult, err
-		}
-		tombstone := filepath.Join(s.paths.efforts, tombstoneName(record))
-		if err := s.store.hit("finish.rename"); err != nil {
-			return FinishResult{}, err
-		}
-		if err := moveDirectoryNoReplace(active, tombstone); err != nil {
-			return FinishResult{}, fmt.Errorf("rename effort %s to finishing reservation: %w", slug, err)
-		}
-		result := newFinishResult(FinishStateReserved, true, s.paths.publicArchivePath(record))
-		if result.SourceSyncAvailable {
-			if err := s.store.hit("finish.root-fsync"); err != nil {
-				return result, partialFinish(result, fmt.Errorf("effort became reserved but source parent sync failed: %w", err), retryFinish(slug))
-			}
-			if err := syncDirectory(s.paths.efforts); err != nil {
-				return result, partialFinish(result, fmt.Errorf("sync efforts root after finishing rename: %w", err), retryFinish(slug))
-			}
-			result.SourceSynced = true
-		}
-		return s.archiveReservation(slug, tombstone, result)
-	} else if !errors.Is(err, os.ErrNotExist) {
-		return FinishResult{}, fmt.Errorf("inspect active effort %s: %w", active, err)
-	}
-	tombstones, err := s.store.findTombstones(slug)
-	if err != nil {
+	destination := s.paths.archive(record)
+	if err := s.requireArchiveDestinationAbsent(active, destination); err != nil {
 		return FinishResult{}, err
 	}
-	if len(tombstones) == 0 {
-		return FinishResult{}, refusal(fmt.Sprintf("effort %q has no active resident or finishing reservation; changed bytes: no; next action: run `awf effort list` and use an active slug", slug), fmt.Sprintf("effort %q has no active resident or finishing reservation", slug), "resident", "", []RecoveryAction{{Text: "run `awf effort list` and use an active slug"}}, nil)
+	if err := s.store.hit("finish.move"); err != nil {
+		return FinishResult{}, refusal(fmt.Sprintf("archive move failed before changing the active resident: %v; changed bytes: no; next action: retry `awf effort finish %s` or inspect %s", err, slug, active), "effort archive move failed", "operation", err.Error(), []RecoveryAction{{Text: "retry `awf effort finish " + slug + "`"}, {Text: "inspect " + active}}, err)
 	}
-	if len(tombstones) != 1 {
-		return FinishResult{}, &CorruptError{Path: s.paths.efforts, Err: fmt.Errorf("multiple finishing reservations match slug %q", slug)}
+	if err := moveDirectoryNoReplace(active, destination); err != nil {
+		return FinishResult{}, refusal(fmt.Sprintf("move active effort to archive without replacement: %v; changed bytes: no; next action: inspect the active resident and archive destination, then retry", err), "effort archive move failed", "operation", err.Error(), archiveMoveRefusalActions(active, destination), err)
 	}
-	return s.archiveReservation(slug, tombstones[0], newFinishResult(FinishStateReserved, false, ""))
+	return FinishResult{ArchivePath: s.paths.publicArchivePath(record)}, nil
 }
 
 func (s *Service) validateArchive() error {
@@ -206,78 +181,13 @@ func (s *Service) validateArchive() error {
 	return nil
 }
 
-func (s *Service) requireArchiveDestinationAbsent(record Record, result FinishResult) error {
-	destination := s.paths.archive(record)
+func (s *Service) requireArchiveDestinationAbsent(source, destination string) error {
 	if _, err := os.Lstat(destination); err == nil {
-		source := s.paths.effort(record.Slug)
-		if result.State == FinishStateReserved {
-			source = filepath.Join(s.paths.efforts, tombstoneName(record))
-		}
-		return partialFinish(result, fmt.Errorf("effort archive destination already exists: %s", destination), archiveCollisionActions(source, destination))
+		return refusal(fmt.Sprintf("effort archive destination already exists: %s; changed bytes: no; next action: inspect both residents and resolve the collision manually", destination), "effort archive destination already exists", "archive", "destination collision", archiveCollisionActions(source, destination), nil)
 	} else if !errors.Is(err, os.ErrNotExist) {
 		return fmt.Errorf("inspect archive destination %s: %w", destination, err)
 	}
 	return nil
-}
-
-func retryFinish(slug string) []RecoveryAction {
-	return []RecoveryAction{{Text: "retry `awf effort finish " + slug + "`"}}
-}
-
-func partialFinish(result FinishResult, cause error, actions []RecoveryAction) error {
-	return &PartialFinishError{Result: result, Cause: cause, Actions: actions}
-}
-
-func newFinishResult(state FinishResidentState, reserved bool, archivePath string) FinishResult {
-	available := directorySyncAvailable()
-	return FinishResult{
-		State: state, Reserved: reserved, ArchivePath: archivePath,
-		DestinationSyncAvailable: available, SourceSyncAvailable: available,
-	}
-}
-
-func (s *Service) archiveReservation(slug, tombstone string, result FinishResult) (FinishResult, error) {
-	record, err := s.store.loadDirectory(tombstone, slug, true)
-	if err != nil {
-		return result, err
-	}
-	want := filepath.Join(s.paths.efforts, tombstoneName(record))
-	if filepath.Clean(want) != filepath.Clean(tombstone) {
-		return result, &CorruptError{Path: tombstone, Err: errors.New("finishing name does not match stored slug and UUID")}
-	}
-	destination := s.paths.archive(record)
-	result.ArchivePath = s.paths.publicArchivePath(record)
-	if err := s.requireArchiveDestinationAbsent(record, result); err != nil {
-		return result, err
-	}
-	if err := s.store.hit("finish.archive"); err != nil {
-		return result, partialFinish(result, fmt.Errorf("archive move interrupted before completion: %w", err), retryFinish(slug))
-	}
-	if err := moveDirectoryNoReplace(tombstone, destination); err != nil {
-		return result, partialFinish(result, fmt.Errorf("move finishing reservation to archive without replacement: %w", err), archiveMoveRefusalActions(tombstone, destination))
-	}
-	result.State = FinishStateArchived
-	result.Archived = true
-	result.SourceSynced = false
-	if result.DestinationSyncAvailable {
-		if err := s.store.hit("finish.archive-parent-fsync"); err != nil {
-			return result, partialFinish(result, fmt.Errorf("archive destination parent sync failed after move: %w", err), archiveInspectionActions(tombstone, destination))
-		}
-		if err := syncDirectory(s.paths.effortArchive); err != nil {
-			return result, partialFinish(result, fmt.Errorf("sync archive parent after move: %w", err), archiveInspectionActions(tombstone, destination))
-		}
-		result.DestinationSynced = true
-	}
-	if result.SourceSyncAvailable {
-		if err := s.store.hit("finish.source-parent-fsync"); err != nil {
-			return result, partialFinish(result, fmt.Errorf("efforts source parent sync failed after archive move: %w", err), archiveInspectionActions(tombstone, destination))
-		}
-		if err := syncDirectory(s.paths.efforts); err != nil {
-			return result, partialFinish(result, fmt.Errorf("sync efforts parent after archive move: %w", err), archiveInspectionActions(tombstone, destination))
-		}
-		result.SourceSynced = true
-	}
-	return result, nil
 }
 
 func archiveCollisionActions(source, destination string) []RecoveryAction {
@@ -286,10 +196,6 @@ func archiveCollisionActions(source, destination string) []RecoveryAction {
 
 func archiveMoveRefusalActions(source, destination string) []RecoveryAction {
 	return []RecoveryAction{{Text: "inspect " + source}, {Text: "inspect " + destination}, {Text: "resolve the destination collision or filesystem boundary before retrying"}}
-}
-
-func archiveInspectionActions(source, destination string) []RecoveryAction {
-	return []RecoveryAction{{Text: "inspect " + source}, {Text: "inspect " + destination}, {Text: "do not blindly retry finish after the archive move"}}
 }
 
 func (s *Service) requireNoManagedTopology(ctx context.Context, slug string) error {
@@ -317,82 +223,6 @@ func (s *Service) requireNoManagedTopology(ctx context.Context, slug string) err
 		return managedTopologyRefusal([]RecoveryAction{{Text: "run `awf effort worktree remove " + slug + "`"}, {Text: "retry `awf effort finish " + slug + "`"}}, "managed branch awf/%s remains; changed bytes: no; next action: run `awf effort worktree remove %s`", slug, slug)
 	}
 	return nil
-}
-
-// RollbackCreation removes only the immutable resident created by a failed
-// default worktree transaction. It is deliberately not a finish variant.
-func (s *Service) RollbackCreation(ctx context.Context, identity Record) (RollbackResult, error) {
-	if err := s.requireNoManagedTopology(ctx, identity.Slug); err != nil {
-		return RollbackResult{}, err
-	}
-	active := s.paths.effort(identity.Slug)
-	record, err := s.store.load(identity.Slug)
-	if err != nil {
-		return RollbackResult{}, err
-	}
-	if record.ID != identity.ID || record.Slug != identity.Slug {
-		return RollbackResult{}, refusal("failed-creation rollback identity no longer matches; changed bytes: no; next action: retain and inspect the resident", "failed-creation rollback identity changed", "resident", "immutable identity mismatch", []RecoveryAction{{Text: "retain and inspect " + active}}, nil)
-	}
-	reservation := filepath.Join(s.paths.efforts, tombstoneName(record))
-	if err := s.store.hit("rollback.rename"); err != nil {
-		return RollbackResult{}, err
-	}
-	if err := moveDirectoryNoReplace(active, reservation); err != nil {
-		return RollbackResult{}, fmt.Errorf("reserve failed-creation rollback: %w", err)
-	}
-	result := RollbackResult{Reserved: true, ReservationPath: reservation}
-	files, err := filesystem.Open(s.paths.efforts)
-	if err != nil {
-		return result, fmt.Errorf("open identity-bound failed-creation reservation root: %w", err)
-	}
-	closed := false
-	defer func() {
-		if !closed {
-			_ = files.Close()
-		}
-	}()
-	reservedIdentity, err := files.ExpectedIdentity(tombstoneName(record))
-	if err != nil {
-		return result, fmt.Errorf("identify identity-bound failed-creation reservation: %w", err)
-	}
-	defer reservedIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the filesystem mutation outcome
-	reservedRecord, err := s.store.loadDirectory(reservation, identity.Slug, true)
-	if err != nil {
-		return result, fmt.Errorf("validate identity-bound failed-creation reservation: %w", err)
-	}
-	if reservedRecord.ID != identity.ID || reservedRecord.Slug != identity.Slug {
-		return result, fmt.Errorf("validate identity-bound failed-creation reservation: immutable identity changed")
-	}
-	if err := s.store.hit("rollback.root-fsync"); err != nil {
-		return result, fmt.Errorf("sync efforts parent after rollback reservation: %w", err)
-	}
-	if err := syncDirectory(s.paths.efforts); err != nil {
-		return result, fmt.Errorf("sync efforts parent after rollback reservation: %w", err)
-	}
-	if err := s.store.hit("rollback.delete"); err != nil {
-		return result, err
-	}
-	err = files.RetireExpected(tombstoneName(record), reservedIdentity)
-	closeErr := files.Close()
-	closed = true
-	if err == nil {
-		result.Removed = true
-		result.ReservationPath = ""
-	}
-	if err != nil || closeErr != nil {
-		var cleanup *filepublication.CommittedCleanupError
-		if errors.As(err, &cleanup) {
-			result.ResiduePath = filepath.Join(s.paths.efforts, filepath.FromSlash(cleanup.ResiduePath))
-		}
-		return result, fmt.Errorf("delete identity-bound failed-creation reservation: %w", errors.Join(err, closeErr))
-	}
-	if err := s.store.hit("rollback.delete-fsync"); err != nil {
-		return result, fmt.Errorf("sync efforts parent after rollback deletion: %w", err)
-	}
-	if err := syncDirectory(s.paths.efforts); err != nil {
-		return result, fmt.Errorf("sync efforts parent after rollback deletion: %w", err)
-	}
-	return result, nil
 }
 
 func yesNo(value bool) string {

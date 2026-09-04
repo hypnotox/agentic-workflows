@@ -26,31 +26,6 @@ type DiagnosticInfo struct {
 // DiagnosticFor extracts modeled effort failure semantics while preserving the
 // original error and mechanism identities for callers.
 func DiagnosticFor(err error) (DiagnosticInfo, bool) {
-	// Select the outer partial transition before inspecting its typed mechanism
-	// cause; the transition's observed resident and durability facts are the
-	// actionable outcome.
-	var partial *PartialFinishError
-	if errors.As(err, &partial) {
-		facts := []DiagnosticFact{
-			{Label: "active resident", Value: yesNo(partial.Result.State == FinishStateActive)},
-			{Label: "finishing reservation", Value: yesNo(partial.Result.State == FinishStateReserved)},
-			{Label: "archived resident", Value: yesNo(partial.Result.State == FinishStateArchived)},
-			{Label: "archive parent sync available", Value: yesNo(partial.Result.DestinationSyncAvailable)},
-			{Label: "archive parent synced", Value: yesNo(partial.Result.DestinationSynced)},
-			{Label: "efforts parent sync available", Value: yesNo(partial.Result.SourceSyncAvailable)},
-			{Label: "efforts parent synced", Value: yesNo(partial.Result.SourceSynced)},
-		}
-		if partial.Result.ArchivePath != "" {
-			facts = append(facts, DiagnosticFact{Label: "archive", Value: partial.Result.ArchivePath, Literal: true})
-		}
-		return DiagnosticInfo{
-			Condition: "effort finish was interrupted",
-			State:     "operation",
-			Cause:     partial.Cause.Error(),
-			Changed:   facts,
-			Actions:   append([]RecoveryAction(nil), partial.Actions...),
-		}, true
-	}
 	var managed *managedTopologyError
 	if errors.As(err, &managed) {
 		return DiagnosticInfo{

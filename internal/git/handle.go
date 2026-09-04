@@ -1,6 +1,7 @@
 package git
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
@@ -277,6 +278,28 @@ func (r *Repo) ChangeCounts(ctx context.Context) (tracked, untracked int, err er
 		return 0, 0, fmt.Errorf("read native Git worktree status: %w", err)
 	}
 	return parseWorktreeStatus(out)
+}
+
+// IgnoredPaths returns ignored untracked files in the handle's checkout. It is
+// used before native worktree removal because Git otherwise deletes ignored
+// data even when it refuses ordinary tracked or untracked changes.
+func (r *Repo) IgnoredPaths(ctx context.Context) ([]string, error) {
+	argv := append(r.runner.excludesFileArgs(ctx), "--no-optional-locks", "ls-files", "--others", "--ignored", "--exclude-standard", "-z")
+	out, err := r.runner.run(ctx, argv...)
+	if err != nil {
+		return nil, fmt.Errorf("read ignored Git worktree paths: %w", err)
+	}
+	if len(out) == 0 {
+		return nil, nil
+	}
+	fields := bytes.Split(out, []byte{0})
+	paths := make([]string, 0, len(fields)-1)
+	for _, field := range fields {
+		if len(field) != 0 {
+			paths = append(paths, string(field))
+		}
+	}
+	return paths, nil
 }
 
 // WorkingPaths returns tracked HEAD paths that still exist plus nonignored

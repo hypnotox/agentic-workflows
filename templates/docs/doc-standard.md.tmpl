@@ -48,8 +48,8 @@ kebab-case name segment (`api-v2` becomes `Api V2`). Each item has only a lowerc
 title, and a one-line description; `decisions`, `plans`, `domains`, `topics`, and `pitfalls` are
 reserved. Render creates `docs/<name>.md`. Edit only its body after the `awf:edit-in-place` pointer
 through end-of-file; awf owns the heading and shell. Run `./awf render` and `./awf check` after changing a
-declaration or body. Removing a declaration, or running `./awf uninstall`, saves a present local
-document beside itself as `.awf-bak` (with a numbered suffix if needed) before removal.
+declaration or body. Removing a declaration, or running `./awf uninstall`, refuses when a present local
+document contains protected authored content. Reconcile the reported path explicitly before rerunning.
 
 Section-overridable catalog docs and `AGENTS.md` use their `awf:edit` pointers.
 Topic pages name their metadata-and-claim-part pair, while indexes and domain navigation name those

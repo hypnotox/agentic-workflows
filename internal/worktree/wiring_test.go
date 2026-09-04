@@ -46,6 +46,7 @@ type checkoutStub struct {
 	resolveCommit    func(ctx context.Context, revision string) (string, error)
 	currentBranch    func(ctx context.Context) (string, error)
 	changeCounts     func(ctx context.Context) (int, int, error)
+	ignoredPaths     func(ctx context.Context) ([]string, error)
 	gitPath          func(ctx context.Context, name string) (string, error)
 }
 
@@ -138,6 +139,13 @@ func (s *checkoutStub) ChangeCounts(ctx context.Context) (int, int, error) {
 		return s.changeCounts(ctx)
 	}
 	return s.Runner.ChangeCounts(ctx)
+}
+
+func (s *checkoutStub) IgnoredPaths(ctx context.Context) ([]string, error) {
+	if s.ignoredPaths != nil {
+		return s.ignoredPaths(ctx)
+	}
+	return s.Runner.IgnoredPaths(ctx)
 }
 
 func (s *checkoutStub) GitPath(ctx context.Context, name string) (string, error) {

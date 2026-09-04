@@ -5,7 +5,6 @@
 
 <!-- awf:template-source templates/docs/glossary.md.tmpl#prepend -->
 <!-- awf:edit prepend: from .awf/docs/parts/glossary/prepend.md -->
-- **Finishing reservation:** A slug-and-internal-UUID-matched effort-directory rename that reserves a slug while restartable finish prepares the complete validated resident for no-replace archival.
 
 
 <!-- awf:template-source templates/docs/glossary.md.tmpl -->
@@ -46,7 +45,6 @@
 | pitfall publications | The compact generated `docs/pitfalls.md` metadata index and same-slug generated leaves, derived from authored pitfall sources. |
 | presentation ownership | The package owning a result model also owns its human rendering; a command binary owns argument parsing, renderer selection, and exit mapping. |
 | project Loader | The selection and opening policy object that validates one project universe and constructs its immutable `project.Session` through the sole production construction path. |
-| project mutation transaction | A mechanics-only, operation-scoped value that retains selected lease coverage, confines authority access, reloads committed authority for one synchronization attempt, and types mechanical failures without owning focused-operation policy. |
 | project search universe | Tracked and non-ignored untracked files under the repository root, excluding ignored files, `.git`, nested repositories, and external dependencies unless scoped. |
 | project Session | The Loader-constructed immutable selected universe that binds configuration to complete facts and carries its roots, repository and reader handles, and artifact-registry projection through focused operations. |
 | prose knob | A prohibited catalog var descriptor that only tunes rendered prose; prose customization uses convention parts. Functional values drive commands, enforced identifiers, or executed paths. |

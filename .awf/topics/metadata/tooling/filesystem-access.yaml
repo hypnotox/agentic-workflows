@@ -2,5 +2,4 @@ title: Filesystem access
 summary: Root-confined path behavior and project mutation lease safety.
 paths:
   - internal/filesystem/**
-  - internal/projectmutation/**
   - internal/testsupport/fsfixture/**

@@ -14,9 +14,8 @@ Backing: test
 
 ### `invariant: single-cleanliness-oracle`
 
-One entrypoint answers whether a checkout is clean, and both consumers - the audit rule reporting uncommitted work and the managed-worktree refusal - read it. It reports tracked and untracked counts over the ignore universe real Git applies, and carries no allowance for awf's own resident state: owned residents stay invisible because awf renders the `.gitignore` covering them.
-Backing: unbacked
-Verify: Search the module for working-tree status reads and confirm one production definition serves both consumers, and that neither consumer post-filters the answer with its own notion of which paths do not count.
+One entrypoint answers whether a checkout is clean, and both consumers - the audit rule reporting uncommitted work and the integration preflight - read it. It reports tracked and untracked counts over the ignore universe real Git applies, and carries no allowance for awf's own resident state: owned residents stay invisible because awf renders the `.gitignore` covering them. Managed-worktree removal instead asks a separate destructive-safety question for ignored untracked paths, because native Git already refuses visible changes but would silently delete ignored data.
+Backing: test
 ### `invariant: fixture-isolation-parity`
 
 Production and fixture Git commands apply the same exhaustive environment-isolation pins. Production reads whose answer depends on the ignore universe also replay the developer's effective `core.excludesFile`; fixture setup builds state and does not. Fixture Git commands use a two-minute deadline, cap post-cancellation pipe cleanup at one second, preserve deadline and process identity in errors, and terminate blocked processes including descendant-held pipe cases. A deadline during explicit object-format initialization remains a failure rather than being mistaken for unsupported Git.

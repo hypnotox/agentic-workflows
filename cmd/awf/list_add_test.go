@@ -117,13 +117,13 @@ func TestRetainedDomainAndListCLIPaths(t *testing.T) {
 		}
 	})
 
-	t.Run("remove absence and validation", func(t *testing.T) {
+	t.Run("remove absence is idempotent and validation remains strict", func(t *testing.T) {
 		root := scaffoldProject(t)
 		if err := runRemoveDomain(ctx, root, "../bad", io.Discard); err == nil {
 			t.Fatal("invalid domain accepted")
 		}
-		if err := runRemoveDomain(ctx, root, "payments", io.Discard); err == nil || !strings.Contains(err.Error(), "not configured") {
-			t.Fatalf("absent domain error = %v", err)
+		if err := runRemoveDomain(ctx, root, "payments", io.Discard); err != nil {
+			t.Fatalf("idempotent absent-domain removal = %v", err)
 		}
 	})
 

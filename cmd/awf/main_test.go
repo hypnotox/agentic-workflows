@@ -11,6 +11,27 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/clispec"
 )
 
+func TestEffortMutationAdmissionOwnership(t *testing.T) {
+	top := clispec.Command{Name: "effort"}
+	for _, test := range []struct {
+		sub         string
+		positionals []string
+		want        bool
+	}{
+		{sub: "new", want: true},
+		{sub: "finish", want: true},
+		{sub: "integrate", want: true},
+		{sub: "worktree", positionals: []string{"add", "slug"}, want: true},
+		{sub: "worktree", positionals: []string{"remove", "slug"}, want: true},
+		{sub: "list"},
+		{sub: "show"},
+	} {
+		if got := operationOwnsAdmission(top, test.sub, invocation{positionals: test.positionals}); got != test.want {
+			t.Errorf("sub=%q positionals=%v owned admission=%t, want %t", test.sub, test.positionals, got, test.want)
+		}
+	}
+}
+
 func TestRunInitScaffoldsAndSyncs(t *testing.T) {
 	ctx := testContext(t)
 	_ = ctx
@@ -20,7 +41,7 @@ func TestRunInitScaffoldsAndSyncs(t *testing.T) {
 	if err := os.MkdirAll(proj, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := runInit(ctx, proj, false, false, nil, "", io.Discard); err != nil {
+	if err := runInit(ctx, proj, false, nil, "", io.Discard); err != nil {
 		t.Fatalf("runInit: %v", err)
 	}
 	cfg, err := os.ReadFile(filepath.Join(proj, ".awf", "config.yaml"))

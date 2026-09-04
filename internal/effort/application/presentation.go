@@ -21,8 +21,7 @@ func (e *presentedError) Diagnostic() (presentation.Diagnostic, error) {
 }
 
 func presentError(err error) error {
-	// Prefer the outer application outcome before inspecting its nested effort
-	// rollback or worktree mechanism causes.
+	// Prefer the outer application outcome before inspecting its nested worktree mechanism cause.
 	var creation *CreationError
 	if errors.As(err, &creation) {
 		return &presentedError{cause: err, mapDiagnostic: func() (presentation.Diagnostic, error) {
@@ -172,46 +171,20 @@ func finishDocument(result effort.FinishResult, slug string) (presentation.Docum
 	if err != nil {
 		return presentation.Document{}, err
 	}
-	changed := make([]presentation.Value, 0, 4)
-	for _, axis := range []struct {
-		label string
-		value bool
-	}{{"finishing reservation", result.Reserved}, {"archived resident", result.Archived}, {"archive parent synced", result.DestinationSynced}, {"efforts parent synced", result.SourceSynced}} {
-		if !axis.value {
-			continue
-		}
-		item, err := presentation.Prose(axis.label)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		changed = append(changed, item)
+	archived, err := presentation.Prose("archived resident")
+	if err != nil {
+		return presentation.Document{}, err
 	}
 	next, err := presentation.Prose("continue without this finished effort; delete the local archive manually when it is no longer useful")
 	if err != nil {
 		return presentation.Document{}, err
 	}
-	mutation := presentation.Mutation{Status: "archived", Identity: []presentation.Field{effortField, archiveField}, NextActions: []presentation.Value{next}}
-	if len(changed) > 0 {
-		mutation.Changes = []presentation.MutationChange{{Label: "completed", Values: changed}}
-	}
-	limits := make([]presentation.Value, 0, 2)
-	for _, text := range []string{
-		map[bool]string{true: "", false: "archive parent sync unavailable on this platform"}[result.DestinationSyncAvailable],
-		map[bool]string{true: "", false: "efforts parent sync unavailable on this platform"}[result.SourceSyncAvailable],
-	} {
-		if text == "" {
-			continue
-		}
-		value, err := presentation.Prose(text)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		limits = append(limits, value)
-	}
-	if len(limits) > 0 {
-		mutation.Changes = append(mutation.Changes, presentation.MutationChange{Label: "platform limits", Values: limits})
-	}
-	return mutation.Document()
+	return (presentation.Mutation{
+		Status:      "archived",
+		Identity:    []presentation.Field{effortField, archiveField},
+		Changes:     []presentation.MutationChange{{Label: "completed", Values: []presentation.Value{archived}}},
+		NextActions: []presentation.Value{next},
+	}).Document()
 }
 
 func worktreeDocument(result worktree.Result, err error) (presentation.Document, error) {
@@ -285,7 +258,6 @@ func topologyAxes(topology worktree.TopologyEffects) []topologyAxis {
 		{"git registration", topology.GitRegistration},
 		{"branch", topology.Branch},
 		{"receiving HEAD", topology.ReceivingHEAD},
-		{"topology uncertainty", topology.Uncertain},
 	}
 }
 
@@ -407,15 +379,11 @@ func mechanismCauses(err error) []error {
 	}
 	var creation *CreationError
 	if errors.As(err, &creation) {
-		return append(mechanismCauses(creation.Cause), mechanismCauses(creation.RollbackCause)...)
+		return mechanismCauses(creation.Cause)
 	}
 	var refusal *worktree.RefusalError
 	if errors.As(err, &refusal) {
 		return mechanismCauses(refusal.Err)
-	}
-	var partial *effort.PartialFinishError
-	if errors.As(err, &partial) {
-		return mechanismCauses(partial.Cause)
 	}
 	if errors.Is(err, effort.ErrManagedTopologyPresent) {
 		return nil

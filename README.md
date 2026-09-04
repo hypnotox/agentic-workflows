@@ -88,8 +88,7 @@ awf render
 awf check
 ```
 
-If initialization finds an existing file it would replace, it stops and reports the
-collision. `awf init --force` first saves each replaced file as `<path>.awf-bak`.
+If initialization finds an existing file it would replace, it stops before mutation and reports the collision.
 
 ## How it works
 
@@ -133,7 +132,7 @@ Punctuation findings are advisory Warnings with zero exit.
 | `awf render` | Re-render after a template or config change |
 | `awf edit <kind> <name> <part> --content <text>` | Replace one semantically identified artifact part |
 | `awf reset <kind> <name> <part>` | Restore one semantically identified artifact part |
-| `awf check` | Verify the repository and staged universes |
+| `awf check` | Verify working-tree or explicitly staged repository state |
 | `awf read <subcommand>` | Read a focused current-state authority projection |
 | `awf resolve topic <path>...` | Resolve lexical paths to current-state authority |
 | `awf audit <base>\|<a>..<b>` | Report workflow-conformance findings over a commit range (advisory) |
@@ -142,7 +141,7 @@ Punctuation findings are advisory Warnings with zero exit.
 | `awf config [<key-or-var>]` | Describe config keys and vars (live state inside a project) |
 | `awf new <kind> <args>` | Scaffold a new artifact: kind in {topic, domain, pitfall, doc} |
 | `awf remove domain <name>` | Remove a configured domain |
-| `awf upgrade [--recover]` | Migrate the .awf/ config tree or recover an interrupted upgrade |
+| `awf upgrade` | Migrate the .awf/ config tree to the current schema version |
 | `awf uninstall` | Remove awf's generated files (keeps .awf/) |
 | `awf changelog [--version <v> \| --since <v> \| --range <from>..<to>]` | Print the embedded changelog, or one version/range of it |
 | `awf version` | Print the awf version |

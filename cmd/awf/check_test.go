@@ -463,17 +463,27 @@ func TestCheckStagedDriftRenderedOutput(t *testing.T) {
 	})
 }
 
-// invariant: tooling/cli:check-universe-groups (TestRunCheckRunsStagedAfterRepoFailure)
-func TestRunCheckRunsStagedAfterRepoFailure(t *testing.T) {
-	root := stagedCheckProject(t,
-		map[string]string{".awf/config.yaml": coverageYAML(), ".awf/domains/alpha.yaml": "paths:\n  - internal/**\n"},
-		map[string]string{"internal/bar.go": "package internalx\n"})
-	var out bytes.Buffer
-	if err := runCheck(testContext(t), root, &out); err == nil {
-		t.Fatal("heterogeneous bare-check failures returned nil")
+// invariant: tooling/cli:check-universe-groups (TestBareCheckIgnoresDivergentStagedAuthority)
+func TestBareCheckIgnoresDivergentStagedAuthority(t *testing.T) {
+	root := syncedGitProjectFiles(t, minimalYAML, nil)
+	configPath := filepath.Join(root, ".awf", "config.yaml")
+	working, err := os.ReadFile(configPath)
+	if err != nil {
+		t.Fatal(err)
 	}
-	if !strings.Contains(out.String(), "unsynced") || strings.Count(out.String(), "current-state") < 2 {
-		t.Fatalf("bare check did not report repo failure and continue into staged findings:\n%s", out.String())
+	if err := os.WriteFile(configPath, []byte("invalid: [\n"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	gitfixture.NativeAdd(t, gitfixture.At(root), ".awf/config.yaml")
+	if err := os.WriteFile(configPath, working, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	var out bytes.Buffer
+	if err := runCheck(testContext(t), root, &out); err != nil {
+		t.Fatalf("bare check consulted staged authority: %v\n%s", err, out.String())
+	}
+	if err := runCheckStaged(testContext(t), root, io.Discard); err == nil {
+		t.Fatal("explicit staged check accepted invalid staged authority")
 	}
 }
 

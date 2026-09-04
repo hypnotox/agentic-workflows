@@ -81,23 +81,23 @@ func TestEffortNewBasesTheManagedBranchOnTheNamedRef(t *testing.T) {
 	}
 }
 
-func TestEffortNewRollsBackOrRetainsPerProvenTopology(t *testing.T) {
+func TestEffortNewRetainsResidentWhenWorktreeCreationFails(t *testing.T) {
 	root := commandRepo(t)
 	var out bytes.Buffer
 	rolled := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Rolled back CLI"}, bools: map[string]bool{}, values: map[string]string{"--slug": "rolled-back-cli", "--base": "no-such-ref"}}, stdout: &out}
 	err := runEffort(rolled, openEffortComposition)
-	if err == nil || !strings.Contains(err.Error(), "effort rolled-back-cli rolled back") || !strings.Contains(err.Error(), "retry `awf effort new --slug \"rolled-back-cli\" \"Rolled back CLI\"`") {
+	if err == nil || !strings.Contains(err.Error(), "effort rolled-back-cli retained") || !strings.Contains(err.Error(), "worktree add rolled-back-cli") {
 		t.Fatalf("unresolvable base error = %v", err)
 	}
-	if _, statErr := os.Lstat(filepath.Join(root, ".awf", "efforts", "rolled-back-cli")); !errors.Is(statErr, os.ErrNotExist) {
-		t.Fatalf("rolled-back effort resident remains: %v", statErr)
+	if _, statErr := os.Lstat(filepath.Join(root, ".awf", "efforts", "rolled-back-cli")); statErr != nil {
+		t.Fatalf("retained effort resident is absent: %v", statErr)
 	}
 
 	gitfixture.NativeBranch(t, gitfixture.At(root), "awf/retained-cli")
 	out.Reset()
 	retained := &cmdCtx{ctx: testContext(t), root: root, sub: "new", inv: invocation{positionals: []string{"Retained CLI"}, bools: map[string]bool{}, values: map[string]string{"--slug": "retained-cli"}}, stdout: &out}
 	err = runEffort(retained, openEffortComposition)
-	if err == nil || !strings.Contains(err.Error(), "effort retained-cli retained: managed topology remains") {
+	if err == nil || !strings.Contains(err.Error(), "effort retained-cli retained") {
 		t.Fatalf("colliding branch error = %v", err)
 	}
 	if out.Len() != 0 {
@@ -174,13 +174,13 @@ func TestEffortCompositionRefusesAnUnusableResidentRoot(t *testing.T) {
 	if err := os.Symlink(t.TempDir(), worktrees); err != nil {
 		t.Fatal(err)
 	}
-	if _, err := openEffortComposition(testContext(t), root, application.Request{Kind: application.List}, func() ([]byte, error) { return []byte("marker\n"), nil }); err == nil {
+	if _, err := openEffortComposition(testContext(t), root, application.Request{Kind: application.List}, func() ([]byte, error) { return []byte("marker\n"), nil }, allowEffortAdmission); err == nil {
 		t.Fatal("symlinked resident worktrees root accepted")
 	}
 }
 
 func TestWorktreeCompositionFailuresRemainSilentOnStdout(t *testing.T) {
-	unopenable := func(context.Context, string, application.Request, func() ([]byte, error)) (application.Result, error) {
+	unopenable := func(context.Context, string, application.Request, func() ([]byte, error), application.Admission) (application.Result, error) {
 		return application.Result{}, errors.New("injected application")
 	}
 	root := commandRepo(t)

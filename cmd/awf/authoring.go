@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"fmt"
 	"io"
 
@@ -79,20 +78,17 @@ func executeAuthoringRequest(c *cmdCtx, request authoringop.Request) error {
 	if err != nil {
 		return err
 	}
-	outcome, operationErr := authoringop.Run(c.ctx, c.root, request, loader, nil)
+	outcome, operationErr := authoringop.Run(c.ctx, c.root, request, loader, gatedLeaseAcquirer(loader))
 	if operationErr != nil {
-		partial, ok := authoringop.AsPartial(operationErr)
-		if !ok {
-			return operationErr
+		touched := append([]string(nil), outcome.CreatedParents...)
+		pending := []string(nil)
+		if outcome.Source != authoringop.SourceNone {
+			touched = append(touched, outcome.SourcePath)
+		} else if outcome.SourcePath != "" {
+			pending = append(pending, outcome.SourcePath)
 		}
-		document, documentErr := partial.Document()
-		if documentErr != nil {
-			return errors.Join(operationErr, documentErr)
-		}
-		if renderErr := presentation.Render(c.stdout, document); renderErr != nil {
-			return errors.Join(operationErr, renderErr)
-		}
-		return &producedReportError{operationErr}
+		touched = append(touched, publisherPaths(outcome.Publisher)...)
+		return mutationFailure{condition: "artifact authoring did not complete", cause: operationErr, touched: touched, pending: pending, rerun: "awf " + string(request.Mode)}
 	}
 	document, err := outcome.Document()
 	if err != nil {

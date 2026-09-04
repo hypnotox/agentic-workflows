@@ -7,9 +7,11 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/project"
@@ -31,6 +33,39 @@ func gateFixture(t *testing.T, awfVersion string, schema int) string {
 		}
 	}
 	return root
+}
+
+func TestMutationAdmissionWaitsForLeaseBeforeGuardReads(t *testing.T) {
+	root := scaffoldProject(t)
+	lockPath := config.LockPath(root)
+	lockBytes, err := os.ReadFile(lockPath)
+	if err != nil {
+		t.Fatal(err)
+	}
+	held, err := filesystem.AcquireProjectLease(testContext(t), root, awfgit.ProjectResidentRoot(testContext(t), root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Remove(lockPath); err != nil {
+		t.Fatal(err)
+	}
+	done := make(chan int, 1)
+	var out, errout bytes.Buffer
+	go func() { done <- runFrom(root, []string{"awf", "render"}, &out, &errout) }()
+	select {
+	case code := <-done:
+		t.Fatalf("render read partial authority before lease release: exit=%d stderr=%q", code, errout.String())
+	case <-time.After(50 * time.Millisecond):
+	}
+	if err := os.WriteFile(lockPath, lockBytes, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := held.Release(); err != nil {
+		t.Fatal(err)
+	}
+	if code := <-done; code != 0 {
+		t.Fatalf("render after stable authority: exit=%d stderr=%q", code, errout.String())
+	}
 }
 
 func TestGateStagedLoadErrors(t *testing.T) {
@@ -331,7 +366,7 @@ func TestProjectGuardStateRejectsControlSymlinksWithoutFollowingThem(t *testing.
 					t.Fatal(err)
 				}
 			}
-			_, _, _, _, _, _, _, loadErr, err := projectGuardState(testContext(t), root, false)
+			_, _, _, _, _, loadErr, err := projectGuardState(testContext(t), root, false)
 			if err != nil || loadErr == nil {
 				t.Fatalf("projectGuardState() errors = load %v, operation %v; want safe authority refusal", loadErr, err)
 			}

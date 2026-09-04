@@ -5,7 +5,7 @@
 
 Root-confined path behavior and project mutation lease safety.
 
-**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/authoringop/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/pitfallop/**`, `internal/projectlicense/**`, `internal/projectmutation/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `internal/filesystem/**`, `internal/projectmutation/**`, `internal/testsupport/fsfixture/**`. Both domain and topic selectors must match. Run `awf read topic tooling/filesystem-access --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `cmd/**`, `internal/audit/**`, `internal/authoringop/**`, `internal/changelog/**`, `internal/checkop/**`, `internal/clispec/**`, `internal/commitmsg/**`, `internal/commitpolicy/**`, `internal/configop/**`, `internal/currentstatecoord/**`, `internal/domainop/**`, `internal/effort/**`, `internal/evals/**`, `internal/filepublication/**`, `internal/filesystem/**`, `internal/git/**`, `internal/initop/**`, `internal/initspec/**`, `internal/localdocop/**`, `internal/memorycite/**`, `internal/pitfallop/**`, `internal/projectlicense/**`, `internal/prosegate/**`, `internal/repositorycheck/**`, `internal/severity/**`, `internal/snapshot/**`, `internal/testselection/**`, `internal/testsupport/**`, `internal/topicop/**`, `internal/upgrade/**`, `internal/worktree/**`, `test-selection.json`, `tools/**`, `x`. Topic selectors: `internal/filesystem/**`, `internal/testsupport/fsfixture/**`. Both domain and topic selectors must match. Run `awf read topic tooling/filesystem-access --coverage` for current applicable and owned paths and marker sites.
 
 This topic records root-confined path behavior and project mutation lease safety.
 
@@ -13,7 +13,7 @@ This topic records root-confined path behavior and project mutation lease safety
 
 ### `invariant: root-confined-paths`
 
-Root-confined operations accept only valid slash-relative paths beneath the selected root, refuse absolute, parent, and escaping-symlink access, return slash-relative walk paths without following directory symlinks, and preserve wrapped error identity. A read-with-mode result returns bytes and permissions from one observed file generation even while the path is atomically replaced.
+Root-confined operations accept only valid slash-relative paths beneath the selected root, refuse absolute and parent access, do not follow symlinks in any path component, and refuse a symlink at the final mutation path even when it resolves in-root. Walks return slash-relative paths without following directory symlinks, and wrapped error identity is preserved. A read-with-mode result returns bytes and permissions from one observed file generation even while the path is replaced. Expected file replacement validates the observed identity and optional exact bytes and mode, publishes a complete same-directory temporary with rename, and makes no per-file fsync promise. Expected removal revalidates identity and exact content where supplied, directly unlinks files, and removes directories only when empty; no recursive expected-tree retirement remains.
 Backing: test
 
 ### `invariant: root-scoped-project-mutation-leases`
@@ -21,7 +21,7 @@ Backing: test
 Project mutation leases canonicalize existing roots including symlink aliases, retain restrictive user-cache lock files, order complete scope-and-root identities even when roots match, wait with context cancellation, and release explicitly or on process exit. Distinct tracked and resident scopes let linked checkouts remain independently mutable while a shared resident root serializes cross-checkout mutation.
 Backing: test
 
-### `invariant: focused-project-mutation-transactions`
+### `invariant: focused-project-mutations-visible`
 
-Focused operations select tracked-only or complete project scope and retain validation, write order, rollback, recovery, outcome, and presentation policy. One transaction centralizes lease coverage, confined authority access, a fresh committed Session reload before at most one Publisher synchronization attempt, typed mechanical failure phases, and release and partial-effect plumbing; tracked-only topic scaffolding never synchronizes.
+Focused operations acquire their selected tracked-only or complete project lease before mutable-authority reads, use confined authority access, validate before mutation, and stop at the first failure. Operations that render reload one fresh committed Session before at most one Publisher synchronization attempt. They leave earlier successful paths visible, report written or removed files, created or corrected directories, and the final lock among the affected paths for inspection and rerun, and do not roll back. Tracked-only topic scaffolding never synchronizes.
 Backing: test

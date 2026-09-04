@@ -96,8 +96,8 @@ func TestApplicationMapsTopologyDiagnosticsAndPreservesMechanismIdentity(t *test
 		{
 			name: "creation",
 			err: &CreationError{Message: "creation", Condition: "creation failed", ChangedEffort: true, ChangedTopology: true,
-				Cause: errors.New("add failed"), RollbackCause: errors.New("rollback failed"), Steps: []string{"inspect", "retry"}},
-			want: "condition: creation failed\nstate: operation\ncause: add failed | rollback failed\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: yes\n  steps:\n    step 1: inspect\n    step 2: retry\n",
+				Cause: errors.New("add failed"), Steps: []string{"inspect", "retry"}},
+			want: "condition: creation failed\nstate: operation\ncause: add failed\n\ndiagnostic:\n  changed:\n    effort resident: yes\n    managed topology: yes\n  steps:\n    step 1: inspect\n    step 2: retry\n",
 		},
 	}
 	for _, test := range cases {
@@ -112,7 +112,7 @@ func TestApplicationMapsTopologyDiagnosticsAndPreservesMechanismIdentity(t *test
 		})
 	}
 
-	if got := mechanismCauseText(&CreationError{Cause: &worktree.RefusalError{Err: mechanism}, RollbackCause: &effort.PartialFinishError{Cause: errors.New("rollback mechanism")}}); got != "probe failed | rollback mechanism" {
+	if got := mechanismCauseText(&CreationError{Cause: &worktree.RefusalError{Err: mechanism}}); got != "probe failed" {
 		t.Fatalf("mechanism causes = %q", got)
 	}
 	if (&CreationError{}).Unwrap() != nil {
@@ -141,65 +141,5 @@ func TestApplicationDiagnosticValidationRejectsInvalidSemanticValues(t *testing.
 	})
 	if _, err := presented.Diagnostic(); err == nil || !strings.Contains(err.Error(), "modeled recovery actions") {
 		t.Fatalf("missing recovery actions error = %v", err)
-	}
-}
-
-func TestApplicationMapsEveryFinishDiagnosticAndMutationAxis(t *testing.T) {
-	states := []struct {
-		name       string
-		result     effort.FinishResult
-		diagnostic string
-	}{
-		{"active", effort.FinishResult{State: effort.FinishStateActive}, "active resident: yes\n    finishing reservation: no\n    archived resident: no"},
-		{"reserved", effort.FinishResult{State: effort.FinishStateReserved, Reserved: true}, "active resident: no\n    finishing reservation: yes\n    archived resident: no"},
-		{"archived", effort.FinishResult{State: effort.FinishStateArchived, Archived: true}, "active resident: no\n    finishing reservation: no\n    archived resident: yes"},
-		{"archived after reservation", effort.FinishResult{State: effort.FinishStateArchived, Reserved: true, Archived: true}, "active resident: no\n    finishing reservation: no\n    archived resident: yes"},
-	}
-	for _, test := range states {
-		t.Run(test.name, func(t *testing.T) {
-			err := &effort.PartialFinishError{Result: test.result, Cause: errors.New("mechanism failed"), Actions: []effort.RecoveryAction{{Text: "retry"}}}
-			output := renderDiagnostic(t, err)
-			wantSync := "archive parent sync available: no\n    archive parent synced: no\n    efforts parent sync available: no\n    efforts parent synced: no"
-			if !strings.Contains(output, test.diagnostic) || !strings.Contains(output, wantSync) {
-				t.Fatalf("diagnostic = %q, want state %q and sync %q", output, test.diagnostic, wantSync)
-			}
-			result := test.result
-			result.ArchivePath = ".awf/effort-archive/id-demo"
-			document, mapErr := finishDocument(result, "demo")
-			if mapErr != nil {
-				t.Fatal(mapErr)
-			}
-			rendered := renderDocument(t, document)
-			for text, present := range map[string]bool{
-				"finishing reservation":                            result.Reserved,
-				"archived resident":                                result.Archived,
-				"archive parent sync unavailable on this platform": true,
-				"efforts parent sync unavailable on this platform": true,
-			} {
-				if strings.Contains(rendered, text) != present {
-					t.Fatalf("finish result %q presence of %q = %t, want %t", rendered, text, strings.Contains(rendered, text), present)
-				}
-			}
-		})
-	}
-
-	completed := effort.FinishResult{
-		State: effort.FinishStateArchived, Reserved: true, Archived: true,
-		DestinationSyncAvailable: true, SourceSyncAvailable: true,
-		DestinationSynced: true, SourceSynced: true,
-		ArchivePath: ".awf/effort-archive/id-demo",
-	}
-	document, err := finishDocument(completed, "demo")
-	if err != nil {
-		t.Fatal(err)
-	}
-	rendered := renderDocument(t, document)
-	for _, completedAxis := range []string{"finishing reservation", "archived resident", "archive parent synced", "efforts parent synced"} {
-		if !strings.Contains(rendered, completedAxis) {
-			t.Fatalf("completed finish %q omitted %q", rendered, completedAxis)
-		}
-	}
-	if strings.Contains(rendered, "platform limits") {
-		t.Fatalf("fully synced finish reported platform limits: %q", rendered)
 	}
 }

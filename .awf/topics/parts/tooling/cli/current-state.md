@@ -4,7 +4,7 @@ The cmd packages and their spec helpers implement the awf command surfaces and t
 
 ### `invariant: semantic-artifact-authoring`
 
-`awf edit sidecar <kind> <name> <field>` accepts exactly one scalar or JSON whole/list mode, and reset removes one supported leaf. The command resolves closed semantic kinds and capability-valid leaf fields, validates its complete candidate before source publication, and reports committed source and publisher effects through the authoring transaction.
+`awf edit sidecar <kind> <name> <field>` accepts exactly one scalar or JSON whole/list mode, and reset removes one supported leaf. The command resolves closed semantic kinds and capability-valid leaf fields, validates its complete candidate before source publication, and reports every affected path if an ordered source or publication mutation fails.
 Backing: test
 
 ### `invariant: init-describe-read-only`
@@ -14,17 +14,17 @@ Backing: test
 
 ### `invariant: cli-creation-and-inventory`
 
-The CLI lists the fixed `skill`, `doc`, and `domain` artifact inventory and never accepts the retired `agent` kind or selects individual catalog membership. `awf new` creates topics, domains, pitfalls, and additive local documents. Every selected-checkout creation takes its transaction lease before authority or destination planning, exclusively creates authored inputs through the confined filesystem boundary, and reports a complete result or every committed effect with recovery guidance.
+The CLI lists the fixed `skill`, `doc`, and `domain` artifact inventory and never accepts the retired `agent` kind or selects individual catalog membership. `awf new` creates topics, domains, pitfalls, and additive local documents. Every selected-checkout creation takes its writer lease before authority or destination planning, completely preflights collisions, exclusively creates authored inputs through the confined filesystem boundary, and reports every affected path when a later ordered mutation fails. An ordinary rerun accepts an already-applied exact requested declaration or absence and continues pending publication without rewriting that authority.
 Backing: test
 
 ### `invariant: pitfall-scaffold`
 
-`awf new pitfall <title>` accepts exactly one complete title positional, gates before project reads or writes, loads the current authored corpus, refuses empty, reserved, or whitespace-and-case-equivalent duplicate titles, uses the shared ASCII slug allocator and canonical serializer, and creates exactly one selected source path exclusively through a tracked `projectmutation.Transaction`. `internal/pitfallop` owns complete and partial outcomes and their presentation; the command releases the lease before reporting, so a post-commit cleanup or release failure identifies every committed path and recovery action without first printing success. Occupied suffix gaps choose the first free candidate; a race at the selected path refuses without advancing, while an ordinary retry reloads and recomputes. The command never renders or mutates generated output, a sidecar, or another registry.
+`awf new pitfall <title>` accepts exactly one complete title positional, gates before project reads or writes, loads the current authored corpus, refuses empty, reserved, or whitespace-and-case-equivalent duplicate titles, uses the shared ASCII slug allocator and canonical serializer, and creates exactly one selected source path exclusively through confined filesystem access under its selected writer lease. `internal/pitfallop` owns complete and partial outcomes and their presentation; the command releases the lease before reporting, so a release failure identifies every affected path without first printing success. Occupied suffix gaps choose the first free candidate; a race at the selected path refuses without advancing, while an ordinary retry reloads and recomputes. The command never renders or mutates generated output, a sidecar, or another registry.
 Backing: test
 
 ### `invariant: domain-lifecycle-commands`
 
-`awf new domain` validates and scaffolds a configured domain without clobbering authored parts; `awf remove domain` prunes rendered output and reports authored residue as orphaned. Both acquire every applicable physical-root lease before loading mutable authority, replace the exact observed configuration identity through the confined filesystem boundary, and retain committed publication facts with retry or recovery guidance when a later step fails. These leases serialize operations but do not claim crash atomicity.
+`awf new domain` validates and scaffolds a configured domain without clobbering authored parts; `awf remove domain` prunes only content AWF can prove it owns and reports protected authored content as orphaned. Both acquire every applicable physical-root lease before loading mutable authority, completely preflight collision and destructive paths, and replace the exact observed configuration identity through the confined filesystem boundary. A later failure stops at its first failed mutation, leaves earlier successful effects visible, and reports affected paths for inspection and rerun. Repeating the same add or remove accepts the exact already-applied configuration state and completes the remaining scaffold or publication work. These leases serialize operations but do not make Git-backed multi-file changes transactional.
 Backing: test
 
 ### `invariant: cli-runner-instance-ownership`
@@ -62,11 +62,6 @@ Backing: test
 The gated-command list rendered into the managed docs is generated from the clispec command table through one generator feeding both the render placeholder and the agent-guide value, with no hand-maintained enumeration in either doc. It is the single projection of top-level commands whose gating classification is not ungated, with no group-child exclusion list.
 Backing: test
 
-### `invariant: group-child-project-guard-exemption`
-
-The current-state journal guard reads the deepest resolved command's exemption property, so `awf check staged commit` stays runnable in the states where its commit-msg hook must still function while the repo scan children remain guarded.
-Backing: test
-
 ### `invariant: invariants-in-check`
 
 `awf check` always evaluates the current-state topic corpus and propagates error findings to a non-zero result.
@@ -74,7 +69,7 @@ Backing: test
 
 ### `invariant: check-universe-groups`
 
-The check command groups repository drift, current-state, prose, and memory checks. Staged checks current-state and rendered-output drift, and outside Git the bare form reports staged unavailable.
+Bare `awf check` evaluates only the working-tree repository universe: drift, current-state, prose, and memory checks. `awf check staged` remains the explicit index-universe command for current-state and rendered-output drift. The two universes are never implicitly combined.
 Backing: test
 
 ### `invariant: readable-text-output`
@@ -125,5 +120,5 @@ Backing: test
 
 ### `invariant: effort-command-contract`
 
-`awf effort` exposes exactly six readable-text branches: schema-2 `new --slug <slug> <outcome-title> [--base <ref>]`, active-only `list`, active-only `show <slug>`, archival `finish <slug>`, `worktree add <slug> [--base <ref>]` and `worktree remove <slug>`, and `integrate <slug>`. New requires the nonrepeatable explicit slug value flag around the one independent title positional through interspersed ordering and validates grammar before composition. Former `activity` and `memory` forms fail through normal usage parsing before resident access or mutation. Finish validates topology, the active or reserved resident, the exact archive root, and the command-composed fully rendered marker before active mutation; it reports the primary-root-qualified archive destination on completed archival and typed reservation, move, durability, and inspection facts on partial outcomes. Readable new, show, and list presentations preserve schema-2 active resident facts, worktree behavior, resolvable memory paths, and unrelated command availability. There is no archive inventory, restore, prune, force-delete, finish bypass, rename, standalone memory, activity, lifecycle ledger, manual integration, authoritative assignment, or force command.
+`awf effort` exposes exactly six readable-text branches: schema-2 `new --slug <slug> <outcome-title> [--base <ref>]`, active-only `list`, active-only `show <slug>`, archival `finish <slug>`, `worktree add <slug> [--base <ref>]` and `worktree remove <slug>`, and `integrate <slug>`. New requires the nonrepeatable explicit slug value flag around the one independent title positional through interspersed ordering and validates grammar before composition. Former `activity` and `memory` forms fail through normal usage parsing before resident access or mutation. Finish validates managed topology, the active resident, the exact archive root, the command-composed fully rendered marker, and destination absence before directly moving the resident without replacement; success reports the primary-root-qualified archive destination. A failed default worktree Add reports the retained resident plus the expected managed path and branch for inspection and ordinary retry. Readable new, show, and list presentations preserve schema-2 active resident facts, worktree behavior, resolvable memory paths, and unrelated command availability. There is no finishing reservation, failed-creation rollback, durability ledger, archive inventory, restore, prune, force-delete, finish bypass, rename, standalone memory, activity, lifecycle ledger, manual integration, authoritative assignment, or force command.
 Backing: test

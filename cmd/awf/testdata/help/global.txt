@@ -9,7 +9,7 @@ help:
       render | Re-render after a template or config change
       edit | Replace one semantically identified artifact part
       reset | Restore one semantically identified artifact part
-      check | Verify the repository and staged universes
+      check | Verify working-tree or explicitly staged repository state
       read | Read a focused current-state authority projection
       resolve | Resolve lexical paths to current-state authority
       audit | Report workflow-conformance findings over a commit range (advisory)
@@ -18,7 +18,7 @@ help:
       config | Describe config keys and vars (live state inside a project)
       new | Scaffold a new artifact: kind in {topic, domain, pitfall, doc}
       remove | Remove a configured domain
-      upgrade | Migrate the .awf/ config tree or recover an interrupted upgrade
+      upgrade | Migrate the .awf/ config tree to the current schema version
       uninstall | Remove awf's generated files (keeps .awf/)
       changelog | Print the embedded changelog, or one version/range of it
       version | Print the awf version

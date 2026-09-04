@@ -1,5 +1,5 @@
 command: awf check
-summary: Verify the repository and staged universes
+summary: Verify working-tree or explicitly staged repository state
 
 help:
   usage:
@@ -7,8 +7,7 @@ help:
     awf check repo [subcommand]
     awf check staged [subcommand]
     awf check commit-policy <revision-or-range>...
-  description: Bare check runs both universes. The repo universe checks drift, current-state authority,
+  description: Bare check runs the working-tree repository universe: drift, current-state authority,
   details:
-    prose, and memory; the staged universe validates the HEAD-to-index transition.
-    Outside a Git repository bare check runs the repo universe and reports that the
-    staged universe is unavailable.
+    prose, and memory. Use `awf check staged` to validate the HEAD-to-index
+    transition explicitly; the two universes are never implicitly combined.

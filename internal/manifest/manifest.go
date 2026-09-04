@@ -50,29 +50,24 @@ func (l *Lock) Clone() *Lock {
 	return &out
 }
 
-// AuthorityState identifies the sole supported permanent lock authority.
-type AuthorityState uint8
-
-const AuthorityPermanent AuthorityState = 1
-
-// AuthorityState validates permanent lock authority. Older adopters may omit
-// initialization provenance and remain valid permanent authority.
-func (l *Lock) AuthorityState() (AuthorityState, error) {
+// validateAuthority validates initialization provenance when present. Older
+// adopters may omit it and remain valid authority.
+func (l *Lock) validateAuthority() error {
 	if l.InitializedWithVersion == "" {
-		return AuthorityPermanent, nil
+		return nil
 	}
 	initialized, ok := NormalizeSemver(l.InitializedWithVersion)
 	if !ok {
-		return 0, fmt.Errorf("invalid lock authority: initializedWithVersion %q is not semantic version syntax", l.InitializedWithVersion)
+		return fmt.Errorf("invalid lock authority: initializedWithVersion %q is not semantic version syntax", l.InitializedWithVersion)
 	}
 	awf, ok := NormalizeSemver(l.AWFVersion)
 	if !ok {
-		return 0, fmt.Errorf("invalid lock authority: awfVersion %q is not semantic version syntax", l.AWFVersion)
+		return fmt.Errorf("invalid lock authority: awfVersion %q is not semantic version syntax", l.AWFVersion)
 	}
 	if semver.Compare(initialized, awf) > 0 {
-		return 0, fmt.Errorf("invalid lock authority: initializedWithVersion %q is later than awfVersion %q", l.InitializedWithVersion, l.AWFVersion)
+		return fmt.Errorf("invalid lock authority: initializedWithVersion %q is later than awfVersion %q", l.InitializedWithVersion, l.AWFVersion)
 	}
-	return AuthorityPermanent, nil
+	return nil
 }
 
 func NormalizeSemver(s string) (string, bool) {
@@ -128,7 +123,7 @@ func parse(b []byte) (*Lock, error) {
 	if err := validateInventory(raw["files"]); err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)
 	}
-	if _, err := l.AuthorityState(); err != nil {
+	if err := l.validateAuthority(); err != nil {
 		return nil, fmt.Errorf("parse lock: %w", err)
 	}
 	return &l, nil
@@ -250,7 +245,7 @@ func (l *Lock) Save(path string) error {
 	return WriteFileAtomic(path, b)
 }
 func (l *Lock) Marshal() ([]byte, error) {
-	if _, err := l.AuthorityState(); err != nil {
+	if err := l.validateAuthority(); err != nil {
 		return nil, err
 	}
 	b, err := json.MarshalIndent(l, "", "  ")

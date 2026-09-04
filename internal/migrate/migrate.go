@@ -4,51 +4,57 @@
 package migrate
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io/fs"
 	"os"
+	"path"
 	"path/filepath"
+	"slices"
 	"sort"
+	"strings"
+	"unicode"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
+	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
-// FileImage is the exact entry state observed while planning. An absent image
+// fileImage is the exact entry state observed while planning. An absent image
 // has Present false, zero mode, and no content or children. A directory image
 // records its permission mode and sorted direct-child names.
-type FileImage struct {
+type fileImage struct {
 	Present  bool
 	Content  []byte
 	Mode     os.FileMode
 	Children []string
 }
 
-// FileMutation is a planned regular-file replacement/removal or empty-directory
+// fileMutation is a planned regular-file replacement/removal or empty-directory
 // prune with the original preimage that must still be present when committed.
-type FileMutation struct {
+type fileMutation struct {
 	Path           string
-	Expected       FileImage
+	Expected       fileImage
 	Content        []byte
 	Mode           os.FileMode
 	Remove         bool
 	EmptyDirectory bool
 }
 
-// ProposedTree is the read-only tree view supplied to one migration step. It
+// proposedTree is the read-only tree view supplied to one migration step. It
 // overlays every earlier step's plan on the confined project root, so ordered
 // steps observe the state they are collectively proposing without mutating it.
-type ProposedTree struct {
+type proposedTree struct {
 	files     *filesystem.Handle
-	mutations map[string]FileMutation
+	mutations map[string]fileMutation
 }
 
 // Read returns the proposed bytes and mode for path. A non-regular final entry
 // is rejected because file-image migrations cannot preserve its topology.
-func (t *ProposedTree) Read(path string) ([]byte, os.FileMode, error) {
+func (t *proposedTree) Read(path string) ([]byte, os.FileMode, error) {
 	if mutation, ok := t.mutations[path]; ok {
 		if mutation.Remove {
 			return nil, 0, fs.ErrNotExist
@@ -72,24 +78,24 @@ func (t *ProposedTree) Read(path string) ([]byte, os.FileMode, error) {
 // PlanEmptyDirectory returns a prune only when path's proposed direct children
 // are all removed by earlier steps or the supplied same-step plan. The exact
 // current child inventory remains the commit-time stale-plan preimage.
-func (t *ProposedTree) PlanEmptyDirectory(path string, sameStep []FileMutation) (FileMutation, bool, error) {
+func (t *proposedTree) PlanEmptyDirectory(path string, sameStep []fileMutation) (fileMutation, bool, error) {
 	expected, err := t.files.ExpectedIdentity(path)
 	if errors.Is(err, fs.ErrNotExist) {
-		return FileMutation{}, false, nil
+		return fileMutation{}, false, nil
 	}
 	if err != nil {
-		return FileMutation{}, false, err
+		return fileMutation{}, false, err
 	}
 	defer expected.Release() //nolint:errcheck // planning read owns no mutation
 	if !expected.IsDir() {
-		return FileMutation{}, false, fmt.Errorf("migration prune source %s is not a directory", path)
+		return fileMutation{}, false, fmt.Errorf("migration prune source %s is not a directory", path)
 	}
 	entries, err := t.files.ReadDirExpected(path, expected)
 	if err != nil {
-		return FileMutation{}, false, err
+		return fileMutation{}, false, err
 	}
 	children := make([]string, 0, len(entries))
-	planned := make(map[string]FileMutation, len(t.mutations)+len(sameStep))
+	planned := make(map[string]fileMutation, len(t.mutations)+len(sameStep))
 	for mutationPath, mutation := range t.mutations {
 		planned[mutationPath] = mutation
 	}
@@ -98,7 +104,7 @@ func (t *ProposedTree) PlanEmptyDirectory(path string, sameStep []FileMutation) 
 	}
 	for mutationPath, mutation := range planned {
 		if filepath.ToSlash(filepath.Dir(filepath.FromSlash(mutationPath))) == path && !mutation.Remove {
-			return FileMutation{}, false, nil
+			return fileMutation{}, false, nil
 		}
 	}
 	for _, entry := range entries {
@@ -106,29 +112,29 @@ func (t *ProposedTree) PlanEmptyDirectory(path string, sameStep []FileMutation) 
 		childPath := filepath.ToSlash(filepath.Join(filepath.FromSlash(path), entry.Name()))
 		mutation, found := planned[childPath]
 		if !found || !mutation.Remove {
-			return FileMutation{}, false, nil
+			return fileMutation{}, false, nil
 		}
 	}
 	sort.Strings(children)
-	return FileMutation{
-		Path: path, Expected: FileImage{Present: true, Mode: expected.Mode().Perm(), Children: children},
+	return fileMutation{
+		Path: path, Expected: fileImage{Present: true, Mode: expected.Mode().Perm(), Children: children},
 		Remove: true, EmptyDirectory: true,
 	}, true, nil
 }
 
-func proposedImage(content []byte, mode os.FileMode, err error) (FileImage, error) {
+func proposedImage(content []byte, mode os.FileMode, err error) (fileImage, error) {
 	if errors.Is(err, fs.ErrNotExist) {
-		return FileImage{}, nil
+		return fileImage{}, nil
 	}
 	if err != nil {
-		return FileImage{}, err
+		return fileImage{}, err
 	}
-	return FileImage{Present: true, Content: append([]byte(nil), content...), Mode: mode.Perm()}, nil
+	return fileImage{Present: true, Content: append([]byte(nil), content...), Mode: mode.Perm()}, nil
 }
 
-func (t *ProposedTree) overlay(planned []FileMutation) error {
+func (t *proposedTree) overlay(planned []fileMutation) error {
 	for _, mutation := range planned {
-		var current FileImage
+		var current fileImage
 		if mutation.EmptyDirectory {
 			current = mutation.Expected
 		} else {
@@ -152,15 +158,22 @@ func (t *ProposedTree) overlay(planned []FileMutation) error {
 	return nil
 }
 
-func (t *ProposedTree) coalesced() []FileMutation {
+func (t *proposedTree) coalesced() []fileMutation {
 	paths := make([]string, 0, len(t.mutations))
 	for path := range t.mutations {
 		paths = append(paths, path)
 	}
 	sort.Strings(paths)
-	mutations := make([]FileMutation, 0, len(paths))
+	mutations := make([]fileMutation, 0, len(paths))
 	for _, path := range paths {
 		mutation := t.mutations[path]
+		// A path created and retired entirely inside the bridge has no live
+		// mutation. Likewise, an exact rewrite is already converged.
+		if !mutation.Expected.Present && mutation.Remove ||
+			mutation.Expected.Present && !mutation.Remove && !mutation.EmptyDirectory &&
+				mutation.Expected.Mode.Perm() == mutation.Mode.Perm() && bytes.Equal(mutation.Expected.Content, mutation.Content) {
+			continue
+		}
 		mutation.Expected.Content = append([]byte(nil), mutation.Expected.Content...)
 		mutation.Expected.Children = append([]string(nil), mutation.Expected.Children...)
 		mutation.Content = append([]byte(nil), mutation.Content...)
@@ -169,18 +182,18 @@ func (t *ProposedTree) coalesced() []FileMutation {
 	return mutations
 }
 
-// Migration is one ordered upgrade step for a supported live generation.
-type Migration struct {
+// migration is one ordered upgrade step for a supported live generation.
+type migration struct {
 	To    int
 	Name  string
-	Build func(context.Context, *ProposedTree, *Changes) ([]FileMutation, error)
+	Build func(context.Context, *proposedTree, *Changes) ([]fileMutation, error)
 }
 
 // LiveSchemaFloor is the oldest source generation this binary can operate on.
 const LiveSchemaFloor = 50
 
 // registry begins at the live floor and advances through supported migrations.
-var registry = []Migration{
+var registry = []migration{
 	{To: LiveSchemaFloor, Name: "supported-schema-50"},
 	{To: contextSkillGeneration, Name: contextSkillMigration, Build: renameRepositoryContextSkill},
 	{To: skillExtractionGeneration, Name: skillExtractionMigration, Build: migrateExtractedSkills},
@@ -348,10 +361,9 @@ func GateState(root string) (string, int, error) {
 	return GateStateForGeneration(gen), gen, nil
 }
 
-// Build produces only registered supported migrations. It never decodes a
-// below-floor source or writes the filesystem; the command composition maps
-// its file mutations to the upgrade journal.
-func Build(ctx context.Context, root string) (applied []string, resultChanges []Change, mutations []FileMutation, returnErr error) {
+// plan produces only registered supported migrations and never writes the
+// filesystem. Its file images are private, temporary bridge details.
+func planMigrations(ctx context.Context, root string) (planned []string, resultChanges []Change, mutations []fileMutation, returnErr error) {
 	if err := validateRegistry(); err != nil {
 		return nil, nil, nil, err
 	}
@@ -367,22 +379,377 @@ func Build(ctx context.Context, root string) (applied []string, resultChanges []
 		return nil, nil, nil, err
 	}
 	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
-	proposed := &ProposedTree{files: files, mutations: map[string]FileMutation{}}
+	proposed := &proposedTree{files: files, mutations: map[string]fileMutation{}}
 	changes := &Changes{}
 	for _, m := range registry {
 		if m.To <= from {
 			continue
 		}
-		planned, err := m.Build(ctx, proposed, changes)
+		stepMutations, err := m.Build(ctx, proposed, changes)
 		if err != nil {
-			return applied, changes.Items(), proposed.coalesced(), fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
+			return planned, changes.Items(), proposed.coalesced(), fmt.Errorf("migration %q (to %d): %w", m.Name, m.To, err)
 		}
-		if err := proposed.overlay(planned); err != nil {
-			return applied, changes.Items(), proposed.coalesced(), fmt.Errorf("migration %q (to %d): validate planned files: %w", m.Name, m.To, err)
+		if err := proposed.overlay(stepMutations); err != nil {
+			return planned, changes.Items(), proposed.coalesced(), fmt.Errorf("migration %q (to %d): validate planned files: %w", m.Name, m.To, err)
 		}
-		applied = append(applied, m.Name)
+		planned = append(planned, m.Name)
 	}
-	return applied, changes.Items(), proposed.coalesced(), nil
+	return planned, changes.Items(), proposed.coalesced(), nil
+}
+
+// Result is the semantic and path-level evidence from one straight-line run.
+// Touched contains successful filesystem operations; Pending contains the
+// current failed path and every operation that was not attempted.
+type Result struct {
+	Planned []string
+	Applied []string
+	Changes []Change
+	Touched []string
+	Pending []string
+}
+
+type preparedMutation struct {
+	mutation fileMutation
+	expected *filesystem.ExpectedIdentity
+}
+
+func captureAuthority(root string) (image fileImage, returnErr error) {
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return fileImage{}, err
+	}
+	defer func() { returnErr = errors.Join(returnErr, files.Close()) }()
+	expected, err := files.ExpectedIdentity(config.DirName + "/awf.lock")
+	if errors.Is(err, fs.ErrNotExist) {
+		return fileImage{}, nil
+	}
+	if err != nil {
+		return fileImage{}, fmt.Errorf("inspect migration authority lock: %w", err)
+	}
+	defer expected.Release() //nolint:errcheck // read-only capture owns no mutation
+	if !expected.Mode().IsRegular() {
+		return fileImage{}, errors.New("migration authority lock is not a regular file")
+	}
+	contents, mode, err := files.ReadExpected(config.DirName+"/awf.lock", expected)
+	if err != nil {
+		return fileImage{}, fmt.Errorf("read migration authority lock: %w", err)
+	}
+	return fileImage{Present: true, Content: contents, Mode: mode.Perm()}, nil
+}
+
+func validMigrationPath(name string) bool {
+	return fs.ValidPath(name) && name != "." && !strings.Contains(name, "\\") &&
+		!strings.HasPrefix(name, "/") && path.Clean(name) == name &&
+		name != ".." && !strings.HasPrefix(name, "../") &&
+		!strings.ContainsFunc(name, unicode.IsControl)
+}
+
+func gitMode(mode os.FileMode) awfgit.BlobMode {
+	if mode.Perm()&0o111 != 0 {
+		return awfgit.BlobExecutable
+	}
+	return awfgit.BlobRegular
+}
+
+func blobsByPath(blobs []awfgit.IndexBlob) map[string]awfgit.IndexBlob {
+	byPath := make(map[string]awfgit.IndexBlob, len(blobs))
+	for _, blob := range blobs {
+		byPath[blob.Path] = blob
+	}
+	return byPath
+}
+
+func mutationLess(a, b preparedMutation) bool {
+	class := func(op preparedMutation) int {
+		switch {
+		case op.mutation.EmptyDirectory:
+			return 3
+		case !op.mutation.Expected.Present:
+			return 0
+		case !op.mutation.Remove:
+			return 1
+		default:
+			return 2
+		}
+	}
+	ac, bc := class(a), class(b)
+	if ac != bc {
+		return ac < bc
+	}
+	if ac == 3 {
+		ad, bd := strings.Count(a.mutation.Path, "/"), strings.Count(b.mutation.Path, "/")
+		if ad != bd {
+			return ad > bd
+		}
+	}
+	return a.mutation.Path < b.mutation.Path
+}
+
+func preflight(ctx context.Context, root string, authority fileImage, mutations []fileMutation) (_ *filesystem.Handle, prepared []preparedMutation, returnErr error) {
+	seen := make(map[string]fileMutation, len(mutations))
+	destructive := make([]string, 0, len(mutations))
+	for _, mutation := range mutations {
+		if _, duplicate := seen[mutation.Path]; !validMigrationPath(mutation.Path) || duplicate {
+			return nil, nil, fmt.Errorf("invalid planned migration path %q", mutation.Path)
+		}
+		seen[mutation.Path] = mutation
+		if mutation.EmptyDirectory {
+			if !mutation.Remove || !mutation.Expected.Present || len(mutation.Content) != 0 || mutation.Mode != 0 {
+				return nil, nil, fmt.Errorf("invalid planned directory cleanup %q", mutation.Path)
+			}
+		} else if mutation.Remove {
+			if len(mutation.Content) != 0 || mutation.Mode != 0 {
+				return nil, nil, fmt.Errorf("planned removal %q carries replacement data", mutation.Path)
+			}
+		} else if mutation.Mode == 0 {
+			return nil, nil, fmt.Errorf("planned migration path %q has no mode", mutation.Path)
+		}
+		if mutation.Expected.Present && !mutation.EmptyDirectory {
+			destructive = append(destructive, mutation.Path)
+		}
+	}
+	sort.Strings(destructive)
+	var headByPath, indexByPath map[string]awfgit.IndexBlob
+	if len(destructive) > 0 {
+		repo, _, err := awfgit.OpenContaining(root)
+		if err != nil {
+			return nil, nil, fmt.Errorf("prove migration sources restorable from Git: %w", err)
+		}
+		head, err := repo.CommitBlobsAt(ctx, "HEAD", destructive)
+		if err != nil {
+			return nil, nil, fmt.Errorf("prove migration sources present in HEAD: %w", err)
+		}
+		index, err := repo.IndexBlobs(ctx)
+		if err != nil {
+			return nil, nil, fmt.Errorf("prove migration sources present in the stage-0 index: %w", err)
+		}
+		headByPath, indexByPath = blobsByPath(head), blobsByPath(index)
+		for _, name := range destructive {
+			h, hok := headByPath[name]
+			i, iok := indexByPath[name]
+			if !hok || !iok || h.Mode == awfgit.BlobSymlink || i.Mode == awfgit.BlobSymlink ||
+				h.Mode != i.Mode || !bytes.Equal(h.Bytes, i.Bytes) {
+				return nil, nil, fmt.Errorf("migration source %s must be an unchanged stage-0 regular file identical to HEAD", name)
+			}
+		}
+	}
+
+	files, err := filesystem.Open(root)
+	if err != nil {
+		return nil, nil, err
+	}
+	defer func() {
+		if returnErr != nil {
+			for _, op := range prepared {
+				if op.expected != nil {
+					_ = op.expected.Release()
+				}
+			}
+			returnErr = errors.Join(returnErr, files.Close())
+		}
+	}()
+	lockExpected, lockErr := files.ExpectedIdentity(config.DirName + "/awf.lock")
+	if errors.Is(lockErr, fs.ErrNotExist) {
+		if authority.Present {
+			return nil, nil, errors.New("migration authority lock changed after planning: expected present")
+		}
+	} else if lockErr != nil {
+		return nil, nil, fmt.Errorf("inspect migration authority lock after planning: %w", lockErr)
+	} else {
+		defer lockExpected.Release() //nolint:errcheck // preflight comparison owns no mutation
+		if !authority.Present || !lockExpected.Mode().IsRegular() {
+			return nil, nil, errors.New("migration authority lock changed after planning")
+		}
+		contents, mode, err := files.ReadExpected(config.DirName+"/awf.lock", lockExpected)
+		if err != nil {
+			return nil, nil, fmt.Errorf("read migration authority lock after planning: %w", err)
+		}
+		if mode.Perm() != authority.Mode.Perm() || !bytes.Equal(contents, authority.Content) {
+			return nil, nil, errors.New("migration authority lock changed after planning")
+		}
+	}
+	for _, mutation := range mutations {
+		expected, inspectErr := files.ExpectedIdentity(mutation.Path)
+		if errors.Is(inspectErr, fs.ErrNotExist) {
+			expected = nil
+		} else if inspectErr != nil {
+			return nil, prepared, fmt.Errorf("inspect planned migration path %s: %w", mutation.Path, inspectErr)
+		}
+		prepared = append(prepared, preparedMutation{mutation: mutation, expected: expected})
+		if !mutation.Expected.Present {
+			if expected != nil {
+				return nil, prepared, fmt.Errorf("planned migration destination %s must remain absent", mutation.Path)
+			}
+			continue
+		}
+		if expected == nil {
+			return nil, prepared, fmt.Errorf("planned migration source %s is missing", mutation.Path)
+		}
+		if mutation.EmptyDirectory {
+			if !expected.IsDir() || expected.Mode().Perm() != mutation.Expected.Mode.Perm() {
+				return nil, prepared, fmt.Errorf("planned cleanup %s changed after planning", mutation.Path)
+			}
+			entries, err := files.ReadDirExpected(mutation.Path, expected)
+			if err != nil {
+				return nil, prepared, err
+			}
+			names := make([]string, len(entries))
+			for i, entry := range entries {
+				names[i] = entry.Name()
+			}
+			sort.Strings(names)
+			if !slices.Equal(names, mutation.Expected.Children) {
+				return nil, prepared, fmt.Errorf("planned cleanup %s contains unplanned entries", mutation.Path)
+			}
+			for _, child := range names {
+				childPath := path.Join(mutation.Path, child)
+				childMutation, ok := seen[childPath]
+				if !ok || !childMutation.Remove {
+					return nil, prepared, fmt.Errorf("planned cleanup %s contains unplanned child %s", mutation.Path, child)
+				}
+			}
+			continue
+		}
+		if !expected.Mode().IsRegular() {
+			return nil, prepared, fmt.Errorf("planned migration source %s is not a regular file", mutation.Path)
+		}
+		contents, mode, err := files.ReadExpected(mutation.Path, expected)
+		if err != nil {
+			return nil, prepared, err
+		}
+		if mode.Perm() != mutation.Expected.Mode.Perm() || !bytes.Equal(contents, mutation.Expected.Content) {
+			return nil, prepared, fmt.Errorf("planned migration source %s changed after planning", mutation.Path)
+		}
+		if mutation.Expected.Present {
+			// Git stores only the executable distinction; exact bytes and that mode
+			// distinction must agree across HEAD, index, and worktree.
+			head := headByPath[mutation.Path]
+			if head.Mode != gitMode(mode) || !bytes.Equal(head.Bytes, contents) {
+				return nil, prepared, fmt.Errorf("migration source %s must be unchanged from HEAD", mutation.Path)
+			}
+		}
+	}
+	sort.Slice(prepared, func(i, j int) bool { return mutationLess(prepared[i], prepared[j]) })
+	return files, prepared, nil
+}
+
+// Apply plans, completely preflights, and applies the supported migration
+// chain. It deliberately does not update the schema lock.
+func Apply(ctx context.Context, root string) (Result, error) {
+	return applyWithHook(ctx, root, nil)
+}
+
+func applyWithHook(ctx context.Context, root string, before func(int, string) error) (result Result, returnErr error) {
+	authority, err := captureAuthority(root)
+	if err != nil {
+		return result, err
+	}
+	planned, changes, mutations, err := planMigrations(ctx, root)
+	result.Planned, result.Changes = planned, changes
+	if err != nil {
+		result.Pending = orderedMutationPaths(mutations)
+		return result, err
+	}
+	files, prepared, err := preflight(ctx, root, authority, mutations)
+	if err != nil {
+		result.Pending = orderedMutationPaths(mutations)
+		return result, err
+	}
+	defer func() {
+		for _, op := range prepared {
+			if op.expected != nil {
+				_ = op.expected.Release()
+			}
+		}
+		returnErr = errors.Join(returnErr, files.Close())
+	}()
+	for i, op := range prepared {
+		if err := ctx.Err(); err != nil {
+			result.Pending = preparedPaths(prepared[i:])
+			return result, err
+		}
+		mutation := op.mutation
+		if before != nil {
+			if err := before(i, mutation.Path); err != nil {
+				result.Pending = preparedPaths(prepared[i:])
+				return result, err
+			}
+		}
+		if !mutation.Remove {
+			if op.expected == nil {
+				if parent := path.Dir(mutation.Path); parent != "." {
+					missing, inspectErr := missingParentDirectories(files, parent)
+					if inspectErr != nil {
+						result.Pending = preparedPaths(prepared[i:])
+						return result, inspectErr
+					}
+					mkdirErr := files.MkdirAll(parent, 0o755)
+					for _, dir := range missing {
+						if info, statErr := files.LinkInfo(dir); statErr == nil && info.IsDir() {
+							result.Touched = append(result.Touched, dir)
+						}
+					}
+					if mkdirErr != nil {
+						result.Pending = preparedPaths(prepared[i:])
+						return result, mkdirErr
+					}
+				}
+				err = files.ReplaceExpected(mutation.Path, nil, mutation.Content, mutation.Mode)
+			} else {
+				err = files.ReplaceExpectedRegularFile(mutation.Path, op.expected, mutation.Expected.Content, mutation.Expected.Mode, mutation.Content, mutation.Mode)
+			}
+		} else if mutation.EmptyDirectory {
+			err = files.RemoveExpected(mutation.Path, op.expected)
+		} else {
+			err = files.RemoveExpectedRegularFile(mutation.Path, op.expected, mutation.Expected.Content, mutation.Expected.Mode)
+		}
+		if err != nil {
+			result.Pending = preparedPaths(prepared[i:])
+			return result, fmt.Errorf("apply migration path %s: %w", mutation.Path, err)
+		}
+		result.Touched = append(result.Touched, mutation.Path)
+	}
+	result.Applied = append([]string(nil), result.Planned...)
+	return result, nil
+}
+
+func missingParentDirectories(files *filesystem.Handle, parent string) ([]string, error) {
+	var parents []string
+	for current := parent; current != "."; current = path.Dir(current) {
+		parents = append(parents, current)
+	}
+	slices.Reverse(parents)
+	missing := make([]string, 0, len(parents))
+	for _, dir := range parents {
+		info, err := files.LinkInfo(dir)
+		if errors.Is(err, fs.ErrNotExist) {
+			missing = append(missing, dir)
+			continue
+		}
+		if err != nil {
+			return nil, fmt.Errorf("inspect migration parent %s: %w", dir, err)
+		}
+		if !info.IsDir() {
+			return nil, fmt.Errorf("migration parent %s is not a directory", dir)
+		}
+	}
+	return missing, nil
+}
+
+func orderedMutationPaths(mutations []fileMutation) []string {
+	ops := make([]preparedMutation, len(mutations))
+	for i := range mutations {
+		ops[i].mutation = mutations[i]
+	}
+	sort.Slice(ops, func(i, j int) bool { return mutationLess(ops[i], ops[j]) })
+	return preparedPaths(ops)
+}
+func preparedPaths(ops []preparedMutation) []string {
+	paths := make([]string, len(ops))
+	for i := range ops {
+		paths[i] = ops[i].mutation.Path
+	}
+	return paths
 }
 
 // IsRetiredLayout makes presentation boundaries distinguish layout refusal

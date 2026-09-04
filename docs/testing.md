@@ -49,7 +49,7 @@ awf uses focused iteration checks, one fast commit gate, and complete terminal o
 | `go` | Unit, integration, regression, build, lint, optional dead-code, migration, publication, and pin checks. |
 | `platform-sensitive` | Filesystem, Git, effort, worktree, and native archive lifecycle behavior on the supported targets. |
 | `release-archive` | Release configuration, candidate construction, and archive validation behavior. |
-| `render-template` | Exact fixed AWF skill publication, generated documentation, collisions, conservative pruning, and drift. |
+| `render-template` | Exact fixed AWF skill publication, generated documentation, complete collisions, ownership-checked pruning, partial-progress reporting, and drift. |
 
 `agentic-skills` and `pi-tools` are operator-managed packages with their own tests. AWF tests only its output and dependency boundary; it does not embed or behavior-test either external runtime.
 
@@ -60,8 +60,8 @@ awf uses focused iteration checks, one fast commit gate, and complete terminal o
 ## Layout and test shape
 | Area | Test location and shape |
 |---|---|
-| Go behavior | Focused package tests cover effort/worktree safety, migration, session validation, Publisher definition completeness and exactly-once rendering, collision-before-render ordering, deterministic joins, resident roots, and real-Git topology. |
-| Harness publication | Catalog, render, and integration tests prove exactly four fixed `awf-*` skills for Claude and Pi, no AWF roles or adapter, conservative upgrade backup, unrelated-content preservation, and external-package coexistence. |
+| Go behavior | Focused package tests cover effort/worktree safety, migration, session validation, Publisher definition completeness and exactly-once rendering, complete collision and destructive preflight, first-failure affected-path reporting, deterministic joins, resident roots, and real-Git topology. |
+| Harness publication | Catalog, render, and integration tests prove exactly four fixed `awf-*` skills for Claude and Pi, no AWF roles or adapter, upgrade refusal for unowned content, unrelated-content preservation, and external-package coexistence. |
 | Git boundary | Behavioral tests exercise range grammar, repository status, revision and worktree reads, environment isolation, cancellation deadlines, and error identity through package and application boundaries. Native fixtures create real repositories without making backend topology part of the contract. |
 | Test homes | Five `TestMain` suites use canonical `home-<decimal>` homes, retain Go's default `GOPATH`, and sweep only homes older than 24 hours. Failure to remove the current home fails the suite. |
 

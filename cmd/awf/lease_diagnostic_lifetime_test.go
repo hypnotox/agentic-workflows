@@ -82,9 +82,9 @@ func TestUpgradePartialAuthorityLeaseCoversDiagnosticWrite(t *testing.T) {
 		t.Fatal(err)
 	}
 	var release func() error
-	err := runUpgradeFlags(testContext(t), root, false, leaseRetainingWriter{Writer: io.Discard, retain: func(value func() error) { release = value }})
+	err := runUpgrade(testContext(t), root, leaseRetainingWriter{Writer: io.Discard, retain: func(value func() error) { release = value }})
 	if err == nil || release == nil {
-		t.Fatalf("runUpgradeFlags error=%v hasRelease=%t, want held partial-authority failure", err, release != nil)
+		t.Fatalf("runUpgrade error=%v hasRelease=%t, want held partial-authority failure", err, release != nil)
 	}
 	assertDiagnosticLeaseLifetime(t, handlerFailureHeld(err, release), func(ctx context.Context) (*filesystem.Lease, error) {
 		return filesystem.AcquireProjectLease(ctx, root, awfgit.ProjectResidentRoot(ctx, root))

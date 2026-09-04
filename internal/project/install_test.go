@@ -56,7 +56,7 @@ func TestSyncPrunesResidentLockEntryFromResidentRoot(t *testing.T) {
 	if err := lock.Save(lockFile(root)); err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := syncReportProject(p); err != nil {
+	if _, _, err := syncReportProject(p); err != nil {
 		t.Fatalf("resident-root prune path failed: %v", err)
 	}
 	lock, err = manifest.Load(lockFile(root))
@@ -187,13 +187,13 @@ func TestUninstallRejectsUnsafeResidentRoot(t *testing.T) {
 	}
 }
 
-func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
+func TestSyncReportRefusesForeignDirectoryWithoutMutation(t *testing.T) {
 	root := scaffold(t, sampleYAML)
 	p, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if _, _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
+	if _, _, err := initializeReportProject(p, publisher.InitAuthority{InitializedWithVersion: Version}); err != nil {
 		t.Fatal(err)
 	}
 	lock, err := manifest.Load(lockFile(root))
@@ -211,15 +211,14 @@ func TestSyncReportPropagatesForeignBackupFailure(t *testing.T) {
 	if err := os.Mkdir(foreign, 0o755); err != nil {
 		t.Fatal(err)
 	}
-	_, _, _, err = syncReportProject(p)
-	if err == nil || !strings.Contains(err.Error(), "back up AGENTS.md") || !strings.Contains(err.Error(), "read backup source") {
-		t.Fatalf("SyncReport foreign backup error = %v", err)
-	}
-	var pathError *os.PathError
-	if !errors.As(err, &pathError) {
-		t.Fatalf("SyncReport foreign backup error identity = %T, want *os.PathError", err)
+	_, _, err = syncReportProject(p)
+	if err == nil || !strings.Contains(err.Error(), "AGENTS.md") {
+		t.Fatalf("SyncReport foreign collision error = %v", err)
 	}
 	if info, statErr := os.Stat(foreign); statErr != nil || !info.IsDir() {
-		t.Fatalf("foreign source changed after backup refusal: info=%v error=%v", info, statErr)
+		t.Fatalf("foreign source changed after collision refusal: info=%v error=%v", info, statErr)
+	}
+	if _, statErr := os.Stat(foreign + ".awf-bak"); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("foreign collision backup = %v", statErr)
 	}
 }

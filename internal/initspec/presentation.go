@@ -13,6 +13,7 @@ type Outcome struct {
 	Sync           presentation.Mutation
 	Advisories     []string
 	NextActions    []string
+	Touched        []string
 }
 
 // Document maps a successful init outcome into one complete Mutation.

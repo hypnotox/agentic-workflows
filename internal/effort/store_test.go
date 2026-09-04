@@ -103,9 +103,8 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 	t.Parallel()
 	stages := []string{
 		"reserve.directory",
-		"memory.write", "memory.fsync", "memory.rename", "memory.directory-fsync",
-		"state.write", "state.fsync", "state.rename", "state.directory-fsync",
-		"efforts-root.fsync",
+		"memory.write", "memory.rename",
+		"state.write", "state.rename",
 	}
 	for _, failStage := range stages {
 		t.Run(failStage, func(t *testing.T) {
@@ -130,29 +129,24 @@ func TestCreationPublicationFaultOrderAndIncompleteEnumeration(t *testing.T) {
 				t.Fatalf("stages = %v, want prefix %v", seen, wantPrefix)
 			}
 			listed, listErr := service.List()
-			statePublished := indexOfStage(t, stages, failStage) >= indexOfStage(t, stages, "state.directory-fsync")
-			if statePublished {
-				if listErr != nil || len(listed) != 1 {
-					t.Fatalf("published state must enumerate: list=%#v err=%v", listed, listErr)
-				}
-			} else if listErr != nil || len(listed) != 0 {
+			if listErr != nil || len(listed) != 0 {
 				t.Fatalf("incomplete directory must be ignored: list=%#v err=%v", listed, listErr)
 			}
 			assertNoEffortTemporaries(t, filepath.Join(root, ".awf", "efforts", "fault-matrix"))
 
-			// Recreating the same slug must name which reservation blocks it: an
-			// incomplete one is a different condition, and a different repair,
-			// from an active effort.
-			_, retryErr := service.New(testContext(t), NewInput{Slug: "fault-matrix", Title: "Fault matrix"})
-			if retryErr == nil {
-				t.Fatal("recreation over an existing reservation succeeded")
+			// An ordinary retry resumes an empty or exact skeleton-only reservation
+			// and publishes the missing state without replacing existing bytes.
+			retry := openTestService(t, root, func(deps *Dependencies) {
+				deps.Clock = func() time.Time { return time.Date(2026, 7, 29, 12, 0, 0, 0, time.UTC) }
+				deps.UUID = func() (string, error) { return testIDB, nil }
+			})
+			record, retryErr := retry.New(testContext(t), NewInput{Slug: "fault-matrix", Title: "Fault matrix"})
+			if retryErr != nil || record.ID != testIDB {
+				t.Fatalf("retry record=%#v error=%v", record, retryErr)
 			}
-			wantCondition := "an incomplete reservation exists"
-			if statePublished {
-				wantCondition = "an active effort already exists"
-			}
-			if !strings.Contains(retryErr.Error(), wantCondition) {
-				t.Fatalf("recreation error = %v, want condition %q", retryErr, wantCondition)
+			listed, listErr = retry.List()
+			if listErr != nil || len(listed) != 1 || listed[0].ID != testIDB {
+				t.Fatalf("converged list=%#v err=%v", listed, listErr)
 			}
 		})
 	}
@@ -286,12 +280,6 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 	if err := requireJSONEOF(decoder); err == nil {
 		t.Fatal("malformed trailing JSON accepted")
 	}
-	for _, name := range []string{"plain", finishingPrefix + "bad", finishingPrefix + testIDA + "-bad_slug"} {
-		if _, _, ok := parseTombstoneName(name); ok {
-			t.Errorf("malformed tombstone %q accepted", name)
-		}
-	}
-
 	t.Run("empty list without resident root", func(t *testing.T) {
 		root := initEffortRepo(t)
 		if err := os.RemoveAll(filepath.Join(root, ".awf", "efforts")); err != nil {
@@ -339,18 +327,10 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 		})
 	}
 
-	t.Run("list skips tracked marker and valid tombstone", func(t *testing.T) {
+	t.Run("list skips tracked marker", func(t *testing.T) {
 		root := initEffortRepo(t)
 		writeEffortFile(t, filepath.Join(root, ".awf", "efforts", ".gitignore"), "*")
 		service := openEffortService(t, root, time.Now().UTC())
-		if _, err := service.New(testContext(t), NewInput{Slug: "listed-tombstone", Title: "Listed tombstone"}); err != nil {
-			t.Fatal(err)
-		}
-		active := filepath.Join(root, ".awf", "efforts", "listed-tombstone")
-		tombstone := filepath.Join(root, ".awf", "efforts", finishingPrefix+testIDA+"-listed-tombstone")
-		if err := os.Rename(active, tombstone); err != nil {
-			t.Fatal(err)
-		}
 		listed, err := service.List()
 		if err != nil || len(listed) != 0 {
 			t.Fatalf("list=%v err=%v", listed, err)
@@ -381,35 +361,7 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 		}
 	})
 
-	t.Run("invalid finishing resident", func(t *testing.T) {
-		root := initEffortRepo(t)
-		service := openEffortService(t, root, time.Now().UTC())
-		name := finishingPrefix + testIDA + "-bad-finish"
-		if err := os.Symlink(t.TempDir(), filepath.Join(root, ".awf", "efforts", name)); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := service.List(); err == nil {
-			t.Fatal("symlinked finishing resident accepted")
-		}
-	})
-
-	t.Run("mismatched finishing state", func(t *testing.T) {
-		root := initEffortRepo(t)
-		service := openEffortService(t, root, time.Now().UTC())
-		if _, err := service.New(testContext(t), NewInput{Slug: "mismatched-finish", Title: "Mismatched finish"}); err != nil {
-			t.Fatal(err)
-		}
-		active := filepath.Join(root, ".awf", "efforts", "mismatched-finish")
-		mismatch := filepath.Join(root, ".awf", "efforts", finishingPrefix+testIDB+"-mismatched-finish")
-		if err := os.Rename(active, mismatch); err != nil {
-			t.Fatal(err)
-		}
-		if _, err := service.store.findTombstones("mismatched-finish"); err == nil {
-			t.Fatal("mismatched finishing state accepted")
-		}
-	})
-
-	t.Run("direct missing state and tombstone root", func(t *testing.T) {
+	t.Run("direct missing state", func(t *testing.T) {
 		root := initEffortRepo(t)
 		service := openEffortService(t, root, time.Now().UTC())
 		dir := filepath.Join(root, ".awf", "efforts", "missing-state")
@@ -418,12 +370,6 @@ func TestProtocol2ValidationAndEnumerationBranches(t *testing.T) {
 		}
 		if _, err := service.store.loadDirectory(dir, "missing-state", true); err == nil {
 			t.Fatal("missing state accepted")
-		}
-		if err := os.RemoveAll(filepath.Join(root, ".awf", "efforts")); err != nil {
-			t.Fatal(err)
-		}
-		if found, err := service.store.findTombstones("missing-state"); err != nil || len(found) != 0 {
-			t.Fatalf("tombstones=%v err=%v", found, err)
 		}
 	})
 }

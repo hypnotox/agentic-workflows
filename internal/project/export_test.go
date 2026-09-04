@@ -238,13 +238,13 @@ func renderAll(state *Session) ([]RenderedFile, error) {
 func outputPlanProject(state *Session) (*outputplan.Plan, error) {
 	return outputPlan(operationInputs(state, testConfig(state)))
 }
-func projectResult(result publisher.Result, err error) ([]publisher.Backup, []publisher.Change, []string, error) {
-	return result.Backups(), result.Changes(), result.Pruned(), err
+func projectResult(result publisher.Result, err error) ([]publisher.Change, []string, error) {
+	return result.Changes(), result.Pruned(), err
 }
-func syncReportProject(state *Session) ([]publisher.Backup, []publisher.Change, []string, error) {
+func syncReportProject(state *Session) ([]publisher.Change, []string, error) {
 	return projectResult(testPublisher(operationInputs(state, testConfig(state))).SyncLeased(context.Background(), nil))
 }
-func initializeReportProject(state *Session, seed publisher.InitAuthority) ([]publisher.Backup, []publisher.Change, []string, error) {
+func initializeReportProject(state *Session, seed publisher.InitAuthority) ([]publisher.Change, []string, error) {
 	return projectResult(testPublisher(operationInputs(state, testConfig(state))).Initialize(seed))
 }
 func checkReportProject(state *Session, ctx context.Context) (repositorycheck.Report, error) {

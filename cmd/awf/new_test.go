@@ -14,18 +14,9 @@ import (
 	"time"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
-	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
-	"github.com/hypnotox/agentic-workflows/internal/pitfallop"
-	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
-
-// newPitfallWithReleaseFault is the test seam for proving a post-release
-// fault without replacing or bypassing the real lease release.
-func newPitfallWithReleaseFault(ctx context.Context, root string, args []string, stdout io.Writer, releaseFault func() error) error {
-	return newPitfallWithFaults(ctx, root, args, stdout, releaseFault, pitfallop.Create)
-}
 
 type leaseProbeWriter struct {
 	root    string
@@ -47,7 +38,7 @@ func (w *leaseProbeWriter) Write(p []byte) (int, error) {
 	return len(p), nil
 }
 
-func TestMutationLeaseRemainsHeldThroughPresentation(t *testing.T) {
+func TestFocusedMutationLeaseIsReleasedBeforePresentation(t *testing.T) {
 	for _, test := range []struct {
 		name string
 		root func(*testing.T) string
@@ -66,7 +57,7 @@ func TestMutationLeaseRemainsHeldThroughPresentation(t *testing.T) {
 			if err := test.run(root, probe); err != nil {
 				t.Fatal(err)
 			}
-			if !probe.checked || !errors.Is(probe.err, context.DeadlineExceeded) {
+			if !probe.checked || probe.err != nil {
 				t.Fatalf("presentation lease probe = checked %t, error %v", probe.checked, probe.err)
 			}
 		})
@@ -275,155 +266,17 @@ func TestRunNewPitfallScaffoldsOneAuthoredSourceWithoutRender(t *testing.T) {
 	}
 }
 
-func TestRunNewPitfallPresentationFailureRetainsCommittedOutcome(t *testing.T) {
+func TestRunNewPitfallPresentationFailureLeavesCreatedSourceVisible(t *testing.T) {
 	root := scaffoldProject(t)
 	err := newPitfall(testContext(t), root, []string{"Writer Hazard"}, errorWriter{})
-	var partial *pitfallop.PartialError
-	if !errors.As(err, &partial) || !strings.Contains(err.Error(), "write failed") {
-		t.Fatalf("presentation failure = %#v, %v", partial, err)
+	if err == nil || !strings.Contains(err.Error(), "write failed") {
+		t.Fatalf("presentation failure = %v", err)
 	}
 	const relative = ".awf/docs/pitfalls/writer-hazard.md"
-	if partial.Outcome.SourcePath != relative {
-		t.Fatalf("committed outcome = %#v", partial.Outcome)
-	}
 	if _, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); statErr != nil {
-		t.Fatalf("committed source missing: %v", statErr)
+		t.Fatalf("created source missing: %v", statErr)
 	}
 }
-
-func TestRunNewPitfallReleaseFaultReportsCommittedSourceOnce(t *testing.T) {
-	root := scaffoldProject(t)
-	generated := filepath.Join(root, "docs", "pitfalls.md")
-	lock := filepath.Join(root, ".awf", "awf.lock")
-	beforeGenerated := mustReadCLIFile(t, generated)
-	beforeLock := mustReadCLIFile(t, lock)
-	releaseFault := errors.New("release sentinel")
-	var stdout bytes.Buffer
-	err := newPitfallWithReleaseFault(testContext(t), root, []string{"Release Hazard"}, &stdout, func() error {
-		return releaseFault
-	})
-	if !errors.Is(err, releaseFault) {
-		t.Fatalf("release error = %v", err)
-	}
-	if phase, ok := projectmutation.FailurePhase(err); !ok || phase != projectmutation.PhaseRelease {
-		t.Fatalf("raw command release phase = %q, %t", phase, ok)
-	}
-	var stderr bytes.Buffer
-	if code := completeHandlerResult(&stdout, &stderr, handlerReport(err)); code != 1 {
-		t.Fatalf("exit = %d", code)
-	}
-	if stderr.Len() != 0 {
-		t.Fatalf("generic stderr = %q", stderr.String())
-	}
-	const relative = ".awf/docs/pitfalls/release-hazard.md"
-	if strings.Count(stdout.String(), "status: pitfall scaffold partially committed") != 1 {
-		t.Fatalf("partial report count or status = %q", stdout.String())
-	}
-	for _, want := range []string{relative, "as committed", "repair the lease-release fault before further project mutation", "do not rerun awf new pitfall with the same title"} {
-		if !strings.Contains(stdout.String(), want) {
-			t.Fatalf("partial report missing %q:\n%s", want, stdout.String())
-		}
-	}
-	if _, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); statErr != nil {
-		t.Fatalf("committed source missing: %v", statErr)
-	}
-	if got := mustReadCLIFile(t, generated); got != beforeGenerated {
-		t.Fatal("release-fault scaffold mutated generated index")
-	}
-	if got := mustReadCLIFile(t, lock); got != beforeLock {
-		t.Fatal("release-fault scaffold mutated lock")
-	}
-	if retryErr := newPitfall(testContext(t), root, []string{"Release Hazard"}, io.Discard); retryErr == nil || !strings.Contains(retryErr.Error(), "duplicates") {
-		t.Fatalf("same-title recovery retry = %v", retryErr)
-	}
-	if _, statErr := os.Stat(filepath.Join(root, ".awf", "docs", "pitfalls", "release-hazard-2.md")); !errors.Is(statErr, os.ErrNotExist) {
-		t.Fatalf("same-title retry allocated suffix: %v", statErr)
-	}
-}
-
-func TestRunNewPitfallCombinedCleanupAndReleaseFaultReportsAllRecovery(t *testing.T) {
-	root := scaffoldProject(t)
-	generated := filepath.Join(root, "docs", "pitfalls.md")
-	lock := filepath.Join(root, ".awf", "awf.lock")
-	beforeGenerated := mustReadCLIFile(t, generated)
-	beforeLock := mustReadCLIFile(t, lock)
-	cleanupFault := errors.New("cleanup sentinel")
-	releaseFault := errors.New("release sentinel")
-	const sourcePath = ".awf/docs/pitfalls/combined-hazard.md"
-	const residuePath = ".awf/docs/pitfalls/.filepublication-combined.tmp"
-	create := func(ctx context.Context, title string, tx *projectmutation.Transaction) (pitfallop.Outcome, error) {
-		outcome, err := pitfallop.Create(ctx, title, tx)
-		if err != nil {
-			return outcome, err
-		}
-		if outcome.SourcePath != sourcePath {
-			t.Fatalf("source path = %q, want %q", outcome.SourcePath, sourcePath)
-		}
-		testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(residuePath)), "temporary")
-		outcome.ResiduePath = residuePath
-		cleanup := &filepublication.CommittedCleanupError{DestinationPath: sourcePath, ResiduePath: residuePath, Cause: cleanupFault}
-		return outcome, pitfallop.Finish(outcome, &projectmutation.Failure{Phase: projectmutation.PhaseCleanup, Cause: cleanup}, nil)
-	}
-	var stdout bytes.Buffer
-	err := newPitfallWithFaults(testContext(t), root, []string{"Combined Hazard"}, &stdout, func() error { return releaseFault }, create)
-	if !errors.Is(err, cleanupFault) || !errors.Is(err, releaseFault) {
-		t.Fatalf("combined causes = %v", err)
-	}
-	var partial *pitfallop.PartialError
-	if !errors.As(err, &partial) {
-		t.Fatalf("combined partial = %v", err)
-	}
-	var stderr bytes.Buffer
-	if code := completeHandlerResult(&stdout, &stderr, handlerReport(err)); code != 1 {
-		t.Fatalf("exit = %d", code)
-	}
-	if stderr.Len() != 0 {
-		t.Fatalf("generic stderr = %q", stderr.String())
-	}
-	report := stdout.String()
-	if strings.Count(report, "status: pitfall scaffold partially committed") != 1 {
-		t.Fatalf("partial report count = %q", report)
-	}
-	if strings.Count(report, sourcePath) != 2 || strings.Count(report, residuePath) != 2 {
-		t.Fatalf("combined report does not retain exact identity and recovery paths:\n%s", report)
-	}
-	ordered := []string{
-		"inspect and treat the authored source " + sourcePath + " as committed",
-		"remove publication cleanup residue " + residuePath + " before further project mutation",
-		"repair the lease-release fault before further project mutation",
-		"do not rerun awf new pitfall with the same title; the committed duplicate will be refused",
-	}
-	position := -1
-	for _, want := range ordered {
-		if strings.Count(report, want) != 1 {
-			t.Fatalf("combined report occurrence %q:\n%s", want, report)
-		}
-		next := strings.Index(report, want)
-		if next <= position {
-			t.Fatalf("combined report order at %q:\n%s", want, report)
-		}
-		position = next
-	}
-	if got := mustReadCLIFile(t, generated); got != beforeGenerated {
-		t.Fatal("combined-fault scaffold mutated generated index")
-	}
-	if got := mustReadCLIFile(t, lock); got != beforeLock {
-		t.Fatal("combined-fault scaffold mutated lock")
-	}
-	if _, statErr := os.Stat(filepath.Join(root, filepath.FromSlash(sourcePath))); statErr != nil {
-		t.Fatalf("committed source missing: %v", statErr)
-	}
-	if err := os.Remove(filepath.Join(root, filepath.FromSlash(residuePath))); err != nil {
-		t.Fatal(err)
-	}
-	if retryErr := newPitfall(testContext(t), root, []string{"Combined Hazard"}, io.Discard); retryErr == nil || !strings.Contains(retryErr.Error(), "duplicates") {
-		t.Fatalf("same-title recovery retry = %v", retryErr)
-	}
-	if _, statErr := os.Stat(filepath.Join(root, ".awf", "docs", "pitfalls", "combined-hazard-2.md")); !errors.Is(statErr, os.ErrNotExist) {
-		t.Fatalf("combined retry allocated suffix: %v", statErr)
-	}
-}
-
 func newPitfallFileCensus(t *testing.T, root string) map[string]string {
 	t.Helper()
 	files := map[string]string{}
@@ -520,15 +373,6 @@ func TestRunNewTopicUsageAndValidation(t *testing.T) {
 	}
 }
 
-func mustReadCLIFile(t *testing.T, path string) string {
-	t.Helper()
-	b, err := os.ReadFile(path)
-	if err != nil {
-		t.Fatal(err)
-	}
-	return string(b)
-}
-
 // invariant: tooling/cli:pitfall-scaffold (TestRunNewDispatch)
 // invariant: tooling/cli:cli-creation-and-inventory (TestRunNewDispatch)
 func TestRunNewRejectsRetiredPlanKind(t *testing.T) {
@@ -570,8 +414,8 @@ func TestRunNewDomainLifecycle(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := runNew(ctx, root, "domain", []string{"delivery"}, io.Discard); err == nil {
-		t.Fatal("duplicate domain accepted")
+	if err := runNew(ctx, root, "domain", []string{"delivery"}, io.Discard); err != nil {
+		t.Fatalf("idempotent domain rerun: %v", err)
 	}
 	after, err := os.ReadFile(part)
 	if err != nil || !bytes.Equal(after, before) {
@@ -585,7 +429,7 @@ func TestRunNewDomainLifecycle(t *testing.T) {
 	if err := runRemoveDomain(ctx, root, "delivery", &removal); err != nil {
 		t.Fatalf("remove domain: %v", err)
 	}
-	if _, err := os.Stat(output); !os.IsNotExist(err) {
+	if _, err := os.Stat(output); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("rendered domain output survived removal: %v", err)
 	}
 	if got, err := os.ReadFile(part); err != nil || !bytes.Equal(got, before) {
@@ -601,7 +445,7 @@ func TestRunNewDomainRejectsInvalidNameBeforeWriting(t *testing.T) {
 	if err := runNew(testContext(t), root, "domain", []string{"../bad"}, io.Discard); err == nil {
 		t.Fatal("invalid domain accepted")
 	}
-	if _, err := os.Stat(filepath.Join(root, ".awf", "domains", "parts")); !os.IsNotExist(err) {
+	if _, err := os.Stat(filepath.Join(root, ".awf", "domains", "parts")); !errors.Is(err, os.ErrNotExist) {
 		t.Fatalf("invalid domain wrote files: %v", err)
 	}
 }

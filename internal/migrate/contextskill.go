@@ -23,11 +23,11 @@ var contextSkillSources = []struct {
 	{old: ".awf/skills/parts/repository-context/challenge.md", new: ".awf/skills/parts/context/challenge.md"},
 }
 
-func renameRepositoryContextSkill(ctx context.Context, tree *ProposedTree, changes *Changes) ([]FileMutation, error) {
+func renameRepositoryContextSkill(ctx context.Context, tree *proposedTree, changes *Changes) ([]fileMutation, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
 	}
-	var planned []FileMutation
+	var planned []fileMutation
 	for _, source := range contextSkillSources {
 		oldContent, oldMode, err := tree.Read(source.old)
 		if errors.Is(err, fs.ErrNotExist) {
@@ -41,13 +41,13 @@ func renameRepositoryContextSkill(ctx context.Context, tree *ProposedTree, chang
 		switch {
 		case errors.Is(newErr, fs.ErrNotExist):
 			planned = append(planned,
-				FileMutation{Path: source.new, Content: oldContent, Mode: oldMode},
-				FileMutation{Path: source.old, Remove: true},
+				fileMutation{Path: source.new, Content: oldContent, Mode: oldMode},
+				fileMutation{Path: source.old, Remove: true},
 			)
 		case newErr != nil:
 			return nil, fmt.Errorf("read %s: %w", source.new, newErr)
 		case bytes.Equal(oldContent, newContent) && oldMode == newMode:
-			planned = append(planned, FileMutation{Path: source.old, Remove: true})
+			planned = append(planned, fileMutation{Path: source.old, Remove: true})
 		default:
 			return nil, fmt.Errorf("cannot migrate %s: %s already exists with different content or mode; reconcile the two authored sources and retry", source.old, source.new)
 		}

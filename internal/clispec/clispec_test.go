@@ -43,6 +43,52 @@ func TestCheckCommitSpecDescribesSharedPolicy(t *testing.T) {
 	}
 }
 
+func TestRemovedMutationModesAreAbsent(t *testing.T) {
+	init, ok := Lookup("init")
+	if !ok {
+		t.Fatal("missing init")
+	}
+	if contains(init.BoolFlags, "--force") || strings.Contains(helpText(init), "--force") || strings.Contains(helpText(init), "backup") {
+		t.Fatalf("init retains removed force mode: %#v", init)
+	}
+	upgrade, ok := Lookup("upgrade")
+	if !ok {
+		t.Fatal("missing upgrade")
+	}
+	if len(upgrade.BoolFlags) != 0 || strings.Contains(helpText(upgrade), "--recover") || strings.Contains(strings.ToLower(helpText(upgrade)), "journal") {
+		t.Fatalf("upgrade retains removed recovery mode: %#v", upgrade)
+	}
+}
+
+func TestSafetySimplificationHelpMatchesCommandBehavior(t *testing.T) {
+	check, ok := Lookup("check")
+	if !ok {
+		t.Fatal("missing check")
+	}
+	checkHelp := strings.ToLower(check.Summary + " " + helpText(check))
+	for _, stale := range []string{"both universes", "staged universe is unavailable", "repository and staged universes"} {
+		if strings.Contains(checkHelp, stale) {
+			t.Errorf("check help retains %q: %s", stale, checkHelp)
+		}
+	}
+	if !strings.Contains(checkHelp, "working-tree") || !strings.Contains(checkHelp, "explicitly") {
+		t.Errorf("check help does not distinguish working and staged selection: %s", checkHelp)
+	}
+
+	effort, ok := Lookup("effort")
+	if !ok {
+		t.Fatal("missing effort")
+	}
+	newCommand, ok := effort.Child("new")
+	if !ok {
+		t.Fatal("missing effort new")
+	}
+	newHelp := strings.ToLower(helpText(newCommand))
+	if !strings.Contains(newHelp, "retains the resident") || strings.Contains(newHelp, "deletes") {
+		t.Errorf("effort new help does not describe retained resident: %s", newHelp)
+	}
+}
+
 func TestPartAuthoringCommandGrammar(t *testing.T) {
 	edit, ok := Lookup("edit")
 	if !ok || edit.Gating != Gated || edit.MinPos != 3 || edit.MaxPos != 3 {

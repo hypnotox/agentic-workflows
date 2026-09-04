@@ -2,109 +2,25 @@
 package pitfallop
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"fmt"
 	"io/fs"
 
-	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/pitfall"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
-	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
+	"github.com/hypnotox/agentic-workflows/internal/project"
 )
 
-// Outcome retains every committed fact from one authored-pitfall creation.
-type Outcome struct {
-	SourcePath  string
-	ResiduePath string
-}
+// Outcome retains the authored path when it was created or already matched.
+type Outcome struct{ SourcePath string }
 
-// PartialError retains a committed authored source and any cleanup residue
-// together with the original post-commit cause and safe recovery policy.
-type PartialError struct {
-	projectmutation.Partial[Outcome]
-}
+// LeaseAcquirer is the narrow mechanism seam used by focused lease tests.
+type LeaseAcquirer func(context.Context, string) (*filesystem.Lease, func() error, error)
 
-func newPartial(outcome Outcome, cause error, recovery ...string) *PartialError {
-	return &PartialError{Partial: projectmutation.NewPartial(outcome, cause, recovery)}
-}
-
-func committed(outcome Outcome) bool { return outcome.SourcePath != "" }
-
-func failure(phase projectmutation.Phase, cause error) error {
-	if cause == nil || containsPhase(cause, phase) {
-		return cause
-	}
-	return &projectmutation.Failure{Phase: phase, Cause: cause}
-}
-
-func containsPhase(err error, phase projectmutation.Phase) bool {
-	if err == nil {
-		return false
-	}
-	var typed *projectmutation.Failure
-	if errors.As(err, &typed) && typed.Phase == phase {
-		return true
-	}
-	if many, ok := err.(interface{ Unwrap() []error }); ok {
-		for _, cause := range many.Unwrap() {
-			if containsPhase(cause, phase) {
-				return true
-			}
-		}
-		return false
-	}
-	if one, ok := err.(interface{ Unwrap() error }); ok {
-		return containsPhase(one.Unwrap(), phase)
-	}
-	return false
-}
-
-// Finish classifies caller-owned lease release after Create has returned and
-// before either the complete or partial document is rendered.
-func Finish(outcome Outcome, operationErr, releaseErr error) error {
-	if releaseErr != nil {
-		releaseErr = failure(projectmutation.PhaseRelease, releaseErr)
-	}
-	var partial *PartialError
-	if errors.As(operationErr, &partial) {
-		if releaseErr != nil {
-			partial.JoinCause(releaseErr)
-		}
-		partial.Recovery = recoveryFor(outcome, containsPhase(operationErr, projectmutation.PhaseCleanup), releaseErr != nil)
-		return operationErr
-	}
-	if releaseErr != nil {
-		cause := errors.Join(operationErr, releaseErr)
-		if committed(outcome) {
-			return newPartial(outcome, cause, recoveryFor(outcome, containsPhase(operationErr, projectmutation.PhaseCleanup), true)...)
-		}
-		return cause
-	}
-	if operationErr != nil && committed(outcome) {
-		return newPartial(outcome, operationErr, recoveryFor(outcome, containsPhase(operationErr, projectmutation.PhaseCleanup), false)...)
-	}
-	return operationErr
-}
-
-func recoveryFor(outcome Outcome, cleanup, release bool) []string {
-	recovery := []string{"inspect and treat the authored source " + outcome.SourcePath + " as committed"}
-	if outcome.ResiduePath != "" {
-		recovery = append(recovery, "remove publication cleanup residue "+outcome.ResiduePath+" before further project mutation")
-	} else if cleanup {
-		recovery = append(recovery, "repair the post-commit cleanup fault before further project mutation")
-	}
-	if release {
-		recovery = append(recovery, "repair the lease-release fault before further project mutation")
-	}
-	if outcome.ResiduePath == "" && !cleanup && !release {
-		recovery = append(recovery, "repair the post-commit fault before further project mutation")
-	}
-	return append(recovery, "do not rerun awf new pitfall with the same title; the committed duplicate will be refused")
-}
-
-// Document returns the complete owner-produced creation report.
+// Document returns the owner-produced creation report.
 func (o Outcome) Document() (presentation.Document, error) {
 	statusValue, err := presentation.Prose("pitfall created")
 	if err != nil {
@@ -123,44 +39,6 @@ func (o Outcome) Document() (presentation.Document, error) {
 		return presentation.Document{}, err
 	}
 	return presentation.NewDocument(status, authoredPath)
-}
-
-// Document returns the owner-produced partial report with exact committed and
-// residue paths plus ordered recovery actions.
-func (e *PartialError) Document() (presentation.Document, error) {
-	pathValue, err := presentation.Literal(e.Outcome.SourcePath)
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	pathField, err := presentation.NewField("committed authored path", pathValue)
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	identity := []presentation.Field{pathField}
-	if e.Outcome.ResiduePath != "" {
-		residueValue, err := presentation.Literal(e.Outcome.ResiduePath)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		residue, err := presentation.NewField("cleanup residue", residueValue)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		identity = append(identity, residue)
-	}
-	recovery := e.Recovery
-	if len(recovery) == 0 {
-		recovery = recoveryFor(e.Outcome, e.Outcome.ResiduePath != "", false)
-	}
-	next := make([]presentation.Value, 0, len(recovery))
-	for _, action := range recovery {
-		value, err := presentation.Prose(action)
-		if err != nil {
-			return presentation.Document{}, err
-		}
-		next = append(next, value)
-	}
-	return (presentation.Mutation{Status: "pitfall scaffold partially committed", Identity: identity, NextActions: next}).Document()
 }
 
 type scaffoldFilesystem interface {
@@ -184,10 +62,7 @@ func loadCorpus(tree scaffoldFilesystem) (pitfall.Corpus, error) {
 	}
 	var files []pitfall.SourceFile
 	err = tree.Walk(pitfall.SourceDir, func(source string, info fs.FileInfo) (bool, error) {
-		if source == pitfall.SourceDir {
-			return true, nil
-		}
-		if info.IsDir() {
+		if source == pitfall.SourceDir || info.IsDir() {
 			return true, nil
 		}
 		file := pitfall.SourceFile{Path: source, Regular: info.Mode().IsRegular()}
@@ -209,81 +84,102 @@ func loadCorpus(tree scaffoldFilesystem) (pitfall.Corpus, error) {
 func createConfined(title string, files scaffoldFilesystem) (Outcome, error) {
 	corpus, err := loadCorpus(files)
 	if err != nil {
-		return Outcome{}, failure(projectmutation.PhaseAuthority, err)
+		return Outcome{}, err
+	}
+	entries := corpus.All()
+	for i, existing := range entries {
+		if !pitfall.EqualTitle(title, existing.Title) {
+			continue
+		}
+		without := append(append([]pitfall.Entry(nil), entries[:i]...), entries[i+1:]...)
+		entry, intended, planErr := pitfall.New(without).Scaffold(title)
+		if planErr != nil {
+			return Outcome{}, planErr
+		}
+		if entry.SourcePath != existing.SourcePath || !bytes.Equal(intended, existing.Source) {
+			return Outcome{}, fmt.Errorf("pitfall source collision %s", existing.SourcePath)
+		}
+		return Outcome{SourcePath: existing.SourcePath}, nil
 	}
 	entry, source, err := corpus.Scaffold(title)
 	if err != nil {
 		return Outcome{}, err
 	}
 	if err := files.MkdirAll(pitfall.SourceDir, 0o755); err != nil {
-		return Outcome{}, failure(projectmutation.PhasePublication, fmt.Errorf("create pitfall source directory: %w", err))
+		return Outcome{}, fmt.Errorf("create pitfall source directory %s: %w", pitfall.SourceDir, err)
 	}
 	if err := files.Publish(entry.SourcePath, source, 0o644); err != nil {
-		var cleanup *filepublication.CommittedCleanupError
-		if errors.As(err, &cleanup) {
-			outcome := Outcome{SourcePath: entry.SourcePath, ResiduePath: cleanup.ResiduePath}
-			cause := failure(projectmutation.PhaseCleanup, err)
-			return outcome, newPartial(outcome, cause, recoveryFor(outcome, true, false)...)
-		}
-		return Outcome{}, failure(projectmutation.PhasePublication, fmt.Errorf("create pitfall source %s exclusively: %w", entry.SourcePath, err))
+		return Outcome{}, fmt.Errorf("create pitfall source %s exclusively: %w", entry.SourcePath, err)
 	}
 	return Outcome{SourcePath: entry.SourcePath}, nil
 }
 
-func finishClose(outcome Outcome, operationErr, closeErr error) error {
-	if closeErr == nil {
-		return operationErr
-	}
-	closeErr = failure(projectmutation.PhaseCleanup, fmt.Errorf("close selected root after pitfall scaffold: %w", closeErr))
-	var partial *PartialError
-	if errors.As(operationErr, &partial) {
-		partial.JoinCause(closeErr)
-		partial.Recovery = recoveryFor(outcome, true, containsPhase(operationErr, projectmutation.PhaseRelease))
-		return operationErr
-	}
-	if committed(outcome) {
-		return newPartial(outcome, errors.Join(operationErr, closeErr), recoveryFor(outcome, true, false)...)
-	}
-	return errors.Join(operationErr, closeErr)
+// Create acquires the selected tracked lease before authority and destination
+// planning and exclusively publishes one authored pitfall through a confined handle.
+func Create(ctx context.Context, root, title string, loader *project.Loader, acquire LeaseAcquirer) (outcome Outcome, returnErr error) {
+	return create(ctx, root, title, loader, acquire, nil)
 }
 
-// Create validates a tracked transaction, selects Session-bound authority, and
-// exclusively publishes one authored pitfall through its confined handle. It
-// deliberately performs no synchronization or generated-output mutation.
-func Create(ctx context.Context, title string, tx *projectmutation.Transaction) (outcome Outcome, err error) {
-	return create(ctx, title, tx, nil)
-}
-
-func create(_ context.Context, title string, tx *projectmutation.Transaction, afterOpen func()) (outcome Outcome, err error) {
-	if tx == nil || tx.Scope() != projectmutation.TrackedScope {
+func create(ctx context.Context, root, title string, loader *project.Loader, acquire LeaseAcquirer, afterOpen func()) (outcome Outcome, returnErr error) {
+	if loader == nil {
+		return Outcome{}, errors.New("pitfall operation requires a project loader")
+	}
+	if acquire == nil {
+		acquire = func(ctx context.Context, root string) (*filesystem.Lease, func() error, error) {
+			lease, err := filesystem.AcquireTrackedLease(ctx, root)
+			if err != nil {
+				return nil, nil, err
+			}
+			return lease, lease.Release, nil
+		}
+	}
+	lease, release, err := acquire(ctx, root)
+	if err != nil {
+		return Outcome{}, fmt.Errorf("acquire tracked lease for %s: %w", root, err)
+	}
+	if lease == nil || release == nil || !lease.CoversTracked(root) {
+		if release != nil {
+			_ = release()
+		} else if lease != nil {
+			_ = lease.Release()
+		}
 		return Outcome{}, errors.New("pitfall operation requires a covering tracked lease")
 	}
-	files, err := tx.Open()
+	defer func() {
+		if err := release(); err != nil {
+			returnErr = errors.Join(returnErr, fmt.Errorf("release tracked lease for %s: %w", root, err))
+		}
+	}()
+	files, err := filesystem.Open(root)
 	if err != nil {
-		return Outcome{}, err
+		return Outcome{}, fmt.Errorf("open selected root %s: %w", root, err)
 	}
-	defer func() { err = finishClose(outcome, err, files.Close()) }()
+	defer func() {
+		if err := files.Close(); err != nil {
+			returnErr = errors.Join(returnErr, fmt.Errorf("close selected root %s: %w", root, err))
+		}
+	}()
 	if afterOpen != nil {
 		afterOpen()
 	}
-	matches, err := files.RootMatches(tx.Root())
+	matches, err := files.RootMatches(root)
 	if err != nil {
-		return Outcome{}, failure(projectmutation.PhaseAuthority, err)
+		return Outcome{}, fmt.Errorf("verify selected root %s: %w", root, err)
 	}
 	if !matches {
-		return Outcome{}, failure(projectmutation.PhaseAuthority, filesystem.ErrIdentityChanged)
+		return Outcome{}, filesystem.ErrIdentityChanged
 	}
-	_, configIdentity, err := tx.LoadForMutation(files)
+	_, identity, err := loader.LoadForMutation(ctx, root, files)
 	if err != nil {
-		return Outcome{}, err
+		return Outcome{}, fmt.Errorf("load pitfall authority: %w", err)
 	}
-	defer configIdentity.Release() //nolint:errcheck // descriptor cleanup cannot change the scaffold outcome
-	matches, err = files.RootMatches(tx.Root())
+	defer identity.Release() //nolint:errcheck
+	matches, err = files.RootMatches(root)
 	if err != nil {
-		return Outcome{}, failure(projectmutation.PhaseAuthority, err)
+		return Outcome{}, fmt.Errorf("reverify selected root %s: %w", root, err)
 	}
 	if !matches {
-		return Outcome{}, failure(projectmutation.PhaseAuthority, filesystem.ErrIdentityChanged)
+		return Outcome{}, filesystem.ErrIdentityChanged
 	}
 	return createConfined(title, files)
 }

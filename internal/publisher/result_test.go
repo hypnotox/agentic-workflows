@@ -16,22 +16,22 @@ func TestPublisherRefusesASecondPublicationAttempt(t *testing.T) {
 	}
 }
 
-func TestResultDefensivelyProjectsCommittedMutations(t *testing.T) {
-	result := newResult([]Backup{{Path: "one", Bak: "one.awf-bak"}}, []Change{{Path: "two", Cause: "added"}}, []string{"three"}, []Effect{{Kind: "replace", Path: "two", Recovery: "rerun"}})
-	backups := result.Backups()
+func TestResultDefensivelyProjectsMutations(t *testing.T) {
+	result := newResult([]Change{{Path: "two", Cause: "added"}}, []string{"three"}, []string{"four"})
 	changes := result.Changes()
 	pruned := result.Pruned()
-	backups[0].Path = "mutated"
+	touched := result.Touched()
 	changes[0].Path = "mutated"
 	pruned[0] = "mutated"
-	if got := result.Backups()[0].Path; got != "one" {
-		t.Fatalf("backup projection mutated Result: %q", got)
-	}
+	touched[0] = "mutated"
 	if got := result.Changes()[0].Path; got != "two" {
 		t.Fatalf("change projection mutated Result: %q", got)
 	}
 	if got := result.Pruned()[0]; got != "three" {
 		t.Fatalf("prune projection mutated Result: %q", got)
+	}
+	if got := result.Touched()[0]; got != "four" {
+		t.Fatalf("touched projection mutated Result: %q", got)
 	}
 }
 

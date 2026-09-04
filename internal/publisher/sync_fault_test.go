@@ -2,277 +2,74 @@ package publisher
 
 import (
 	"bytes"
-	"context"
 	"errors"
 	"io/fs"
 	"os"
 	"path/filepath"
 	"slices"
-	"sync"
+	"strings"
 	"testing"
 
-	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
+	"github.com/hypnotox/agentic-workflows/internal/migrate"
 	"github.com/hypnotox/agentic-workflows/internal/outputplan"
 	"github.com/hypnotox/agentic-workflows/internal/project"
 	"github.com/hypnotox/agentic-workflows/internal/resident"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-type replacementFaultFilesystem struct {
+type mutationRecorder struct {
 	syncFilesystem
-	path string
-	err  error
+	operations []string
+	failPath   string
+	fail       error
 }
 
-type committedReplacementFaultFilesystem struct {
-	syncFilesystem
-	path, residue string
-	cause         error
+func (f *mutationRecorder) MkdirAll(path string, mode fs.FileMode) error {
+	f.operations = append(f.operations, "mkdir "+path)
+	return f.syncFilesystem.MkdirAll(path, mode)
 }
-
-func (f committedReplacementFaultFilesystem) ReplaceExpected(path string, expected *filesystem.ExpectedIdentity, contents []byte, mode fs.FileMode) error {
-	if err := f.syncFilesystem.ReplaceExpected(path, expected, contents, mode); err != nil {
-		return err
-	}
-	if path == f.path {
-		return &filepublication.CommittedCleanupError{DestinationPath: path, ResiduePath: f.residue, Cause: f.cause}
-	}
-	return nil
-}
-
-func (f replacementFaultFilesystem) Replace(path string, contents []byte, mode fs.FileMode) error {
-	if path == f.path {
-		return f.err
-	}
-	return f.syncFilesystem.Replace(path, contents, mode)
-}
-func (f replacementFaultFilesystem) ReplaceExpected(path string, expected *filesystem.ExpectedIdentity, contents []byte, mode fs.FileMode) error {
-	if path == f.path {
-		return f.err
-	}
-	return f.syncFilesystem.ReplaceExpected(path, expected, contents, mode)
-}
-
-type publicationFaultFilesystem struct {
-	syncFilesystem
-	err   error
-	calls *int
-}
-
-func (f publicationFaultFilesystem) Publish(string, []byte, fs.FileMode) error {
-	*f.calls++
-	return f.err
-}
-
-type removalFaultFilesystem struct {
-	syncFilesystem
-	path string
-	err  error
-}
-
-type committedRemovalFaultFilesystem struct {
-	syncFilesystem
-	path, residue string
-	cause         error
-}
-
-func (f committedRemovalFaultFilesystem) RemoveExpected(path string, expected *filesystem.ExpectedIdentity) error {
-	if err := f.syncFilesystem.RemoveExpected(path, expected); err != nil {
-		return err
-	}
-	if path == f.path {
-		return &filepublication.CommittedCleanupError{DestinationPath: path, ResiduePath: f.residue, Cause: f.cause}
-	}
-	return nil
-}
-
-func (f removalFaultFilesystem) Remove(path string) error {
-	if path == f.path {
-		return f.err
-	}
-	return f.syncFilesystem.Remove(path)
-}
-func (f removalFaultFilesystem) RemoveExpected(path string, expected *filesystem.ExpectedIdentity) error {
-	if path == f.path {
-		return f.err
-	}
-	return f.syncFilesystem.RemoveExpected(path, expected)
-}
-
-type readFaultFilesystem struct {
-	syncFilesystem
-	err error
-}
-
-func (f readFaultFilesystem) Read(string) ([]byte, error) { return nil, f.err }
-
-type readWithModeFaultFilesystem struct {
-	syncFilesystem
-	path string
-	err  error
-}
-
-func (f readWithModeFaultFilesystem) ReadWithMode(path string) ([]byte, fs.FileMode, error) {
-	if path == f.path {
-		return nil, 0, f.err
-	}
-	return f.syncFilesystem.ReadWithMode(path)
-}
-
-type linkInfoFaultFilesystem struct {
-	syncFilesystem
-	path string
-	err  error
-}
-
-func (f linkInfoFaultFilesystem) LinkInfo(path string) (fs.FileInfo, error) {
-	if f.path == "" || f.path == path {
-		return nil, f.err
-	}
-	return f.syncFilesystem.LinkInfo(path)
-}
-func (f linkInfoFaultFilesystem) ExpectedIdentity(path string) (*filesystem.ExpectedIdentity, error) {
-	if f.path == "" || f.path == path {
-		return nil, f.err
-	}
-	return f.syncFilesystem.ExpectedIdentity(path)
-}
-
-type chmodFaultFilesystem struct {
-	syncFilesystem
-	err error
-}
-
-func (f chmodFaultFilesystem) Chmod(string, fs.FileMode) error { return f.err }
-
-type recordedChmodFilesystem struct {
-	syncFilesystem
-	path  string
-	calls *int
-}
-
-func (f recordedChmodFilesystem) Chmod(path string, mode fs.FileMode) error {
-	if path == f.path {
-		*f.calls++
-	}
+func (f *mutationRecorder) Chmod(path string, mode fs.FileMode) error {
+	f.operations = append(f.operations, "chmod "+path)
 	return f.syncFilesystem.Chmod(path, mode)
 }
-
-type recordedFilesystem struct {
-	syncFilesystem
-	replaces *[]string
-}
-
-func (f recordedFilesystem) Replace(path string, contents []byte, mode fs.FileMode) error {
-	*f.replaces = append(*f.replaces, path)
-	return f.syncFilesystem.Replace(path, contents, mode)
-}
-func (f recordedFilesystem) ReplaceExpected(path string, expected *filesystem.ExpectedIdentity, contents []byte, mode fs.FileMode) error {
-	*f.replaces = append(*f.replaces, path)
+func (f *mutationRecorder) ReplaceExpected(path string, expected *filesystem.ExpectedIdentity, contents []byte, mode fs.FileMode) error {
+	f.operations = append(f.operations, "replace "+path)
+	if path == f.failPath {
+		return f.fail
+	}
 	return f.syncFilesystem.ReplaceExpected(path, expected, contents, mode)
 }
-
-type collisionFilesystem struct {
-	syncFilesystem
-	root     string
-	competed bool
+func (f *mutationRecorder) ReplaceExpectedRegularFile(path string, expected *filesystem.ExpectedIdentity, before []byte, beforeMode fs.FileMode, contents []byte, mode fs.FileMode) error {
+	f.operations = append(f.operations, "replace "+path)
+	if path == f.failPath {
+		_ = expected.Release()
+		return f.fail
+	}
+	return f.syncFilesystem.ReplaceExpectedRegularFile(path, expected, before, beforeMode, contents, mode)
+}
+func (f *mutationRecorder) RemoveExpected(path string, expected *filesystem.ExpectedIdentity) error {
+	f.operations = append(f.operations, "remove "+path)
+	return f.syncFilesystem.RemoveExpected(path, expected)
+}
+func (f *mutationRecorder) RemoveExpectedRegularFile(path string, expected *filesystem.ExpectedIdentity, contents []byte, mode fs.FileMode) error {
+	f.operations = append(f.operations, "remove "+path)
+	return f.syncFilesystem.RemoveExpectedRegularFile(path, expected, contents, mode)
 }
 
-func (f *collisionFilesystem) Publish(path string, contents []byte, mode fs.FileMode) error {
-	if !f.competed {
+type competingCreateFilesystem struct {
+	syncFilesystem
+	root, path string
+	competed   bool
+}
+
+func (f *competingCreateFilesystem) ReplaceExpected(path string, expected *filesystem.ExpectedIdentity, contents []byte, mode fs.FileMode) error {
+	if path == f.path && expected == nil && !f.competed {
 		f.competed = true
-		if err := os.WriteFile(filepath.Join(f.root, path), []byte("concurrent winner"), 0o600); err != nil {
+		if err := os.WriteFile(filepath.Join(f.root, filepath.FromSlash(path)), []byte("concurrent winner\n"), 0o600); err != nil {
 			return err
 		}
-	}
-	return f.syncFilesystem.Publish(path, contents, mode)
-}
-
-type blockingPublishFilesystem struct {
-	syncFilesystem
-	ready   chan<- struct{}
-	release <-chan struct{}
-	calls   int
-	mu      sync.Mutex
-}
-
-func (f *blockingPublishFilesystem) Publish(path string, contents []byte, mode fs.FileMode) error {
-	f.mu.Lock()
-	f.calls++
-	call := f.calls
-	f.mu.Unlock()
-	if call <= 2 {
-		f.ready <- struct{}{}
-		<-f.release
-	}
-	return f.syncFilesystem.Publish(path, contents, mode)
-}
-
-type swapBeforePublishFilesystem struct {
-	syncFilesystem
-	root, outside string
-	swapped       bool
-}
-
-func (f *swapBeforePublishFilesystem) Publish(path string, contents []byte, mode fs.FileMode) error {
-	if !f.swapped {
-		dir := filepath.Dir(filepath.Join(f.root, filepath.FromSlash(path)))
-		if err := os.Rename(dir, dir+"-saved"); err != nil {
-			return err
-		}
-		if err := os.Symlink(f.outside, dir); err != nil {
-			return err
-		}
-		f.swapped = true
-	}
-	return f.syncFilesystem.Publish(path, contents, mode)
-}
-
-type swapAfterPruneFilesystem struct {
-	syncFilesystem
-	root, outside string
-	calls         []string
-}
-
-func (f *swapAfterPruneFilesystem) Remove(path string) error {
-	f.calls = append(f.calls, path)
-	return f.syncFilesystem.Remove(path)
-}
-func (f *swapAfterPruneFilesystem) RemoveExpected(path string, expected *filesystem.ExpectedIdentity) error {
-	f.calls = append(f.calls, path)
-	err := f.syncFilesystem.RemoveExpected(path, expected)
-	if path == "cleanup/child/file" && err == nil {
-		dir := filepath.Join(f.root, "cleanup")
-		if e := os.Rename(dir, dir+"-saved"); e != nil {
-			return e
-		}
-		if e := os.Symlink(f.outside, dir); e != nil {
-			return e
-		}
-	}
-	return err
-}
-
-type swapBeforeLockReplaceFilesystem struct {
-	syncFilesystem
-	root, outside string
-	swapped       bool
-}
-
-func (f *swapBeforeLockReplaceFilesystem) Replace(path string, contents []byte, mode fs.FileMode) error {
-	return f.ReplaceExpected(path, nil, contents, mode)
-}
-func (f *swapBeforeLockReplaceFilesystem) ReplaceExpected(path string, expected *filesystem.ExpectedIdentity, contents []byte, mode fs.FileMode) error {
-	if path == ".awf/awf.lock" && !f.swapped {
-		if err := os.Rename(filepath.Join(f.root, ".awf"), filepath.Join(f.root, "saved-awf")); err != nil {
-			return err
-		}
-		if err := os.Symlink(f.outside, filepath.Join(f.root, ".awf")); err != nil {
-			return err
-		}
-		f.swapped = true
 	}
 	return f.syncFilesystem.ReplaceExpected(path, expected, contents, mode)
 }
@@ -286,505 +83,62 @@ func testSyncPlan(t *testing.T, state *project.Session) (renderInputs, *outputpl
 	}
 	return inputs, &plan
 }
-func syncWithFilesystems(t *testing.T, state *project.Session, filesystems syncFilesystems) ([]Backup, []Change, []string, error) {
+
+func syncWithFilesystems(t *testing.T, state *project.Session, filesystems syncFilesystems) ([]Change, []string, error) {
 	t.Helper()
 	inputs, plan := testSyncPlan(t, state)
-	backups, changes, pruned, _, err := syncReportWithPlan(inputs, nil, filesystems, plan)
-	return backups, changes, pruned, err
+	return syncReportWithPlan(inputs, nil, filesystems, plan, migrate.Current(), true, nil)
 }
-func assertPerm(t *testing.T, path string, want fs.FileMode) {
+
+func openTestFilesystems(t *testing.T, state *project.Session) (syncFilesystems, func()) {
 	t.Helper()
-	info, err := os.Stat(path)
-	if err != nil || info.Mode().Perm() != want {
-		t.Fatalf("mode %s = %v, %v; want %v", path, info, err, want)
-	}
-}
-
-func TestBackupFileConfinedReturnsSourceInspectionError(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	state, err := loadTestSession(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
 	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer closeAll()
-	if _, err := backupFileConfined("missing", filesystems.tracked); !errors.Is(err, os.ErrNotExist) {
-		t.Fatalf("backup missing source error = %v", err)
-	}
-	if err := os.Mkdir(filepath.Join(root, "directory"), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if _, err := backupFileConfined("directory", filesystems.tracked); err == nil {
-		t.Fatal("backup accepted directory source")
-	}
+	return filesystems, closeAll
 }
 
-// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestBackupFileRetriesOnlyPublicationCollision)
-func TestBackupFileRetriesOnlyPublicationCollision(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	const source = "rescue source"
-	testsupport.WriteFile(t, filepath.Join(root, "artifact"), source)
-	sourceInfo, err := os.Stat(filepath.Join(root, "artifact"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	state, err := loadTestSession(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeAll()
-	if _, err := backupFileConfined("artifact", &collisionFilesystem{syncFilesystem: filesystems.tracked, root: root}); err != nil {
-		t.Fatal(err)
-	}
-	for _, tc := range []struct{ name, want string }{{"artifact.awf-bak", "concurrent winner"}, {"artifact.awf-bak.1", source}} {
-		got, err := os.ReadFile(filepath.Join(root, tc.name))
-		if err != nil || string(got) != tc.want {
-			t.Fatalf("%s = %q, %v", tc.name, got, err)
-		}
-	}
-	info, err := os.Stat(filepath.Join(root, "artifact.awf-bak.1"))
-	if err != nil || info.Mode().Perm() != sourceInfo.Mode().Perm() {
-		t.Fatalf("rescue mode = %v, %v", info, err)
-	}
-}
-
-func TestSyncFilesystemsRouteUnchangedPaths(t *testing.T) {
-	tracked, residentTree := &readFaultFilesystem{}, &readFaultFilesystem{}
-	filesystems := syncFilesystems{tracked: tracked, resident: residentTree}
-	for _, tc := range []struct {
-		path string
-		want syncFilesystem
-	}{{"AGENTS.md", tracked}, {".awf/efforts/.gitignore", residentTree}} {
-		got, path := filesystems.output(tc.path)
-		if got != tc.want || path != tc.path {
-			t.Fatalf("output(%q) = %T, %q", tc.path, got, path)
-		}
-	}
-}
-func TestOpenSyncFilesystemsComposesDistinctRootsBeforeMutation(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	state, err := loadTestSession(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	base := state
-	selected := deriveSession(base, testConfig(state), NewFilesystemReader(root), base.Catalog(), base.Targets())
-	selected.roots = resident.NewRoots(root, t.TempDir())
-	selected.nested = base.Nested()
-	inputs := renderInputsFromSession(selected, Version)
-	filesystems, closeAll, err := openSyncFilesystems(inputs)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeAll()
-	if filesystems.tracked == filesystems.resident {
-		t.Fatal("distinct roots reused one handle")
-	}
-	missingResident := *selected
-	missingResident.roots = resident.NewRoots(root, filepath.Join(root, "missing"))
-	inputs.session = &missingResident
-	if _, _, err := openSyncFilesystems(inputs); err == nil {
-		t.Fatal("missing resident root opened")
-	}
-	missingTracked := *selected
-	missingTracked.roots = resident.NewRoots(filepath.Join(root, "missing-tracked"), root)
-	inputs.session = &missingTracked
-	if _, _, err := openSyncFilesystems(inputs); err == nil {
-		t.Fatal("missing tracked root opened")
-	}
-}
-
-func TestSyncFilesystemFailuresPreserveErrorIdentity(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		wrap func(syncFilesystems, error) syncFilesystems
-	}{{"lock read", func(s syncFilesystems, e error) syncFilesystems {
-		s.tracked = readFaultFilesystem{s.tracked, e}
-		return s
-	}}, {"output link info", func(s syncFilesystems, e error) syncFilesystems {
-		s.tracked = linkInfoFaultFilesystem{syncFilesystem: s.tracked, err: e}
-		return s
-	}}, {"resident marker chmod", func(s syncFilesystems, e error) syncFilesystems {
-		s.resident = chmodFaultFilesystem{s.resident, e}
-		return s
-	}}} {
-		t.Run(tc.name, func(t *testing.T) {
-			_, state := initializedSampleProject(t)
-			filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer closeAll()
-			failure := errors.New(tc.name)
-			if _, _, _, err = syncWithFilesystems(t, state, tc.wrap(filesystems, failure)); !errors.Is(err, failure) {
-				t.Fatalf("error = %v", err)
-			}
-		})
-	}
-}
-
-// invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneUnreadableSourcePreservesRecoveryAndLock)
-func TestLocalDocPruneUnreadableSourcePreservesRecoveryAndLock(t *testing.T) {
-	localDocPruneFault(t, "unreadable", func(f syncFilesystem, e error) syncFilesystem {
-		return readWithModeFaultFilesystem{syncFilesystem: f, path: "docs/runbooks/incident.md", err: e}
-	}, false)
-}
-
-// invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestLocalDocPruneFaultsKeepRecoveryAndLock)
-func TestLocalDocPruneFaultsKeepRecoveryAndLock(t *testing.T) {
-	for _, tc := range []struct {
-		name   string
-		wrap   func(syncFilesystem, error) syncFilesystem
-		backup bool
-	}{{"backup publication", func(f syncFilesystem, e error) syncFilesystem { return publicationFaultFilesystem{f, e, new(int)} }, false}, {"inspection", func(f syncFilesystem, e error) syncFilesystem {
-		return linkInfoFaultFilesystem{syncFilesystem: f, path: "docs/runbooks/incident.md", err: e}
-	}, false}, {"removal after backup", func(f syncFilesystem, e error) syncFilesystem {
-		return removalFaultFilesystem{f, "docs/runbooks/incident.md", e}
-	}, true}} {
-		t.Run(tc.name, func(t *testing.T) { localDocPruneFault(t, tc.name, tc.wrap, tc.backup) })
-	}
-}
-func localDocPruneFault(t *testing.T, name string, wrap func(syncFilesystem, error) syncFilesystem, wantBackup bool) {
+func addLockedOutput(t *testing.T, root, name, contents string, mode fs.FileMode) {
 	t.Helper()
-	root := scaffold(t, "prefix: example\nintegrationBranch: main\nlocalDocs:\n  - name: runbooks/incident\n    title: Incident\n    description: Handle incidents.\n")
+	lock, err := manifest.Load(lockFile(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock.Files[name] = manifest.Entry{OutputHash: manifest.Hash([]byte(contents)), Mode: uint32(mode.Perm())}
+	if err := lock.Save(lockFile(root)); err != nil {
+		t.Fatal(err)
+	}
+	testsupport.WriteFile(t, filepath.Join(root, filepath.FromSlash(name)), contents)
+	if err := os.Chmod(filepath.Join(root, filepath.FromSlash(name)), mode); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestInitializeReportsOutputDirectoriesAndLockAsTouched(t *testing.T) {
+	root := scaffold(t, sampleYAML)
 	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if err := syncProject(state); err != nil {
-		t.Fatal(err)
-	}
-	const local = "docs/runbooks/incident.md"
-	output := filepath.Join(root, local)
-	before, err := os.ReadFile(output)
+	result, err := testPublisher(renderInputsForTest(state)).Initialize(InitAuthority{InitializedWithVersion: Version})
 	if err != nil {
 		t.Fatal(err)
 	}
-	testConfig(state).LocalDocs = nil
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeAll()
-	failure := errors.New(name)
-	filesystems.tracked = wrap(filesystems.tracked, failure)
-	backups, _, pruned, err := syncWithFilesystems(t, state, filesystems)
-	if !errors.Is(err, failure) || len(pruned) != 0 || (!wantBackup && len(backups) != 0) {
-		t.Fatalf("sync = backups %v, pruned %v, error %v", backups, pruned, err)
-	}
-	if got, e := os.ReadFile(output); e != nil || !bytes.Equal(got, before) {
-		t.Fatalf("source = %q, %v", got, e)
-	}
-	if got, e := os.ReadFile(lockFile(root)); e != nil || !bytes.Contains(got, []byte(local)) {
-		t.Fatalf("lock = %q, %v", got, e)
-	}
-	if wantBackup {
-		if got, e := os.ReadFile(output + ".awf-bak"); e != nil || !bytes.Equal(got, before) {
-			t.Fatalf("recovery = %q, %v", got, e)
-		}
-	} else if _, e := os.Stat(output + ".awf-bak"); !os.IsNotExist(e) {
-		t.Fatalf("unexpected backup: %v", e)
-	}
-}
-
-// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestBackupFileConfinedPropagatesPublicationFailure)
-func TestBackupFileConfinedPropagatesPublicationFailure(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	state, _ := loadTestSession(testContext(t), root)
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeAll()
-	failure := errors.New("publication failed")
-	calls := 0
-	_, err = backupFileConfined(".awf/config.yaml", publicationFaultFilesystem{filesystems.tracked, failure, &calls})
-	if !errors.Is(err, failure) || calls != 1 {
-		t.Fatalf("backup error=%v calls=%d", err, calls)
-	}
-}
-
-// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncReportsCommittedBackupAndCleanupResidue)
-// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestSyncReportsCommittedBackupAndCleanupResidue)
-func TestSyncReportsCommittedBackupAndCleanupResidue(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	testsupport.WriteFile(t, filepath.Join(root, "AGENTS.md"), "foreign\n")
-	state, err := loadTestSession(testContext(t), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeAll()
-	failure := errors.New("cleanup failed")
-	committed := &filepublication.CommittedCleanupError{DestinationPath: "AGENTS.md.awf-bak", ResiduePath: ".filepublication-residue.tmp", Cause: failure}
-	calls := 0
-	filesystems.tracked = publicationFaultFilesystem{syncFilesystem: filesystems.tracked, err: committed, calls: &calls}
-	inputs, plan := testSyncPlan(t, state)
-	seed := &InitAuthority{InitializedWithVersion: Version}
-	backups, _, _, effects, err := syncReportWithPlan(inputs, seed, filesystems, plan)
-	if !errors.Is(err, failure) || calls != 1 {
-		t.Fatalf("sync error = %v, calls = %d", err, calls)
-	}
-	if len(backups) != 1 || backups[0].Bak != "AGENTS.md.awf-bak" {
-		t.Fatalf("backups = %#v", backups)
-	}
-	for _, want := range []Effect{{Kind: "backup-created", Path: "AGENTS.md.awf-bak", Recovery: "retain while recovering the render"}, {Kind: "publication-residue", Path: ".filepublication-residue.tmp", Recovery: "remove this temporary residue, then rerun awf render"}} {
-		if !slices.Contains(effects, want) {
-			t.Fatalf("effects = %#v, want %#v", effects, want)
+	for _, path := range []string{".awf/awf.lock", ".claude", "AGENTS.md"} {
+		if !slices.Contains(result.Touched(), path) {
+			t.Fatalf("touched paths %v omit %s", result.Touched(), path)
 		}
 	}
 }
 
-// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncReportsEveryCommittedPublicationCleanup)
-func TestSyncReportsEveryCommittedPublicationCleanup(t *testing.T) {
-	const residue = ".awf-publication-residue"
-	failure := errors.New("committed cleanup failed")
-	assertEffects := func(t *testing.T, effects []Effect, wants ...Effect) {
-		t.Helper()
-		for _, want := range wants {
-			if !slices.Contains(effects, want) {
-				t.Fatalf("effects = %#v, want %#v", effects, want)
-			}
-		}
-	}
-
-	t.Run("output replacement", func(t *testing.T) {
-		_, state := initializedSampleProject(t)
-		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer closeAll()
-		filesystems.tracked = committedReplacementFaultFilesystem{syncFilesystem: filesystems.tracked, path: "AGENTS.md", residue: residue, cause: failure}
-		inputs, plan := testSyncPlan(t, state)
-		_, _, _, effects, err := syncReportWithPlan(inputs, nil, filesystems, plan)
-		if !errors.Is(err, failure) {
-			t.Fatalf("sync error = %v", err)
-		}
-		assertEffects(t, effects,
-			Effect{Kind: "output-replaced", Path: "AGENTS.md", Recovery: "rerun awf render to complete authority publication"},
-			Effect{Kind: "publication-residue", Path: residue, Recovery: "remove this temporary residue, then rerun awf render"},
-		)
-	})
-
-	t.Run("prune", func(t *testing.T) {
-		root, state := initializedSampleProject(t)
-		lock, err := manifest.Load(lockFile(root))
-		if err != nil {
-			t.Fatal(err)
-		}
-		const retired = "retired/output"
-		lock.Files[retired] = manifest.Entry{OutputHash: manifest.Hash([]byte("retired\n")), Mode: 0o644}
-		if err := lock.Save(lockFile(root)); err != nil {
-			t.Fatal(err)
-		}
-		testsupport.WriteFile(t, filepath.Join(root, retired), "retired\n")
-		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer closeAll()
-		filesystems.tracked = committedRemovalFaultFilesystem{syncFilesystem: filesystems.tracked, path: retired, residue: residue, cause: failure}
-		inputs, plan := testSyncPlan(t, state)
-		_, _, pruned, effects, err := syncReportWithPlan(inputs, nil, filesystems, plan)
-		if !errors.Is(err, failure) || !slices.Contains(pruned, retired) {
-			t.Fatalf("sync error = %v, pruned = %v", err, pruned)
-		}
-		assertEffects(t, effects,
-			Effect{Kind: "output-removed", Path: retired, Recovery: "rerun awf render to complete pruning and lock publication"},
-			Effect{Kind: "publication-residue", Path: residue, Recovery: "remove this temporary residue, then rerun awf render"},
-		)
-	})
-
-	t.Run("empty directory cleanup", func(t *testing.T) {
-		root, state := initializedSampleProject(t)
-		lock, err := manifest.Load(lockFile(root))
-		if err != nil {
-			t.Fatal(err)
-		}
-		const retired, cleanup = "cleanup/child/output", "cleanup/child"
-		lock.Files[retired] = manifest.Entry{OutputHash: manifest.Hash([]byte("retired\n")), Mode: 0o644}
-		if err := lock.Save(lockFile(root)); err != nil {
-			t.Fatal(err)
-		}
-		testsupport.WriteFile(t, filepath.Join(root, retired), "retired\n")
-		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer closeAll()
-		filesystems.tracked = committedRemovalFaultFilesystem{syncFilesystem: filesystems.tracked, path: cleanup, residue: residue, cause: failure}
-		inputs, plan := testSyncPlan(t, state)
-		_, _, _, effects, err := syncReportWithPlan(inputs, nil, filesystems, plan)
-		if !errors.Is(err, failure) {
-			t.Fatalf("sync error = %v", err)
-		}
-		assertEffects(t, effects,
-			Effect{Kind: "empty-directory-removed", Path: cleanup, Recovery: "rerun awf render"},
-			Effect{Kind: "publication-residue", Path: residue, Recovery: "remove this temporary residue, then rerun awf render"},
-		)
-	})
-
-	t.Run("final lock replacement", func(t *testing.T) {
-		_, state := initializedSampleProject(t)
-		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-		if err != nil {
-			t.Fatal(err)
-		}
-		defer closeAll()
-		filesystems.tracked = committedReplacementFaultFilesystem{syncFilesystem: filesystems.tracked, path: ".awf/awf.lock", residue: residue, cause: failure}
-		inputs, plan := testSyncPlan(t, state)
-		_, _, _, effects, err := syncReportWithPlan(inputs, nil, filesystems, plan)
-		if !errors.Is(err, failure) {
-			t.Fatalf("sync error = %v", err)
-		}
-		assertEffects(t, effects,
-			Effect{Kind: "lock-replaced", Path: ".awf/awf.lock", Recovery: "rerun awf render to verify and complete publication"},
-			Effect{Kind: "publication-residue", Path: residue, Recovery: "remove this temporary residue, then rerun awf render"},
-		)
-	})
-}
-
-func TestSyncCommittedEffectOrderingIsStable(t *testing.T) {
-	root, state := initializedSampleProject(t)
-	retired := []string{"b/one", "c/deep/three", "a/two"}
-	want := []Effect{
-		{Kind: "output-removed", Path: "a/two", Recovery: "rerun awf render to complete pruning and lock publication"},
-		{Kind: "output-removed", Path: "b/one", Recovery: "rerun awf render to complete pruning and lock publication"},
-		{Kind: "output-removed", Path: "c/deep/three", Recovery: "rerun awf render to complete pruning and lock publication"},
-		{Kind: "empty-directory-removed", Path: "c/deep", Recovery: "rerun awf render"},
-		{Kind: "empty-directory-removed", Path: "a", Recovery: "rerun awf render"},
-		{Kind: "empty-directory-removed", Path: "b", Recovery: "rerun awf render"},
-		{Kind: "empty-directory-removed", Path: "c", Recovery: "rerun awf render"},
-	}
-	for iteration := range 8 {
-		lock, err := manifest.Load(lockFile(root))
-		if err != nil {
-			t.Fatal(err)
-		}
-		for _, path := range retired {
-			lock.Files[path] = manifest.Entry{OutputHash: manifest.Hash([]byte("retired\n")), Mode: 0o644}
-			testsupport.WriteFile(t, filepath.Join(root, path), "retired\n")
-		}
-		if err := lock.Save(lockFile(root)); err != nil {
-			t.Fatal(err)
-		}
-		filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-		if err != nil {
-			t.Fatal(err)
-		}
-		inputs, plan := testSyncPlan(t, state)
-		_, _, _, effects, syncErr := syncReportWithPlan(inputs, nil, filesystems, plan)
-		closeAll()
-		if syncErr != nil {
-			t.Fatal(syncErr)
-		}
-		got := make([]Effect, 0, len(want))
-		for _, effect := range effects {
-			if effect.Kind == "output-removed" || effect.Kind == "empty-directory-removed" {
-				got = append(got, effect)
-			}
-		}
-		if !slices.Equal(got, want) {
-			t.Fatalf("iteration %d effects = %#v, want %#v", iteration, got, want)
-		}
-	}
-}
-
-func TestSyncReportDoesNotReportOutputWhenReplacementFails(t *testing.T) { syncFailedOutput(t, true) }
-func TestSyncReportDoesNotReportOutputWhenWriteFails(t *testing.T)       { syncFailedOutput(t, false) }
-func syncFailedOutput(t *testing.T, corruptHash bool) {
-	t.Helper()
-	root, state := initializedSampleProject(t)
-	if corruptHash {
-		lock, err := manifest.Load(lockFile(root))
-		if err != nil {
-			t.Fatal(err)
-		}
-		e := lock.Files["AGENTS.md"]
-		e.OutputHash = "different"
-		lock.Files["AGENTS.md"] = e
-		if err := lock.Save(lockFile(root)); err != nil {
-			t.Fatal(err)
-		}
-	}
-	output := filepath.Join(root, "AGENTS.md")
-	testsupport.WriteFile(t, output, "hand edit\n")
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeAll()
-	failure := errors.New("replacement failed")
-	filesystems.tracked = replacementFaultFilesystem{filesystems.tracked, "AGENTS.md", failure}
-	_, changes, _, err := syncWithFilesystems(t, state, filesystems)
-	if !errors.Is(err, failure) || len(changes) != 0 {
-		t.Fatalf("changes=%v err=%v", changes, err)
-	}
-	got, e := os.ReadFile(output)
-	if e != nil || string(got) != "hand edit\n" {
-		t.Fatalf("output=%q %v", got, e)
-	}
-}
-
-func TestSyncRefusesResidentModeMutationAfterObservationFailure(t *testing.T) {
-	_, state := initializedSampleProject(t)
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeAll()
-	failure := errors.New("resident mode observation failed")
-	chmodCalls := 0
-	recorded := recordedChmodFilesystem{syncFilesystem: filesystems.resident, path: ".awf/efforts", calls: &chmodCalls}
-	filesystems.resident = linkInfoFaultFilesystem{syncFilesystem: recorded, path: ".awf/efforts", err: failure}
-	inputs, plan := testSyncPlan(t, state)
-	_, _, _, _, err = syncReportWithPlan(inputs, nil, filesystems, plan)
-	if !errors.Is(err, failure) || chmodCalls != 0 {
-		t.Fatalf("sync error = %v, chmod calls = %d", err, chmodCalls)
-	}
-}
-
-// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncReportsResidentDirectoryModeCorrection)
-func TestSyncReportsResidentDirectoryModeCorrection(t *testing.T) {
-	root, state := initializedSampleProject(t)
-	residentDir := filepath.Join(root, ".awf", "efforts")
-	if err := os.Chmod(residentDir, 0o755); err != nil {
-		t.Fatal(err)
-	}
-	result, err := testPublisher(renderInputsForTest(state)).SyncLeased(context.Background(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	want := Effect{Kind: "mode-corrected", Path: ".awf/efforts", Recovery: "rerun awf render"}
-	if !slices.Contains(result.Effects(), want) {
-		t.Fatalf("effects = %#v, want %#v", result.Effects(), want)
-	}
-	assertPerm(t, residentDir, 0o700)
-}
-
-// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure)
-// TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure uses
-// only the public Publisher.Sync boundary. It makes the first planned output
-// need a mode correction, then turns the later bridge output into a directory
-// that cannot be atomically replaced. Returning Result{} from Publisher.sync
-// when its terminal error is non-nil would lose the asserted committed change.
-func TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure(t *testing.T) {
+func TestSyncPreflightsEveryDesiredOutputBeforeMutation(t *testing.T) {
 	root, state := initializedSampleProject(t)
 	agents := filepath.Join(root, "AGENTS.md")
 	if err := os.Chmod(agents, 0o600); err != nil {
 		t.Fatal(err)
 	}
+	beforeLock := mustRead(t, lockFile(root))
 	bridge := filepath.Join(root, "CLAUDE.md")
 	if err := os.Remove(bridge); err != nil {
 		t.Fatal(err)
@@ -792,235 +146,298 @@ func TestPublisherSyncRetainsCommittedPartialResultOnLaterFilesystemFailure(t *t
 	if err := os.Mkdir(bridge, 0o755); err != nil {
 		t.Fatal(err)
 	}
-
-	result, err := testPublisher(renderInputsForTest(state)).SyncLeased(context.Background(), nil)
-	if err == nil {
-		t.Fatal("Sync accepted an unreplaceable later output")
+	result, err := testPublisher(renderInputsForTest(state)).SyncLeased(testContext(t), nil)
+	if err == nil || len(result.Changes()) != 0 || len(result.Pruned()) != 0 {
+		t.Fatalf("sync result = %#v, error = %v", result, err)
 	}
-	var partial *PartialError
-	if !errors.As(err, &partial) || !slices.Equal(partial.Result.Effects(), result.Effects()) {
-		t.Fatalf("error = %v, want typed partial outcome matching returned result", err)
+	if info, statErr := os.Stat(agents); statErr != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("earlier desired output mutated before refusal: %v, %v", info, statErr)
 	}
-	if len(result.Effects()) == 0 || !slices.ContainsFunc(result.Effects(), func(effect Effect) bool { return effect.Path == "AGENTS.md" && effect.Recovery != "" }) {
-		t.Fatalf("effects = %#v, want stable AGENTS.md effect and recovery", result.Effects())
+	if got := mustRead(t, lockFile(root)); !bytes.Equal(got, beforeLock) {
+		t.Fatal("lock changed after desired-output preflight refusal")
 	}
-	if got := result.Changes(); len(got) != 1 || got[0] != (Change{Path: "AGENTS.md", Cause: "internal"}) {
-		t.Fatalf("changes=%v, want committed AGENTS.md mode correction", got)
-	}
-	assertPerm(t, agents, 0o644)
 }
 
-// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncBackupPublicationRefusesParentSwap)
-// invariant: rendering/sync-and-drift:sync-backs-up-foreign (TestSyncBackupPublicationRefusesParentSwap)
-// invariant: rendering/sync-and-drift:local-doc-prune-preserved (TestSyncBackupPublicationRefusesParentSwap)
-func TestSyncBackupPublicationRefusesParentSwap(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	state, _ := loadTestSession(testContext(t), root)
-	testsupport.WriteFile(t, filepath.Join(root, "collision/source"), "source bytes\n")
-	outside := t.TempDir()
-	sentinel := filepath.Join(outside, "sentinel")
-	testsupport.WriteFile(t, sentinel, "outside\n")
-	if err := os.Chmod(sentinel, 0o600); err != nil {
+func TestPreflightSyncLeasedDoesNotApplyValidatedMutations(t *testing.T) {
+	root, state := initializedSampleProject(t)
+	agents := filepath.Join(root, "AGENTS.md")
+	if err := os.Chmod(agents, 0o600); err != nil {
 		t.Fatal(err)
 	}
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
+	beforeLock := mustRead(t, lockFile(root))
+	if err := testPublisher(renderInputsForTest(state)).PreflightSyncLeased(testContext(t), nil); err != nil {
+		t.Fatal(err)
+	}
+	if info, err := os.Stat(agents); err != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("preflight mutated output: %v, %v", info, err)
+	}
+	if got := mustRead(t, lockFile(root)); !bytes.Equal(got, beforeLock) {
+		t.Fatal("preflight changed lock")
+	}
+}
+
+func TestSyncPreflightsEveryRetirementBeforeMutation(t *testing.T) {
+	root, state := initializedSampleProject(t)
+	agents := filepath.Join(root, "AGENTS.md")
+	if err := os.Chmod(agents, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	addLockedOutput(t, root, "retired/output.md", "locked\n", 0o644)
+	testsupport.WriteFile(t, filepath.Join(root, "retired/output.md"), "diverged\n")
+	beforeLock := mustRead(t, lockFile(root))
+	result, err := testPublisher(renderInputsForTest(state)).SyncLeased(testContext(t), nil)
+	if err == nil || !strings.Contains(err.Error(), "retired/output.md") || len(result.Changes()) != 0 {
+		t.Fatalf("sync result = %#v, error = %v", result, err)
+	}
+	if info, statErr := os.Stat(agents); statErr != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("desired output mutated before retirement refusal: %v, %v", info, statErr)
+	}
+	if got := mustRead(t, lockFile(root)); !bytes.Equal(got, beforeLock) {
+		t.Fatal("lock changed after retirement preflight refusal")
+	}
+}
+
+func TestInitializeRefusesDifferingForeignOutputWithoutClobber(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	state, err := loadTestSession(testContext(t), root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	defer closeAll()
-	if _, err := backupFileConfined("collision/source", &swapBeforePublishFilesystem{filesystems.tracked, root, outside, false}); err == nil {
-		t.Fatal("backup accepted swap")
+	output := filepath.Join(root, "AGENTS.md")
+	testsupport.WriteFile(t, output, "foreign\n")
+	result, err := testPublisher(renderInputsForTest(state)).Initialize(InitAuthority{InitializedWithVersion: Version})
+	if err == nil || !strings.Contains(err.Error(), "AGENTS.md") || len(result.Changes()) != 0 {
+		t.Fatalf("initialize result = %#v, error = %v", result, err)
 	}
-	if got, e := os.ReadFile(filepath.Join(root, "collision-saved/source")); e != nil || string(got) != "source bytes\n" {
-		t.Fatalf("source=%q %v", got, e)
+	if got := mustRead(t, output); string(got) != "foreign\n" {
+		t.Fatalf("foreign output changed: %q", got)
 	}
-	if _, e := os.Stat(filepath.Join(outside, "source.awf-bak")); !errors.Is(e, os.ErrNotExist) {
-		t.Fatalf("outside backup=%v", e)
+	if _, err := os.Stat(output + ".awf-bak"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("unexpected safety copy: %v", err)
 	}
-	if got, err := os.ReadFile(sentinel); err != nil || string(got) != "outside\n" {
-		t.Fatalf("outside sentinel = %q, %v", got, err)
+	if _, err := os.Stat(filepath.Join(root, "CLAUDE.md")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("later output mutated before refusal: %v", err)
 	}
-	assertPerm(t, sentinel, 0o600)
 }
 
-// invariant: rendering/sync-and-drift:sync-mutations-root-confined (TestSyncAncestorCleanupRefusesParentSwap)
-func TestSyncAncestorCleanupRefusesParentSwap(t *testing.T) {
-	root, state := initializedSampleProject(t)
+func TestInitializeAdoptsExactResidentFile(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	state, err := loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inputs, plan := testSyncPlan(t, state)
+	var content string
+	for _, output := range plan.Outputs() {
+		if output.Path() == "AGENTS.md" {
+			content = output.Content()
+		}
+	}
+	if content == "" {
+		t.Fatal("AGENTS.md absent from plan")
+	}
+	testsupport.WriteFile(t, filepath.Join(root, "AGENTS.md"), content)
+	result, err := testPublisher(inputs).Initialize(InitAuthority{InitializedWithVersion: Version})
+	if err != nil {
+		t.Fatal(err)
+	}
+	if slices.ContainsFunc(result.Changes(), func(change Change) bool { return change.Path == "AGENTS.md" }) {
+		t.Fatalf("adopted output reported changed: %#v", result.Changes())
+	}
 	lock, err := manifest.Load(lockFile(root))
 	if err != nil {
 		t.Fatal(err)
 	}
-	const retired = "cleanup/child/file"
-	lock.Files[retired] = manifest.Entry{OutputHash: manifest.Hash([]byte("retired\n")), Mode: 0o644}
-	if err := lock.Save(lockFile(root)); err != nil {
-		t.Fatal(err)
-	}
-	testsupport.WriteFile(t, filepath.Join(root, retired), "retired\n")
-	outside := t.TempDir()
-	sentinel := filepath.Join(outside, "sentinel")
-	testsupport.WriteFile(t, sentinel, "outside cleanup\n")
-	if err := os.Chmod(sentinel, 0o600); err != nil {
-		t.Fatal(err)
-	}
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer closeAll()
-	swapping := &swapAfterPruneFilesystem{syncFilesystem: filesystems.tracked, root: root, outside: outside}
-	filesystems.tracked = swapping
-	_, _, pruned, err := syncWithFilesystems(t, state, filesystems)
-	if err == nil || !slices.Contains(pruned, retired) {
-		t.Fatalf("pruned=%v err=%v, want committed prune and cleanup refusal", pruned, err)
-	}
-	if !slices.Equal(swapping.calls, []string{retired}) {
-		t.Fatalf("calls=%v, want cleanup refusal immediately after parent swap", swapping.calls)
-	}
-	if got, err := os.ReadFile(sentinel); err != nil || string(got) != "outside cleanup\n" {
-		t.Fatalf("outside sentinel = %q, %v", got, err)
-	}
-	assertPerm(t, sentinel, 0o600)
-	updated, err := manifest.Load(lockFile(root))
-	if err != nil {
-		t.Fatal(err)
-	}
-	if _, ok := updated.Files[retired]; !ok {
-		t.Fatal("cleanup refusal advanced the old lock")
+	if _, ok := lock.Files["AGENTS.md"]; !ok {
+		t.Fatal("adopted output absent from lock")
 	}
 }
 
-// invariant: config/migrations-and-locks:lock-atomic-save (TestSyncLockSaveRefusesParentSwap)
-func TestSyncLockSaveRefusesParentSwap(t *testing.T) {
+func TestUnchangedSyncSkipsOutputsAndLock(t *testing.T) {
+	_, state := initializedSampleProject(t)
+	filesystems, closeAll := openTestFilesystems(t, state)
+	defer closeAll()
+	recorder := &mutationRecorder{syncFilesystem: filesystems.tracked}
+	filesystems.tracked = recorder
+	changes, pruned, err := syncWithFilesystems(t, state, filesystems)
+	if err != nil || len(changes) != 0 || len(pruned) != 0 {
+		t.Fatalf("unchanged sync = changes %v, pruned %v, error %v", changes, pruned, err)
+	}
+	for _, operation := range recorder.operations {
+		if strings.HasPrefix(operation, "replace ") {
+			t.Fatalf("unchanged sync replaced a file: %v", recorder.operations)
+		}
+	}
+}
+
+func TestSyncRemovesOnlyExactRetirementWithoutSafetyCopy(t *testing.T) {
 	root, state := initializedSampleProject(t)
-	before, err := os.ReadFile(lockFile(root))
-	if err != nil {
-		t.Fatal(err)
+	const retired = "retired/deep/output.md"
+	addLockedOutput(t, root, retired, "locked\n", 0o640)
+	result, err := testPublisher(renderInputsForTest(state)).SyncLeased(testContext(t), nil)
+	if err != nil || !slices.Contains(result.Pruned(), retired) {
+		t.Fatalf("sync result = %#v, error = %v", result, err)
 	}
-	outside := t.TempDir()
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-	if err != nil {
-		t.Fatal(err)
+	if _, err := os.Stat(filepath.Join(root, retired)); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("retired output remains: %v", err)
 	}
-	defer closeAll()
-	filesystems.tracked = &swapBeforeLockReplaceFilesystem{filesystems.tracked, root, outside, false}
-	if _, _, _, err := syncWithFilesystems(t, state, filesystems); err == nil {
-		t.Fatal("sync accepted swap")
+	if _, err := os.Stat(filepath.Join(root, retired+".awf-bak")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("unexpected safety copy: %v", err)
 	}
-	if _, e := os.Stat(filepath.Join(outside, "awf.lock")); !errors.Is(e, os.ErrNotExist) {
-		t.Fatalf("outside lock=%v", e)
-	}
-	if got, e := os.ReadFile(filepath.Join(root, "saved-awf/awf.lock")); e != nil || !bytes.Equal(got, before) {
-		t.Fatalf("saved lock=%q %v", got, e)
+	if _, err := os.Stat(filepath.Join(root, "retired")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("empty ancestors remain: %v", err)
 	}
 }
 
-func TestConcurrentBackupsPublishCompleteCopies(t *testing.T) {
-	root := scaffold(t, sampleYAML)
-	const source = "complete backup source\n"
-	testsupport.WriteFile(t, filepath.Join(root, "x"), source)
-	sourceInfo, err := os.Stat(filepath.Join(root, "x"))
-	if err != nil {
+func TestSyncRefusesRetirementModeDivergence(t *testing.T) {
+	root, state := initializedSampleProject(t)
+	const retired = "retired/output.md"
+	addLockedOutput(t, root, retired, "locked\n", 0o644)
+	if err := os.Chmod(filepath.Join(root, retired), 0o600); err != nil {
 		t.Fatal(err)
 	}
-	state, _ := loadTestSession(testContext(t), root)
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-	if err != nil {
+	beforeLock := mustRead(t, lockFile(root))
+	result, err := testPublisher(renderInputsForTest(state)).SyncLeased(testContext(t), nil)
+	if err == nil || len(result.Pruned()) != 0 {
+		t.Fatalf("sync result = %#v, error = %v", result, err)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, retired)); statErr != nil {
+		t.Fatal("diverged retired output was removed")
+	}
+	if got := mustRead(t, lockFile(root)); !bytes.Equal(got, beforeLock) {
+		t.Fatal("lock changed after retirement refusal")
+	}
+}
+
+func TestSyncRefusesFinalSymlinksBeforeMutation(t *testing.T) {
+	root, state := initializedSampleProject(t)
+	agents := filepath.Join(root, "AGENTS.md")
+	if err := os.Remove(agents); err != nil {
 		t.Fatal(err)
 	}
+	if err := os.Symlink("outside", agents); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	beforeLock := mustRead(t, lockFile(root))
+	result, err := testPublisher(renderInputsForTest(state)).SyncLeased(testContext(t), nil)
+	if err == nil || !strings.Contains(err.Error(), "AGENTS.md") || len(result.Changes()) != 0 {
+		t.Fatalf("sync result = %#v, error = %v", result, err)
+	}
+	if info, statErr := os.Lstat(agents); statErr != nil || info.Mode()&fs.ModeSymlink == 0 {
+		t.Fatalf("final symlink changed: %v, %v", info, statErr)
+	}
+	if got := mustRead(t, lockFile(root)); !bytes.Equal(got, beforeLock) {
+		t.Fatal("lock changed after symlink refusal")
+	}
+}
+
+func TestSyncWritesLockLast(t *testing.T) {
+	root, state := initializedSampleProject(t)
+	addLockedOutput(t, root, "retired/output.md", "retired\n", 0o644)
+	if err := os.Chmod(filepath.Join(root, "AGENTS.md"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	filesystems, closeAll := openTestFilesystems(t, state)
 	defer closeAll()
-	ready := make(chan struct{}, 2)
-	release := make(chan struct{})
-	filesystem := &blockingPublishFilesystem{syncFilesystem: filesystems.tracked, ready: ready, release: release}
-	results := make(chan error, 2)
-	for range 2 {
-		go func() { _, err := backupFileConfined("x", filesystem); results <- err }()
+	recorder := &mutationRecorder{syncFilesystem: filesystems.tracked}
+	filesystems.tracked = recorder
+	_, _, err := syncWithFilesystems(t, state, filesystems)
+	if err != nil {
+		t.Fatal(err)
 	}
-	<-ready
-	<-ready
-	close(release)
-	for range 2 {
-		if err := <-results; err != nil {
+	if len(recorder.operations) == 0 || recorder.operations[len(recorder.operations)-1] != "replace .awf/awf.lock" {
+		t.Fatalf("mutation order = %v", recorder.operations)
+	}
+}
+
+func TestSyncReturnsVisiblePartialResultAndRerunConverges(t *testing.T) {
+	root, state := initializedSampleProject(t)
+	inputs, plan := testSyncPlan(t, state)
+	var selected []string
+	desiredModes := map[string]fs.FileMode{}
+	for _, output := range plan.Outputs() {
+		if resident.IsResidentPath(output.Path()) {
+			continue
+		}
+		if info, err := os.Stat(filepath.Join(root, output.Path())); err == nil && info.Mode().IsRegular() {
+			selected = append(selected, output.Path())
+			desiredModes[output.Path()] = 0o644
+			if strings.HasPrefix(output.Content(), "#!") {
+				desiredModes[output.Path()] = 0o755
+			}
+		}
+		if len(selected) == 2 {
+			break
+		}
+	}
+	if len(selected) != 2 {
+		t.Fatalf("need two tracked outputs, got %v", selected)
+	}
+	for _, name := range selected {
+		if err := os.Chmod(filepath.Join(root, name), 0o600); err != nil {
 			t.Fatal(err)
 		}
 	}
-	for _, name := range []string{"x.awf-bak", "x.awf-bak.1"} {
-		got, e := os.ReadFile(filepath.Join(root, name))
-		if e != nil || string(got) != source {
-			t.Fatalf("backup %s=%q %v", name, got, e)
-		}
-		info, e := os.Stat(filepath.Join(root, name))
-		if e != nil || info.Mode().Perm() != sourceInfo.Mode().Perm() {
-			t.Fatalf("mode %s=%v %v", name, info, e)
-		}
+	beforeLock := mustRead(t, lockFile(root))
+	filesystems, closeAll := openTestFilesystems(t, state)
+	failure := errors.New("injected replacement failure")
+	recorder := &mutationRecorder{syncFilesystem: filesystems.tracked, failPath: selected[1], fail: failure}
+	filesystems.tracked = recorder
+	changes, pruned, err := syncReportWithPlan(inputs, nil, filesystems, plan, migrate.Current(), true, nil)
+	closeAll()
+	if !errors.Is(err, failure) || !strings.Contains(err.Error(), selected[1]) || len(pruned) != 0 {
+		t.Fatalf("partial sync = changes %v, pruned %v, error %v", changes, pruned, err)
 	}
-}
-
-func TestSyncPrunesBeforeWritingReplacementLock(t *testing.T) {
-	root, state := initializedSampleProject(t)
-	lock, err := manifest.Load(lockFile(root))
-	if err != nil {
-		t.Fatal(err)
+	if !slices.ContainsFunc(changes, func(change Change) bool { return change.Path == selected[0] }) || slices.ContainsFunc(changes, func(change Change) bool { return change.Path == selected[1] }) {
+		t.Fatalf("partial changes = %v", changes)
 	}
-	lock.Files["retired/output.md"] = manifest.Entry{OutputHash: manifest.Hash([]byte("obsolete\n")), Mode: 0o644}
-	if err := lock.Save(lockFile(root)); err != nil {
-		t.Fatal(err)
+	if info, statErr := os.Stat(filepath.Join(root, selected[0])); statErr != nil || info.Mode().Perm() != desiredModes[selected[0]] {
+		t.Fatalf("successful first output not visible: %v, %v", info, statErr)
 	}
-	testsupport.WriteFile(t, filepath.Join(root, "retired/output.md"), "obsolete\n")
-	filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-	if err != nil {
-		t.Fatal(err)
+	if info, statErr := os.Stat(filepath.Join(root, selected[1])); statErr != nil || info.Mode().Perm() != 0o600 {
+		t.Fatalf("failed output changed: %v, %v", info, statErr)
 	}
+	if got := mustRead(t, lockFile(root)); !bytes.Equal(got, beforeLock) {
+		t.Fatal("lock advanced after partial sync")
+	}
+	result, err := testPublisher(renderInputsForTest(state)).SyncLeased(testContext(t), nil)
+	if err != nil || !slices.ContainsFunc(result.Changes(), func(change Change) bool { return change.Path == selected[1] }) {
+		t.Fatalf("rerun result = %#v, error = %v", result, err)
+	}
+	filesystems, closeAll = openTestFilesystems(t, state)
 	defer closeAll()
-	var replaces []string
-	filesystems.tracked = recordedFilesystem{filesystems.tracked, &replaces}
-	_, _, pruned, err := syncWithFilesystems(t, state, filesystems)
-	if err != nil {
-		t.Fatal(err)
+	recorder = &mutationRecorder{syncFilesystem: filesystems.tracked}
+	filesystems.tracked = recorder
+	changes, pruned, err = syncWithFilesystems(t, state, filesystems)
+	if err != nil || len(changes) != 0 || len(pruned) != 0 {
+		t.Fatalf("converged rerun = changes %v, pruned %v, error %v", changes, pruned, err)
 	}
-	if !slices.Contains(pruned, "retired/output.md") || len(replaces) == 0 || replaces[len(replaces)-1] != ".awf/awf.lock" {
-		t.Fatalf("pruned=%v sequence=%v", pruned, replaces)
+	for _, operation := range recorder.operations {
+		if strings.HasPrefix(operation, "replace ") {
+			t.Fatalf("converged rerun replaced a file: %v", recorder.operations)
+		}
 	}
 }
 
-func TestSyncRefusesInvalidPermanentLockBeforeMutation(t *testing.T) {
-	for _, tc := range []struct {
-		name string
-		lock string
-	}{
-		{name: "empty inventory", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{}}`},
-		{name: "misspelled inventory", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"fiels":{"x":{}}}`},
-		{name: "duplicate inventory entry", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"x":{},"x":{}}}`},
-		{name: "non-local inventory entry", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"../escape":{},"AGENTS.md":{}}}`},
-		{name: "unknown entry field", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"x":{"typo":true}}}`},
-		{name: "trailing document", lock: `{"awfVersion":"0.40.0","schemaVersion":46,"files":{"x":{}}} {}`},
-	} {
-		t.Run(tc.name, func(t *testing.T) {
-			root := scaffold(t, sampleYAML)
-			state, err := loadTestSession(testContext(t), root)
-			if err != nil {
-				t.Fatal(err)
-			}
-			output := filepath.Join(root, "AGENTS.md")
-			testsupport.WriteFile(t, output, "foreign bytes\n")
-			testsupport.WriteFile(t, lockFile(root), tc.lock)
-			filesystems, closeAll, err := openSyncFilesystems(renderInputsForTest(state))
-			if err != nil {
-				t.Fatal(err)
-			}
-			defer closeAll()
-			backups, changes, pruned, err := syncWithFilesystems(t, state, filesystems)
-			if err == nil || len(backups) != 0 || len(changes) != 0 || len(pruned) != 0 {
-				t.Fatalf("invalid lock sync = backups=%v changes=%v pruned=%v err=%v", backups, changes, pruned, err)
-			}
-			if got, readErr := os.ReadFile(output); readErr != nil || string(got) != "foreign bytes\n" {
-				t.Fatalf("output after refusal = %q, %v", got, readErr)
-			}
-			if got, readErr := os.ReadFile(lockFile(root)); readErr != nil || string(got) != tc.lock {
-				t.Fatalf("lock after refusal = %q, %v", got, readErr)
-			}
-			if _, statErr := os.Stat(output + ".awf-bak"); !errors.Is(statErr, os.ErrNotExist) {
-				t.Fatalf("backup after refusal = %v", statErr)
-			}
-		})
+func TestInitializeCreationIsExclusive(t *testing.T) {
+	root := scaffold(t, sampleYAML)
+	state, err := loadTestSession(testContext(t), root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	inputs, plan := testSyncPlan(t, state)
+	first := "AGENTS.md"
+	if !slices.ContainsFunc(plan.Outputs(), func(output outputplan.Output) bool { return output.Path() == first }) {
+		t.Fatal("AGENTS.md absent from plan")
+	}
+	filesystems, closeAll := openTestFilesystems(t, state)
+	defer closeAll()
+	filesystems.tracked = &competingCreateFilesystem{syncFilesystem: filesystems.tracked, root: root, path: first}
+	changes, pruned, err := syncReportWithPlan(inputs, &InitAuthority{InitializedWithVersion: Version}, filesystems, plan, migrate.Current(), true, nil)
+	if err == nil || !strings.Contains(err.Error(), first) || len(pruned) != 0 {
+		t.Fatalf("exclusive creation = changes %v, pruned %v, error %v", changes, pruned, err)
+	}
+	if got := mustRead(t, filepath.Join(root, first)); string(got) != "concurrent winner\n" {
+		t.Fatalf("concurrent file was clobbered: %q", got)
 	}
 }

@@ -12,9 +12,7 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/projectmutation"
 	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
@@ -24,25 +22,6 @@ const fixtureConfig = "prefix: example\nintegrationBranch: master\nvars: {testCm
 func operationLoader() *project.Loader {
 	return project.NewLoaderWithoutRepository(config.Load, catalog.Standard, awfgit.ProjectResidentRoot)
 }
-
-func runAdd(ctx context.Context, root, name string, loader *project.Loader) (outcome Outcome, returnErr error) {
-	tx, err := projectmutation.AcquireProject(ctx, root, loader, nil)
-	if err != nil {
-		return Outcome{}, err
-	}
-	defer func() { returnErr = errors.Join(returnErr, tx.Release()) }()
-	return Add(ctx, name, tx)
-}
-
-func runRemove(ctx context.Context, root, name string, loader *project.Loader) (outcome Outcome, returnErr error) {
-	tx, err := projectmutation.AcquireProject(ctx, root, loader, nil)
-	if err != nil {
-		return Outcome{}, err
-	}
-	defer func() { returnErr = errors.Join(returnErr, tx.Release()) }()
-	return Remove(ctx, name, tx)
-}
-
 func initializedLoader(t *testing.T, root string) *project.Loader {
 	t.Helper()
 	loader := operationLoader()
@@ -56,188 +35,128 @@ func initializedLoader(t *testing.T, root string) *project.Loader {
 	return loader
 }
 
-func TestAddScaffoldsConfiguredDomainAndRemoveReportsOrphan(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, fixtureConfig)
-	if _, err := runAdd(context.Background(), root, "payments", initializedLoader(t, root)); err != nil {
-		t.Fatal(err)
-	}
-	part := filepath.Join(root, ".awf", "domains", "parts", "payments", "current-state.md")
-	if got, err := os.ReadFile(part); err != nil || !strings.Contains(string(got), "\"payments\" domain") {
-		t.Fatalf("part = %q, %v", got, err)
-	}
-	outcome, err := runRemove(context.Background(), root, "payments", operationLoader())
-	if err != nil || !outcome.Orphaned {
-		t.Fatalf("remove = orphaned %t, %v", outcome.Orphaned, err)
-	}
-}
-
-func TestRemoveRejectsAbsentConfiguredDomain(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, fixtureConfig)
-	if _, err := runRemove(context.Background(), root, "payments", initializedLoader(t, root)); err == nil || !strings.Contains(err.Error(), "not configured") {
-		t.Fatalf("error = %v", err)
-	}
-}
-
-func TestDomainOperationsRejectInvalidAndUnavailableInputs(t *testing.T) {
-	loader := operationLoader()
-	for _, operation := range []func() error{
-		func() error { _, err := runAdd(context.Background(), t.TempDir(), "not valid", loader); return err },
-		func() error { _, err := runRemove(context.Background(), t.TempDir(), "not valid", loader); return err },
-		func() error { _, err := runAdd(context.Background(), t.TempDir(), "payments", loader); return err },
-		func() error { _, err := runRemove(context.Background(), t.TempDir(), "payments", loader); return err },
-	} {
-		if err := operation(); err == nil {
-			t.Fatal("invalid or unavailable operation succeeded")
-		}
-	}
-}
-
-func TestAddReportsBlockedCurrentStateParent(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, fixtureConfig)
-	blocked := filepath.Join(root, ".awf", "domains", "parts", "payments")
-	testsupport.WriteFile(t, blocked, "not a directory")
-	if _, err := runAdd(context.Background(), root, "payments", operationLoader()); err == nil {
-		t.Fatal("blocked current-state parent accepted")
-	}
-}
-
-func TestSynchronizeReportsUnavailableProject(t *testing.T) {
-	root := t.TempDir()
-	tx, err := projectmutation.AcquireProject(context.Background(), root, operationLoader(), nil)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer tx.Release() //nolint:errcheck // test cleanup
-	if _, err := tx.Synchronize(); err == nil {
-		t.Fatal("unavailable project synchronized")
-	}
-}
-
-func TestDomainOperationsReportSynchronizationFailure(t *testing.T) {
-	breakRendering := func(t *testing.T, root string) {
-		t.Helper()
-		testsupport.WriteFile(t, filepath.Join(root, ".awf", "parts", "workflow", "commit-discipline.md"), "{{=awf:unknown-placeholder}}\n")
-	}
-
-	t.Run("add", func(t *testing.T) {
-		root := t.TempDir()
-		testsupport.WriteAwfConfig(t, root, fixtureConfig)
-		loader := initializedLoader(t, root)
-		breakRendering(t, root)
-		if _, err := runAdd(context.Background(), root, "payments", loader); err == nil {
-			t.Fatal("add accepted a synchronization failure")
-		}
-	})
-
-	t.Run("remove", func(t *testing.T) {
-		root := t.TempDir()
-		testsupport.WriteAwfConfig(t, root, fixtureConfig)
-		loader := initializedLoader(t, root)
-		if _, err := runAdd(context.Background(), root, "payments", loader); err != nil {
-			t.Fatal(err)
-		}
-		breakRendering(t, root)
-		if _, err := runRemove(context.Background(), root, "payments", loader); err == nil {
-			t.Fatal("remove accepted a synchronization failure")
-		}
-	})
-}
-
-func scaffoldCurrentStateForTest(root string, cfg *config.Config, name string) error {
-	files, err := filesystem.Open(root)
-	if err != nil {
-		return err
-	}
-	defer files.Close()
-	_, err = scaffoldCurrentStateConfined(files, root, cfg, name)
-	return err
-}
-
-func TestScaffoldCurrentStatePreservesExistingAndReportsFilesystemFailures(t *testing.T) {
-	root := t.TempDir()
-	testsupport.WriteAwfConfig(t, root, fixtureConfig)
-	session, err := operationLoader().Load(context.Background(), root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	cfg := session.Config()
-	path := cfg.PartPath("domains", "payments", "current-state")
-	testsupport.WriteFile(t, path, "kept")
-	if err := scaffoldCurrentStateForTest(root, cfg, "payments"); err != nil {
-		t.Fatal(err)
-	}
-	got, err := os.ReadFile(path)
-	if err != nil || string(got) != "kept" {
-		t.Fatalf("existing part = %q, %v", got, err)
-	}
-	if err := os.Remove(path); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.Symlink(filepath.Base(path), path); err != nil {
-		t.Fatal(err)
-	}
-	if err := scaffoldCurrentStateForTest(root, cfg, "payments"); err == nil {
-		t.Fatal("self-referential current-state symlink accepted")
-	}
-	blocked, openErr := filesystem.Open("/dev/null")
-	if openErr == nil {
-		defer blocked.Close()
-		if _, err := hasSidecarOrParts(blocked, "payments"); err == nil || !strings.Contains(err.Error(), "inspect authored domain path") {
-			t.Fatalf("inspection error = %v", err)
-		}
-	}
-	files, err := filesystem.Open(root)
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer files.Close()
-	orphaned, err := hasSidecarOrParts(files, "absent")
-	if err != nil || orphaned {
-		t.Fatalf("absent authored inputs = %t, %v", orphaned, err)
-	}
-}
-
-func TestAddRetainsTypedPartialOutcomeAfterSynchronizationFailure(t *testing.T) {
+func TestAddRemoveAndPreflightRefusal(t *testing.T) {
 	root := t.TempDir()
 	testsupport.WriteAwfConfig(t, root, fixtureConfig)
 	loader := initializedLoader(t, root)
-	testsupport.WriteFile(t, filepath.Join(root, ".awf", "parts", "workflow", "commit-discipline.md"), "{{=awf:unknown-placeholder}}\n")
-	_, err := runAdd(context.Background(), root, "payments", loader)
-	var partial *PartialError
-	if !errors.As(err, &partial) || !partial.Outcome.ConfigReplaced || !partial.Outcome.ScaffoldCreated {
-		t.Fatalf("partial outcome = %#v, err = %v", partial, err)
+	outcome, err := Add(context.Background(), root, "payments", loader, nil)
+	if err != nil || !outcome.ConfigReplaced || !outcome.ScaffoldCreated {
+		t.Fatalf("add=%#v %v", outcome, err)
 	}
-}
+	part := filepath.Join(root, ".awf/domains/parts/payments/current-state.md")
+	if got, err := os.ReadFile(part); err != nil || !strings.Contains(string(got), `"payments" domain`) {
+		t.Fatalf("part=%q %v", got, err)
+	}
+	removed, err := Remove(context.Background(), root, "payments", loader, nil)
+	if err != nil || !removed.Orphaned {
+		t.Fatalf("remove=%#v %v", removed, err)
+	}
 
-func TestFinishTypesReleaseFaultWithCommittedOutcome(t *testing.T) {
-	fault := errors.New("release sentinel")
-	outcome := Outcome{ConfigReplaced: true}
-	err := Finish(outcome, nil, fault)
-	var partial *PartialError
-	if !errors.As(err, &partial) || !errors.Is(err, fault) || !partial.Outcome.ConfigReplaced {
-		t.Fatalf("release partial = %#v, %v", partial, err)
+	root = t.TempDir()
+	testsupport.WriteAwfConfig(t, root, fixtureConfig)
+	loader = initializedLoader(t, root)
+	blocked := filepath.Join(root, ".claude/skills/awf-maintenance/SKILL.md")
+	if err := os.Remove(blocked); err != nil {
+		t.Fatal(err)
 	}
-	if len(partial.Recovery) != 1 || !strings.Contains(partial.Recovery[0], "lease-release fault") {
-		t.Fatalf("release recovery = %#v", partial.Recovery)
+	if err := os.Mkdir(blocked, 0o755); err != nil {
+		t.Fatal(err)
 	}
-}
-
-func TestPartialErrorDocumentRetainsEffectsAndDefaultRecovery(t *testing.T) {
-	partial := newPartial(Outcome{ConfigReplaced: true, ScaffoldCreated: true, Orphaned: true, Publisher: publisher.Result{}}, nil)
-	document, err := partial.Document()
+	before, err := os.ReadFile(config.ConfigPath(root))
 	if err != nil {
 		t.Fatal(err)
 	}
-	var rendered strings.Builder
-	if err := presentation.Render(&rendered, document); err != nil {
+	outcome, err = Add(context.Background(), root, "payments", loader, nil)
+	if err == nil || outcome.ConfigReplaced || outcome.ScaffoldCreated {
+		t.Fatalf("preflight refusal=%#v %v", outcome, err)
+	}
+	after, readErr := os.ReadFile(config.ConfigPath(root))
+	if readErr != nil || string(after) != string(before) {
+		t.Fatalf("config changed before publication preflight: %v", readErr)
+	}
+	if _, statErr := os.Stat(filepath.Join(root, ".awf/domains/parts/payments/current-state.md")); !errors.Is(statErr, os.ErrNotExist) {
+		t.Fatalf("scaffold created before publication preflight: %v", statErr)
+	}
+}
+
+func TestAddAndRemoveResumeAlreadyCommittedConfigState(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, fixtureConfig)
+	loader := initializedLoader(t, root)
+	cfg, err := config.Load(config.RootDir(root))
+	if err != nil {
 		t.Fatal(err)
 	}
-	for _, want := range []string{"domain mutation partially committed", "config replacement: true", "authored scaffold: true", "orphaned authored inputs: true", "inspect the reported cause, then retry the domain command"} {
-		if !strings.Contains(rendered.String(), want) {
-			t.Errorf("document omitted %q: %s", want, rendered.String())
+	updated, err := config.SetArrayMember(cfg.Source(), "domains", "payments", true)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	added, err := Add(context.Background(), root, "payments", loader, nil)
+	if err != nil || added.ConfigReplaced || !added.ScaffoldCreated {
+		t.Fatalf("resumed add=%#v %v", added, err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs/domains/payments.md")); err != nil {
+		t.Fatal(err)
+	}
+
+	cfg, err = config.Load(config.RootDir(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	updated, err = config.SetArrayMember(cfg.Source(), "domains", "payments", false)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(config.ConfigPath(root), updated, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	removed, err := Remove(context.Background(), root, "payments", loader, nil)
+	if err != nil || removed.ConfigReplaced || !removed.Orphaned {
+		t.Fatalf("resumed remove=%#v %v", removed, err)
+	}
+	if _, err := os.Stat(filepath.Join(root, "docs/domains/payments.md")); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("retired domain output remains: %v", err)
+	}
+}
+
+func TestAddRefusesDifferingScaffoldBeforeConfigMutation(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, fixtureConfig)
+	loader := initializedLoader(t, root)
+	path := filepath.Join(root, ".awf/domains/parts/payments/current-state.md")
+	testsupport.WriteFile(t, path, "foreign")
+	before, _ := os.ReadFile(config.ConfigPath(root))
+	_, err := Add(context.Background(), root, "payments", loader, nil)
+	after, _ := os.ReadFile(config.ConfigPath(root))
+	if err == nil || string(before) != string(after) {
+		t.Fatalf("collision=%v config changed=%v", err, string(before) != string(after))
+	}
+}
+
+func TestLeasePrecedesAuthorityAndReleaseErrorIsOrdinary(t *testing.T) {
+	root := t.TempDir()
+	testsupport.WriteAwfConfig(t, root, fixtureConfig)
+	initializer := initializedLoader(t, root)
+	acquired := false
+	observing := false
+	loader := project.NewLoaderWithoutRepository(func(path string) (*config.Config, error) {
+		if observing && !acquired {
+			t.Fatal("read before lease")
 		}
+		return config.Load(path)
+	}, catalog.Standard, awfgit.ProjectResidentRoot)
+	fault := errors.New("release sentinel")
+	acquire := func(ctx context.Context, root string) (*filesystem.Lease, func() error, error) {
+		acquired = true
+		lease, err := initializer.AcquireProjectLease(ctx, root)
+		return lease, func() error { return errors.Join(lease.Release(), fault) }, err
+	}
+	observing = true
+	outcome, err := Add(context.Background(), root, "payments", loader, acquire)
+	if !outcome.ConfigReplaced || !errors.Is(err, fault) {
+		t.Fatalf("outcome=%#v error=%v", outcome, err)
 	}
 }

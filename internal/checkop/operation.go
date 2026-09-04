@@ -6,7 +6,6 @@ import (
 	"errors"
 	"fmt"
 
-	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
 	"github.com/hypnotox/agentic-workflows/internal/presentation"
 )
 
@@ -39,28 +38,6 @@ func Run(ctx context.Context, root string, leaf Leaf) (Outcome, error) {
 	switch leaf {
 	case Check:
 		collection, err = collectCheckRepo(ctx, root)
-		if err != nil {
-			collection.operational = append(collection.operational, err)
-		}
-		_, _, gitErr := awfgit.OpenContaining(root)
-		if errors.Is(gitErr, awfgit.ErrNotARepository) {
-			information, informationErr := informationResult([]string{"staged check universe unavailable outside a git repository"})
-			if informationErr != nil {
-				collection.operational = append(collection.operational, informationErr)
-			} else {
-				collection.add("advisory", information, false)
-			}
-			return outcome(collection)
-		}
-		if gitErr != nil {
-			collection.operational = append(collection.operational, gitErr)
-			return outcome(collection)
-		}
-		staged, stagedErr := collectCheckStaged(ctx, root)
-		collection = collection.append(staged)
-		if stagedErr != nil {
-			collection.operational = append(collection.operational, stagedErr)
-		}
 	case Repository:
 		collection, err = collectCheckRepo(ctx, root)
 	case RepositoryDrift:

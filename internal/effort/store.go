@@ -21,8 +21,6 @@ import (
 var uuidV4Pattern = regexp.MustCompile(`^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$`)
 var slugPattern = regexp.MustCompile(`^[a-z0-9]+(?:-[a-z0-9]+)*$`)
 
-const finishingPrefix = ".finishing-"
-
 // maxTitleBytes bounds the independently persisted outcome title.
 const maxTitleBytes = 160
 
@@ -168,40 +166,56 @@ func (s store) hit(stage string) error {
 	return nil
 }
 
-func (s store) reserve(record Record) (string, error) {
+func (s store) reserve(record Record) (memoryExists bool, returnErr error) {
 	slug := record.Slug
 	if err := s.paths.ensure(s.paths.efforts); err != nil {
-		return "", fmt.Errorf("prepare efforts root: %w", err)
-	}
-	if tombstone, err := s.findTombstones(slug); err != nil {
-		return "", err
-	} else if len(tombstone) > 0 {
-		return "", refusal(fmt.Sprintf("effort slug %q is reserved by finishing cleanup; changed bytes: no; next action: run `awf effort finish %s`", slug, slug), fmt.Sprintf("effort slug %q is reserved by finishing cleanup", slug), "resident", "", []RecoveryAction{{Text: fmt.Sprintf("run `awf effort finish %s`", slug)}}, nil)
+		return false, fmt.Errorf("prepare efforts root: %w", err)
 	}
 	dir := s.paths.effort(slug)
-	if err := os.Mkdir(dir, 0o700); err != nil {
-		if errors.Is(err, os.ErrExist) {
-			condition := "an incomplete reservation exists"
-			if _, statErr := os.Lstat(s.paths.stateFile(slug)); statErr == nil {
-				condition = "an active effort already exists"
-			}
-			return "", refusal(fmt.Sprintf("effort slug %q collides because %s; changed bytes: no; next action: choose a distinct explicit slug, then retry `awf effort new --slug %q %q` after replacing the quoted slug, or inspect %s", slug, condition, slug, record.Title, dir), fmt.Sprintf("effort slug %q collides", slug), "resident", condition, []RecoveryAction{{Text: "choose a distinct explicit slug"}, {Text: fmt.Sprintf("retry `awf effort new --slug %q %q` after replacing the quoted slug", slug, record.Title)}, {Text: "inspect " + dir}}, nil)
+	if err := os.Mkdir(dir, 0o700); err == nil {
+		if err := s.hit("reserve.directory"); err != nil {
+			return false, err
 		}
-		return "", fmt.Errorf("reserve effort directory %s: %w", dir, err)
+		return false, nil
+	} else if !errors.Is(err, os.ErrExist) {
+		return false, fmt.Errorf("reserve effort directory %s: %w", dir, err)
 	}
-	if err := s.hit("reserve.directory"); err != nil {
-		return "", err
+
+	if err := validateOwnedDirectory(dir); err != nil {
+		return false, &CorruptError{Path: dir, Err: err}
 	}
-	return dir, nil
+	entries, err := os.ReadDir(dir)
+	if err != nil {
+		return false, &CorruptError{Path: dir, Err: &residentReadError{err}}
+	}
+	if len(entries) == 0 {
+		return false, nil
+	}
+	if len(entries) == 1 && entries[0].Name() == "memory.md" {
+		memory, err := readRegularNoFollow(s.paths.memoryFile(slug))
+		if err != nil {
+			return false, &CorruptError{Path: s.paths.memoryFile(slug), Err: &residentReadError{err}}
+		}
+		if bytes.Equal(memory, memorySkeleton()) {
+			return true, nil
+		}
+	}
+	condition := "an incomplete reservation contains unrecognized content"
+	if _, statErr := os.Lstat(s.paths.stateFile(slug)); statErr == nil {
+		condition = "an active effort already exists"
+	}
+	return false, refusal(fmt.Sprintf("effort slug %q collides because %s; changed bytes: no; next action: choose a distinct explicit slug, then retry `awf effort new --slug %q %q` after replacing the quoted slug, or inspect %s", slug, condition, slug, record.Title, dir), fmt.Sprintf("effort slug %q collides", slug), "resident", condition, []RecoveryAction{{Text: "choose a distinct explicit slug"}, {Text: fmt.Sprintf("retry `awf effort new --slug %q %q` after replacing the quoted slug", slug, record.Title)}, {Text: "inspect " + dir}}, nil)
 }
 
 func (s store) create(record Record) error {
-	dir, err := s.reserve(record)
+	memoryExists, err := s.reserve(record)
 	if err != nil {
 		return err
 	}
-	if err := s.publishNew(s.paths.memoryFile(record.Slug), memorySkeleton(), "memory"); err != nil {
-		return err
+	if !memoryExists {
+		if err := s.publishNew(s.paths.memoryFile(record.Slug), memorySkeleton(), "memory"); err != nil {
+			return err
+		}
 	}
 	raw, err := json.Marshal(persisted(record))
 	if err != nil {
@@ -210,20 +224,11 @@ func (s store) create(record Record) error {
 	if err := s.publishNew(s.paths.stateFile(record.Slug), raw, "state"); err != nil {
 		return err
 	}
-	if err := s.hit("efforts-root.fsync"); err != nil {
-		return err
-	}
-	if err := syncDirectory(s.paths.efforts); err != nil {
-		return fmt.Errorf("fsync efforts root after publishing %s: %w", dir, err)
-	}
 	return nil
 }
 
 func (s store) publishNew(path string, raw []byte, label string) error {
 	if err := s.hit(label + ".write"); err != nil {
-		return err
-	}
-	if err := s.hit(label + ".fsync"); err != nil {
 		return err
 	}
 	if err := s.hit(label + ".rename"); err != nil {
@@ -232,25 +237,7 @@ func (s store) publishNew(path string, raw []byte, label string) error {
 	if err := filepublication.Publish(path, raw, 0o600); err != nil {
 		return fmt.Errorf("publish temporary file without replacement to %s: %w", path, err)
 	}
-	if err := s.hit(label + ".directory-fsync"); err != nil {
-		return err
-	}
-	if err := syncDirectory(filepath.Dir(path)); err != nil {
-		return fmt.Errorf("fsync effort directory after publishing %s: %w", path, err)
-	}
 	return nil
-}
-
-func syncDirectory(path string) error {
-	dir, err := openDirectoryForSync(path)
-	if err != nil {
-		return err
-	}
-	if err := dir.Sync(); err != nil {
-		_ = dir.Close()
-		return err
-	}
-	return dir.Close()
 }
 
 func (s store) load(slug string) (Record, error) {
@@ -340,15 +327,6 @@ func (s store) list() ([]Record, error) {
 		if name == ".gitignore" {
 			continue
 		}
-		if strings.HasPrefix(name, finishingPrefix) {
-			if _, _, ok := parseTombstoneName(name); !ok {
-				return nil, &CorruptError{Path: path, Err: errors.New("malformed finishing reservation")}
-			}
-			if err := validateOwnedDirectory(path); err != nil {
-				return nil, &CorruptError{Path: path, Err: err}
-			}
-			continue
-		}
 		if err := validateSlug(name); err != nil {
 			return nil, &CorruptError{Path: path, Err: fmt.Errorf("foreign or invalid effort entry: %w", err)}
 		}
@@ -368,53 +346,4 @@ func (s store) list() ([]Record, error) {
 	}
 	sort.Slice(result, func(i, j int) bool { return result[i].Slug < result[j].Slug })
 	return result, nil
-}
-
-func tombstoneName(record Record) string {
-	return finishingPrefix + record.ID + "-" + record.Slug
-}
-
-func parseTombstoneName(name string) (id, slug string, ok bool) {
-	if !strings.HasPrefix(name, finishingPrefix) {
-		return "", "", false
-	}
-	rest := strings.TrimPrefix(name, finishingPrefix)
-	if len(rest) < 38 || rest[36] != '-' {
-		return "", "", false
-	}
-	id, slug = rest[:36], rest[37:]
-	if !uuidV4Pattern.MatchString(id) || validateSlug(slug) != nil {
-		return "", "", false
-	}
-	return id, slug, true
-}
-
-func (s store) findTombstones(slug string) ([]string, error) {
-	entries, err := os.ReadDir(s.paths.efforts)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, nil
-	}
-	if err != nil {
-		return nil, err
-	}
-	var matches []string
-	for _, entry := range entries {
-		id, foundSlug, ok := parseTombstoneName(entry.Name())
-		if !ok || foundSlug != slug {
-			continue
-		}
-		path := filepath.Join(s.paths.efforts, entry.Name())
-		record, loadErr := s.loadDirectory(path, slug, false)
-		if loadErr != nil || record.ID != id {
-			return nil, &CorruptError{Path: path, Err: errors.New("finishing name does not match stored slug and UUID")}
-		}
-		matches = append(matches, path)
-	}
-	sort.Strings(matches)
-	return matches, nil
-}
-
-type durableFile interface {
-	Sync() error
-	Close() error
 }

@@ -9,11 +9,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/filepublication"
 )
 
-func TestProtocol2DirectorySyncAndExclusivePublication(t *testing.T) {
+func TestProtocol2ExclusivePublication(t *testing.T) {
 	dir := t.TempDir()
-	if err := syncDirectory(dir); err != nil {
-		t.Fatal(err)
-	}
 	destination := filepath.Join(dir, "destination")
 	if err := filepublication.Publish(destination, []byte("new"), 0o600); err != nil {
 		t.Fatal(err)

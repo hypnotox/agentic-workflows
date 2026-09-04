@@ -144,7 +144,7 @@ func runCheckGroup(c *cmdCtx) error {
 func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]handler {
 	return map[string]handler{
 		"init": func(c *cmdCtx) handlerResult {
-			return handlerFailure(runInitWithProjectLoader(c.ctx, c.root, c.inv.bools["--force"], c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], promptInput, isInteractive(), c.stdout, newProjectLoader, gate))
+			return handlerFailure(runInitWithProjectLoader(c.ctx, c.root, c.inv.bools["--describe"], c.inv.multi["--set"], c.inv.values["--answers"], promptInput, isInteractive(), c.stdout, newProjectLoader, gate))
 		},
 		"render": func(c *cmdCtx) handlerResult { return handlerFailure(runSync(c.ctx, c.root, c.stdout)) },
 		"edit":   func(c *cmdCtx) handlerResult { return handlerReport(runPartAuthoring(c, authoringop.Edit)) },
@@ -209,7 +209,7 @@ func newHandlers(promptInput io.Reader, isInteractive func() bool) map[string]ha
 		"upgrade": func(c *cmdCtx) handlerResult {
 			var release func() error
 			stdout := leaseRetainingWriter{Writer: c.stdout, retain: func(value func() error) { release = value }}
-			return handlerFailureHeld(runUpgradeFlags(c.ctx, c.root, c.inv.bools["--recover"], stdout), release)
+			return handlerFailureHeld(runUpgrade(c.ctx, c.root, stdout), release)
 		},
 		"uninstall": func(c *cmdCtx) handlerResult { return handlerFailure(runUninstall(c.ctx, c.root, c.stdout)) },
 		"changelog": func(c *cmdCtx) handlerResult {

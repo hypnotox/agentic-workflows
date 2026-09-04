@@ -143,7 +143,7 @@ func TestPruneTreatsRetiredRunnerAsOrdinaryManagedOutput(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	backups, _, pruned, err := syncReportProject(p)
+	_, pruned, err := syncReportProject(p)
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -152,11 +152,6 @@ func TestPruneTreatsRetiredRunnerAsOrdinaryManagedOutput(t *testing.T) {
 	}
 	if _, err := os.Stat(filepath.Join(root, "x.awf-bak")); !errors.Is(err, os.ErrNotExist) {
 		t.Errorf("ordinary prune created a backup, stat err = %v", err)
-	}
-	for _, backup := range backups {
-		if backup.Path == "x" {
-			t.Errorf("ordinary prune reported a backup: %v", backups)
-		}
 	}
 	if !slices.Contains(pruned, "x") {
 		t.Errorf("ordinary prune was not reported: %v", pruned)
@@ -192,12 +187,12 @@ func TestPruneRemovesManagedSymlinkWithoutTargetAccess(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	backups, _, pruned, err := syncReportProject(p)
-	if err == nil || !strings.Contains(err.Error(), "unsafe pruned managed output") {
+	_, pruned, err := syncReportProject(p)
+	if err == nil || !strings.Contains(err.Error(), "inspect retired output") {
 		t.Fatalf("managed symlink refusal = %v", err)
 	}
-	if len(backups) != 0 || slices.Contains(pruned, "x") {
-		t.Fatalf("managed symlink effects = backups %v, pruned %v", backups, pruned)
+	if slices.Contains(pruned, "x") {
+		t.Fatalf("managed symlink effects = pruned %v", pruned)
 	}
 	if _, err := os.Lstat(filepath.Join(root, "x")); err != nil {
 		t.Fatalf("managed symlink removed after refusal: %v", err)

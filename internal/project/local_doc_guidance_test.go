@@ -27,13 +27,17 @@ func TestLocalDocAuthoringGuidance(t *testing.T) {
 			}
 		}
 	}
-	for _, rel := range []string{"docs/working-with-awf.md", ".claude/skills/awf-maintenance/SKILL.md", ".pi/skills/awf-maintenance/SKILL.md"} {
+	for rel, want := range map[string]string{
+		"docs/working-with-awf.md":                "Removal or uninstall refuses to destroy a present authored body",
+		".claude/skills/awf-maintenance/SKILL.md": "Removing a declaration or uninstalling refuses when a present local document contains protected authored content",
+		".pi/skills/awf-maintenance/SKILL.md":     "Removing a declaration or uninstalling refuses when a present local document contains protected authored content",
+	} {
 		b, err := os.ReadFile(filepath.Join(root, rel))
 		if err != nil {
 			t.Fatal(err)
 		}
-		if !strings.Contains(string(b), ".awf-bak") {
-			t.Errorf("%s lacks recovery guidance", rel)
+		if !strings.Contains(string(b), want) {
+			t.Errorf("%s lacks no-clobber retirement guidance %q", rel, want)
 		}
 	}
 	for _, rel := range []string{".claude/skills/awf-maintenance/SKILL.md", ".pi/skills/awf-maintenance/SKILL.md"} {

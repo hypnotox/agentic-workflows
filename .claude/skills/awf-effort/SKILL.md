@@ -41,4 +41,4 @@ Inspect identity and worktree state before recovery. Preserve unrelated work; do
 <!-- awf:template-source templates/skills/awf-effort/SKILL.md.tmpl -->
 ## Close last
 
-When integrated assurance is settled, remove the managed worktree with `./awf effort worktree remove <slug>` without force and verify the path, registration, and branch are absent. Record a reusable lesson where the project keeps durable lessons when warranted. Then run `./awf effort finish <slug>` last. Inspect source and destination after an uncertain result rather than blindly retrying.
+When integrated assurance is settled, remove the managed worktree with `./awf effort worktree remove <slug>` without force and verify the path, registration, and branch are absent. Record a reusable lesson where the project keeps durable lessons when warranted. Then run `./awf effort finish <slug>` last. A failed archive move leaves the active resident available for inspection and ordinary retry.

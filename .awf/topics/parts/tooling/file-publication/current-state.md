@@ -5,5 +5,5 @@ Complete-file publication refuses replacement and preserves one complete winner 
 
 ### `invariant: exclusive-file-publication-single-home`
 
-Exclusive publication prepares a complete same-directory temporary file before released-platform atomic no-replace creation. Concurrent publishers leave one complete winner, and a losing consumer receives a matchable destination-exists refusal without changing the winner bytes. This provides namespace atomicity and complete-file publication, not a stronger power-loss durability promise.
+Exclusive publication prepares a complete same-directory temporary file before released-platform atomic no-replace creation. Concurrent publishers leave one complete winner, and a losing consumer receives a matchable destination-exists refusal without changing the winner bytes. Temporary cleanup failure before publication remains an error, while best-effort cleanup after successful namespace publication cannot turn the committed destination into a reported failure. This provides namespace atomicity and complete-file publication, not a stronger power-loss durability promise.
 Backing: test

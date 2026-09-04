@@ -12,11 +12,11 @@ Use `agentic-implementing` for general implementation discipline. This skill own
 
 Do not hand-edit generated output, except the declared local document body after its `awf:edit-in-place` pointer. For generated prose, inspect produced boundaries for contradictions, stale paraphrases, and intentional literal placeholders. Keep content with its source and run the repository's render and check commands.
 
-Declare repository-specific documents through `localDocs`. Removing a declaration or uninstalling preserves a present local document as a sibling `.awf-bak` recovery file.
+Declare repository-specific documents through `localDocs`. Removing a declaration or uninstalling refuses when a present local document contains protected authored content; reconcile that path explicitly before rerunning.
 <!-- awf:end -->
 
 <!-- awf:section upgrades -->
 ## Upgrades
 
-Use the supported bootstrap path and then perform its residue sweep. Retained skill overrides migrate to their fixed AWF identities; overrides for extracted generic skills remain recoverable as `.awf-bak` files and are never installed into the external package. Preserve unrelated content and follow reported recovery guidance. Never substitute a generated-tree edit for source repair.
+Use the supported bootstrap path. Retained skill overrides migrate to their fixed AWF identities; a migration refuses protected overrides that it cannot prove safe to move or remove. Inspect reported paths and Git state after a partial failure, correct the blocking condition, and rerun the ordinary upgrade. Preserve unrelated content. Never substitute a generated-tree edit for source repair.
 <!-- awf:end -->

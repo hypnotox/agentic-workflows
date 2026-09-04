@@ -1,4 +1,4 @@
-How awf render and awf check detect and report drift: per-file config-hash inputs, managed-output attribution and provenance, foreign-file backups, residue scanning, ancestor pruning, and uninstall cleanup.
+How awf render and awf check detect and report drift: per-file config-hash inputs, managed-output attribution and provenance, conservative collision handling, orphan scanning, ancestor pruning, and uninstall cleanup.
 
 ## Claims
 
@@ -9,12 +9,7 @@ Backing: test
 
 ### `invariant: authoring-sync-transaction`
 
-A semantic part edit or reset acquires the complete project lease before mutable authority reads, observes the selected source identity, and validates one candidate overlay through both configuration-tree and project-tree readers before any source effect. It then confines mutation to that observed source, reloads committed authority, and invokes ordinary leased synchronization. Pre-source refusal preserves source, output, and lock bytes; a later failure reports source, setup, publisher, and release effects with residue-first recovery and no rollback claim.
-Backing: test
-
-### `invariant: awf-bak-flagged`
-
-A collision-backup file under .awf whose name ends in .awf-bak or .awf-bak.<N>, outside an owned resident root, is reported by awf check as drift with a distinct stale-backup detail rather than passing silently.
+A semantic part edit or reset acquires the complete project lease before mutable authority reads, observes the selected source identity, and validates one candidate overlay through both configuration-tree and project-tree readers before any source effect. It then confines mutation to that observed source, reloads committed authority, and invokes ordinary leased synchronization. Pre-source refusal preserves source, output, and lock bytes. A later failure stops the operation, leaves earlier successful effects visible, and reports affected paths for inspection and ordinary rerun.
 Backing: test
 
 ### `invariant: catalog-data-in-confighash`
@@ -79,17 +74,17 @@ Backing: test
 
 ### `invariant: sync-mutations-root-confined`
 
-Ordinary render and first adoption discover immutable tracked and resident anchors, acquire the complete canonical lease set before mutable configuration loading and output planning, and hold it through complete or typed partial outcome construction. Each Publisher is single-use: publication derives its immutable operation state only after the lease is held, and a prior read-only materialization makes later publication refuse rather than reuse a stale plan. Publisher retains stable output, backup, prune, and final-lock-last policy. Selected root-confined handles observe expected identities and perform exclusive creation, replacement, removal, parent creation, mode correction, backup publication, and empty-ancestor cleanup without changing outside bytes or modes. Every failure after a committed directory, mode, backup, output, prune, cleanup, or lock effect returns and presents that stable effect with a retry or recovery action; a pre-effect failure preserves the tree, and no crash-atomicity is claimed.
+Ordinary render and first adoption discover immutable tracked and resident anchors, acquire the complete canonical lease set before mutable configuration loading and output planning, and hold it through result construction. Each Publisher is single-use: publication derives its immutable operation state only after the lease is held, and a prior read-only materialization makes later publication refuse rather than reuse a stale plan. Before writing, Publisher strictly parses live configuration and any present lock, completely preflights every collision and destructive path it can derive, and proves the minimum ownership needed for every replacement or removal. Selected root-confined handles refuse symlinks including at the final path, create exclusively without clobbering, replace or remove only proven-owned entries, and remove only empty ancestors. Unchanged outputs are skipped and the lock is written last. Git-backed multi-file publication is not transactional: the first failed mutation stops the operation, leaves earlier effects visible, and reports affected paths for inspection and rerun.
 Backing: test
 
-### `invariant: sync-backs-up-foreign`
+### `invariant: sync-protects-unowned-content`
 
-During `awf render`, a target path that already exists on disk but is not recorded as awf-written in the lock at the start of the sync is copied through the selected root-confined handle and complete exclusive publication to a `.awf-bak` sibling and reported before being overwritten, while a path recorded in that lock is overwritten with no backup. One confined open observes source bytes and permission mode. A foreign final symlink is backed up only when that open safely reads its in-root target; an escaping, broken, or unreadable target refuses without backup or replacement. Backup suffixes retry only after a destination-exists refusal, preserve the source permission bits, and propagate every non-collision publication error without retry.
+A render target that exists but is not proven awf-owned by the live lock is a collision. Render reports every collision the complete plan can derive before mutation and refuses to overwrite, remove, relocate, or copy that content. A final symlink always refuses, including when its target resolves beneath the selected root.
 Backing: test
 
-### `invariant: local-doc-prune-preserved`
+### `invariant: local-doc-prune-protects-authored-body`
 
-Before prune removes a present outgoing local document, render copies its complete confined file to the first free `.awf-bak` sibling and advances the lock only after backup and removal succeed; unsafe, unreadable, escaping, publication, or removal failures retain the old lock.
+Pruning or uninstalling a local document removes its shell only when AWF can prove ownership and no preserved authored body would be destroyed. Otherwise the operation refuses before destructive mutation and reports the protected path.
 Backing: test
 
 ### `invariant: target-prune-ancestors`
@@ -99,7 +94,7 @@ Backing: test
 
 ### `invariant: uninstall-removes-lock-entries`
 
-awf uninstall removes the in-tree files recorded in the lock and no file outside it, reporting the count it removed. A project-composed recognition policy preserves a present local-document entry through the same confined sibling backup operation before removal.
+awf uninstall removes only in-tree files whose lock membership supplies the required ownership evidence and never removes a file outside the lock. It completely preflights destructive paths, protects any authored local-document body, removes only empty directories, writes the lock last, and reports affected paths if an ordered removal fails.
 Backing: test
 
 ### `invariant: coverage-evaluation-unconditional`

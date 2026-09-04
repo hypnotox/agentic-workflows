@@ -127,6 +127,28 @@ func TestChangeCountsHonorsGlobalExcludes(t *testing.T) {
 	}
 }
 
+// invariant: tooling/git-access:single-cleanliness-oracle (TestChangeCountsAndIgnoredPathsUseGitIgnoreSemantics)
+func TestChangeCountsAndIgnoredPathsUseGitIgnoreSemantics(t *testing.T) {
+	repo := gitfixture.InitRepo(t)
+	dir := repo.Root()
+	gitfixture.Commit(t, repo, "base", map[string]string{".gitignore": "ignored.txt\n", "tracked.txt": "tracked"})
+	if err := os.WriteFile(filepath.Join(dir, "ignored.txt"), []byte("ignored"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(filepath.Join(dir, "visible.txt"), []byte("visible"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	handle := statusRepo(t, dir)
+	tracked, untracked, err := handle.ChangeCounts(testContext(t))
+	if err != nil || tracked != 0 || untracked != 1 {
+		t.Fatalf("counts=(%d,%d), %v", tracked, untracked, err)
+	}
+	ignored, err := handle.IgnoredPaths(testContext(t))
+	if err != nil || len(ignored) != 1 || ignored[0] != "ignored.txt" {
+		t.Fatalf("ignored paths=%#v, %v", ignored, err)
+	}
+}
+
 func TestWorktreeChangeCountsRejectsNonRepository(t *testing.T) {
 	if _, err := Open(t.TempDir()); err == nil {
 		t.Fatal("WorktreeChangeCounts unexpectedly succeeded outside a repository")

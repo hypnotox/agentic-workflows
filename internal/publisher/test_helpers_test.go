@@ -420,15 +420,15 @@ func advisoryNotesProject(state *project.Session) ([]string, error) {
 	}
 	return project.AdvisoryNotes(state, cfg, plan, glossary)
 }
-func initializeReportProject(state *project.Session, seed InitAuthority) ([]Backup, []Change, []string, error) {
+func initializeReportProject(state *project.Session, seed InitAuthority) ([]Change, []string, error) {
 	cfg := testConfig(state)
 	result, err := newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version).Initialize(seed)
-	return result.Backups(), result.Changes(), result.Pruned(), err
+	return result.Changes(), result.Pruned(), err
 }
-func syncReportProject(state *project.Session) ([]Backup, []string, error) {
+func syncReportProject(state *project.Session) ([]string, error) {
 	cfg := testConfig(state)
 	result, err := newPublisher(lowerForConfig(state, cfg), cfg, NewFilesystemReader(state.Root()), project.Version).SyncLeased(context.Background(), nil)
-	return result.Backups(), result.Pruned(), err
+	return result.Pruned(), err
 }
 func plannedOutputsProject(state *project.Session) ([]string, error) {
 	plan, err := newPublisher(lowerForConfig(state, testConfig(state)), testConfig(state), NewFilesystemReader(state.Root()), project.Version).Plan()

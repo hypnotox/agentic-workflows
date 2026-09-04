@@ -245,32 +245,22 @@ func TestSaveLoadRoundTrip(t *testing.T) {
 	}
 }
 
-func TestAuthorityStateValidation(t *testing.T) {
+func TestAuthorityValidation(t *testing.T) {
 	for _, tc := range []struct {
 		name, source string
-		want         AuthorityState
 		bad          bool
 	}{
-		{"bad initialized", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{"prior":{}},"initializedWithVersion":"bad"}`, 0, true},
-		{"later initialized", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{"prior":{}},"initializedWithVersion":"0.2.0"}`, 0, true},
-		{"ordinary", `{"awfVersion":"0.1.0","schemaVersion":31,"files":{"prior":{}}}`, AuthorityPermanent, false},
+		{"bad initialized", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{"prior":{}},"initializedWithVersion":"bad"}`, true},
+		{"later initialized", `{"awfVersion":"0.1.0","schemaVersion":30,"files":{"prior":{}},"initializedWithVersion":"0.2.0"}`, true},
+		{"ordinary", `{"awfVersion":"0.1.0","schemaVersion":31,"files":{"prior":{}}}`, false},
 	} {
 		t.Run(tc.name, func(t *testing.T) {
-			l, err := Parse([]byte(tc.source))
-			if tc.bad {
-				if err == nil {
-					t.Fatal("accepted invalid lock")
-				}
-				return
+			_, err := Parse([]byte(tc.source))
+			if tc.bad && err == nil {
+				t.Fatal("accepted invalid lock")
 			}
-			if err != nil || func() AuthorityState {
-				s, e := l.AuthorityState()
-				if e != nil {
-					t.Fatal(e)
-				}
-				return s
-			}() != tc.want {
-				t.Fatalf("state=%v err=%v", l, err)
+			if !tc.bad && err != nil {
+				t.Fatalf("Parse() error = %v", err)
 			}
 		})
 	}

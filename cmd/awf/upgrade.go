@@ -18,32 +18,6 @@ import (
 // command-selected writer carries it without giving model rendering to cmd.
 type leaseRetainer interface{ retainLease(func() error) }
 
-// runUpgradeFlags retains CLI mode selection and renders the semantic result on
-// the command-selected stream.
-func runUpgradeFlags(ctx context.Context, root string, recoverMode bool, stdout io.Writer) error {
-	if recoverMode {
-		return runRecover(ctx, root, stdout)
-	}
-	return runUpgrade(ctx, root, stdout)
-}
-
-func runRecover(ctx context.Context, root string, stdout io.Writer) (returnErr error) {
-	lease, err := filesystem.AcquireTrackedLease(ctx, root)
-	if err != nil {
-		return err
-	}
-	if retained, ok := stdout.(leaseRetainer); ok {
-		retained.retainLease(lease.Release)
-	} else {
-		defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
-	}
-	outcome, err := upgrade.RecoverOperation(root, migrate.ProjectPresent)
-	if err != nil {
-		return err
-	}
-	return presentation.Render(stdout, outcome.Document)
-}
-
 func runUpgrade(ctx context.Context, root string, stdout io.Writer) (returnErr error) {
 	lease, err := filesystem.AcquireProjectLease(ctx, root, awfgit.ProjectResidentRoot(ctx, root))
 	if err != nil {
@@ -54,8 +28,9 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) (returnErr e
 	} else {
 		defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
 	}
-	// The terminal publisher shares this operation's lease rather than acquiring
-	// a nested transaction after migration has already observed authority.
+	if err := guardMutationSession(ctx, root); err != nil {
+		return err
+	}
 	sync := func(ctx context.Context, root string) (presentation.Mutation, error) {
 		return upgradeSyncMutationLeased(ctx, root, lease)
 	}
@@ -66,11 +41,9 @@ func runUpgrade(ctx context.Context, root string, stdout io.Writer) (returnErr e
 	return presentation.Render(stdout, outcome.Document)
 }
 
-// presentUpgradeRefusal is the command boundary for recovery guidance; semantic
-// compatibility errors remain machine-classifiable below this boundary.
-// upgradeSyncMutationLeased is the normal-upgrade terminal publication under
-// the lease acquired before authority and journal planning. Recovery remains
-// journal-owned and does not use Publisher.
+// upgradeSyncMutationLeased performs terminal publication under the lease held
+// since before migration authority was read. The supported old lock remains in
+// place until Publisher writes one complete current lock last.
 func upgradeSyncMutationLeased(ctx context.Context, root string, lease *filesystem.Lease) (presentation.Mutation, error) {
 	loader, err := newProjectLoader(root)
 	if err != nil {
@@ -80,15 +53,18 @@ func upgradeSyncMutationLeased(ctx context.Context, root string, lease *filesyst
 	if err != nil {
 		return presentation.Mutation{}, err
 	}
-	result, syncErr := composePublisher(session).SyncLeased(ctx, lease)
+	result, syncErr := composePublisher(session).SyncUpgradeLeased(ctx, lease, migrate.LiveSchemaFloor)
+	var mutation presentation.Mutation
+	var mutationErr error
 	if syncErr != nil {
-		mutation, mutationErr := result.PartialMutation()
-		if mutationErr != nil {
-			return presentation.Mutation{}, mutationErr
-		}
-		return mutation, syncErr
+		mutation, mutationErr = result.FailureMutation()
+	} else {
+		mutation, mutationErr = result.Mutation()
 	}
-	return result.Mutation()
+	if mutationErr != nil {
+		return presentation.Mutation{}, errors.Join(syncErr, mutationErr)
+	}
+	return mutation, syncErr
 }
 
 func presentUpgradeRefusal(err error) error {
@@ -103,21 +79,18 @@ func presentUpgradeRefusal(err error) error {
 }
 
 func upgradeMigration(ctx context.Context, root string) (upgrade.MigrationResult, error) {
-	applied, changes, planned, err := migrate.Build(ctx, root)
-	texts := make([]string, len(changes))
-	for i, change := range changes {
-		texts[i] = change.Text
+	result, err := migrate.Apply(ctx, root)
+	changes := make([]string, len(result.Changes))
+	for i, change := range result.Changes {
+		changes[i] = change.Text
 	}
-	mutations := make([]upgrade.FileMutation, len(planned))
-	for i, mutation := range planned {
-		mutations[i] = upgrade.FileMutation{
-			Path:            mutation.Path,
-			Expected:        upgrade.Image{Present: mutation.Expected.Present, Mode: uint32(mutation.Expected.Mode.Perm()), Content: mutation.Expected.Content},
-			ExpectedEntries: append([]string(nil), mutation.Expected.Children...),
-			Content:         mutation.Content, Mode: mutation.Mode, Remove: mutation.Remove, EmptyDirectory: mutation.EmptyDirectory,
-		}
-	}
-	return upgrade.MigrationResult{Planned: applied, Changes: texts, Mutations: mutations}, err
+	return upgrade.MigrationResult{
+		Planned: result.Planned,
+		Applied: result.Applied,
+		Changes: changes,
+		Touched: result.Touched,
+		Pending: result.Pending,
+	}, err
 }
 
 func upgradeCurrentSchemaChange() string { return migrate.CurrentSchemaChange().Text }

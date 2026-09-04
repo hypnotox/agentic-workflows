@@ -22,6 +22,9 @@ func runUninstall(ctx context.Context, root string, stdout io.Writer) (returnErr
 		return err
 	}
 	defer func() { returnErr = errors.Join(returnErr, lease.Release()) }()
+	if err := guardMutationSession(ctx, root); err != nil {
+		return err
+	}
 	report, uninstallErr := resident.UninstallLeased(ctx, root, publisher.IsLocalDocTemplate, lease)
 	if uninstallErr != nil {
 		var partial *resident.PartialUninstallError

@@ -35,11 +35,7 @@ type Command struct {
 	MinPos     int
 	MaxPos     int
 	Gating     Gating
-	// StateExempt bypasses the current-state journal/attestation guard
-	// (ADR-0159 Decision 5). It is read from the resolved command, so a group
-	// child carries it independently of its parent.
-	StateExempt bool
-	Children    []Command
+	Children   []Command
 }
 
 // Help is structured command help. The specification owns its semantic data;
@@ -170,9 +166,9 @@ func helpItems(label string, items []HelpItem) (presentation.RecordGroup, error)
 var Commands = []Command{
 	{
 		Name: "init", Summary: "Scaffold .awf/ and render the standard workflow footprint",
-		BoolFlags: []string{"--force", "--describe"}, ValueFlags: []string{"--set", "--answers"},
+		BoolFlags: []string{"--describe"}, ValueFlags: []string{"--set", "--answers"},
 		Repeatable: []string{"--set"}, MaxPos: 0, Gating: Ungated,
-		Help: Help{Usage: []string{"awf init [flags]"}, Description: "Scaffold a .awf/ config tree and render the standard workflow footprint into the project.", Options: []HelpItem{{Name: "--force", Description: "overwrite colliding files, backing each up to <path>.awf-bak"}, {Name: "--describe", Description: "print the fillable value descriptors as JSON and exit"}, {Name: "--set", Description: "k=v      set a value non-interactively (repeatable)"}, {Name: "--answers", Description: "FILE read values from a JSON/YAML answers file: a flat key→value map of descriptor keys (see --describe)"}}},
+		Help: Help{Usage: []string{"awf init [flags]"}, Description: "Scaffold a .awf/ config tree and render the standard workflow footprint into the project.", Options: []HelpItem{{Name: "--describe", Description: "print the fillable value descriptors as JSON and exit"}, {Name: "--set", Description: "k=v      set a value non-interactively (repeatable)"}, {Name: "--answers", Description: "FILE read values from a JSON/YAML answers file: a flat key→value map of descriptor keys (see --describe)"}}},
 	},
 	{
 		Name: "render", Summary: "Re-render after a template or config change",
@@ -206,9 +202,9 @@ var Commands = []Command{
 		},
 	},
 	{
-		Name: "check", Summary: "Verify the repository and staged universes",
+		Name: "check", Summary: "Verify working-tree or explicitly staged repository state",
 		MaxPos: -1, Gating: Gated,
-		Help: Help{Usage: []string{"awf check", "awf check repo [subcommand]", "awf check staged [subcommand]", "awf check commit-policy <revision-or-range>..."}, Description: "Bare check runs both universes. The repo universe checks drift, current-state authority,", Details: []string{"prose, and memory; the staged universe validates the HEAD-to-index transition.", "Outside a Git repository bare check runs the repo universe and reports that the", "staged universe is unavailable."}},
+		Help: Help{Usage: []string{"awf check", "awf check repo [subcommand]", "awf check staged [subcommand]", "awf check commit-policy <revision-or-range>..."}, Description: "Bare check runs the working-tree repository universe: drift, current-state authority,", Details: []string{"prose, and memory. Use `awf check staged` to validate the HEAD-to-index", "transition explicitly; the two universes are never implicitly combined."}},
 		Children: []Command{
 			{Name: "commit-policy", Summary: "Verify exact commit provenance for explicit targets", MinPos: 1, MaxPos: -1,
 				Help: Help{Usage: []string{"awf check commit-policy <revision-or-range>..."}, Description: "Verify every unique commit reachable from explicit targets after the configured baseline. An absent policy reports one disabled-policy note and succeeds.", Positionals: []HelpItem{{Name: "<revision-or-range>", Description: "commit revision or range to verify"}}}},
@@ -232,7 +228,7 @@ var Commands = []Command{
 						Help: Help{Usage: []string{"awf check staged state"}, Description: "Validate the HEAD-to-index current-state transition."}},
 					{Name: "drift", Summary: "Compare staged config with staged rendered output", MaxPos: 0,
 						Help: Help{Usage: []string{"awf check staged drift"}, Description: "Report stale or hand-edited rendered output in the staged tree."}},
-					{Name: "commit", Summary: "Validate one commit message against shared commit rules, blocking", MaxPos: 1, StateExempt: true,
+					{Name: "commit", Summary: "Validate one commit message against shared commit rules, blocking", MaxPos: 1,
 						Help: Help{Usage: []string{"awf check staged commit [<FILE>]"}, Description: "Validate one commit message against shared commit rules. Reads FILE (the path a commit-msg hook passes as $1) or stdin and cleans it git-style.", Details: []string{"Merge and autosquash subjects are exempt only from Conventional Commits. awf installs no hook; wire this into your own commit-msg hook", "(the always-rendered inert .awf/hooks/commit-msg.sh payload runs it once wired)."}, Positionals: []HelpItem{{Name: "[<FILE>]", Description: "commit message file; reads stdin when omitted"}}}},
 				},
 			},
@@ -267,14 +263,14 @@ var Commands = []Command{
 			{Name: "new", Summary: "Create an effort with a managed worktree",
 				ValueFlags: []string{"--slug", "--base"},
 				MinPos:     1, MaxPos: 1,
-				Help: Help{Usage: []string{"awf effort new --slug <slug> <outcome-title> [--base <ref>]"}, Description: "Create schema-2 effort state with owned memory and a managed worktree.", Details: []string{"The immutable canonical slug is supplied independently of the single outcome title. Flags may appear before or after that positional. An optional scratch directory is opaque and never scaffolded or managed.", "The worktree uses the invoking checkout HEAD by default. A worktree failure deletes only its identity-matched resident when managed topology is proven absent."}, Positionals: []HelpItem{{Name: "<outcome-title>", Description: "single effort outcome title"}}, Options: []HelpItem{{Name: "--slug", Description: "<slug> immutable canonical slug of 1 through 32 bytes"}, {Name: "--base", Description: "<ref> base revision for the managed worktree"}}}},
+				Help: Help{Usage: []string{"awf effort new --slug <slug> <outcome-title> [--base <ref>]"}, Description: "Create schema-2 effort state with owned memory and a managed worktree.", Details: []string{"The immutable canonical slug is supplied independently of the single outcome title. Flags may appear before or after that positional. An optional scratch directory is opaque and never scaffolded or managed.", "The worktree uses the invoking checkout HEAD by default. A worktree failure retains the resident and names the managed path and branch for inspection before an `awf effort worktree add <slug>` retry."}, Positionals: []HelpItem{{Name: "<outcome-title>", Description: "single effort outcome title"}}, Options: []HelpItem{{Name: "--slug", Description: "<slug> immutable canonical slug of 1 through 32 bytes"}, {Name: "--base", Description: "<ref> base revision for the managed worktree"}}}},
 
 			{Name: "list", Summary: "List efforts by slug", MaxPos: 0,
 				Help: Help{Usage: []string{"awf effort list"}, Description: "List every usable active effort in slug order."}},
 			{Name: "show", Summary: "Show one effort", MinPos: 1, MaxPos: 1,
 				Help: Help{Usage: []string{"awf effort show <slug>"}, Description: "Show one schema-2 effort and its owned memory path.", Positionals: []HelpItem{{Name: "<slug>", Description: "immutable effort slug"}}}},
 			{Name: "finish", Summary: "Finish and archive one effort", MinPos: 1, MaxPos: 1,
-				Help: Help{Usage: []string{"awf effort finish <slug>"}, Description: "Archive the complete effort at .awf/effort-archive/<uuid>-<slug> only after all managed Git topology is absent.", Details: []string{"The ignored archive is unmanaged and manually disposable. Retry before the archive move; after it, inspect reported paths on durability uncertainty."}, Positionals: []HelpItem{{Name: "<slug>", Description: "immutable effort slug"}}}},
+				Help: Help{Usage: []string{"awf effort finish <slug>"}, Description: "Archive the complete effort at .awf/effort-archive/<uuid>-<slug> only after all managed Git topology is absent.", Details: []string{"The ignored archive is unmanaged and manually disposable. A failed move leaves the active resident available for inspection and ordinary retry."}, Positionals: []HelpItem{{Name: "<slug>", Description: "immutable effort slug"}}}},
 			{Name: "worktree", Summary: "Add or remove a managed worktree", ValueFlags: []string{"--base"}, MinPos: 2, MaxPos: 2,
 				Help: Help{Usage: []string{"awf effort worktree add <slug> [--base <ref>]", "awf effort worktree remove <slug>"}, Description: "Manage the fixed .awf/worktrees/<slug> checkout and awf/<slug> branch without stored attachment state.", Positionals: []HelpItem{{Name: "<add|remove>", Description: "worktree operation"}, {Name: "<slug>", Description: "immutable effort slug"}}, Options: []HelpItem{{Name: "--base", Description: "<ref> Git revision used as the worktree base"}}}},
 			{Name: "integrate", Summary: "Integrate a managed worktree", MinPos: 1, MaxPos: 1,
@@ -335,9 +331,9 @@ var Commands = []Command{
 			Help: Help{Usage: []string{"awf remove domain <name>"}, Description: "Remove a configured domain."}}},
 	},
 	{
-		Name: "upgrade", Summary: "Migrate the .awf/ config tree or recover an interrupted upgrade",
-		BoolFlags: []string{"--recover"}, MaxPos: 0, Gating: Ungated,
-		Help: Help{Usage: []string{"awf upgrade [--recover]"}, Description: "Migrate the .awf/ config tree to the current schema version, then sync.", Options: []HelpItem{{Name: "--recover", Description: "replay the current-state upgrade journal's recovery table"}}, Details: []string{"A current-state upgrade journal blocks ordinary commands until `awf upgrade --recover` rolls a precommit transaction back or cleans postcommit residue. The permanent lock remains the transaction commit point."}},
+		Name: "upgrade", Summary: "Migrate the .awf/ config tree to the current schema version",
+		MaxPos: 0, Gating: Ungated,
+		Help: Help{Usage: []string{"awf upgrade"}, Description: "Migrate the .awf/ config tree to the current schema version, then sync."},
 	},
 	{
 		Name: "uninstall", Summary: "Remove awf's generated files (keeps .awf/)",
@@ -347,12 +343,11 @@ var Commands = []Command{
 	{
 		Name: "changelog", Summary: "Print the embedded changelog, or one version/range of it",
 		ValueFlags: []string{"--version", "--since", "--range"}, MaxPos: 0, Gating: Ungated,
-		StateExempt: true,
-		Help:        Help{Usage: []string{"awf changelog [--version <v> | --since <v> | --range <from>..<to>]"}, Description: "Print the embedded awf changelog. With no flags, print the whole file. The three", Details: []string{"flags are mutually exclusive."}, Options: []HelpItem{{Name: "--version", Description: "<v>          print only version v's entry"}, {Name: "--since", Description: "<v>            print every version released after v (exclusive)"}, {Name: "--range", Description: "<from>..<to>   print every version in [from, to] (inclusive both ends)"}}},
+		Help: Help{Usage: []string{"awf changelog [--version <v> | --since <v> | --range <from>..<to>]"}, Description: "Print the embedded awf changelog. With no flags, print the whole file. The three", Details: []string{"flags are mutually exclusive."}, Options: []HelpItem{{Name: "--version", Description: "<v>          print only version v's entry"}, {Name: "--since", Description: "<v>            print every version released after v (exclusive)"}, {Name: "--range", Description: "<from>..<to>   print every version in [from, to] (inclusive both ends)"}}},
 	},
 	{
 		Name: "version", Summary: "Print the awf version",
-		MaxPos: 0, Gating: Ungated, StateExempt: true,
+		MaxPos: 0, Gating: Ungated,
 		Help: Help{Usage: []string{"awf version"}, Description: "Print the awf version."},
 	},
 }

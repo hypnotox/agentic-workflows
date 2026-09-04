@@ -38,7 +38,7 @@ Backing: test
 
 ### `invariant: pitfall-output-complete`
 
-Every valid pitfall source produces exactly one metadata row and one generated leaf through matching definition-backed working and staged output plans, with full-source leaf hashes, metadata-only index hashes, lock and drift membership, ordinary backup, and deletion pruning.
+Every valid pitfall source produces exactly one metadata row and one generated leaf through matching definition-backed working and staged output plans, with full-source leaf hashes, metadata-only index hashes, lock and drift membership, collision refusal, and ownership-checked deletion pruning.
 Backing: test
 
 ### `invariant: pitfall-domains-resolved`

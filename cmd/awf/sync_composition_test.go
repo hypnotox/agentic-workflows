@@ -15,8 +15,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/filesystem"
 	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
+	"github.com/hypnotox/agentic-workflows/internal/presentation"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/publisher"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 	"github.com/hypnotox/agentic-workflows/internal/testsupport/gitfixture"
 )
@@ -88,9 +88,12 @@ func (w *releasedLeaseAssertingWriter) Write(payload []byte) (int, error) {
 	return len(payload), nil
 }
 
-func TestFinishSyncPrintingPresentsCompleteEffectsOnLeaseReleaseFailure(t *testing.T) {
+func TestFinishSyncPrintingReturnsCommandOwnedDiagnosticOnReleaseFailure(t *testing.T) {
 	ctx := testContext(t)
 	root := scaffoldProject(t)
+	if err := os.Chmod(filepath.Join(root, "AGENTS.md"), 0o600); err != nil {
+		t.Fatal(err)
+	}
 	loader, err := newProjectLoader(root)
 	if err != nil {
 		t.Fatal(err)
@@ -106,12 +109,29 @@ func TestFinishSyncPrintingPresentsCompleteEffectsOnLeaseReleaseFailure(t *testi
 	want := errors.New("release failed")
 	var out bytes.Buffer
 	err = finishSyncPrinting(&out, result, nil, want)
-	var partial *publisher.PartialError
-	if !errors.Is(err, want) || !errors.As(err, &partial) {
-		t.Fatalf("release outcome = %v, want typed partial preserving release failure", err)
+	var diagnostic interface {
+		Diagnostic() (presentation.Diagnostic, error)
 	}
-	if got := out.String(); !strings.Contains(got, "status: partially committed") || !strings.Contains(got, "lock-replaced .awf/awf.lock") || !strings.Contains(got, "recovery:") {
-		t.Fatalf("release stdout = %q, want complete Publisher effects", got)
+	if !errors.Is(err, want) || !errors.As(err, &diagnostic) {
+		t.Fatalf("release outcome = %v, want command diagnostic preserving release failure", err)
+	}
+	if out.Len() != 0 {
+		t.Fatalf("release stdout = %q, want no false success", out.String())
+	}
+	doc, diagnosticErr := diagnostic.Diagnostic()
+	if diagnosticErr != nil {
+		t.Fatal(diagnosticErr)
+	}
+	document, err := doc.Document()
+	if err != nil {
+		t.Fatal(err)
+	}
+	var rendered bytes.Buffer
+	if err := presentation.Render(&rendered, document); err != nil {
+		t.Fatal(err)
+	}
+	if got := rendered.String(); !strings.Contains(got, "touched path: AGENTS.md") || strings.Contains(strings.ToLower(got), "recovery") {
+		t.Fatalf("diagnostic = %q", got)
 	}
 }
 
