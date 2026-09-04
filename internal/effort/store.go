@@ -204,7 +204,12 @@ func (s store) reserve(record Record) (memoryExists bool, returnErr error) {
 	if _, statErr := os.Lstat(s.paths.stateFile(slug)); statErr == nil {
 		condition = "an active effort already exists"
 	}
-	return false, refusal(fmt.Sprintf("effort slug %q collides because %s; changed bytes: no; next action: choose a distinct explicit slug, then retry `awf effort new --slug %q %q` after replacing the quoted slug, or inspect %s", slug, condition, slug, record.Title, dir), fmt.Sprintf("effort slug %q collides", slug), "resident", condition, []RecoveryAction{{Text: "choose a distinct explicit slug"}, {Text: fmt.Sprintf("retry `awf effort new --slug %q %q` after replacing the quoted slug", slug, record.Title)}, {Text: "inspect " + dir}}, nil)
+	return false, s.creationCollision(record, condition)
+}
+
+func (s store) creationCollision(record Record, condition string) error {
+	dir := s.paths.effort(record.Slug)
+	return refusal(fmt.Sprintf("effort slug %q collides because %s; changed bytes: no; next action: choose a distinct explicit slug, then retry `awf effort new --slug %q %q` after replacing the quoted slug, or inspect %s", record.Slug, condition, record.Slug, record.Title, dir), fmt.Sprintf("effort slug %q collides", record.Slug), "resident", condition, []RecoveryAction{{Text: "choose a distinct explicit slug"}, {Text: fmt.Sprintf("retry `awf effort new --slug %q %q` after replacing the quoted slug", record.Slug, record.Title)}, {Text: "inspect " + dir}}, nil)
 }
 
 func (s store) create(record Record) error {
@@ -214,7 +219,13 @@ func (s store) create(record Record) error {
 	}
 	if !memoryExists {
 		if err := s.publishNew(s.paths.memoryFile(record.Slug), memorySkeleton(), "memory"); err != nil {
-			return err
+			if !errors.Is(err, os.ErrExist) {
+				return err
+			}
+			memory, readErr := readRegularNoFollow(s.paths.memoryFile(record.Slug))
+			if readErr != nil || !bytes.Equal(memory, memorySkeleton()) {
+				return s.creationCollision(record, "an incomplete reservation contains unrecognized content")
+			}
 		}
 	}
 	raw, err := json.Marshal(persisted(record))
@@ -222,6 +233,9 @@ func (s store) create(record Record) error {
 		return fmt.Errorf("encode effort state: %w", err)
 	}
 	if err := s.publishNew(s.paths.stateFile(record.Slug), raw, "state"); err != nil {
+		if errors.Is(err, os.ErrExist) {
+			return s.creationCollision(record, "an active effort already exists")
+		}
 		return err
 	}
 	return nil
