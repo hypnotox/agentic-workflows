@@ -23,7 +23,7 @@ Backing: test
 
 ### `invariant: gate-tier-cadence`
 
-`./x gate` is the fast commit tier: version validation, one native build, blocking lint including its vet analysis, and workflow pin validation. `./x test-affected` is separate fail-closed behavioral feedback. Complete Go and Pi behavior runs in CI and at terminal implementation verification rather than through a second local gate tier.
+`./x gate` is the fast commit tier: version validation, one native build, blocking lint including its vet analysis, and workflow pin validation. `./x test-affected` is separate fail-closed behavioral feedback. Complete Go behavior runs in CI and at terminal implementation verification rather than through a second local gate tier.
 Backing: test
 
 ### `invariant: affected-package-feedback`

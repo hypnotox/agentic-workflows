@@ -75,20 +75,33 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
 	root := repoRootDir(t)
 	paths := []string{
+		".awf/parts/workflow/ci.md",
 		".awf/topics/parts/tooling/quality-gates/current-state.md",
 		".awf/topics/parts/code-design/test-design/current-state.md",
 		".awf/topics/parts/code-design/package-composition/current-state.md",
 		".awf/domains/parts/rendering/current-state.md",
+		".awf/docs/parts/releasing/content.md",
 		".awf/docs/parts/testing/tiers.md",
 		".awf/agents-doc.yaml",
+		"docs/workflow.md",
 		"docs/topics/tooling/quality-gates.md",
 		"docs/topics/code-design/test-design.md",
 		"docs/topics/code-design/package-composition.md",
 		"docs/domains/rendering.md",
+		"docs/releasing.md",
 		"docs/testing.md",
 		"AGENTS.md",
 	}
-	banned := []string{"typed Pi", "TypeScript lane", "Maintainable Code Design guide", "Pi host lane", "interactive Pi smoke"}
+	banned := []string{
+		"typed Pi",
+		"TypeScript lane",
+		"Maintainable Code Design guide",
+		"Pi host lane",
+		"interactive Pi smoke",
+		"applicable Pi",
+		"Go and Pi behavior",
+		"Go and Pi test suites",
+	}
 	for _, path := range paths {
 		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
 		if err != nil {
@@ -101,26 +114,55 @@ func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
 		}
 	}
 
-	const laneContract = "select applicable render, platform-sensitive, and release-archive lanes from one typed JSON v2 result"
-	for _, path := range []string{
-		".awf/topics/parts/tooling/quality-gates/current-state.md",
-		"docs/topics/tooling/quality-gates.md",
-	} {
-		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
-		if err != nil {
-			t.Fatalf("read %s: %v", path, err)
-		}
-		if !strings.Contains(string(body), laneContract) {
-			t.Errorf("quality-gate authority %s does not name the live typed lane contract %q", path, laneContract)
+	contracts := []struct {
+		name  string
+		text  string
+		paths []string
+	}{
+		{
+			name: "quality-gate lane selection",
+			text: "select applicable render, platform-sensitive, and release-archive lanes from one typed JSON v2 result",
+			paths: []string{
+				".awf/topics/parts/tooling/quality-gates/current-state.md",
+				"docs/topics/tooling/quality-gates.md",
+			},
+		},
+		{
+			name: "workflow lane selection",
+			text: "consumes one typed JSON v2 selection for applicable render, platform-sensitive, and release-archive lanes",
+			paths: []string{
+				".awf/parts/workflow/ci.md",
+				"docs/workflow.md",
+			},
+		},
+		{
+			name: "release local test scope",
+			text: "skips the complete Go test suite locally while versioncheck and every static gate still run",
+			paths: []string{
+				".awf/docs/parts/releasing/content.md",
+				"docs/releasing.md",
+			},
+		},
+	}
+	for _, contract := range contracts {
+		for _, path := range contract.paths {
+			body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+			if err != nil {
+				t.Fatalf("read %s: %v", path, err)
+			}
+			if !strings.Contains(string(body), contract.text) {
+				t.Errorf("%s authority %s does not contain %q", contract.name, path, contract.text)
+			}
 		}
 	}
+
 	workflow, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	const workflowLaneContract = `[.lanes[].name] == ["go", "platform-sensitive", "release-archive", "render-template"]`
-	if !strings.Contains(string(workflow), workflowLaneContract) {
-		t.Errorf("CI selection consumer does not enforce the lane inventory paired with active authority: %s", workflowLaneContract)
+	const workflowInventoryContract = `[.lanes[].name] == ["go", "platform-sensitive", "release-archive", "render-template"]`
+	if !strings.Contains(string(workflow), workflowInventoryContract) {
+		t.Errorf("CI selection consumer does not enforce the lane inventory paired with active authority: %s", workflowInventoryContract)
 	}
 }
 
