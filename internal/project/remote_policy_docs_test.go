@@ -10,8 +10,10 @@ import (
 
 var (
 	standalonePiToken    = regexp.MustCompile(`(?i)\bpi\b`)
-	runtimeAuthorityTerm = regexp.MustCompile(`(?i)\b(typescript|javascript|ts|js|node(?:\.js)?|harness)\b|\bagent[- ](runtime|host)\b|\bruntime[- ]host\b`)
+	runtimeAuthorityTerm = regexp.MustCompile(`(?i)\b(typescript|javascript|ts|js|node(?:\.js)?|harness|runtime)\b|\bagent[- ]host\b`)
 	assuranceTerm        = regexp.MustCompile(`(?i)\b(lane|tests?|testing|suites?|smoke|assurance|behavior|ci|hosted|validation|verification|checks?|checking|jobs?|workflows?)\b`)
+	binaryOperationTerm  = regexp.MustCompile(`(?i)\b(init|initializ[a-z]*|upgrad[a-z]*|setup|bootstrap[a-z]*|bootstrapp[a-z]*)\b`)
+	prerequisiteTerm     = regexp.MustCompile(`(?i)\b(before|must|require|requires|required|requiring|prerequisite|depend|depends|dependent|need|needs|needed|necessary|cannot|without)\b|\bonly[- ]after\b|\bprior[- ]to\b|\bhas[- ]to\b|\bpresent[- ]for\b`)
 )
 
 func retainsRetiredRuntimeAssurance(text string) bool {
@@ -32,22 +34,8 @@ func presentsHarnessPackagePrerequisite(text string) bool {
 		if !containsAny(normalized, []string{"agentic-skills", "pi-tools"}) {
 			continue
 		}
-		namesBinaryOperation := containsAny(normalized, []string{" init", "initializ", "upgrad", "setup", "bootstrap"})
-		namesPrerequisite := containsAny(normalized, []string{
-			"before",
-			"must",
-			"requir",
-			"prerequisite",
-			"depend",
-			"need",
-			"necessary",
-			"only after",
-			"prior to",
-			"cannot",
-			"without",
-			"has to",
-			"present for",
-		})
+		namesBinaryOperation := binaryOperationTerm.MatchString(normalized)
+		namesPrerequisite := prerequisiteTerm.MatchString(normalized)
 		if namesBinaryOperation && namesPrerequisite {
 			return true
 		}
@@ -259,6 +247,8 @@ func TestRetiredRuntimeAssuranceDetection(t *testing.T) {
 		{name: "harness verification", text: "The harness verification job covers the agent host.", want: true},
 		{name: "ts runtime", text: "Hosted TS checks provide runtime validation.", want: true},
 		{name: "node suite", text: "The Node.js behavior suite runs in CI.", want: true},
+		{name: "runtime verification", text: "Runtime verification jobs run in CI.", want: true},
+		{name: "runtime behavior", text: "The runtime behavior suite is hosted.", want: true},
 		{name: "closed inventory", text: "The closed CI lane inventory is go, platform-sensitive, release-archive, and render-template.", want: false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
@@ -307,6 +297,11 @@ func TestHarnessPackagePrerequisiteDetection(t *testing.T) {
 		{name: "has to", text: "pi-tools has to be present for awf init.", want: true},
 		{name: "depends upon setup", text: "AWF setup depends upon agentic-skills.", want: true},
 		{name: "bootstrap requires", text: "Bootstrapping AWF requires pi-tools.", want: true},
+		{name: "sentence-leading init", text: "Init requires agentic-skills.", want: true},
+		{name: "hyphenated only after", text: "Upgrade AWF only-after installing pi-tools.", want: true},
+		{name: "hyphenated prior to", text: "Install agentic-skills prior-to initialization.", want: true},
+		{name: "hyphenated has to", text: "pi-tools has-to be present for setup.", want: true},
+		{name: "hyphenated present for", text: "agentic-skills must be present-for bootstrap.", want: true},
 		{name: "optional", text: "For Pi harness use, optionally install pi-tools and agentic-skills.", want: false},
 	} {
 		t.Run(test.name, func(t *testing.T) {
