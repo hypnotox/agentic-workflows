@@ -166,6 +166,24 @@ func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
 	}
 }
 
+func TestReadmeScopesHarnessPackagesAsOptional(t *testing.T) {
+	readme, err := os.ReadFile(filepath.Join(repoRootDir(t), "README.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, optionalHarnessInstall := range []string{
+		"For Claude Code harness use, optionally install `agentic-skills` to add its generic skills and roles:",
+		"For Pi harness use, optionally install [`pi-tools`](https://github.com/hypnotox/pi-tools) first, then `agentic-skills`:",
+	} {
+		if !strings.Contains(string(readme), optionalHarnessInstall) {
+			t.Errorf("README does not scope harness package installation to optional harness use: %q", optionalHarnessInstall)
+		}
+	}
+	if strings.Contains(string(readme), "before initializing or upgrading AWF") {
+		t.Error("README still presents agentic-skills as an AWF init or upgrade prerequisite")
+	}
+}
+
 func TestReleaseProvidesRestrictedRootlessExtraction(t *testing.T) {
 	release, err := os.ReadFile(filepath.Join(repoRootDir(t), ".github/workflows/release.yml"))
 	if err != nil {

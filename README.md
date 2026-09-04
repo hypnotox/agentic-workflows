@@ -32,14 +32,14 @@ come from the separately installed
 [`agentic-skills`](https://github.com/hypnotox/agentic-skills) package. AWF does not install,
 update, vendor, configure, or probe global harness packages.
 
-For Claude Code, install `agentic-skills` before initializing or upgrading AWF:
+For Claude Code harness use, optionally install `agentic-skills` to add its generic skills and roles:
 
 ```sh
 claude plugin marketplace add hypnotox/agentic-skills
 claude plugin install agentic-skills@agentic-skills
 ```
 
-For Pi, install [`pi-tools`](https://github.com/hypnotox/pi-tools) first, then `agentic-skills`:
+For Pi harness use, optionally install [`pi-tools`](https://github.com/hypnotox/pi-tools) first, then `agentic-skills`:
 
 ```sh
 pi install git:github.com/hypnotox/pi-tools
