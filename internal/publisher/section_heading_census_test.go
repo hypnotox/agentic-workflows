@@ -30,7 +30,7 @@ func TestLiveMarkdownSectionHeadingCensus(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		expanded, err := render.ExpandIncludes(string(source), templates.FS)
+		expanded, err := expandIncludes(string(source))
 		if err != nil {
 			t.Fatal(err)
 		}

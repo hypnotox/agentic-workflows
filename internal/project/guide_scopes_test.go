@@ -55,7 +55,7 @@ func renderGuide(t *testing.T, data map[string]any) string {
 		t.Fatalf("read template: %v", err)
 	}
 	withLayoutDefaults(data)
-	expanded, err := render.ExpandIncludes(string(src), templates.FS)
+	expanded, err := expandIncludes(string(src))
 	if err != nil {
 		t.Fatalf("expand includes: %v", err)
 	}

@@ -99,13 +99,3 @@ func ExpandIncludesSource(src, root string, partialFS fs.FS) (SourceText, error)
 	out.appendText(root, src[last:])
 	return out, nil
 }
-
-// ExpandIncludes replaces each directive with its partial body for callers
-// whose contract is authored text rather than regional provenance.
-func ExpandIncludes(src string, partialFS fs.FS) (string, error) {
-	expanded, err := ExpandIncludesSource(src, "", partialFS)
-	if err != nil {
-		return "", err
-	}
-	return expanded.AuthoredText(), nil
-}

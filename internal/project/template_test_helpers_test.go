@@ -9,6 +9,14 @@ import (
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
+func expandIncludes(src string) (string, error) {
+	expanded, err := render.ExpandIncludesSource(src, "", templates.FS)
+	if err != nil {
+		return "", err
+	}
+	return expanded.AuthoredText(), nil
+}
+
 func renderGolden(t *testing.T, tmplPath string, data map[string]any) string {
 	t.Helper()
 	src, err := fs.ReadFile(templates.FS, tmplPath)
@@ -16,7 +24,7 @@ func renderGolden(t *testing.T, tmplPath string, data map[string]any) string {
 		t.Fatalf("read template: %v", err)
 	}
 	withLayoutDefaults(data)
-	expanded, err := render.ExpandIncludes(string(src), templates.FS)
+	expanded, err := expandIncludes(string(src))
 	if err != nil {
 		t.Fatalf("expand includes: %v", err)
 	}

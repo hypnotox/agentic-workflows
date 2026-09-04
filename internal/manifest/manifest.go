@@ -299,45 +299,6 @@ func parseSchemaVersion(b []byte) (int, error) {
 	return stamp.SchemaVersion, nil
 }
 
-// LoadSchemaOptional reads only the schema stamp. Migration classification uses
-// it before deciding whether current authority decoding is permitted.
-func LoadSchemaOptional(path string) (int, bool, error) {
-	b, err := os.ReadFile(path)
-	if errors.Is(err, os.ErrNotExist) {
-		return 0, false, nil
-	}
-	if err != nil {
-		return 0, false, fmt.Errorf("unreadable .awf/awf.lock (read lock: %w): restore it from version control, or delete it deliberately to re-adopt", err)
-	}
-	schema, err := parseSchemaVersion(b)
-	if err != nil {
-		return 0, false, fmt.Errorf("unreadable .awf/awf.lock (parse lock: %w): restore it from version control, or delete it deliberately to re-adopt", err)
-	}
-	return schema, true, nil
-}
-
-// LoadLive reads a lock only after its schema stamp passes the live-source
-// boundary, so unsupported bytes never reach current authority interpretation.
-func LoadLive(path string, floor, current int) (*Lock, error) {
-	b, err := os.ReadFile(path)
-	if err != nil {
-		return nil, fmt.Errorf("read lock: %w", err)
-	}
-	return ParseLive(b, floor, current)
-}
-
-// LoadLiveOptional is the optional-file form of LoadLive.
-func LoadLiveOptional(path string, floor, current int) (*Lock, bool, error) {
-	l, err := LoadLive(path, floor, current)
-	if errors.Is(err, os.ErrNotExist) {
-		return nil, false, nil
-	}
-	if err != nil {
-		return nil, false, fmt.Errorf("unreadable .awf/awf.lock (%w): restore it from version control, or delete it deliberately to re-adopt", err)
-	}
-	return l, true, nil
-}
-
 func LoadOptional(path string) (*Lock, bool, error) {
 	l, err := Load(path)
 	if errors.Is(err, os.ErrNotExist) {

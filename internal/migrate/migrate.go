@@ -212,16 +212,6 @@ func (e *RetiredLayoutError) Is(target error) bool {
 	return target == manifest.ErrUnsupportedLiveSource
 }
 
-func currentConfigPresent(root string) (bool, error) {
-	_, err := os.Stat(config.ConfigPath(root))
-	if err == nil {
-		return true, nil
-	}
-	if errors.Is(err, os.ErrNotExist) {
-		return false, nil
-	}
-	return false, fmt.Errorf("stat .awf/config.yaml: %w", err)
-}
 func retiredLayout(root string) (string, error) {
 	for _, layout := range []struct{ path, name string }{
 		{filepath.Join(root, ".claude", "awf.yaml"), ".claude/awf.yaml"},

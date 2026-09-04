@@ -225,11 +225,11 @@ func expandedTemplate(t *testing.T, tid string) string {
 	if err != nil {
 		t.Fatalf("read template %s: %v", tid, err)
 	}
-	expanded, err := render.ExpandIncludes(string(src), templates.FS)
+	expanded, err := render.ExpandIncludesSource(string(src), "", templates.FS)
 	if err != nil {
 		t.Fatalf("expand %s: %v", tid, err)
 	}
-	return expanded
+	return expanded.AuthoredText()
 }
 
 // TestConfigspecDataParity derives the expected (kind, artifact, key) set from

@@ -1,6 +1,7 @@
 package render
 
 import (
+	"io/fs"
 	"reflect"
 	"strings"
 	"testing"
@@ -15,9 +16,17 @@ func partialsFS(files map[string]string) fstest.MapFS {
 	return m
 }
 
+func expandIncludes(src string, partialFS fs.FS) (string, error) {
+	expanded, err := ExpandIncludesSource(src, "", partialFS)
+	if err != nil {
+		return "", err
+	}
+	return expanded.AuthoredText(), nil
+}
+
 func TestExpandIncludesSplices(t *testing.T) {
 	src := "intro\n\n<!-- awf:include spine -->\n\ntail\n"
-	out, err := ExpandIncludes(src, partialsFS(map[string]string{"spine": "BODY\n"}))
+	out, err := expandIncludes(src, partialsFS(map[string]string{"spine": "BODY\n"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -29,7 +38,7 @@ func TestExpandIncludesSplices(t *testing.T) {
 
 func TestExpandIncludesNoDirectivePassesThrough(t *testing.T) {
 	src := "no directives here\n"
-	out, err := ExpandIncludes(src, partialsFS(nil))
+	out, err := expandIncludes(src, partialsFS(nil))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -59,7 +68,7 @@ func TestExpandIncludesSourceRetainsOrderedTransitions(t *testing.T) {
 
 func TestExpandIncludesMultiple(t *testing.T) {
 	src := "<!-- awf:include a -->\nmid\n<!-- awf:include b -->\n"
-	out, err := ExpandIncludes(src, partialsFS(map[string]string{"a": "AAA\n", "b": "BBB\n"}))
+	out, err := expandIncludes(src, partialsFS(map[string]string{"a": "AAA\n", "b": "BBB\n"}))
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -69,7 +78,7 @@ func TestExpandIncludesMultiple(t *testing.T) {
 }
 
 func TestExpandIncludesMissingPartialFails(t *testing.T) {
-	_, err := ExpandIncludes("<!-- awf:include nope -->\n", partialsFS(nil))
+	_, err := expandIncludes("<!-- awf:include nope -->\n", partialsFS(nil))
 	// invariant: rendering/render-engine:include-missing-fails (TestExpandIncludesMissingPartialFails)
 	if err == nil || !strings.Contains(err.Error(), "unknown partial") {
 		t.Fatalf("expected unknown-partial error, got %v", err)
@@ -77,7 +86,7 @@ func TestExpandIncludesMissingPartialFails(t *testing.T) {
 }
 
 func TestExpandIncludesNestedFails(t *testing.T) {
-	_, err := ExpandIncludes("<!-- awf:include a -->\n",
+	_, err := expandIncludes("<!-- awf:include a -->\n",
 		partialsFS(map[string]string{"a": "x\n<!-- awf:include b -->\n"}))
 	// invariant: rendering/render-engine:include-no-nested (TestExpandIncludesNestedFails)
 	if err == nil || !strings.Contains(err.Error(), "nested include") {
@@ -86,7 +95,7 @@ func TestExpandIncludesNestedFails(t *testing.T) {
 }
 
 func TestExpandIncludesSectionMarkerFails(t *testing.T) {
-	_, err := ExpandIncludes("<!-- awf:include a -->\n",
+	_, err := expandIncludes("<!-- awf:include a -->\n",
 		partialsFS(map[string]string{"a": "<!-- awf:section x -->\nbody\n<!-- awf:end -->\n"}))
 	// invariant: rendering/render-engine:include-no-sections (TestExpandIncludesSectionMarkerFails)
 	if err == nil || !strings.Contains(err.Error(), "section marker") {

@@ -16,7 +16,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/config"
 	"github.com/hypnotox/agentic-workflows/internal/configspec"
 	"github.com/hypnotox/agentic-workflows/internal/project"
-	"github.com/hypnotox/agentic-workflows/internal/render"
 	"github.com/hypnotox/agentic-workflows/templates"
 )
 
@@ -97,7 +96,7 @@ func TestConditionalTemplatesHaveFallbackCases(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read %s: %v", tid, err)
 		}
-		expanded, err := render.ExpandIncludes(string(src), templates.FS)
+		expanded, err := expandIncludes(string(src))
 		if err != nil {
 			t.Fatalf("expand %s: %v", tid, err)
 		}
@@ -595,7 +594,7 @@ func TestSingletonConditionalKeysUseLiveRenderContext(t *testing.T) {
 		if err != nil {
 			t.Fatal(err)
 		}
-		expanded, err := render.ExpandIncludes(string(raw), templates.FS)
+		expanded, err := expandIncludes(string(raw))
 		if err != nil {
 			t.Fatal(err)
 		}

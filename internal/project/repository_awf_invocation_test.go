@@ -51,7 +51,7 @@ func renderInvocationSurface(t *testing.T, template string, data map[string]any)
 		t.Fatal(err)
 	}
 	withLayoutDefaults(data)
-	expanded, err := render.ExpandIncludes(string(src), templates.FS)
+	expanded, err := expandIncludes(string(src))
 	if err != nil {
 		t.Fatal(err)
 	}

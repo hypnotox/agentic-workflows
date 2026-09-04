@@ -24,6 +24,14 @@ func assemble(segs []render.Segment, plan map[string]render.SectionPlan, style r
 	assembled, parts := render.AssembleSourceWithTemplateSource(segs, plan, style, render.TemplateSource{})
 	return assembled.AuthoredText(), parts
 }
+func expandIncludes(src string) (string, error) {
+	expanded, err := render.ExpandIncludesSource(src, "", templates.FS)
+	if err != nil {
+		return "", err
+	}
+	return expanded.AuthoredText(), nil
+}
+
 func renderGolden(t *testing.T, path string, data map[string]any) string {
 	t.Helper()
 	withLayoutDefaults(data)
@@ -31,7 +39,7 @@ func renderGolden(t *testing.T, path string, data map[string]any) string {
 	if err != nil {
 		t.Fatal(err)
 	}
-	expanded, err := render.ExpandIncludes(string(src), templates.FS)
+	expanded, err := expandIncludes(string(src))
 	if err != nil {
 		t.Fatal(err)
 	}

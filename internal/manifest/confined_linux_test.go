@@ -42,18 +42,31 @@ func TestConfinedLockLoadDoesNotFollowOrBlockOnSpecialLeaf(t *testing.T) {
 			if err := tc.create(filepath.Join(root, ".awf", "awf.lock")); err != nil {
 				t.Skipf("special file unsupported: %v", err)
 			}
-			result := make(chan error, 1)
-			go func() {
-				_, _, err := LoadLiveFileOptional(root, ".awf/awf.lock", 50, 50)
-				result <- err
-			}()
-			select {
-			case err := <-result:
-				if !errors.Is(err, filesystem.ErrIdentityChanged) {
-					t.Fatalf("LoadLiveFileOptional error = %v, want no-follow identity refusal", err)
-				}
-			case <-time.After(time.Second):
-				t.Fatal("LoadLiveFileOptional blocked on special lock leaf")
+			for _, load := range []struct {
+				name string
+				run  func() error
+			}{
+				{name: "live file", run: func() error {
+					_, _, err := LoadLiveFileOptional(root, ".awf/awf.lock", 50, 50)
+					return err
+				}},
+				{name: "schema", run: func() error {
+					_, _, err := LoadSchemaConfinedOptional(root, ".awf/awf.lock")
+					return err
+				}},
+			} {
+				t.Run(load.name, func(t *testing.T) {
+					result := make(chan error, 1)
+					go func() { result <- load.run() }()
+					select {
+					case err := <-result:
+						if !errors.Is(err, filesystem.ErrIdentityChanged) {
+							t.Fatalf("confined load error = %v, want no-follow identity refusal", err)
+						}
+					case <-time.After(time.Second):
+						t.Fatal("confined load blocked on special lock leaf")
+					}
+				})
 			}
 		})
 	}
