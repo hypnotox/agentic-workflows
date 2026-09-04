@@ -8,6 +8,52 @@ import (
 	"testing"
 )
 
+var standalonePiToken = regexp.MustCompile(`(?i)\bpi\b`)
+
+func retainsRetiredRuntimeAssurance(text string) bool {
+	if standalonePiToken.MatchString(text) {
+		return true
+	}
+	normalized := strings.ToLower(strings.Join(strings.Fields(text), " "))
+	return containsAny(normalized, []string{"typescript", "javascript", "agent runtime", "agent-runtime", "harness runtime", "harness"}) &&
+		containsAny(normalized, []string{"lane", "test", "suite", "smoke", "assurance", "behavior", " ci ", "hosted"})
+}
+
+func presentsHarnessPackagePrerequisite(text string) bool {
+	for _, paragraph := range strings.Split(text, "\n\n") {
+		normalized := strings.ToLower(strings.Join(strings.Fields(paragraph), " "))
+		if !containsAny(normalized, []string{"agentic-skills", "pi-tools"}) {
+			continue
+		}
+		namesBinaryOperation := strings.Contains(normalized, " init") || strings.Contains(normalized, "initializ") || strings.Contains(normalized, "upgrad")
+		namesPrerequisite := containsAny(normalized, []string{
+			"before",
+			"must",
+			"requir",
+			"prerequisite",
+			"depends on",
+			"dependent on",
+			"need",
+			"necessary",
+			"only after",
+			"prior to",
+		})
+		if namesBinaryOperation && namesPrerequisite {
+			return true
+		}
+	}
+	return false
+}
+
+func containsAny(text string, fragments []string) bool {
+	for _, fragment := range fragments {
+		if strings.Contains(text, fragment) {
+			return true
+		}
+	}
+	return false
+}
+
 func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	read := func(path string) string {
 		t.Helper()
@@ -75,6 +121,14 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 
 func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
 	root := repoRootDir(t)
+	ciAndReleaseAuthorityPaths := []string{
+		".awf/parts/workflow/ci.md",
+		".awf/topics/parts/tooling/quality-gates/current-state.md",
+		".awf/docs/parts/releasing/content.md",
+		"docs/workflow.md",
+		"docs/topics/tooling/quality-gates.md",
+		"docs/releasing.md",
+	}
 	paths := []string{
 		".awf/parts/workflow/ci.md",
 		".awf/topics/parts/tooling/quality-gates/current-state.md",
@@ -116,21 +170,17 @@ func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
 		}
 	}
 
-	piToken := regexp.MustCompile(`(?i)\bpi\b`)
-	for _, path := range []string{
-		".awf/parts/workflow/ci.md",
-		".awf/topics/parts/tooling/quality-gates/current-state.md",
-		".awf/docs/parts/releasing/content.md",
-		"docs/workflow.md",
-		"docs/topics/tooling/quality-gates.md",
-		"docs/releasing.md",
-	} {
+	const closedLaneInventory = "The closed CI lane inventory is `go`, `platform-sensitive`, `release-archive`, and `render-template`."
+	for _, path := range ciAndReleaseAuthorityPaths {
 		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
 		if err != nil {
 			t.Fatalf("read %s: %v", path, err)
 		}
-		if piToken.Match(body) {
-			t.Errorf("CI and release authority %s retains a Pi lane or test reference", path)
+		if retainsRetiredRuntimeAssurance(string(body)) {
+			t.Errorf("CI and release authority %s retains a retired harness/runtime assurance claim", path)
+		}
+		if !strings.Contains(string(body), closedLaneInventory) {
+			t.Errorf("CI and release authority %s does not name the exact closed lane inventory %q", path, closedLaneInventory)
 		}
 	}
 
@@ -141,7 +191,7 @@ func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
 	}{
 		{
 			name: "quality-gate lane selection",
-			text: "select applicable render, platform-sensitive, and release-archive lanes from one typed JSON v2 result",
+			text: "select applicable lanes from one typed JSON v2 result",
 			paths: []string{
 				".awf/topics/parts/tooling/quality-gates/current-state.md",
 				"docs/topics/tooling/quality-gates.md",
@@ -149,7 +199,7 @@ func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
 		},
 		{
 			name: "workflow lane selection",
-			text: "consumes one typed JSON v2 selection for applicable render, platform-sensitive, and release-archive lanes",
+			text: "consumes one typed JSON v2 selection",
 			paths: []string{
 				".awf/parts/workflow/ci.md",
 				"docs/workflow.md",
@@ -186,6 +236,25 @@ func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
 	}
 }
 
+func TestRetiredRuntimeAssuranceDetection(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		text string
+		want bool
+	}{
+		{name: "pi lane", text: "Select the applicable Pi validation lane.", want: true},
+		{name: "typescript assurance", text: "Run the TypeScript harness assurance lane.", want: true},
+		{name: "javascript smoke", text: "Hosted JavaScript agent-runtime smoke tests run here.", want: true},
+		{name: "closed inventory", text: "The closed CI lane inventory is go, platform-sensitive, release-archive, and render-template.", want: false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := retainsRetiredRuntimeAssurance(test.text); got != test.want {
+				t.Fatalf("retainsRetiredRuntimeAssurance(%q) = %v, want %v", test.text, got, test.want)
+			}
+		})
+	}
+}
+
 func TestReadmeScopesHarnessPackagesAsOptional(t *testing.T) {
 	readme, err := os.ReadFile(filepath.Join(repoRootDir(t), "README.md"))
 	if err != nil {
@@ -204,18 +273,29 @@ func TestReadmeScopesHarnessPackagesAsOptional(t *testing.T) {
 		t.Errorf("README does not preserve AWF's package-independent binary contract: %q", offlineWithoutHarnessPackages)
 	}
 
-	for _, paragraph := range strings.Split(string(readme), "\n\n") {
-		normalized := strings.ToLower(strings.Join(strings.Fields(paragraph), " "))
-		for _, packageName := range []string{"agentic-skills", "pi-tools"} {
-			if !strings.Contains(normalized, packageName) {
-				continue
+	if presentsHarnessPackagePrerequisite(string(readme)) {
+		t.Error("README presents an operator-managed harness package as an AWF init or upgrade prerequisite")
+	}
+}
+
+func TestHarnessPackagePrerequisiteDetection(t *testing.T) {
+	for _, test := range []struct {
+		name string
+		text string
+		want bool
+	}{
+		{name: "before initialization", text: "Install agentic-skills before initializing AWF.", want: true},
+		{name: "depends on", text: "AWF initialization depends on agentic-skills.", want: true},
+		{name: "only after", text: "Upgrade AWF only after installing pi-tools.", want: true},
+		{name: "needed", text: "agentic-skills is needed to initialize AWF.", want: true},
+		{name: "prior to", text: "Install pi-tools prior to an AWF upgrade.", want: true},
+		{name: "optional", text: "For Pi harness use, optionally install pi-tools and agentic-skills.", want: false},
+	} {
+		t.Run(test.name, func(t *testing.T) {
+			if got := presentsHarnessPackagePrerequisite(test.text); got != test.want {
+				t.Fatalf("presentsHarnessPackagePrerequisite(%q) = %v, want %v", test.text, got, test.want)
 			}
-			namesBinaryOperation := strings.Contains(normalized, " init") || strings.Contains(normalized, "initializ") || strings.Contains(normalized, "upgrad")
-			namesPrerequisite := strings.Contains(normalized, "before") || strings.Contains(normalized, "must") || strings.Contains(normalized, "requir") || strings.Contains(normalized, "prerequisite")
-			if namesBinaryOperation && namesPrerequisite {
-				t.Errorf("README presents %s with AWF init/upgrade prerequisite semantics: %q", packageName, normalized)
-			}
-		}
+		})
 	}
 }
 

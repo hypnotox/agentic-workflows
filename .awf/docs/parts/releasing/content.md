@@ -20,7 +20,7 @@ How to cut a release of the `awf` binary. [ADR-0030](decisions/0030-prebuilt-bin
    git commit -m "chore(awf): bump version to v0.2.0"
    ```
 
-   A schema-coupled bump often already changed the version mid-cycle. It changes the version file and lock, not the changelog. During development the gate requires descending changelog entries with the newest at or below `project.Version`; releasecheck requires an exact newest-version match and an empty `[Unreleased]`. The canonical three-file release-prep transaction skips the complete Go test suite locally while versioncheck and every static gate still run. The pushed commit's aggregate `CI / gate` conclusion supplies repository assurance before tagging.
+   A schema-coupled bump often already changed the version mid-cycle. It changes the version file and lock, not the changelog. During development the gate requires descending changelog entries with the newest at or below `project.Version`; releasecheck requires an exact newest-version match and an empty `[Unreleased]`. The canonical three-file release-prep transaction skips the complete Go test suite locally while versioncheck and every static gate still run. The closed CI lane inventory is `go`, `platform-sensitive`, `release-archive`, and `render-template`. The pushed commit's aggregate `CI / gate` conclusion supplies repository assurance before tagging.
 
 3. Push `main` and wait for that commit's `CI / gate` check to succeed. Then tag and push the matching version:
 
