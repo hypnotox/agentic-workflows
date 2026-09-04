@@ -14,7 +14,7 @@ import (
 
 func testLayout() map[string]any {
 	return map[string]any{
-		"docsDir": "docs", "docs": map[string]any{}, "workflowRef": "docs/workflow.md", "docStandard": "docs/doc-standard.md", "agentsMdStandard": "docs/agents-md-standard.md", "workingWithAwf": "docs/working-with-awf.md", "maintainableCodeDesign": "docs/maintainable-code-design.md", "configReference": "docs/config-reference.md", "domainsDir": "docs/domains",
+		"docsDir": "docs", "docs": map[string]any{}, "workflowRef": "docs/workflow.md", "docStandard": "docs/doc-standard.md", "agentsMdStandard": "docs/agents-md-standard.md", "workingWithAwf": "docs/working-with-awf.md", "configReference": "docs/config-reference.md", "domainsDir": "docs/domains",
 	}
 }
 func parseSections(src string, markdown ...bool) []render.Segment {

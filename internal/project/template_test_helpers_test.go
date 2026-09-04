@@ -53,9 +53,6 @@ func withLayoutDefaults(data map[string]any) {
 	if _, ok := l["domainsDir"]; !ok {
 		l["domainsDir"] = "docs/domains"
 	}
-	if _, ok := l["maintainableCodeDesign"]; !ok {
-		l["maintainableCodeDesign"] = "docs/maintainable-code-design.md"
-	}
 }
 
 func assertNoLeaks(t *testing.T, out string) {

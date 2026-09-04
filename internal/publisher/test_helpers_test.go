@@ -197,7 +197,7 @@ func withLayoutDefaults(data map[string]any) {
 	if _, ok := layout["docs"]; !ok {
 		layout["docs"] = map[string]any{"debugging": "docs/debugging.md", "pitfalls": "docs/pitfalls.md", "roadmap": "docs/roadmap.md"}
 	}
-	for key, value := range map[string]string{"workflowRef": "docs/workflow.md", "domainsDir": "docs/domains", "maintainableCodeDesign": "docs/maintainable-code-design.md"} {
+	for key, value := range map[string]string{"workflowRef": "docs/workflow.md", "domainsDir": "docs/domains"} {
 		if _, ok := layout[key]; !ok {
 			layout[key] = value
 		}

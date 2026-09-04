@@ -17,22 +17,25 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/manifest"
 )
 
-// FileImage is the exact regular-file state observed while planning. An absent
-// image has Present false, zero mode, and no content.
+// FileImage is the exact entry state observed while planning. An absent image
+// has Present false, zero mode, and no content or children. A directory image
+// records its permission mode and sorted direct-child names.
 type FileImage struct {
-	Present bool
-	Content []byte
-	Mode    os.FileMode
-}
-
-// FileMutation is a planned replacement with the original preimage that must
-// still be present when the caller commits the transaction.
-type FileMutation struct {
-	Path     string
-	Expected FileImage
+	Present  bool
 	Content  []byte
 	Mode     os.FileMode
-	Remove   bool
+	Children []string
+}
+
+// FileMutation is a planned regular-file replacement/removal or empty-directory
+// prune with the original preimage that must still be present when committed.
+type FileMutation struct {
+	Path           string
+	Expected       FileImage
+	Content        []byte
+	Mode           os.FileMode
+	Remove         bool
+	EmptyDirectory bool
 }
 
 // ProposedTree is the read-only tree view supplied to one migration step. It
@@ -66,6 +69,53 @@ func (t *ProposedTree) Read(path string) ([]byte, os.FileMode, error) {
 	return t.files.ReadExpected(path, expected)
 }
 
+// PlanEmptyDirectory returns a prune only when path's proposed direct children
+// are all removed by earlier steps or the supplied same-step plan. The exact
+// current child inventory remains the commit-time stale-plan preimage.
+func (t *ProposedTree) PlanEmptyDirectory(path string, sameStep []FileMutation) (FileMutation, bool, error) {
+	expected, err := t.files.ExpectedIdentity(path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return FileMutation{}, false, nil
+	}
+	if err != nil {
+		return FileMutation{}, false, err
+	}
+	defer expected.Release() //nolint:errcheck // planning read owns no mutation
+	if !expected.IsDir() {
+		return FileMutation{}, false, fmt.Errorf("migration prune source %s is not a directory", path)
+	}
+	entries, err := t.files.ReadDirExpected(path, expected)
+	if err != nil {
+		return FileMutation{}, false, err
+	}
+	children := make([]string, 0, len(entries))
+	planned := make(map[string]FileMutation, len(t.mutations)+len(sameStep))
+	for mutationPath, mutation := range t.mutations {
+		planned[mutationPath] = mutation
+	}
+	for _, mutation := range sameStep {
+		planned[mutation.Path] = mutation
+	}
+	for mutationPath, mutation := range planned {
+		if filepath.ToSlash(filepath.Dir(filepath.FromSlash(mutationPath))) == path && !mutation.Remove {
+			return FileMutation{}, false, nil
+		}
+	}
+	for _, entry := range entries {
+		children = append(children, entry.Name())
+		childPath := filepath.ToSlash(filepath.Join(filepath.FromSlash(path), entry.Name()))
+		mutation, found := planned[childPath]
+		if !found || !mutation.Remove {
+			return FileMutation{}, false, nil
+		}
+	}
+	sort.Strings(children)
+	return FileMutation{
+		Path: path, Expected: FileImage{Present: true, Mode: expected.Mode().Perm(), Children: children},
+		Remove: true, EmptyDirectory: true,
+	}, true, nil
+}
+
 func proposedImage(content []byte, mode os.FileMode, err error) (FileImage, error) {
 	if errors.Is(err, fs.ErrNotExist) {
 		return FileImage{}, nil
@@ -78,10 +128,16 @@ func proposedImage(content []byte, mode os.FileMode, err error) (FileImage, erro
 
 func (t *ProposedTree) overlay(planned []FileMutation) error {
 	for _, mutation := range planned {
-		content, mode, err := t.Read(mutation.Path)
-		current, err := proposedImage(content, mode, err)
-		if err != nil {
-			return err
+		var current FileImage
+		if mutation.EmptyDirectory {
+			current = mutation.Expected
+		} else {
+			content, mode, err := t.Read(mutation.Path)
+			var imageErr error
+			current, imageErr = proposedImage(content, mode, err)
+			if imageErr != nil {
+				return imageErr
+			}
 		}
 		if prior, ok := t.mutations[mutation.Path]; ok {
 			mutation.Expected = prior.Expected
@@ -89,6 +145,7 @@ func (t *ProposedTree) overlay(planned []FileMutation) error {
 			mutation.Expected = current
 		}
 		mutation.Expected.Content = append([]byte(nil), mutation.Expected.Content...)
+		mutation.Expected.Children = append([]string(nil), mutation.Expected.Children...)
 		mutation.Content = append([]byte(nil), mutation.Content...)
 		t.mutations[mutation.Path] = mutation
 	}
@@ -105,6 +162,7 @@ func (t *ProposedTree) coalesced() []FileMutation {
 	for _, path := range paths {
 		mutation := t.mutations[path]
 		mutation.Expected.Content = append([]byte(nil), mutation.Expected.Content...)
+		mutation.Expected.Children = append([]string(nil), mutation.Expected.Children...)
 		mutation.Content = append([]byte(nil), mutation.Content...)
 		mutations = append(mutations, mutation)
 	}
@@ -126,6 +184,7 @@ var registry = []Migration{
 	{To: LiveSchemaFloor, Name: "supported-schema-50"},
 	{To: contextSkillGeneration, Name: contextSkillMigration, Build: renameRepositoryContextSkill},
 	{To: skillExtractionGeneration, Name: skillExtractionMigration, Build: migrateExtractedSkills},
+	{To: workflowSurfaceGeneration, Name: workflowSurfaceMigration, Build: retireWorkflowSurface},
 }
 
 func Current() int                { return registry[len(registry)-1].To }

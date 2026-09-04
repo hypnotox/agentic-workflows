@@ -56,27 +56,29 @@ func TestLayoutUsesFixedDocsRootAndFullCatalog(t *testing.T) {
 	// wrong derivation is caught, not just a present key.
 	tm := l.templateMap()
 	wantTM := map[string]string{
-		"docsDir":                "docs",
-		"domainsDir":             "docs/domains",
-		"workflowRef":            "docs/workflow.md",
-		"docStandard":            "docs/doc-standard.md",
-		"agentsMdStandard":       "docs/agents-md-standard.md",
-		"workingWithAwf":         "docs/working-with-awf.md",
-		"maintainableCodeDesign": "docs/maintainable-code-design.md",
+		"docsDir":          "docs",
+		"domainsDir":       "docs/domains",
+		"workflowRef":      "docs/workflow.md",
+		"docStandard":      "docs/doc-standard.md",
+		"agentsMdStandard": "docs/agents-md-standard.md",
+		"workingWithAwf":   "docs/working-with-awf.md",
 	}
 	for k, want := range wantTM {
 		if tm[k] != want {
 			t.Errorf("templateMap[%q] = %v, want %q", k, tm[k], want)
 		}
 	}
+	if _, ok := tm["maintainableCodeDesign"]; ok {
+		t.Error("templateMap retains retired maintainableCodeDesign key")
+	}
 	if got, ok := tm["docs"].(map[string]any); !ok || got["architecture"] != "docs/architecture.md" || got["debugging"] != "docs/debugging.md" {
 		t.Errorf("templateMap[docs] = %v", tm["docs"])
 	}
-	// Three fixed keys plus the seven catalog-derived singleton paths. agents-doc
+	// Three fixed keys plus the six catalog-derived singleton paths. agents-doc
 	// has no TemplateKey and is excluded; the generated config reference remains
 	// layout-exposed even though it is not a plain rendered singleton.
-	if len(tm) != 10 {
-		t.Errorf("templateMap has %d keys, want 10", len(tm))
+	if len(tm) != 9 {
+		t.Errorf("templateMap has %d keys, want 9", len(tm))
 	}
 	if got := docOutPath(renderInputsForTest(p), "architecture"); got != "docs/architecture.md" {
 		t.Errorf("docOutPath = %q", got)

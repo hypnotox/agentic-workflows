@@ -4,6 +4,7 @@ import (
 	"errors"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"runtime"
 	"strings"
@@ -613,6 +614,31 @@ func TestReadExpectedRefusesReplacementAndNonRegularIdentity(t *testing.T) {
 	}
 }
 
+func TestCreateDirectoryRestoresRequestedModeAfterUmask(t *testing.T) {
+	if os.Getenv("AWF_TEST_RESTRICTIVE_UMASK") == "" {
+		cmd := exec.Command("sh", "-c", `umask 077; exec "$1" -test.run '^TestCreateDirectoryRestoresRequestedModeAfterUmask$'`, "sh", os.Args[0])
+		cmd.Env = append(os.Environ(), "AWF_TEST_RESTRICTIVE_UMASK=1")
+		if output, err := cmd.CombinedOutput(); err != nil {
+			t.Fatalf("restricted-umask helper: %v\n%s", err, output)
+		}
+		return
+	}
+	root := t.TempDir()
+	h, err := Open(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer h.Close()
+	created, err := h.CreateDirectory("owned", 0o777)
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer created.Release() //nolint:errcheck // test cleanup
+	if info, err := os.Stat(filepath.Join(root, "owned")); err != nil || info.Mode().Perm() != 0o777 {
+		t.Fatalf("created mode = %v, error %v; want 0777 despite umask 077", info, err)
+	}
+}
+
 func TestCreateDirectoryReturnsPublishedIdentityAndRefusesExistingDestination(t *testing.T) {
 	container := t.TempDir()
 	root := filepath.Join(container, "root")
@@ -624,12 +650,12 @@ func TestCreateDirectoryReturnsPublishedIdentityAndRefusesExistingDestination(t 
 		t.Fatal(err)
 	}
 	defer h.Close()
-	created, err := h.CreateDirectory("owned", 0o750)
+	created, err := h.CreateDirectory("owned", 0o777)
 	if err != nil {
 		t.Fatal(err)
 	}
 	owned := filepath.Join(root, "owned")
-	if info, err := os.Lstat(owned); err != nil || !created.SameFile(info) || info.Mode().Perm() != 0o750 {
+	if info, err := os.Lstat(owned); err != nil || !created.SameFile(info) || info.Mode().Perm() != 0o777 {
 		t.Fatalf("created identity = %v, path identity = %v, error %v", created, info, err)
 	}
 	if _, err := h.CreateDirectory("owned", 0o700); !errors.Is(err, fs.ErrExist) {

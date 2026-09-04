@@ -48,8 +48,9 @@ const gitRestorationGuidance = "restore the working tree from Git (git restore +
 // images would be both enormous and lossy, and deleting it outright would leave
 // nothing to roll back to.
 const (
-	KindFile         = ""
-	KindResidentTree = "resident-tree"
+	KindFile           = ""
+	KindResidentTree   = "resident-tree"
+	KindEmptyDirectory = "empty-directory"
 )
 
 // QuarantineRel is the repo-relative root every quarantined resident tree moves
@@ -72,17 +73,19 @@ type Image struct {
 // quarantine path its tree is renamed to; the rename is the mutation, so it is
 // reversible before the lock commits and only needs deleting after.
 type Operation struct {
-	Path            string `json:"path"`
-	Kind            string `json:"kind,omitempty"`
-	Prior           Image  `json:"prior"`
-	Replacement     Image  `json:"replacement"`
-	Quarantine      string `json:"quarantine,omitempty"`
-	Residue         string `json:"residue,omitempty"`
-	PossibleResidue bool   `json:"possibleResidue,omitempty"`
+	Path            string   `json:"path"`
+	Kind            string   `json:"kind,omitempty"`
+	Prior           Image    `json:"prior"`
+	Replacement     Image    `json:"replacement"`
+	ExpectedEntries []string `json:"expectedEntries,omitempty"`
+	Quarantine      string   `json:"quarantine,omitempty"`
+	Residue         string   `json:"residue,omitempty"`
+	PossibleResidue bool     `json:"possibleResidue,omitempty"`
 }
 
 // residentTree reports whether op quarantines a tree rather than imaging a file.
-func (o Operation) residentTree() bool { return o.Kind == KindResidentTree }
+func (o Operation) residentTree() bool   { return o.Kind == KindResidentTree }
+func (o Operation) emptyDirectory() bool { return o.Kind == KindEmptyDirectory }
 
 // Evidence is one ordered, terminally proven journal fact. It is collected by
 // the transaction owner and rendered only at the command boundary.
@@ -229,16 +232,17 @@ func restoreTree(root string, op Operation, operation journalOperation) error {
 // journalOperation owns volatile filesystem dependencies for one transaction
 // or recovery. Tests compose a faulting value without mutable package state.
 type journalOperation struct {
-	state         *journalFilesystemState
-	removeAll     func(string, string) error
-	remove        func(string, string) error
-	imageOf       func(string, string) (Image, error)
-	applyExpected func(string, string, Image, Image) error
-	write         func(string, Journal) error
-	lstat         func(string, string) (os.FileInfo, error)
-	mkdirAll      func(string, string, os.FileMode) error
-	rename        func(string, string, string) error
-	readDir       func(string, string) ([]fs.DirEntry, error)
+	state           *journalFilesystemState
+	removeAll       func(string, string) error
+	remove          func(string, string) error
+	imageOf         func(string, string) (Image, error)
+	applyExpected   func(string, string, Image, Image) error
+	write           func(string, Journal) error
+	lstat           func(string, string) (os.FileInfo, error)
+	mkdirAll        func(string, string, os.FileMode) error
+	createDirectory func(string, string, os.FileMode) error
+	rename          func(string, string, string) error
+	readDir         func(string, string) ([]fs.DirEntry, error)
 }
 
 func productionJournalOperation() journalOperation {
@@ -327,6 +331,15 @@ func productionJournalOperation() journalOperation {
 		mkdirAll: func(root, path string, mode os.FileMode) error {
 			return state.with(root, func(files *filesystem.Handle) error { return files.MkdirAll(path, mode) })
 		},
+		createDirectory: func(root, path string, mode os.FileMode) error {
+			return state.with(root, func(files *filesystem.Handle) error {
+				created, err := files.CreateDirectory(path, mode)
+				if err != nil {
+					return err
+				}
+				return created.Release()
+			})
+		},
 		rename: func(root, oldPath, newPath string) error {
 			return state.with(root, func(files *filesystem.Handle) error { return files.Rename(oldPath, newPath) })
 		},
@@ -367,6 +380,19 @@ func dropQuarantineRoot(root string, operation journalOperation) {
 func applyOperation(root string, op Operation, operation journalOperation) error {
 	if op.residentTree() {
 		return quarantineTree(root, op, operation)
+	}
+	if op.emptyDirectory() {
+		return operation.state.with(root, func(files *filesystem.Handle) error {
+			expected, err := files.ExpectedIdentity(op.Path)
+			if err != nil {
+				return err
+			}
+			if !expected.IsDir() || expected.Mode().Perm() != os.FileMode(op.Prior.Mode).Perm() {
+				_ = expected.Release()
+				return fmt.Errorf("%s: %w", op.Path, filesystem.ErrIdentityChanged)
+			}
+			return files.RemoveExpected(op.Path, expected)
+		})
 	}
 	return operation.applyExpected(root, op.Path, op.Prior, op.Replacement)
 }
@@ -424,7 +450,8 @@ func validateOperations(ops []Operation) error {
 	if ops[len(ops)-1].Path != lockRel {
 		return fmt.Errorf("journal does not end with the lock operation %q", lockRel)
 	}
-	var last string
+	var previous Operation
+	paths := map[string]bool{}
 	quarantines := map[string]bool{}
 	for i, op := range ops {
 		if !safeRelPath(op.Path) {
@@ -439,18 +466,36 @@ func validateOperations(ops []Operation) error {
 		if err := validateKind(op, quarantines); err != nil {
 			return fmt.Errorf("journal operation %q: %w", op.Path, err)
 		}
+		if paths[op.Path] {
+			return fmt.Errorf("journal operations contain duplicate path %q", op.Path)
+		}
+		paths[op.Path] = true
 		if i == len(ops)-1 {
 			break
 		}
 		if op.Path == lockRel {
 			return fmt.Errorf("the lock operation %q may appear only last", lockRel)
 		}
-		if i > 0 && op.Path <= last {
-			return fmt.Errorf("journal operations are not unique and sorted at %q", op.Path)
+		if i > 0 && !operationLess(previous, op) {
+			return fmt.Errorf("journal operations are not uniquely sorted in application order at %q", op.Path)
 		}
-		last = op.Path
+		previous = op
 	}
 	return nil
+}
+
+func operationLess(a, b Operation) bool {
+	if a.emptyDirectory() != b.emptyDirectory() {
+		return !a.emptyDirectory()
+	}
+	if a.emptyDirectory() {
+		aDepth := strings.Count(a.Path, "/")
+		bDepth := strings.Count(b.Path, "/")
+		if aDepth != bDepth {
+			return aDepth > bDepth
+		}
+	}
+	return a.Path < b.Path
 }
 
 // validateKind enforces the per-kind contract. A file operation carries no
@@ -460,6 +505,9 @@ func validateOperations(ops []Operation) error {
 func validateKind(op Operation, seen map[string]bool) error {
 	switch op.Kind {
 	case KindFile:
+		if len(op.ExpectedEntries) != 0 {
+			return errors.New("a file operation carries expected directory entries")
+		}
 		if op.Residue != "" && op.PossibleResidue {
 			return errors.New("a file operation carries both exact and possible residue")
 		}
@@ -471,6 +519,9 @@ func validateKind(op Operation, seen map[string]bool) error {
 		}
 		return nil
 	case KindResidentTree:
+		if len(op.ExpectedEntries) != 0 {
+			return errors.New("a resident-tree operation carries expected directory entries")
+		}
 		if op.PossibleResidue {
 			return errors.New("a resident-tree operation carries possible residue")
 		}
@@ -491,6 +542,28 @@ func validateKind(op Operation, seen map[string]bool) error {
 			return fmt.Errorf("duplicate quarantine destination %q", op.Quarantine)
 		}
 		seen[op.Quarantine] = true
+		return nil
+	case KindEmptyDirectory:
+		if op.Quarantine != "" {
+			return fmt.Errorf("an empty-directory operation carries quarantine %q", op.Quarantine)
+		}
+		if op.Residue != "" && op.PossibleResidue {
+			return errors.New("an empty-directory operation carries both exact and possible residue")
+		}
+		if op.Residue != "" && !safeRelPath(op.Residue) {
+			return fmt.Errorf("unsafe indeterminate residue %q", op.Residue)
+		}
+		if !op.Prior.Present || op.Prior.Mode == 0 || len(op.Prior.Content) != 0 || op.Replacement.Present {
+			return errors.New("an empty-directory operation must replace a present directory mode with absence")
+		}
+		for i, entry := range op.ExpectedEntries {
+			if entry == "" || entry == "." || entry == ".." || strings.ContainsAny(entry, "/\\\r\n") {
+				return fmt.Errorf("unsafe expected directory entry %q", entry)
+			}
+			if i > 0 && entry <= op.ExpectedEntries[i-1] {
+				return errors.New("expected directory entries are not unique and sorted")
+			}
+		}
 		return nil
 	default:
 		return fmt.Errorf("unknown operation kind %q", op.Kind)
@@ -886,6 +959,20 @@ func recordIndeterminateResidue(j *Journal, cleanup *filepublication.CommittedCl
 	return fmt.Errorf("committed cleanup destination %q is not journaled", cleanup.DestinationPath)
 }
 
+func directoryPresent(root string, op Operation, operation journalOperation) (bool, error) {
+	info, err := operation.lstat(root, op.Path)
+	if errors.Is(err, fs.ErrNotExist) {
+		return false, nil
+	}
+	if err != nil {
+		return false, err
+	}
+	if !info.IsDir() || info.Mode().Perm() != os.FileMode(op.Prior.Mode).Perm() {
+		return false, fmt.Errorf("path %s no longer has the expected directory image: %w", op.Path, filesystem.ErrIdentityChanged)
+	}
+	return true, nil
+}
+
 // restorePriors restores only operations known to have applied, walking them in
 // reverse. The remaining set is the terminal changed set if restoration halts.
 func restorePriors(root string, j Journal, applied []Evidence, operation journalOperation) ([]Evidence, []Evidence, error) {
@@ -900,6 +987,20 @@ func restorePriors(root string, j Journal, applied []Evidence, operation journal
 	for i := len(j.Operations) - 1; i >= 0; i-- {
 		op := j.Operations[i]
 		if !byPath[op.Path] {
+			continue
+		}
+		if op.emptyDirectory() {
+			present, err := directoryPresent(root, op, operation)
+			if err != nil {
+				return evidence, remaining, fmt.Errorf("inspect %s: %w", op.Path, err)
+			}
+			if !present {
+				if err := operation.createDirectory(root, op.Path, os.FileMode(op.Prior.Mode)); err != nil {
+					return evidence, remaining, fmt.Errorf("restore %s: %w", op.Path, err)
+				}
+			}
+			evidence = append(evidence, Evidence{Action: "restored", Path: op.Path})
+			remaining = removeChangedPath(remaining, op.Path)
 			continue
 		}
 		if op.residentTree() {
@@ -1080,6 +1181,16 @@ func cleanupJournal(root string, evidence, changed []Evidence, operation journal
 func appliedOperations(root string, j Journal, operation journalOperation) ([]Evidence, error) {
 	var applied []Evidence
 	for _, op := range j.Operations {
+		if op.emptyDirectory() {
+			present, err := directoryPresent(root, op, operation)
+			if err != nil {
+				return nil, err
+			}
+			if !present {
+				applied = append(applied, Evidence{Action: "applied", Path: op.Path})
+			}
+			continue
+		}
 		if op.residentTree() {
 			if _, err := operation.lstat(root, op.Quarantine); err == nil {
 				applied = append(applied, Evidence{Action: "applied", Path: op.Path})

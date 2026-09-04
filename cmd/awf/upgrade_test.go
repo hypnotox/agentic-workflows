@@ -546,6 +546,89 @@ func TestRunUpgradeExtractsGenericSkillsAndPublishesFixedOutputs(t *testing.T) {
 	}
 }
 
+// invariant: config/migrations-and-locks:workflow-surface-source-migration (TestRunUpgradeRetiresCodeDesignGuideAndRenamesAdvancedWorkflowSection)
+func TestRunUpgradeRetiresCodeDesignGuideAndRenamesAdvancedWorkflowSection(t *testing.T) {
+	root := scaffoldProject(t)
+	lock, err := manifest.Load(config.LockPath(root))
+	if err != nil {
+		t.Fatal(err)
+	}
+	lock.SchemaVersion = 52
+	managedGuide := []byte("managed old guide\n")
+	guideRel := "docs/maintainable-code-design.md"
+	lock.Files[guideRel] = manifest.Entry{TemplateID: "docs/maintainable-code-design.md.tmpl", OutputHash: manifest.Hash(managedGuide), Mode: 0o644}
+	if err := lock.Save(config.LockPath(root)); err != nil {
+		t.Fatal(err)
+	}
+	guideOutput := filepath.Join(root, filepath.FromSlash(guideRel))
+	testsupport.WriteFile(t, guideOutput, "adopter-customized old guide\n")
+	testsupport.WriteFile(t, guideOutput+".awf-bak", "prior output backup\n")
+
+	guideSidecar := filepath.Join(root, ".awf/maintainable-code-design.yaml")
+	guidePart := filepath.Join(root, ".awf/parts/maintainable-code-design/readability.md")
+	oldSection := filepath.Join(root, ".awf/parts/working-with-awf/model-selection.md")
+	workingSidecar := filepath.Join(root, ".awf/working-with-awf.yaml")
+	testsupport.WriteFile(t, guideSidecar, "data:\n  custom: doctrine\n")
+	testsupport.WriteFile(t, guideSidecar+".awf-bak", "prior source backup\n")
+	testsupport.WriteFile(t, guidePart, "custom doctrine part\n")
+	testsupport.WriteFile(t, oldSection, "obsolete model policy must not render\n")
+	testsupport.WriteFile(t, workingSidecar, "data:\n  retained: yes\nsections:\n  model-selection:\n    drop: true\n  commands:\n    drop: false\n")
+
+	var stdout bytes.Buffer
+	if err := runUpgrade(testContext(t), root, &stdout); err != nil {
+		t.Fatal(err)
+	}
+	output := stdout.String()
+	for _, want := range []string{
+		"retire duplicate code-design guide and rename advanced workflow section",
+		".awf/maintainable-code-design.yaml.awf-bak.1",
+		".awf/parts/maintainable-code-design/readability.md.awf-bak",
+		".awf/parts/working-with-awf/model-selection.md.awf-bak",
+		".awf/working-with-awf.yaml.awf-bak",
+		"docs/maintainable-code-design.md.awf-bak.1",
+		"remove its retired parent directory if empty",
+	} {
+		if !strings.Contains(output, want) {
+			t.Errorf("upgrade output omits %q:\n%s", want, output)
+		}
+	}
+	if _, err := os.Stat(guideOutput); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("retired guide output remains: %v", err)
+	}
+	outputBackup := guideOutput + ".awf-bak.1"
+	if contents, err := os.ReadFile(outputBackup); err != nil || string(contents) != "adopter-customized old guide\n" {
+		t.Fatalf("retired customized output backup = %q err=%v", contents, err)
+	}
+	working, err := os.ReadFile(filepath.Join(root, "docs/working-with-awf.md"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !strings.Contains(string(working), "## Advanced workflow") || strings.Contains(string(working), "obsolete model policy must not render") {
+		t.Fatalf("renamed section output = %q", working)
+	}
+	cleanedSidecar, err := os.ReadFile(workingSidecar)
+	if err != nil || !strings.Contains(string(cleanedSidecar), "retained: yes") || !strings.Contains(string(cleanedSidecar), "commands:") || strings.Contains(string(cleanedSidecar), "model-selection") || strings.Contains(string(cleanedSidecar), "advanced-workflow") {
+		t.Fatalf("cleaned working sidecar = %q err=%v", cleanedSidecar, err)
+	}
+	if err := runCheck(testContext(t), root, io.Discard); err == nil {
+		t.Fatal("check unexpectedly accepted named migration backups before operator review")
+	}
+	for _, backup := range []string{
+		guideSidecar + ".awf-bak", guideSidecar + ".awf-bak.1", guidePart + ".awf-bak", oldSection + ".awf-bak",
+		workingSidecar + ".awf-bak", guideOutput + ".awf-bak", outputBackup,
+	} {
+		if err := os.Remove(backup); err != nil {
+			t.Fatal(err)
+		}
+	}
+	if err := os.Remove(filepath.Dir(guidePart)); err != nil {
+		t.Fatalf("remove reviewed empty retired source directory: %v", err)
+	}
+	if err := runCheck(testContext(t), root, io.Discard); err != nil {
+		t.Fatalf("reviewed schema-53 upgrade did not converge: %v", err)
+	}
+}
+
 func TestSchema47JournalRecoveryRestoresLegacyAuthorityThenRefuses(t *testing.T) {
 	// The journal format remains able to recover the last retired source shape,
 	// even though normal operations no longer migrate it. Recovery must restore

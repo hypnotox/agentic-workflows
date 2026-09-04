@@ -37,6 +37,11 @@ func (h *Handle) CreateDirectory(destination string, mode fs.FileMode) (created 
 	if !createdTemporary {
 		return nil, fmt.Errorf("filesystem: create directory temporary for %q: temporary name collisions exhausted", destination)
 	}
+	// Mkdir applies the process umask. Restore the requested permission image
+	// before publication so rollback does not silently weaken directory modes.
+	if err := h.root.Chmod(temporary, mode.Perm()); err != nil {
+		return nil, fmt.Errorf("filesystem: set directory mode for %q: %w", destination, err)
+	}
 	defer func() {
 		if temporary != "" {
 			if err := h.root.Remove(temporary); err != nil && !errors.Is(err, fs.ErrNotExist) {
@@ -47,6 +52,9 @@ func (h *Handle) CreateDirectory(destination string, mode fs.FileMode) (created 
 	created, err := h.ExpectedIdentity(temporary)
 	if err != nil {
 		return nil, fmt.Errorf("filesystem: identify created directory for %q: %w", destination, err)
+	}
+	if !created.IsDir() || created.Mode().Perm() != mode.Perm() {
+		return nil, errors.Join(fmt.Errorf("filesystem: created directory for %q has mode %#o, want %#o", destination, created.Mode().Perm(), mode.Perm()), created.Release())
 	}
 	if err := publishDirectoryNoReplace(h.root, temporary, destination); err != nil {
 		return nil, errors.Join(fmt.Errorf("filesystem: publish directory without replacement to %q: %w", destination, err), created.Release())

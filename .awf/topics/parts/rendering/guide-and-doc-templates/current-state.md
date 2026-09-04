@@ -74,7 +74,7 @@ Verify: Inspect the workflow document, root guide, and `awf-effort` skill; confi
 The direct default `AGENTS.md` render is at most 8 KiB and this repository's self-hosted `AGENTS.md` is at most 10 KiB. These fixed regression bounds diagnose failures with observed and allowed bytes plus test-only largest-section contributions; production rendering has no section attribution.
 Backing: test
 
-### `invariant: maintainable-code-design-guide`
+### `invariant: external-code-design-authority`
 
-The standard footprint renders `docs/maintainable-code-design.md` as a mandatory document-map singleton with its ordered convention-part sections. The guide is the canonical adopter-neutral maintainable-design doctrine and makes the simplest sufficient solution the default; implementation and review guidance applies that doctrine proportionally without duplicating it. Planning remains conditionally available where useful for sequencing, coordination, or resumability without changing the maintainability bar.
+The standard footprint does not catalog, template, render, or document-map a generic maintainable-code-design guide. Globally installed `agentic-code-design` is the sole generic code-design doctrine, while AWF documents only its repository-specific workflow and artifact rules.
 Backing: test

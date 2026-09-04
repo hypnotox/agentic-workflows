@@ -47,12 +47,14 @@ For generated guidance, `awf:edit` names the owning convention part and `awf:sou
 Declared local documents appear in the rendered `AGENTS.md` document map. Ordinary `awf check` validates Markdown links and skill references in their preserved inline bodies; it does not make them catalog documents or widen staged drift.
 
 
-<!-- awf:template-source templates/docs/working-with-awf.md.tmpl#model-selection -->
-<!-- awf:edit model-selection: from .awf/parts/working-with-awf/model-selection.md -->
+<!-- awf:template-source templates/docs/working-with-awf.md.tmpl#advanced-workflow -->
+<!-- awf:edit advanced-workflow: default; create .awf/parts/working-with-awf/advanced-workflow.md to override -->
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl -->
 ## Advanced workflow
-For effort lifecycle, model tiers, hook and commit policy, and verification procedure, see [Workflow](workflow.md). Pi runtime and subagent protocol is in the [Pi runtime reference](pi-runtime-reference.md); target current-state topics remain implementation authority rather than adopter how-to.
 
+For AWF effort lifecycle, hook and commit policy, and verification procedure, see
+[Workflow](workflow.md). Generic task behavior and role prompts come from `agentic-skills`.
+Pi dependency and handoff guidance is in the [Pi runtime reference](pi-runtime-reference.md).
 
 <!-- awf:template-source templates/docs/working-with-awf.md.tmpl#placeholders -->
 <!-- awf:edit placeholders: default; create .awf/parts/working-with-awf/placeholders.md to override -->

@@ -250,8 +250,8 @@ func TestAgentsDocDocumentMapListsMandatorySingletonsUnconditionally(t *testing.
 			t.Errorf("Document map should unconditionally cite %q (%s; %s", line, name, got)
 		}
 	}
-	if mapped != 7 {
-		t.Errorf("expected 7 DocumentMap entries, iterated %d", mapped)
+	if mapped != 6 {
+		t.Errorf("expected 6 DocumentMap entries, iterated %d", mapped)
 	}
 }
 

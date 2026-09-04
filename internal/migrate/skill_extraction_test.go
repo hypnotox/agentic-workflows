@@ -28,7 +28,7 @@ func TestSkillExtractionMigrationPreservesRetainedAuthoredSources(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(applied, []string{skillExtractionMigration}) || len(changes) != 1 {
+	if !slices.Equal(applied, []string{skillExtractionMigration, workflowSurfaceMigration}) || len(changes) < 2 {
 		t.Fatalf("Build() = applied=%v changes=%#v", applied, changes)
 	}
 	want := map[string]struct {
@@ -40,6 +40,7 @@ func TestSkillExtractionMigrationPreservesRetainedAuthoredSources(t *testing.T) 
 		".awf/skills/effort-workflow.yaml":          {remove: true},
 		".awf/skills/parts/awf-topics/claims.md":    {content: "Custom claims.\n", mode: 0o644},
 		".awf/skills/parts/current-state/claims.md": {remove: true},
+		".awf/skills/parts/current-state":           {remove: true},
 	}
 	if len(mutations) != len(want) {
 		t.Fatalf("mutations = %#v", mutations)

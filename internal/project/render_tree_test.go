@@ -219,37 +219,6 @@ func TestAgentsDocPartsOverride(t *testing.T) {
 	}
 }
 
-// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestMaintainableCodeDesignPartOverride)
-func TestMaintainableCodeDesignPartOverride(t *testing.T) {
-	const uniqueBody = "The local decision posture owns this change."
-	root := scaffoldFiles(t, "prefix: example\nintegrationBranch: main\n", map[string]string{
-		"parts/maintainable-code-design/decision-posture.md": uniqueBody + "\n",
-	})
-	p, err := loadTestSession(testContext(t), root)
-	if err != nil {
-		t.Fatalf("Open: %v", err)
-	}
-	if err := syncProject(p); err != nil {
-		t.Fatalf("Sync: %v", err)
-	}
-	out, err := os.ReadFile(filepath.Join(root, "docs/maintainable-code-design.md"))
-	if err != nil {
-		t.Fatalf("read guide: %v", err)
-	}
-	got := string(out)
-	if !strings.Contains(got, uniqueBody) {
-		t.Errorf("decision-posture override missing:\n%s", got)
-	}
-	if strings.Contains(got, "Start with the requested behavior and the surrounding model") {
-		t.Errorf("default decision-posture body was not replaced:\n%s", got)
-	}
-	for _, heading := range []string{"## SOLID, DRY, and YAGNI", "## Semantic modeling", "## Boundaries and dependency direction", "## Illustrative pattern toolbox", "## Preparatory refactoring", "## Failure modes"} {
-		if !strings.Contains(got, heading) {
-			t.Errorf("override removed unrelated heading %q:\n%s", heading, got)
-		}
-	}
-}
-
 func TestTopicPartUsesRawPublicationSafeAssembly(t *testing.T) {
 	root := topicProject(t)
 	writeProjectTopic(t, root)

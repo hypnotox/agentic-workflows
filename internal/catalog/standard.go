@@ -55,14 +55,13 @@ var Standard = &Catalog{
 		"agents-doc": {Mandatory: true, AgentsDoc: true, TID: "agents-doc/AGENTS.md.tmpl", Sections: []string{
 			"awf-setup", "you-and-this-project", "identity", "invariants", "workflow", "working-memory", "commands", "document-map",
 		}},
-		"maintainable-code-design": {Mandatory: true, DocumentMap: true, Title: "Maintainable Code Design", Desc: "decision framework for cohesive models, explicit boundaries, dependencies, refactoring, and testable design", Path: "maintainable-code-design.md", TemplateKey: "maintainableCodeDesign", TID: "docs/maintainable-code-design.md.tmpl", Sections: []string{"decision-posture", "contextual-heuristics", "semantic-modeling", "readability", "boundaries-and-dependencies", "pattern-toolbox", "preparatory-refactoring", "failure-modes"}},
 		"workflow": {Mandatory: true, DocumentMap: true, Title: "Workflow", Desc: "principles, conditional capabilities, continuity, review, and commit discipline", Path: "workflow.md", TemplateKey: "workflowRef", TID: "docs/workflow.md.tmpl", Sections: []string{
 			"principles", "chain", "working-memory", "commit-discipline", "doc-currency", "composing-the-gate", "local-hooks", "ci",
 		}},
 		"doc-standard":       {Mandatory: true, DocumentMap: true, Title: "Documentation Standard", Desc: "how-to-write rules for all awf-managed prose", Path: "doc-standard.md", TemplateKey: "docStandard", TID: "docs/doc-standard.md.tmpl", Sections: []string{"principles", "rules", "structure"}},
 		"agents-md-standard": {Mandatory: true, DocumentMap: true, Title: "Authoring AGENTS.md", Desc: "layout, content, and rules for the agent guide", Path: "agents-md-standard.md", TemplateKey: "agentsMdStandard", TID: "docs/agents-md-standard.md.tmpl", Sections: []string{"layout", "content", "rules"}},
 		"working-with-awf": {Mandatory: true, DocumentMap: true, Title: "Working with awf", Desc: "day-to-day usage: commands, overrides, placeholders, and the sync/check loop", Path: "working-with-awf.md", TemplateKey: "workingWithAwf", TID: "docs/working-with-awf.md.tmpl", Sections: []string{
-			"overview", "commands", "config-and-overrides", "model-selection", "placeholders", "sync-and-drift", "upgrading",
+			"overview", "commands", "config-and-overrides", "advanced-workflow", "placeholders", "sync-and-drift", "upgrading",
 		}},
 		"pi-runtime-reference": {Mandatory: true, DocumentMap: true, Title: "Pi Runtime Reference", Desc: "Pi prerequisites, external role support, and AWF effort handoff guidance", Path: "pi-runtime-reference.md", TemplateKey: "piRuntimeReference", TID: "docs/pi-runtime-reference.md.tmpl"},
 		"config-reference":     {Mandatory: true, Generated: true, DocumentMap: true, Title: "Configuration Reference", Desc: "every .awf config key, var, sidecar field, and data key: descriptions, defaults, availability, and this project's live state", Path: "config-reference.md", TemplateKey: "configReference", TID: "docs/config-reference.md.tmpl", Sections: []string{"intro"}},

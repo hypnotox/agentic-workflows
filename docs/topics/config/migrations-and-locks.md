@@ -38,7 +38,7 @@ Backing: test
 
 ### `invariant: migration-preimage-safe`
 
-Every planned file mutation retains its original absent or exact content-and-mode preimage across ordered migration steps. Planning and recovery read only retained, no-follow regular-file entries; commit validates every mutation and the original authority-lock image before writing the journal. Initial application, final lock publication, and rollback predeclare possible residue, then use atomic exchange with post-exchange verification of the displaced regular file's identity, bytes, and permission mode. A guaranteed-uncommitted mismatch preserves the external image and rolls back earlier paths; an indeterminate cleanup retains its pending axis plus an exact or fail-closed possible-residue marker in the journal until the operator reconciles the residue. Non-regular final sources refuse because file-image migrations do not preserve their topology. Recovery recognizes the final lock only by its exact content and mode and resolves an in-flight marker toward rollback rather than inferred commitment. A multi-step planning failure reports completed step descriptions as planned, not applied changes.
+Every planned mutation retains its original absent or exact preimage across ordered migration steps: regular files carry content and mode, while explicitly retired directories carry mode and a sorted direct-child inventory. Planning and recovery use retained no-follow entries; commit validates every mutation and the original authority-lock image before writing the journal. Initial application, final lock publication, and rollback predeclare possible residue, then use atomic exchange with post-exchange verification. Regular-file exchanges verify the displaced entry's identity, bytes, and permission mode. An empty-directory prune runs after its child removals, refuses a new child, and rollback recreates it before restoring those children. A guaranteed-uncommitted mismatch preserves the external image and rolls back earlier paths; an indeterminate cleanup retains its pending axis plus an exact or fail-closed possible-residue marker in the journal until the operator reconciles the residue. Other non-regular final sources refuse because file-image migrations do not preserve their topology. Recovery recognizes the final lock only by its exact content and mode and resolves an in-flight marker toward rollback rather than inferred commitment. A multi-step planning failure reports completed step descriptions as planned, not applied changes.
 Backing: test
 
 
@@ -51,6 +51,12 @@ Backing: test
 ### `invariant: skill-extraction-source-migration`
 
 The schema-52 migration renames retained AWF skill sidecars and declared section parts to their fixed `awf-*` identities, preserving content and mode, collapsing equivalent destinations, and refusing conflicts. Authored overrides for extracted generic skills and removed generic roles move to collision-safe adjacent `.awf-bak` files rather than being discarded or installed externally. The final sync publishes only the fixed AWF skills and prunes retired managed generic outputs.
+Backing: test
+
+
+### `invariant: workflow-surface-source-migration`
+
+The schema-53 migration retires AWF's duplicate maintainable-code-design singleton and renames the working-with-awf section identity from `model-selection` to `advanced-workflow`. Authored retired singleton sidecars and parts move to collision-safe adjacent `.awf-bak` files, obsolete model-policy content is never applied to the new section, and journaled empty-directory prunes remove only exact planned obsolete ancestors.
 Backing: test
 
 

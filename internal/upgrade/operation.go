@@ -5,6 +5,7 @@ import (
 	"errors"
 	"fmt"
 	"os"
+	"slices"
 	"sort"
 
 	"github.com/hypnotox/agentic-workflows/internal/config"
@@ -41,11 +42,13 @@ type CurrentSchemaChange func() string
 // FileMutation is one journal-owned replacement or removal with the exact
 // planning preimage that must still be present before any journal is written.
 type FileMutation struct {
-	Path     string
-	Expected Image
-	Content  []byte
-	Mode     os.FileMode
-	Remove   bool
+	Path            string
+	Expected        Image
+	ExpectedEntries []string
+	Content         []byte
+	Mode            os.FileMode
+	Remove          bool
+	EmptyDirectory  bool
 }
 
 // MigrationResult records planned migration steps, user-facing changes, and mutations.
@@ -138,6 +141,12 @@ func commitMigrationBound(root string, lock *manifest.Lock, lockExpected Image, 
 		if mutation.Remove && (mutation.Mode != 0 || len(mutation.Content) != 0) {
 			return Outcome{}, fmt.Errorf("planned removal %q carries replacement data", mutation.Path)
 		}
+		if mutation.EmptyDirectory && (!mutation.Remove || !mutation.Expected.Present || len(mutation.Expected.Content) != 0) {
+			return Outcome{}, fmt.Errorf("planned empty-directory prune %q has an invalid image", mutation.Path)
+		}
+		if !mutation.EmptyDirectory && len(mutation.ExpectedEntries) != 0 {
+			return Outcome{}, fmt.Errorf("planned file mutation %q carries directory entries", mutation.Path)
+		}
 		if err := validateImage(mutation.Expected); err != nil {
 			return Outcome{}, fmt.Errorf("planned migration path %q expected image: %w", mutation.Path, err)
 		}
@@ -152,10 +161,28 @@ func commitMigrationBound(root string, lock *manifest.Lock, lockExpected Image, 
 			return Outcome{}, fmt.Errorf("inspect planned migration path %s: %w", mutation.Path, statErr)
 		case info.Mode()&os.ModeSymlink != 0:
 			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: final symlinks are unsupported", mutation.Path)
-		case !info.Mode().IsRegular():
+		case mutation.EmptyDirectory && !info.IsDir():
+			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: final entry is not a directory", mutation.Path)
+		case !mutation.EmptyDirectory && !info.Mode().IsRegular():
 			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: final entry is not a regular file", mutation.Path)
 		case !mutation.Expected.Present:
 			return Outcome{}, fmt.Errorf("planned migration path %s changed after planning: expected absent", mutation.Path)
+		}
+		if mutation.EmptyDirectory {
+			entries, readErr := operation.readDir(root, mutation.Path)
+			if readErr != nil {
+				return Outcome{}, fmt.Errorf("read planned migration directory %s: %w", mutation.Path, readErr)
+			}
+			names := make([]string, len(entries))
+			for i, entry := range entries {
+				names[i] = entry.Name()
+			}
+			sort.Strings(names)
+			if info.Mode().Perm() != os.FileMode(mutation.Expected.Mode).Perm() || !slices.Equal(names, mutation.ExpectedEntries) {
+				return Outcome{}, fmt.Errorf("planned migration path %s changed after planning", mutation.Path)
+			}
+			ops = append(ops, Operation{Path: mutation.Path, Kind: KindEmptyDirectory, Prior: mutation.Expected, Replacement: Image{}, ExpectedEntries: append([]string(nil), mutation.ExpectedEntries...)})
+			continue
 		}
 		prior, err := operation.imageOf(root, mutation.Path)
 		if err != nil {
@@ -167,7 +194,7 @@ func commitMigrationBound(root string, lock *manifest.Lock, lockExpected Image, 
 		replacement := Image{Present: !mutation.Remove, Mode: uint32(mutation.Mode.Perm()), Content: mutation.Content}
 		ops = append(ops, Operation{Path: mutation.Path, Prior: prior, Replacement: replacement})
 	}
-	sort.Slice(ops, func(i, j int) bool { return ops[i].Path < ops[j].Path })
+	sort.Slice(ops, func(i, j int) bool { return operationLess(ops[i], ops[j]) })
 	finalLock := lock.Clone()
 	finalLock.SchemaVersion = current
 	bytes, err := finalLock.Marshal()

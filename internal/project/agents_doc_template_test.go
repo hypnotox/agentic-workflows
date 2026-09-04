@@ -8,7 +8,7 @@ import (
 )
 
 // invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestAgentsDocNativeSkillRouter)
-// invariant: rendering/guide-and-doc-templates:maintainable-code-design-guide (TestAgentsDocNativeSkillRouter)
+// invariant: rendering/guide-and-doc-templates:external-code-design-authority (TestAgentsDocNativeSkillRouter)
 func TestAgentsDocNativeSkillRouter(t *testing.T) {
 	data := map[string]any{
 		"prefix": "example",
@@ -30,7 +30,6 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 		"## Document map",
 		"Route settled content by authority lifetime",
 		"Preserve the approved design boundary",
-		"docs/maintainable-code-design.md",
 		"make gate",
 		"Treat exposed native-skill descriptions as routing metadata.",
 		"Before loading a skill, identify the next concrete action.",
@@ -43,7 +42,7 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 			t.Errorf("expected phrase %q in output:\n%s", phrase, out)
 		}
 	}
-	for _, banned := range []string{"Enabled skills:", "example-brainstorming", "purpose", "Trigger:", "Usually follows:", "Common follow-ups:", "fallback", "brainstorming → ADR", "warranted by", "A plan may use exact content/diffs", "V2 ADR", "pollute parent context", "Chain skills"} {
+	for _, banned := range []string{"docs/maintainable-code-design.md", "Enabled skills:", "example-brainstorming", "purpose", "Trigger:", "Usually follows:", "Common follow-ups:", "fallback", "brainstorming → ADR", "warranted by", "A plan may use exact content/diffs", "V2 ADR", "pollute parent context", "Chain skills"} {
 		if strings.Contains(out, banned) {
 			t.Errorf("guide retains evicted prose or catalog residue %q:\n%s", banned, out)
 		}
