@@ -1,68 +1,26 @@
 package project
 
 import (
+	"encoding/json"
 	"os"
 	"path/filepath"
-	"regexp"
+	"reflect"
+	"sort"
 	"strings"
 	"testing"
 )
 
-var (
-	standalonePiToken    = regexp.MustCompile(`(?i)\bpi\b`)
-	runtimeAuthorityTerm = regexp.MustCompile(`(?i)\b(typescript|javascript|ts|js|node(?:\.js)?|harness|runtime)\b|\bagent[- ]host\b`)
-	assuranceTerm        = regexp.MustCompile(`(?i)\b(lane|tests?|testing|suites?|smoke|assurance|behavior|ci|hosted|validation|verification|checks?|checking|jobs?|workflows?)\b`)
-	binaryOperationTerm  = regexp.MustCompile(`(?i)\b(init|initializ[a-z]*|upgrad[a-z]*|setup|bootstrap[a-z]*|bootstrapp[a-z]*)\b`)
-	prerequisiteTerm     = regexp.MustCompile(`(?i)\b(before|must|require|requires|required|requiring|prerequisite|depend|depends|dependent|need|needs|needed|necessary|cannot|without)\b|\bonly[- ]after\b|\bprior[- ]to\b|\bhas[- ]to\b|\bpresent[- ]for\b`)
-)
-
-func retainsRetiredRuntimeAssurance(text string) bool {
-	if standalonePiToken.MatchString(text) {
-		return true
+func readRepositoryFile(t *testing.T, path string) string {
+	t.Helper()
+	body, err := os.ReadFile(filepath.Join(repoRootDir(t), filepath.FromSlash(path)))
+	if err != nil {
+		t.Fatalf("read %s: %v", path, err)
 	}
-	for _, paragraph := range strings.Split(text, "\n\n") {
-		if runtimeAuthorityTerm.MatchString(paragraph) && assuranceTerm.MatchString(paragraph) {
-			return true
-		}
-	}
-	return false
-}
-
-func presentsHarnessPackagePrerequisite(text string) bool {
-	for _, paragraph := range strings.Split(text, "\n\n") {
-		normalized := strings.ToLower(strings.Join(strings.Fields(paragraph), " "))
-		if !containsAny(normalized, []string{"agentic-skills", "pi-tools"}) {
-			continue
-		}
-		namesBinaryOperation := binaryOperationTerm.MatchString(normalized)
-		namesPrerequisite := prerequisiteTerm.MatchString(normalized)
-		if namesBinaryOperation && namesPrerequisite {
-			return true
-		}
-	}
-	return false
-}
-
-func containsAny(text string, fragments []string) bool {
-	for _, fragment := range fragments {
-		if strings.Contains(text, fragment) {
-			return true
-		}
-	}
-	return false
+	return string(body)
 }
 
 func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
-	read := func(path string) string {
-		t.Helper()
-		body, err := os.ReadFile(filepath.Join(repoRootDir(t), path))
-		if err != nil {
-			t.Fatalf("read %s: %v", path, err)
-		}
-		return string(body)
-	}
-
-	workflow := read("docs/workflow.md")
+	workflow := readRepositoryFile(t, "docs/workflow.md")
 	for _, want := range []string{
 		"optional client-side preflight",
 		"These checks do not gate remote updates by themselves.",
@@ -88,7 +46,7 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 		}
 	}
 
-	releasing := read("docs/releasing.md")
+	releasing := readRepositoryFile(t, "docs/releasing.md")
 	for _, want := range []string{
 		"Local hooks are optional preflight.",
 		"wait for that commit's `CI / gate` check to succeed",
@@ -103,7 +61,7 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 		}
 	}
 
-	testingGuide := read("docs/testing.md")
+	testingGuide := readRepositoryFile(t, "docs/testing.md")
 	for _, want := range []string{
 		"Coverage percentages may be reported by external services but are informational.",
 		"aggregate `CI / gate` job is the definitive repository verdict",
@@ -117,222 +75,164 @@ func TestSelfHostedRemotePolicyDocumentation(t *testing.T) {
 	}
 }
 
-func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
+func TestActiveAuthorityExcludesRetiredExecutableSurfaces(t *testing.T) {
 	root := repoRootDir(t)
-	ciAndReleaseAuthorityPaths := []string{
-		".awf/parts/workflow/ci.md",
-		".awf/topics/parts/tooling/quality-gates/current-state.md",
-		".awf/docs/parts/releasing/content.md",
-		"docs/workflow.md",
-		"docs/topics/tooling/quality-gates.md",
-		"docs/releasing.md",
-	}
-	paths := []string{
-		".awf/parts/workflow/ci.md",
-		".awf/topics/parts/tooling/quality-gates/current-state.md",
-		".awf/topics/parts/code-design/test-design/current-state.md",
-		".awf/topics/parts/code-design/package-composition/current-state.md",
-		".awf/domains/parts/rendering/current-state.md",
-		".awf/docs/parts/releasing/content.md",
-		".awf/docs/parts/testing/tiers.md",
-		".awf/agents-doc.yaml",
-		"docs/workflow.md",
-		"docs/topics/tooling/quality-gates.md",
-		"docs/topics/code-design/test-design.md",
-		"docs/topics/code-design/package-composition.md",
-		"docs/domains/rendering.md",
-		"docs/releasing.md",
-		"docs/testing.md",
-		"AGENTS.md",
-	}
-	banned := []string{
-		"typed Pi",
-		"TypeScript lane",
-		"Maintainable Code Design guide",
-		"Pi host lane",
-		"interactive Pi smoke",
-		"applicable Pi",
-		"Go and Pi behavior",
-		"Go and Pi test suites",
-	}
-	for _, path := range paths {
-		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
-		if err != nil {
-			t.Fatalf("read %s: %v", path, err)
-		}
-		text := string(body)
-		for _, phrase := range banned {
-			if strings.Contains(text, phrase) {
-				t.Errorf("active authority %s retains retired workflow surface %q", path, phrase)
-			}
+	for _, path := range []string{
+		".nvmrc",
+		".pi/extensions/awf-subagents",
+		"templates/pi/awf-subagents",
+		"tools/pi-extension-test",
+	} {
+		if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(path))); !os.IsNotExist(err) {
+			t.Errorf("retired executable surface %s remains: %v", path, err)
 		}
 	}
 
-	const closedLaneInventory = "The closed CI lane inventory is `go`, `platform-sensitive`, `release-archive`, and `render-template`."
-	for _, path := range ciAndReleaseAuthorityPaths {
-		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
-		if err != nil {
-			t.Fatalf("read %s: %v", path, err)
-		}
-		if retainsRetiredRuntimeAssurance(string(body)) {
-			t.Errorf("CI and release authority %s retains a retired harness/runtime assurance claim", path)
-		}
-		if !strings.Contains(string(body), closedLaneInventory) {
-			t.Errorf("CI and release authority %s does not name the exact closed lane inventory %q", path, closedLaneInventory)
-		}
-	}
-
-	contracts := []struct {
-		name  string
-		text  string
-		paths []string
-	}{
-		{
-			name: "quality-gate lane selection",
-			text: "select applicable lanes from one typed JSON v2 result",
-			paths: []string{
-				".awf/topics/parts/tooling/quality-gates/current-state.md",
-				"docs/topics/tooling/quality-gates.md",
-			},
-		},
-		{
-			name: "workflow lane selection",
-			text: "consumes one typed JSON v2 selection",
-			paths: []string{
-				".awf/parts/workflow/ci.md",
-				"docs/workflow.md",
-			},
-		},
-		{
-			name: "release local test scope",
-			text: "skips the complete Go test suite locally while versioncheck and every static gate still run",
-			paths: []string{
-				".awf/docs/parts/releasing/content.md",
-				"docs/releasing.md",
-			},
-		},
-	}
-	for _, contract := range contracts {
-		for _, path := range contract.paths {
-			body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
-			if err != nil {
-				t.Fatalf("read %s: %v", path, err)
-			}
-			if !strings.Contains(string(body), contract.text) {
-				t.Errorf("%s authority %s does not contain %q", contract.name, path, contract.text)
+	for _, path := range []string{
+		".github/workflows/ci.yml",
+		".github/workflows/release.yml",
+		"test-selection.json",
+		"x",
+	} {
+		text := readRepositoryFile(t, path)
+		for _, retired := range []string{
+			"pi-runtime",
+			"pi_runtime",
+			"./x pi-test",
+			"tools/pi-extension-test/",
+			".pi/extensions/awf-subagents/",
+		} {
+			if strings.Contains(text, retired) {
+				t.Errorf("executable authority %s retains %q", path, retired)
 			}
 		}
-	}
-
-	workflow, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
-	const workflowInventoryContract = `[.lanes[].name] == ["go", "platform-sensitive", "release-archive", "render-template"]`
-	if !strings.Contains(string(workflow), workflowInventoryContract) {
-		t.Errorf("CI selection consumer does not enforce the lane inventory paired with active authority: %s", workflowInventoryContract)
 	}
 }
 
-func TestRetiredRuntimeAssuranceDetection(t *testing.T) {
-	for _, test := range []struct {
-		name string
-		text string
-		want bool
-	}{
-		{name: "pi lane", text: "Select the applicable Pi validation lane.", want: true},
-		{name: "typescript assurance", text: "Run the TypeScript harness assurance lane.", want: true},
-		{name: "javascript smoke", text: "Hosted JavaScript agent-runtime smoke tests run here.", want: true},
-		{name: "javascript validation", text: "Run JavaScript validation checks in the release job.", want: true},
-		{name: "harness verification", text: "The harness verification job covers the agent host.", want: true},
-		{name: "ts runtime", text: "Hosted TS checks provide runtime validation.", want: true},
-		{name: "node suite", text: "The Node.js behavior suite runs in CI.", want: true},
-		{name: "runtime verification", text: "Runtime verification jobs run in CI.", want: true},
-		{name: "runtime behavior", text: "The runtime behavior suite is hosted.", want: true},
-		{name: "closed inventory", text: "The closed CI lane inventory is go, platform-sensitive, release-archive, and render-template.", want: false},
-	} {
-		t.Run(test.name, func(t *testing.T) {
-			if got := retainsRetiredRuntimeAssurance(test.text); got != test.want {
-				t.Fatalf("retainsRetiredRuntimeAssurance(%q) = %v, want %v", test.text, got, test.want)
-			}
-		})
+func TestCanonicalTestingLaneAuthority(t *testing.T) {
+	var policy struct {
+		Lanes []struct {
+			Name string `json:"name"`
+		} `json:"lanes"`
 	}
+	if err := json.Unmarshal([]byte(readRepositoryFile(t, "test-selection.json")), &policy); err != nil {
+		t.Fatal(err)
+	}
+	got := make([]string, 0, len(policy.Lanes))
+	for _, lane := range policy.Lanes {
+		got = append(got, lane.Name)
+	}
+	sort.Strings(got)
+	want := []string{"go", "platform-sensitive", "release-archive", "render-template"}
+	if !reflect.DeepEqual(got, want) {
+		t.Fatalf("selection policy lanes = %v, want %v", got, want)
+	}
+
+	workflow := readRepositoryFile(t, ".github/workflows/ci.yml")
+	workflowInventory := `[.lanes[].name] == ["` + strings.Join(want, `", "`) + `"]`
+	if !strings.Contains(workflow, workflowInventory) {
+		t.Errorf("CI workflow does not enforce selector lane inventory %q", workflowInventory)
+	}
+
+	pairs := []struct {
+		source    string
+		generated string
+	}{
+		{source: ".awf/parts/workflow/ci.md", generated: "docs/workflow.md"},
+		{source: ".awf/topics/parts/tooling/quality-gates/current-state.md", generated: "docs/topics/tooling/quality-gates.md"},
+		{source: ".awf/docs/parts/releasing/content.md", generated: "docs/releasing.md"},
+		{source: ".awf/docs/parts/testing/gate.md", generated: "docs/testing.md"},
+		{source: ".awf/docs/parts/testing/tiers.md", generated: "docs/testing.md"},
+	}
+	for _, pair := range pairs {
+		source := strings.TrimSpace(readRepositoryFile(t, pair.source))
+		generated := readRepositoryFile(t, pair.generated)
+		if !strings.Contains(generated, source) {
+			t.Errorf("generated authority %s does not contain authored source %s verbatim", pair.generated, pair.source)
+		}
+	}
+
+	gate := readRepositoryFile(t, ".awf/docs/parts/testing/gate.md")
+	for _, lane := range want {
+		if !strings.Contains(gate, "`"+lane+"`") {
+			t.Errorf("testing gate authority omits selector lane %q", lane)
+		}
+	}
+	if lanes := markdownLaneTable(readRepositoryFile(t, ".awf/docs/parts/testing/tiers.md")); !reflect.DeepEqual(lanes, want) {
+		t.Errorf("authored testing lane table = %v, want %v", lanes, want)
+	}
+	generatedTiers := markdownSection(readRepositoryFile(t, "docs/testing.md"), "## Tiers and lanes")
+	if lanes := markdownLaneTable(generatedTiers); !reflect.DeepEqual(lanes, want) {
+		t.Errorf("generated testing lane table = %v, want %v", lanes, want)
+	}
+}
+
+func markdownSection(text, heading string) string {
+	start := strings.Index(text, heading)
+	if start < 0 {
+		return ""
+	}
+	section := text[start+len(heading):]
+	if end := strings.Index(section, "\n## "); end >= 0 {
+		section = section[:end]
+	}
+	return section
+}
+
+func markdownLaneTable(text string) []string {
+	var lanes []string
+	for _, line := range strings.Split(text, "\n") {
+		cells := strings.Split(line, "|")
+		if len(cells) < 4 {
+			continue
+		}
+		name := strings.Trim(strings.TrimSpace(cells[1]), "`")
+		if name == "" || name == "Lane" || strings.Trim(name, "-") == "" {
+			continue
+		}
+		lanes = append(lanes, name)
+	}
+	return lanes
 }
 
 func TestReadmeScopesHarnessPackagesAsOptional(t *testing.T) {
-	readme, err := os.ReadFile(filepath.Join(repoRootDir(t), "README.md"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	readme := readRepositoryFile(t, "README.md")
 	for _, optionalHarnessInstall := range []string{
 		"For Claude Code harness use, optionally install `agentic-skills` to add its generic skills and roles:",
 		"For Pi harness use, optionally install [`pi-tools`](https://github.com/hypnotox/pi-tools) first, then `agentic-skills`:",
 	} {
-		if !strings.Contains(string(readme), optionalHarnessInstall) {
+		if !strings.Contains(readme, optionalHarnessInstall) {
 			t.Errorf("README does not scope harness package installation to optional harness use: %q", optionalHarnessInstall)
 		}
 	}
-	const offlineWithoutHarnessPackages = "binary remains offline and functional when those optional operator-managed capabilities are absent."
-	if !strings.Contains(string(readme), offlineWithoutHarnessPackages) {
-		t.Errorf("README does not preserve AWF's package-independent binary contract: %q", offlineWithoutHarnessPackages)
+	if !strings.Contains(readme, "binary remains offline and functional when those optional operator-managed capabilities are absent.") {
+		t.Error("README does not preserve AWF's package-independent binary contract")
 	}
-
-	if presentsHarnessPackagePrerequisite(string(readme)) {
-		t.Error("README presents an operator-managed harness package as an AWF init or upgrade prerequisite")
-	}
-}
-
-func TestHarnessPackagePrerequisiteDetection(t *testing.T) {
-	for _, test := range []struct {
-		name string
-		text string
-		want bool
-	}{
-		{name: "before initialization", text: "Install agentic-skills before initializing AWF.", want: true},
-		{name: "depends on", text: "AWF initialization depends on agentic-skills.", want: true},
-		{name: "only after", text: "Upgrade AWF only after installing pi-tools.", want: true},
-		{name: "needed", text: "agentic-skills is needed to initialize AWF.", want: true},
-		{name: "prior to", text: "Install pi-tools prior to an AWF upgrade.", want: true},
-		{name: "cannot without", text: "AWF cannot be initialized without agentic-skills.", want: true},
-		{name: "has to", text: "pi-tools has to be present for awf init.", want: true},
-		{name: "depends upon setup", text: "AWF setup depends upon agentic-skills.", want: true},
-		{name: "bootstrap requires", text: "Bootstrapping AWF requires pi-tools.", want: true},
-		{name: "sentence-leading init", text: "Init requires agentic-skills.", want: true},
-		{name: "hyphenated only after", text: "Upgrade AWF only-after installing pi-tools.", want: true},
-		{name: "hyphenated prior to", text: "Install agentic-skills prior-to initialization.", want: true},
-		{name: "hyphenated has to", text: "pi-tools has-to be present for setup.", want: true},
-		{name: "hyphenated present for", text: "agentic-skills must be present-for bootstrap.", want: true},
-		{name: "optional", text: "For Pi harness use, optionally install pi-tools and agentic-skills.", want: false},
+	for _, stale := range []string{
+		"For Claude Code, install `agentic-skills` before initializing or upgrading AWF:",
+		"For Pi, install [`pi-tools`](https://github.com/hypnotox/pi-tools) first, then `agentic-skills`:",
 	} {
-		t.Run(test.name, func(t *testing.T) {
-			if got := presentsHarnessPackagePrerequisite(test.text); got != test.want {
-				t.Fatalf("presentsHarnessPackagePrerequisite(%q) = %v, want %v", test.text, got, test.want)
-			}
-		})
+		if strings.Contains(readme, stale) {
+			t.Errorf("README retains stale prerequisite wording %q", stale)
+		}
 	}
 }
 
 func TestReleaseProvidesRestrictedRootlessExtraction(t *testing.T) {
-	release, err := os.ReadFile(filepath.Join(repoRootDir(t), ".github/workflows/release.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	release := readRepositoryFile(t, ".github/workflows/release.yml")
 	for _, want := range []string{
 		"kernel.apparmor_restrict_unprivileged_userns",
 		"unshare --user --map-root-user true",
 		"go run ./cmd/releasecheck --verify-archives dist",
 	} {
-		if !strings.Contains(string(release), want) {
+		if !strings.Contains(release, want) {
 			t.Errorf("release verification does not provide %q", want)
 		}
 	}
 
-	ci, err := os.ReadFile(filepath.Join(repoRootDir(t), ".github/workflows/ci.yml"))
-	if err != nil {
-		t.Fatal(err)
-	}
+	ci := readRepositoryFile(t, ".github/workflows/ci.yml")
 	for _, stale := range []string{"release-config", "goreleaser/goreleaser-action", "go run ./cmd/releasecheck --verify-archives"} {
-		if strings.Contains(string(ci), stale) {
+		if strings.Contains(ci, stale) {
 			t.Errorf("CI retains release-only assurance %q", stale)
 		}
 	}

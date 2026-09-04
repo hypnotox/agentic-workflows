@@ -511,8 +511,8 @@
     "docs/testing.md": {
       "templateId": "docs/testing.md.tmpl",
       "templateHash": "sha256:777f41a24fd504e59c0ce9ef2cb4687734c5a88dadcc78ad2ed9eb7a5bc453bf",
-      "configHash": "sha256:bf670877bbcd4d14439d69e07f435002511437efa08bdc3e31d9f33ac9d12dad",
-      "outputHash": "sha256:4eb14a38c72d64161a697548690084db1fc7d3e3b9d23822adb01d0fdd703f36",
+      "configHash": "sha256:1528c7cd309a0368e68508decc269ec5a5c3175d1889eb0ac7c7047752651b39",
+      "outputHash": "sha256:f743fe298e2bbbc282d5037be2c3c29935a1bd59c5de500ee1a3ce8733f27477",
       "mode": 420
     },
     "docs/topics/code-design/dependency-composition.md": {
