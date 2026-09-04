@@ -101,13 +101,26 @@ func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
 		}
 	}
 
-	qualitySource, err := os.ReadFile(filepath.Join(root, ".awf", "topics", "parts", "tooling", "quality-gates", "current-state.md"))
+	const laneContract = "select applicable render, platform-sensitive, and release-archive lanes from one typed JSON v2 result"
+	for _, path := range []string{
+		".awf/topics/parts/tooling/quality-gates/current-state.md",
+		"docs/topics/tooling/quality-gates.md",
+	} {
+		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		if !strings.Contains(string(body), laneContract) {
+			t.Errorf("quality-gate authority %s does not name the live typed lane contract %q", path, laneContract)
+		}
+	}
+	workflow, err := os.ReadFile(filepath.Join(root, ".github", "workflows", "ci.yml"))
 	if err != nil {
 		t.Fatal(err)
 	}
-	const laneContract = "select applicable render, platform-sensitive, and release-archive lanes from one typed JSON v2 result"
-	if !strings.Contains(string(qualitySource), laneContract) {
-		t.Errorf("quality-gate authority does not name the live typed lane contract %q", laneContract)
+	const workflowLaneContract = `[.lanes[].name] == ["go", "platform-sensitive", "release-archive", "render-template"]`
+	if !strings.Contains(string(workflow), workflowLaneContract) {
+		t.Errorf("CI selection consumer does not enforce the lane inventory paired with active authority: %s", workflowLaneContract)
 	}
 }
 
