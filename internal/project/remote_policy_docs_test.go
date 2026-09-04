@@ -3,6 +3,7 @@ package project
 import (
 	"os"
 	"path/filepath"
+	"regexp"
 	"strings"
 	"testing"
 )
@@ -107,10 +108,29 @@ func TestActiveAuthorityExcludesRetiredWorkflowSurfaces(t *testing.T) {
 		if err != nil {
 			t.Fatalf("read %s: %v", path, err)
 		}
+		text := string(body)
 		for _, phrase := range banned {
-			if strings.Contains(string(body), phrase) {
+			if strings.Contains(text, phrase) {
 				t.Errorf("active authority %s retains retired workflow surface %q", path, phrase)
 			}
+		}
+	}
+
+	piToken := regexp.MustCompile(`(?i)\bpi\b`)
+	for _, path := range []string{
+		".awf/parts/workflow/ci.md",
+		".awf/topics/parts/tooling/quality-gates/current-state.md",
+		".awf/docs/parts/releasing/content.md",
+		"docs/workflow.md",
+		"docs/topics/tooling/quality-gates.md",
+		"docs/releasing.md",
+	} {
+		body, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(path)))
+		if err != nil {
+			t.Fatalf("read %s: %v", path, err)
+		}
+		if piToken.Match(body) {
+			t.Errorf("CI and release authority %s retains a Pi lane or test reference", path)
 		}
 	}
 
@@ -179,8 +199,23 @@ func TestReadmeScopesHarnessPackagesAsOptional(t *testing.T) {
 			t.Errorf("README does not scope harness package installation to optional harness use: %q", optionalHarnessInstall)
 		}
 	}
-	if strings.Contains(string(readme), "before initializing or upgrading AWF") {
-		t.Error("README still presents agentic-skills as an AWF init or upgrade prerequisite")
+	const offlineWithoutHarnessPackages = "binary remains offline and functional when those optional operator-managed capabilities are absent."
+	if !strings.Contains(string(readme), offlineWithoutHarnessPackages) {
+		t.Errorf("README does not preserve AWF's package-independent binary contract: %q", offlineWithoutHarnessPackages)
+	}
+
+	for _, paragraph := range strings.Split(string(readme), "\n\n") {
+		normalized := strings.ToLower(strings.Join(strings.Fields(paragraph), " "))
+		for _, packageName := range []string{"agentic-skills", "pi-tools"} {
+			if !strings.Contains(normalized, packageName) {
+				continue
+			}
+			namesBinaryOperation := strings.Contains(normalized, " init") || strings.Contains(normalized, "initializ") || strings.Contains(normalized, "upgrad")
+			namesPrerequisite := strings.Contains(normalized, "before") || strings.Contains(normalized, "must") || strings.Contains(normalized, "requir") || strings.Contains(normalized, "prerequisite")
+			if namesBinaryOperation && namesPrerequisite {
+				t.Errorf("README presents %s with AWF init/upgrade prerequisite semantics: %q", packageName, normalized)
+			}
+		}
 	}
 }
 
