@@ -29,6 +29,8 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 		"## Commands",
 		"## Document map",
 		"Route settled content by authority lifetime",
+		"use `agentic-code-design` only for structural questions raised by agreed behavior",
+		"Generic plans remain interaction-local by default; only deliberately effort-backed operational plans enter effort scratch.",
 		"Preserve the approved design boundary",
 		"make gate",
 		"Treat exposed native-skill descriptions as routing metadata.",
@@ -49,6 +51,26 @@ func TestAgentsDocNativeSkillRouter(t *testing.T) {
 	}
 	if got := strings.Count(out, "Stage the complete transaction"); got != 1 {
 		t.Errorf("guide must carry exactly one concise gate rule, got %d:\n%s", got, out)
+	}
+}
+
+// invariant: rendering/guide-and-doc-templates:guide-entry-point-routing (TestRenderedWorkflowIndependentRouting)
+func TestRenderedWorkflowIndependentRouting(t *testing.T) {
+	body, err := os.ReadFile("../../docs/workflow.md")
+	if err != nil {
+		t.Fatal(err)
+	}
+	workflow := string(body)
+	for _, phrase := range []string{
+		"| Debugging | Unexpected behavior has an unknown cause. |",
+		"| Code design | Agreed behavior raises a structural question. |",
+		"| Implementation | The outcome and protected contract are settled. |",
+		"Code design applies only to structural questions raised by agreed behavior",
+		"A generic plan remains interaction-local by default; only a deliberately effort-backed operational plan enters opaque effort scratch.",
+	} {
+		if !strings.Contains(workflow, phrase) {
+			t.Errorf("rendered workflow missing independent capability boundary %q", phrase)
+		}
 	}
 }
 

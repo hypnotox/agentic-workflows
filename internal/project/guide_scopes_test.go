@@ -22,6 +22,8 @@ func TestGuideRoutesNativeSkillsWithoutCatalog(t *testing.T) {
 		"Before loading a skill, identify the next concrete action.",
 		"a possible later edit, render, documentation update, review, or commit does not justify loading its skill now.",
 		"Load multiple bodies only when each independently governs that same next action before another routing decision can occur.",
+		"use `agentic-code-design` only for structural questions raised by agreed behavior",
+		"Generic plans remain interaction-local by default; only deliberately effort-backed operational plans enter effort scratch.",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("guide does not preserve progressive skill disclosure %q", want)

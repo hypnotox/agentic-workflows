@@ -32,13 +32,13 @@ var skillRefRe = regexp.MustCompile(`example-[a-z][a-z-]*[a-z]`)
 var doubleBacktickRe = regexp.MustCompile("(^|[^`])``([^`]|$)")
 
 // doubleBacktickExempt lists templates whose double-backtick spans are
-// deliberate; entries fail when stale (ADR-0080 Decision 7). No skill or agent
+// deliberate; entries fail when stale (ADR-0080 Decision 7). No AWF skill
 // template renders a double-backtick span under the current-state authority
 // model; the map stays declared so a future deliberate span registers here.
 var doubleBacktickExempt = map[string]bool{}
 
-// TestCatalogTemplatesDegradeLeakFree renders every catalog skill and agent
-// template under empty adopter data and fails on rendering leaks. The artifact
+// TestCatalogTemplatesDegradeLeakFree renders every catalog AWF skill template
+// under empty adopter data and fails on rendering leaks. The artifact
 // set derives from catalog.Standard, never a hand list.
 // invariant: rendering/templates:catalog-template-sweep (TestCatalogTemplatesDegradeLeakFree)
 func TestCatalogTemplatesDegradeLeakFree(t *testing.T) {

@@ -27,9 +27,6 @@ data:
     - term: resident-root policy
       meaning: "The deterministic behavior for resident-root paths, kinds, anchoring, collision refusal, preservation of dynamic descendants, and uninstall."
       domains: [rendering]
-    - term: trigger table
-      meaning: "The catalog-derived guide row for each skill, pairing its prefixed name with its one-line trigger."
-      domains: [rendering]
     - term: safe resumable point
       meaning: "A durable checkpoint whose immediate successor can start independently."
       domains: [rendering]
@@ -87,8 +84,6 @@ data:
     - term: invariant backing
       meaning: "The ledger-not-proof model: `Backing: test` requires a text-matched proof marker but does not prove the test asserts the claim; `Backing: unbacked` forbids a marker and requires `Verify:`."
       domains: [invariants]
-    - term: promotion ladder
-      meaning: "The retrospective rule that promotes a recurring codifiable observation to the strongest supportable form: invariant, gate or lint rule, review focus, or pitfall."
     - term: project search universe
       meaning: "Tracked and non-ignored untracked files under the repository root, excluding ignored files, `.git`, nested repositories, and external dependencies unless scoped."
     - term: prose knob
@@ -116,7 +111,7 @@ data:
       meaning: "An active effort's `.awf/efforts/<slug>/memory.md`, carrying its phase, next action, brief, decisions, observations, and handoff log. Repository authority outranks it."
       domains: [rendering]
     - term: effort scratch
-      meaning: "An optional `.awf/efforts/<slug>/scratch/` directory for disposable effort-local data, whose real-directory boundary awf validates without scaffolding or traversing descendants."
+      meaning: "An optional `.awf/efforts/<slug>/scratch/` directory for deliberately persisted operational plans and other disposable effort-local data, whose real-directory boundary awf validates without scaffolding or traversing descendants."
       domains: [tooling]
     - term: effort archive
       meaning: "The ignored machine-local `.awf/effort-archive/` root where finish preserves complete residents as `<uuid>-<slug>`. Archives are unmanaged, non-authoritative, and manually disposable."
@@ -154,18 +149,6 @@ data:
     - term: export earns its consumer
       meaning: "A new or deliberately converted exported symbol has an outside-package production consumer in the same transaction, except documented test exports, composition boundaries, and error identities."
       domains: [code-design]
-    - term: routine checkpoint
-      meaning: "The autonomous boundary that validates effort ownership, updates memory, and classifies whether user attention is required."
-      domains: [rendering]
-    - term: check-in
-      meaning: "A deliberate stop naming the issue, options, recommendation, and blocked next action for the user. It differs from a continuity notice; a mandatory approval check-in is its unconditional approval subtype."
-      domains: [rendering]
-    - term: continuity notice
-      meaning: "A routine checkpoint's informational one-line summary of the completed phase and immediate next action; it does not stop autonomous continuation."
-      domains: [rendering]
     - term: integration branch
       meaning: "The configured branch that receives completed managed-worktree efforts."
       domains: [config, tooling]
-    - term: retrospective
-      meaning: "The terminal workflow step after assurance and managed-topology removal that records durable lessons and finishes the effort last."
-      domains: [rendering]

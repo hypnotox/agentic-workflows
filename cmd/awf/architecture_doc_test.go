@@ -10,8 +10,8 @@ import (
 // docs/architecture.md: cmd/releasecheck (ADR-0078) shipped without a mention
 // and cmd/pincheck (ADR-0079) nearly did, each caught only by review. Every
 // directory under cmd/ must be named in the architecture doc; the fix path is
-// .awf/docs/parts/architecture/components.md + ./x render (2026-07-08
-// retrospective promotion).
+// .awf/docs/parts/architecture/components.md + ./x render. Review converted the
+// recurring omission into this deterministic guard on 2026-07-08.
 func TestArchitectureDocNamesEveryCmd(t *testing.T) {
 	doc, err := os.ReadFile("../../docs/architecture.md")
 	if err != nil {

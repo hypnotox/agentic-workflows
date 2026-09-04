@@ -32,7 +32,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 | [An ordering proof written against the log proves nothing](pitfalls/an-ordering-proof-written-against-the-log-proves-nothing.md) | tooling\, invariants |
 | [Enabled linters constrain API shape\, sketch signatures against them](pitfalls/enabled-linters-constrain-api-shape-sketch-signatures-against-them.md) | tooling |
 | [gofmt rewrites double backticks in doc comments into curly quotes](pitfalls/gofmt-rewrites-double-backticks-in-doc-comments-into-curly-quotes.md) | tooling |
-| [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md) | rendering |
 | [Make custom staged\-slice hooks explicit about branch and cleanup](pitfalls/make-custom-staged-slice-hooks-explicit-about-branch-and-cleanup.md) | tooling |
 | [Moving a check earlier in the pipeline steals a later stage\'s error\-branch coverage](pitfalls/moving-a-check-earlier-in-the-pipeline-steals-a-later-stage-s-error-branch-coverage.md) | tooling |
 | [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md) | rendering |
@@ -81,7 +80,6 @@ Pitfalls are durable hazards, not backlog items. Author sources under `.awf/docs
 - [A prose\-contract test proves only the clauses whose literals occur for one reason](pitfalls/a-prose-contract-test-proves-only-the-clauses-whose-literals-occur-for-one-reason.md)
 - [A token or convention rename must sweep every rendered doc surface](pitfalls/a-token-or-convention-rename-must-sweep-every-rendered-doc-surface.md)
 - [An ordered\-phrase assertion cannot reach a site ahead of its first anchor](pitfalls/an-ordered-phrase-assertion-cannot-reach-a-site-ahead-of-its-first-anchor.md)
-- [Keep recovery UI writes non\-fatal after session disposal](pitfalls/keep-recovery-ui-writes-non-fatal-after-session-disposal.md)
 - [Obsoleting rendered prose\: sweep parts and whole narratives\, not just templates](pitfalls/obsoleting-rendered-prose-sweep-parts-and-whole-narratives-not-just-templates.md)
 - [Reconcile the exact mutable artifact\, not a similarly named predecessor](pitfalls/reconcile-the-exact-mutable-artifact-not-a-similarly-named-predecessor.md)
 - [Retiring a concept needs paraphrase sweeps\, not just identifier greps](pitfalls/retiring-a-concept-needs-paraphrase-sweeps-not-just-identifier-greps.md)

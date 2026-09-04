@@ -12,13 +12,10 @@ import (
 )
 
 // TestSkillProseToolAgnostic backs the AWF skill prose boundary:
-// every rendered skill and agent body is free of runtime tool-name tokens. The
+// every rendered AWF skill body is free of runtime tool-name tokens. The
 // denylist is matched case-insensitively and word-anchored, so it does not fire
-// on the neutral "subagent" / "subagent's prompt" replacement language.
+// on neutral references to external subagent capabilities.
 // invariant: rendering/workflow-skill-templates:awf-skill-prose-tool-agnostic (TestSkillProseToolAgnostic)
-//
-// Also the tool-name half of the implementer contract's third sentence: the
-// scan covers every rendered agent body, the implementer's included.
 func TestSkillProseToolAgnostic(t *testing.T) {
 	cat := catalog.Standard
 	forbidden := []*regexp.Regexp{

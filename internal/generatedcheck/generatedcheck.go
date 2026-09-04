@@ -149,7 +149,7 @@ type skillFrontmatter struct {
 	Description string `yaml:"description"`
 }
 
-// ValidateFrontmatter validates generated skill and agent frontmatter.
+// ValidateFrontmatter validates generated skill frontmatter.
 func ValidateFrontmatter(content []byte) error {
 	var fm skillFrontmatter
 	_, found, err := frontmatter.Parse(content, &fm)

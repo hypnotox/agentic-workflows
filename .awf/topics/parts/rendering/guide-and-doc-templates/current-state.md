@@ -60,7 +60,7 @@ Backing: test
 
 ### `invariant: guide-entry-point-routing`
 
-The rendered guide treats exposed native-skill descriptions as routing metadata and selects only bodies governing the next concrete action. The one standard catalog keeps every conditional capability available without turning selection into a mutation gate. Empty and missing render data remains coherent, and selection stays advisory.
+The rendered guide and workflow document treat exposed native-skill descriptions as routing metadata and select only bodies governing the next concrete action. Capability triggers remain independent: code design applies only to structural questions raised by agreed behavior, generic plans remain interaction-local by default, and only deliberately effort-backed operational plans enter effort scratch. The fixed AWF skill catalog keeps its repository-specific capabilities available without turning selection into a mutation gate. Empty and missing render data remains coherent, and selection stays advisory.
 Backing: test
 
 ### `invariant: working-memory-single-home`

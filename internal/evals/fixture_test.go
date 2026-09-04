@@ -20,10 +20,9 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/testsupport"
 )
 
-// evalPrefix is the skill-name prefix the golden-task fixture renders under.
-// Rendered skill dirs are ".claude/skills/<evalPrefix>-<name>/SKILL.md"; agents
-// are unprefixed at ".claude/agents/<name>.md".
-const evalPrefix = "example"
+// evalProjectPrefix supplies project identity to the golden-task fixture. The
+// fixed AWF skill names are independent of it.
+const evalProjectPrefix = "example"
 
 var (
 	evalSeedMu sync.Mutex
@@ -112,7 +111,7 @@ func sortedKeys[V any](m map[string]V) []string {
 // The target argument remains at this test seam so callers can select which of
 // the two unconditionally rendered outputs they inspect.
 func fullCatalogConfigForTarget(_ *catalog.Catalog, _ string) string {
-	return "prefix: " + evalPrefix + "\nintegrationBranch: main\nvars:\n  gateCmd: the project's gate\n"
+	return "prefix: " + evalProjectPrefix + "\nintegrationBranch: main\nvars:\n  gateCmd: the project's gate\n"
 }
 
 // cloneFullCatalog gives a test an isolated copy of the full-catalog Claude seed.
@@ -198,9 +197,9 @@ func syncStandardFootprint(t *testing.T, _ string) string {
 	return cloneFullCatalog(t, loadCatalog(t))
 }
 
-// TestFullCatalogCoverage proves the full-catalog fixture renders an artifact
-// for every catalog skill, so no catalog artifact is silently dropped. This is
-// the guard that keeps the eval suite exhaustive as the catalog grows.
+// TestFullCatalogCoverage proves the full-catalog fixture renders every AWF
+// skill and document, so no catalog artifact is silently dropped. This guard
+// keeps the eval suite exhaustive as the catalog grows.
 //
 // invariant: tooling/evaluations:evals-full-catalog-coverage (TestFullCatalogCoverage)
 // invariant: tooling/test-infrastructure:immutable-fixture-seeds (TestEvalFullCatalogSeedClonesAreIsolated)
@@ -241,7 +240,7 @@ func TestFullCatalogCoverage(t *testing.T) {
 			for _, s := range sortedKeys(cat.Skills) {
 				path := filepath.Join(root, filepath.FromSlash(target.SkillPath(s)))
 				if _, err := os.Stat(path); err != nil {
-					t.Errorf("%s catalog skill %q not rendered: %v", target.Name, s, err)
+					t.Errorf("%s AWF skill %q not rendered: %v", target.Name, s, err)
 				}
 			}
 			for name, entry := range cat.Docs {

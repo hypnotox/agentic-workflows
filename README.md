@@ -12,8 +12,8 @@ check` detects drift.
 ## Highlights
 
 - One standard governance footprint with durable repository truth and risk-based routing
-- A workflow from clarification through implementation, review, and retrospective
-- Durable decisions for load-bearing choices and effort-local operational plans when sequencing or coordination helps
+- Independent capability triggers for decisions, context, planning, implementation, and review
+- Durable decisions for load-bearing choices and deliberately effort-backed operational plans when continuity helps
 - Four fixed AWF skills: `awf-effort`, `awf-topics`, `awf-decisions`, and `awf-maintenance`
 - Operator-installed generic skills and roles from `agentic-skills`
 - CodeGraph for structural source discovery, architecture, callers, dependencies, and impact analysis; Git for changed-path selection
@@ -104,26 +104,23 @@ collision. `awf init --force` first saves each replaced file as `<path>.awf-bak`
 The standard footprint includes only AWF-specific effort, current-state topic, durable-decision,
 and maintenance skills plus governed documentation, checks, and managed worktrees. Generic
 brainstorming, context, debugging, code design, planning, implementation, review, and role prompts
-come from `agentic-skills`. An optional operational plan is unparsed effort scratch, not permanent
-project authority.
+come from `agentic-skills`.
 
-```mermaid
-flowchart LR
-    I([intake]) --> B{clarify?}
-    B -->|yes| BR[brainstorm]
-    B -->|no| D{durable decision?}
-    BR --> D
-    D -->|yes| A[record the decision]
-    D -->|no| P{operational plan useful?}
-    A --> P
-    P -->|yes| PL[write effort scratch plan]
-    P -->|no| X[implement]
-    PL --> X
-    X --> R[review when warranted]
-    R --> T([retrospective])
-```
+| Capability | Independent trigger | Boundary |
+|---|---|---|
+| Brainstorming | A material choice needs resolution. | Stops only while that choice remains unresolved. |
+| Context | Orientation, exploration, or premise challenge adds value. | Produces evidence, not project authority. |
+| Debugging | Unexpected behavior has an unknown cause. | Establishes an oracle and root cause before correction. |
+| Code design | Agreed behavior raises a structural question. | Preserves the agreed outcome while resolving ownership or dependency shape. |
+| Planning | Sequencing, coordination, or resumability materially helps. | Remains interaction-local by default; only a deliberately effort-backed operational plan enters effort scratch. |
+| Decision record | An accepted load-bearing choice should outlive implementation. | Records rationale, not current state or implementation choreography. |
+| Effort | Durable continuity materially helps. | Owns optional repository-local memory and managed topology. |
+| Implementation | The outcome and protected contract are settled. | Executes and verifies without reopening settled choices. |
+| Review | Material risk or uncertainty warrants independent assurance. | Reports findings without owning implementation. |
 
-See [the workflow guide](docs/workflow.md) for the full decision criteria.
+Evaluate these triggers independently at intake and again when relevant facts change. No capability
+is an automatic predecessor or successor of another. See [the workflow guide](docs/workflow.md) for
+the full boundaries.
 
 ## Commands
 

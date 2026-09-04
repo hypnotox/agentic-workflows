@@ -27,6 +27,10 @@ func validatePublicationArtifact(content []byte) error {
 	return generatedcheck.ValidateFrontmatter(content)
 }
 
+func invalidSkillArtifact(path string, err error) error {
+	return fmt.Errorf("invalid skill artifact in %s: %w", path, err)
+}
+
 // Backup records a foreign file preserved before sync overwrote its path.
 type Backup struct {
 	Path  string // project-relative file that was overwritten
@@ -326,7 +330,7 @@ func syncReportWithPlan(p renderInputs, seed *InitAuthority, filesystems syncFil
 	for _, f := range files {
 		if f.Policy().ValidateFrontmatter {
 			if err := validatePublicationArtifact([]byte(f.Content())); err != nil {
-				return nil, nil, nil, nil, fmt.Errorf("invalid agent artifact in %s: %w", f.Path(), err)
+				return nil, nil, nil, nil, invalidSkillArtifact(f.Path(), err)
 			}
 		}
 	}

@@ -24,7 +24,7 @@ Backing: test
 
 ### `invariant: check-invalid-frontmatter`
 
-awf check reports an invalid-frontmatter drift entry for an on-disk skill or agent file that is otherwise in sync but whose frontmatter is missing, unparseable, or has an empty name or description; a clean synced tree reports no such entry, and at most one drift entry is reported per path.
+awf check reports an invalid-frontmatter drift entry for an on-disk managed skill file that is otherwise in sync but whose frontmatter is missing, unparseable, or has an empty name or description; a clean synced tree reports no such entry, and at most one drift entry is reported per path.
 Backing: test
 
 ### `invariant: closed-config-tree`
@@ -57,9 +57,9 @@ Backing: test
 The files excluded from the frozen-output-hash comparison are exactly those a first-class RegenChecked attribute marks on the rendered-file model; the config reference and domain docs carry it, as does every file containing an in-place-editable section, replacing the former hardcoded path list.
 Backing: test
 
-### `invariant: residue-exemptions-pinned-three`
+### `invariant: residue-exemptions-pinned-membership`
 
-The identity-exemption list for the rendered-output residue scan contains exactly three entries: the bootstrap template, the upgrade-script template, and the agents-doc template; extending it requires a successor decision.
+The rendered-output residue scan's identity-exemption list contains only the bootstrap template, upgrade-script template, agents-doc template, and Pi runtime reference template; changing that exact membership requires a successor decision.
 Backing: test
 
 ### `invariant: scopes-in-confighash`

@@ -31,6 +31,8 @@ var Standard = &Catalog{
 		// A project term of the same case-insensitive name overrides one.
 		"glossary": {Title: "Glossary", Desc: "project jargon and the awf vocabulary it ships", Sections: []string{"prepend", "append"}, TID: "docs/glossary.md.tmpl", Data: map[string]any{
 			"standardTerms": []any{
+				map[string]any{"term": "agentic skill", "meaning": "An operator-installed generic `agentic-*` capability. AWF references these external skills but does not install, probe, configure, or rename them."},
+				map[string]any{"term": "AWF skill", "meaning": "One of the four fixed repository-local skills: `awf-effort`, `awf-topics`, `awf-decisions`, or `awf-maintenance`. Project prefixes do not rename them."},
 				map[string]any{"term": "effort", "meaning": "One active slugged unit of continuity, owning a working-memory file when multi-step work, likely continuation, coordination, delegation, or durable observations make continuity materially useful. Work without that need uses none."},
 				map[string]any{"term": "managed effort worktree", "meaning": "The checkout an effort creates alongside itself, on its own branch, as the default place its work executes. Integrated and removed explicitly when the effort finishes."},
 				map[string]any{"term": "working memory", "meaning": "The file an effort owns for in-flight context: its brief, settled decisions, observations, and handoff log. One writer; finish archives the complete resident, and nothing others must honour lives there alone."},
@@ -40,12 +42,6 @@ var Standard = &Catalog{
 				map[string]any{"term": "drift", "meaning": "Divergence between a generated file and what the config would produce now, or between a declaration and reality. The check command is the oracle, and drift fails it."},
 				map[string]any{"term": "resident root", "meaning": "A directory inside the config tree holding local machine-owned state rather than rendered output, so the closed-tree sweep leaves it alone instead of reporting it as a stray."},
 				map[string]any{"term": "stub", "meaning": "A rendered section still carrying only its placeholder text. Stubs raise a non-failing advisory so unwritten content stays visible instead of passing as authored."},
-				map[string]any{"term": "check-in", "meaning": "A deliberate stop for user attention: it names the issue, the options, a recommendation, and the blocked next action, then waits."},
-				map[string]any{"term": "mandatory approval check-in", "meaning": "The pre-artifact stop for explicit brainstorming outline approval when a material decision is unresolved. Effort creation is not an approval boundary."},
-				map[string]any{"term": "routine checkpoint", "meaning": "The boundary protocol between phases: update working memory, decide whether user attention is required, then either raise a check-in or state a continuity notice and continue."},
-				map[string]any{"term": "continuity notice", "meaning": "The routine checkpoint's one-line summary on the clear branch, naming the completed phase and the immediate next action. Informational, never a stop."},
-				map[string]any{"term": "retrospective", "meaning": "The terminal step of an effort: capture durable lessons, confirm no managed topology remains, and finish the effort last."},
-				map[string]any{"term": "promotion ladder", "meaning": "The path a recurring finding takes from prose guidance toward a deterministic check, so a lesson stops depending on anyone remembering it."},
 			},
 		}},
 		"roadmap": {Title: "Roadmap", Desc: "uncommitted ideas and future phases", Sections: []string{"ideas", "deferred"}, TID: "docs/roadmap.md.tmpl"},

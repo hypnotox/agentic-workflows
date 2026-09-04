@@ -1,6 +1,7 @@
 package publisher
 
 import (
+	"errors"
 	"strings"
 	"testing"
 )
@@ -31,6 +32,17 @@ func TestResultDefensivelyProjectsCommittedMutations(t *testing.T) {
 	}
 	if got := result.Pruned()[0]; got != "three" {
 		t.Fatalf("prune projection mutated Result: %q", got)
+	}
+}
+
+func TestInvalidSkillArtifactDiagnostic(t *testing.T) {
+	cause := errors.New("missing frontmatter")
+	err := invalidSkillArtifact(".pi/skills/awf-effort/SKILL.md", cause)
+	if got, want := err.Error(), "invalid skill artifact in .pi/skills/awf-effort/SKILL.md: missing frontmatter"; got != want {
+		t.Fatalf("diagnostic = %q, want %q", got, want)
+	}
+	if !errors.Is(err, cause) {
+		t.Fatal("diagnostic does not retain cause")
 	}
 }
 

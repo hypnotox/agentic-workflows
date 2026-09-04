@@ -14,7 +14,7 @@ Use `agentic-brainstorming` to resolve a material choice. Use this skill only wh
 <!-- awf:template-source templates/skills/awf-decisions/SKILL.md.tmpl -->
 ## Format
 
-Create plain dated-slug Markdown using only:
+Create `docs/decisions/YYYY-MM-DD-<slug>.md` as plain Markdown using only:
 
 ```markdown
 # <date> <slug>

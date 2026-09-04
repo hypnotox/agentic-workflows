@@ -5,15 +5,15 @@
 
 The embedded template source and its rendered content contracts.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf read topic rendering/templates --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf read topic rendering/templates --coverage` for current applicable and owned paths and marker sites.
 
-The templates tree holds the embedded skill, agent, doc, and adapter template source. The claims below capture the current template-content contracts.
+The templates tree holds embedded AWF skill, document, script, and project-artifact template source. The claims below capture the current template-content contracts.
 
 ## Claims
 
 ### `invariant: catalog-template-sweep`
 
-A catalog-derived loop renders every standard skill and agent template under empty data - iterating the catalog itself rather than a hand-maintained list - and fails on any leak residue or any skill cross-reference in the output that the artifact has not declared.
+A catalog-derived loop renders every standard AWF skill template under empty data - iterating the catalog itself rather than a hand-maintained list - and fails on any leak residue or undeclared skill cross-reference in the output.
 Backing: test
 
 ### `invariant: commit-scope-single-storage`
@@ -23,7 +23,7 @@ Backing: test
 
 ### `invariant: conditional-fallback-case-guard`
 
-Every standard skill or agent template whose post-include-expansion source contains a conditional action - if, with, or range - must have a hand-authored unset-data case in the fallback case list, and the guard names any template missing one.
+Every standard AWF skill template whose post-include-expansion source contains a conditional action - if, with, or range - must have a hand-authored unset-data case in the fallback case list, and the guard names any template missing one.
 Backing: test
 
 ### `invariant: singleton-conditional-key-live`
@@ -45,7 +45,7 @@ Backing: test
 
 ### `invariant: retired-config-guidance-absent`
 
-Live template and current-state source never presents the retired sidecar field or its former skills, agents, and docs channel as supported configuration. The focused residue test permits only named unrelated historical migration and Pi preference-file references, so it cannot become a blanket scan that erases truthful vocabulary.
+Live template and current-state source never presents the retired sidecar field or former artifact-selection channels as supported configuration. The focused residue test permits only named unrelated historical migration and Pi preference-file references, so it cannot become a blanket scan that erases truthful vocabulary.
 Backing: test
 
 ### `invariant: decision-artifact-routing`
@@ -61,5 +61,5 @@ Backing: test
 
 ### `invariant: templates-valid-frontmatter`
 
-Every catalog skill and agent template, rendered with representative data, produces leading frontmatter that parses as YAML with a non-empty name and a non-empty description.
+Every catalog AWF skill template, rendered with representative data, produces leading frontmatter that parses as YAML with a non-empty name and a non-empty description.
 Backing: test

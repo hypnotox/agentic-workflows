@@ -546,7 +546,7 @@ func (m *Manager) Remove(ctx context.Context, slug string) (Result, error) {
 		}
 		observed := TopologyEffects{ManagedPath: pathPresent, GitRegistration: exact != nil, Branch: branchPresent}
 		if !pathPresent && exact == nil && !branchPresent {
-			return Result{Condition: "managed worktree topology is absent", ChangedTopology: changed, Topology: effects, NextAction: "continue to retrospective, then finish the effort"}, nil
+			return Result{Condition: "managed worktree topology is absent", ChangedTopology: changed, Topology: effects, NextAction: "capture any durable lesson, then finish the effort"}, nil
 		}
 		if branchPresent {
 			merged, ancestryErr := m.git.Ancestor(ctx, branch(slug), "HEAD")

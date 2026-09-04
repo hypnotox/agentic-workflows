@@ -5,7 +5,7 @@
 
 How sync and check detect and report: drift hash inputs, attribution, backups, residue, pruning, cleanup, and current-state coverage and fan-out evaluation.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/generatedcheck/**`, `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf read topic rendering/sync-and-drift --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `internal/generatedcheck/**`, `internal/outputplan/**`, `internal/project/**`, `internal/publisher/**`, `internal/resident/**`. Both domain and topic selectors must match. Run `awf read topic rendering/sync-and-drift --coverage` for current applicable and owned paths and marker sites.
 
 How awf render and awf check detect and report drift: per-file config-hash inputs, managed-output attribution and provenance, foreign-file backups, residue scanning, ancestor pruning, and uninstall cleanup.
 
@@ -33,7 +33,7 @@ Backing: test
 
 ### `invariant: check-invalid-frontmatter`
 
-awf check reports an invalid-frontmatter drift entry for an on-disk skill or agent file that is otherwise in sync but whose frontmatter is missing, unparseable, or has an empty name or description; a clean synced tree reports no such entry, and at most one drift entry is reported per path.
+awf check reports an invalid-frontmatter drift entry for an on-disk managed skill file that is otherwise in sync but whose frontmatter is missing, unparseable, or has an empty name or description; a clean synced tree reports no such entry, and at most one drift entry is reported per path.
 Backing: test
 
 ### `invariant: closed-config-tree`
@@ -66,9 +66,9 @@ Backing: test
 The files excluded from the frozen-output-hash comparison are exactly those a first-class RegenChecked attribute marks on the rendered-file model; the config reference and domain docs carry it, as does every file containing an in-place-editable section, replacing the former hardcoded path list.
 Backing: test
 
-### `invariant: residue-exemptions-pinned-three`
+### `invariant: residue-exemptions-pinned-membership`
 
-The identity-exemption list for the rendered-output residue scan contains exactly three entries: the bootstrap template, the upgrade-script template, and the agents-doc template; extending it requires a successor decision.
+The rendered-output residue scan's identity-exemption list contains only the bootstrap template, upgrade-script template, agents-doc template, and Pi runtime reference template; changing that exact membership requires a successor decision.
 Backing: test
 
 ### `invariant: scopes-in-confighash`

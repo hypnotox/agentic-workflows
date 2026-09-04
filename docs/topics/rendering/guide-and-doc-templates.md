@@ -5,7 +5,7 @@
 
 Agent-guide and documentation template contracts.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf read topic rendering/guide-and-doc-templates --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `templates/**`. Both domain and topic selectors must match. Run `awf read topic rendering/guide-and-doc-templates --coverage` for current applicable and owned paths and marker sites.
 
 Agent-guide and documentation template contracts: section parity, glossary rendering, scope derivation, and the document map.
 
@@ -69,7 +69,7 @@ Backing: test
 
 ### `invariant: guide-entry-point-routing`
 
-The rendered guide treats exposed native-skill descriptions as routing metadata and selects only bodies governing the next concrete action. The one standard catalog keeps every conditional capability available without turning selection into a mutation gate. Empty and missing render data remains coherent, and selection stays advisory.
+The rendered guide and workflow document treat exposed native-skill descriptions as routing metadata and select only bodies governing the next concrete action. Capability triggers remain independent: code design applies only to structural questions raised by agreed behavior, generic plans remain interaction-local by default, and only deliberately effort-backed operational plans enter effort scratch. The fixed AWF skill catalog keeps its repository-specific capabilities available without turning selection into a mutation gate. Empty and missing render data remains coherent, and selection stays advisory.
 Backing: test
 
 ### `invariant: working-memory-single-home`

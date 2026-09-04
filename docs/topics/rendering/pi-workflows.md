@@ -5,7 +5,7 @@
 
 Pi publication of AWF skills and the external generic-role boundary.
 
-**Applicability:** Owning domain selectors: `.pi/extensions/**`, `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/skills/**`, `internal/catalog/**`, `templates/skills/**`. Both domain and topic selectors must match. Run `awf read topic rendering/pi-workflows --coverage` for current applicable and owned paths and marker sites.
+**Applicability:** Owning domain selectors: `internal/artifactregistry/**`, `internal/catalog/**`, `internal/frontmatter/**`, `internal/generatedcheck/**`, `internal/glossary/**`, `internal/glossarycheck/**`, `internal/outputplan/**`, `internal/pitfall/**`, `internal/pitfallcheck/**`, `internal/project/**`, `internal/publisher/**`, `internal/referencecheck/**`, `internal/refs/**`, `internal/render/**`, `internal/resident/**`, `templates/**`. Topic selectors: `.pi/skills/**`, `internal/catalog/**`, `templates/skills/**`. Both domain and topic selectors must match. Run `awf read topic rendering/pi-workflows --coverage` for current applicable and owned paths and marker sites.
 
 Pi publishes AWF-specific skills while generic skills and role delegation remain operator-installed dependencies.
 

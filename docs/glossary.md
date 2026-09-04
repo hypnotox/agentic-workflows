@@ -13,9 +13,10 @@
 |---|---|
 | actionable outcome protocol | A closed result model that states observed state, retry-sensitive changes, and ordered executable remedies; it carries a cause only when observation failed. |
 | adaptive maximum | An exploration breadth limit that starts with the cheapest targeted lookup, widens only on evidence, and reports exhaustion. |
+| agentic skill | An operator-installed generic `agentic-*` capability. AWF references these external skills but does not install, probe, configure, or rename them. |
 | anchored glob | awf's glob dialect, where a pattern matches a full slash-separated repo-relative path: `*.go` is top-level, `**/*.go` any depth, and `cmd/**` a subtree. |
 | authoring comment | A whole-line `<!-- awf:comment ... -->` in a template default or convention part, stripped at ingestion. |
-| check-in | A deliberate stop naming the issue, options, recommendation, and blocked next action for the user. It differs from a continuity notice; a mandatory approval check-in is its unconditional approval subtype. |
+| AWF skill | One of the four fixed repository-local skills: `awf-effort`, `awf-topics`, `awf-decisions`, or `awf-maintenance`. Project prefixes do not rename them. |
 | checker-cmd idiom | A repository-only gate or release checker with a thin `main` that exits a unit-tested `run(args, stdout, stderr) int` seam. |
 | claim | One globally identified normative unit of a current-state topic: a rule or invariant heading, prose, and canonical metadata. Its `<domain>/<topic>:<slug>` identity is targeted by proof markers and focused reads. |
 | claimed-path model | The allowlist of paths permitted under `.awf/`, derived from config, catalog, and output-plan write files, excluding owned resident roots. Unclaimed content is drift reported at its topmost directory. |
@@ -23,7 +24,6 @@
 | composition root | The outermost boundary that selects volatile mechanisms and explicitly constructs their consumers. It is not a service locator, dependency bag, or owner of consumer policy. |
 | config reference | The always-on generated document listing every config key, var, sidecar field, and data key with its description, default, availability, and live state. |
 | configspec | The compile-time adopter-facing authority with one entry per adopter-settable config key, sidecar field, and data key; var entries derive from catalog descriptors. |
-| continuity notice | A routine checkpoint's informational one-line summary of the completed phase and immediate next action; it does not stop autonomous continuation. |
 | contract suite | A backend-agnostic test that pins a seam entrypoint's answers rather than its implementation. Cancellation, error-identity, and isolation suites are separate cross-cutting suites. |
 | current-state topic | A domain-owned document whose metadata and authored part define claims read by `awf read topic`, `awf resolve topic`, and `awf check`. Its claims, not decision history, are current authority. |
 | decision record | An append-only Markdown record of a load-bearing choice that should outlive implementation. It preserves rationale without determining current state. |
@@ -32,7 +32,7 @@
 | drift | Divergence between a generated file and what the config would produce now, or between a declaration and reality. The check command is the oracle, and drift fails it. |
 | effort | One active slugged unit of continuity, owning a working-memory file when multi-step work, likely continuation, coordination, delegation, or durable observations make continuity materially useful. Work without that need uses none. |
 | effort archive | The ignored machine-local `.awf/effort-archive/` root where finish preserves complete residents as `<uuid>-<slug>`. Archives are unmanaged, non-authoritative, and manually disposable. |
-| effort scratch | An optional `.awf/efforts/<slug>/scratch/` directory for disposable effort-local data, whose real-directory boundary awf validates without scaffolding or traversing descendants. |
+| effort scratch | An optional `.awf/efforts/<slug>/scratch/` directory for deliberately persisted operational plans and other disposable effort-local data, whose real-directory boundary awf validates without scaffolding or traversing descendants. |
 | export earns its consumer | A new or deliberately converted exported symbol has an outside-package production consumer in the same transaction, except documented test exports, composition boundaries, and error identities. |
 | gating classification | A command spec's `inherit`, `ungated`, `gated`, or `gated-in-handler` classification. `inherit` resolves a group child's parent and cannot apply to a top-level command. |
 | git seam | The observable Git boundary for repository status, revision, worktree, range, isolation, cancellation, and error behavior, independent of backend identity. |
@@ -41,7 +41,6 @@
 | integration branch | The configured branch that receives completed managed-worktree efforts. |
 | invariant backing | The ledger-not-proof model: `Backing: test` requires a text-matched proof marker but does not prove the test asserts the claim; `Backing: unbacked` forbids a marker and requires `Verify:`. |
 | managed effort worktree | The checkout an effort creates alongside itself, on its own branch, as the default place its work executes. Integrated and removed explicitly when the effort finishes. |
-| mandatory approval check-in | The pre-artifact stop for explicit brainstorming outline approval when a material decision is unresolved. Effort creation is not an approval boundary. |
 | operation-owned derivation | A value derived during and threaded through one operation rather than cached on a longer-lived value. |
 | pitfall entry | One path-derived authored Markdown source under `.awf/docs/pitfalls/`, created with `awf new pitfall <title>`; deleting it retires the entry through render pruning. |
 | pitfall publications | The compact generated `docs/pitfalls.md` metadata index and same-slug generated leaves, derived from authored pitfall sources. |
@@ -50,15 +49,12 @@
 | project mutation transaction | A mechanics-only, operation-scoped value that retains selected lease coverage, confines authority access, reloads committed authority for one synchronization attempt, and types mechanical failures without owning focused-operation policy. |
 | project search universe | Tracked and non-ignored untracked files under the repository root, excluding ignored files, `.git`, nested repositories, and external dependencies unless scoped. |
 | project Session | The Loader-constructed immutable selected universe that binds configuration to complete facts and carries its roots, repository and reader handles, and artifact-registry projection through focused operations. |
-| promotion ladder | The retrospective rule that promotes a recurring codifiable observation to the strongest supportable form: invariant, gate or lint rule, review focus, or pitfall. |
 | prose knob | A prohibited catalog var descriptor that only tunes rendered prose; prose customization uses convention parts. Functional values drive commands, enforced identifiers, or executed paths. |
 | Publisher operation | The single-use publication value that consumes one project Session, settles complete output definitions before rendering, materializes each accepted node once, and shares one immutable plan with checks and publication. |
 | regeneration-derived document | A managed document recomputed from repository or catalog state rather than only its template and sidecar. |
 | resident root | A directory inside the config tree holding local machine-owned state rather than rendered output, so the closed-tree sweep leaves it alone instead of reporting it as a stray. |
 | resident-root policy | The deterministic behavior for resident-root paths, kinds, anchoring, collision refusal, preservation of dynamic descendants, and uninstall. |
-| retrospective | The terminal workflow step after assurance and managed-topology removal that records durable lessons and finishes the effort last. |
 | Roots anchoring value | The construction input that combines tracked and resident output roots and resolves anchored output paths. |
-| routine checkpoint | The autonomous boundary that validates effort ownership, updates memory, and classifies whether user attention is required. |
 | safe resumable point | A durable checkpoint whose immediate successor can start independently. |
 | seam entrypoint | One exported git-seam operation: a repository-handle method or a free function before or without an opened repository. |
 | seed-on-introduction | The convention that a release adding a catalog var descriptor ships a one-time migration seed, keeping later absence a reliable deletion signal. |
@@ -69,7 +65,6 @@
 | sync provenance line | The per-file cause printed when `awf render` changes a rendered file against the previous lock: `template`, `config`, `template+config`, `internal`, `regenerated`, or `added`. |
 | template source residue | awf-specific content surviving in shipped prose: a concrete historical decision citation or repo-identity literal outside the pinned exemption list. |
 | topic coverage | The per-domain check that current-state topics describe owned paths. Global topics apply everywhere but cover only explicit paths in their domain; error and fan-out warning ranks are fixed. |
-| trigger table | The catalog-derived guide row for each skill, pairing its prefixed name with its one-line trigger. |
 | trust-bearing file | A file trusted without re-derivation: the lock or migration-rewritten authored `config.yaml`. It is written atomically, and an unreadable present lock is always an error. |
 | upgrade porcelain | The rendered `.awf/upgrade.sh` layer over deterministic `.awf/bootstrap.sh` that resolves a version, fetches through bootstrap, and finally execs `awf upgrade`. |
 | working memory | An active effort's `.awf/efforts/<slug>/memory.md`, carrying its phase, next action, brief, decisions, observations, and handoff log. Repository authority outranks it. |

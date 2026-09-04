@@ -110,14 +110,14 @@ func TestLiveTemplateAndCurrentStateRetiredConfigGuidanceAbsent(t *testing.T) {
 // invariant: rendering/templates:template-source-residue (TestTemplateSourceResidue)
 func TestTemplateSourceResidue(t *testing.T) {
 	// The marker sits on the assertion rather than on the var it guards, so the
-	// proof site contains the check that proves the ADR-0131 invariant.
-	// invariant: rendering/sync-and-drift:residue-exemptions-pinned-three (TestTemplateSourceResidue)
+	// proof site contains the exact membership check.
+	// invariant: rendering/sync-and-drift:residue-exemptions-pinned-membership (TestTemplateSourceResidue)
 	if len(identityExempt) != 4 ||
 		!identityExempt["bootstrap/awf-bootstrap.sh.tmpl"] ||
 		!identityExempt["bootstrap/awf-upgrade.sh.tmpl"] ||
 		!identityExempt["agents-doc/AGENTS.md.tmpl"] ||
 		!identityExempt["docs/pi-runtime-reference.md.tmpl"] {
-		t.Error("identity-exemption list must name exactly the bootstrap, upgrade, agents-doc, Pi reference, and pi-tools prerequisite templates")
+		t.Error("identity-exemption list must contain only the bootstrap, upgrade, agents-doc, and Pi runtime reference templates")
 	}
 	used := map[string]bool{}
 	err := fs.WalkDir(templates.FS, ".", func(path string, d fs.DirEntry, err error) error {
@@ -204,8 +204,8 @@ func collectStrings(t *testing.T, site string, v any, out *[]string) {
 }
 
 // TestCatalogDataResidue extends the ADR-0082 residue rule to the catalog's
-// shipped prose: every Data string of every skill, agent, doc, and the domain
-// doc, each doc's Title/Desc, and every var descriptor's Description, Default,
+// shipped prose: every Data string of every skill and doc plus the domain doc,
+// each doc's Title/Desc, and every var descriptor's Description, Default,
 // and Options render into adopter artifacts or adopter-facing prompts exactly
 // like template source does, so a concrete awf ADR citation or a repo-identity
 // literal there is the same leak the templates scan catches (a citation

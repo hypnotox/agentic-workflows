@@ -13,5 +13,5 @@ The evals package holds the golden-task evaluation suite for the workflow artifa
 
 ### `invariant: evals-full-catalog-coverage`
 
-The golden-task fixture's skill and agent set is derived from loading the catalog over the embedded template filesystem and includes every catalog skill and agent, so a test fails if any catalog skill or agent is absent from the fixture.
+The golden-task fixture's AWF skill set is derived from loading the catalog over the embedded template filesystem and includes every catalog skill, so a test fails if any catalog skill is absent from the fixture.
 Backing: test

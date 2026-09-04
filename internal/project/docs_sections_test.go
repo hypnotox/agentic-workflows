@@ -150,7 +150,7 @@ func TestMaintainableCodeDesignRetiredToExternalSkillAuthority(t *testing.T) {
 	})
 	for _, want := range []string{
 		"Globally installed `agentic-*` skills govern general context, brainstorming, debugging, code design, planning, implementation, and review.",
-		"use `agentic-code-design`",
+		"use `agentic-code-design` only for structural questions raised by agreed behavior",
 	} {
 		if !strings.Contains(out, want) {
 			t.Errorf("AGENTS.md missing external code-design authority %q:\n%s", want, out)

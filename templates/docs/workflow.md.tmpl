@@ -25,10 +25,14 @@ repository-local `awf-*` skill that independently govern that action. A possible
 not justify loading its skill now. Re-evaluate routing only when relevant facts change.
 
 Use `agentic-brainstorming` when a material decision is unresolved, `agentic-context` to orient or
-challenge premises, `agentic-debugging` for unexpected behavior, `agentic-code-design` for
-maintainability boundaries, `agentic-planning` for useful sequencing, `agentic-implementing` for
-execution, and `agentic-reviewing` when risk warrants fresh report-only review. These capabilities
-do not create AWF persistence by themselves.
+challenge premises, `agentic-debugging` for unexpected behavior, `agentic-code-design` only when
+agreed behavior raises a structural question, `agentic-planning` for useful sequencing,
+`agentic-implementing` for execution, and `agentic-reviewing` when risk warrants fresh report-only
+review. These capabilities are independent and do not create AWF persistence by themselves.
+
+A generic plan remains interaction-local by default. Only when an effort already provides deliberate
+continuity may an operational plan be persisted as opaque effort scratch; persistence is not a
+prerequisite for planning or implementation.
 
 Use `awf-effort` only when durable continuity materially helps, `awf-topics` when represented current
 state changes, `awf-decisions` when an accepted consequential decision needs a durable record, and
@@ -41,7 +45,7 @@ effort rather than renaming or silently reusing an existing one.
 
 An AWF effort is optional. When continuity materially helps, `awf-effort` alone owns creation,
 immutable identity, one resident and writer, its managed worktree, checkpoints, integration,
-recovery, removal, retrospective, and finish ordering. Create with
+recovery, safe removal, optional durable-lesson capture, and finish ordering. Create with
 `./awf effort new --slug <slug> "<title>"` and resolve the resident through
 `./awf effort show <slug>`; do not assume a primary-checkout-relative memory path from a managed
 worktree.
