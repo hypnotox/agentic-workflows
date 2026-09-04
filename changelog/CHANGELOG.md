@@ -8,13 +8,29 @@ query a single version or a range.
 
 ## [Unreleased]
 
+## [0.49.0] - 2026-09-04
+
 ### Breaking changes
 
 - Extract generic skills, role prompts, and the Pi role adapter into the separately installed `agentic-skills` package. AWF now publishes only the fixed `awf-effort`, `awf-topics`, `awf-decisions`, and `awf-maintenance` skills. Schema 52 renames retained authored skill overrides, preserves removed generic skill and role overrides as adjacent `.awf-bak` files, and prunes retired managed outputs conservatively.
 
+- Retire the managed `maintainable-code-design.md` guide in favor of the external `agentic-code-design` skill, and rename the `working-with-awf` override section from `model-selection` to `advanced-workflow`. Schema 53 preserves authored retired guide parts, singleton sidecars, and old section overrides as collision-safe `.awf-bak` files, removes obsolete managed output and empty source parents, and reports every recovery path with review, deletion, and directory-cleanup actions.
+
+- Remove the public `agent` artifact kind and dormant target-output and capability customization machinery. Built-in Claude and Pi targets now each publish exactly the four fixed AWF skills, with only Claude receiving its bridge; `awf list agent` reports an unknown kind.
+
+### Bug fixes
+
+- Make migration transactions validate planned source preimages, destination and backup absence, and authority-lock identity immediately before mutation. Final symlinks and non-regular sources are refused without following them, external replacements survive rollback and recovery, and failure output distinguishes planned from applied changes.
+
+- Make schema-51 extraction upgrades report every exact collision-safe backup path and the required review, deletion, and empty-directory cleanup actions, so retained-only projects converge immediately and customized extracted content converges after explicit recovery cleanup.
+
+- Give canonical external `agentic-*` skill identities precedence over legacy prefixed AWF names when `prefix: agentic`, and enforce the three supported current-state topic forms with parser-backed examples.
+
 ### Others
 
 - Remove AWF's adapter-only Pi runtime test lane, Node development dependency, model-routing and profile infrastructure, while keeping the binary offline and independent of globally installed harness packages.
+
+- Clarify generated workflow and assurance authority: capabilities trigger independently, generic plans remain interaction-local unless deliberately effort-backed, code design applies only to structural questions, external harness packages are optional setup, and hosted assurance uses the exact `go`, `platform-sensitive`, `release-archive`, and `render-template` lane inventory.
 
 ## [0.47.0] - 2026-09-03
 
