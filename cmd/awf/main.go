@@ -1,528 +1,297 @@
-// Command awf renders standardised workflow skills and documentation into a project from embedded templates plus a per-project .awf/ config tree.
+// Command awf projects a small .awf source tree into agent guidance.
 package main
 
 import (
-	"context"
-	"errors"
 	"fmt"
 	"io"
 	"os"
 	"strings"
-	"unicode"
 
-	"github.com/hypnotox/agentic-workflows/internal/clispec"
-	"github.com/hypnotox/agentic-workflows/internal/config"
-	awfgit "github.com/hypnotox/agentic-workflows/internal/git"
-	"github.com/hypnotox/agentic-workflows/internal/manifest"
-	"github.com/hypnotox/agentic-workflows/internal/migrate"
-	"github.com/hypnotox/agentic-workflows/internal/presentation"
+	"github.com/hypnotox/agentic-workflows/internal/effortfs"
+	"github.com/hypnotox/agentic-workflows/internal/projector"
 )
 
-func main() { os.Exit(run(os.Args, os.Stdout, os.Stderr)) }
-
-func run(args []string, stdout, stderr io.Writer) int {
-	return newRunner(os.Getwd, os.Stdin, stdinIsInteractive(os.Stdin)).run(args, stdout, stderr)
+func main() {
+	root, err := os.Getwd()
+	if err != nil {
+		fmt.Fprintln(os.Stderr, "awf:", err)
+		os.Exit(1)
+	}
+	os.Exit(run(root, os.Args, os.Stdout, os.Stderr))
 }
 
-// gitCommandTimeout is the deadline every command boundary puts on the git work
-// it starts. The value is the seam's, so awf and repoaudit cannot drift apart on
-// it; the choice to apply it here is this boundary's.
-const gitCommandTimeout = awfgit.CommandTimeout
+func run(root string, args []string, stdout, stderr io.Writer) int {
+	if len(args) < 2 || args[1] == "help" || args[1] == "--help" || args[1] == "-h" {
+		return runHelp(args, stdout, stderr)
+	}
 
-// runner owns one command operation's process dependencies and handler
-// composition. It is assembled at main so tests can run independent operations
-// without changing package state.
-type runner struct {
-	getwd    func() (string, error)
-	stdin    io.Reader
-	handlers map[string]handler
-}
-
-func newRunner(getwd func() (string, error), stdin io.Reader, isInteractive func() bool) runner {
-	return runner{getwd: getwd, stdin: stdin, handlers: newHandlers(stdin, isInteractive)}
-}
-
-func stdinIsInteractive(stdin *os.File) func() bool {
-	return func() bool {
-		fi, err := stdin.Stat()
-		return err == nil && fi.Mode()&os.ModeCharDevice != 0
-	}
-}
-
-// globalHelp renders the top-level `awf help` overview from each command's summary,
-// so the overview and the per-command `awf <cmd> --help` texts share one source -
-// the internal/clispec table (inv: cli-command-spec-single-source). A group's
-// children are listed beneath it at a deeper indent, so no command is reachable
-// only by knowing to ask its parent for help (inv: help-lists-group-children).
-// The child indent is deeper than the parent's on purpose: indentation carries the
-// relationship, and a child sharing a top-level name (`new topic` beside `topic`)
-// therefore cannot be mistaken for the top-level entry.
-func globalHelp() (presentation.Document, error) {
-	introValue, err := presentation.Prose("render agentic-workflow tooling into a project from a committed .awf config tree")
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	intro, err := presentation.NewField("awf", introValue)
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	usage, err := presentation.NewList("usage", mustValues("awf <command> [flags]")...)
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	commands, err := commandSections(clispec.Commands)
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	related, err := presentation.NewList("related commands", mustValues("awf <command> --help")...)
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	section, err := presentation.NewSection("help", usage, commands, related)
-	if err != nil {
-		return presentation.Document{}, err
-	}
-	return presentation.NewDocument(intro, section)
-}
-
-// commandSections preserves the command table's tree. Each hierarchy owns one
-// record group containing its direct commands. Top-level groups get a Section;
-// nested groups remain record groups under that Section, keeping the closed
-// presentation grammar's three Section levels while retaining command depth.
-func commandSections(specs []clispec.Command) (presentation.Section, error) {
-	records, err := commandRecords(specs)
-	if err != nil {
-		return presentation.Section{}, err
-	}
-	group, err := presentation.NewRecordGroup("commands", []string{"command", "summary"}, records...)
-	if err != nil {
-		return presentation.Section{}, err
-	}
-	nodes := []presentation.Node{group}
-	for _, spec := range specs {
-		if len(spec.Children) == 0 {
-			continue
-		}
-		section, err := commandSection(spec)
-		if err != nil {
-			return presentation.Section{}, err
-		}
-		nodes = append(nodes, section)
-	}
-	return presentation.NewSection("commands", nodes...)
-}
-
-func commandSection(spec clispec.Command) (presentation.Section, error) {
-	records, err := commandRecords(spec.Children)
-	if err != nil {
-		return presentation.Section{}, err
-	}
-	group, err := presentation.NewRecordGroup("commands", []string{"command", "summary"}, records...)
-	if err != nil {
-		return presentation.Section{}, err
-	}
-	nodes := []presentation.Node{group}
-	for _, child := range spec.Children {
-		if len(child.Children) == 0 {
-			continue
-		}
-		children, err := commandRecords(child.Children)
-		if err != nil {
-			return presentation.Section{}, err
-		}
-		nested, err := presentation.NewRecordGroup(child.Name, []string{"command", "summary"}, children...)
-		if err != nil {
-			return presentation.Section{}, err
-		}
-		nodes = append(nodes, nested)
-	}
-	return presentation.NewSection(spec.Name, nodes...)
-}
-
-func commandRecords(specs []clispec.Command) ([]presentation.Record, error) {
-	records := make([]presentation.Record, 0, len(specs))
-	for _, spec := range specs {
-		record, err := commandRecord(spec)
-		if err != nil {
-			return nil, err
-		}
-		records = append(records, record)
-	}
-	return records, nil
-}
-
-func commandRecord(spec clispec.Command) (presentation.Record, error) {
-	name, err := presentation.Literal(spec.Name)
-	if err != nil {
-		return presentation.Record{}, err
-	}
-	summary, err := presentation.Prose(spec.Summary)
-	if err != nil {
-		return presentation.Record{}, err
-	}
-	return presentation.NewRecord(name, summary)
-}
-
-func mustValues(text ...string) []presentation.Value {
-	values := make([]presentation.Value, len(text))
-	for i, value := range text {
-		values[i], _ = presentation.Literal(value)
-	}
-	return values
-}
-
-func renderHelp(dst io.Writer, spec clispec.Command, path string) error {
-	document, err := spec.Help.Document("awf "+path, spec.Summary)
-	if err != nil {
-		return err
-	}
-	return presentation.Render(dst, document)
-}
-
-// run is the CLI driver: it resolves args to a clispec command, prints help,
-// parses the arguments once, applies the gating classification, and dispatches
-// to the command's handler - a single parse-once path shared by every command.
-func (r runner) run(args []string, stdout, stderr io.Writer) int {
-	if len(args) < 2 {
-		return dispatchFailure(stdout, stderr, &usageErr{fmt.Sprintf("usage: %s [args]; run `awf help` for command details", clispec.UsageLine())})
-	}
-	if a := args[1]; a == "help" || a == "--help" || a == "-h" {
-		if a == "help" && len(args) >= 3 {
-			spec, ok := clispec.Lookup(args[2])
-			if !ok {
-				return dispatchFailure(stdout, stderr, &usageErr{fmt.Sprintf("unknown command %q", args[2])})
-			}
-			for _, name := range args[3:] {
-				child, found := spec.Child(name)
-				if !found {
-					return dispatchFailure(stdout, stderr, &usageErr{fmt.Sprintf("unknown command %q", name)})
-				}
-				spec = child
-			}
-			if err := renderHelp(stdout, spec, strings.Join(args[2:], " ")); err != nil {
-				return dispatchFailure(stdout, stderr, err)
-			}
+	switch args[1] {
+	case "init":
+		if helpRequested(args[2:]) {
+			writeText(stdout, initHelp)
 			return 0
 		}
-		document, err := globalHelp()
+		if len(args) != 2 {
+			return usage(stderr, "usage: awf init")
+		}
+		result, err := projector.Init(root)
 		if err != nil {
-			return dispatchFailure(stdout, stderr, err)
+			return failure(stderr, err)
 		}
-		if err := presentation.Render(stdout, document); err != nil {
-			return dispatchFailure(stdout, stderr, err)
-		}
+		printRenderResult(stdout, result)
 		return 0
-	}
-	cwd, err := r.getwd()
-	if err != nil {
-		return dispatchFailure(stdout, stderr, err)
-	}
-	cmd, top, sub, rest, ok := resolve(args[1:])
-	if !ok {
-		return dispatchFailure(stdout, stderr, &usageErr{fmt.Sprintf("unknown command %q", args[1])})
-	}
-	if wantsHelp(rest) { // `awf <cmd> --help`/`-h` - intercept before parseArgs rejects it
-		if err := renderHelp(stdout, cmd, strings.TrimSpace(top.Name+" "+sub)); err != nil {
-			return dispatchFailure(stdout, stderr, err)
+	case "render":
+		if helpRequested(args[2:]) {
+			writeText(stdout, renderHelp)
+			return 0
 		}
+		if len(args) != 2 {
+			return usage(stderr, "usage: awf render")
+		}
+		result, err := projector.Render(root)
+		if err != nil {
+			return failure(stderr, err)
+		}
+		printRenderResult(stdout, result)
 		return 0
-	}
-	inv, err := parseArgs(qualifiedParseSpec(cmd, top, sub), rest)
-	if err != nil {
-		return dispatchFailure(stdout, stderr, err) // parseArgs only returns usageErr → exit 2
-	}
-	// Read-only commands are admitted against their selected universe here.
-	// Mutations instead acquire their writer lease before authority admission and
-	// gating inside the focused handler path.
-	ownedAdmission := operationOwnsAdmission(top, sub, inv)
-	if !ownedAdmission {
-		guardCtx, cancel := newGitCommandContext()
-		if err := guardSession(guardCtx, cwd, top, sub, inv); err != nil {
-			cancel()
-			return dispatchFailure(stdout, stderr, err)
+	case "check":
+		if helpRequested(args[2:]) {
+			writeText(stdout, checkHelp)
+			return 0
 		}
-		cancel()
-	}
-	// The driver gates read-only Gated commands. Mutating handlers gate under
-	// their covering lease; group children inherit the top-level classification.
-	if top.Gating == clispec.Gated && !ownedAdmission {
-		gateFn := gate
-		if top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged ")) {
-			gateFn = gateStaged
+		if len(args) != 2 {
+			return usage(stderr, "usage: awf check")
 		}
-		gateCtx, cancel := newGitCommandContext()
-		if err := gateFn(gateCtx, cwd); err != nil {
-			cancel()
-			if !selectsStagedDrift(top, sub) || !errors.Is(err, errNoStagedLock) {
-				return dispatchFailure(stdout, stderr, err)
-			}
-		}
-		cancel()
-	}
-	// The registry key is the top-level command name even when resolve returned a
-	// child spec - the child drives parse/help, the group's handler drives
-	// dispatch via sub.
-	handlerCtx, cancel := newGitCommandContext()
-	defer cancel()
-	result := r.handlers[top.Name](&cmdCtx{ctx: handlerCtx, root: cwd, sub: sub, inv: inv, stdout: stdout, stdin: r.stdin})
-	return completeHandlerResult(stdout, stderr, result)
-}
-
-func guardMutationSession(ctx context.Context, root string) error {
-	return guardSession(ctx, root, clispec.Command{Name: "mutation"}, "", invocation{})
-}
-
-func operationOwnsAdmission(top clispec.Command, sub string, inv invocation) bool {
-	switch top.Name {
-	case "render", "edit", "reset", "new", "remove", "upgrade", "uninstall":
-		return true
-	case "init":
-		return !inv.bools["--describe"]
-	case "effort":
-		if sub == "new" || sub == "finish" || sub == "integrate" {
-			return true
-		}
-		return sub == "worktree" && len(inv.positionals) > 0 && (inv.positionals[0] == "add" || inv.positionals[0] == "remove")
-	default:
-		return false
-	}
-}
-
-// completeHandlerResult ends a command operation only after the command has
-// completed its selected output. In particular, typed errors are transformed
-// into their model-owned diagnostics and written centrally before the mutation
-// lease is released.
-func completeHandlerResult(stdout, stderr io.Writer, result handlerResult) int {
-	code := 0
-	if result.err != nil {
-		// A handler declares a complete report explicitly. It has already been
-		// rendered to stdout and owns its failing exit; diagnostics were not
-		// produced as reports and are rendered once to stderr below.
-		if result.producedReport {
-			code = 1
-		} else {
-			code = dispatchFailure(stdout, stderr, result.err)
-		}
-	}
-	if result.release != nil {
-		if err := result.release(); err != nil {
-			// Output has completed, so a release error cannot be rendered without
-			// a second report. Preserve the failing process result instead.
-			return 1
-		}
-	}
-	return code
-}
-
-// newGitCommandContext gives each process-command stage its own full timeout.
-// Guard and gate work must not consume the handler's hang-prevention ceiling.
-// It is the sole production context root.
-func newGitCommandContext() (context.Context, context.CancelFunc) {
-	return context.WithTimeout(context.Background(), gitCommandTimeout)
-}
-
-// guardSession preserves ordinary live-schema and permanent-authority admission.
-// Commands that do not consume project authority bypass it explicitly. Legacy
-// upgrade journals are intentionally not global state; only `awf upgrade`
-// interprets their presence below this command boundary.
-func selectsStagedDrift(top clispec.Command, sub string) bool {
-	return top.Name == "check" && (sub == "staged" || sub == "staged drift")
-}
-
-func selectsStagedProjectUniverse(top clispec.Command, sub string, inv invocation) bool {
-	return top.Name == "check" && (sub == "staged" || strings.HasPrefix(sub, "staged "))
-}
-
-func validateCurrentAuthority(found, currentConfig, currentLock bool) error {
-	if currentConfig != currentLock {
-		return &manifest.PartialAuthorityError{Config: currentConfig, Lock: currentLock}
-	}
-	if !found {
-		return &manifest.PartialAuthorityError{Config: currentConfig, Lock: false}
-	}
-	return nil
-}
-
-func guardSession(ctx context.Context, root string, top clispec.Command, sub string, inv invocation) error {
-	if top.Name == "version" || top.Name == "changelog" ||
-		(top.Name == "init" && inv.bools["--describe"]) {
-		return nil
-	}
-	staged := selectsStagedProjectUniverse(top, sub, inv)
-	present, lock, found, currentConfig, currentLock, loadErr, err := projectGuardState(ctx, root, staged)
-	if err != nil || !present {
-		return err
-	}
-	if loadErr != nil {
-		if errors.Is(loadErr, manifest.ErrUnsupportedLiveSource) {
-			return presentLiveSourceRefusal(loadErr)
-		}
-		return fmt.Errorf("invalid authority: restore .awf/awf.lock from version control: %w", loadErr)
-	}
-	if currentConfig || currentLock {
-		if err := validateCurrentAuthority(found, currentConfig, currentLock); err != nil {
-			return presentUpgradeRefusal(err)
-		}
-	} else {
-		if staged {
-			return fmt.Errorf("retired project authority is below live floor %d; restore a supported .awf control pair or use a release that supports the retired layout", migrate.LiveSchemaFloor)
-		}
-		if _, err := migrate.CheckLive(root); err != nil {
-			return presentGateRefusal(err)
-		}
-		return fmt.Errorf("retired project layout is unsupported at live floor %d; restore a supported .awf control pair", migrate.LiveSchemaFloor)
-	}
-	lockV, binV, ok := lockVsBinaryLock(lock)
-	return gateLockVersion(lockV, binV, ok)
-}
-
-// projectGuardState captures only the live authority consumed by the ordinary
-// project guard, from either the working tree or the staged snapshot.
-func projectGuardState(ctx context.Context, root string, staged bool) (present bool, lock *manifest.Lock, lockFound, currentConfig, currentLock bool, loadErr, err error) {
-	if !staged {
-		present, err = migrate.ProjectPresent(root)
+		findings, err := projector.Check(root)
 		if err != nil {
-			return
+			return failure(stderr, err)
 		}
-		currentConfig, currentLock, err = migrate.CurrentAuthorityPresence(root)
-		if err != nil {
-			return
+		if len(findings) == 0 {
+			fmt.Fprintln(stdout, "check: ok")
+			return 0
 		}
-		live, found, lockErr := manifest.LoadLiveFileOptional(root, config.DirName+"/awf.lock", migrate.LiveSchemaFloor, migrate.Current())
-		lockFound, loadErr = found, lockErr
-		if found {
-			lock = live.Lock
+		fmt.Fprintln(stdout, "check: failed")
+		for _, finding := range findings {
+			fmt.Fprintf(stdout, "%s: %s\n", finding.Path, finding.Message)
 		}
-		return
-	}
-	tree, treeErr := stagedTree(ctx, root)
-	if treeErr != nil {
-		err = treeErr
-		return
-	}
-	present = migrate.ProjectPresentFromFiles(func(path string) bool { _, ok := tree.Lookup(path); return ok })
-	_, currentConfig = tree.Lookup(config.DirName + "/config.yaml")
-	_, currentLock = tree.Lookup(config.DirName + "/awf.lock")
-	if file, ok := tree.Lookup(config.DirName + "/awf.lock"); ok {
-		lockFound = true
-		lock, loadErr = manifest.ParseLive(file.Bytes, migrate.LiveSchemaFloor, migrate.Current())
-		if loadErr != nil {
-			loadErr = fmt.Errorf("parse staged lock: %w", loadErr)
-		}
-	}
-	return
-}
-
-// commandStream selects the only destination a command outcome may write.
-type commandStream uint8
-
-const (
-	commandStdout commandStream = iota
-	commandStderr
-)
-
-// commandOutcome is the command presentation boundary. A produced report has
-// already been completely assembled and goes to stdout even when it exits
-// unsuccessfully; diagnostics are failures to produce a report and go once to
-// stderr. Business errors stay attached for identity-aware callers.
-type commandOutcome struct {
-	document presentation.Document
-	stream   commandStream
-	exit     int
-	err      error
-}
-
-type diagnosticError interface {
-	Diagnostic() (presentation.Diagnostic, error)
-}
-
-func diagnosticOutcome(err error) commandOutcome {
-	var typed diagnosticError
-	if errors.As(err, &typed) {
-		diagnostic, diagnosticErr := typed.Diagnostic()
-		if diagnosticErr != nil {
-			return genericDiagnosticOutcome(diagnosticErr, 1)
-		}
-		document, documentErr := diagnostic.Document()
-		if documentErr != nil {
-			return genericDiagnosticOutcome(documentErr, 1)
-		}
-		return commandOutcome{document: document, stream: commandStderr, exit: 1, err: err}
-	}
-	exit := 1
-	var usage *usageErr
-	if errors.As(err, &usage) {
-		exit = 2
-	}
-	return genericDiagnosticOutcome(err, exit)
-}
-
-// genericDiagnosticOutcome builds the bounded fallback used when a typed
-// diagnostic cannot be mapped. Prose normalizes arbitrary error text and the
-// fixed label guarantees this one-field document is valid, without re-entering
-// the typed mapper that just failed.
-func genericDiagnosticOutcome(err error, exit int) commandOutcome {
-	condition, _ := presentation.Prose("awf: " + err.Error())
-	field, _ := presentation.NewField("condition", condition)
-	document, _ := presentation.NewDocument(field)
-	return commandOutcome{document: document, stream: commandStderr, exit: exit, err: err}
-}
-
-// writeRendererFailure is the sole terminal fallback after presentation
-// rendering fails. It deliberately is not a presentation renderer or a
-// successful-output bypass: it reports that the renderer could not produce a
-// document at all.
-func writeRendererFailure(stderr io.Writer, cause error) {
-	text := strings.Join(strings.FieldsFunc(cause.Error(), unicode.IsSpace), " ")
-	if text == "" {
-		text = "renderer failed"
-	}
-	_, _ = io.WriteString(stderr, "awf: "+text+"\n")
-}
-
-// writeStatus presents a complete ordinary scalar result. Callers own the
-// semantic status text; presentation owns validation and rendering.
-func writeStatus(stdout io.Writer, status string) error {
-	value, err := presentation.Prose(status)
-	if err != nil {
-		return err
-	}
-	field, err := presentation.NewField("status", value)
-	if err != nil {
-		return err
-	}
-	document, err := presentation.NewDocument(field)
-	if err != nil {
-		return err
-	}
-	return presentation.Render(stdout, document)
-}
-
-func writeOutcome(stdout, stderr io.Writer, outcome commandOutcome) int {
-	dst := stdout
-	if outcome.stream == commandStderr {
-		dst = stderr
-	}
-	if err := presentation.Render(dst, outcome.document); err != nil {
-		writeRendererFailure(stderr, err)
 		return 1
+	case "resolve":
+		if helpRequested(args[2:]) {
+			writeText(stdout, resolveHelp)
+			return 0
+		}
+		if len(args) < 3 {
+			return usage(stderr, "usage: awf resolve <path>...")
+		}
+		matches, err := projector.Resolve(root, args[2:])
+		if err != nil {
+			return failure(stderr, err)
+		}
+		if len(matches) == 0 {
+			fmt.Fprintln(stdout, "none")
+			return 0
+		}
+		for _, match := range matches {
+			fmt.Fprintf(stdout, "%s\t%s\n", match.ID, match.SourcePath)
+		}
+		return 0
+	case "effort":
+		return runEffort(root, args[2:], stdout, stderr)
+	case "version":
+		if helpRequested(args[2:]) {
+			writeText(stdout, versionHelp)
+			return 0
+		}
+		if len(args) != 2 {
+			return usage(stderr, "usage: awf version")
+		}
+		fmt.Fprintln(stdout, "version:", projector.Version)
+		return 0
+	default:
+		return usage(stderr, fmt.Sprintf("unknown command %q; run `awf --help`", args[1]))
 	}
-	return outcome.exit
 }
 
-func dispatchFailure(stdout, stderr io.Writer, err error) int {
-	return writeOutcome(stdout, stderr, diagnosticOutcome(err))
-}
-
-// usageErr marks a CLI-misuse error (unknown flag, bad arity, unknown command),
-// which the central handler maps to exit code 2 rather than the failure code 1.
-type usageErr struct{ msg string }
-
-func (e *usageErr) Error() string { return e.msg }
-
-func qualifiedParseSpec(cmd, top clispec.Command, sub string) clispec.Command {
-	if top.Name == "read" || top.Name == "resolve" {
-		cmd.Name = strings.TrimSpace(top.Name + " " + sub)
+func runHelp(args []string, stdout, stderr io.Writer) int {
+	if len(args) == 2 || len(args) < 2 || args[1] == "--help" || args[1] == "-h" {
+		writeText(stdout, globalHelp)
+		return 0
 	}
-	return cmd
+	if len(args) != 3 || args[1] != "help" {
+		return usage(stderr, "usage: awf help [command]")
+	}
+	help, ok := commandHelp(args[2])
+	if !ok {
+		return usage(stderr, fmt.Sprintf("unknown command %q", args[2]))
+	}
+	writeText(stdout, help)
+	return 0
 }
+
+func runEffort(root string, args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || helpRequested(args) {
+		writeText(stdout, effortHelp)
+		return 0
+	}
+	switch args[0] {
+	case "new":
+		if len(args) != 2 {
+			return usage(stderr, "usage: awf effort new <slug>")
+		}
+		path, err := effortfs.New(root, args[1])
+		if err != nil {
+			return failure(stderr, err)
+		}
+		fmt.Fprintln(stdout, "memory:", filepathSlash(path))
+		return 0
+	case "list":
+		if len(args) != 1 {
+			return usage(stderr, "usage: awf effort list")
+		}
+		slugs, err := effortfs.List(root)
+		if err != nil {
+			return failure(stderr, err)
+		}
+		if len(slugs) == 0 {
+			fmt.Fprintln(stdout, "none")
+			return 0
+		}
+		for _, slug := range slugs {
+			fmt.Fprintln(stdout, slug)
+		}
+		return 0
+	case "show":
+		if len(args) != 2 {
+			return usage(stderr, "usage: awf effort show <slug>")
+		}
+		path, body, err := effortfs.Show(root, args[1])
+		if err != nil {
+			return failure(stderr, err)
+		}
+		fmt.Fprintln(stdout, "memory:", filepathSlash(path))
+		fmt.Fprintln(stdout)
+		if _, err := stdout.Write(body); err != nil {
+			return failure(stderr, err)
+		}
+		if len(body) > 0 && body[len(body)-1] != '\n' {
+			fmt.Fprintln(stdout)
+		}
+		return 0
+	case "finish":
+		if len(args) != 2 {
+			return usage(stderr, "usage: awf effort finish <slug>")
+		}
+		path, err := effortfs.Finish(root, args[1])
+		if err != nil {
+			return failure(stderr, err)
+		}
+		fmt.Fprintln(stdout, "archive:", filepathSlash(path))
+		return 0
+	default:
+		return usage(stderr, fmt.Sprintf("unknown effort command %q; expected new, list, show, or finish", args[0]))
+	}
+}
+
+func printRenderResult(stdout io.Writer, result projector.RenderResult) {
+	if len(result.Changed) == 0 {
+		fmt.Fprintln(stdout, "render: up to date")
+	} else {
+		for _, path := range result.Changed {
+			fmt.Fprintln(stdout, "rendered:", path)
+		}
+	}
+	for _, path := range result.Unmanaged {
+		fmt.Fprintln(stdout, "unmanaged AWF-marked file:", path)
+	}
+}
+
+func helpRequested(args []string) bool {
+	return len(args) == 1 && (args[0] == "--help" || args[0] == "-h")
+}
+
+func commandHelp(command string) (string, bool) {
+	switch command {
+	case "init":
+		return initHelp, true
+	case "render":
+		return renderHelp, true
+	case "check":
+		return checkHelp, true
+	case "resolve":
+		return resolveHelp, true
+	case "effort":
+		return effortHelp, true
+	case "version":
+		return versionHelp, true
+	default:
+		return "", false
+	}
+}
+
+func filepathSlash(path string) string {
+	return strings.ReplaceAll(path, `\`, "/")
+}
+
+func writeText(writer io.Writer, text string) {
+	_, _ = io.WriteString(writer, text)
+}
+
+func usage(stderr io.Writer, message string) int {
+	fmt.Fprintln(stderr, "awf:", message)
+	return 2
+}
+
+func failure(stderr io.Writer, err error) int {
+	fmt.Fprintln(stderr, "awf:", err)
+	return 1
+}
+
+const globalHelp = `AWF projects agent guidance and keeps lightweight local effort memory.
+
+Usage:
+  awf <command> [arguments]
+
+Commands:
+  init       create the minimal AWF sources and projection
+  render     render the fixed generated files
+  check      check sources and generated files
+  resolve    find topics for repository paths
+  effort     manage local effort memory
+  version    print the AWF version
+
+Run ` + "`awf help <command>`" + ` for command details.
+`
+
+const initHelp = `Usage: awf init
+
+Create .awf/project.md with editable starter guidance and render the fixed generated files.
+`
+
+const renderHelp = `Usage: awf render
+
+Render the fixed generated files. Retired AWF-marked files are reported but never deleted.
+`
+
+const checkHelp = `Usage: awf check
+
+Validate AWF sources and generated files. Unmanaged AWF-marked files fail the check.
+`
+
+const resolveHelp = `Usage: awf resolve <path>...
+
+Print every topic matching the supplied lexical repository-relative paths.
+`
+
+const effortHelp = `Usage: awf effort <command>
+
+Commands:
+  new <slug>     create local effort memory
+  list           list active efforts
+  show <slug>    show an effort's memory path and contents
+  finish <slug>  move an effort into the local archive
+`
+
+const versionHelp = `Usage: awf version
+
+Print the embedded AWF release version.
+`

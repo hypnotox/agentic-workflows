@@ -2,8 +2,7 @@ package pathglob
 
 import "testing"
 
-// The table is the spec for ADR-0077's anchored dialect: no basename mode,
-// `**/` is the only any-depth form, slashed patterns anchor at the repo root.
+// Slashed patterns anchor at the repository root; there is no basename mode.
 func TestMatchAnchored(t *testing.T) {
 	cases := []struct {
 		pattern, path string
@@ -22,7 +21,6 @@ func TestMatchAnchored(t *testing.T) {
 		{"**/go.mod", "sub/go.mod", true},
 	}
 	for _, c := range cases {
-		// invariant: config/validation:pathglob-anchored (TestMatchAnchored)
 		if got := Match(c.pattern, c.path); got != c.want {
 			t.Errorf("Match(%q, %q) = %v, want %v", c.pattern, c.path, got, c.want)
 		}

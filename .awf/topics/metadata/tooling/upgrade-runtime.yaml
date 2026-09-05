@@ -1,4 +1,0 @@
-title: Upgrade runtime
-summary: The supported ordered live-schema migration runtime.
-paths:
-  - internal/upgrade/**

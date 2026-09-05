@@ -1,9 +1,0 @@
-paths:
-  - internal/publisher/**
-  - internal/config/**
-  - internal/migrate/**
-  - internal/manifest/**
-  - internal/configspec/**
-  - internal/pathglob/**
-  - internal/project/staged_drift_test.go
-  - internal/configcheck/**

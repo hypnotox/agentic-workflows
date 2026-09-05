@@ -1,4 +1,0 @@
-title: Test infrastructure
-summary: Observable safety for reusable test fixtures.
-paths:
-  - internal/testsupport/**

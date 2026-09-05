@@ -1,9 +1,0 @@
-#!/usr/bin/env bash
-set -euo pipefail
-
-<!-- awf:section runner-body -->
-if [ -f .awf/bootstrap.sh ] && pinned="$(bash .awf/bootstrap.sh)"; then
-	exec "$pinned" "$@"
-fi
-exec awf "$@"
-<!-- awf:end -->

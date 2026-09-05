@@ -1,6 +1,4 @@
-# GoReleaser config for the awf CLI - builds cross-platform release binaries and
-# publishes a GitHub Release on a v* tag (see ADR-0030). Hand-maintained, outside
-# awf's render/lock set (like .golangci.yml and ./x). Validate with `goreleaser check`.
+# Build the release archives consumed by the generated bootstrap.
 version: 2
 
 project_name: awf
@@ -26,8 +24,6 @@ archives:
   - id: awf-linux
     ids:
       - awf
-    # Stable numeric and named ownership lets a rootless user namespace extract
-    # Linux tarballs without trying to map the release builder's local account.
     builds_info:
       owner: root
       group: root
@@ -50,6 +46,11 @@ archives:
           owner: root
           group: root
           mode: 0644
+      - src: MIGRATING-v0.50.md
+        info:
+          owner: root
+          group: root
+          mode: 0644
   - id: awf
     ids:
       - awf
@@ -63,13 +64,10 @@ archives:
     files:
       - LICENSE
       - README.md
+      - MIGRATING-v0.50.md
 
 checksum:
   name_template: checksums.txt
-
-# Release notes come from the curated changelog/CHANGELOG.md, not commit messages.
-# release.yml passes the tagged section through `--release-notes`; that custom input
-# makes GoReleaser skip commit-derived generation while leaving its notes-loading pipe enabled.
 
 release:
   draft: false

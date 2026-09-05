@@ -1,7 +1,0 @@
-title: Initialization
-summary: "Project adoption and initialization behavior."
-paths:
-  - cmd/**
-  - internal/clispec/**
-  - internal/initop/**
-  - internal/initspec/**

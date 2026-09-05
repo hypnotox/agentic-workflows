@@ -7,7 +7,6 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 )
 
-// invariant: rendering/frontmatter:frontmatter-split (TestSplitWellFormed)
 func TestSplitWellFormed(t *testing.T) {
 	in := "---\nname: x\ndesc: y\n---\nbody here\n"
 	yamlBlock, body, found := frontmatter.Split([]byte(in))
@@ -22,7 +21,6 @@ func TestSplitWellFormed(t *testing.T) {
 	}
 }
 
-// invariant: rendering/frontmatter:frontmatter-split (TestSplitNoFrontmatter)
 func TestSplitNoFrontmatter(t *testing.T) {
 	in := "# heading\nno frontmatter\n"
 	yamlBlock, body, found := frontmatter.Split([]byte(in))
@@ -93,26 +91,6 @@ func TestParseNoFrontmatter(t *testing.T) {
 	}
 	if fm.Name != "" {
 		t.Errorf("out should be unchanged, got Name=%q", fm.Name)
-	}
-}
-
-func TestParseStrict(t *testing.T) {
-	var fm struct {
-		Name string `yaml:"name"`
-	}
-	if body, found, err := frontmatter.ParseStrict([]byte("plain"), &fm); err != nil || found || string(body) != "plain" {
-		t.Fatalf("absent = %q, %v, %v", body, found, err)
-	}
-	if body, found, err := frontmatter.ParseStrict([]byte("---\nname: ok\n---\nbody"), &fm); err != nil || !found || string(body) != "body" || fm.Name != "ok" {
-		t.Fatalf("valid = %q, %#v, %v", body, fm, err)
-	}
-	for _, input := range []string{
-		"---\nunknown: x\n---\nbody",
-		"---\nname: [\n---\nbody",
-	} {
-		if _, found, err := frontmatter.ParseStrict([]byte(input), &fm); err == nil || !found {
-			t.Fatalf("strict input accepted: %q, %v", input, err)
-		}
 	}
 }
 

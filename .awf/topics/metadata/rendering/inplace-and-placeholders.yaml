@@ -1,6 +1,0 @@
-title: Inplace and placeholders
-summary: "In-place sections, authoring comments, part placeholders, and var and data hygiene."
-paths:
-  - internal/outputplan/**
-  - internal/publisher/**
-  - internal/project/**

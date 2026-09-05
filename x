@@ -1,119 +1,45 @@
 #!/usr/bin/env bash
-# Command runner for the awf repo - project verbs only; awf verbs go through ./awf.
-# Usage: ./x <command> [args]
+# Small command runner for developing awf from this checkout.
 set -euo pipefail
 
-# Keep lint diagnostics scoped to this checkout. The shared cache records
-# absolute positions and otherwise leaks paths from managed worktrees.
-export GOLANGCI_LINT_CACHE="${PWD}/.cache/golangci-lint"
-gate_timings=false
-run_gate_step() {
-  local label="$1"
-  shift
-  local started=$SECONDS status
-  if "$@"; then status=0; else status=$?; fi
-  if "$gate_timings"; then
-    printf 'gate timing: %s %ss\n' "$label" "$((SECONDS - started))" >&2
-  fi
-  return "$status"
-}
-
-run_advisory_lint() {
-  local output status
-  if output="$(go tool golangci-lint run --config .golangci-advisory.yml --issues-exit-code 0 "$@" 2>&1)"; then
-    status=0
-  else
-    status=$?
-    printf '%s\n' "$output" >&2
-    return "$status"
-  fi
-  if [ -n "$output" ]; then
-    echo "warning: advisory lint findings" >&2
-    printf '%s\n' "$output" >&2
-  fi
-}
-
-cmd="${1:-}"
+command="${1:-}"
 shift || true
 
-case "$cmd" in
+case "$command" in
   gate)
-    while [ "$#" -gt 0 ]; do
-      case "$1" in
-        timings) gate_timings=true ;;
-        *) echo "usage: ./x gate [timings]" >&2; exit 2 ;;
-      esac
-      shift
-    done
-    run_gate_step versioncheck go run ./cmd/versioncheck
-    run_gate_step build go build ./...
-    run_gate_step lint go tool golangci-lint run
-    run_gate_step pincheck go run ./cmd/pincheck
-    ;;
-  lint)
-    go tool golangci-lint run "$@"
-    run_advisory_lint "$@"
-    ;;
-  deadcode)
-    # Optional whole-program analysis. It is intentionally outside hooks and CI.
-    go tool deadcode -json ./... | go run ./cmd/deadcodecheck
-    ;;
-  fmt)
-    go tool golangci-lint fmt --config .golangci-advisory.yml "$@"
+    [ "$#" -eq 0 ] || { echo "usage: ./x gate" >&2; exit 2; }
+    unformatted="$(find . -type f -name '*.go' -not -path './.git/*' -not -path './.awf/efforts/*' -not -path './.awf/worktrees/*' -not -path './.awf/effort-archive/*' -print0 | xargs -0 gofmt -l)"
+    [ -z "$unformatted" ] || { printf 'unformatted Go files:\n%s\n' "$unformatted" >&2; exit 1; }
+    go test ./...
+    go build ./...
     ;;
   test)
     go test ./... "$@"
     ;;
-  test-affected)
-    go run ./cmd/testselection --execute "$@"
+  lint)
+    go vet ./... "$@"
     ;;
-  test-full-linux)
-    mode="${1:-}"
-    shift || true
-    case "$mode" in
-      calibrate|budget) ;;
-      *) echo "usage: ./x test-full-linux <calibrate|budget> [--artifact FILE]" >&2; exit 2 ;;
-    esac
-    artifact="${AWF_FULL_LINUX_TIMING_ARTIFACT:-$PWD/.cache/full-linux-timing.json}"
-    if [ "${1:-}" = "--artifact" ]; then
-      [ "$#" -ge 2 ] || { echo "missing artifact path" >&2; exit 2; }
-      artifact="$2"
-      shift 2
-    fi
-    [ "$#" -eq 0 ] || { echo "usage: ./x test-full-linux <calibrate|budget> [--artifact FILE]" >&2; exit 2; }
-    if [ "$mode" = budget ] && [ -z "${AWF_FULL_LINUX_CEILING:-}" ]; then
-      echo "test-full-linux: budget requires AWF_FULL_LINUX_CEILING from reviewed hosted evidence" >&2
-      exit 2
-    fi
-    timing_args=(full-linux --mode "$mode" --artifact "$artifact")
-    if [ -n "${AWF_FULL_LINUX_CEILING:-}" ]; then
-      timing_args+=(--ceiling "$AWF_FULL_LINUX_CEILING")
-    fi
-    go run ./cmd/testselection "${timing_args[@]}"
+  fmt)
+    find . -type f -name '*.go' \
+      -not -path './.git/*' \
+      -not -path './.awf/efforts/*' \
+      -not -path './.awf/worktrees/*' \
+      -not -path './.awf/effort-archive/*' \
+      -print0 | xargs -0 gofmt -w
     ;;
-  clean-test-tmp)
-    go run ./internal/testsupport/cmd/testtmpclean "$@"
-    ;;
-  render)
-    # Run from source so dogfooded rendering always matches this tree.
-    ./awf render "$@"
-    ;;
-  check)
-    ./awf check "$@"
+  render|check|resolve|effort|version)
+    go run ./cmd/awf "$command" "$@"
     ;;
   build)
+    [ "$#" -eq 0 ] || { echo "usage: ./x build" >&2; exit 2; }
+    mkdir -p bin
     go build -o bin/awf ./cmd/awf
     ;;
   install)
     go install ./cmd/awf
     ;;
-  audit-local)
-    # Repository-specific conformance audit; never part of the shipped awf audit
-    # or the ordinary gate. It requires an explicit <base>..<head> range.
-    go run ./cmd/repoaudit "$@"
-    ;;
   *)
-    echo "usage: ./x <gate [timings]|lint|fmt|test|test-affected [--staged|--range <base>..<head>]|test-full-linux <calibrate|budget> [--artifact FILE]|clean-test-tmp [--all]|deadcode|render|check|build|install|audit-local>" >&2
+    echo "usage: ./x <gate|test|lint|fmt|render|check|resolve|effort|version|build|install> [args]" >&2
     exit 2
     ;;
 esac

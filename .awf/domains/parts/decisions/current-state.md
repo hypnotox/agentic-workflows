@@ -1,1 +1,0 @@
-Decision records under `docs/decisions/` are append-only historical Markdown. awf neither parses nor generates them. New records use accepted date-slug files with Context, Decision, and Consequences; current-state topics remain the authority for rules and invariants in force now.

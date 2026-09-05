@@ -1,8 +1,0 @@
-#!/usr/bin/env bash
-repo_root=$(git rev-parse --show-toplevel) || exit 1
-payload="$repo_root/.awf/hooks/reference-transaction.sh"
-if [[ ! -f "$payload" ]]; then
-  primary_root=$(git worktree list --porcelain | sed -n '1s/^worktree //p') || exit 1
-  payload="$primary_root/.awf/hooks/reference-transaction.sh"
-fi
-exec bash "$payload" "$@"

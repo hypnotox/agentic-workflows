@@ -1,5 +1,0 @@
-title: Adapter outputs
-summary: The retired AWF adapter surface and external role ownership boundary.
-paths:
-  - internal/artifactregistry/**
-  - templates/embed.go

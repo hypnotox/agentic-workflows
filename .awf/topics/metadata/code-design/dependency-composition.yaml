@@ -1,3 +1,0 @@
-title: Dependency composition
-summary: How awf selects, owns, and wires volatile dependencies without speculative abstraction.
-applies: global

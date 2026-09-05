@@ -1,5 +1,0 @@
-A current-state topic claim is either a rule or an invariant. A claim heading is exactly ``### `rule: <slug>` `` or ``### `invariant: <slug>` ``. An invariant may carry one optional nonblank single-line `Summary:` of at most 160 Unicode code points, then ends with `Backing: test` or `Backing: unbacked`; an unbacked invariant also carries one nonempty `Verify:` line. The full identity is `<domain>/<topic>:<slug>` and is globally unique.
-
-`awf check` validates the backing ledger from named `invariant: <domain>/<topic>:<slug> (<name>)` proof markers configured under `currentState.sources`. A test-backed claim requires one in-scope marker naming a real delimited test identifier. An unbacked claim forbids a marker and requires its written verification procedure. Unknown, malformed, out-of-scope, and mismatched markers fail.
-
-The ledger proves that a named test declares responsibility for a claim; it does not prove that the assertion is adequate. Current-state review must still compare each claim with its backing behavior.

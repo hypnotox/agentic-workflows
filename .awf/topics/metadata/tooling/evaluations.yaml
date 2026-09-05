@@ -1,4 +1,0 @@
-title: Evaluations
-summary: The golden-task evaluation suite.
-paths:
-  - internal/evals/**

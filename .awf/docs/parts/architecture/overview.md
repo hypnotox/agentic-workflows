@@ -1,1 +1,0 @@
-awf renders workflow guidance from committed `.awf/` configuration. The CLI owns validation, rendering, and drift checks; generated target artifacts own agent-facing runtime integration. Efforts and worktrees are local residents, while Git remains topology authority.

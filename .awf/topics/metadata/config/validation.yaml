@@ -1,6 +1,0 @@
-title: Validation
-summary: "Config-tree validation rules: names, globs, targets, and anchoring."
-paths:
-  - internal/config/**
-  - internal/configspec/**
-  - internal/pathglob/**

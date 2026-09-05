@@ -1,4 +1,0 @@
-title: Commit policy
-summary: Opt-in author, committer, and SSH-signature policy for exact Git commit objects.
-paths:
-  - internal/commitpolicy/**

@@ -1,5 +1,5 @@
-// Package pathglob is awf's single glob dialect (ADR-0077): anchored full-path
-// doublestar matching against slash-separated repo-relative paths. There is
+// Package pathglob provides anchored full-path doublestar matching against
+// slash-separated repository-relative paths. There is
 // deliberately no basename mode - `*.go` matches only top-level .go files;
 // any-depth is written `**/*.go`. Leaf package: imports nothing from awf.
 package pathglob

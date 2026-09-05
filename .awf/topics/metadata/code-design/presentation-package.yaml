@@ -1,4 +1,0 @@
-title: Presentation package
-summary: What the central presentation package owns and excludes.
-paths:
-  - internal/presentation/**

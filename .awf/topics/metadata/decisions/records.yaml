@@ -1,4 +1,0 @@
-title: Decision records
-summary: The repository's plain durable decision-history boundary.
-paths:
-  - docs/decisions/**

@@ -1,6 +1,0 @@
-title: Effort management
-summary: Binary-owned effort records and optional resources.
-paths:
-    - cmd/awf/effort*.go
-    - internal/effort/**
-    - internal/worktree/**

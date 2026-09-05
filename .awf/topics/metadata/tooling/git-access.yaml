@@ -1,5 +1,0 @@
-title: Git access
-summary: Observable Git isolation, errors, status, and range grammar.
-paths:
-  - internal/git/**
-  - internal/testsupport/gitfixture/**

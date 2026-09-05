@@ -6,16 +6,8 @@
 !.claude/
 .claude/settings.local.json
 .claude/scheduled_tasks.lock
-
-# awf renders a CLAUDE.md @AGENTS.md bridge at the repo root (ADR-0016);
-# negate the user's global CLAUDE.md ignore so the rendered artifact commits.
 !CLAUDE.md
-
-# Keep shared repository infrastructure and generated Pi skills visible despite
-# common global ignores.
 !.github/
 !.pi/
 
-# Per-checkout maintainer caches, including golangci-lint
-# observability, are operator-owned and never committed.
 /.cache/

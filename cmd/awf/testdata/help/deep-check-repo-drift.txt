@@ -1,7 +1,0 @@
-command: awf check repo drift
-summary: Report stale or hand-edited rendered output
-
-help:
-  usage:
-    awf check repo drift
-  description: Re-render in memory and report stale or hand-edited output.

@@ -1,4 +1,0 @@
-title: Templates
-summary: The embedded template source and its rendered content contracts.
-paths:
-  - templates/**

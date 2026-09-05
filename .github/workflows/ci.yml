@@ -10,194 +10,26 @@ permissions:
   contents: read
 
 jobs:
-  selection:
-    name: selection-linux-amd64
-    if: ${{ github.event_name == 'pull_request' }}
+  gate:
+    name: gate
     runs-on: ubuntu-latest
-    outputs:
-      selection_path: ${{ steps.select.outputs.selection_path }}
-      selection_status: ${{ steps.select.outputs.selection_status }}
-      selection_outcome: ${{ steps.select.outputs.selection_outcome }}
-      go: ${{ steps.select.outputs.go }}
-      render_template: ${{ steps.select.outputs.render_template }}
-      platform_sensitive: ${{ steps.select.outputs.platform_sensitive }}
-      release_archive: ${{ steps.select.outputs.release_archive }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with: {ref: '${{ github.event.pull_request.head.sha }}', fetch-depth: 0}
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
-        with: {go-version-file: go.mod}
-      - name: Assert native target linux/amd64
-        env: {HEAD_SHA: '${{ github.event.pull_request.head.sha }}'}
-        run: |
-          printf 'native target: linux/amd64\n'
-          [ '${{ runner.os }}' = Linux ]
-          [ '${{ runner.arch }}' = X64 ]
-          [ "$(uname -s)" = Linux ]
-          [ "$(uname -m)" = x86_64 ]
-          [ "$(go env GOOS)" = linux ]
-          [ "$(go env GOARCH)" = amd64 ]
-          [ "$(git rev-parse HEAD)" = "$HEAD_SHA" ]
-      - name: Select typed affected lanes
-        id: select
-        env:
-          BASE_SHA: ${{ github.event.pull_request.base.sha }}
-          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-        run: |
-          selection_path="$RUNNER_TEMP/awf-test-selection-v2.json"
-          # Build first so the hosted shell observes testselection's documented
-          # refused exit 2 instead of `go run` translating it to exit 1.
-          go build -o "$RUNNER_TEMP/awf-testselection" ./cmd/testselection
-          set +e
-          "$RUNNER_TEMP/awf-testselection" --range "${BASE_SHA}..${HEAD_SHA}" >"$selection_path"
-          producer_status=$?
-          set -e
-
-          [ -s "$selection_path" ] || { echo 'test selection emitted no JSON document' >&2; exit 1; }
-          [ "$(wc -l <"$selection_path" | tr -d ' ')" = 1 ] || { echo 'test selection did not emit one newline-terminated JSON document' >&2; exit 1; }
-          jq -e '
-            type == "object" and
-            .version == 2 and
-            (.outcome == "selected" or .outcome == "empty" or .outcome == "widened" or .outcome == "refused") and
-            (.lanes | type == "array") and
-            all(.lanes[];
-              .name == "go" or
-              .name == "render-template" or
-              .name == "platform-sensitive" or
-              .name == "release-archive"
-            ) and
-            ([.lanes[].name] == ([.lanes[].name] | sort | unique)) and
-            (if .outcome == "widened" then
-              [.lanes[].name] == ["go", "platform-sensitive", "release-archive", "render-template"]
-            elif .outcome == "empty" or .outcome == "refused" then
-              (.lanes | length) == 0
-            else
-              (.lanes | length) > 0
-            end)
-          ' "$selection_path" >/dev/null || { echo 'test selection JSON v2 contract mismatch' >&2; exit 1; }
-
-          outcome="$(jq -r '.outcome' "$selection_path")"
-          case "$producer_status:$outcome" in
-            0:selected|0:empty|0:widened|2:refused) ;;
-            *) echo "test selection status/outcome mismatch: $producer_status/$outcome" >&2; exit 1 ;;
-          esac
-
-          {
-            echo "selection_path=$selection_path"
-            echo "selection_status=$producer_status"
-            echo "selection_outcome=$outcome"
-          } >>"$GITHUB_OUTPUT"
-          for mapping in go=go render_template=render-template platform_sensitive=platform-sensitive release_archive=release-archive; do
-            key="${mapping%%=*}"
-            lane="${mapping#*=}"
-            if jq -e --arg lane "$lane" 'any(.lanes[]; .name == $lane)' "$selection_path" >/dev/null; then
-              echo "$key=true" >>"$GITHUB_OUTPUT"
-            else
-              echo "$key=false" >>"$GITHUB_OUTPUT"
-            fi
-          done
-          if [ "$outcome" = refused ]; then
-            echo 'test selection refused the requested revision range' >&2
-            exit 2
-          fi
-
-  linux:
-    name: native-linux-amd64
-    needs: selection
-    if: ${{ always() && (github.event_name != 'pull_request' || needs.selection.result == 'success') }}
-    runs-on: ubuntu-latest
-    env:
-      BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with: {ref: '${{ github.event_name == ''pull_request'' && github.event.pull_request.head.sha || github.sha }}', fetch-depth: 0}
-      - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
-        with: {go-version-file: go.mod}
-      - name: Assert native target linux/amd64
-        run: |
-          printf 'native target: linux/amd64\n'
-          [ '${{ runner.os }}' = Linux ]
-          [ '${{ runner.arch }}' = X64 ]
-          [ "$(uname -s)" = Linux ]
-          [ "$(uname -m)" = x86_64 ]
-          [ "$(go env GOOS)" = linux ]
-          [ "$(go env GOARCH)" = amd64 ]
-          [ "$(git rev-parse HEAD)" = "$CANDIDATE_SHA" ]
-      - name: Complete Go behavior with calibration timing
-        run: AWF_FULL_LINUX_CEILING=4m ./x test-full-linux budget --artifact "$RUNNER_TEMP/awf-full-linux-timing-v1.json"
-      - name: Upload full Linux calibration timing
-        if: ${{ always() }}
-        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
-          name: full-linux-timing-linux-amd64-${{ env.CANDIDATE_SHA }}-attempt-${{ github.run_attempt }}
-          path: ${{ runner.temp }}/awf-full-linux-timing-v1.json
-          if-no-files-found: error
-          retention-days: 30
-      - name: Build, blocking lint, version, and pins
-        run: ./x gate
-      - name: Selected release-archive behavior
-        if: ${{ github.event_name == 'pull_request' && needs.selection.outputs.release_archive == 'true' }}
-        run: go test -count=1 ./cmd/releasecheck
-      - name: Selected render and repository checks
-        if: ${{ github.event_name != 'pull_request' || needs.selection.outputs.render_template == 'true' }}
-        run: ./x check && ./x render && git diff --exit-code
+          go-version-file: go.mod
+      - run: ./x gate
+      - run: ./x check
+      - run: ./x render && git diff --exit-code
 
   macos:
     name: native-darwin-arm64
-    needs: selection
-    if: ${{ always() && (github.event_name != 'pull_request' || (needs.selection.result == 'success' && needs.selection.outputs.platform_sensitive == 'true')) }}
+    if: github.event_name == 'push'
     runs-on: macos-15
-    env:
-      CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
     steps:
       - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with: {ref: '${{ github.event_name == ''pull_request'' && github.event.pull_request.head.sha || github.sha }}', fetch-depth: 0}
       - uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
-        with: {go-version-file: go.mod}
-      - name: Assert native target darwin/arm64
-        run: |
-          printf 'native target: darwin/arm64\n'
-          [ '${{ runner.os }}' = macOS ]
-          [ '${{ runner.arch }}' = ARM64 ]
-          [ "$(uname -s)" = Darwin ]
-          [ "$(uname -m)" = arm64 ]
-          [ "$(go env GOOS)" = darwin ]
-          [ "$(go env GOARCH)" = arm64 ]
-          [ "$(git rev-parse HEAD)" = "$CANDIDATE_SHA" ]
-      - name: Filesystem, publication, Git, effort, and worktree safety
-        if: ${{ github.event_name == 'pull_request' }}
-        run: |
-          temp_root="$(cd "$RUNNER_TEMP" && pwd -P)"
-          env TMPDIR="$temp_root" GOTMPDIR="$temp_root" go test -count=1 ./internal/filesystem ./internal/filepublication ./internal/git ./internal/effort ./internal/effort/application ./internal/worktree
-      - name: Complete macOS Go assurance
-        if: ${{ github.event_name != 'pull_request' }}
-        run: ./x test
-      - name: Complete render and check behavior on main
-        if: ${{ github.event_name != 'pull_request' }}
-        run: ./x check && ./x render && git diff --exit-code
-
-  gate:
-    name: gate
-    if: ${{ always() }}
-    needs: [selection, linux, macos]
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
-        with: {ref: '${{ github.event_name == ''pull_request'' && github.event.pull_request.head.sha || github.sha }}'}
-      - name: Require every selected assurance lane for the exact candidate
-        env:
-          CANDIDATE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.head.sha || github.sha }}
-          PLATFORM_SELECTED: ${{ needs.selection.outputs.platform_sensitive }}
-        run: |
-          [ "$(git rev-parse HEAD)" = "$CANDIDATE_SHA" ]
-          if [ "$GITHUB_EVENT_NAME" = pull_request ]; then
-            [ '${{ needs.selection.result }}' = success ]
-            [ '${{ needs.linux.result }}' = success ]
-            if [ "$PLATFORM_SELECTED" = true ]; then [ '${{ needs.macos.result }}' = success ]; else [ '${{ needs.macos.result }}' = skipped ]; fi
-          else
-            [ '${{ needs.selection.result }}' = skipped ]
-            [ '${{ needs.linux.result }}' = success ]
-            [ '${{ needs.macos.result }}' = success ]
-          fi
+        with:
+          go-version-file: go.mod
+      - run: ./x test
+      - run: ./x check

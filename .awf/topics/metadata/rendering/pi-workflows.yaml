@@ -1,6 +1,0 @@
-title: Pi workflows
-summary: "Pi publication of AWF skills and the external generic-role boundary."
-paths:
-  - templates/skills/**
-  - internal/catalog/**
-  - .pi/skills/**
