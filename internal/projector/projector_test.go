@@ -84,7 +84,7 @@ func TestLoadAndBuildPreserveLiteralProjectBody(t *testing.T) {
 		}
 	}
 	bootstrap := outputForTest(t, outputs, ".awf/bootstrap.sh")
-	for _, phrase := range []string{`AWF_VERSION="${AWF_VERSION:-0.51.0}"`, "checksums.txt", "sha256sum -c -", "shasum -a 256 -c -"} {
+	for _, phrase := range []string{`AWF_VERSION="${AWF_VERSION:-0.52.0}"`, "checksums.txt", "sha256sum -c -", "shasum -a 256 -c -"} {
 		if !bytes.Contains(bootstrap.Bytes, []byte(phrase)) {
 			t.Errorf("bootstrap missing %q", phrase)
 		}
