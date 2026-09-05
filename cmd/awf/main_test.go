@@ -15,7 +15,7 @@ func TestHelpExposesOnlyFinalCommands(t *testing.T) {
 	if code != 0 || stderr != "" {
 		t.Fatalf("help = code %d, stderr %q", code, stderr)
 	}
-	for _, command := range []string{"init", "render", "check", "resolve", "effort", "version"} {
+	for _, command := range []string{"init", "render", "check", "resolve", "effort", "adr", "plan", "version"} {
 		if !strings.Contains(stdout, "  "+command) {
 			t.Errorf("help missing %s:\n%s", command, stdout)
 		}
@@ -38,6 +38,12 @@ func TestHelpExposesOnlyFinalCommands(t *testing.T) {
 	for _, retired := range []string{"integrate", "worktree"} {
 		if strings.Contains(stdout, retired) {
 			t.Errorf("effort help contains retired command %q", retired)
+		}
+	}
+	for _, command := range []string{"adr", "plan"} {
+		code, stdout, stderr = runCLI(t, t.TempDir(), command, "--help")
+		if code != 0 || stderr != "" || !strings.Contains(stdout, "new <") {
+			t.Errorf("%s help = code %d, stdout %q, stderr %q", command, code, stdout, stderr)
 		}
 	}
 }
@@ -97,6 +103,10 @@ func TestResolveAndEffortLifecycle(t *testing.T) {
 	if code, _, stderr := runCLI(t, root, "init"); code != 0 {
 		t.Fatal(stderr)
 	}
+	code, stdout, stderr := runCLI(t, root, "resolve")
+	if code != 0 || stdout != "none\n" || stderr != "" {
+		t.Fatalf("resolve without globals = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
 	topicPath := filepath.Join(root, ".awf", "topics", "code", "render.md")
 	if err := os.MkdirAll(filepath.Dir(topicPath), 0o755); err != nil {
 		t.Fatal(err)
@@ -104,10 +114,21 @@ func TestResolveAndEffortLifecycle(t *testing.T) {
 	if err := os.WriteFile(topicPath, []byte("---\npaths: [internal/projector/**]\n---\n# Render\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	globalPath := filepath.Join(root, ".awf", "topics", "global.md")
+	if err := os.WriteFile(globalPath, []byte("---\npaths: ['**']\n---\n# Global\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 
-	code, stdout, stderr := runCLI(t, root, "resolve", "internal/projector/new.go")
-	if code != 0 || stdout != "code/render\t.awf/topics/code/render.md\n" || stderr != "" {
+	code, stdout, stderr = runCLI(t, root, "resolve")
+	if code != 0 || stdout != "global\t.awf/topics/global.md\n" || stderr != "" {
+		t.Fatalf("resolve globals = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	code, stdout, stderr = runCLI(t, root, "resolve", "internal/projector/new.go")
+	if code != 0 || stdout != "code/render\t.awf/topics/code/render.md\nglobal\t.awf/topics/global.md\n" || stderr != "" {
 		t.Fatalf("resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	if err := os.Remove(globalPath); err != nil {
+		t.Fatal(err)
 	}
 	code, stdout, stderr = runCLI(t, root, "resolve", "README.md")
 	if code != 0 || stdout != "none\n" || stderr != "" {
@@ -117,6 +138,37 @@ func TestResolveAndEffortLifecycle(t *testing.T) {
 	code, stdout, stderr = runCLI(t, root, "effort", "new", "simple")
 	if code != 0 || stdout != "memory: .awf/efforts/simple/memory.md\n" || stderr != "" {
 		t.Fatalf("effort new = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	code, stdout, stderr = runCLI(t, root, "plan", "new", "simple")
+	if code != 0 || stdout != "plan: .awf/efforts/simple/plan.md\n" || stderr != "" {
+		t.Fatalf("plan new = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	code, stdout, stderr = runCLI(t, root, "adr", "new", "simple-choice")
+	if code != 0 || stdout != "adr: docs/decisions/simple-choice.md\n" || stderr != "" {
+		t.Fatalf("adr new = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	artifacts := map[string][]byte{
+		filepath.Join(".awf", "efforts", "simple", "plan.md"):  []byte("edited plan\n"),
+		filepath.Join("docs", "decisions", "simple-choice.md"): []byte("edited adr\n"),
+	}
+	for relative, body := range artifacts {
+		if err := os.WriteFile(filepath.Join(root, relative), body, 0o644); err != nil {
+			t.Fatal(err)
+		}
+	}
+	code, _, stderr = runCLI(t, root, "render")
+	if code != 0 || stderr != "" {
+		t.Fatalf("render with artifacts = code %d, stderr %q", code, stderr)
+	}
+	code, stdout, stderr = runCLI(t, root, "check")
+	if code != 0 || stdout != "check: ok\n" || stderr != "" {
+		t.Fatalf("check with artifacts = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	for relative, want := range artifacts {
+		got, err := os.ReadFile(filepath.Join(root, relative))
+		if err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("artifact %s after render/check = %q, %v", relative, got, err)
+		}
 	}
 	code, stdout, stderr = runCLI(t, root, "effort", "list")
 	if code != 0 || stdout != "simple\n" || stderr != "" {

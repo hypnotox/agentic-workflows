@@ -8,7 +8,7 @@ You are a coding agent responsible for developing and maintaining this project. 
 
 ## Identity
 
-`awf` is a public pre-1.0 Go CLI at `github.com/hypnotox/agentic-workflows`. It projects a small `.awf` source tree into fixed agent guidance, routes repository paths to current topics, and keeps optional local effort memory.
+`awf` is a public pre-1.0 Go CLI at `github.com/hypnotox/agentic-workflows`. It projects a small `.awf` source tree into fixed agent guidance, routes repository paths to current topics, keeps optional local effort memory, and offers create-only plan and ADR scaffolds.
 
 ## Invariants
 
@@ -20,7 +20,7 @@ You are a coding agent responsible for developing and maintaining this project. 
 
 ## Workflow
 
-Use `./x resolve <path>...` before substantial changes and read every returned topic. Keep implementation decisions in active effort memory while work is in progress; fold still-needed guidance into its owning topic before finishing. Prefer ordinary repository tools and direct code. Use Conventional Commits with one concern per commit.
+Use `./x resolve` when repository context is needed: bare for explicit global topics or with paths for globals plus matching topics. Read every returned topic. Once the applicable current context is known, do not query again before every edit. Keep continuity, artifact references, and selected attributed decision evidence in active effort memory while work is in progress; before finishing, compare the result with its criteria and fold durable decisions and useful rationale into applicable topics. Prefer ordinary repository tools and direct code. Use Conventional Commits with one concern per commit.
 
 The generated root `./awf` wrapper intentionally exercises the released bootstrap path. During AWF development, use the dogfooding `./x` commands, which run the checkout source directly.
 
@@ -31,8 +31,10 @@ The generated root `./awf` wrapper intentionally exercises the released bootstra
 ./x gate: format-check, test, and build the repository
 ./x render: render from the checkout source
 ./x check: check with the checkout source
-./x resolve <path>...: resolve current topics with the checkout source
+./x resolve [<path>...]: resolve current topics with the checkout source
 ./x effort <command>...: manage local effort memory with the checkout source
+./x plan new <effort-slug>: create an effort-local plan scaffold
+./x adr new <slug>: create a decision record scaffold
 ./x build: build bin/awf
 ```
 

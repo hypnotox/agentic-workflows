@@ -18,4 +18,4 @@ The output set is fixed in `internal/projector`: `AGENTS.md`, `CLAUDE.md`, Pi an
 
 An exact leading AWF comment marks generated ownership. `render` may create a missing destination or replace a regular marked destination, but refuses an unmarked collision. It writes complete files by temporary file and rename. It never deletes retired outputs. Instead, it succeeds and reports marked files outside the current output set. Removing the file or its AWF marker is the adopter's explicit cleanup.
 
-`check` validates sources, compares the fixed output bytes and executable class, and fails for unmanaged marked files. There is no lock, ownership history, migration state, or Git input.
+`check` validates sources, compares the fixed output bytes and executable class, and fails for unmanaged marked files. Author-owned `.awf/efforts/<slug>/plan.md` and `docs/decisions/<slug>.md` files do not join the output inventory: `render` leaves them untouched and `check` does not interpret their contents. There is no lock, ownership history, migration state, or Git input.

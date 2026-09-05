@@ -31,6 +31,7 @@ type Topic struct {
 	ID         string
 	SourcePath string
 	Paths      []string
+	Global     bool
 	Body       []byte
 }
 
@@ -120,8 +121,12 @@ func loadTopics(root string) ([]Topic, error) {
 		if len(metadata.Paths) == 0 {
 			return fmt.Errorf("%s: paths must contain at least one pattern", relative)
 		}
+		global := len(metadata.Paths) == 1 && metadata.Paths[0] == "**"
 		patterns := make([]string, len(metadata.Paths))
 		for i, pattern := range metadata.Paths {
+			if pattern == "**" && len(metadata.Paths) != 1 {
+				return fmt.Errorf("%s: standalone ** must be the only topic path pattern", relative)
+			}
 			patterns[i], err = normalizeTopicPattern(pattern)
 			if err != nil {
 				return fmt.Errorf("%s: %w", relative, err)
@@ -136,6 +141,7 @@ func loadTopics(root string) ([]Topic, error) {
 			ID:         id,
 			SourcePath: relative,
 			Paths:      patterns,
+			Global:     global,
 			Body:       append([]byte(nil), body...),
 		})
 		return nil

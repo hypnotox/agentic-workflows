@@ -9,7 +9,10 @@ import (
 	"sort"
 )
 
-const memoryName = "memory.md"
+const (
+	memoryName = "memory.md"
+	planName   = "plan.md"
+)
 
 // New creates a new active effort and returns the repository-relative path to
 // its memory file.
@@ -53,6 +56,43 @@ func New(root, slug string) (string, error) {
 	}
 
 	return memoryRelative, nil
+}
+
+// NewPlan creates a plan scaffold in an existing active effort and returns its
+// repository-relative path.
+func NewPlan(root, slug string) (string, error) {
+	if err := validateSlug(slug); err != nil {
+		return "", err
+	}
+
+	memoryPath := filepath.Join(root, activePath(slug), memoryName)
+	info, err := os.Lstat(memoryPath)
+	if err != nil {
+		if os.IsNotExist(err) {
+			return "", fmt.Errorf("active effort %q does not exist", slug)
+		}
+		return "", fmt.Errorf("inspect effort %q memory: %w", slug, err)
+	}
+	if !info.Mode().IsRegular() {
+		return "", fmt.Errorf("active effort %q does not have a regular memory file", slug)
+	}
+
+	planRelative := filepath.Join(activePath(slug), planName)
+	planFile, err := os.OpenFile(filepath.Join(root, planRelative), os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
+	if err != nil {
+		if os.IsExist(err) {
+			return "", fmt.Errorf("plan for effort %q already exists", slug)
+		}
+		return "", fmt.Errorf("create plan for effort %q: %w", slug, err)
+	}
+	if _, err := io.WriteString(planFile, planStarter(slug)); err != nil {
+		_ = planFile.Close()
+		return "", fmt.Errorf("write plan for effort %q: %w", slug, err)
+	}
+	if err := planFile.Close(); err != nil {
+		return "", fmt.Errorf("close plan for effort %q: %w", slug, err)
+	}
+	return planRelative, nil
 }
 
 // List returns the sorted slugs of active efforts. An active effort is a
@@ -176,8 +216,21 @@ func pathExists(path string) (bool, error) {
 
 func starter(slug string) string {
 	return "# Effort: " + slug + "\n\n" +
-		"## Outcome\n\n" +
+		"## Outcome and success criteria\n\n" +
+		"Define the outcome and criteria here, or point to the detailed criteria in `plan.md`.\n\n" +
 		"## Current state\n\n" +
-		"## Decisions\n\n" +
-		"## Next\n"
+		"## Decisions and evidence\n\n" +
+		"Record selected decision-relevant excerpts with attribution. Label quotations, summaries, proposals, and agreed decisions accurately. Reference an ADR instead of duplicating its content.\n\n" +
+		"## Artifacts\n\n" +
+		"Reference the plan, ADRs, and other effort artifacts here.\n\n" +
+		"## Next actions\n\n" +
+		"## Completion evidence\n\n" +
+		"Compare the actual result with the success criteria. Record verification, unmet criteria, deviations, and required topic updates before finishing.\n"
+}
+
+func planStarter(slug string) string {
+	return "# Plan: " + slug + "\n\n" +
+		"## Outcome and success criteria\n\n" +
+		"## Work sequence\n\n" +
+		"## Verification\n"
 }

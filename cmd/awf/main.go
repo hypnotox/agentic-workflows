@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	"github.com/hypnotox/agentic-workflows/internal/adrfs"
 	"github.com/hypnotox/agentic-workflows/internal/effortfs"
 	"github.com/hypnotox/agentic-workflows/internal/projector"
 )
@@ -80,9 +81,6 @@ func run(root string, args []string, stdout, stderr io.Writer) int {
 			writeText(stdout, resolveHelp)
 			return 0
 		}
-		if len(args) < 3 {
-			return usage(stderr, "usage: awf resolve <path>...")
-		}
 		matches, err := projector.Resolve(root, args[2:])
 		if err != nil {
 			return failure(stderr, err)
@@ -97,6 +95,10 @@ func run(root string, args []string, stdout, stderr io.Writer) int {
 		return 0
 	case "effort":
 		return runEffort(root, args[2:], stdout, stderr)
+	case "adr":
+		return runADR(root, args[2:], stdout, stderr)
+	case "plan":
+		return runPlan(root, args[2:], stdout, stderr)
 	case "version":
 		if helpRequested(args[2:]) {
 			writeText(stdout, versionHelp)
@@ -192,6 +194,44 @@ func runEffort(root string, args []string, stdout, stderr io.Writer) int {
 	}
 }
 
+func runADR(root string, args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || helpRequested(args) {
+		writeText(stdout, adrHelp)
+		return 0
+	}
+	if args[0] != "new" {
+		return usage(stderr, fmt.Sprintf("unknown adr command %q; expected new", args[0]))
+	}
+	if len(args) != 2 {
+		return usage(stderr, "usage: awf adr new <slug>")
+	}
+	path, err := adrfs.New(root, args[1])
+	if err != nil {
+		return failure(stderr, err)
+	}
+	fmt.Fprintln(stdout, "adr:", filepathSlash(path))
+	return 0
+}
+
+func runPlan(root string, args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || helpRequested(args) {
+		writeText(stdout, planHelp)
+		return 0
+	}
+	if args[0] != "new" {
+		return usage(stderr, fmt.Sprintf("unknown plan command %q; expected new", args[0]))
+	}
+	if len(args) != 2 {
+		return usage(stderr, "usage: awf plan new <effort-slug>")
+	}
+	path, err := effortfs.NewPlan(root, args[1])
+	if err != nil {
+		return failure(stderr, err)
+	}
+	fmt.Fprintln(stdout, "plan:", filepathSlash(path))
+	return 0
+}
+
 func printRenderResult(stdout io.Writer, result projector.RenderResult) {
 	if len(result.Changed) == 0 {
 		fmt.Fprintln(stdout, "render: up to date")
@@ -221,6 +261,10 @@ func commandHelp(command string) (string, bool) {
 		return resolveHelp, true
 	case "effort":
 		return effortHelp, true
+	case "adr":
+		return adrHelp, true
+	case "plan":
+		return planHelp, true
 	case "version":
 		return versionHelp, true
 	default:
@@ -255,8 +299,10 @@ Commands:
   init       create the minimal AWF sources and projection
   render     render the fixed generated files
   check      check sources and generated files
-  resolve    find topics for repository paths
+  resolve    find global topics or topics for repository paths
   effort     manage local effort memory
+  adr        create a decision record scaffold
+  plan       create an effort plan scaffold
   version    print the AWF version
 
 Run ` + "`awf help <command>`" + ` for command details.
@@ -277,9 +323,9 @@ const checkHelp = `Usage: awf check
 Validate AWF sources and generated files. Unmanaged AWF-marked files fail the check.
 `
 
-const resolveHelp = `Usage: awf resolve <path>...
+const resolveHelp = `Usage: awf resolve [<path>...]
 
-Print every topic matching the supplied lexical repository-relative paths.
+Without paths, print explicit global topics. With paths, print globals and every topic matching a supplied lexical repository-relative path.
 `
 
 const effortHelp = `Usage: awf effort <command>
@@ -289,6 +335,16 @@ Commands:
   list           list active efforts
   show <slug>    show an effort's memory path and contents
   finish <slug>  move an effort into the local archive
+`
+
+const adrHelp = `Usage: awf adr new <slug>
+
+Create docs/decisions/<slug>.md without replacing an existing file.
+`
+
+const planHelp = `Usage: awf plan new <effort-slug>
+
+Create plan.md in an existing active effort without replacing an existing file.
 `
 
 const versionHelp = `Usage: awf version

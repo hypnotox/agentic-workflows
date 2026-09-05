@@ -16,8 +16,8 @@ type TopicMatch struct {
 	SourcePath string
 }
 
-// Resolve returns every topic matching at least one lexical repository-relative
-// path. The target paths do not need to exist.
+// Resolve returns explicit global topics and every topic matching at least one
+// lexical repository-relative path. The target paths do not need to exist.
 func Resolve(root string, values []string) ([]TopicMatch, error) {
 	sources, err := Load(root)
 	if err != nil {
@@ -33,7 +33,7 @@ func Resolve(root string, values []string) ([]TopicMatch, error) {
 
 	matches := make([]TopicMatch, 0)
 	for _, topic := range sources.Topics {
-		matched := false
+		matched := topic.Global
 		for _, value := range normalized {
 			if pathglob.MatchAny(topic.Paths, value) {
 				matched = true

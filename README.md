@@ -4,9 +4,9 @@
 [![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go&logoColor=white)](go.mod)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](LICENSE)
 
-`awf` is a small Go CLI that projects repository-owned agent guidance, routes paths to current topics, and keeps optional local effort memory.
+`awf` is a small Go CLI that projects repository-owned agent guidance, routes paths to current topics, keeps optional local effort memory, and creates optional plan and ADR scaffolds.
 
-AWF deliberately does not manage Git, commits, reviews, project gates, migrations, or general documentation. Its runtime works without Git and does not require external agent skills.
+AWF deliberately does not manage Git, commits, reviews, project gates, migrations, or document meaning. Its scaffolds are conveniences rather than a general authoring platform. The runtime works without Git and does not require external agent skills.
 
 ## Install
 
@@ -57,7 +57,16 @@ paths:
 Current guidance goes here.
 ```
 
-`*` matches within one path component and `**` matches across directories. Multiple topics may match. Topic bodies are ordinary Markdown; AWF interprets only `paths`.
+`*` matches within one path component and `**` matches across directories. Multiple topics may match, with no hierarchy, priority, or exclusive owner. Topic bodies are ordinary Markdown; AWF interprets only `paths`.
+
+A topic is explicitly global only when `**` is its exact sole selector:
+
+```yaml
+paths:
+  - '**'
+```
+
+A standalone `**` is invalid in mixed or duplicate selector lists. `*`, `src/**`, and `**/*.go` remain ordinary matching patterns.
 
 ## Commands
 
@@ -65,11 +74,13 @@ Current guidance goes here.
 awf init
 awf render
 awf check
-awf resolve <path>...
+awf resolve [<path>...]
 awf effort new <slug>
 awf effort list
 awf effort show <slug>
 awf effort finish <slug>
+awf plan new <effort-slug>
+awf adr new <slug>
 awf version
 ```
 
@@ -80,13 +91,14 @@ After changing project or topic sources:
 ./awf check
 ```
 
-`resolve` is lexical and accepts paths that do not exist yet:
+Use `resolve` when repository context is needed. Without arguments it returns explicit global topics only. With paths it returns globals plus topics matching any supplied lexical path, once per topic:
 
 ```sh
-./awf resolve internal/projector/new-file.go
+./awf resolve
+./awf resolve internal/projector/new-file.go docs/future.md
 ```
 
-A successful no-match prints `none`.
+Paths need not exist. Invalid absolute or escaping paths are rejected even when a global topic exists. Output remains the topic ID and source path; a successful empty result prints `none`.
 
 ## Generated ownership
 
@@ -107,9 +119,20 @@ When a marked file is no longer part of the fixed output set, `render` succeeds 
 
 There is no lock file.
 
-## Effort memory
+## Efforts, plans, and decisions
 
-An effort is local ignored memory at `.awf/efforts/<slug>/memory.md`. `finish` moves the complete resident to `.awf/effort-archive/<slug>` without replacing an existing archive. AWF treats the memory and any extra resident files as opaque.
+An effort is local ignored memory at `.awf/efforts/<slug>/memory.md`. Record its outcome and success criteria, current state, next actions, artifact references, selected attributed decision evidence, and completion evidence. Detailed criteria may instead live in a plan referenced from memory. Do not reconstruct dialogue or retain complete sessions.
+
+Plans and ADRs are independent and optional: complexity can warrant a plan, a material choice can warrant an ADR, and an effort can need either, both, or neither. The create-only scaffold commands write author-owned Markdown and never replace an existing destination:
+
+```sh
+./awf plan new <effort-slug> # .awf/efforts/<effort-slug>/plan.md
+./awf adr new <slug>         # docs/decisions/<slug>.md
+```
+
+A plan requires an existing effort. AWF does not interpret either document, include it in projection, or perform Git actions.
+
+Without a worktree, effort and implementation files share one checkout. With a worktree, keep memory and plans in the primary checkout and the ADR and implementation in the implementation checkout. Record both locations in memory and handoffs. Run memory and plan commands from the primary root, and ADR and implementation Git commands from the implementation root. Run worktree creation, integration, removal, and branch cleanup from the primary root; an absolute wrapper path does not substitute for the correct working directory.
 
 AWF does not create or inspect Git worktrees. When isolation helps, use native Git yourself:
 
@@ -117,7 +140,14 @@ AWF does not create or inspect Git worktrees. When isolation helps, use native G
 git worktree add -b awf/<slug> .awf/worktrees/<slug>
 ```
 
-Integrate and remove the worktree through the repository's normal Git workflow, then finish the effort.
+An ADR has one working copy. Commit the chosen decision and rationale during the effort. After verifying the result and incorporating the durable decision and useful rationale into applicable topics, remove the ADR in a later implementation/topic-update commit. Preserve both commits through ordinary non-squash integration. Historical content remains available through Git:
+
+```sh
+git log --full-history -- docs/decisions/<slug>.md
+git show <decision-commit>:docs/decisions/<slug>.md
+```
+
+Before closing, compare the actual result with the success criteria, report unmet criteria and deviations, surface a changed goal, and keep topics accurate. `effort finish` enforces none of this meaning; it only moves the complete resident to `.awf/effort-archive/<slug>` without replacement. After integration, remove any worktree through native Git and finish the effort.
 
 ## Updating
 
@@ -132,7 +162,7 @@ The target binary rewrites the generated bootstrap pin. Existing v0.50 adopters 
 
 ## Optional external skills
 
-Generated `AGENTS.md` conditionally suggests [`agentic-artifact-design`](https://github.com/hypnotox/agentic-skills) for substantial prose and `agentic-code-design` for structural code judgment. AWF does not install, probe, pin, or require those skills.
+Generated guidance conditionally references [`agentic-planning`, `agentic-implementing`, and `agentic-reviewing`](https://github.com/hypnotox/agentic-skills) for general engineering methods, plus `agentic-artifact-design` for substantial prose and `agentic-code-design` for structural code judgment. AWF owns only repository-specific discovery, locations, continuity, and completion conventions; it does not install, probe, pin, or require external skills.
 
 ## Development
 

@@ -298,7 +298,7 @@ func unmanagedMarkedFiles(root string, outputs []Output) ([]string, error) {
 
 func ignoredScanDirectory(relative string) bool {
 	switch relative {
-	case ".git", topicsPath, ".awf/efforts", ".awf/worktrees", ".awf/effort-archive":
+	case ".git", topicsPath, ".awf/efforts", ".awf/worktrees", ".awf/effort-archive", "docs/decisions":
 		return true
 	default:
 		return false

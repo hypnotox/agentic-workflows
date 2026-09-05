@@ -2,6 +2,14 @@
 
 All notable changes to `awf` are documented here, newest first.
 
+## [Unreleased]
+
+### Features
+
+- Add explicit global topics through the sole `paths: ['**']` selector, with bare `resolve` returning globals and path queries returning globals plus matching topics.
+
+- Add create-only optional plan and ADR scaffolds, richer effort continuity prompts, and generated guidance for criteria-based completion, decision evidence, topic updates, and historical ADR retirement.
+
 ## [0.51.0] - 2026-09-05
 
 ### Breaking changes

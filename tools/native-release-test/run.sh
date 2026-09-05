@@ -39,14 +39,34 @@ cd "$root/repo"
 "$candidate" init
 [ "$(bash .awf/bootstrap.sh)" = "$cache_binary" ]
 ./awf check
+mkdir -p .awf/topics/code
+cat > .awf/topics/global.md <<'EOF'
+---
+paths: ['**']
+---
+Global smoke guidance.
+EOF
+cat > .awf/topics/code/go.md <<'EOF'
+---
+paths: ['src/**/*.go']
+---
+Go smoke guidance.
+EOF
+[ "$("$candidate" resolve)" = $'global\t.awf/topics/global.md' ]
+[ "$("$candidate" resolve src/future/main.go)" = $'code/go\t.awf/topics/code/go.md\nglobal\t.awf/topics/global.md' ]
 printf '\nNative smoke guidance.\n' >> .awf/project.md
 "$candidate" render
 "$candidate" check
 
 "$candidate" effort new smoke
 "$candidate" effort show smoke | grep '# Effort: smoke' >/dev/null
+[ "$("$candidate" plan new smoke)" = "plan: .awf/efforts/smoke/plan.md" ]
+[ "$("$candidate" adr new smoke-choice)" = "adr: docs/decisions/smoke-choice.md" ]
+"$candidate" check
 "$candidate" effort finish smoke
 [ -f .awf/effort-archive/smoke/memory.md ]
+[ -f .awf/effort-archive/smoke/plan.md ]
+[ -f docs/decisions/smoke-choice.md ]
 [ ! -e .awf/efforts/smoke ]
 
 printf 'native-release-test: verified %s/%s candidate version %s\n' "$expected_os" "$expected_arch" "$expected_version"

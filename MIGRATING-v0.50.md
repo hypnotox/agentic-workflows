@@ -46,6 +46,15 @@ Current guidance goes here.
 
 Move the old selector paths and useful prose into that file. Remove claim IDs, `Backing:`, `Verify:`, coverage metadata, domains, and other old structural fields. AWF now interprets only `paths`.
 
+For genuinely repository-wide current knowledge, use the exact sole global declaration:
+
+```yaml
+paths:
+  - '**'
+```
+
+The standalone `**` entry is invalid in a mixed or duplicate list. A standalone `*` is still an ordinary root-level wildcard, including in mixed lists; `src/**` and `**/*.go` are also ordinary path selectors. Do not convert implemented ADRs into a tracked decision archive: retain their durable substance and useful rationale in applicable topics, then remove the integrated ADRs from the active tree.
+
 ## 3. Retire the old representation
 
 After preservation, remove the v0.50 configuration and generated-source machinery, including the old config, lock, parts, metadata, catalogs, hooks, and upgrade scripts. Also remove or unmark the old generated `.awf/efforts/.gitignore`, `.awf/worktrees/.gitignore`, and `.awf/effort-archive/.gitignore`; the new projector replaces them with `.awf/.gitignore`. Keep detached project documents as ordinary files with AWF ownership and edit-control comments removed.
@@ -70,9 +79,18 @@ The first render replaces the fixed v0.50 outputs whose legacy AWF marker is sti
 
 Repeat until `check` succeeds. An unmarked file at a fixed destination is an explicit collision; preserve or move its content, then delete the destination if AWF should generate it.
 
+Use the new binary's context query when reviewing converted topics:
+
+```sh
+/path/to/new/awf resolve                  # explicit globals only
+/path/to/new/awf resolve path/to/file.go  # globals plus path matches
+```
+
+Resolution returns source locations rather than topic bodies.
+
 ## 5. Verify the repository
 
-Review the complete Git diff, especially the new project guidance, every retained topic, and every detached document. Then run:
+Review the complete Git diff, especially the new project guidance, every retained topic, and every detached document. Confirm that current topics retain all current knowledge the repository still needs. Then run:
 
 ```sh
 /path/to/new/awf check

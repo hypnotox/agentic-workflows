@@ -27,7 +27,7 @@ case "$command" in
       -not -path './.awf/effort-archive/*' \
       -print0 | xargs -0 gofmt -w
     ;;
-  render|check|resolve|effort|version)
+  render|check|resolve|effort|adr|plan|version)
     go run ./cmd/awf "$command" "$@"
     ;;
   build)
@@ -39,7 +39,7 @@ case "$command" in
     go install ./cmd/awf
     ;;
   *)
-    echo "usage: ./x <gate|test|lint|fmt|render|check|resolve|effort|version|build|install> [args]" >&2
+    echo "usage: ./x <gate|test|lint|fmt|render|check|resolve|effort|adr|plan|version|build|install> [args]" >&2
     exit 2
     ;;
 esac

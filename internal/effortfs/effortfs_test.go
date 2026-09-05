@@ -38,10 +38,16 @@ func TestLifecycle(t *testing.T) {
 		t.Fatalf("Show() path = %q, want %q", showPath, wantMemoryPath)
 	}
 	wantBody := "# Effort: ship-it\n\n" +
-		"## Outcome\n\n" +
+		"## Outcome and success criteria\n\n" +
+		"Define the outcome and criteria here, or point to the detailed criteria in `plan.md`.\n\n" +
 		"## Current state\n\n" +
-		"## Decisions\n\n" +
-		"## Next\n"
+		"## Decisions and evidence\n\n" +
+		"Record selected decision-relevant excerpts with attribution. Label quotations, summaries, proposals, and agreed decisions accurately. Reference an ADR instead of duplicating its content.\n\n" +
+		"## Artifacts\n\n" +
+		"Reference the plan, ADRs, and other effort artifacts here.\n\n" +
+		"## Next actions\n\n" +
+		"## Completion evidence\n\n" +
+		"Compare the actual result with the success criteria. Record verification, unmet criteria, deviations, and required topic updates before finishing.\n"
 	if string(body) != wantBody {
 		t.Fatalf("Show() body = %q, want %q", body, wantBody)
 	}
@@ -124,7 +130,60 @@ func TestUnsafeSlug(t *testing.T) {
 			if _, err := Finish(root, slug); err == nil || !strings.Contains(err.Error(), "invalid effort slug") {
 				t.Fatalf("Finish(%q) error = %v, want unsafe slug error", slug, err)
 			}
+			if _, err := NewPlan(root, slug); err == nil || !strings.Contains(err.Error(), "invalid effort slug") {
+				t.Fatalf("NewPlan(%q) error = %v, want unsafe slug error", slug, err)
+			}
 		})
+	}
+}
+
+func TestNewPlanRequiresEffortAndPreservesExistingPlan(t *testing.T) {
+	t.Parallel()
+
+	root := t.TempDir()
+	if _, err := NewPlan(root, "missing"); err == nil || !strings.Contains(err.Error(), "does not exist") {
+		t.Fatalf("NewPlan() missing effort error = %v", err)
+	}
+	if _, err := New(root, "planned"); err != nil {
+		t.Fatal(err)
+	}
+	planRelative, err := NewPlan(root, "planned")
+	if err != nil {
+		t.Fatal(err)
+	}
+	wantRelative := filepath.Join(".awf", "efforts", "planned", "plan.md")
+	if planRelative != wantRelative {
+		t.Fatalf("NewPlan() path = %q, want %q", planRelative, wantRelative)
+	}
+	body, err := os.ReadFile(filepath.Join(root, planRelative))
+	if err != nil {
+		t.Fatal(err)
+	}
+	for _, heading := range []string{"# Plan: planned", "## Outcome and success criteria", "## Work sequence", "## Verification"} {
+		if !strings.Contains(string(body), heading) {
+			t.Errorf("plan missing %q", heading)
+		}
+	}
+
+	edited := []byte("author plan\n")
+	if err := os.WriteFile(filepath.Join(root, planRelative), edited, 0o644); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := NewPlan(root, "planned"); err == nil || !strings.Contains(err.Error(), "already exists") {
+		t.Fatalf("repeat NewPlan() error = %v", err)
+	}
+	preserved, err := os.ReadFile(filepath.Join(root, planRelative))
+	if err != nil || !bytes.Equal(preserved, edited) {
+		t.Fatalf("existing plan = %q, %v", preserved, err)
+	}
+
+	archiveRelative, err := Finish(root, "planned")
+	if err != nil {
+		t.Fatal(err)
+	}
+	archived, err := os.ReadFile(filepath.Join(root, archiveRelative, "plan.md"))
+	if err != nil || !bytes.Equal(archived, edited) {
+		t.Fatalf("archived plan = %q, %v", archived, err)
 	}
 }
 
