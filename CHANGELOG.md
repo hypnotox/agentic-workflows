@@ -12,6 +12,8 @@ All notable changes to `awf` are documented here, newest first.
 
 ### Documentation
 
+- Add default agent commit cadence to the shared generated `AGENTS.md` frame while keeping Git operations agent-run under repository conventions and the CLI independent of Git.
+
 - Consolidate adoption, repository-owned hook and CI integration, topic maintenance, effort/plan/ADR workflows, worktree conventions, version updates, and legacy-hook cleanup into their current guides.
 
 ## [0.52.0] - 2026-09-05

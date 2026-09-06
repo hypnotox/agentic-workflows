@@ -5,7 +5,7 @@ paths:
 
 # Product and CLI
 
-AWF owns fixed documentation projection, embedded adopter guides, lexical path-to-topic routing, local effort memory, and create-only plan and ADR scaffolds. It does not own repository review, commits, gates, hooks, CI, Git worktrees, migrations, document meaning, or general documentation authoring.
+AWF owns fixed documentation projection, embedded adopter guides, lexical path-to-topic routing, local effort memory, and create-only plan and ADR scaffolds. It supplies default agent commit guidance through the shared generated `AGENTS.md` frame; agents execute Git operations under repository conventions and overrides. The CLI performs no Git operations and does not own repository review, gates, hooks, CI, Git worktrees, migrations, document meaning, or general documentation authoring.
 
 The public commands are `init`, `render`, `check`, `resolve`, `docs`, `effort`, `adr`, `plan`, and `version`. Effort commands are `new`, `list`, `show`, and `finish`; `adr` and `plan` each offer `new`. Command handling remains a thin adapter over the internal filesystem and projection owners; business behavior does not belong in the CLI.
 

@@ -6,7 +6,7 @@
 
 `awf` is a small Go CLI that projects repository-owned agent guidance, routes paths to current topics, keeps optional local effort memory, and creates optional plan and ADR scaffolds.
 
-AWF deliberately does not manage Git, commits, reviews, repository gates, hooks, CI, migrations, or document meaning. It works without Git or external agent skills once its pinned binary is available.
+AWF supplies default agent commit guidance in the shared generated `AGENTS.md` frame; agents execute Git operations under repository conventions. The CLI performs no Git operations and does not manage reviews, repository gates, hooks, CI, migrations, or document meaning. It works without Git or external agent skills once its pinned binary is available.
 
 ## Start
 

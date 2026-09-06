@@ -1,6 +1,6 @@
 # Integrating AWF
 
-Use this guide to adopt AWF in an existing repository, connect its check to repository-owned automation, update the pinned release, or repair a partial integration. AWF owns its fixed marked outputs and implements topic resolution, local effort memory, and optional scaffolds. The repository owns authored guidance, hooks, CI, gates, commits, and every Git configuration change.
+Use this guide to adopt AWF in an existing repository, connect its check to repository-owned automation, update the pinned release, or repair a partial integration. AWF owns its fixed marked outputs and implements topic resolution, local effort memory, and optional scaffolds. AWF supplies default agent commit guidance in the shared generated `AGENTS.md` frame. The repository owns authored guidance, local commit conventions and overrides, hooks, CI, gates, and every Git configuration change. Agents execute Git operations under those conventions; the CLI performs no Git operations.
 
 ## Read guidance before initialization
 
@@ -29,7 +29,7 @@ An unmarked file at a fixed destination is repository-owned and AWF refuses to o
 
 ## Add the working-tree check to automation
 
-Add `./awf check` to the repository's existing gate and CI after the checkout is available. Keep source edits, rendering, review, staging, and commits explicit; neither `check` nor a hook performs them.
+Add `./awf check` to the repository's existing gate and CI after the checkout is available. Keep source edits, rendering, review, staging, and commits explicit; neither `check` nor a hook performs them. For agents, explicit commits are deliberate agent-run Git operations, not operations that require a separate user request.
 
 An optional repository-owned pre-commit hook can be as small as:
 

@@ -7,6 +7,8 @@ When repository context is needed, use the repository's AWF command with `resolv
 
 When effort memory, a plan, an ADR, or worktree isolation becomes relevant, read `./awf docs effort`. The generated `awf-topics` and `awf-effort` skills provide the same just-in-time routes when native skill discovery is available.
 
+In Git repositories, commit your completed, verified changes before reporting completion, without waiting for a separate request, unless instructed otherwise. A small, coherent change normally needs one commit. For larger efforts, commit coherent, verified units as they finish, usually at phase boundaries. Keep related implementation, tests, and documentation together. If committing is blocked, report what remains uncommitted and why.
+
 # Project guidance
 
 You are a coding agent responsible for developing and maintaining this project. Own both the immediate task and the project's long-term health.
