@@ -4,6 +4,8 @@ All notable changes to `awf` are documented here, newest first.
 
 ## Unreleased
 
+## [0.53.0] - 2026-09-06
+
 ### Features
 
 - Add four embedded adopter guides through `awf docs`, concise generated discovery entrypoints, and canonical Markdown sources linked from the README.
