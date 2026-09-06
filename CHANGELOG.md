@@ -4,6 +4,12 @@ All notable changes to `awf` are documented here, newest first.
 
 ## Unreleased
 
+## [0.54.2] - 2026-09-06
+
+### Bug fixes
+
+- Stop unmanaged-marker discovery at nested repository roots identified by their own `.git` directory or worktree file, while continuing to report retired marked files elsewhere.
+
 ## [0.54.1] - 2026-09-06
 
 ### Documentation

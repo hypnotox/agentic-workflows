@@ -338,6 +338,26 @@ func TestRenderCheckRepairAndUnmanagedMarkers(t *testing.T) {
 	}
 }
 
+func TestUnmanagedMarkersPruneNestedRepositories(t *testing.T) {
+	root := t.TempDir()
+	marker := []byte(markdownMarker + "\nretired\n")
+	writeTestFile(t, filepath.Join(root, "ordinary", "retired.md"), marker, 0o644)
+
+	writeTestFile(t, filepath.Join(root, "nested-with-git-dir", ".git", "config"), []byte("[core]\n"), 0o644)
+	writeTestFile(t, filepath.Join(root, "nested-with-git-dir", "retired.md"), marker, 0o644)
+
+	writeTestFile(t, filepath.Join(root, "nested-with-git-file", ".git"), []byte("gitdir: ../worktrees/nested\n"), 0o644)
+	writeTestFile(t, filepath.Join(root, "nested-with-git-file", "retired.md"), marker, 0o644)
+
+	unmanaged, err := unmanagedMarkedFiles(root, nil)
+	if err != nil {
+		t.Fatal(err)
+	}
+	if !slices.Equal(unmanaged, []string{"ordinary/retired.md"}) {
+		t.Fatalf("unmanaged = %v", unmanaged)
+	}
+}
+
 func TestRenderPreflightsUnmanagedCollision(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, ".awf", "project.md"), []byte(validProject("body\n")), 0o644)

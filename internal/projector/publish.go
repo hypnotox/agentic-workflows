@@ -250,7 +250,7 @@ func unmanagedMarkedFiles(root string, outputs []Output) ([]string, error) {
 		}
 		relative := displayPath(root, filename)
 		if entry.IsDir() {
-			if relative != "." && ignoredScanDirectory(relative) {
+			if relative != "." && (ignoredScanDirectory(relative) || nestedRepositoryRoot(filename)) {
 				return filepath.SkipDir
 			}
 			return nil
@@ -294,6 +294,14 @@ func unmanagedMarkedFiles(root string, outputs []Output) ([]string, error) {
 	}
 	sort.Strings(unmanaged)
 	return unmanaged, nil
+}
+
+func nestedRepositoryRoot(directory string) bool {
+	info, err := os.Lstat(filepath.Join(directory, ".git"))
+	if err != nil {
+		return false
+	}
+	return info.IsDir() || info.Mode().IsRegular()
 }
 
 func ignoredScanDirectory(relative string) bool {
