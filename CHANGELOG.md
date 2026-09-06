@@ -4,6 +4,8 @@ All notable changes to `awf` are documented here, newest first.
 
 ## Unreleased
 
+## [0.54.0] - 2026-09-06
+
 ### Breaking changes
 
 - Regroup create-only routes under `awf new`: use `new effort`, `new plan`, `new adr`, and `new topic`; remove the former `effort new`, `plan new`, and `adr new` routes. Plans now stand alone at `docs/plans/<slug>.md` instead of living inside ignored effort residents.
