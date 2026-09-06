@@ -15,7 +15,7 @@ You are a coding agent responsible for developing and maintaining this project. 
 
 ## Identity
 
-`awf` is a public pre-1.0 Go CLI at `github.com/hypnotox/agentic-workflows`. It projects a small `.awf` source tree into fixed agent guidance, routes repository paths to current topics, keeps optional local effort memory, offers create-only plan and ADR scaffolds, and ships embedded adopter guides plus a verified public launcher.
+`awf` is a public pre-1.0 Go CLI at `github.com/hypnotox/agentic-workflows`. It projects a small `.awf` source tree into fixed agent guidance, routes repository paths to current topics, optionally inspects routing coverage, keeps local effort memory, offers create-only plan, ADR, and topic starters, and ships embedded adopter guides plus a verified public launcher.
 
 ## Invariants
 
@@ -27,7 +27,7 @@ You are a coding agent responsible for developing and maintaining this project. 
 
 ## Workflow
 
-Use `./x resolve` when repository context is needed: bare for explicit global topics or with paths for globals plus matching topics. Read every returned topic. Once the applicable current context is known, do not query again before every edit. Use `./x docs topics` and `./x docs effort` for the full repository workflows when they become relevant. Keep active effort memory current while work is in progress, then compare the result with its criteria and fold durable decisions and useful rationale into applicable topics. Prefer ordinary repository tools and direct code. Use Conventional Commits with one concern per commit.
+Use `./x resolve` when repository context is needed: bare for explicit global topics or with paths for globals plus matching topics. Read every returned topic. Once the applicable current context is known, do not query again before every edit. Use `./x docs topics` and `./x docs effort` for the full repository workflows when they become relevant. Keep active effort memory current while work is in progress, compare the result with its criteria, reconcile active ADRs and topic links, and retain only concrete reusable lessons. Prefer ordinary repository tools and direct code. Use Conventional Commits with one concern per commit.
 
 The generated root `./awf` wrapper intentionally exercises the released bootstrap path. During AWF development, use the dogfooding `./x` commands, which run the checkout source directly.
 
@@ -39,10 +39,13 @@ The generated root `./awf` wrapper intentionally exercises the released bootstra
 ./x render: render from the checkout source
 ./x check: check with the checkout source
 ./x resolve [<path>...]: resolve current topics with the checkout source
+./x resolve --coverage <path>...: inspect specific topic routing for explicit paths
 ./x docs [integration|topics|effort]: read embedded guides from the checkout source
-./x effort <command>...: manage local effort memory with the checkout source
-./x plan new <effort-slug>: create an effort-local plan scaffold
-./x adr new <slug>: create a decision record scaffold
+./x new effort <slug>: create local effort memory
+./x new plan <slug>: create a tracked implementation plan
+./x new adr <slug>: create a pending decision record
+./x new topic <id> <pattern>...: create a path-routed topic
+./x effort list|show|finish ...: inspect or archive local effort memory
 ./x build: build bin/awf
 ```
 

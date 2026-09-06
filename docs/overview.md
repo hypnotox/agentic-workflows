@@ -1,6 +1,6 @@
 # AWF guide
 
-AWF projects a small repository-owned source tree into fixed agent guidance. It also routes repository paths to current topics, keeps optional local effort memory, and creates optional plan and decision-record scaffolds. AWF does not own Git hooks, Git operations, CI, repository gates, or the meaning of authored Markdown.
+AWF projects a small repository-owned source tree into fixed agent guidance. It also routes repository paths to current topics, inspects routing coverage for explicitly chosen paths, keeps optional local effort memory, and creates optional plan, decision-record, and topic starters. AWF does not own Git hooks, Git operations, CI, repository gates, or the meaning of authored Markdown.
 
 ## Sources and generated files
 
@@ -27,4 +27,4 @@ awf docs effort       use optional effort memory, plans, ADRs, and manual worktr
 
 The guides are embedded in the binary and work before initialization and without Git, repository sources, external skills, services, or network access. Reading them does not initialize, render, repin, or otherwise modify a repository. Navigate between pages with `awf docs ...`; the Markdown source paths present in the AWF repository need not exist in an adopter's checkout.
 
-Plans and ADRs are independent optional aids. A plan scaffold requires an active effort; an ADR can stand alone. See `awf docs effort` for their distinct lifecycles.
+Use `awf new` to create effort, plan, ADR, or topic starters. Plans and ADRs are independent tracked aids and require no effort; effort memory may reference them. See `awf docs effort` for their distinct lifecycles and `awf docs topics` for topic creation and informational coverage inspection.

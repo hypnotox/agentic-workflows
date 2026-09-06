@@ -15,14 +15,24 @@ func TestHelpExposesOnlyFinalCommands(t *testing.T) {
 	if code != 0 || stderr != "" {
 		t.Fatalf("help = code %d, stderr %q", code, stderr)
 	}
-	for _, command := range []string{"init", "render", "check", "resolve", "docs", "effort", "adr", "plan", "version"} {
+	for _, command := range []string{"init", "render", "check", "resolve", "docs", "new", "effort", "version"} {
 		if !strings.Contains(stdout, "  "+command) {
 			t.Errorf("help missing %s:\n%s", command, stdout)
 		}
 	}
-	for _, retired := range []string{"  audit ", "  upgrade ", "  uninstall ", "  changelog ", "  edit ", "  reset "} {
+	for _, retired := range []string{"  adr ", "  plan ", "  audit ", "  upgrade ", "  uninstall ", "  changelog ", "  edit ", "  reset "} {
 		if strings.Contains(stdout, retired) {
 			t.Errorf("help contains retired command %q:\n%s", retired, stdout)
+		}
+	}
+
+	code, stdout, stderr = runCLI(t, t.TempDir(), "new", "--help")
+	if code != 0 || stderr != "" {
+		t.Fatalf("new help = code %d, stderr %q", code, stderr)
+	}
+	for _, command := range []string{"effort <slug>", "plan <slug>", "adr <slug>", "topic <id> <pattern>..."} {
+		if !strings.Contains(stdout, command) {
+			t.Errorf("new help missing %q", command)
 		}
 	}
 
@@ -30,20 +40,14 @@ func TestHelpExposesOnlyFinalCommands(t *testing.T) {
 	if code != 0 || stderr != "" {
 		t.Fatalf("effort help = code %d, stderr %q", code, stderr)
 	}
-	for _, command := range []string{"new <slug>", "list", "show <slug>", "finish <slug>"} {
+	for _, command := range []string{"list", "show <slug>", "finish <slug>"} {
 		if !strings.Contains(stdout, command) {
 			t.Errorf("effort help missing %q", command)
 		}
 	}
-	for _, retired := range []string{"integrate", "worktree"} {
+	for _, retired := range []string{"new <slug>", "integrate", "worktree"} {
 		if strings.Contains(stdout, retired) {
 			t.Errorf("effort help contains retired command %q", retired)
-		}
-	}
-	for _, command := range []string{"adr", "plan"} {
-		code, stdout, stderr = runCLI(t, t.TempDir(), command, "--help")
-		if code != 0 || stderr != "" || !strings.Contains(stdout, "new <") {
-			t.Errorf("%s help = code %d, stdout %q, stderr %q", command, code, stdout, stderr)
 		}
 	}
 }
@@ -155,7 +159,7 @@ func TestRenderReportsAndCheckFailsUnmanagedMarker(t *testing.T) {
 	}
 }
 
-func TestResolveAndEffortLifecycle(t *testing.T) {
+func TestResolveCreationAndEffortLifecycle(t *testing.T) {
 	root := t.TempDir()
 	if code, _, stderr := runCLI(t, root, "init"); code != 0 {
 		t.Fatal(stderr)
@@ -184,6 +188,20 @@ func TestResolveAndEffortLifecycle(t *testing.T) {
 	if code != 0 || stdout != "code/render\t.awf/topics/code/render.md\nglobal\t.awf/topics/global.md\n" || stderr != "" {
 		t.Fatalf("resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
+	code, stdout, stderr = runCLI(t, root, "resolve", "--coverage", `internal\\projector\\new.go`, "README.md", "internal/projector/new.go")
+	wantCoverage := "globals:\n  global\t.awf/topics/global.md\npath: \"README.md\"\n  none\npath: \"internal/projector/new.go\"\n  code/render\t.awf/topics/code/render.md\n"
+	if code != 0 || stdout != wantCoverage || stderr != "" {
+		t.Fatalf("resolve coverage = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	code, stdout, stderr = runCLI(t, root, "resolve", "--coverage", "line\nbreak")
+	wantCoverage = "globals:\n  global\t.awf/topics/global.md\npath: \"line\\nbreak\"\n  none\n"
+	if code != 0 || stdout != wantCoverage || stderr != "" {
+		t.Fatalf("escaped coverage = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	code, stdout, stderr = runCLI(t, root, "resolve", "--coverage")
+	if code != 2 || stdout != "" || !strings.Contains(stderr, "usage:") {
+		t.Fatalf("empty coverage = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
 	if err := os.Remove(globalPath); err != nil {
 		t.Fatal(err)
 	}
@@ -192,20 +210,33 @@ func TestResolveAndEffortLifecycle(t *testing.T) {
 		t.Fatalf("resolve none = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 
-	code, stdout, stderr = runCLI(t, root, "effort", "new", "simple")
+	code, stdout, stderr = runCLI(t, root, "new", "effort", "simple")
 	if code != 0 || stdout != "memory: .awf/efforts/simple/memory.md\n" || stderr != "" {
-		t.Fatalf("effort new = code %d, stdout %q, stderr %q", code, stdout, stderr)
+		t.Fatalf("new effort = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
-	code, stdout, stderr = runCLI(t, root, "plan", "new", "simple")
-	if code != 0 || stdout != "plan: .awf/efforts/simple/plan.md\n" || stderr != "" {
-		t.Fatalf("plan new = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	code, stdout, stderr = runCLI(t, root, "new", "plan", "simple")
+	if code != 0 || stdout != "plan: docs/plans/simple.md\n" || stderr != "" {
+		t.Fatalf("new plan = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
-	code, stdout, stderr = runCLI(t, root, "adr", "new", "simple-choice")
+	code, stdout, stderr = runCLI(t, root, "new", "adr", "simple-choice")
 	if code != 0 || stdout != "adr: docs/decisions/simple-choice.md\n" || stderr != "" {
-		t.Fatalf("adr new = code %d, stdout %q, stderr %q", code, stdout, stderr)
+		t.Fatalf("new adr = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	code, stdout, stderr = runCLI(t, root, "new", "topic", "nested/generated", "generated/**")
+	if code != 0 || stdout != "topic: .awf/topics/nested/generated.md\n" || stderr != "" {
+		t.Fatalf("new topic = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	code, stdout, stderr = runCLI(t, root, "resolve", "generated/future.txt")
+	if code != 0 || stdout != "nested/generated\t.awf/topics/nested/generated.md\n" || stderr != "" {
+		t.Fatalf("resolve created topic = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+
+	legacyPlan := filepath.Join(root, ".awf", "efforts", "simple", "plan.md")
+	if err := os.WriteFile(legacyPlan, []byte("legacy effort-local plan\n"), 0o644); err != nil {
+		t.Fatal(err)
 	}
 	artifacts := map[string][]byte{
-		filepath.Join(".awf", "efforts", "simple", "plan.md"):  []byte("edited plan\n"),
+		filepath.Join("docs", "plans", "simple.md"):            []byte("edited plan\n"),
 		filepath.Join("docs", "decisions", "simple-choice.md"): []byte("edited adr\n"),
 	}
 	for relative, body := range artifacts {
@@ -238,6 +269,19 @@ func TestResolveAndEffortLifecycle(t *testing.T) {
 	code, stdout, stderr = runCLI(t, root, "effort", "finish", "simple")
 	if code != 0 || stdout != "archive: .awf/effort-archive/simple\n" || stderr != "" {
 		t.Fatalf("effort finish = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	archivedLegacyPlan, err := os.ReadFile(filepath.Join(root, ".awf", "effort-archive", "simple", "plan.md"))
+	if err != nil || string(archivedLegacyPlan) != "legacy effort-local plan\n" {
+		t.Fatalf("archived legacy plan = %q, %v", archivedLegacyPlan, err)
+	}
+}
+
+func TestRetiredCreationRoutesAreNotAliases(t *testing.T) {
+	for _, args := range [][]string{{"effort", "new", "old"}, {"plan", "new", "old"}, {"adr", "new", "old"}} {
+		code, stdout, stderr := runCLI(t, t.TempDir(), args...)
+		if code != 2 || stdout != "" || stderr == "" {
+			t.Errorf("retired route %v = code %d, stdout %q, stderr %q", args, code, stdout, stderr)
+		}
 	}
 }
 

@@ -15,9 +15,20 @@ Bare `resolve` returns explicit global topics only. A path query returns globals
 
 Arguments are lexical repository-relative paths. They need not exist. AWF normalizes separators and rejects absolute paths or paths that escape the repository. A successful query with no matches prints `none`.
 
-## Author a topic
+## Create and author a topic
 
-Create one ordinary Markdown file under `.awf/topics/`. Its relative path without `.md` is the topic ID:
+Create a topic with an optionally nested ID and at least one explicitly supplied selector. Quote glob arguments so the shell does not expand them:
+
+```sh
+./awf new topic projection 'internal/projector/**' 'cmd/awf/*'
+./awf new topic code/go 'cmd/**/*.go'
+```
+
+The command creates `.awf/topics/<id>.md` exclusively and prints that path. It never replaces an existing destination, renders generated files, or performs a Git action. The ID omits `.md` and cannot escape the topic source directory.
+
+The created file is ordinary author-owned Markdown. Begin with a focused purpose, then retain only useful current behavior, constraints and rationale, change guidance, verification references, and non-obvious lessons. Adapt or omit irrelevant starter sections and remove instructional placeholders. Link active ADRs for the enduring decisions they own rather than duplicating their full rationale.
+
+You may also author a topic directly:
 
 ```markdown
 ---
@@ -40,13 +51,25 @@ paths:
   - '**'
 ```
 
-A standalone `**` is invalid in a mixed or duplicate selector list. Patterns such as `*`, `src/**`, and `**/*.go` remain ordinary path selectors rather than global declarations.
+A standalone `**` is invalid in a mixed or duplicate selector list. Patterns such as `*`, `./**`, `src/**`, and `**/*.go` remain ordinary selectors rather than global declarations. Topic creation preserves the supplied selector spelling; in particular, it does not silently rewrite `./**` into an explicit global declaration. AWF keeps source format 1, interprets the `paths` field, and treats the Markdown body and unknown frontmatter fields as opaque authored content.
 
-Choose selectors for the paths whose work needs the knowledge. Keep repository-wide guidance global only when it genuinely applies to every change. AWF interprets the `paths` field but treats the Markdown body and unknown frontmatter fields as opaque authored content.
+## Inspect routing coverage
+
+Ask how explicitly chosen paths route without requiring them to exist:
+
+```sh
+./awf resolve --coverage internal/projector/source.go docs/future.md
+```
+
+Coverage requires at least one path. It prints explicit global topics separately, once, followed by every distinct normalized input path and all matching non-global topics. An uncovered path is shown as `none` and the report still succeeds. Multiple specific matches are legitimate and can reveal useful overlap. The caller chooses the inventory with Git or ordinary file tools; AWF does not crawl the filesystem, invoke Git, apply ignore rules, or impose repository-wide coverage.
+
+Coverage finds routing gaps and overlap. It cannot establish that documentation is complete, relevant, accurate, or fresh, and a path may legitimately need no specific topic. It is an informational inspection mode, not a score or gate. Ordinary `resolve` behavior is unchanged.
 
 ## Maintain current knowledge
 
-Update affected topics when implementation changes their facts or instructions. Preserve useful decision rationale in the most specific current topic after a decision is implemented; future agents should not need an active ADR or historical transcript to understand the current state. Remove obsolete claims instead of accumulating chronology.
+Update affected topics when implementation changes their facts or instructions. Topics describe what is implemented and the practical implications for future work; relevant active ADRs retain enduring choices and rationale. Use selective source, test, or verification references beside important claims when they materially reduce lookup or assessment effort, and describe their actual evidential limits. A link alone does not prove a claim.
+
+Remove obsolete advice and consolidate stale or redundant guidance instead of accumulating chronology, claim IDs, proof markers, backlink registries, mandatory evidence fields, or a separate pitfalls corpus.
 
 After source edits:
 

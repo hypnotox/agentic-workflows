@@ -118,19 +118,9 @@ func loadTopics(root string) ([]Topic, error) {
 		if !found {
 			return fmt.Errorf("%s: leading frontmatter is required", relative)
 		}
-		if len(metadata.Paths) == 0 {
-			return fmt.Errorf("%s: paths must contain at least one pattern", relative)
-		}
-		global := len(metadata.Paths) == 1 && metadata.Paths[0] == "**"
-		patterns := make([]string, len(metadata.Paths))
-		for i, pattern := range metadata.Paths {
-			if pattern == "**" && len(metadata.Paths) != 1 {
-				return fmt.Errorf("%s: standalone ** must be the only topic path pattern", relative)
-			}
-			patterns[i], err = normalizeTopicPattern(pattern)
-			if err != nil {
-				return fmt.Errorf("%s: %w", relative, err)
-			}
+		patterns, global, err := NormalizeTopicPatterns(metadata.Paths)
+		if err != nil {
+			return fmt.Errorf("%s: %w", relative, err)
 		}
 		topicRelative, err := filepath.Rel(rootPath, filename)
 		if err != nil {
@@ -151,6 +141,27 @@ func loadTopics(root string) ([]Topic, error) {
 	}
 	sort.Slice(topics, func(i, j int) bool { return topics[i].ID < topics[j].ID })
 	return topics, nil
+}
+
+// NormalizeTopicPatterns validates topic selectors and returns their normalized
+// matching forms plus whether they declare an explicit global topic.
+func NormalizeTopicPatterns(patterns []string) ([]string, bool, error) {
+	if len(patterns) == 0 {
+		return nil, false, fmt.Errorf("paths must contain at least one pattern")
+	}
+	global := len(patterns) == 1 && patterns[0] == "**"
+	normalized := make([]string, len(patterns))
+	for i, pattern := range patterns {
+		if pattern == "**" && len(patterns) != 1 {
+			return nil, false, fmt.Errorf("standalone ** must be the only topic path pattern")
+		}
+		var err error
+		normalized[i], err = normalizeTopicPattern(pattern)
+		if err != nil {
+			return nil, false, err
+		}
+	}
+	return normalized, global, nil
 }
 
 func normalizeTopicPattern(pattern string) (string, error) {

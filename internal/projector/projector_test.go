@@ -219,6 +219,59 @@ func TestResolveValidatesPathsWhenGlobalsExist(t *testing.T) {
 	}
 }
 
+func TestResolveCoverageReportsGlobalsGapsOverlapAndNormalizedInputs(t *testing.T) {
+	root := t.TempDir()
+	projectPath := filepath.Join(root, ".awf", "project.md")
+	writeTestFile(t, projectPath, []byte(validProject("body\n")), 0o644)
+	writeTopicForTest(t, root, "z-global.md", []string{"**"})
+	writeTopicForTest(t, root, "a-go.md", []string{"src/**/*.go"})
+	writeTopicForTest(t, root, "m-src.md", []string{"src/**"})
+	before := snapshotTree(t, root)
+
+	coverage, err := ResolveCoverage(root, []string{`src\future\new.go`, "missing/file.txt", "src/else/../future/new.go"})
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := Coverage{
+		Globals: []TopicMatch{{ID: "z-global", SourcePath: ".awf/topics/z-global.md"}},
+		Paths: []PathCoverage{
+			{Path: "missing/file.txt"},
+			{Path: "src/future/new.go", Matches: []TopicMatch{
+				{ID: "a-go", SourcePath: ".awf/topics/a-go.md"},
+				{ID: "m-src", SourcePath: ".awf/topics/m-src.md"},
+			}},
+		},
+	}
+	if !reflect.DeepEqual(coverage, want) {
+		t.Fatalf("ResolveCoverage = %#v, want %#v", coverage, want)
+	}
+	if _, err := os.Stat(filepath.Join(root, "src", "future", "new.go")); !errors.Is(err, fs.ErrNotExist) {
+		t.Fatalf("coverage target unexpectedly exists: %v", err)
+	}
+	after := snapshotTree(t, root)
+	if !reflect.DeepEqual(after, before) {
+		t.Fatalf("coverage changed repository tree: before %#v, after %#v", before, after)
+	}
+}
+
+func TestResolveCoverageRequiresAndValidatesPaths(t *testing.T) {
+	root := t.TempDir()
+	writeTestFile(t, filepath.Join(root, ".awf", "project.md"), []byte(validProject("body\n")), 0o644)
+	writeTopicForTest(t, root, "global.md", []string{"**"})
+	if _, err := ResolveCoverage(root, nil); err == nil {
+		t.Fatal("ResolveCoverage accepted no paths")
+	}
+	for _, bad := range []string{"", "/absolute", "../escape", `C:\absolute`} {
+		if _, err := ResolveCoverage(root, []string{bad}); err == nil {
+			t.Errorf("ResolveCoverage accepted %q", bad)
+		}
+	}
+	writeTestFile(t, filepath.Join(root, ".awf", "topics", "global.md"), []byte("malformed\n"), 0o644)
+	if _, err := ResolveCoverage(root, []string{"future/path"}); err == nil {
+		t.Fatal("ResolveCoverage accepted malformed topic source")
+	}
+}
+
 func TestRenderCheckRepairAndUnmanagedMarkers(t *testing.T) {
 	root := t.TempDir()
 	writeTestFile(t, filepath.Join(root, ".awf", "project.md"), []byte(validProject("\n"+markdownMarker+"\n# Local\n")), 0o644)
@@ -245,6 +298,9 @@ func TestRenderCheckRepairAndUnmanagedMarkers(t *testing.T) {
 	adrBody := []byte(markdownMarker + "\nauthor-owned decision content\n")
 	adrPath := filepath.Join(root, "docs", "decisions", "opaque.md")
 	writeTestFile(t, adrPath, adrBody, 0o644)
+	planBody := []byte(markdownMarker + "\nauthor-owned plan content\n")
+	planPath := filepath.Join(root, "docs", "plans", "opaque.md")
+	writeTestFile(t, planPath, planBody, 0o644)
 
 	findings, err = Check(root)
 	if err != nil {
@@ -275,6 +331,10 @@ func TestRenderCheckRepairAndUnmanagedMarkers(t *testing.T) {
 	preservedADR, err := os.ReadFile(adrPath)
 	if err != nil || !bytes.Equal(preservedADR, adrBody) {
 		t.Fatalf("author-owned ADR after render/check = %q, %v", preservedADR, err)
+	}
+	preservedPlan, err := os.ReadFile(planPath)
+	if err != nil || !bytes.Equal(preservedPlan, planBody) {
+		t.Fatalf("author-owned plan after render/check = %q, %v", preservedPlan, err)
 	}
 }
 
@@ -372,6 +432,33 @@ func writeTestFile(t *testing.T, path string, content []byte, mode fs.FileMode) 
 	if err := os.WriteFile(path, content, mode); err != nil {
 		t.Fatal(err)
 	}
+}
+
+func snapshotTree(t *testing.T, root string) map[string]string {
+	t.Helper()
+	snapshot := make(map[string]string)
+	if err := filepath.WalkDir(root, func(filename string, entry fs.DirEntry, err error) error {
+		if err != nil {
+			return err
+		}
+		relative, err := filepath.Rel(root, filename)
+		if err != nil {
+			return err
+		}
+		if entry.IsDir() {
+			snapshot[filepath.ToSlash(relative)] = "directory"
+			return nil
+		}
+		content, err := os.ReadFile(filename)
+		if err != nil {
+			return err
+		}
+		snapshot[filepath.ToSlash(relative)] = "file:" + string(content)
+		return nil
+	}); err != nil {
+		t.Fatal(err)
+	}
+	return snapshot
 }
 
 func outputPathsForTest(outputs []Output) []string {

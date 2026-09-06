@@ -4,6 +4,20 @@ All notable changes to `awf` are documented here, newest first.
 
 ## Unreleased
 
+### Breaking changes
+
+- Regroup create-only routes under `awf new`: use `new effort`, `new plan`, `new adr`, and `new topic`; remove the former `effort new`, `plan new`, and `adr new` routes. Plans now stand alone at `docs/plans/<slug>.md` instead of living inside ignored effort residents.
+
+### Features
+
+- Add create-only nested topic starters with explicitly supplied selectors and pending-status ADR starters, while keeping authored Markdown opaque and preserving selector spelling.
+
+- Add informational `resolve --coverage <path>...` output that separates explicit globals and reports specific matches or gaps for each distinct normalized lexical path without crawling the repository or turning gaps into failures.
+
+### Documentation
+
+- Expand the embedded effort and topic guides with plan and ADR lifecycle, resumable checkpoints and continuation, selective completion learning, post-integration assurance, topic authoring, and the limits of routing coverage.
+
 ## [0.53.0] - 2026-09-06
 
 ### Features

@@ -53,7 +53,11 @@ paths:
   - '**'
 ```
 
-The standalone `**` entry is invalid in a mixed or duplicate list. A standalone `*` is still an ordinary root-level wildcard, including in mixed lists; `src/**` and `**/*.go` are also ordinary path selectors. Do not convert implemented ADRs into a tracked decision archive: retain their durable substance and useful rationale in applicable topics, then remove the integrated ADRs from the active tree.
+The standalone `**` entry is invalid in a mixed or duplicate list. A standalone `*` is still an ordinary root-level wildcard, including in mixed lists; `src/**` and `**/*.go` are also ordinary path selectors.
+
+Review retained decision documents deliberately. Keep accepted decisions that still govern the repository as active ADRs in `docs/decisions/`, link them from applicable topics, and retire only withdrawn or superseded records after preserving any still-binding substance. Current topics describe implemented behavior and practical implications; active ADRs own the enduring choices and rationale.
+
+New implementation plans belong in `docs/plans/<slug>.md`, independent of effort memory. Do not move or delete existing effort-local plans automatically. When older work resumes, an agent may deliberately move a still-useful plan into the tracked location and update references while preserving one authoritative copy.
 
 ## 3. Retire the old representation
 
@@ -90,11 +94,12 @@ Repeat until `check` succeeds. An unmarked file at a fixed destination is an exp
 Use the new binary's context query when reviewing converted topics:
 
 ```sh
-/path/to/new/awf resolve                  # explicit globals only
-/path/to/new/awf resolve path/to/file.go  # globals plus path matches
+/path/to/new/awf resolve                              # explicit globals only
+/path/to/new/awf resolve path/to/file.go              # globals plus path matches
+/path/to/new/awf resolve --coverage path/to/file.go   # globals and per-path specific coverage
 ```
 
-Resolution returns source locations rather than topic bodies.
+Resolution returns source locations rather than topic bodies. Coverage is informational and operates only on the explicit lexical paths supplied by the caller; it is not a documentation-completeness gate.
 
 ## 5. Verify the repository
 

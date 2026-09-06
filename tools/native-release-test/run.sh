@@ -108,18 +108,22 @@ Go smoke guidance.
 EOF
 [ "$("$candidate" resolve)" = $'global\t.awf/topics/global.md' ]
 [ "$("$candidate" resolve src/future/main.go)" = $'code/go\t.awf/topics/code/go.md\nglobal\t.awf/topics/global.md' ]
+[ "$("$candidate" resolve --coverage src/future/main.go missing/file)" = $'globals:\n  global\t.awf/topics/global.md\npath: "missing/file"\n  none\npath: "src/future/main.go"\n  code/go\t.awf/topics/code/go.md' ]
 printf '\nNative smoke guidance.\n' >> .awf/project.md
 "$candidate" render
 "$candidate" check
 
-"$candidate" effort new smoke
+"$candidate" new effort smoke
 "$candidate" effort show smoke | grep '# Effort: smoke' >/dev/null
-[ "$("$candidate" plan new smoke)" = "plan: .awf/efforts/smoke/plan.md" ]
-[ "$("$candidate" adr new smoke-choice)" = "adr: docs/decisions/smoke-choice.md" ]
+[ "$("$candidate" new plan smoke)" = "plan: docs/plans/smoke.md" ]
+[ "$("$candidate" new adr smoke-choice)" = "adr: docs/decisions/smoke-choice.md" ]
+grep '^status: pending$' docs/decisions/smoke-choice.md >/dev/null
+[ "$("$candidate" new topic generated/smoke 'generated/**')" = "topic: .awf/topics/generated/smoke.md" ]
+[ "$("$candidate" resolve generated/future.txt)" = $'generated/smoke\t.awf/topics/generated/smoke.md\nglobal\t.awf/topics/global.md' ]
 "$candidate" check
 "$candidate" effort finish smoke
 [ -f .awf/effort-archive/smoke/memory.md ]
-[ -f .awf/effort-archive/smoke/plan.md ]
+[ -f docs/plans/smoke.md ]
 [ -f docs/decisions/smoke-choice.md ]
 [ ! -e .awf/efforts/smoke ]
 
