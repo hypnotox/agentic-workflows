@@ -79,9 +79,7 @@ The target binary rewrites the committed bootstrap pin. Review and commit the so
 
 ## Confirm the integrated result
 
-After integrating implementation work, confirm that available evidence covers the actual combined result in the target checkout. Reuse checks whose evidence still applies, but rerun checks affected by divergence, conflict resolution, or changed integration context. Request additional review only when material uncertainty warrants it.
-
-Before cleanup, reconcile affected active ADRs and topic links with the combined implementation, review whether any tracked plan still has a concrete execution, verification, review, or handoff use, and preserve any warranted reusable lesson in a focused fix, test, or topic. If a completed branch removes a formerly guiding plan, preserve both its committed form and later deletion through ordinary non-squash integration. Update any local memory with completion evidence and understandable references before archival. Use ordinary Git for integration and cleanup; `awf effort finish` remains only an archive move and does not assess readiness.
+Use `awf docs effort` for the authoritative completion and integration procedure. It applies whether or not the work uses effort memory or worktrees.
 
 ## Optional companion skills
 

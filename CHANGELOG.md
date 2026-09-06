@@ -4,6 +4,10 @@ All notable changes to `awf` are documented here, newest first.
 
 ## Unreleased
 
+### Documentation
+
+- Route agents to the authoritative completion and integration procedure before implementation work finishes, even when no optional AWF artifacts or worktrees are used.
+
 ## [0.54.0] - 2026-09-06
 
 ### Breaking changes

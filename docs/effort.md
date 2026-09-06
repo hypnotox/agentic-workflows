@@ -1,6 +1,6 @@
 # Efforts, plans, decisions, and worktrees
 
-AWF provides optional ignored effort memory and create-only tracked Markdown starters. It does not decide when work is ready, interpret authored content, manage Git, or discover worktrees. Starter headings and prompts are suggestions rather than a schema: adapt or omit irrelevant sections, remove instructional placeholders, and do not manufacture or duplicate content merely to fill them.
+AWF provides optional ignored effort memory and create-only tracked Markdown starters. Its completion and integration guidance applies whether or not the work uses effort memory, a plan, an ADR, or a worktree. AWF does not decide when work is ready, interpret authored content, manage Git, or discover worktrees. Starter headings and prompts are suggestions rather than a schema: adapt or omit irrelevant sections, remove instructional placeholders, and do not manufacture or duplicate content merely to fill them.
 
 ## Keep effort memory
 
@@ -94,4 +94,4 @@ Compare actual results with the original outcome and criteria. Where memory exis
 
 After integration, confirm that evidence covers the combined result in the target checkout. Reuse still-applicable evidence; refresh checks affected by divergence, conflict resolution, or a changed integration context. Request additional review only when material uncertainty warrants it. Reconcile affected ADRs and topic links with the combined result before cleanup.
 
-Review whether the plan still has a concrete use and whether a reusable lesson warrants capture. Then use ordinary Git for deliberate worktree and branch cleanup and archive local memory with `effort finish`. The CLI never judges or automates these completion conditions.
+Review whether the plan still has a concrete use and whether a reusable lesson warrants capture. Then use ordinary Git for deliberate worktree and branch cleanup and, when local memory is present, archive it with `effort finish`. The CLI never judges or automates these completion conditions.
