@@ -2,6 +2,18 @@
 
 All notable changes to `awf` are documented here, newest first.
 
+## Unreleased
+
+### Features
+
+- Add four embedded adopter guides through `awf docs`, concise generated discovery entrypoints, and canonical Markdown sources linked from the README.
+
+- Add a release-versioned public `awf.sh` launcher and generate it with the repository bootstrap from one verified downloader source. Release candidates now test first-download, offline cache reuse, argument and exit propagation, and checksum rejection before publishing the launcher with all platform archives.
+
+### Documentation
+
+- Consolidate adoption, repository-owned hook and CI integration, topic maintenance, effort/plan/ADR workflows, worktree conventions, version updates, and legacy-hook cleanup into their current guides.
+
 ## [0.52.0] - 2026-09-05
 
 ### Features

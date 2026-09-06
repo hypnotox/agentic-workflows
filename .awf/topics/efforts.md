@@ -5,6 +5,7 @@ paths:
   - '.pi/skills/awf-effort/SKILL.md'
   - '.claude/skills/awf-effort/SKILL.md'
   - 'docs/decisions/**'
+  - 'docs/effort.md'
 ---
 
 # Effort memory
@@ -15,4 +16,4 @@ Complexity can warrant a plan; a material choice can warrant an ADR; an effort c
 
 Memory and plans stay in the primary checkout. An ADR has one working copy in the implementation checkout, is committed with its chosen decision and rationale, and is removed in a later implementation/topic-update commit after verification and incorporation of its durable substance into applicable topics. Preserve both commits through non-squash integration; Git history is the historical record.
 
-AWF performs no Git operation and has no worktree topology. The generated effort guidance owns the native worktree location convention, completion comparison, decision evidence, topic update, and ADR retirement instructions.
+AWF performs no Git operation and has no worktree topology. The embedded `docs effort` guide owns the native worktree location convention, completion comparison, decision evidence, topic update, and ADR retirement instructions; generated skills only route to that guide.

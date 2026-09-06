@@ -57,7 +57,15 @@ The standalone `**` entry is invalid in a mixed or duplicate list. A standalone 
 
 ## 3. Retire the old representation
 
-After preservation, remove the v0.50 configuration and generated-source machinery, including the old config, lock, parts, metadata, catalogs, hooks, and upgrade scripts. Also remove or unmark the old generated `.awf/efforts/.gitignore`, `.awf/worktrees/.gitignore`, and `.awf/effort-archive/.gitignore`; the new projector replaces them with `.awf/.gitignore`. Keep detached project documents as ordinary files with AWF ownership and edit-control comments removed.
+Before removing the v0.50 machinery, inspect repository hook scripts and the effective hook location:
+
+```sh
+git config --get core.hooksPath
+```
+
+Remove obsolete calls to old AWF hook commands while preserving unrelated repository checks and dispatch behavior. If `core.hooksPath` points to a retired AWF-owned directory, deliberately replace or unset it only after retaining any repository-owned hooks it still serves. The new AWF does not edit hook scripts, activate hooks, change Git configuration, or perform this cleanup.
+
+After preservation, remove the v0.50 configuration and generated-source machinery, including the old config, lock, parts, metadata, catalogs, obsolete AWF hook files, and upgrade scripts. Also remove or unmark the old generated `.awf/efforts/.gitignore`, `.awf/worktrees/.gitignore`, and `.awf/effort-archive/.gitignore`; the new projector replaces them with `.awf/.gitignore`. Keep detached project documents as ordinary files with AWF ownership and edit-control comments removed.
 
 Do not delete ignored effort contents or native Git worktrees as part of this source cleanup. New AWF effort commands use `.awf/efforts/<slug>/memory.md` when present and treat extra resident files as opaque. Git worktrees are now entirely user-managed.
 

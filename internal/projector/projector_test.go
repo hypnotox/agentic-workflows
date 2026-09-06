@@ -67,10 +67,25 @@ func TestLoadAndBuildPreserveLiteralProjectBody(t *testing.T) {
 	if !bytes.Contains(piTopic.Bytes, []byte("\n---\n"+markdownMarker+"\n")) {
 		t.Fatal("skill marker is not immediately after frontmatter")
 	}
+	if !bytes.Contains(piTopic.Bytes, []byte("docs topics")) {
+		t.Error("topic skill does not route to the embedded guide")
+	}
 	piEffort := outputForTest(t, outputs, ".pi/skills/awf-effort/SKILL.md")
-	for _, phrase := range []string{"effort new <slug>", "git worktree add -b awf/<slug> .awf/worktrees/<slug>", "AWF does not manage Git"} {
-		if !bytes.Contains(piEffort.Bytes, []byte(phrase)) {
-			t.Errorf("effort skill missing %q", phrase)
+	claudeEffort := outputForTest(t, outputs, ".claude/skills/awf-effort/SKILL.md")
+	if !bytes.Equal(piEffort.Bytes, claudeEffort.Bytes) {
+		t.Fatal("Pi and Claude effort skills differ")
+	}
+	if !bytes.Contains(piEffort.Bytes, []byte("docs effort")) {
+		t.Error("effort skill does not route to the embedded guide")
+	}
+	for _, relocated := range []string{"effort new <slug>", "git worktree add", "AWF does not manage Git"} {
+		if bytes.Contains(piEffort.Bytes, []byte(relocated)) {
+			t.Errorf("effort skill retained full-runbook phrase %q", relocated)
+		}
+	}
+	for _, route := range []string{"./awf docs integration", "./awf docs topics", "./awf docs effort"} {
+		if !bytes.Contains(agents.Bytes, []byte(route)) {
+			t.Errorf("AGENTS missing direct documentation route %q", route)
 		}
 	}
 	for _, path := range []string{"awf", ".awf/bootstrap.sh"} {
@@ -84,13 +99,29 @@ func TestLoadAndBuildPreserveLiteralProjectBody(t *testing.T) {
 		}
 	}
 	bootstrap := outputForTest(t, outputs, ".awf/bootstrap.sh")
-	for _, phrase := range []string{`AWF_VERSION="${AWF_VERSION:-0.52.0}"`, "checksums.txt", "sha256sum -c -", "shasum -a 256 -c -"} {
+	for _, phrase := range []string{`AWF_VERSION="${AWF_VERSION:-` + Version + `}"`, `releases/download/v${AWF_VERSION}`, "checksums.txt", "sha256sum -c -", "shasum -a 256 -c -"} {
 		if !bytes.Contains(bootstrap.Bytes, []byte(phrase)) {
 			t.Errorf("bootstrap missing %q", phrase)
 		}
 	}
 	if bytes.Contains(bootstrap.Bytes, []byte("command -v awf")) {
 		t.Fatal("bootstrap retained PATH probing")
+	}
+
+	launcher := PublicLauncher()
+	for _, phrase := range []string{`AWF_VERSION="` + Version + `"`, `exec "$binary" "$@"`, "checksums.txt"} {
+		if !bytes.Contains(launcher, []byte(phrase)) {
+			t.Errorf("public launcher missing %q", phrase)
+		}
+	}
+	if bytes.Contains(launcher, []byte(textMarker)) {
+		t.Fatal("public launcher carries adopter generated-file ownership marker")
+	}
+	if bytes.Contains(launcher, []byte("releases/latest")) {
+		t.Fatal("public launcher silently selects the latest binary release")
+	}
+	if bytes.Contains(launcher, []byte("${AWF_VERSION:-")) {
+		t.Fatal("public launcher permits repository-style version override")
 	}
 }
 

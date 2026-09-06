@@ -35,12 +35,15 @@ jobs:
         with:
           version: v2.17.0
           args: release --clean --skip=publish
+      - name: Build public launcher from the tested source
+        run: go run ./tools/release-assets dist/awf.sh
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: release-candidate-${{ github.sha }}
           path: |
             dist/awf_*.tar.gz
             dist/checksums.txt
+            dist/awf.sh
           if-no-files-found: error
           retention-days: 1
 
@@ -87,4 +90,4 @@ jobs:
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
           GH_REPO: ${{ github.repository }}
-        run: gh release create "$GITHUB_REF_NAME" dist/awf_*.tar.gz dist/checksums.txt --generate-notes
+        run: gh release create "$GITHUB_REF_NAME" dist/awf_*.tar.gz dist/checksums.txt dist/awf.sh --generate-notes

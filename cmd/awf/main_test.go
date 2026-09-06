@@ -15,7 +15,7 @@ func TestHelpExposesOnlyFinalCommands(t *testing.T) {
 	if code != 0 || stderr != "" {
 		t.Fatalf("help = code %d, stderr %q", code, stderr)
 	}
-	for _, command := range []string{"init", "render", "check", "resolve", "effort", "adr", "plan", "version"} {
+	for _, command := range []string{"init", "render", "check", "resolve", "docs", "effort", "adr", "plan", "version"} {
 		if !strings.Contains(stdout, "  "+command) {
 			t.Errorf("help missing %s:\n%s", command, stdout)
 		}
@@ -44,6 +44,63 @@ func TestHelpExposesOnlyFinalCommands(t *testing.T) {
 		code, stdout, stderr = runCLI(t, t.TempDir(), command, "--help")
 		if code != 0 || stderr != "" || !strings.Contains(stdout, "new <") {
 			t.Errorf("%s help = code %d, stdout %q, stderr %q", command, code, stdout, stderr)
+		}
+	}
+}
+
+func TestDocsAvailableWithoutProjectStateOrMutation(t *testing.T) {
+	root := t.TempDir()
+	t.Setenv("PATH", t.TempDir())
+	invalidSource := filepath.Join(root, ".awf", "project.md")
+	if err := os.MkdirAll(filepath.Dir(invalidSource), 0o755); err != nil {
+		t.Fatal(err)
+	}
+	before := []byte("not valid frontmatter\n")
+	if err := os.WriteFile(invalidSource, before, 0o644); err != nil {
+		t.Fatal(err)
+	}
+
+	pages := []struct {
+		args  []string
+		title string
+	}{
+		{args: []string{"docs"}, title: "# AWF guide\n"},
+		{args: []string{"docs", "integration"}, title: "# Integrating AWF\n"},
+		{args: []string{"docs", "topics"}, title: "# Working with topics\n"},
+		{args: []string{"docs", "effort"}, title: "# Efforts, plans, decisions, and worktrees\n"},
+	}
+	for _, page := range pages {
+		code, stdout, stderr := runCLI(t, root, page.args...)
+		if code != 0 || stderr != "" || !strings.HasPrefix(stdout, page.title) {
+			t.Errorf("%v = code %d, stdout %q, stderr %q", page.args, code, stdout, stderr)
+		}
+	}
+
+	after, err := os.ReadFile(invalidSource)
+	if err != nil || !bytes.Equal(after, before) {
+		t.Fatalf("docs changed source: %q, %v", after, err)
+	}
+	entries, err := os.ReadDir(root)
+	if err != nil || len(entries) != 1 || entries[0].Name() != ".awf" {
+		t.Fatalf("docs changed repository entries: %v, %v", entries, err)
+	}
+	sourceEntries, err := os.ReadDir(filepath.Dir(invalidSource))
+	if err != nil || len(sourceEntries) != 1 || sourceEntries[0].Name() != "project.md" {
+		t.Fatalf("docs changed .awf entries: %v, %v", sourceEntries, err)
+	}
+}
+
+func TestDocsHelpAndUsage(t *testing.T) {
+	for _, args := range [][]string{{"docs", "--help"}, {"help", "docs"}} {
+		code, stdout, stderr := runCLI(t, t.TempDir(), args...)
+		if code != 0 || stderr != "" || !strings.Contains(stdout, "awf docs [integration|topics|effort]") {
+			t.Errorf("%v = code %d, stdout %q, stderr %q", args, code, stdout, stderr)
+		}
+	}
+	for _, args := range [][]string{{"docs", "unknown"}, {"docs", "topics", "extra"}} {
+		code, stdout, stderr := runCLI(t, t.TempDir(), args...)
+		if code != 2 || stdout != "" || !strings.Contains(stderr, "awf:") {
+			t.Errorf("%v = code %d, stdout %q, stderr %q", args, code, stdout, stderr)
 		}
 	}
 }

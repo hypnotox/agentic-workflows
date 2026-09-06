@@ -7,6 +7,7 @@ import (
 	"os"
 	"strings"
 
+	awfdocs "github.com/hypnotox/agentic-workflows/docs"
 	"github.com/hypnotox/agentic-workflows/internal/adrfs"
 	"github.com/hypnotox/agentic-workflows/internal/effortfs"
 	"github.com/hypnotox/agentic-workflows/internal/projector"
@@ -93,6 +94,8 @@ func run(root string, args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintf(stdout, "%s\t%s\n", match.ID, match.SourcePath)
 		}
 		return 0
+	case "docs":
+		return runDocs(args[2:], stdout, stderr)
 	case "effort":
 		return runEffort(root, args[2:], stdout, stderr)
 	case "adr":
@@ -127,6 +130,31 @@ func runHelp(args []string, stdout, stderr io.Writer) int {
 		return usage(stderr, fmt.Sprintf("unknown command %q", args[2]))
 	}
 	writeText(stdout, help)
+	return 0
+}
+
+func runDocs(args []string, stdout, stderr io.Writer) int {
+	if helpRequested(args) {
+		writeText(stdout, docsHelp)
+		return 0
+	}
+	if len(args) > 1 {
+		return usage(stderr, "usage: awf docs [integration|topics|effort]")
+	}
+	name := ""
+	if len(args) == 1 {
+		name = args[0]
+	}
+	page, ok := awfdocs.Page(name)
+	if !ok {
+		return usage(stderr, fmt.Sprintf("unknown documentation page %q; expected integration, topics, or effort", name))
+	}
+	if _, err := stdout.Write(page); err != nil {
+		return failure(stderr, err)
+	}
+	if len(page) > 0 && page[len(page)-1] != '\n' {
+		fmt.Fprintln(stdout)
+	}
 	return 0
 }
 
@@ -259,6 +287,8 @@ func commandHelp(command string) (string, bool) {
 		return checkHelp, true
 	case "resolve":
 		return resolveHelp, true
+	case "docs":
+		return docsHelp, true
 	case "effort":
 		return effortHelp, true
 	case "adr":
@@ -300,32 +330,42 @@ Commands:
   render     render the fixed generated files
   check      check sources and generated files
   resolve    find global topics or topics for repository paths
+  docs       read embedded adopter guides
   effort     manage local effort memory
   adr        create a decision record scaffold
   plan       create an effort plan scaffold
   version    print the AWF version
 
-Run ` + "`awf help <command>`" + ` for command details.
+Run ` + "`awf help <command>`" + ` for command details or ` + "`awf docs`" + ` for the guide.
 `
 
 const initHelp = `Usage: awf init
 
 Create .awf/project.md with editable starter guidance and render the fixed generated files.
+Read ` + "`awf docs integration`" + ` before adopting AWF in an existing repository.
 `
 
 const renderHelp = `Usage: awf render
 
 Render the fixed generated files. Retired AWF-marked files are reported but never deleted.
+See ` + "`awf docs integration`" + ` for ownership and update procedures.
 `
 
 const checkHelp = `Usage: awf check
 
-Validate AWF sources and generated files. Unmanaged AWF-marked files fail the check.
+Validate working-tree AWF sources and generated files. Unmanaged AWF-marked files fail the check.
+See ` + "`awf docs integration`" + ` for gate and CI integration.
 `
 
 const resolveHelp = `Usage: awf resolve [<path>...]
 
 Without paths, print explicit global topics. With paths, print globals and every topic matching a supplied lexical repository-relative path.
+See ` + "`awf docs topics`" + ` for authoring and maintenance.
+`
+
+const docsHelp = `Usage: awf docs [integration|topics|effort]
+
+Print the embedded overview or one adopter guide to standard output.
 `
 
 const effortHelp = `Usage: awf effort <command>
@@ -335,16 +375,20 @@ Commands:
   list           list active efforts
   show <slug>    show an effort's memory path and contents
   finish <slug>  move an effort into the local archive
+
+See ` + "`awf docs effort`" + ` for the complete workflow.
 `
 
 const adrHelp = `Usage: awf adr new <slug>
 
-Create docs/decisions/<slug>.md without replacing an existing file.
+Create docs/decisions/<slug>.md without replacing an existing file. An ADR can stand alone.
+See ` + "`awf docs effort`" + ` for its lifecycle.
 `
 
 const planHelp = `Usage: awf plan new <effort-slug>
 
 Create plan.md in an existing active effort without replacing an existing file.
+See ` + "`awf docs effort`" + ` for its lifecycle.
 `
 
 const versionHelp = `Usage: awf version

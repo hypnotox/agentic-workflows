@@ -12,33 +12,87 @@ case "$expected_os/$expected_arch" in
   *) echo "native-release-test: unsupported target $expected_os/$expected_arch" >&2; exit 2 ;;
 esac
 
-archive="$candidate_dist/awf_${expected_version}_${expected_os}_${expected_arch}.tar.gz"
+asset="awf_${expected_version}_${expected_os}_${expected_arch}.tar.gz"
+archive="$candidate_dist/$asset"
+launcher="$candidate_dist/awf.sh"
 [ -f "$archive" ] || { echo "native-release-test: missing $archive" >&2; exit 1; }
+[ -f "$candidate_dist/checksums.txt" ] || { echo "native-release-test: missing checksums.txt" >&2; exit 1; }
+[ -f "$launcher" ] || { echo "native-release-test: missing awf.sh" >&2; exit 1; }
 
 root="$(mktemp -d "${TMPDIR:-/tmp}/awf-native-release.XXXXXX")"
 trap 'rm -rf "$root"' EXIT HUP INT TERM
-mkdir -p "$root/bin" "$root/cache" "$root/home" "$root/repo" "$root/tmp"
+mkdir -p "$root/bin" "$root/cache" "$root/fake-bin" "$root/home" "$root/malformed/.awf" "$root/repo" "$root/tmp"
 export HOME="$root/home"
 export XDG_CACHE_HOME="$root/cache"
 export TMPDIR="$root/tmp"
+export AWF_DOWNLOAD_FIXTURE="$candidate_dist"
+export PATH="$root/fake-bin:$PATH"
+
+cat > "$root/fake-bin/curl" <<'EOF'
+#!/usr/bin/env bash
+set -euo pipefail
+[ "${AWF_FAKE_OFFLINE:-0}" != 1 ] || { echo "fixture curl: network disabled" >&2; exit 90; }
+url=""
+output=""
+while [ "$#" -gt 0 ]; do
+  case "$1" in
+    -o) output="$2"; shift 2 ;;
+    -*) shift ;;
+    *) url="$1"; shift ;;
+  esac
+done
+[ -n "$url" ] && [ -n "$output" ] || { echo "fixture curl: unsupported arguments" >&2; exit 2; }
+name="${url##*/}"
+if [ "$name" = checksums.txt ] && [ -n "${AWF_CHECKSUM_FILE:-}" ]; then
+  cp "$AWF_CHECKSUM_FILE" "$output"
+else
+  cp "$AWF_DOWNLOAD_FIXTURE/$name" "$output"
+fi
+EOF
+chmod 0755 "$root/fake-bin/curl"
 
 tar -xzf "$archive" -C "$root/bin"
 candidate="$root/bin/awf"
 [ -x "$candidate" ]
-[ "$($candidate version)" = "version: $expected_version" ]
+[ "$("$candidate" version)" = "version: $expected_version" ]
 "$candidate" --help | grep '^Usage:' >/dev/null
 
-# The release is not published yet. Seed the cache with the exact candidate so
-# the generated wrapper exercises its normal pinned-cache path without network.
-cache_binary="$XDG_CACHE_HOME/awf/$expected_version/awf"
-mkdir -p "$(dirname "$cache_binary")"
-cp "$candidate" "$cache_binary"
-chmod 0755 "$cache_binary"
-
+# Start with an empty cache and use the public launcher as a first-use docs path.
 cd "$root/repo"
-"$candidate" init
+bash "$launcher" docs integration > "$root/integration.md"
+grep '^# Integrating AWF$' "$root/integration.md" >/dev/null
+[ ! -e .awf ]
+cache_binary="$XDG_CACHE_HOME/awf/$expected_version/awf"
+[ -x "$cache_binary" ]
+cmp "$candidate" "$cache_binary"
+[ "$("$cache_binary" version)" = "version: $expected_version" ]
+[ -z "$(ls -A "$root/tmp")" ]
+
+# Once cached, both public and repository entrypoints must work without downloading.
+export AWF_FAKE_OFFLINE=1
+bash "$launcher" init
 [ "$(bash .awf/bootstrap.sh)" = "$cache_binary" ]
 ./awf check
+if bash "$launcher" docs unknown > "$root/usage.out" 2> "$root/usage.err"; then
+  echo "native-release-test: invalid docs page unexpectedly succeeded" >&2
+  exit 1
+else
+  status=$?
+fi
+[ "$status" -eq 2 ]
+[ ! -s "$root/usage.out" ]
+grep '^awf:' "$root/usage.err" >/dev/null
+
+# Embedded docs remain available around missing or malformed repository sources.
+printf 'malformed source\n' > "$root/malformed/.awf/project.md"
+cp "$root/malformed/.awf/project.md" "$root/malformed/before"
+(
+  cd "$root/malformed"
+  bash "$launcher" docs topics | grep '^# Working with topics$' >/dev/null
+)
+cmp "$root/malformed/before" "$root/malformed/.awf/project.md"
+[ ! -e "$root/malformed/AGENTS.md" ]
+
 mkdir -p .awf/topics/code
 cat > .awf/topics/global.md <<'EOF'
 ---
@@ -68,5 +122,16 @@ printf '\nNative smoke guidance.\n' >> .awf/project.md
 [ -f .awf/effort-archive/smoke/plan.md ]
 [ -f docs/decisions/smoke-choice.md ]
 [ ! -e .awf/efforts/smoke ]
+
+# A bad checksum must fail before an executable enters a fresh cache.
+unset AWF_FAKE_OFFLINE
+bad_checksums="$root/bad-checksums.txt"
+printf '%064d  %s\n' 0 "$asset" > "$bad_checksums"
+if XDG_CACHE_HOME="$root/bad-cache" AWF_CHECKSUM_FILE="$bad_checksums" bash "$launcher" docs > "$root/bad.out" 2> "$root/bad.err"; then
+  echo "native-release-test: checksum mismatch unexpectedly succeeded" >&2
+  exit 1
+fi
+[ ! -e "$root/bad-cache/awf/$expected_version/awf" ]
+[ ! -s "$root/bad.out" ]
 
 printf 'native-release-test: verified %s/%s candidate version %s\n' "$expected_os" "$expected_arch" "$expected_version"

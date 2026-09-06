@@ -1,4 +1,4 @@
-# Build the release archives consumed by the generated bootstrap.
+# Build the release archives consumed by the repository bootstrap and public launcher.
 version: 2
 
 project_name: awf
@@ -51,6 +51,11 @@ archives:
           owner: root
           group: root
           mode: 0644
+      - src: docs/*.md
+        info:
+          owner: root
+          group: root
+          mode: 0644
   - id: awf
     ids:
       - awf
@@ -65,6 +70,7 @@ archives:
       - LICENSE
       - README.md
       - MIGRATING-v0.50.md
+      - docs/*.md
 
 checksum:
   name_template: checksums.txt
