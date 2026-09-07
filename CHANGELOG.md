@@ -4,6 +4,10 @@ All notable changes to `awf` are documented here, newest first.
 
 ## Unreleased
 
+### Documentation
+
+- Clarify ADR replacement and retirement: prefer self-contained records for coherent decision areas, preserve retained commitments and rationale, and retire predecessors only when active authority and references are reconciled. Add a concise replacement cue to the ADR starter.
+
 ## [0.54.2] - 2026-09-06
 
 ### Bug fixes

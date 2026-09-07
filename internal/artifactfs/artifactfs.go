@@ -131,7 +131,7 @@ func adrStarter(slug string) string {
 		"## Material alternatives\n\nRecord the credible alternatives actually considered; a second option is not required.\n\n" +
 		"## Decision and rationale\n\nState the accepted choice and rationale, or clearly identify the question as open.\n\n" +
 		"## Consequences\n\nCapture meaningful benefits, costs, limitations, and trade-offs.\n\n" +
-		"## Affected topics and decisions\n\nLink relevant topics and prior decisions, explaining intended supersession where applicable.\n"
+		"## Affected topics and decisions\n\nLink relevant AWF topic files and prior decisions. For intended replacements, explain where retained decisions and rationale will live; see `awf docs effort` for the procedure.\n"
 }
 
 func topicStarter(id string, selectors []string) string {
