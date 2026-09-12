@@ -168,33 +168,33 @@ func TestResolveCreationAndEffortLifecycle(t *testing.T) {
 	if code != 0 || stdout != "none\n" || stderr != "" {
 		t.Fatalf("resolve without globals = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
-	topicPath := filepath.Join(root, ".awf", "topics", "code", "render.md")
+	topicPath := filepath.Join(root, "docs", "topics", "code", "render.md")
 	if err := os.MkdirAll(filepath.Dir(topicPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
 	if err := os.WriteFile(topicPath, []byte("---\npaths: [internal/projector/**]\n---\n# Render\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
-	globalPath := filepath.Join(root, ".awf", "topics", "global.md")
+	globalPath := filepath.Join(root, "docs", "topics", "global.md")
 	if err := os.WriteFile(globalPath, []byte("---\npaths: ['**']\n---\n# Global\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	code, stdout, stderr = runCLI(t, root, "resolve")
-	if code != 0 || stdout != "global\t.awf/topics/global.md\n" || stderr != "" {
+	if code != 0 || stdout != "global\tdocs/topics/global.md\n" || stderr != "" {
 		t.Fatalf("resolve globals = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = runCLI(t, root, "resolve", "internal/projector/new.go")
-	if code != 0 || stdout != "code/render\t.awf/topics/code/render.md\nglobal\t.awf/topics/global.md\n" || stderr != "" {
+	if code != 0 || stdout != "code/render\tdocs/topics/code/render.md\nglobal\tdocs/topics/global.md\n" || stderr != "" {
 		t.Fatalf("resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = runCLI(t, root, "resolve", "--coverage", `internal\\projector\\new.go`, "README.md", "internal/projector/new.go")
-	wantCoverage := "globals:\n  global\t.awf/topics/global.md\npath: \"README.md\"\n  none\npath: \"internal/projector/new.go\"\n  code/render\t.awf/topics/code/render.md\n"
+	wantCoverage := "globals:\n  global\tdocs/topics/global.md\npath: \"README.md\"\n  none\npath: \"internal/projector/new.go\"\n  code/render\tdocs/topics/code/render.md\n"
 	if code != 0 || stdout != wantCoverage || stderr != "" {
 		t.Fatalf("resolve coverage = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = runCLI(t, root, "resolve", "--coverage", "line\nbreak")
-	wantCoverage = "globals:\n  global\t.awf/topics/global.md\npath: \"line\\nbreak\"\n  none\n"
+	wantCoverage = "globals:\n  global\tdocs/topics/global.md\npath: \"line\\nbreak\"\n  none\n"
 	if code != 0 || stdout != wantCoverage || stderr != "" {
 		t.Fatalf("escaped coverage = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
@@ -223,11 +223,11 @@ func TestResolveCreationAndEffortLifecycle(t *testing.T) {
 		t.Fatalf("new adr = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = runCLI(t, root, "new", "topic", "nested/generated", "generated/**")
-	if code != 0 || stdout != "topic: .awf/topics/nested/generated.md\n" || stderr != "" {
+	if code != 0 || stdout != "topic: docs/topics/nested/generated.md\n" || stderr != "" {
 		t.Fatalf("new topic = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = runCLI(t, root, "resolve", "generated/future.txt")
-	if code != 0 || stdout != "nested/generated\t.awf/topics/nested/generated.md\n" || stderr != "" {
+	if code != 0 || stdout != "nested/generated\tdocs/topics/nested/generated.md\n" || stderr != "" {
 		t.Fatalf("resolve created topic = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 
@@ -236,8 +236,10 @@ func TestResolveCreationAndEffortLifecycle(t *testing.T) {
 		t.Fatal(err)
 	}
 	artifacts := map[string][]byte{
-		filepath.Join("docs", "plans", "simple.md"):            []byte("edited plan\n"),
-		filepath.Join("docs", "decisions", "simple-choice.md"): []byte("edited adr\n"),
+		filepath.Join("docs", "plans", "simple.md"):               []byte("edited plan\n"),
+		filepath.Join("docs", "decisions", "simple-choice.md"):    []byte("edited adr\n"),
+		filepath.Join("docs", "topics", "nested", "generated.md"): []byte("---\npaths: ['generated/**']\n---\n# Edited topic\n"),
+		filepath.Join("docs", "ordinary.md"):                      []byte("ordinary documentation, not a topic\n"),
 	}
 	for relative, body := range artifacts {
 		if err := os.WriteFile(filepath.Join(root, relative), body, 0o644); err != nil {

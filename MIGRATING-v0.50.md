@@ -1,6 +1,6 @@
 # Migrating from AWF v0.50
 
-AWF's next source format is a manual simplification, not an in-place upgrade. Convert each repository on an ordinary review branch with the new binary available directly. Do not run the old `awf upgrade` flow against the new release.
+AWF's source format 2 is a manual simplification, not an in-place upgrade. Convert each repository on an ordinary review branch with the new binary available directly. Do not run the old `awf upgrade` flow against the new release. Repositories already using source format 1 should instead follow `awf docs integration` from the target binary.
 
 ## 1. Preserve repository-owned content
 
@@ -21,7 +21,7 @@ Create `.awf/project.md`:
 
 ```markdown
 ---
-format: 1
+format: 2
 ---
 
 # Project guidance
@@ -31,7 +31,7 @@ You are a coding agent responsible for developing and maintaining this project. 
 Add the repository's identity, invariants, workflow, routine commands, and documentation pointers here.
 ```
 
-Create one file per retained topic at `.awf/topics/<id>.md`:
+Create one file per retained topic at `docs/topics/<id>.md`:
 
 ```markdown
 ---
@@ -44,7 +44,7 @@ paths:
 Current guidance goes here.
 ```
 
-Move the old selector paths and useful prose into that file. Remove claim IDs, `Backing:`, `Verify:`, coverage metadata, domains, and other old structural fields. AWF now interprets only `paths`.
+Move the old selector paths and useful prose into that file. Remove claim IDs, `Backing:`, `Verify:`, coverage metadata, domains, and other old structural fields. AWF now interprets only `paths`. Repair references and relative links affected by the move; selectors remain repository-relative.
 
 For genuinely repository-wide current knowledge, use the exact sole global declaration:
 
@@ -109,14 +109,14 @@ Review the complete Git diff, especially the new project guidance, every retaine
 /path/to/new/awf check
 ```
 
-Run the repository's normal tests or gate. Commit the new `.awf` sources and fixed generated outputs together.
+Run the repository's normal tests or gate. Commit `.awf/project.md`, `docs/topics/`, and fixed generated outputs together.
 
 ## Peer-agent handoff
 
 Assign one repository per agent or clearly partition repositories. Give the agent the new release binary and require a short report containing:
 
 - project guidance preserved in `.awf/project.md`;
-- topics converted;
+- topics converted into `docs/topics/`;
 - documents detached and retained;
 - obsolete generated files deleted;
 - existing effort memory or Git worktrees left for manual ownership;

@@ -1,6 +1,6 @@
 # Working with topics
 
-Topics are AWF's current project-knowledge layer. Each `.awf/topics/**/*.md` file owns one body of current guidance and the positive path selectors that make it relevant. AWF returns source locations so readers use the authored files rather than generated copies.
+Topics are AWF's current project-knowledge layer. Each `docs/topics/**/*.md` file owns one body of current guidance and the positive path selectors that make it relevant. AWF returns source locations so readers use the authored files rather than generated copies. Other Markdown under `docs/`, including plans and decisions, is not topic input.
 
 ## Discover applicable context
 
@@ -24,7 +24,7 @@ Create a topic with an optionally nested ID and at least one explicitly supplied
 ./awf new topic code/go 'cmd/**/*.go'
 ```
 
-The command creates `.awf/topics/<id>.md` exclusively and prints that path. It never replaces an existing destination, renders generated files, or performs a Git action. The ID omits `.md` and cannot escape the topic source directory.
+The command creates `docs/topics/<id>.md` exclusively and prints that path. It never replaces an existing destination, renders generated files, or performs a Git action. The ID omits `.md` and cannot escape the topic source directory.
 
 The created file is ordinary author-owned Markdown. Begin with a focused purpose, then explain current behavior, ownership boundaries, and relationships that matter to future changes, followed by constraints and practical implications. Prefer useful orientation over an exhaustive code inventory. Keep useful local explanations and change or verification guidance near the relevant facts; add specific headings such as testing only when they improve reading. Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose. Link active ADRs for the enduring decisions they own rather than duplicating their full rationale.
 
@@ -42,7 +42,7 @@ paths:
 Current implementation facts and guidance go here.
 ```
 
-`*` matches within one path component and `**` matches across directories. Selectors are positive; there is no negation, priority, or exclusive owner. Several topics may match the same path.
+Selectors are repository-relative, not relative to the topic's directory. `*` matches within one path component and `**` matches across directories. Selectors are positive; there is no negation, priority, or exclusive owner. Several topics may match the same path.
 
 The exact sole selector `paths: ['**']` declares an explicit global topic:
 
@@ -51,7 +51,7 @@ paths:
   - '**'
 ```
 
-A standalone `**` is invalid in a mixed or duplicate selector list. Patterns such as `*`, `./**`, `src/**`, and `**/*.go` remain ordinary selectors rather than global declarations. Topic creation preserves the supplied selector spelling; in particular, it does not silently rewrite `./**` into an explicit global declaration. AWF keeps source format 1, interprets the `paths` field, and treats the Markdown body and unknown frontmatter fields as opaque authored content.
+A standalone `**` is invalid in a mixed or duplicate selector list. Patterns such as `*`, `./**`, `src/**`, and `**/*.go` remain ordinary selectors rather than global declarations. Topic creation preserves the supplied selector spelling; in particular, it does not silently rewrite `./**` into an explicit global declaration. AWF interprets the `paths` field and treats the Markdown body and unknown frontmatter fields as opaque authored content.
 
 ## Inspect routing coverage
 

@@ -72,7 +72,7 @@ func TestNewTopicRoundTripsAuthoredSelectorMeaning(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	wantRelative := filepath.Join(".awf", "topics", "code", "go.md")
+	wantRelative := filepath.Join("docs", "topics", "code", "go.md")
 	if relative != wantRelative {
 		t.Fatalf("topic path = %q, want %q", relative, wantRelative)
 	}
@@ -146,7 +146,7 @@ func TestCreationRefusesSymlinkedDestinationDirectories(t *testing.T) {
 	}{
 		{name: "plan", relative: "docs/plans", create: func(root string) (string, error) { return NewPlan(root, "escaped") }, outside: "escaped.md"},
 		{name: "adr", relative: "docs/decisions", create: func(root string) (string, error) { return NewADR(root, "escaped") }, outside: "escaped.md"},
-		{name: "topic", relative: ".awf/topics", create: func(root string) (string, error) { return NewTopic(root, "escaped", []string{"src/**"}) }, outside: "escaped.md"},
+		{name: "topic", relative: "docs/topics", create: func(root string) (string, error) { return NewTopic(root, "escaped", []string{"src/**"}) }, outside: "escaped.md"},
 	}
 	for _, test := range tests {
 		test := test
@@ -203,7 +203,7 @@ func TestInvalidArtifactInputsDoNotCreateMisleadingFiles(t *testing.T) {
 		if _, err := NewTopic(root, test.id, test.selectors); err == nil {
 			t.Errorf("NewTopic(%q, %v) succeeded", test.id, test.selectors)
 		}
-		if _, err := os.Stat(filepath.Join(root, ".awf", "topics")); !os.IsNotExist(err) {
+		if _, err := os.Stat(filepath.Join(root, "docs", "topics")); !os.IsNotExist(err) {
 			t.Errorf("invalid topic created source directory: %v", err)
 		}
 	}
@@ -215,7 +215,7 @@ func writeProject(t *testing.T, root string) {
 	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(filename, []byte("---\nformat: 1\n---\nbody\n"), 0o644); err != nil {
+	if err := os.WriteFile(filename, []byte("---\nformat: 2\n---\nbody\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 }

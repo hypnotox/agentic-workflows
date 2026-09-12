@@ -16,9 +16,10 @@ import (
 
 const (
 	// SourceFormat is the only source shape accepted by this binary.
-	SourceFormat = 1
-	projectPath  = ".awf/project.md"
-	topicsPath   = ".awf/topics"
+	SourceFormat = 2
+	// TopicsPath is the repository-relative directory of canonical topic sources.
+	TopicsPath  = "docs/topics"
+	projectPath = ".awf/project.md"
 )
 
 // Project is the opaque project-specific guidance from .awf/project.md.
@@ -82,12 +83,12 @@ func loadProject(root string) (Project, error) {
 }
 
 func loadTopics(root string) ([]Topic, error) {
-	rootPath := filepath.Join(root, filepath.FromSlash(topicsPath))
+	rootPath := filepath.Join(root, filepath.FromSlash(TopicsPath))
 	if _, err := os.Stat(rootPath); err != nil {
 		if os.IsNotExist(err) {
 			return nil, nil
 		}
-		return nil, fmt.Errorf("inspect %s: %w", topicsPath, err)
+		return nil, fmt.Errorf("inspect %s: %w", TopicsPath, err)
 	}
 
 	var topics []Topic
@@ -168,6 +169,7 @@ func normalizeTopicPattern(pattern string) (string, error) {
 	if pattern == "" {
 		return "", fmt.Errorf("topic path pattern must not be empty")
 	}
+
 	normalized := strings.ReplaceAll(pattern, `\`, "/")
 	if path.IsAbs(normalized) || hasWindowsVolume(normalized) || escapesRoot(normalized) {
 		return "", fmt.Errorf("topic path pattern %q must be repository-relative", pattern)
@@ -178,6 +180,7 @@ func normalizeTopicPattern(pattern string) (string, error) {
 	if strings.ContainsAny(normalized, "?[]{}") {
 		return "", fmt.Errorf("topic path pattern %q may use only literal text, * and **", pattern)
 	}
+
 	normalized = path.Clean(normalized)
 	for _, component := range strings.Split(normalized, "/") {
 		if strings.Contains(component, "**") && component != "**" {

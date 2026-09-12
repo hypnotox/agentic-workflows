@@ -24,15 +24,15 @@ Initialization creates `.awf/project.md`, the fixed generated guidance, and a re
 
 ## Documentation
 
-The authoritative adopter guides are ordinary Markdown embedded in every binary and readable here:
+The authoritative adopter guides are ordinary Markdown in `internal/docs/`, embedded in every binary and readable here:
 
-- [AWF guide](docs/overview.md): purpose, source/generated ownership, render/check, and guide discovery;
-- [Integration](docs/integration.md): adoption, repository-owned hooks and CI, updates, and repair;
-- [Topics](docs/topics.md): path-routed current project knowledge, topic creation, and optional coverage inspection;
-- [Efforts](docs/effort.md): optional local continuity, standalone tracked plans, durable ADRs, and worktrees;
+- [AWF guide](internal/docs/overview.md): purpose, source/generated ownership, render/check, and guide discovery;
+- [Integration](internal/docs/integration.md): adoption, repository-owned hooks and CI, updates, and repair;
+- [Topics](internal/docs/topics.md): path-routed current project knowledge, topic creation, and optional coverage inspection;
+- [Efforts](internal/docs/effort.md): optional local continuity, standalone tracked plans, durable ADRs, and worktrees;
 - [Migrating from v0.50](MIGRATING-v0.50.md): one-time conversion and legacy cleanup.
 
-Use `./awf docs`, `./awf docs integration`, `./awf docs topics`, and `./awf docs effort` inside an adopting repository. Generated `AGENTS.md` and the Pi and Claude skill entrypoints route agents to these guides without duplicating their runbooks.
+Use `./awf docs`, `./awf docs integration`, `./awf docs topics`, and `./awf docs effort` inside an adopting repository. Generated `AGENTS.md` and the Pi and Claude skill entrypoints route agents to these guides without duplicating their runbooks. Repositories using source format 1 should follow the [format-2 migration](internal/docs/integration.md#migrate-source-format-1-to-2) before updating.
 
 ## Development
 
@@ -46,7 +46,7 @@ Contributors should read [AGENTS.md](AGENTS.md). Development uses `./x` so comma
 ./x check
 ```
 
-Current implementation guidance lives in [`.awf/topics/`](.awf/topics/), release history in [CHANGELOG.md](CHANGELOG.md), and the source-format migration in [MIGRATING-v0.50.md](MIGRATING-v0.50.md).
+Project knowledge belongs in `docs/`: current implementation guidance in [`docs/topics/`](docs/topics/), implementation plans in `docs/plans/`, and ADRs in `docs/decisions/`. Release history remains in [CHANGELOG.md](CHANGELOG.md), and the v0.50 conversion in [MIGRATING-v0.50.md](MIGRATING-v0.50.md).
 
 ## Status
 

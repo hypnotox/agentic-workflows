@@ -6,7 +6,7 @@ paths:
   - '.claude/skills/awf-effort/SKILL.md'
   - 'docs/plans/**'
   - 'docs/decisions/**'
-  - 'docs/effort.md'
+  - 'internal/docs/effort.md'
 ---
 
 # Effort memory and tracked artifacts

@@ -93,22 +93,22 @@ cp "$root/malformed/.awf/project.md" "$root/malformed/before"
 cmp "$root/malformed/before" "$root/malformed/.awf/project.md"
 [ ! -e "$root/malformed/AGENTS.md" ]
 
-mkdir -p .awf/topics/code
-cat > .awf/topics/global.md <<'EOF'
+mkdir -p docs/topics/code
+cat > docs/topics/global.md <<'EOF'
 ---
 paths: ['**']
 ---
 Global smoke guidance.
 EOF
-cat > .awf/topics/code/go.md <<'EOF'
+cat > docs/topics/code/go.md <<'EOF'
 ---
 paths: ['src/**/*.go']
 ---
 Go smoke guidance.
 EOF
-[ "$("$candidate" resolve)" = $'global\t.awf/topics/global.md' ]
-[ "$("$candidate" resolve src/future/main.go)" = $'code/go\t.awf/topics/code/go.md\nglobal\t.awf/topics/global.md' ]
-[ "$("$candidate" resolve --coverage src/future/main.go missing/file)" = $'globals:\n  global\t.awf/topics/global.md\npath: "missing/file"\n  none\npath: "src/future/main.go"\n  code/go\t.awf/topics/code/go.md' ]
+[ "$("$candidate" resolve)" = $'global\tdocs/topics/global.md' ]
+[ "$("$candidate" resolve src/future/main.go)" = $'code/go\tdocs/topics/code/go.md\nglobal\tdocs/topics/global.md' ]
+[ "$("$candidate" resolve --coverage src/future/main.go missing/file)" = $'globals:\n  global\tdocs/topics/global.md\npath: "missing/file"\n  none\npath: "src/future/main.go"\n  code/go\tdocs/topics/code/go.md' ]
 printf '\nNative smoke guidance.\n' >> .awf/project.md
 "$candidate" render
 "$candidate" check
@@ -118,8 +118,8 @@ printf '\nNative smoke guidance.\n' >> .awf/project.md
 [ "$("$candidate" new plan smoke)" = "plan: docs/plans/smoke.md" ]
 [ "$("$candidate" new adr smoke-choice)" = "adr: docs/decisions/smoke-choice.md" ]
 grep '^status: pending$' docs/decisions/smoke-choice.md >/dev/null
-[ "$("$candidate" new topic generated/smoke 'generated/**')" = "topic: .awf/topics/generated/smoke.md" ]
-[ "$("$candidate" resolve generated/future.txt)" = $'generated/smoke\t.awf/topics/generated/smoke.md\nglobal\t.awf/topics/global.md' ]
+[ "$("$candidate" new topic generated/smoke 'generated/**')" = "topic: docs/topics/generated/smoke.md" ]
+[ "$("$candidate" resolve generated/future.txt)" = $'generated/smoke\tdocs/topics/generated/smoke.md\nglobal\tdocs/topics/global.md' ]
 "$candidate" check
 "$candidate" effort finish smoke
 [ -f .awf/effort-archive/smoke/memory.md ]

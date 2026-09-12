@@ -1,5 +1,5 @@
 ---
-format: 1
+format: 2
 ---
 
 # Project guidance
@@ -8,7 +8,7 @@ You are a coding agent responsible for developing and maintaining this project. 
 
 ## Identity
 
-`awf` is a public pre-1.0 Go CLI at `github.com/hypnotox/agentic-workflows`. It projects a small `.awf` source tree into fixed agent guidance, routes repository paths to current topics, optionally inspects routing coverage, keeps local effort memory, offers create-only plan, ADR, and topic starters, and ships embedded adopter guides plus a verified public launcher.
+`awf` is a public pre-1.0 Go CLI at `github.com/hypnotox/agentic-workflows`. It projects repository-owned sources into fixed agent guidance, routes repository paths to current topics, optionally inspects routing coverage, keeps local effort memory, offers create-only plan, ADR, and topic starters, and ships embedded adopter guides plus a verified public launcher.
 
 ## Invariants
 
@@ -16,7 +16,7 @@ You are a coding agent responsible for developing and maintaining this project. 
 - Never overwrite an unmarked repository-owned file or automatically delete a retired generated file.
 - Keep AWF usable without Git, external skills, services, or network access after its pinned binary is available.
 - Update current documentation and topic guidance with the behavior they describe.
-- Edit `.awf/project.md` and `.awf/topics/**/*.md`, then run `./x render && ./x check`; do not edit generated agent guidance directly.
+- Edit `.awf/project.md` and `docs/topics/**/*.md`, then run `./x render && ./x check`; do not edit generated agent guidance directly.
 
 ## Workflow
 
@@ -44,8 +44,9 @@ The generated root `./awf` wrapper intentionally exercises the released bootstra
 
 ## Documentation
 
-- `docs/*.md`: canonical embedded adopter guides.
+- `internal/docs/*.md`: canonical embedded adopter guides.
 - `README.md`: introduction, public entrypoint, and documentation index.
 - `MIGRATING-v0.50.md`: one-time manual migration guide for existing adopters.
-- `.awf/topics/**/*.md`: path-routed current implementation guidance.
+- `docs/topics/**/*.md`: path-routed current implementation guidance.
+- `docs/plans/` and `docs/decisions/`: author-owned implementation plans and ADRs.
 - `CHANGELOG.md`: release history.

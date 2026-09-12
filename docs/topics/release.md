@@ -5,7 +5,7 @@ paths:
   - '.github/workflows/release.yml'
   - 'tools/native-release-test/**'
   - 'tools/release-assets/**'
-  - 'docs/integration.md'
+  - 'internal/docs/integration.md'
   - 'CHANGELOG.md'
   - 'MIGRATING-v0.50.md'
 ---

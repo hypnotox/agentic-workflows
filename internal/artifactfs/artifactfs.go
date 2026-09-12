@@ -40,7 +40,7 @@ func NewTopic(root, id string, selectors []string) (string, error) {
 		return "", err
 	}
 
-	relative := filepath.Join(".awf", "topics", filepath.FromSlash(id)+".md")
+	relative := filepath.Join(filepath.FromSlash(projector.TopicsPath), filepath.FromSlash(id)+".md")
 	return create(root, relative, "topic", id, topicStarter(id, selectors))
 }
 

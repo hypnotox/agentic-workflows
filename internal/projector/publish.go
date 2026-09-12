@@ -15,7 +15,7 @@ import (
 
 // InitialProject is the source created by Init.
 const InitialProject = `---
-format: 1
+format: 2
 ---
 
 # Project guidance
@@ -306,7 +306,7 @@ func nestedRepositoryRoot(directory string) bool {
 
 func ignoredScanDirectory(relative string) bool {
 	switch relative {
-	case ".git", topicsPath, ".awf/efforts", ".awf/worktrees", ".awf/effort-archive", "docs/plans", "docs/decisions":
+	case ".git", TopicsPath, ".awf/efforts", ".awf/worktrees", ".awf/effort-archive", "docs/plans", "docs/decisions":
 		return true
 	default:
 		return false

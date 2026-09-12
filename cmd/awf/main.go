@@ -1,4 +1,4 @@
-// Command awf projects a small .awf source tree into agent guidance.
+// Command awf projects repository-owned sources into agent guidance.
 package main
 
 import (
@@ -8,8 +8,8 @@ import (
 	"strconv"
 	"strings"
 
-	awfdocs "github.com/hypnotox/agentic-workflows/docs"
 	"github.com/hypnotox/agentic-workflows/internal/artifactfs"
+	awfdocs "github.com/hypnotox/agentic-workflows/internal/docs"
 	"github.com/hypnotox/agentic-workflows/internal/effortfs"
 	"github.com/hypnotox/agentic-workflows/internal/projector"
 )
@@ -402,7 +402,7 @@ Commands:
   effort <slug>            create local effort memory
   plan <slug>              create docs/plans/<slug>.md
   adr <slug>               create docs/decisions/<slug>.md with pending status
-  topic <id> <pattern>...  create .awf/topics/<id>.md with supplied selectors
+  topic <id> <pattern>...  create ` + projector.TopicsPath + `/<id>.md with supplied selectors
 
 Creation never replaces an existing destination. Quote glob patterns so the shell does not expand them.
 See ` + "`awf docs effort`" + ` and ` + "`awf docs topics`" + ` for lifecycle and authoring guidance.
