@@ -4,18 +4,18 @@ AWF projects repository-owned sources into fixed agent guidance. It also routes 
 
 ## Sources and generated files
 
-Authors maintain `.awf/project.md` and `docs/topics/**/*.md`. AWF renders a fixed set of agent entrypoints, skill entrypoints, and repository launch scripts from those sources. A leading AWF marker identifies generated ownership.
+Authors maintain `.awf/project.md` and `docs/topics/**/*.md`. AWF renders a fixed set of agent entrypoints, skill entrypoints, and repository launch scripts from those sources. A leading AWF marker identifies generated ownership except for the exact markerless `@AGENTS.md` import in `CLAUDE.md`.
 
 Project knowledge lives in `docs/`: topics in `docs/topics/`, change definitions in `docs/changes/<slug>/`, implementation plans in `docs/plans/`, and ADRs in `docs/decisions/`. Each document is author-owned, with no generated copy. `.awf/` retains project-level agent guidance, local effort memory, and launch infrastructure.
 
-Never edit a marked generated file as its source. Edit `.awf/project.md` or the applicable topic, then run the repository's AWF command:
+Never edit a generated file as its source, including the markerless `CLAUDE.md` import. Edit `.awf/project.md` or the applicable topic, then run the repository's AWF command:
 
 ```sh
 ./awf render
 ./awf check
 ```
 
-Commit the sources and generated outputs together. `render` replaces current marked outputs but refuses an unmarked collision. It reports retired marked files without deleting them. `check` validates the working-tree AWF sources and generated files; it does not validate the repository's complete integration, staged snapshot, Git history, or project-specific behavior.
+Commit the sources and generated outputs together. `render` replaces current marked outputs and recognizes the exact markerless `CLAUDE.md` import, but refuses any other unmarked collision. It reports retired marked files without deleting them. `check` validates the working-tree AWF sources and generated files; it does not validate the repository's complete integration, staged snapshot, Git history, or project-specific behavior.
 
 ## Guides
 

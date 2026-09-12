@@ -1,6 +1,6 @@
 # Integrating AWF
 
-Use this guide to adopt AWF in an existing repository, connect its check to repository-owned automation, update the pinned release, or repair a partial integration. AWF owns its fixed marked outputs and implements topic resolution, local effort memory, and optional scaffolds. AWF supplies default agent commit guidance in the shared generated `AGENTS.md` frame. The repository owns authored guidance, local commit conventions and overrides, hooks, CI, gates, and every Git configuration change. Agents execute Git operations under those conventions; the CLI performs no Git operations.
+Use this guide to adopt AWF in an existing repository, connect its check to repository-owned automation, update the pinned release, or repair a partial integration. AWF owns its fixed outputs, all marked except the exact `@AGENTS.md` import in `CLAUDE.md`, and implements topic resolution, local effort memory, and optional scaffolds. AWF supplies default agent commit guidance in the shared generated `AGENTS.md` frame. The repository owns authored guidance, local commit conventions and overrides, hooks, CI, gates, and every Git configuration change. Agents execute Git operations under those conventions; the CLI performs no Git operations.
 
 ## Read guidance before initialization
 
@@ -16,7 +16,7 @@ This documentation command does not change the current directory or repository. 
 
 1. Inspect the repository before writing anything:
    - read existing agent instructions and contributor documentation;
-   - inspect `.awf/project.md`, `docs/topics/`, any older `.awf` sources, and marked generated files;
+   - inspect `.awf/project.md`, `docs/topics/`, any older `.awf` sources, and fixed generated destinations;
    - inspect hook scripts, `git config --get core.hooksPath`, CI, and the repository's normal checks;
    - identify useful repository-specific guidance and current implementation knowledge.
 2. Preserve useful authored guidance in `.awf/project.md` and applicable `docs/topics/**/*.md` sources before giving AWF ownership of a fixed generated destination. Do not copy obsolete generated boilerplate merely because it exists.
@@ -25,7 +25,7 @@ This documentation command does not change the current directory or repository. 
 5. Edit the sources, run `render` and `check`, and review the complete diff. Use `awf docs topics` for selector and maintenance rules.
 6. Run the repository's existing tests or gate. Commit `.awf/project.md`, topic sources, and generated outputs together.
 
-An unmarked file at a fixed destination is repository-owned and AWF refuses to overwrite it. Transfer ownership explicitly: first preserve useful content in AWF sources or another repository-owned file, then remove or move the destination and render the marked replacement. Never add an AWF marker to content that has not been reconciled with its source.
+An unmarked file at a fixed destination is repository-owned and AWF refuses to overwrite it, except that an existing `CLAUDE.md` containing exactly `@AGENTS.md` is already the complete markerless generated output. Transfer ownership explicitly: first preserve useful content in AWF sources or another repository-owned file, then remove or move the destination and render the generated replacement. Never add an AWF marker to content that has not been reconciled with its source.
 
 ## Add the working-tree check to automation
 
@@ -53,7 +53,7 @@ Do not replace an existing `core.hooksPath` or hook body without preserving its 
 Use the reported path and `git diff` to distinguish these cases:
 
 - **Current marked output is stale:** run the selected binary's `render`, then review it.
-- **Unmarked fixed destination collides:** preserve its useful content, explicitly transfer or retain ownership, and only then render.
+- **Unmarked fixed destination collides:** preserve its useful content, explicitly transfer or retain ownership, and only then render. A changed markerless `CLAUDE.md` is a collision; only the exact `@AGENTS.md` content is recognized.
 - **Marked file is retired:** `render` reports it and `check` fails. Delete it if obsolete, or remove the marker to retain it as repository-owned content. AWF never deletes it.
 - **Generated output and source disagree:** edit the source, not the generated destination, and render again.
 - **Integration is incomplete:** inspect the repository's gate, CI, hook scripts, executable modes, and effective `core.hooksPath`; AWF does not assess these.

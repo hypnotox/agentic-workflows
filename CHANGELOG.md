@@ -4,6 +4,10 @@ All notable changes to `awf` are documented here, newest first.
 
 ## Unreleased
 
+### Changed
+
+- Render `CLAUDE.md` as the exact markerless `@AGENTS.md` import while retaining collision protection for any other unmarked content.
+
 ## [0.55.0] - 2026-09-12
 
 ### Breaking changes

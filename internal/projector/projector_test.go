@@ -63,6 +63,10 @@ func TestLoadAndBuildPreserveLiteralProjectBody(t *testing.T) {
 	if !bytes.HasPrefix(agents.Bytes, []byte(markdownMarker+"\n")) {
 		t.Fatal("AGENTS marker is not first")
 	}
+	claude := outputForTest(t, outputs, "CLAUDE.md")
+	if string(claude.Bytes) != "@AGENTS.md" {
+		t.Fatalf("CLAUDE content = %q, want exact AGENTS import", claude.Bytes)
+	}
 
 	piTopic := outputForTest(t, outputs, ".pi/skills/awf-topics/SKILL.md")
 	claudeTopic := outputForTest(t, outputs, ".claude/skills/awf-topics/SKILL.md")

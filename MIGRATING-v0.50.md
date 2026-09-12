@@ -89,7 +89,7 @@ The first render replaces the fixed v0.50 outputs whose legacy AWF marker is sti
 - delete it when it is obsolete generated output, or
 - remove the AWF ownership comment when it should remain repository-owned.
 
-Repeat until `check` succeeds. An unmarked file at a fixed destination is an explicit collision; preserve or move its content, then delete the destination if AWF should generate it.
+Repeat until `check` succeeds. An unmarked file at a fixed destination is an explicit collision unless it is `CLAUDE.md` containing exactly `@AGENTS.md`; preserve or move colliding content, then delete the destination if AWF should generate it.
 
 Use the new binary's context query when reviewing converted topics:
 
