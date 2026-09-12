@@ -19,4 +19,4 @@ Keep local memory in the primary checkout and tracked plans, ADRs, topics, and i
 
 Plans remain while they concretely guide execution, verification, review, or handoff and are deliberately removed when that use ends. Pending and active ADRs remain together: active records own enduring choices and rationale, while topics explain implemented behavior and practical implications and link to relevant ADRs. Status changes and retirement are manual file/Git operations; AWF parses no lifecycle.
 
-The embedded `docs effort` guide owns checkpoint/resume/continue behavior, native worktree conventions, plan and ADR lifecycle, selective completion learning, post-integration assurance, and effort finishing instructions. Generated skills only route to that guide.
+The embedded `docs effort` guide owns effort adoption, checkpoint/resume/continue behavior, coordinating worktree associations and native Git conventions, plan and ADR lifecycle, selective completion learning, post-integration assurance, and effort finishing instructions. Generated skills only route to that guide.
