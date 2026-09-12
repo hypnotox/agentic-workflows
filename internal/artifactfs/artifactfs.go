@@ -2,6 +2,8 @@
 package artifactfs
 
 import (
+	"bytes"
+	"embed"
 	"fmt"
 	"io"
 	"os"
@@ -9,18 +11,31 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"text/template"
 
 	"github.com/hypnotox/agentic-workflows/internal/projector"
 )
 
+//go:embed templates/*.md
+var starterFiles embed.FS
+
+var starterTemplates = template.Must(template.New("starters").Funcs(template.FuncMap{
+	"quote": strconv.Quote,
+}).ParseFS(starterFiles, "templates/*.md"))
+
+type starterData struct {
+	Name      string
+	Selectors []string
+}
+
 // NewIntent creates a tracked change intent scaffold.
 func NewIntent(root, slug string) (string, error) {
-	return newChangeDocument(root, slug, "intent", intentStarter(slug))
+	return newChangeDocument(root, slug, "intent")
 }
 
 // NewSpec creates a tracked change specification scaffold.
 func NewSpec(root, slug string) (string, error) {
-	return newChangeDocument(root, slug, "spec", specStarter(slug))
+	return newChangeDocument(root, slug, "spec")
 }
 
 // NewPlan creates a tracked implementation plan scaffold.
@@ -28,12 +43,20 @@ func NewPlan(root, slug string) (string, error) {
 	if err := validateSlug("plan", slug); err != nil {
 		return "", err
 	}
+	body, err := renderStarter("plan", starterData{Name: slug})
+	if err != nil {
+		return "", err
+	}
 	relative := filepath.Join("docs", "plans", slug+".md")
-	return create(root, relative, "plan", slug, planStarter(slug))
+	return create(root, relative, "plan", slug, body)
 }
 
-func newChangeDocument(root, slug, kind, body string) (string, error) {
+func newChangeDocument(root, slug, kind string) (string, error) {
 	if err := validateSlug(kind, slug); err != nil {
+		return "", err
+	}
+	body, err := renderStarter(kind, starterData{Name: slug})
+	if err != nil {
 		return "", err
 	}
 	relative := filepath.Join("docs", "changes", slug, kind+".md")
@@ -45,8 +68,12 @@ func NewADR(root, slug string) (string, error) {
 	if err := validateSlug("decision", slug); err != nil {
 		return "", err
 	}
+	body, err := renderStarter("adr", starterData{Name: slug})
+	if err != nil {
+		return "", err
+	}
 	relative := filepath.Join("docs", "decisions", slug+".md")
-	return create(root, relative, "decision record", slug, adrStarter(slug))
+	return create(root, relative, "decision record", slug, body)
 }
 
 // NewTopic creates a path-routed topic source with the supplied selectors.
@@ -57,9 +84,13 @@ func NewTopic(root, id string, selectors []string) (string, error) {
 	if _, _, err := projector.NormalizeTopicPatterns(selectors); err != nil {
 		return "", err
 	}
+	body, err := renderStarter("topic", starterData{Name: id, Selectors: selectors})
+	if err != nil {
+		return "", err
+	}
 
 	relative := filepath.Join(filepath.FromSlash(projector.TopicsPath), filepath.FromSlash(id)+".md")
-	return create(root, relative, "topic", id, topicStarter(id, selectors))
+	return create(root, relative, "topic", id, body)
 }
 
 func create(root, relative, kind, name, body string) (string, error) {
@@ -135,56 +166,10 @@ func validateTopicID(id string) error {
 	return nil
 }
 
-func intentStarter(slug string) string {
-	return "# Intent: " + slug + "\n\n" +
-		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
-		"## Problem\n\nExplain the problem and why it matters.\n\n" +
-		"## Desired outcome\n\nState the result we want and what success looks like.\n\n" +
-		"## Scope and constraints\n\nDefine scope, non-goals, and actual constraints. Distinguish requirements from proposed mechanisms.\n\n" +
-		"## Open questions\n\nKeep material unknowns and proposals separate from agreed requirements.\n"
-}
-
-func specStarter(slug string) string {
-	return "# Specification: " + slug + "\n\n" +
-		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
-		"## Basis\n\nReference the intent or existing requirements and applicable ADRs.\n\n" +
-		"## Behavior and design\n\nDescribe the agreed behavior, interactions, and important design boundaries needed to plan the change. Omit incidental implementation details.\n\n" +
-		"## Acceptance criteria\n\nAdd observable conditions and examples that make success precise without repeating the intent.\n\n" +
-		"## Open questions\n\nIdentify material choices still unresolved; do not present proposals as agreements.\n"
-}
-
-func planStarter(slug string) string {
-	return "# Plan: " + slug + "\n\n" +
-		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
-		"## Basis\n\nReference the intent, specification, or other agreed outcome and criteria, plus applicable ADRs. State the basis briefly when no separate document is needed.\n\n" +
-		"## Implementation approach\n\nDescribe important ownership boundaries, dependencies, and settled design choices without copying ADR rationale.\n\n" +
-		"## Work sequence\n\nDescribe coherent changes in dependency order. Include concrete locations or mechanics only when they preserve an important decision or materially clarify the route.\n\n" +
-		"## Verification\n\nName proportionate checks against the agreed outcome and acceptance criteria, including the combined result.\n"
-}
-
-func adrStarter(slug string) string {
-	return "---\nstatus: pending\n---\n\n# Decision: " + slug + "\n\n" +
-		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
-		"## Context\n\nExplain the problem, relevant constraints, and evidence that makes this choice necessary. Reference the originating intent or specification when applicable.\n\n" +
-		"## Decision and rationale\n\nState the consequential choice, its scope, and rationale worth retaining after the originating change is complete. Distinguish a proposal from an established agreement.\n\n" +
-		"## Consequences\n\nCapture meaningful benefits, costs, limitations, and trade-offs.\n\n" +
-		"## Related decisions\n\nLink relevant authority and explain intended supersession, including where retained commitments and rationale will live. Omit unrelated links and topic inventories.\n\n" +
-		"## Material alternatives\n\nRecord the credible alternatives actually considered; a second option is not required.\n"
-}
-
-func topicStarter(id string, selectors []string) string {
-	var body strings.Builder
-	body.WriteString("---\npaths:\n")
-	for _, selector := range selectors {
-		body.WriteString("  - ")
-		body.WriteString(strconv.Quote(selector))
-		body.WriteByte('\n')
+func renderStarter(name string, data starterData) (string, error) {
+	var body bytes.Buffer
+	if err := starterTemplates.ExecuteTemplate(&body, name+".md", data); err != nil {
+		return "", fmt.Errorf("render %s starter: %w", name, err)
 	}
-	body.WriteString("---\n\n# ")
-	body.WriteString(id)
-	body.WriteString("\n\nAdapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n")
-	body.WriteString("State the focused purpose of this topic.\n\n")
-	body.WriteString("## Current behavior and structure\n\nExplain current behavior, ownership boundaries, and relationships that matter to future changes, not an inventory of files and functions.\n\n")
-	body.WriteString("## Constraints and practical implications\n\nExplain current constraints and what they mean for changes in this area. Keep useful local explanations and link active ADRs rather than repeating their full rationale.\n")
-	return body.String()
+	return body.String(), nil
 }
