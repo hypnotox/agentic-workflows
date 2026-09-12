@@ -306,7 +306,7 @@ func nestedRepositoryRoot(directory string) bool {
 
 func ignoredScanDirectory(relative string) bool {
 	switch relative {
-	case ".git", TopicsPath, ".awf/efforts", ".awf/worktrees", ".awf/effort-archive", "docs/plans", "docs/decisions":
+	case ".git", TopicsPath, ".awf/efforts", ".awf/worktrees", ".awf/effort-archive", "docs/changes", "docs/plans", "docs/decisions":
 		return true
 	default:
 		return false
