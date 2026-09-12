@@ -51,7 +51,7 @@ archives:
           owner: root
           group: root
           mode: 0644
-      - src: docs/*.md
+      - src: internal/docs/*.md
         info:
           owner: root
           group: root
@@ -70,7 +70,7 @@ archives:
       - LICENSE
       - README.md
       - MIGRATING-v0.50.md
-      - docs/*.md
+      - internal/docs/*.md
 
 checksum:
   name_template: checksums.txt

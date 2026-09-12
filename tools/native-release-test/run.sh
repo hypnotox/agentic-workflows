@@ -52,6 +52,9 @@ EOF
 chmod 0755 "$root/fake-bin/curl"
 
 tar -xzf "$archive" -C "$root/bin"
+for guide in overview integration topics effort; do
+  [ -f "$root/bin/internal/docs/$guide.md" ] || { echo "native-release-test: missing internal/docs/$guide.md" >&2; exit 1; }
+done
 candidate="$root/bin/awf"
 [ -x "$candidate" ]
 [ "$("$candidate" version)" = "version: $expected_version" ]
