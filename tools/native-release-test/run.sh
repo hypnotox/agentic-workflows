@@ -62,8 +62,12 @@ candidate="$root/bin/awf"
 
 # Start with an empty cache and use the public launcher as a first-use docs path.
 cd "$root/repo"
-bash "$launcher" docs integration > "$root/integration.md"
-grep '^# Integrating AWF$' "$root/integration.md" >/dev/null
+AWF_VERSION=0.0.0 bash "$launcher" docs integration > "$root/integration.md"
+cmp "$root/bin/internal/docs/integration.md" "$root/integration.md"
+bash "$launcher" docs > "$root/overview.md"
+cmp "$root/bin/internal/docs/overview.md" "$root/overview.md"
+bash "$launcher" docs effort > "$root/effort.md"
+cmp "$root/bin/internal/docs/effort.md" "$root/effort.md"
 [ ! -e .awf ]
 cache_binary="$XDG_CACHE_HOME/awf/$expected_version/awf"
 [ -x "$cache_binary" ]
@@ -75,6 +79,14 @@ cmp "$candidate" "$cache_binary"
 export AWF_FAKE_OFFLINE=1
 bash "$launcher" init
 [ "$(bash .awf/bootstrap.sh)" = "$cache_binary" ]
+override_version=9.8.7
+override_binary="$XDG_CACHE_HOME/awf/$override_version/awf"
+mkdir -p "$(dirname "$override_binary")"
+printf '#!/usr/bin/env bash\nexit 0\n' > "$override_binary"
+chmod 0755 "$override_binary"
+[ "$(AWF_VERSION="$override_version" bash .awf/bootstrap.sh)" = "$override_binary" ]
+printf '#!/usr/bin/env bash\nexit 99\n' > "$root/fake-bin/awf"
+chmod 0755 "$root/fake-bin/awf"
 ./awf check
 if bash "$launcher" docs unknown > "$root/usage.out" 2> "$root/usage.err"; then
   echo "native-release-test: invalid docs page unexpectedly succeeded" >&2
@@ -91,8 +103,9 @@ printf 'malformed source\n' > "$root/malformed/.awf/project.md"
 cp "$root/malformed/.awf/project.md" "$root/malformed/before"
 (
   cd "$root/malformed"
-  bash "$launcher" docs topics | grep '^# Working with topics$' >/dev/null
+  bash "$launcher" docs topics > "$root/topics.md"
 )
+cmp "$root/bin/internal/docs/topics.md" "$root/topics.md"
 cmp "$root/malformed/before" "$root/malformed/.awf/project.md"
 [ ! -e "$root/malformed/AGENTS.md" ]
 
@@ -117,7 +130,13 @@ printf '\nNative smoke guidance.\n' >> .awf/project.md
 "$candidate" check
 
 "$candidate" new effort smoke
-"$candidate" effort show smoke | grep '# Effort: smoke' >/dev/null
+printf 'opaque effort memory\000\377\n' > .awf/efforts/smoke/memory.md
+cp .awf/efforts/smoke/memory.md "$root/expected-memory"
+"$candidate" effort show smoke > "$root/effort-show"
+[ "$(head -n 1 "$root/effort-show")" = "memory: .awf/efforts/smoke/memory.md" ]
+[ -z "$(sed -n '2p' "$root/effort-show")" ]
+tail -n +3 "$root/effort-show" > "$root/shown-memory"
+cmp "$root/expected-memory" "$root/shown-memory"
 [ "$("$candidate" new intent smoke)" = "intent: docs/changes/smoke/intent.md" ]
 [ "$("$candidate" new spec smoke)" = "spec: docs/changes/smoke/spec.md" ]
 [ "$("$candidate" new plan smoke)" = "plan: docs/plans/smoke.md" ]
@@ -127,7 +146,7 @@ grep '^status: pending$' docs/decisions/smoke-choice.md >/dev/null
 [ "$("$candidate" resolve generated/future.txt)" = $'generated/smoke\tdocs/topics/generated/smoke.md\nglobal\tdocs/topics/global.md' ]
 "$candidate" check
 "$candidate" effort finish smoke
-[ -f .awf/effort-archive/smoke/memory.md ]
+cmp "$root/expected-memory" .awf/effort-archive/smoke/memory.md
 [ -f docs/changes/smoke/intent.md ]
 [ -f docs/changes/smoke/spec.md ]
 [ -f docs/plans/smoke.md ]
