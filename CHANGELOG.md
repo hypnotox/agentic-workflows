@@ -4,6 +4,26 @@ All notable changes to `awf` are documented here, newest first.
 
 ## Unreleased
 
+## [0.55.0] - 2026-09-12
+
+### Breaking changes
+
+- Move repository-owned topic sources from `.awf/topics/` to `docs/topics/` and require source format 2. Existing repositories must relocate the directory and update `.awf/project.md` before using source-loading commands.
+
+### Features
+
+- Add independent create-only intent and specification starters under `docs/changes/<slug>/`. Authored references can relate a change definition to one or more plans in `docs/plans/` and ADRs in `docs/decisions/` without automated inference or synchronization.
+
+### Bug fixes
+
+- Package the embedded adopter manuals from their relocated `internal/docs/` source paths in release archives.
+
+### Documentation
+
+- Make effort continuity the default for multi-stage work, handoffs, and implementation worktrees, and clarify current checkpoints and continuation boundaries.
+
+- Refine artifact starters, completion comparisons, integration checks, and retrospectives around authoritative outcomes, reusable findings, and proportional evidence.
+
 ## [0.54.3] - 2026-09-07
 
 ### Documentation
