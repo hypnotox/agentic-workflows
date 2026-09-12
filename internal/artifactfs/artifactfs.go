@@ -25,7 +25,11 @@ func NewSpec(root, slug string) (string, error) {
 
 // NewPlan creates a tracked implementation plan scaffold.
 func NewPlan(root, slug string) (string, error) {
-	return newChangeDocument(root, slug, "plan", planStarter(slug))
+	if err := validateSlug("plan", slug); err != nil {
+		return "", err
+	}
+	relative := filepath.Join("docs", "plans", slug+".md")
+	return create(root, relative, "plan", slug, planStarter(slug))
 }
 
 func newChangeDocument(root, slug, kind, body string) (string, error) {
@@ -152,7 +156,7 @@ func specStarter(slug string) string {
 func planStarter(slug string) string {
 	return "# Plan: " + slug + "\n\n" +
 		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
-		"## Basis\n\nReference the agreed outcome, criteria, and applicable ADRs. State the basis briefly when no separate document is needed.\n\n" +
+		"## Basis\n\nReference the intent, specification, or other agreed outcome and criteria, plus applicable ADRs. State the basis briefly when no separate document is needed.\n\n" +
 		"## Implementation approach\n\nDescribe important ownership boundaries, dependencies, and settled design choices without copying ADR rationale.\n\n" +
 		"## Work sequence\n\nDescribe coherent changes in dependency order. Include concrete locations or mechanics only when they preserve an important decision or materially clarify the route.\n\n" +
 		"## Verification\n\nName proportionate checks against the agreed outcome and acceptance criteria, including the combined result.\n"
@@ -161,8 +165,8 @@ func planStarter(slug string) string {
 func adrStarter(slug string) string {
 	return "---\nstatus: pending\n---\n\n# Decision: " + slug + "\n\n" +
 		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
-		"## Context\n\nExplain the problem, relevant constraints, and evidence that makes this choice necessary.\n\n" +
-		"## Decision and rationale\n\nState the consequential choice, its scope, and rationale worth retaining after the effort ends. Distinguish a proposal from an established agreement.\n\n" +
+		"## Context\n\nExplain the problem, relevant constraints, and evidence that makes this choice necessary. Reference the originating intent or specification when applicable.\n\n" +
+		"## Decision and rationale\n\nState the consequential choice, its scope, and rationale worth retaining after the originating change is complete. Distinguish a proposal from an established agreement.\n\n" +
 		"## Consequences\n\nCapture meaningful benefits, costs, limitations, and trade-offs.\n\n" +
 		"## Related decisions\n\nLink relevant authority and explain intended supersession, including where retained commitments and rationale will live. Omit unrelated links and topic inventories.\n\n" +
 		"## Material alternatives\n\nRecord the credible alternatives actually considered; a second option is not required.\n"

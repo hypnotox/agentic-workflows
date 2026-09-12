@@ -29,7 +29,7 @@ The authoritative adopter guides are ordinary Markdown in `internal/docs/`, embe
 - [AWF guide](internal/docs/overview.md): purpose, source/generated ownership, render/check, and guide discovery;
 - [Integration](internal/docs/integration.md): adoption, repository-owned hooks and CI, updates, and repair;
 - [Topics](internal/docs/topics.md): path-routed current project knowledge, topic creation, and optional coverage inspection;
-- [Efforts](internal/docs/effort.md): local continuity, change documents, durable ADRs, and worktrees;
+- [Efforts](internal/docs/effort.md): local continuity, change definitions, implementation plans, durable ADRs, and worktrees;
 - [Migrating from v0.50](MIGRATING-v0.50.md): one-time conversion and legacy cleanup.
 
 Use `./awf docs`, `./awf docs integration`, `./awf docs topics`, and `./awf docs effort` inside an adopting repository. Generated `AGENTS.md` and the Pi and Claude skill entrypoints route agents to these guides without duplicating their runbooks. Repositories using source format 1 should follow the [format-2 migration](internal/docs/integration.md#migrate-source-format-1-to-2) before updating.
@@ -46,7 +46,7 @@ Contributors should read [AGENTS.md](AGENTS.md). Development uses `./x` so comma
 ./x check
 ```
 
-Project knowledge belongs in `docs/`: current implementation guidance in [`docs/topics/`](docs/topics/), change documents in `docs/changes/<slug>/`, and ADRs in `docs/decisions/`. Release history remains in [CHANGELOG.md](CHANGELOG.md), and the v0.50 conversion in [MIGRATING-v0.50.md](MIGRATING-v0.50.md).
+Project knowledge belongs in `docs/`: current implementation guidance in [`docs/topics/`](docs/topics/), change definitions in `docs/changes/<slug>/`, implementation plans in `docs/plans/`, and ADRs in `docs/decisions/`. Release history remains in [CHANGELOG.md](CHANGELOG.md), and the v0.50 conversion in [MIGRATING-v0.50.md](MIGRATING-v0.50.md).
 
 ## Status
 

@@ -414,7 +414,7 @@ Commands:
   effort <slug>            create local effort memory
   intent <slug>            create docs/changes/<slug>/intent.md
   spec <slug>              create docs/changes/<slug>/spec.md
-  plan <slug>              create docs/changes/<slug>/plan.md
+  plan <slug>              create docs/plans/<slug>.md
   adr <slug>               create docs/decisions/<slug>.md with pending status
   topic <id> <pattern>...  create ` + projector.TopicsPath + `/<id>.md with supplied selectors
 

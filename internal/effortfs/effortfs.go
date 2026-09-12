@@ -179,6 +179,6 @@ func starter(slug string) string {
 		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
 		"## Current checkpoint\n\nSummarize current progress, verification results, and remaining uncertainty. Replace stale state rather than appending a log.\n\n" +
 		"## Next action\n\nName the immediate continuation and anything genuinely blocking it, not the entire remaining plan.\n\n" +
-		"## Locations and artifacts\n\nRecord actual checkout locations and reference change documents, ADRs, and relevant work products.\n\n" +
+		"## Locations and artifacts\n\nRecord actual checkout locations and reference change definitions, plans, ADRs, and relevant work products.\n\n" +
 		"## Continuation context\n\nRetain consequential requirements, agreements, and findings needed to continue that are not recorded elsewhere. Distinguish proposals from agreements and link evidence. Keep retrospective details in notes.md.\n"
 }

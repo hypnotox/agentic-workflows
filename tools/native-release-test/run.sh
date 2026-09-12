@@ -120,7 +120,7 @@ printf '\nNative smoke guidance.\n' >> .awf/project.md
 "$candidate" effort show smoke | grep '# Effort: smoke' >/dev/null
 [ "$("$candidate" new intent smoke)" = "intent: docs/changes/smoke/intent.md" ]
 [ "$("$candidate" new spec smoke)" = "spec: docs/changes/smoke/spec.md" ]
-[ "$("$candidate" new plan smoke)" = "plan: docs/changes/smoke/plan.md" ]
+[ "$("$candidate" new plan smoke)" = "plan: docs/plans/smoke.md" ]
 [ "$("$candidate" new adr smoke-choice)" = "adr: docs/decisions/smoke-choice.md" ]
 grep '^status: pending$' docs/decisions/smoke-choice.md >/dev/null
 [ "$("$candidate" new topic generated/smoke 'generated/**')" = "topic: docs/topics/generated/smoke.md" ]
@@ -130,7 +130,7 @@ grep '^status: pending$' docs/decisions/smoke-choice.md >/dev/null
 [ -f .awf/effort-archive/smoke/memory.md ]
 [ -f docs/changes/smoke/intent.md ]
 [ -f docs/changes/smoke/spec.md ]
-[ -f docs/changes/smoke/plan.md ]
+[ -f docs/plans/smoke.md ]
 [ -f docs/decisions/smoke-choice.md ]
 [ ! -e .awf/efforts/smoke ]
 

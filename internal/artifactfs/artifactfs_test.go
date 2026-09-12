@@ -21,7 +21,7 @@ func TestTrackedArtifactsCreateWithoutEffortAndPreserveExistingContent(t *testin
 	}{
 		{name: "intent", new: func(root string) (string, error) { return NewIntent(root, "ship-it") }, want: filepath.Join("docs", "changes", "ship-it", "intent.md")},
 		{name: "spec", new: func(root string) (string, error) { return NewSpec(root, "ship-it") }, want: filepath.Join("docs", "changes", "ship-it", "spec.md")},
-		{name: "plan", new: func(root string) (string, error) { return NewPlan(root, "ship-it") }, want: filepath.Join("docs", "changes", "ship-it", "plan.md")},
+		{name: "plan", new: func(root string) (string, error) { return NewPlan(root, "ship-it") }, want: filepath.Join("docs", "plans", "ship-it.md")},
 		{name: "adr", new: func(root string) (string, error) { return NewADR(root, "ship-it") }, want: filepath.Join("docs", "decisions", "ship-it.md")},
 	}
 	for _, test := range tests {
@@ -69,12 +69,12 @@ func TestTrackedArtifactsCreateWithoutEffortAndPreserveExistingContent(t *testin
 	}
 }
 
-func TestChangeDocumentsShareSlugWithoutRewritingSiblings(t *testing.T) {
+func TestChangeDefinitionDocumentsShareSlugWithoutRewritingSiblings(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
 	created := make(map[string][]byte)
-	for _, create := range []func(string, string) (string, error){NewPlan, NewSpec, NewIntent} {
+	for _, create := range []func(string, string) (string, error){NewSpec, NewIntent} {
 		relative, err := create(root, "ship-it")
 		if err != nil {
 			t.Fatal(err)
@@ -91,9 +91,19 @@ func TestChangeDocumentsShareSlugWithoutRewritingSiblings(t *testing.T) {
 			}
 		}
 	}
+	planRelative, err := NewPlan(root, "ship-it")
+	if err != nil || planRelative != filepath.Join("docs", "plans", "ship-it.md") {
+		t.Fatalf("plan destination = %q, %v", planRelative, err)
+	}
 	entries, err := os.ReadDir(filepath.Join(root, "docs", "changes", "ship-it"))
-	if err != nil || len(entries) != 3 {
-		t.Fatalf("change documents = %v, %v", entries, err)
+	if err != nil || len(entries) != 2 {
+		t.Fatalf("change definition documents after plan creation = %v, %v", entries, err)
+	}
+	for path, want := range created {
+		got, err := os.ReadFile(filepath.Join(root, path))
+		if err != nil || !bytes.Equal(got, want) {
+			t.Fatalf("change definition %s after plan creation = %q, %v", path, got, err)
+		}
 	}
 }
 
@@ -181,7 +191,7 @@ func TestCreationRefusesSymlinkedDestinationDirectories(t *testing.T) {
 	}{
 		{name: "intent", relative: "docs/changes/escaped", create: func(root string) (string, error) { return NewIntent(root, "escaped") }, outside: "intent.md"},
 		{name: "spec", relative: "docs/changes/escaped", create: func(root string) (string, error) { return NewSpec(root, "escaped") }, outside: "spec.md"},
-		{name: "plan", relative: "docs/changes/escaped", create: func(root string) (string, error) { return NewPlan(root, "escaped") }, outside: "plan.md"},
+		{name: "plan", relative: "docs/plans", create: func(root string) (string, error) { return NewPlan(root, "escaped") }, outside: "escaped.md"},
 		{name: "adr", relative: "docs/decisions", create: func(root string) (string, error) { return NewADR(root, "escaped") }, outside: "escaped.md"},
 		{name: "topic", relative: "docs/topics", create: func(root string) (string, error) { return NewTopic(root, "escaped", []string{"src/**"}) }, outside: "escaped.md"},
 	}
@@ -265,7 +275,7 @@ func writeProject(t *testing.T, root string) {
 
 func assertNoArtifactRoots(t *testing.T, root string) {
 	t.Helper()
-	for _, relative := range []string{"docs/changes", "docs/decisions"} {
+	for _, relative := range []string{"docs/changes", "docs/plans", "docs/decisions"} {
 		if _, err := os.Stat(filepath.Join(root, filepath.FromSlash(relative))); !os.IsNotExist(err) {
 			t.Errorf("invalid artifact created %s: %v", relative, err)
 		}

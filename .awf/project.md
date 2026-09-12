@@ -50,6 +50,7 @@ The generated root `./awf` wrapper intentionally exercises the released bootstra
 - `README.md`: introduction, public entrypoint, and documentation index.
 - `MIGRATING-v0.50.md`: one-time manual migration guide for existing adopters.
 - `docs/topics/**/*.md`: path-routed current implementation guidance.
-- `docs/changes/<slug>/`: author-owned intent, specification, and plan for a change.
+- `docs/changes/<slug>/`: author-owned intent and specification defining a change.
+- `docs/plans/`: implementation plans derived from an agreed change or other established basis.
 - `docs/decisions/`: enduring choices and rationale.
 - `CHANGELOG.md`: release history.

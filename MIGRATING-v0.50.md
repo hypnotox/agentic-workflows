@@ -57,7 +57,7 @@ The standalone `**` entry is invalid in a mixed or duplicate list. A standalone 
 
 Review retained decision documents deliberately. Keep accepted decisions that still govern the repository as active ADRs in `docs/decisions/`, link them from applicable topics, and retire only withdrawn or superseded records after preserving any still-binding substance. Current topics describe implemented behavior and practical implications; active ADRs own the enduring choices and rationale.
 
-New implementation plans belong in `docs/changes/<slug>/plan.md`, alongside optional intent and specification documents and independent of effort memory. Do not move or delete existing effort-local plans automatically. When older work resumes, an agent may deliberately move a still-useful plan into the tracked location and update references while preserving one authoritative copy.
+New change intent and specification documents belong in `docs/changes/<slug>/`. Implementation plans belong in `docs/plans/<slug>.md`; a change can lead to multiple plans or ADRs. Do not move or delete existing effort-local plans automatically. When older work resumes, an agent may deliberately move a still-useful plan into `docs/plans/` and update references while preserving one authoritative copy.
 
 ## 3. Retire the old representation
 

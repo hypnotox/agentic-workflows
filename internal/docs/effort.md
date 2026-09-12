@@ -4,31 +4,41 @@ AWF provides ignored local effort memory and create-only tracked Markdown starte
 
 ## Define a change
 
-Keep a change's intent, specification, and plan together in `docs/changes/<slug>/`. Create only the documents the work needs:
+Keep a change's intent and optional specification together in `docs/changes/<slug>/`. Create only the definition documents the work needs:
 
 ```sh
 ./awf new intent <slug>  # docs/changes/<slug>/intent.md
 ./awf new spec <slug>    # docs/changes/<slug>/spec.md
-./awf new plan <slug>    # docs/changes/<slug>/plan.md
 ```
 
-Run each command from the implementation checkout. It creates only that file, refuses replacement, and requires neither the other documents nor an effort. Use a descriptive slug for the change. A related effort may use the same slug.
+Run each command from the implementation checkout. It creates only that file, refuses replacement, and requires neither the other document nor an effort. Use a descriptive slug for the change. A related effort may use the same slug.
 
 **Intent** preserves the problem, desired outcome, scope, non-goals, constraints, and what success looks like. Use it to establish substantial work before choosing the implementation route. Distinguish actual requirements from proposed mechanisms, and agreements from open questions. Reuse an adequate existing statement rather than duplicating it.
 
 **Specification** is optional. Add one when important behavior or design remains unclear after intent is established. Make the intended result precise through necessary interactions, boundaries, examples, and acceptance conditions. Refine the intent rather than repeating it, and reference applicable ADRs instead of copying their rationale. Omit incidental implementation details and speculative cases.
 
-**Plan** owns the implementation route: coherent changes, real dependencies, integration points, and proportionate verification. Reference the agreed outcome, criteria, and decisions; do not introduce unresolved requirements or design choices inside steps. A standalone plan may state its basis briefly when separate intent or specification documents add no value. Revise the route as evidence changes, without silently changing the agreed result.
+Use the agreed intent and any specification as the basis for each plan or ADR the change needs:
 
-Review a specification against intent, and a plan against the agreed result and applicable decisions. Compare implementation with those agreements, not just completed plan steps. Keep these comparisons proportionate; they do not require separate review documents or approval stages.
+```sh
+./awf new plan <plan-slug>       # docs/plans/<plan-slug>.md
+./awf new adr <decision-slug>    # docs/decisions/<decision-slug>.md
+```
+
+These relationships are authored, not automated: AWF creates each requested file independently and does not infer, link, or synchronize documents. Use distinct slugs when one change needs multiple plans or decisions, and reference the originating intent or specification from each derived document.
+
+**Plan** owns one implementation route: coherent changes, real dependencies, integration points, and proportionate verification. Reference the agreed outcome, criteria, and decisions; do not introduce unresolved requirements or design choices inside steps. A plan may state its basis briefly when separate intent or specification documents add no value. Revise the route as evidence changes, without silently changing the agreed result.
+
+**ADR** extracts a consequential choice whose rationale should remain useful after the change is complete. A change may need several ADRs when choices have independent reasons to change. Keep ADRs organized by decision area in `docs/decisions/`; their full lifecycle is described below.
+
+Review a specification against intent, each plan and proposed ADR against the agreed change and applicable active decisions, and implementation against those agreements rather than only completed plan steps. Keep these comparisons proportionate; they do not require separate review documents or approval stages.
 
 Keep one authoritative home for each requirement and decision. Preserve the original outcome and criteria while work proceeds; record agreed changes and material deviations explicitly rather than rewriting success to match the implementation. Commit documents while they guide implementation or review so Git retains that basis. Tracked documents do not link back to ignored effort memory.
 
-Existing plans in `docs/plans/` or effort directories remain untouched. When useful, deliberately move a plan to `docs/changes/<slug>/plan.md`, reconcile any existing destination, and repair references while preserving one authoritative copy. No bulk migration is required.
+Tracked plans remain in `docs/plans/`. Existing effort-local plans remain untouched. When useful, deliberately move an effort-local plan into `docs/plans/`, reconcile any existing destination, and repair references while preserving one authoritative copy. No bulk migration is required.
 
 ## Keep effort memory
 
-Use an effort for work that needs continuity across stages, sessions, or handoffs. Small, self-contained changes without worktree isolation do not require one. An effort does not require change documents, an ADR, or a worktree.
+Use an effort for work that needs continuity across stages, sessions, or handoffs. Small, self-contained changes without worktree isolation do not require one. An effort does not require a change definition, plan, ADR, or worktree.
 
 From the primary checkout, check for a matching active effort and resume it when it covers the work:
 
@@ -52,11 +62,11 @@ Use the same primary checkout to finish it:
 
 `finish` moves the whole effort directory to `.awf/effort-archive/<slug>` without replacement. It leaves tracked documents alone and does not assess completion.
 
-Memory owns the current continuation checkpoint, not a second copy of requirements or a session log. Keep current progress and verification, blockers, the immediate next action, and actual checkout and artifact locations. Reference change documents and ADRs rather than restating them. Retain consequential requirements and agreements not recorded elsewhere; distinguish proposals from agreements.
+Memory owns the current continuation checkpoint, not a second copy of requirements or a session log. Keep current progress and verification, blockers, the immediate next action, and actual checkout and artifact locations. Reference change definitions, plans, and ADRs rather than restating them. Retain consequential requirements and agreements not recorded elsewhere; distinguish proposals from agreements.
 
 Replace stale state at meaningful resumable boundaries, before handoff or context replacement, and before switching away from unfinished work. Keep the next action prominent. Use one coordinating effort and memory writer for delegated work; children return findings rather than editing memory concurrently.
 
-On resume, inspect the current repository, applicable instructions, change documents, topics, and ADRs. Reconcile the checkpoint with reality before continuing: memory is continuation evidence, while current source and applicable authority determine what remains valid. Reuse context already established in the task rather than repeatedly resolving and rereading it.
+On resume, inspect the current repository, applicable instructions, change definitions, plans, topics, and ADRs. Reconcile the checkpoint with reality before continuing: memory is continuation evidence, while current source and applicable authority determine what remains valid. Reuse context already established in the task rather than repeatedly resolving and rereading it.
 
 A checkpoint or completed phase is not a stopping boundary. Continue the next authorized work unless user input is genuinely needed, an unresolved blocker exceeds existing authority, or the requested stopping point has been reached.
 
@@ -68,7 +78,7 @@ Memory owns the current continuation state; notes preserve findings after they s
 
 ## Use durable ADRs
 
-An ADR extracts a consequential choice whose rationale should remain useful after the effort ends. It is not a summary of the specification. Keep it in `docs/decisions/`, organized by decision area rather than by change. Create one without requiring an effort:
+An ADR extracts a consequential choice whose rationale should remain useful after the originating change is complete. It is not a summary of the specification. Keep it in `docs/decisions/`, organized by decision area rather than by change. Create one without requiring an effort:
 
 ```sh
 ./awf new adr <slug>
@@ -98,7 +108,7 @@ Keep pending, accepted, and active ADRs together in `docs/decisions/`. Active AD
 Associate implementation worktrees with a new or existing coordinating effort. Without a worktree, the primary and implementation checkout are the same directory. With a worktree:
 
 - keep local effort memory and notes in the primary checkout;
-- keep tracked change documents, ADRs, topics, and implementation in the implementation checkout;
+- keep tracked change definitions, plans, ADRs, topics, and implementation in the implementation checkout;
 - record the actual locations in memory and handoffs;
 - run creation commands from the checkout that should own the resulting file;
 - run worktree creation, integration, removal, and branch cleanup from the primary checkout.
@@ -123,8 +133,8 @@ Surface substantial follow-up work rather than silently expanding the implementa
 
 Compare actual results with the agreed intent, specification, and applicable ADRs, or the established outcome and criteria when separate documents were unnecessary. Where memory exists, update the current checkpoint with relevant evidence, unmet criteria, material deviations, documentation updates, and understandable replacements or historical references for retired artifacts. A separate completion-evidence section is optional, not required. Keep related implementation, documentation, and verified commits coherent under repository conventions.
 
-Retain lasting choices in ADRs and current practical guidance in topics. Keep change documents while they serve implementation, verification, review, handoff, or a maintained reference. Remove each when that use ends, preserving still-needed requirements and knowledge first; an ADR does not replace a behavior specification. Repair surviving links with current replacements or a historical reference such as `git show <commit>:<path>`. Preserve document commits and later deletions through ordinary non-squash integration.
+Retain lasting choices in ADRs and current practical guidance in topics. Keep change definitions and plans while they serve implementation, verification, review, handoff, or a maintained reference. Remove each when that use ends, preserving still-needed requirements and knowledge first; an ADR does not replace a behavior specification. Repair surviving links with current replacements or a historical reference such as `git show <commit>:<path>`. Preserve document commits and later deletions through ordinary non-squash integration.
 
 After integration, confirm that evidence covers the combined result in the target checkout. Reuse still-applicable evidence; refresh checks affected by divergence, conflict resolution, or a changed integration context. Request additional review only when material uncertainty warrants it. Reconcile affected ADRs and topic links with the combined result before cleanup.
 
-Complete the retrospective before reporting completion and revisit any material findings from integration before cleanup. Review whether each change document still has a concrete use. Then use ordinary Git for deliberate worktree and branch cleanup and, when local memory is present, archive it with `effort finish`. The CLI never judges or automates these completion conditions.
+Complete the retrospective before reporting completion and revisit any material findings from integration before cleanup. Review whether each change definition and plan still has a concrete use. Then use ordinary Git for deliberate worktree and branch cleanup and, when local memory is present, archive it with `effort finish`. The CLI never judges or automates these completion conditions.
