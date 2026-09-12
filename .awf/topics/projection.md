@@ -12,7 +12,7 @@ paths:
 
 # Projection and ownership
 
-`.awf/project.md` has `format: 1` frontmatter and an opaque Markdown body. AWF copies every body byte literally into the fixed `AGENTS.md` frame. The shared frame in `internal/projector/build.go` owns the default agent commit cadence, independent of effort records or external skills; repository instructions may override it. Generated output is never an input.
+`.awf/project.md` has `format: 1` frontmatter and an opaque Markdown body. AWF copies every body byte literally into the fixed `AGENTS.md` frame. The shared frame in `internal/projector/build.go` owns the effort-adoption rule and default agent commit cadence, independent of external skills; repository instructions may override them. Generated output is never an input.
 
 The output set is fixed in `internal/projector`: `AGENTS.md`, `CLAUDE.md`, Pi and Claude topic and effort skills, `.awf/.gitignore`, the root wrapper, and `.awf/bootstrap.sh`. Pi and Claude outputs are always present. The wrapper and bootstrap are always present. `AGENTS.md` carries direct `docs` routes; the skills keep their identities but are concise just-in-time entrypoints to the embedded topic and effort guides.
 

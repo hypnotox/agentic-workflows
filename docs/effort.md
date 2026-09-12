@@ -1,27 +1,34 @@
 # Efforts, plans, decisions, and worktrees
 
-AWF provides optional ignored effort memory and create-only tracked Markdown starters. Its completion and integration guidance applies whether or not the work uses effort memory, a plan, an ADR, or a worktree. AWF does not decide when work is ready, interpret authored content, manage Git, or discover worktrees. Starter headings and prompts are suggestions rather than a schema: adapt or omit irrelevant sections, remove instructional placeholders, and do not manufacture or duplicate content merely to fill them.
+AWF provides ignored local effort memory and create-only tracked Markdown starters. Its completion and integration guidance applies whether or not the work uses effort memory, a plan, an ADR, or a worktree. AWF does not decide when work is ready, interpret authored content, manage Git, or discover worktrees. Starter headings and prompts are suggestions rather than a schema: adapt or omit irrelevant sections, remove instructional placeholders, and do not manufacture or duplicate content merely to fill them.
 
 ## Keep effort memory
 
-Create an effort from the primary checkout when durable continuity materially helps:
+Use an effort for work that needs continuity across stages, sessions, or handoffs. Small, self-contained changes without worktree isolation do not require one. An effort does not require a plan, ADR, or worktree.
+
+From the primary checkout, check for a matching active effort and resume it when it covers the work:
+
+```sh
+./awf effort list
+./awf effort show <slug>
+```
+
+Otherwise, create an effort from the primary checkout:
 
 ```sh
 ./awf new effort <slug>
 # .awf/efforts/<slug>/memory.md
 ```
 
-Use the same primary checkout to inspect or finish it:
+Use the same primary checkout to finish it:
 
 ```sh
-./awf effort list
-./awf effort show <slug>
 ./awf effort finish <slug>
 ```
 
 `finish` only moves the complete resident to `.awf/effort-archive/<slug>` without replacement. It does not judge readiness, compare criteria, interpret memory, or operate Git. Existing effort-local plans and any other resident files remain opaque and move with the resident.
 
-Create or resume an effort only when continuity is worth maintaining. Keep one coordinating memory writer when delegating; children return findings instead of editing the checkpoint concurrently. Refresh memory at meaningful resumable boundaries, before handoff or context replacement, and before switching away from unfinished work. Retain the outcome and constraints, current state and verification, actual artifact and checkout locations, blockers, immediate next action, and only useful attributed decision evidence. Reference plans and ADRs rather than copying them, and do not turn memory into a session log.
+Keep delegated work within the coordinating effort rather than creating an effort for each child. Keep one coordinating memory writer when delegating; children return findings instead of editing the checkpoint concurrently. Refresh memory at meaningful resumable boundaries, before handoff or context replacement, and before switching away from unfinished work. Retain the outcome and constraints, current state and verification, actual artifact and checkout locations, blockers, immediate next action, and only useful attributed decision evidence. Reference plans and ADRs rather than copying them, and do not turn memory into a session log.
 
 On resume, inspect the current repository, applicable instructions, topics, and ADRs. Reconcile the checkpoint with reality before continuing: memory is continuation evidence, while current source and applicable authority determine what remains valid. Reuse context already established in the task rather than repeatedly resolving and rereading it.
 
@@ -70,7 +77,7 @@ Keep pending and active ADRs together in `docs/decisions/`. Active ADRs own endu
 
 ## Keep files in the correct checkout
 
-Without a worktree, the primary and implementation checkout are the same directory. With a worktree:
+Associate implementation worktrees with a new or existing coordinating effort. Without a worktree, the primary and implementation checkout are the same directory. With a worktree:
 
 - keep local effort memory in the primary checkout;
 - keep tracked plans, ADRs, topics, and implementation in the implementation checkout;
