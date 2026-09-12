@@ -177,9 +177,8 @@ func pathExists(path string) (bool, error) {
 func starter(slug string) string {
 	return "# Effort: " + slug + "\n\n" +
 		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
-		"## Outcome and success criteria\n\nRetain the outcome, constraints, and criteria here, or reference the authoritative tracked plan.\n\n" +
 		"## Current checkpoint\n\nSummarize current progress, verification results, and remaining uncertainty. Replace stale state rather than appending a log.\n\n" +
 		"## Next action\n\nName the immediate continuation and anything genuinely blocking it, not the entire remaining plan.\n\n" +
-		"## Locations and artifacts\n\nRecord actual primary and implementation checkout locations and reference the authoritative plan, ADRs, and relevant work products.\n\n" +
-		"## Relevant decisions and findings\n\nRetain decisions and findings needed to continue, including consequential agreements not recorded elsewhere. Attribute evidence, distinguish proposals from agreements, and link ADRs. Keep retrospective details in notes.md when needed.\n"
+		"## Locations and artifacts\n\nRecord actual checkout locations and reference change definitions, plans, ADRs, and relevant work products.\n\n" +
+		"## Continuation context\n\nRetain consequential requirements, agreements, and findings needed to continue that are not recorded elsewhere. Distinguish proposals from agreements and link evidence. Keep retrospective details in notes.md.\n"
 }

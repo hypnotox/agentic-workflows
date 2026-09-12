@@ -1,4 +1,4 @@
-// Package artifactfs creates author-owned plan, decision, and topic scaffolds.
+// Package artifactfs creates author-owned change documents, ADRs, and topics.
 package artifactfs
 
 import (
@@ -13,6 +13,16 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/projector"
 )
 
+// NewIntent creates a tracked change intent scaffold.
+func NewIntent(root, slug string) (string, error) {
+	return newChangeDocument(root, slug, "intent", intentStarter(slug))
+}
+
+// NewSpec creates a tracked change specification scaffold.
+func NewSpec(root, slug string) (string, error) {
+	return newChangeDocument(root, slug, "spec", specStarter(slug))
+}
+
 // NewPlan creates a tracked implementation plan scaffold.
 func NewPlan(root, slug string) (string, error) {
 	if err := validateSlug("plan", slug); err != nil {
@@ -20,6 +30,14 @@ func NewPlan(root, slug string) (string, error) {
 	}
 	relative := filepath.Join("docs", "plans", slug+".md")
 	return create(root, relative, "plan", slug, planStarter(slug))
+}
+
+func newChangeDocument(root, slug, kind, body string) (string, error) {
+	if err := validateSlug(kind, slug); err != nil {
+		return "", err
+	}
+	relative := filepath.Join("docs", "changes", slug, kind+".md")
+	return create(root, relative, kind, slug, body)
 }
 
 // NewADR creates a tracked architecture decision record scaffold.
@@ -117,20 +135,38 @@ func validateTopicID(id string) error {
 	return nil
 }
 
+func intentStarter(slug string) string {
+	return "# Intent: " + slug + "\n\n" +
+		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
+		"## Problem\n\nExplain the problem and why it matters.\n\n" +
+		"## Desired outcome\n\nState the result we want and what success looks like.\n\n" +
+		"## Scope and constraints\n\nDefine scope, non-goals, and actual constraints. Distinguish requirements from proposed mechanisms.\n\n" +
+		"## Open questions\n\nKeep material unknowns and proposals separate from agreed requirements.\n"
+}
+
+func specStarter(slug string) string {
+	return "# Specification: " + slug + "\n\n" +
+		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
+		"## Basis\n\nReference the intent or existing requirements and applicable ADRs.\n\n" +
+		"## Behavior and design\n\nDescribe the agreed behavior, interactions, and important design boundaries needed to plan the change. Omit incidental implementation details.\n\n" +
+		"## Acceptance criteria\n\nAdd observable conditions and examples that make success precise without repeating the intent.\n\n" +
+		"## Open questions\n\nIdentify material choices still unresolved; do not present proposals as agreements.\n"
+}
+
 func planStarter(slug string) string {
 	return "# Plan: " + slug + "\n\n" +
 		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
-		"## Outcome and success criteria\n\nState the intended result, scope boundaries, and observable completion criteria.\n\n" +
+		"## Basis\n\nReference the intent, specification, or other agreed outcome and criteria, plus applicable ADRs. State the basis briefly when no separate document is needed.\n\n" +
 		"## Implementation approach\n\nDescribe important ownership boundaries, dependencies, and settled design choices without copying ADR rationale.\n\n" +
 		"## Work sequence\n\nDescribe coherent changes in dependency order. Include concrete locations or mechanics only when they preserve an important decision or materially clarify the route.\n\n" +
-		"## Verification\n\nName proportionate checks and how to assess the combined result against the outcome.\n"
+		"## Verification\n\nName proportionate checks against the agreed outcome and acceptance criteria, including the combined result.\n"
 }
 
 func adrStarter(slug string) string {
 	return "---\nstatus: pending\n---\n\n# Decision: " + slug + "\n\n" +
 		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
-		"## Context\n\nExplain the problem, relevant constraints, and evidence that makes this choice necessary.\n\n" +
-		"## Decision and rationale\n\nState the proposed or agreed choice, its scope, and rationale. Distinguish a proposal from an established agreement.\n\n" +
+		"## Context\n\nExplain the problem, relevant constraints, and evidence that makes this choice necessary. Reference the originating intent or specification when applicable.\n\n" +
+		"## Decision and rationale\n\nState the consequential choice, its scope, and rationale worth retaining after the originating change is complete. Distinguish a proposal from an established agreement.\n\n" +
 		"## Consequences\n\nCapture meaningful benefits, costs, limitations, and trade-offs.\n\n" +
 		"## Related decisions\n\nLink relevant authority and explain intended supersession, including where retained commitments and rationale will live. Omit unrelated links and topic inventories.\n\n" +
 		"## Material alternatives\n\nRecord the credible alternatives actually considered; a second option is not required.\n"

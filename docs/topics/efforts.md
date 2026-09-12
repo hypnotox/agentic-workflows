@@ -4,19 +4,20 @@ paths:
   - 'internal/artifactfs/**'
   - '.pi/skills/awf-effort/SKILL.md'
   - '.claude/skills/awf-effort/SKILL.md'
+  - 'docs/changes/**'
   - 'docs/plans/**'
   - 'docs/decisions/**'
   - 'internal/docs/effort.md'
 ---
 
-# Effort memory and tracked artifacts
+# Effort memory and change documents
 
-An active effort is `.awf/efforts/<slug>/memory.md`. `new effort` creates a small editable continuation starter, `list` lists active residents, `show` returns the path and raw memory, and `finish` moves the complete resident to `.awf/effort-archive/<slug>` without replacement. Memory and extra resident files are opaque; `finish` does not interpret readiness or content. Memory holds the current checkpoint and immediate continuation. An agent may create sibling `notes.md` when significant findings arise; notes preserve implementation issues for retrospective review and archive with the resident. AWF does not create or interpret notes.
+`internal/effortfs` owns local continuity. An active effort is `.awf/efforts/<slug>/memory.md`; `new effort` creates it, `list` lists active efforts, `show` returns the path and raw memory, and `finish` archives the entire directory without replacement. Memory owns the current checkpoint and next action. Optional `notes.md` preserves significant findings for retrospective review. Effort contents remain opaque, and finishing leaves tracked documents untouched.
 
-Complexity can warrant a plan; a material durable choice can warrant an ADR; an effort can need either, both, or neither. `new plan <slug>` exclusively creates the standalone tracked `docs/plans/<slug>.md`. `new adr <slug>` exclusively creates `docs/decisions/<slug>.md` with hand-maintained pending status. `internal/artifactfs` owns these starters and topic creation; `internal/effortfs` owns only effort residency and archive behavior. Created Markdown stays author-owned, outside projection and semantic enforcement, and receives no automatic Git action.
+`internal/artifactfs` owns create-only starters. `new intent` and `new spec` create `docs/changes/<slug>/intent.md` and `spec.md`; `new plan` creates `docs/plans/<slug>.md`; and `new adr` creates `docs/decisions/<slug>.md` with hand-maintained pending status. None requires another document, effort memory, or initialization. Topic creation remains path-routed. No creation command overwrites a destination or performs Git operations.
 
-Keep local memory and notes in the primary checkout and tracked plans, ADRs, topics, and implementation in the checkout that owns them. Existing effort-local plans remain opaque and archive with their resident; AWF never migrates them. Memory references authoritative tracked documents without reverse links from durable artifacts to ignored state.
+Intent owns the problem and desired outcome, and an optional specification adds necessary behavior and design detail. Authors use that change definition as the basis for each plan or ADR the change needs: plans own implementation routes, while ADRs preserve consequential choices and rationale beyond the change. Relationships remain authored references rather than AWF-managed links. Topics explain the current system, and memory references tracked documents rather than repeating them. Local memory and notes belong in the primary checkout; tracked documents belong in the implementation checkout.
 
-Plans remain while they concretely guide execution, verification, review, or handoff and are deliberately removed when that use ends. Pending, accepted, and active ADRs remain together: active records own enduring choices and rationale, while topics explain implemented behavior and practical implications and link to relevant ADRs. Status changes and retirement are manual file/Git operations; AWF parses no lifecycle.
+Tracked plans remain in `docs/plans/`. Existing effort-local plans remain untouched; authors may deliberately relocate useful ones into `docs/plans/` and repair references. Documents remain only while they have a concrete use; preserve still-needed knowledge before removal. AWF does not parse document content, derive artifacts, enforce stages, synchronize files, or manage their lifecycle.
 
-The embedded `docs effort` guide owns effort adoption, checkpoint/resume/continue behavior, coordinating worktree associations and native Git conventions, plan and ADR lifecycle, implementation retrospectives and selective reusable guidance, post-integration assurance, and effort finishing instructions. Generated skills only route to that guide.
+The embedded `docs effort` guide owns document roles, review comparisons, checkpoint and resume behavior, worktree conventions, ADR lifecycle, retrospectives, and completion. Generated skills only route to that guide.

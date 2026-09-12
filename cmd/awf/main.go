@@ -186,6 +186,18 @@ func runNew(root string, args []string, stdout, stderr io.Writer) int {
 		}
 		label = "memory"
 		created, err = effortfs.New(root, args[1])
+	case "intent":
+		if len(args) != 2 {
+			return usage(stderr, "usage: awf new intent <slug>")
+		}
+		label = "intent"
+		created, err = artifactfs.NewIntent(root, args[1])
+	case "spec":
+		if len(args) != 2 {
+			return usage(stderr, "usage: awf new spec <slug>")
+		}
+		label = "spec"
+		created, err = artifactfs.NewSpec(root, args[1])
 	case "plan":
 		if len(args) != 2 {
 			return usage(stderr, "usage: awf new plan <slug>")
@@ -205,7 +217,7 @@ func runNew(root string, args []string, stdout, stderr io.Writer) int {
 		label = "topic"
 		created, err = artifactfs.NewTopic(root, args[1], args[2:])
 	default:
-		return usage(stderr, fmt.Sprintf("unknown new command %q; expected effort, plan, adr, or topic", args[0]))
+		return usage(stderr, fmt.Sprintf("unknown new command %q; expected effort, intent, spec, plan, adr, or topic", args[0]))
 	}
 	if err != nil {
 		return failure(stderr, err)
@@ -358,7 +370,7 @@ Commands:
   check      check sources and generated files
   resolve    find global topics or topics for repository paths
   docs       read embedded adopter guides
-  new        create an effort, plan, ADR, or topic
+  new        create effort memory or a tracked document
   effort     inspect or finish local effort memory
   version    print the AWF version
 
@@ -400,6 +412,8 @@ const newHelp = `Usage: awf new <artifact> [arguments]
 
 Commands:
   effort <slug>            create local effort memory
+  intent <slug>            create docs/changes/<slug>/intent.md
+  spec <slug>              create docs/changes/<slug>/spec.md
   plan <slug>              create docs/plans/<slug>.md
   adr <slug>               create docs/decisions/<slug>.md with pending status
   topic <id> <pattern>...  create ` + projector.TopicsPath + `/<id>.md with supplied selectors

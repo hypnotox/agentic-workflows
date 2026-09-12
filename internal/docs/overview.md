@@ -1,12 +1,12 @@
 # AWF guide
 
-AWF projects repository-owned sources into fixed agent guidance. It also routes repository paths to current topics, inspects routing coverage for explicitly chosen paths, keeps optional local effort memory, and creates optional plan, decision-record, and topic starters. AWF does not own Git hooks, Git operations, CI, repository gates, or the meaning of authored Markdown.
+AWF projects repository-owned sources into fixed agent guidance. It also routes repository paths to current topics, inspects routing coverage for explicitly chosen paths, keeps optional local effort memory, and creates optional intent, specification, plan, ADR, and topic starters. AWF does not own Git hooks, Git operations, CI, repository gates, or the meaning of authored Markdown.
 
 ## Sources and generated files
 
 Authors maintain `.awf/project.md` and `docs/topics/**/*.md`. AWF renders a fixed set of agent entrypoints, skill entrypoints, and repository launch scripts from those sources. A leading AWF marker identifies generated ownership.
 
-Project knowledge lives in `docs/`: topics in `docs/topics/`, implementation plans in `docs/plans/`, and ADRs in `docs/decisions/`. Each document is author-owned, with no generated copy. `.awf/` retains project-level agent guidance, local effort memory, and launch infrastructure.
+Project knowledge lives in `docs/`: topics in `docs/topics/`, change definitions in `docs/changes/<slug>/`, implementation plans in `docs/plans/`, and ADRs in `docs/decisions/`. Each document is author-owned, with no generated copy. `.awf/` retains project-level agent guidance, local effort memory, and launch infrastructure.
 
 Never edit a marked generated file as its source. Edit `.awf/project.md` or the applicable topic, then run the repository's AWF command:
 
@@ -24,9 +24,9 @@ Read a guide when its workflow becomes relevant:
 ```text
 awf docs integration  adopt AWF, integrate repository-owned hooks and CI, update versions, or repair integration
 awf docs topics       discover, author, and maintain path-routed current project knowledge
-awf docs effort       use optional effort memory, plans, ADRs, and manual worktree conventions
+awf docs effort       use effort memory, change definitions, plans, ADRs, and manual worktree conventions
 ```
 
 The guides are embedded in the binary and work before initialization and without Git, repository sources, external skills, services, or network access. Reading them does not initialize, render, repin, or otherwise modify a repository. Navigate between pages with `awf docs ...`; their canonical Markdown sources live in `internal/docs/` in AWF's own repository, not in an adopter's checkout.
 
-Use `awf new` to create effort, plan, ADR, or topic starters. Plans and ADRs are independent tracked aids and require no effort; effort memory may reference them. See `awf docs effort` for their distinct lifecycles and `awf docs topics` for topic creation and informational coverage inspection.
+Use `awf new` to create effort, intent, spec, plan, ADR, or topic starters. Intent and specification share a change folder and provide the basis for each independent plan or ADR the change needs. Each document is optional and independent of effort memory; AWF does not derive or link them automatically. See `awf docs effort` for their distinct roles and lifecycles and `awf docs topics` for topic creation and informational coverage inspection.

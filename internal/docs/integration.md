@@ -85,7 +85,7 @@ Use the target format-2 binary directly from the repository root during this tra
 
 1. Move the topics from `.awf/topics/` to `docs/topics/`, preserving nested paths and one authoritative copy. Reconcile any existing destination files deliberately without overwriting useful content. Repositories without topics need no directory move.
 2. Repair references and relative Markdown links affected by the move. Selectors remain repository-relative; change only selectors that refer to relocated paths, not all selectors merely because their topic moved.
-3. Change `.awf/project.md` frontmatter from `format: 1` to `format: 2`, preserving its body. Leave effort memory, effort-local plans, worktrees, and archives untouched. Tracked plans and ADRs remain in `docs/plans/` and `docs/decisions/`.
+3. Change `.awf/project.md` frontmatter from `format: 1` to `format: 2`, preserving its body. Leave effort memory, existing plans and ADRs, worktrees, and archives untouched.
 4. Render and check with the target binary, then inspect topic resolution for the paths the moved topics should cover:
 
    ```sh
