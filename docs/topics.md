@@ -26,7 +26,7 @@ Create a topic with an optionally nested ID and at least one explicitly supplied
 
 The command creates `.awf/topics/<id>.md` exclusively and prints that path. It never replaces an existing destination, renders generated files, or performs a Git action. The ID omits `.md` and cannot escape the topic source directory.
 
-The created file is ordinary author-owned Markdown. Begin with a focused purpose, then retain only useful current behavior, constraints and rationale, change guidance, verification references, and non-obvious lessons. Adapt or omit irrelevant starter sections and remove instructional placeholders. Link active ADRs for the enduring decisions they own rather than duplicating their full rationale.
+The created file is ordinary author-owned Markdown. Begin with a focused purpose, then explain current behavior, ownership boundaries, and relationships that matter to future changes, followed by constraints and practical implications. Prefer useful orientation over an exhaustive code inventory. Keep useful local explanations and change or verification guidance near the relevant facts; add specific headings such as testing only when they improve reading. Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose. Link active ADRs for the enduring decisions they own rather than duplicating their full rationale.
 
 You may also author a topic directly:
 
@@ -69,7 +69,7 @@ Coverage finds routing gaps and overlap. It cannot establish that documentation 
 
 Update affected topics when implementation changes their facts or instructions. Topics describe what is implemented and the practical implications for future work; relevant active ADRs retain enduring choices and rationale. Use selective source, test, or verification references beside important claims when they materially reduce lookup or assessment effort, and describe their actual evidential limits. A link alone does not prove a claim.
 
-Remove obsolete advice and consolidate stale or redundant guidance instead of accumulating chronology, claim IDs, proof markers, backlink registries, mandatory evidence fields, or a separate pitfalls corpus.
+Remove obsolete advice and consolidate stale or redundant guidance instead of accumulating chronology, claim IDs, proof markers, backlink registries, mandatory evidence fields, or a separate pitfalls corpus. Effort notes preserve implementation findings for retrospective review; topics retain only the resulting current guidance.
 
 After source edits:
 

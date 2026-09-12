@@ -119,19 +119,21 @@ func validateTopicID(id string) error {
 
 func planStarter(slug string) string {
 	return "# Plan: " + slug + "\n\n" +
+		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
 		"## Outcome and success criteria\n\nState the intended result, scope boundaries, and observable completion criteria.\n\n" +
-		"## Implementation approach\n\nDescribe ownership, important dependencies, and any necessary enabling refactor without copying ADR rationale.\n\n" +
-		"## Work sequence\n\nList verifiable units, their locations and purpose, and ordering dependencies.\n\n" +
-		"## Verification\n\nName focused checks and how to assess the combined result against the outcome.\n"
+		"## Implementation approach\n\nDescribe important ownership boundaries, dependencies, and settled design choices without copying ADR rationale.\n\n" +
+		"## Work sequence\n\nDescribe coherent changes in dependency order. Include concrete locations or mechanics only when they preserve an important decision or materially clarify the route.\n\n" +
+		"## Verification\n\nName proportionate checks and how to assess the combined result against the outcome.\n"
 }
 
 func adrStarter(slug string) string {
 	return "---\nstatus: pending\n---\n\n# Decision: " + slug + "\n\n" +
-		"## Context and question\n\nExplain the problem, relevant constraints, and evidence that makes this choice necessary.\n\n" +
-		"## Material alternatives\n\nRecord the credible alternatives actually considered; a second option is not required.\n\n" +
-		"## Decision and rationale\n\nState the accepted choice and rationale, or clearly identify the question as open.\n\n" +
+		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
+		"## Context\n\nExplain the problem, relevant constraints, and evidence that makes this choice necessary.\n\n" +
+		"## Decision and rationale\n\nState the proposed or agreed choice, its scope, and rationale. Distinguish a proposal from an established agreement.\n\n" +
 		"## Consequences\n\nCapture meaningful benefits, costs, limitations, and trade-offs.\n\n" +
-		"## Affected topics and decisions\n\nLink relevant AWF topic files and prior decisions. For intended replacements, explain where retained decisions and rationale will live; see `awf docs effort` for the procedure.\n"
+		"## Related decisions\n\nLink relevant authority and explain intended supersession, including where retained commitments and rationale will live. Omit unrelated links and topic inventories.\n\n" +
+		"## Material alternatives\n\nRecord the credible alternatives actually considered; a second option is not required.\n"
 }
 
 func topicStarter(id string, selectors []string) string {
@@ -144,9 +146,9 @@ func topicStarter(id string, selectors []string) string {
 	}
 	body.WriteString("---\n\n# ")
 	body.WriteString(id)
-	body.WriteString("\n\nState the focused purpose of this topic.\n\n")
-	body.WriteString("## Current behavior and structure\n\nExplain implemented behavior and ownership a future change needs to understand.\n\n")
-	body.WriteString("## Constraints and rationale\n\nRecord current constraints and practical implications, linking active decisions where useful.\n\n")
-	body.WriteString("## Working in this area\n\nRecord useful change and verification guidance and non-obvious lessons.\n")
+	body.WriteString("\n\nAdapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n")
+	body.WriteString("State the focused purpose of this topic.\n\n")
+	body.WriteString("## Current behavior and structure\n\nExplain current behavior, ownership boundaries, and relationships that matter to future changes, not an inventory of files and functions.\n\n")
+	body.WriteString("## Constraints and practical implications\n\nExplain current constraints and what they mean for changes in this area. Keep useful local explanations and link active ADRs rather than repeating their full rationale.\n")
 	return body.String()
 }
