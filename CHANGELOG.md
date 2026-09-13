@@ -4,6 +4,18 @@ All notable changes to `awf` are documented here, newest first.
 
 ## Unreleased
 
+## [0.57.0] - 2026-09-13
+
+### Features
+
+- Add a dedicated ADR workflow and fifth generated Pi and Claude skill for recording consequential decisions and maintaining their review, authority, and lifecycle.
+
+### Changed
+
+- Scope independent challenges and reviews for directions, change definitions, plans, ADRs, and completed results according to complexity, and reuse directly applicable assessments without adding approval stages.
+
+- Clarify that coordinating agents own repository commits, combined-result review, integration, and cleanup while delegated agents return bounded work and findings.
+
 ## [0.56.0] - 2026-09-13
 
 ### Breaking changes
