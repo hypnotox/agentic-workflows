@@ -3,6 +3,7 @@ package projector
 import (
 	"bufio"
 	"bytes"
+	_ "embed"
 	"errors"
 	"fmt"
 	"io"
@@ -13,41 +14,8 @@ import (
 	"strings"
 )
 
-// InitialProject is the source created by Init.
-const InitialProject = `---
-format: 2
----
-
-# Project guidance
-
-You are a coding agent responsible for developing and maintaining this project. Own both the immediate task and the project's long-term health.
-
-> Replace and refine this starter guidance with concise instructions specific to this repository.
-
-## Identity
-
-Describe the project's purpose, primary technology or module, maturity, and intended audience in one short paragraph.
-
-## Agent responsibility
-
-State what an agent working here owns beyond merely completing the immediate task.
-
-## Invariants
-
-List only genuinely cross-cutting hard rules. Use one terse imperative per rule and link to canonical documentation where useful.
-
-## Workflow
-
-Describe only repository-specific workflow. Do not duplicate generic engineering procedures or inventories of available skills.
-
-## Commands
-
-List the commands agents routinely need for building, testing, checking, and maintaining the project.
-
-## Documentation
-
-Link to the small set of canonical documents needed to navigate the repository. Keep detailed guidance in those documents rather than repeating it here.
-`
+//go:embed templates/project.md
+var initialProjectTemplate string
 
 // RenderResult describes visible render changes and marked files AWF no longer owns.
 type RenderResult struct {
@@ -74,7 +42,7 @@ func Init(root string) (RenderResult, error) {
 		}
 		return RenderResult{}, fmt.Errorf("create %s: %w", projectPath, err)
 	}
-	if _, err := io.WriteString(file, InitialProject); err != nil {
+	if _, err := io.WriteString(file, initialProjectTemplate); err != nil {
 		_ = file.Close()
 		return RenderResult{}, fmt.Errorf("write %s: %w", projectPath, err)
 	}

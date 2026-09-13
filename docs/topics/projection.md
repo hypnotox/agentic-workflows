@@ -12,7 +12,7 @@ paths:
 
 # Projection and ownership
 
-`.awf/project.md` has `format: 2` frontmatter and an opaque Markdown body. AWF copies every body byte literally into the fixed `AGENTS.md` frame. The source format also fixes canonical topic discovery at `docs/topics/`; old source formats are rejected before projection or resolution. The shared frame in `internal/projector/templates/AGENTS.md`, embedded and rendered by `internal/projector/build.go`, owns the effort-adoption rule and default agent commit cadence, independent of external skills; repository instructions may override them. Generated output is never an input.
+`.awf/project.md` has `format: 2` frontmatter and an opaque Markdown body. `init` creates it from the embedded starter at `internal/projector/templates/project.md`, and AWF copies every body byte literally into the fixed `AGENTS.md` frame. The source format also fixes canonical topic discovery at `docs/topics/`; old source formats are rejected before projection or resolution. The shared frame in `internal/projector/templates/AGENTS.md`, embedded and rendered by `internal/projector/build.go`, owns the effort-adoption rule and default agent commit cadence, independent of external skills; repository instructions may override them. Generated output is never an input.
 
 The output set is fixed in `internal/projector`: `AGENTS.md`, `CLAUDE.md`, Pi and Claude topic and effort skills, `.awf/.gitignore`, the root wrapper, and `.awf/bootstrap.sh`. Pi and Claude outputs are always present. The wrapper and bootstrap are always present. `AGENTS.md` carries direct `docs` routes, while `CLAUDE.md` contains exactly `@AGENTS.md`; the skills keep their identities but are concise just-in-time entrypoints to the embedded topic and effort guides.
 

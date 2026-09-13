@@ -413,7 +413,7 @@ func TestInitCreatesStarterAndProjectionWithoutGit(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if string(got) != InitialProject {
+	if string(got) != initialProjectTemplate {
 		t.Fatalf("initial project differs:\n%s", got)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".git")); !errors.Is(err, fs.ErrNotExist) {
