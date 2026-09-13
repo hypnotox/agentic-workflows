@@ -31,8 +31,8 @@ The authoritative adopter guides are ordinary Markdown in `internal/docs/`, embe
 - [Agent guidance](internal/docs/agents.md): concise author-owned `AGENTS.md` and optional Claude support;
 - [Topics](internal/docs/topics.md): path-routed current project knowledge, topic creation, and optional coverage inspection;
 - [Efforts](internal/docs/effort.md): local continuity, notes, worktrees, and handoffs;
-- [Changes](internal/docs/changes.md): optional intent, specification, plan, and ADR documents;
-- [Completion](internal/docs/completion.md): verification, commits, retrospectives, integration, and cleanup, with or without an effort;
+- [Changes](internal/docs/changes.md): substantive-change brainstorming and optional intent, specification, plan, and ADR documents;
+- [Completion](internal/docs/completion.md): verification, commits, independent substantive-result review, retrospectives, integration, and cleanup, with or without an effort;
 - [Migrating from v0.50](MIGRATING-v0.50.md): one-time conversion and legacy cleanup.
 
 Use `./awf docs` to discover guides and `./awf docs <page>` to read one. Pi and Claude receive substantive skills derived from the same canonical workflows, not a second instruction set. Existing installations must follow the [ownership transition](internal/docs/integration.md#transition-existing-installations), including preservation of unrendered `.awf/project.md` edits and any old topic layout.

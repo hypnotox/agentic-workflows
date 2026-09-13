@@ -26,8 +26,8 @@ awf docs integration  adopt AWF, update versions, connect repository automation,
 awf docs agents       author concise repository instructions and optional Claude support
 awf docs topics       discover, read, and maintain path-routed current knowledge
 awf docs effort       keep continuity, memory, notes, and worktree handoffs
-awf docs changes      define substantial changes and use optional intent, spec, plan, and ADR documents
-awf docs completion   verify and commit coherent units during implementation, review findings, integrate, and clean up
+awf docs changes      brainstorm and define substantive changes, challenge premises, and use optional documents
+awf docs completion   verify and commit coherent units, independently review substantive results, and finish work
 ```
 
 Use the completion workflow during implementation for verification and commit cadence, not only at final completion; it applies even without an effort. Small self-contained changes without worktree isolation can remain effort-free; continuity across stages, sessions, or handoffs and implementation worktrees use coordinating efforts.
