@@ -12,6 +12,8 @@ func TestLegacyLayoutsRequireManualMigrationWithoutMutation(t *testing.T) {
 	for _, legacy := range []struct{ path, body string }{
 		{".awf/project.md", "---\nformat: 1\n---\n# Existing project\n"},
 		{".awf/project.md", "---\nformat: 2\n---\nUnrendered instructions\n"},
+		{".awf/agents-doc.yaml", "data:\n  invariants:\n    - text: 'Unrendered repository rule'\n"},
+		{".awf/parts/agents-doc/invariants.md", "Unrendered repository rule.\n"},
 		{".awf/topics/code/go.md", "---\npaths: ['src/**/*.go']\n---\n# Existing topic\n"},
 		{".awf/topics/metadata/go.yaml", "paths: ['src/**']\n"},
 	} {

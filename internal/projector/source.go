@@ -33,7 +33,7 @@ type topicMetadata struct {
 // rejectLegacyLayout catches the known retired source locations before an
 // operation could silently omit guidance. Conversion is manual, not a fallback.
 func rejectLegacyLayout(root string) error {
-	for _, legacy := range []string{".awf/project.md", ".awf/topics"} {
+	for _, legacy := range []string{".awf/project.md", ".awf/agents-doc.yaml", ".awf/parts/agents-doc", ".awf/topics"} {
 		if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(legacy))); err == nil {
 			return fmt.Errorf("legacy AWF source at %s; preserve authored guidance in AGENTS.md and topics in %s, then retire the old source; run `awf docs integration` for manual migration", legacy, TopicsPath)
 		} else if !os.IsNotExist(err) {
