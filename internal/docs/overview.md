@@ -27,10 +27,10 @@ awf docs agents       author concise repository instructions and optional Claude
 awf docs topics       discover, read, and maintain path-routed current knowledge
 awf docs effort       keep continuity, memory, notes, and worktree handoffs
 awf docs changes      define substantial changes and use optional intent, spec, plan, and ADR documents
-awf docs completion   verify, commit, review findings, and perform applicable integration and cleanup
+awf docs completion   verify and commit coherent units during implementation, review findings, integrate, and clean up
 ```
 
-Completion applies even without an effort. Small self-contained changes without worktree isolation can remain effort-free; continuity across stages, sessions, or handoffs and implementation worktrees use coordinating efforts.
+Use the completion workflow during implementation for verification and commit cadence, not only at final completion; it applies even without an effort. Small self-contained changes without worktree isolation can remain effort-free; continuity across stages, sessions, or handoffs and implementation worktrees use coordinating efforts.
 
 Guides are embedded in the binary and work before installation, without Git, repository sources, external skills, or network access. Reading them does not initialize, render, repin, or otherwise modify a repository. Navigate with `awf docs ...`; their canonical Markdown lives under `internal/docs/` in AWF's repository, not in an adopter checkout.
 

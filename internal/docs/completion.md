@@ -1,6 +1,6 @@
 # Complete and integrate work
 
-Use this workflow before completing or integrating implementation work, with or without effort memory, change documents, or a worktree. Reuse it during the task. Use the repository's documented AWF runner; examples below use `./awf`. AWF does not perform Git operations or judge completion; agents act under repository conventions and user instructions.
+Use this workflow during implementation for verification and commit cadence, and before completing or integrating work. It applies with or without effort memory, change documents, or a worktree. Reuse it during the task. Use the repository's documented AWF runner; examples below use `./awf`. AWF does not perform Git operations or judge completion; agents act under repository conventions and user instructions.
 
 ## Verify and commit coherent results
 

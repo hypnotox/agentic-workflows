@@ -10,7 +10,7 @@ Use `./x` during development: it runs the checkout source. The root `./awf` wrap
 
 Use `./x resolve` for explicit global topics, adding repository-relative paths for matching knowledge. Read every returned source, reuse established context, and keep affected topics current. Follow the topic workflow, available through `./x docs topics`.
 
-Use an effort for continuity across stages, sessions, or handoffs and for implementation worktrees; check for a matching active effort first. Follow the effort workflow (`./x docs effort`). Before completing or integrating implementation work, follow the completion workflow (`./x docs completion`), even without an effort. Native AWF skills supply the same workflows.
+Use an effort for continuity across stages, sessions, or handoffs and for implementation worktrees; check for a matching active effort first. Follow the effort workflow (`./x docs effort`). Use the completion workflow (`./x docs completion`) during implementation for verification and commit cadence, and before final completion or integration, even without an effort. Native AWF skills supply the same workflows.
 
 Use Conventional Commits with one concern per commit. Keep related implementation, tests, and documentation together. All projected content belongs in embedded template/source files, not Go string literals. Edit the owning sources and run `./x render && ./x check`; do not edit generated skills or infrastructure directly. `AGENTS.md`, optional `CLAUDE.md`, and topics are author-owned.
 

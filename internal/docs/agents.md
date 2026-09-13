@@ -10,7 +10,7 @@ Include a brief present-tense orientation: what the project does, its important 
 
 Keep only genuinely global requirements in the entrypoint. Distinguish hard rules, defaults, and options; state the conditions that change their applicability. Include essential build, test, and maintenance commands and a few useful canonical pointers. Prefer the repository's actual runner over an exhaustive CLI inventory. Explain a non-obvious runner distinction when choosing incorrectly would change what executes.
 
-Include the discovery cues agents need before selecting detailed guidance: how to find applicable topics, when continuity needs an effort, and that completion guidance applies even without one. Point to the AWF CLI workflow when native skills are unavailable. Native skill descriptions own the skill catalog; do not reproduce it in `AGENTS.md`.
+Include the discovery cues agents need before selecting detailed guidance: how to find applicable topics, when continuity needs an effort, and how to reach verification and commit guidance during implementation as well as at completion, even without an effort. Point to the AWF CLI workflow when native skills are unavailable. Native skill descriptions own the skill catalog; do not reproduce it in `AGENTS.md`.
 
 Write concrete instructions, preserve judgment for routine choices, and use examples only to clarify—not to add hidden requirements. Resolve contradictions and repeated rules across the instruction set. Remove stale guidance rather than accumulating exceptions. Keep rationale and detailed procedures with their most specific authoritative owner.
 
@@ -32,9 +32,10 @@ use the topic workflow, available through `./awf docs topics`.
 
 Use an effort for continuity across stages, sessions, or handoffs and for
 implementation worktrees; check for an existing effort first. Follow the effort
-workflow (`./awf docs effort`). Before completing or integrating implementation
-work, follow the completion workflow (`./awf docs completion`), even without an
-effort. Native AWF skills supply the same workflows.
+workflow (`./awf docs effort`). Use the completion workflow
+(`./awf docs completion`) during implementation for verification and commit
+cadence, and before final completion or integration, even without an effort.
+Native AWF skills supply the same workflows.
 
 ## Commands
 

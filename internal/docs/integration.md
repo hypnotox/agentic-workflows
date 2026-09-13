@@ -93,6 +93,6 @@ The target renderer rewrites the committed bootstrap pin and `.awf/VERSION`. The
 
 Use the reported path and diff to distinguish stale marked output (render it), unmarked collisions (reconcile ownership), retired marked files (delete or unmark deliberately), and invalid topics (fix their authored source). A missing or stale version record is generated drift, repaired by render—not a request to configure AWF.
 
-For incomplete integration, inspect repository gates, CI, hook scripts, executable modes, and effective hook configuration. AWF does not assess them. Before reporting completion, follow `awf docs completion`, including when the work uses no effort or worktree.
+For incomplete integration, inspect repository gates, CI, hook scripts, executable modes, and effective hook configuration. AWF does not assess them. Use `awf docs completion` during implementation and integration for verification, commit cadence, final review, and cleanup, including when the work uses no effort or worktree.
 
 External engineering skills may complement AWF but are neither installed nor required by it. The optional [agentic-skills](https://github.com/hypnotox/agentic-skills) package supplies general engineering methods. If a repository requires external skills or shared doctrine, state that in its author-owned guidance rather than duplicating those methods in AWF workflows.

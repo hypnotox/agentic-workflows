@@ -2,7 +2,7 @@
 
 Use this workflow when defining substantial work or when an intent, specification, plan, or ADR becomes useful. Keep documents proportionate: reuse an adequate established outcome rather than creating a document for every task. AWF creates each requested file independently; it does not interpret content, infer relationships, enforce stages, or decide readiness.
 
-Use the repository's documented AWF runner; examples below use `./awf`. For continuity and implementation worktrees, use `docs effort`; before completing or integrating implementation work, use `docs completion`.
+Use the repository's documented AWF runner; examples below use `./awf`. For continuity and implementation worktrees, use `docs effort`. During implementation, use `docs completion` for verification, commit cadence, and final completion or integration.
 
 ## Establish the outcome and route
 
