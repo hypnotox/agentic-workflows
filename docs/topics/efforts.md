@@ -9,9 +9,12 @@ paths:
   - 'docs/decisions/**'
   - 'internal/docs/effort.md'
   - 'internal/docs/changes.md'
+  - 'internal/docs/adr.md'
   - 'internal/docs/completion.md'
   - '.pi/skills/awf-changes/SKILL.md'
   - '.claude/skills/awf-changes/SKILL.md'
+  - '.pi/skills/awf-adr/SKILL.md'
+  - '.claude/skills/awf-adr/SKILL.md'
   - '.pi/skills/awf-completion/SKILL.md'
   - '.claude/skills/awf-completion/SKILL.md'
 ---
@@ -26,4 +29,4 @@ Intent owns the problem and desired outcome, and an optional specification adds 
 
 Tracked plans remain in `docs/plans/`. Existing effort-local plans remain untouched; authors may deliberately relocate useful ones into `docs/plans/` and repair references. Documents remain only while they have a concrete use; preserve still-needed knowledge before removal. AWF does not parse document content, derive artifacts, enforce stages, synchronize files, or manage their lifecycle.
 
-Canonical workflow Markdown under `internal/docs/` owns the instructions: `effort.md` covers continuity, notes, worktrees, and handoffs; `changes.md` covers substantive-direction premise challenges, optional document roles, authored relationships, and ADR authority; `completion.md` covers verification, coherent commits, independent substantive-result review, retrospective findings, and applicable integration and cleanup. Each also supplies its generated skill body for both harnesses. The premise challenge needs neither an effort nor a change document. Completion entrypoints apply during implementation so verified intermediate units receive commit guidance before final completion, and completion applies with or without an effort. Document lifecycle guidance remains conditional on those artifacts; small changes do not need the full ADR workflow.
+Canonical workflow Markdown under `internal/docs/` owns the instructions: `effort.md` covers continuity, notes, worktrees, and handoffs; `changes.md` covers premise challenges, intent/specification/plan roles, and review before dependent work; `adr.md` covers decision records, their review, and authority; `completion.md` covers verification, coherent commits, combined-result review, retrospective findings, and applicable integration and cleanup. Each also supplies its generated skill body for both harnesses. Review depends on complexity, and an applicable assessment can cover related questions. A premise challenge targets intent when present and needs neither an effort nor a document. Completion entrypoints apply during implementation so verified intermediate units receive commit guidance before final completion, and completion applies with or without an effort. ADR lifecycle guidance loads only when decision records are affected.

@@ -76,6 +76,7 @@ func TestDocsAvailableWithoutProjectStateOrMutation(t *testing.T) {
 		{name: "effort", args: []string{"docs", "effort"}},
 		{name: "agents", args: []string{"docs", "agents"}},
 		{name: "changes", args: []string{"docs", "changes"}},
+		{name: "adr", args: []string{"docs", "adr"}},
 		{name: "completion", args: []string{"docs", "completion"}},
 	}
 	for _, page := range pages {
@@ -110,7 +111,7 @@ func TestDocsAvailableWithoutProjectStateOrMutation(t *testing.T) {
 func TestDocsHelpAndUsage(t *testing.T) {
 	for _, args := range [][]string{{"docs", "--help"}, {"help", "docs"}} {
 		code, stdout, stderr := runCLI(t, t.TempDir(), args...)
-		if code != 0 || stderr != "" || !strings.Contains(stdout, "awf docs [integration|agents|topics|effort|changes|completion]") {
+		if code != 0 || stderr != "" || !strings.Contains(stdout, "awf docs [integration|agents|topics|effort|changes|adr|completion]") {
 			t.Errorf("%v = code %d, stdout %q, stderr %q", args, code, stdout, stderr)
 		}
 	}

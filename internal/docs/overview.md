@@ -6,7 +6,7 @@ AWF delivers fixed workflow skills and embedded adopter guides. It also routes r
 
 Authors edit `AGENTS.md` directly and may maintain an optional `CLAUDE.md`. AWF neither generates these files nor requires a Markdown layout. Current project knowledge belongs in `docs/topics/`, change definitions in `docs/changes/<slug>/`, plans in `docs/plans/`, and enduring decisions in `docs/decisions/`. These remain author-owned, without generated copies. `.awf/project.md` is retired; there is no replacement configuration.
 
-AWF generates four substantive skills for Pi and Claude, the root `awf` wrapper, `.awf/bootstrap.sh`, `.awf/.gitignore`, and `.awf/VERSION` from embedded content. Workflow pages and skill bodies share one canonical instruction source. A leading AWF marker identifies generated ownership except for the exact reserved `.awf/VERSION` path. That record reports the renderer's version; the bootstrap, not the record, selects the binary.
+AWF generates five workflow skills for Pi and Claude, the root `awf` wrapper, `.awf/bootstrap.sh`, `.awf/.gitignore`, and `.awf/VERSION` from embedded content. Workflow pages and skill bodies share one canonical instruction source. A leading AWF marker identifies generated ownership except for the exact reserved `.awf/VERSION` path. That record reports the renderer's version; the bootstrap, not the record, selects the binary.
 
 Do not edit generated files as their source. Use the repository's documented AWF runner to refresh and check them; examples use `./awf`:
 
@@ -26,8 +26,9 @@ awf docs integration  adopt AWF, update versions, connect repository automation,
 awf docs agents       author concise repository instructions and optional Claude support
 awf docs topics       discover, read, and maintain path-routed current knowledge
 awf docs effort       keep continuity, memory, notes, and worktree handoffs
-awf docs changes      brainstorm and define substantive changes, challenge premises, and use optional documents
-awf docs completion   verify and commit coherent units, independently review substantive results, and finish work
+awf docs changes      define outcomes and routes; challenge premises and review definitions or plans where warranted
+awf docs adr          record decisions and maintain ADR review, authority, and lifecycle
+awf docs completion   verify and commit coherent units, review results where warranted, and finish work
 ```
 
 Use the completion workflow during implementation for verification and commit cadence, not only at final completion; it applies even without an effort. Small self-contained changes without worktree isolation can remain effort-free; continuity across stages, sessions, or handoffs and implementation worktrees use coordinating efforts.

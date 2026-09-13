@@ -2,6 +2,8 @@
 
 Use this workflow during implementation for verification and commit cadence, and before completing or integrating work. It applies with or without effort memory, change documents, or a worktree. Reuse it during the task. Use the repository's documented AWF runner; examples below use `./awf`. AWF does not perform Git operations or judge completion; agents act under repository conventions and user instructions.
 
+The coordinating agent owns repository-level commits, combined-result review, integration, and cleanup. Delegated agents return their assigned work, checks, and findings within their brief; their handoff does not trigger separate completion review or Git operations.
+
 ## Verify and commit coherent results
 
 Compare the actual result with the agreed outcome and criteria. When intent, specification, or applicable ADRs exist, use those agreements rather than only the plan's completed steps. Check the meaningful behavior, inspect the combined diff, and update affected documentation and topics. Report what was checked, what remains uncertain or unmet, and material deviations.
@@ -10,9 +12,9 @@ In Git repositories, commit completed, verified changes before reporting complet
 
 Where effort memory exists, update its checkpoint with relevant evidence, unmet criteria, deviations, documentation updates, and the current next action. Reference authoritative documents rather than duplicating their contents. Small effort-free work needs no memory or separate completion-evidence document.
 
-## Independently review substantive results
+## Review results according to complexity
 
-Before reporting a substantive change complete or integrating it, obtain or reuse a directly applicable independent review of the actual result performed from fresh context. Substantive means consequential to behavior, design, contracts, or guidance rather than a line-count threshold. Review the result against the agreed outcome, established constraints, and applicable project guidance. Select only lenses relevant to the work, such as correctness, simplicity, maintainability, verification, or instruction and artifact quality.
+When assessing the result's behavior, interactions, contracts, or guidance requires nontrivial judgment, obtain or reuse a directly applicable independent review from fresh context before reporting completion or integrating it. Routine, well-understood changes and uniform mechanical edits need no independent review, regardless of line or file count. Review the actual result against the agreed outcome, established constraints, and applicable project guidance. Select only lenses relevant to the work, such as correctness, simplicity, maintainability, verification, or instruction and artifact quality.
 
 When permitted and available, delegate the review to a suitable agent with a self-contained brief covering its purpose, scope, relevant evidence, constraints, and guidance. Request findings rather than edits. Evaluate the findings, distinguishing established problems, grounded risks, and optional improvements. Address material findings, refresh affected verification, and report remaining limitations.
 
@@ -28,11 +30,11 @@ Surface substantial follow-up work instead of silently expanding implementation.
 
 ## Reconcile documents when present
 
-For document and ADR lifecycle details, use `./awf docs changes` when those artifacts are affected; a small change without them does not need that workflow.
+Use `./awf docs changes` for affected change definitions and plans, and `./awf docs adr` for decision records and their lifecycle. Load only the workflow needed by the affected artifacts.
 
-Retain lasting choices in ADRs and current practical guidance in topics. Reconcile affected ADR status and topic links with verified implementation, preserving active authority until replacements are in effect. Give retired artifacts understandable replacements or historical references.
+Retain lasting choices in ADRs and current practical guidance in topics. Reconcile affected decisions and their references under the ADR workflow.
 
-Review whether each change definition and plan still serves implementation, verification, review, handoff, or a maintained reference. Remove it when that use ends, preserving still-needed requirements and knowledge first. An ADR does not replace a behavior specification. Repair surviving links with current replacements or a committed historical reference such as `git show <commit>:<path>`. Preserve document commits and later deletions through ordinary non-squash integration.
+Review whether each change definition and plan still serves implementation, verification, review, handoff, or a maintained reference. Remove it when that use ends, preserving still-needed requirements and knowledge first. An ADR does not replace a behavior specification. Repair surviving links with current replacements or a committed historical reference such as `git show <commit>:<path>`. Follow repository integration policy and keep needed historical content and references available after integration and branch cleanup.
 
 ## Integrate and clean up when applicable
 
