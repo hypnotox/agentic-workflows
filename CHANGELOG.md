@@ -4,9 +4,25 @@ All notable changes to `awf` are documented here, newest first.
 
 ## Unreleased
 
+## [0.56.0] - 2026-09-13
+
+### Breaking changes
+
+- Leave `AGENTS.md` and optional `CLAUDE.md` author-owned and remove `.awf/project.md` without replacement configuration. Existing adopters must reconcile authored and unrendered instructions before retiring old sources; use `awf docs integration` for the manual transition. Known legacy descriptors, agent overrides, and topic layouts produce migration diagnostics instead of silently losing guidance.
+
+### Features
+
+- Deliver four substantive Pi and Claude skills for topics, effort continuity, change definition, and completion, sharing their instruction bodies with the canonical CLI guides.
+
+- Add `awf docs agents`, `awf docs changes`, and `awf docs completion`. Completion guidance applies during implementation for coherent commits as well as final verification, retrospectives, integration, and cleanup, with or without an effort.
+
 ### Changed
 
-- Render `CLAUDE.md` as the exact markerless `@AGENTS.md` import while retaining collision protection for any other unmarked content.
+- Make `init` a repeatable entrypoint to the same fixed generation as `render`, preserving existing agent files and creating no descriptor or missing agent guide.
+
+- Record the renderer version at reserved `.awf/VERSION` and check it for drift. The record is not configuration, a command prerequisite, or the bootstrap's binary-selection pin.
+
+- Keep all projected content and the effort-memory starter in embedded template/source files rather than Go-authored prose or scripts.
 
 ## [0.55.0] - 2026-09-12
 
