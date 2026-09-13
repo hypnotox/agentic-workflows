@@ -12,7 +12,7 @@ From the checkout that owns the decision, create only the record the work needs:
 ./awf new adr <decision-slug>  # docs/decisions/<decision-slug>.md
 ```
 
-Use one record per coherent decision area; split choices with independent reasons to change. Preserve the consequential choice, its scope, supporting evidence, and rationale worth retaining. An ADR is not a specification summary. Reference the originating intent or specification and relevant active decisions instead of duplicating their requirements. An ADR needs no effort or separate change document; state its basis briefly when none exists. Creation refuses replacement. Adapt or omit starter sections and remove unused prompts.
+Use one record per coherent decision area; split choices with independent reasons to change. Preserve the consequential choice, its scope, supporting evidence, and rationale worth retaining. An ADR is not a specification summary. Reference the originating intent or specification and relevant active decisions instead of duplicating their requirements. An ADR does not require an effort or a separate change document; state its basis briefly when none exists. Creation refuses replacement. Adapt or omit starter sections and remove unused prompts.
 
 Before relying on a new or revised decision whose trade-offs, interactions, or supersession require nontrivial judgment, obtain or reuse a directly applicable independent review from fresh context. Assess fit to the agreed outcome and constraints, the rationale, and consistency with active authority. Routine corrections need no independent review; line and file counts do not decide.
 
