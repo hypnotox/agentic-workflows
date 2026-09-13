@@ -46,7 +46,7 @@ func Build() []Output {
 		{Path: "awf", Bytes: renderTemplate("awf.tmpl", data), Mode: 0o755},
 		{Path: ".awf/bootstrap.sh", Bytes: renderTemplate("downloader.sh.tmpl", data), Mode: 0o755},
 	}
-	for _, workflow := range []string{"topics", "effort", "changes", "completion"} {
+	for _, workflow := range []string{"topics", "effort", "changes", "adr", "completion"} {
 		body, ok := awfdocs.Page(workflow)
 		if !ok {
 			panic("missing embedded workflow: " + workflow)

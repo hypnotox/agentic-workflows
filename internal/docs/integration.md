@@ -20,7 +20,7 @@ Reading documentation does not modify or repin a repository. Run mutating comman
 4. Run the selected binary's `init`. It performs the same generation as `render`, creates no descriptor or agent guide, and can be repeated under ordinary render ownership rules.
 5. Run `render` and `check`, review the full diff, and run the repository's tests or gate. Commit the author-owned guidance, topics, and generated outputs together.
 
-The fixed outputs are four skills under both `.pi/skills/` and `.claude/skills/`, the root `awf` wrapper, `.awf/bootstrap.sh`, `.awf/.gitignore`, and `.awf/VERSION`. A leading AWF comment marks ownership except for the reserved version record. Both harnesses receive the same canonical workflow instructions; the CLI guides remain available without native skills.
+The fixed outputs are five skills under both `.pi/skills/` and `.claude/skills/`, the root `awf` wrapper, `.awf/bootstrap.sh`, `.awf/.gitignore`, and `.awf/VERSION`. A leading AWF comment marks ownership except for the reserved version record. Both harnesses receive the same canonical workflow instructions; the CLI guides remain available without native skills.
 
 Rendering refuses non-regular destinations and unmarked collisions other than `.awf/VERSION`. To give AWF a colliding destination, first preserve useful content elsewhere, then remove or move the destination deliberately. Do not add an AWF marker to unreconciled authored content. If generation stops after partial writes, inspect the output and diff, retain valid files, correct the reported problem, and rerun `render`. AWF never automatically deletes retired output.
 

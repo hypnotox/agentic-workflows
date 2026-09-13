@@ -42,15 +42,17 @@ func TestBuildSharesCanonicalWorkflowsAndFixedTemplates(t *testing.T) {
 	outputs := Build()
 	wantPaths := []string{
 		".awf/.gitignore", ".awf/VERSION", ".awf/bootstrap.sh",
+		".claude/skills/awf-adr/SKILL.md",
 		".claude/skills/awf-changes/SKILL.md", ".claude/skills/awf-completion/SKILL.md",
 		".claude/skills/awf-effort/SKILL.md", ".claude/skills/awf-topics/SKILL.md",
+		".pi/skills/awf-adr/SKILL.md",
 		".pi/skills/awf-changes/SKILL.md", ".pi/skills/awf-completion/SKILL.md",
 		".pi/skills/awf-effort/SKILL.md", ".pi/skills/awf-topics/SKILL.md", "awf",
 	}
 	if got := outputPathsForTest(outputs); !slices.Equal(got, wantPaths) {
 		t.Fatalf("output paths = %v, want %v", got, wantPaths)
 	}
-	for _, workflow := range []string{"topics", "effort", "changes", "completion"} {
+	for _, workflow := range []string{"topics", "effort", "changes", "adr", "completion"} {
 		pi := outputForTest(t, outputs, ".pi/skills/awf-"+workflow+"/SKILL.md")
 		claude := outputForTest(t, outputs, ".claude/skills/awf-"+workflow+"/SKILL.md")
 		if !bytes.Equal(pi.Bytes, claude.Bytes) {

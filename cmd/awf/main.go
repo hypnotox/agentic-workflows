@@ -149,7 +149,7 @@ func runDocs(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if len(args) > 1 {
-		return usage(stderr, "usage: awf docs [integration|agents|topics|effort|changes|completion]")
+		return usage(stderr, "usage: awf docs [integration|agents|topics|effort|changes|adr|completion]")
 	}
 	name := ""
 	if len(args) == 1 {
@@ -157,7 +157,7 @@ func runDocs(args []string, stdout, stderr io.Writer) int {
 	}
 	page, ok := awfdocs.Page(name)
 	if !ok {
-		return usage(stderr, fmt.Sprintf("unknown documentation page %q; expected integration, agents, topics, effort, changes, or completion", name))
+		return usage(stderr, fmt.Sprintf("unknown documentation page %q; expected integration, agents, topics, effort, changes, adr, or completion", name))
 	}
 	if _, err := stdout.Write(page); err != nil {
 		return failure(stderr, err)
@@ -403,7 +403,7 @@ Coverage reports explicit globals once and matching non-global topics for each d
 See ` + "`awf docs topics`" + ` for authoring, maintenance, and coverage limits.
 `
 
-const docsHelp = `Usage: awf docs [integration|agents|topics|effort|changes|completion]
+const docsHelp = `Usage: awf docs [integration|agents|topics|effort|changes|adr|completion]
 
 Print the embedded overview or one adopter guide to standard output.
 `

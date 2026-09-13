@@ -2,7 +2,7 @@
 
 Use an effort when work needs continuity across stages, sessions, or handoffs, and associate implementation worktrees with a coordinating effort. Small, self-contained changes without worktree isolation can remain effort-free. An effort does not require a change document or a worktree.
 
-Use the repository's documented AWF runner; examples below use `./awf`. Read this workflow when it becomes relevant and reuse it during the task. For change definitions and ADRs, use `docs changes`. During implementation, use `docs completion` for verification, commit cadence, and final completion or integration.
+Use the repository's documented AWF runner; examples below use `./awf`. Read this workflow when it becomes relevant and reuse it during the task. For change definitions and plans, use `docs changes`; for decision records, use `docs adr`. During implementation, use `docs completion` for verification, commit cadence, and final completion or integration.
 
 ## Resume or create memory
 

@@ -5,7 +5,7 @@ import "embed"
 
 // pages is the complete public documentation set.
 //
-//go:embed overview.md integration.md agents.md topics.md effort.md changes.md completion.md
+//go:embed overview.md integration.md agents.md topics.md effort.md changes.md adr.md completion.md
 var pages embed.FS
 
 var pageFiles = map[string]string{
@@ -15,6 +15,7 @@ var pageFiles = map[string]string{
 	"topics":      "topics.md",
 	"effort":      "effort.md",
 	"changes":     "changes.md",
+	"adr":         "adr.md",
 	"completion":  "completion.md",
 }
 

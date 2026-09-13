@@ -10,7 +10,7 @@ Use `./x` during development: it runs the checkout source. The root `./awf` wrap
 
 Use `./x resolve` for explicit global topics, adding repository-relative paths for matching knowledge. Read every returned source, reuse established context, and keep affected topics current. Follow the topic workflow, available through `./x docs topics`.
 
-Use the change workflow (`./x docs changes`) when brainstorming or defining a substantive change, including when no change document is needed.
+Use the change workflow (`./x docs changes`) when brainstorming a material choice or defining a change's outcome or route, including when no change document is needed. Use the ADR workflow (`./x docs adr`) when recording or changing enduring decisions.
 
 Use an effort for continuity across stages, sessions, or handoffs and for implementation worktrees; check for a matching active effort first. Follow the effort workflow (`./x docs effort`). Use the completion workflow (`./x docs completion`) during implementation for verification and commit cadence, and before final completion or integration, even without an effort. Native AWF skills supply the same workflows.
 
@@ -30,6 +30,6 @@ Use Conventional Commits with one concern per commit. Keep related implementatio
 - `README.md`: public entrypoint and documentation index.
 - `internal/docs/`: canonical adopter guides and shared workflow instructions.
 - `docs/topics/`: path-routed current implementation knowledge.
-- `docs/changes/`, `docs/plans/`, `docs/decisions/`: authored change definitions, implementation routes, and enduring decisions when useful; see `./x docs changes`.
+- `docs/changes/`, `docs/plans/`, `docs/decisions/`: authored change definitions, implementation routes, and enduring decisions when useful; see `./x docs changes` and `./x docs adr`.
 - `MIGRATING-v0.50.md`: conversion of older installations.
 - `CHANGELOG.md`: release history.
