@@ -1,32 +1,37 @@
 # AWF guide
 
-AWF projects repository-owned sources into fixed agent guidance. It also routes repository paths to current topics, inspects routing coverage for explicitly chosen paths, keeps optional local effort memory, and creates optional intent, specification, plan, ADR, and topic starters. AWF does not own Git hooks, Git operations, CI, repository gates, or the meaning of authored Markdown.
+AWF delivers fixed workflow skills and embedded adopter guides. It also routes repository paths to current topics, reports routing coverage for chosen paths, keeps optional local effort memory, and creates optional intent, specification, plan, ADR, and topic starters. It does not own Git operations, hooks, CI, repository gates, or the meaning of authored Markdown.
 
-## Sources and generated files
+## Ownership
 
-Authors maintain `.awf/project.md` and `docs/topics/**/*.md`. AWF renders a fixed set of agent entrypoints, skill entrypoints, and repository launch scripts from those sources. A leading AWF marker identifies generated ownership except for the exact markerless `@AGENTS.md` import in `CLAUDE.md`.
+Authors edit `AGENTS.md` directly and may maintain an optional `CLAUDE.md`. AWF neither generates these files nor requires a Markdown layout. Current project knowledge belongs in `docs/topics/`, change definitions in `docs/changes/<slug>/`, plans in `docs/plans/`, and enduring decisions in `docs/decisions/`. These remain author-owned, without generated copies. `.awf/project.md` is retired; there is no replacement configuration.
 
-Project knowledge lives in `docs/`: topics in `docs/topics/`, change definitions in `docs/changes/<slug>/`, implementation plans in `docs/plans/`, and ADRs in `docs/decisions/`. Each document is author-owned, with no generated copy. `.awf/` retains project-level agent guidance, local effort memory, and launch infrastructure.
+AWF generates four substantive skills for Pi and Claude, the root `awf` wrapper, `.awf/bootstrap.sh`, `.awf/.gitignore`, and `.awf/VERSION` from embedded content. Workflow pages and skill bodies share one canonical instruction source. A leading AWF marker identifies generated ownership except for the exact reserved `.awf/VERSION` path. That record reports the renderer's version; the bootstrap, not the record, selects the binary.
 
-Never edit a generated file as its source, including the markerless `CLAUDE.md` import. Edit `.awf/project.md` or the applicable topic, then run the repository's AWF command:
+Do not edit generated files as their source. Use the repository's documented AWF runner to refresh and check them; examples use `./awf`:
 
 ```sh
 ./awf render
 ./awf check
 ```
 
-Commit the sources and generated outputs together. `render` replaces current marked outputs and recognizes the exact markerless `CLAUDE.md` import, but refuses any other unmarked collision. It reports retired marked files without deleting them. `check` validates the working-tree AWF sources and generated files; it does not validate the repository's complete integration, staged snapshot, Git history, or project-specific behavior.
+`init` is a first-install entrypoint to the same generation. Render replaces regular marked outputs and the reserved version record, refuses other unmarked collisions, and reports retired marked files without deleting them. Check validates topics and working-tree generated output; it does not prove overall repository integration, a staged snapshot, Git history, or project-specific behavior. Review and commit related authored and generated changes together.
 
-## Guides
+## Discover guides
 
-Read a guide when its workflow becomes relevant:
+Read the workflow relevant to the task, through native AWF skills or the CLI. Reuse established guidance rather than reloading it before every action:
 
 ```text
-awf docs integration  adopt AWF, integrate repository-owned hooks and CI, update versions, or repair integration
-awf docs topics       discover, author, and maintain path-routed current project knowledge
-awf docs effort       use effort memory, change definitions, plans, ADRs, and manual worktree conventions
+awf docs integration  adopt AWF, update versions, connect repository automation, or repair integration
+awf docs agents       author concise repository instructions and optional Claude support
+awf docs topics       discover, read, and maintain path-routed current knowledge
+awf docs effort       keep continuity, memory, notes, and worktree handoffs
+awf docs changes      define substantial changes and use optional intent, spec, plan, and ADR documents
+awf docs completion   verify, commit, review findings, and perform applicable integration and cleanup
 ```
 
-The guides are embedded in the binary and work before initialization and without Git, repository sources, external skills, services, or network access. Reading them does not initialize, render, repin, or otherwise modify a repository. Navigate between pages with `awf docs ...`; their canonical Markdown sources live in `internal/docs/` in AWF's own repository, not in an adopter's checkout.
+Completion applies even without an effort. Small self-contained changes without worktree isolation can remain effort-free; continuity across stages, sessions, or handoffs and implementation worktrees use coordinating efforts.
 
-Use `awf new` to create effort, intent, spec, plan, ADR, or topic starters. Intent and specification share a change folder and provide the basis for each independent plan or ADR the change needs. Each document is optional and independent of effort memory; AWF does not derive or link them automatically. See `awf docs effort` for their distinct roles and lifecycles and `awf docs topics` for topic creation and informational coverage inspection.
+Guides are embedded in the binary and work before installation, without Git, repository sources, external skills, or network access. Reading them does not initialize, render, repin, or otherwise modify a repository. Navigate with `awf docs ...`; their canonical Markdown lives under `internal/docs/` in AWF's repository, not in an adopter checkout.
+
+Use `awf new` for create-only starters. Documents and their relationships are optional and author-owned, not derived or synchronized by AWF. Effort contents remain opaque local state. Existing installations should read `awf docs integration` before retiring old sources or transferring generated agent guides to author ownership.

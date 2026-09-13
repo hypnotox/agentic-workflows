@@ -74,6 +74,9 @@ func TestDocsAvailableWithoutProjectStateOrMutation(t *testing.T) {
 		{name: "integration", args: []string{"docs", "integration"}},
 		{name: "topics", args: []string{"docs", "topics"}},
 		{name: "effort", args: []string{"docs", "effort"}},
+		{name: "agents", args: []string{"docs", "agents"}},
+		{name: "changes", args: []string{"docs", "changes"}},
+		{name: "completion", args: []string{"docs", "completion"}},
 	}
 	for _, page := range pages {
 		want, ok := awfdocs.Page(page.name)
@@ -107,7 +110,7 @@ func TestDocsAvailableWithoutProjectStateOrMutation(t *testing.T) {
 func TestDocsHelpAndUsage(t *testing.T) {
 	for _, args := range [][]string{{"docs", "--help"}, {"help", "docs"}} {
 		code, stdout, stderr := runCLI(t, t.TempDir(), args...)
-		if code != 0 || stderr != "" || !strings.Contains(stdout, "awf docs [integration|topics|effort]") {
+		if code != 0 || stderr != "" || !strings.Contains(stdout, "awf docs [integration|agents|topics|effort|changes|completion]") {
 			t.Errorf("%v = code %d, stdout %q, stderr %q", args, code, stdout, stderr)
 		}
 	}
@@ -124,7 +127,7 @@ func TestInitRenderCheckRoundTripWithoutGit(t *testing.T) {
 	t.Setenv("PATH", t.TempDir())
 
 	code, stdout, stderr := runCLI(t, root, "init")
-	if code != 0 || stderr != "" || !strings.Contains(stdout, "rendered: AGENTS.md") {
+	if code != 0 || stderr != "" || !strings.Contains(stdout, "rendered: .awf/VERSION") {
 		t.Fatalf("init = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".git")); !errors.Is(err, fs.ErrNotExist) {
@@ -338,9 +341,13 @@ func TestUsageAndOperationalFailuresUseStderr(t *testing.T) {
 	if code != 2 || stdout != "" || !strings.Contains(stderr, "unknown command") {
 		t.Fatalf("unknown = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
-	code, stdout, stderr = runCLI(t, t.TempDir(), "check")
-	if code != 1 || stdout != "" || !strings.Contains(stderr, ".awf/project.md") {
-		t.Fatalf("check without source = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	root := t.TempDir()
+	if err := os.WriteFile(filepath.Join(root, ".awf"), []byte("not a directory"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, stdout, stderr = runCLI(t, root, "check")
+	if code != 1 || stdout != "" || !strings.Contains(stderr, ".awf/") {
+		t.Fatalf("check with filesystem error = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 }
 

@@ -1,5 +1,7 @@
 # Working with topics
 
+Use this workflow when discovering, reading, or maintaining applicable project knowledge. Reuse it during the task rather than loading it before every action.
+
 Topics are AWF's current project-knowledge layer. Each `docs/topics/**/*.md` file owns one body of current guidance and the positive path selectors that make it relevant. AWF returns source locations so readers use the authored files rather than generated copies. Other Markdown under `docs/`, including plans and decisions, is not topic input.
 
 ## Discover applicable context
@@ -78,4 +80,4 @@ After source edits:
 ./awf check
 ```
 
-Review the source and generated diff and commit them together. Topic sources remain authoritative even though generated AGENTS and skills provide discovery cues. Use `awf docs integration` for ownership collisions, CI, and version updates.
+Review the source and generated diff and commit them together. Topic sources remain authoritative; they are not copied into generated guidance. Agent instructions are author-owned, and the generated topic skill shares this workflow. Use `awf docs integration` for ownership collisions, CI, and version updates.

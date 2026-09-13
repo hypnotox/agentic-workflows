@@ -5,14 +5,17 @@ import "embed"
 
 // pages is the complete public documentation set.
 //
-//go:embed overview.md integration.md topics.md effort.md
+//go:embed overview.md integration.md agents.md topics.md effort.md changes.md completion.md
 var pages embed.FS
 
 var pageFiles = map[string]string{
 	"":            "overview.md",
 	"integration": "integration.md",
+	"agents":      "agents.md",
 	"topics":      "topics.md",
 	"effort":      "effort.md",
+	"changes":     "changes.md",
+	"completion":  "completion.md",
 }
 
 // Page returns one named documentation page. The empty name selects the overview.

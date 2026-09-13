@@ -1,6 +1,9 @@
 ---
 paths:
   - 'internal/projector/**'
+  - 'internal/docs/docs.go'
+  - 'internal/docs/overview.md'
+  - 'internal/docs/agents.md'
   - 'AGENTS.md'
   - 'CLAUDE.md'
   - '.pi/skills/**'
@@ -8,14 +11,21 @@ paths:
   - 'awf'
   - '.awf/bootstrap.sh'
   - '.awf/.gitignore'
+  - '.awf/VERSION'
 ---
 
 # Projection and ownership
 
-`.awf/project.md` has `format: 2` frontmatter and an opaque Markdown body. `init` creates it from the embedded starter at `internal/projector/templates/project.md`, and AWF copies every body byte literally into the fixed `AGENTS.md` frame. The source format also fixes canonical topic discovery at `docs/topics/`; old source formats are rejected before projection or resolution. The shared frame in `internal/projector/templates/AGENTS.md`, embedded and rendered by `internal/projector/build.go`, owns the effort-adoption rule and default agent commit cadence, independent of external skills; repository instructions may override them. Generated output is never an input.
+`internal/projector.Build` produces a fixed output set from embedded AWF content, independently of authored repository instructions and topics. `init` is a thin entrypoint to the same generation as `render`; neither creates a project descriptor or agent guide. `AGENTS.md` and optional `CLAUDE.md` are author-owned, without a required layout or a publisher special case for the Claude import.
 
-The output set is fixed in `internal/projector`: `AGENTS.md`, `CLAUDE.md`, Pi and Claude topic and effort skills, `.awf/.gitignore`, the root wrapper, and `.awf/bootstrap.sh`. Pi and Claude outputs are always present. The wrapper and bootstrap are always present. `AGENTS.md` carries direct `docs` routes, while `CLAUDE.md` contains exactly `@AGENTS.md`; the skills keep their identities but are concise just-in-time entrypoints to the embedded topic and effort guides.
+All projected content lives in `internal/projector/templates/*.tmpl`. Go supplies runtime values and canonical workflow Markdown, executes templates, and publishes/checks outputs. The downloader template owns both the marked repository bootstrap and the release-only unmarked public launcher. Keep shell content, skill frontmatter, ignore rules, and version-record formatting in templates, not Go string literals. Ownership-marker constants in Go recognize the file contract; the templates own their emitted representation.
 
-An exact leading AWF comment marks generated ownership except for the markerless `CLAUDE.md` import. `render` may create a missing destination or replace a regular marked destination; it also recognizes an existing `CLAUDE.md` only when its bytes exactly match `@AGENTS.md`. Any other unmarked collision is refused. It writes complete files by temporary file and rename. It never deletes retired outputs. Instead, it succeeds and reports marked files outside the current output set, except beneath non-root nested repository roots identified by their own `.git` directory or worktree-style file. This boundary is filesystem-only and does not invoke Git or consult ignore rules. Removing a reported file or its AWF marker is the adopter's explicit cleanup.
+`internal/docs/` owns the embedded CLI guides. Its topic, effort, changes, and completion Markdown also supplies the complete bodies of the four generated skills under both `.pi/skills/` and `.claude/skills/`. Skill templates own applicability descriptions and frontmatter, not a second copy of workflow instructions. The guides use CLI navigation and tell readers to use the repository's documented runner, so generated skills do not depend on adopter-local copies of `internal/docs/`.
 
-`check` validates sources, compares the fixed output bytes and executable class, accepts the exact markerless `CLAUDE.md` import, and fails for unmanaged marked files. Author-owned topics in `docs/topics/`, change definitions in `docs/changes/`, plans in `docs/plans/`, and decisions in `docs/decisions/` do not join the output inventory or ownership-marker scan. `render` leaves them untouched. Topic selectors are validated for routing; change definitions, plans, decisions, and effort residents remain opaque. The generated bootstrap and release-only public launcher are rendered from the same embedded downloader template, but `awf.sh` is not an adopter output. There is no lock, ownership history, migration state, or Git input.
+The other fixed outputs are `.awf/.gitignore`, `awf`, `.awf/bootstrap.sh`, and `.awf/VERSION`. The version record contains the running renderer's embedded version. Its exact path is reserved AWF-owned metadata: render may replace an older or arbitrary regular value without a marker. It supplies no configuration, binary-selection pin, or command prerequisite. The bootstrap still selects the pinned binary.
+
+For other outputs, a leading AWF comment establishes generated ownership. Render creates missing files or replaces regular marked destinations, refuses unmarked collisions and non-regular destinations, and writes complete files by temporary file and rename. It never deletes retired files. It reports marked files outside the fixed set; an adopter must deliberately delete them or remove their marker. This includes retired generated agent guides until their ownership transition is complete.
+
+The marker scan prunes non-root nested repositories with their own `.git` directory or worktree-style file. It also excludes authored topics, change definitions, plans, decisions, and opaque effort residents. This boundary is filesystem-only, without Git or ignore-rule evaluation. There is no ownership history, lock, migration state, or configurable output registry.
+
+`render` and `check` validate topics directly; `check` additionally compares generated bytes and executable class, detects missing/stale version metadata, and fails for retired marked files. Recognized retired source locations `.awf/project.md` and `.awf/topics/` block generation and topic loading with a manual migration route rather than silently losing guidance. The embedded integration guide owns reconciliation of authored and unrendered instructions, old topic layouts, and the reserved version destination. There is no project body composition, source-format parser, or old-location fallback.

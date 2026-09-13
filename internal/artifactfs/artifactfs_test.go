@@ -111,7 +111,6 @@ func TestNewTopicRoundTripsAuthoredSelectorMeaning(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	writeProject(t, root)
 	selectors := []string{"./**", `src\**\*.go`}
 	relative, err := NewTopic(root, "code/go", selectors)
 	if err != nil {
@@ -134,15 +133,15 @@ func TestNewTopicRoundTripsAuthoredSelectorMeaning(t *testing.T) {
 		}
 	}
 
-	sources, err := projector.Load(root)
+	topics, err := projector.LoadTopics(root)
 	if err != nil {
 		t.Fatal(err)
 	}
-	if len(sources.Topics) != 1 || sources.Topics[0].ID != "code/go" || sources.Topics[0].Global {
-		t.Fatalf("loaded topic = %#v", sources.Topics)
+	if len(topics) != 1 || topics[0].ID != "code/go" || topics[0].Global {
+		t.Fatalf("loaded topic = %#v", topics)
 	}
-	if want := []string{"**", "src/**/*.go"}; !reflect.DeepEqual(sources.Topics[0].Paths, want) {
-		t.Fatalf("normalized paths = %v, want %v", sources.Topics[0].Paths, want)
+	if want := []string{"**", "src/**/*.go"}; !reflect.DeepEqual(topics[0].Paths, want) {
+		t.Fatalf("normalized paths = %v, want %v", topics[0].Paths, want)
 	}
 	matches, err := projector.Resolve(root, nil)
 	if err != nil || len(matches) != 0 {
@@ -170,7 +169,6 @@ func TestNewTopicExplicitGlobalRemainsGlobal(t *testing.T) {
 	t.Parallel()
 
 	root := t.TempDir()
-	writeProject(t, root)
 	if _, err := NewTopic(root, "global", []string{"**"}); err != nil {
 		t.Fatal(err)
 	}
@@ -259,17 +257,6 @@ func TestInvalidArtifactInputsDoNotCreateMisleadingFiles(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(root, "docs", "topics")); !os.IsNotExist(err) {
 			t.Errorf("invalid topic created source directory: %v", err)
 		}
-	}
-}
-
-func writeProject(t *testing.T, root string) {
-	t.Helper()
-	filename := filepath.Join(root, ".awf", "project.md")
-	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
-		t.Fatal(err)
-	}
-	if err := os.WriteFile(filename, []byte("---\nformat: 2\n---\nbody\n"), 0o644); err != nil {
-		t.Fatal(err)
 	}
 }
 

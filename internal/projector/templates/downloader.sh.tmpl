@@ -1,8 +1,12 @@
 #!/usr/bin/env bash
-# @@PURPOSE@@
-set -euo pipefail
+{{if .Repository}}{{template "text-marker"}}
+# Fetch a pinned AWF release, verify it, cache it, and print its binary path.
+{{else}}# Fetch this AWF release, verify it, cache it, and run the requested command.
+{{end}}set -euo pipefail
 
-@@VERSION_ASSIGNMENT@@
+{{if .Repository}}AWF_VERSION="${AWF_VERSION:-{{.Version}}}"
+{{else}}AWF_VERSION="{{.Version}}"
+{{end -}}
 repo="hypnotox/agentic-workflows"
 cache_dir="${XDG_CACHE_HOME:-$HOME/.cache}/awf/${AWF_VERSION}"
 binary="${cache_dir}/awf"
@@ -40,4 +44,6 @@ if [ ! -x "$binary" ]; then
   trap - EXIT
 fi
 
-@@FINAL_ACTION@@
+{{if .Repository}}printf '%s\n' "$binary"
+{{else}}exec "$binary" "$@"
+{{end -}}

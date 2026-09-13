@@ -1,6 +1,6 @@
 # Migrating from AWF v0.50
 
-AWF's source format 2 is a manual simplification, not an in-place upgrade. Convert each repository on an ordinary review branch with the new binary available directly. Do not run the old `awf upgrade` flow against the new release. Repositories already using source format 1 should instead follow `awf docs integration` from the target binary.
+AWF's fixed skills and author-owned guidance model is a manual simplification, not an in-place upgrade. Convert each repository on an ordinary review branch with the new binary available directly. Do not run the old `awf upgrade` flow against the new release. Repositories already using `.awf/project.md` (former formats 1 or 2) should instead follow `awf docs integration` from the target binary.
 
 ## 1. Preserve repository-owned content
 
@@ -15,21 +15,19 @@ Before removing the v0.50 machinery, identify content the repository still owns:
 
 Do not copy AWF's generated governance boilerplate merely because it appears in the rendered guide. Preserve repository-specific instructions and useful current facts. Executable custom behavior belongs in a repository-owned script, not in Markdown.
 
-## 2. Create the new sources
+## 2. Preserve direct guidance and complete topics
 
-Create `.awf/project.md`:
+Reconcile useful repository instructions directly in author-owned `AGENTS.md`. Remove its generated ownership marker and superseded shared workflow prose; AWF no longer generates it. Use `awf docs agents` for authoring guidance. A small illustrative starting point is:
 
 ```markdown
----
-format: 2
----
-
 # Project guidance
 
 You are a coding agent responsible for developing and maintaining this project. Own both the immediate task and the project's long-term health.
 
 Add the repository's identity, invariants, workflow, routine commands, and documentation pointers here.
 ```
+
+Keep useful Claude-specific instructions and any `@AGENTS.md` import in an optional author-owned `CLAUDE.md`, removing old ownership markers. Neither agent file requires a layout or becomes an AWF output.
 
 Create one file per retained topic at `docs/topics/<id>.md`:
 
@@ -69,11 +67,13 @@ git config --get core.hooksPath
 
 Remove obsolete calls to old AWF hook commands while preserving unrelated repository checks and dispatch behavior. If `core.hooksPath` points to a retired AWF-owned directory, deliberately replace or unset it only after retaining any repository-owned hooks it still serves. The new AWF does not edit hook scripts, activate hooks, change Git configuration, or perform this cleanup.
 
-After preservation, remove the v0.50 configuration and generated-source machinery, including the old config, lock, parts, metadata, catalogs, obsolete AWF hook files, and upgrade scripts. Also remove or unmark the old generated `.awf/efforts/.gitignore`, `.awf/worktrees/.gitignore`, and `.awf/effort-archive/.gitignore`; the new projector replaces them with `.awf/.gitignore`. Keep detached project documents as ordinary files with AWF ownership and edit-control comments removed.
+After preservation, remove the v0.50 configuration and generated-source machinery, including the old config, lock, parts, metadata, catalogs, obsolete AWF hook files, and upgrade scripts. Remove the retired `.awf/topics/` tree once every retained topic has a complete author-owned home under `docs/topics/`. Do not create a `.awf/project.md` replacement descriptor. Also remove or unmark the old generated `.awf/efforts/.gitignore`, `.awf/worktrees/.gitignore`, and `.awf/effort-archive/.gitignore`; the new projector replaces them with `.awf/.gitignore`. Keep detached project documents as ordinary files with AWF ownership and edit-control comments removed.
 
 Do not delete ignored effort contents or native Git worktrees as part of this source cleanup. New AWF effort commands use `.awf/efforts/<slug>/memory.md` when present and treat extra resident files as opaque. Git worktrees are now entirely user-managed.
 
 ## 4. Render with the new binary
+
+Inspect `.awf/VERSION` before rendering. This exact path is now reserved AWF-owned metadata and can be replaced without a marker; preserve any unrelated existing content elsewhere. The record reports the running renderer's version, not configuration or a binary-selection pin.
 
 Invoke the downloaded new binary directly because the old repository wrapper still selects v0.50:
 
@@ -89,7 +89,7 @@ The first render replaces the fixed v0.50 outputs whose legacy AWF marker is sti
 - delete it when it is obsolete generated output, or
 - remove the AWF ownership comment when it should remain repository-owned.
 
-Repeat until `check` succeeds. An unmarked file at a fixed destination is an explicit collision unless it is `CLAUDE.md` containing exactly `@AGENTS.md`; preserve or move colliding content, then delete the destination if AWF should generate it.
+Repeat until `check` succeeds. An unmarked file at a fixed destination is an explicit collision except for reserved `.awf/VERSION`; preserve or move colliding content, then delete the destination if AWF should generate it. `AGENTS.md` and `CLAUDE.md` are not fixed destinations and remain untouched.
 
 Use the new binary's context query when reviewing converted topics:
 
@@ -109,13 +109,13 @@ Review the complete Git diff, especially the new project guidance, every retaine
 /path/to/new/awf check
 ```
 
-Run the repository's normal tests or gate. Commit `.awf/project.md`, `docs/topics/`, and fixed generated outputs together.
+Run the repository's normal tests or gate and follow `awf docs completion`. Commit author-owned agent guidance, `docs/topics/`, and fixed generated outputs together.
 
 ## Peer-agent handoff
 
 Assign one repository per agent or clearly partition repositories. Give the agent the new release binary and require a short report containing:
 
-- project guidance preserved in `.awf/project.md`;
+- project guidance preserved in author-owned `AGENTS.md` and useful Claude instructions retained;
 - topics converted into `docs/topics/`;
 - documents detached and retained;
 - obsolete generated files deleted;

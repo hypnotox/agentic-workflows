@@ -1,0 +1,6 @@
+#!/usr/bin/env bash
+{{template "text-marker"}}
+set -euo pipefail
+
+binary="$(bash .awf/bootstrap.sh)"
+exec "$binary" "$@"

@@ -52,7 +52,7 @@ EOF
 chmod 0755 "$root/fake-bin/curl"
 
 tar -xzf "$archive" -C "$root/bin"
-for guide in overview integration topics effort; do
+for guide in overview integration agents topics effort changes completion; do
   [ -f "$root/bin/internal/docs/$guide.md" ] || { echo "native-release-test: missing internal/docs/$guide.md" >&2; exit 1; }
 done
 candidate="$root/bin/awf"
@@ -66,8 +66,10 @@ AWF_VERSION=0.0.0 bash "$launcher" docs integration > "$root/integration.md"
 cmp "$root/bin/internal/docs/integration.md" "$root/integration.md"
 bash "$launcher" docs > "$root/overview.md"
 cmp "$root/bin/internal/docs/overview.md" "$root/overview.md"
-bash "$launcher" docs effort > "$root/effort.md"
-cmp "$root/bin/internal/docs/effort.md" "$root/effort.md"
+for guide in agents topics effort changes completion; do
+  bash "$launcher" docs "$guide" > "$root/$guide.md"
+  cmp "$root/bin/internal/docs/$guide.md" "$root/$guide.md"
+done
 [ ! -e .awf ]
 cache_binary="$XDG_CACHE_HOME/awf/$expected_version/awf"
 [ -x "$cache_binary" ]
@@ -78,6 +80,17 @@ cmp "$candidate" "$cache_binary"
 # Once cached, both public and repository entrypoints must work without downloading.
 export AWF_FAKE_OFFLINE=1
 bash "$launcher" init
+[ ! -e .awf/project.md ]
+[ ! -e AGENTS.md ]
+[ ! -e CLAUDE.md ]
+[ "$(cat .awf/VERSION)" = "$expected_version" ]
+[ "$(bash "$launcher" init)" = 'render: up to date' ]
+for harness in .pi .claude; do
+  for workflow in topics effort changes completion; do
+    [ -s "$harness/skills/awf-$workflow/SKILL.md" ]
+    cmp ".pi/skills/awf-$workflow/SKILL.md" "$harness/skills/awf-$workflow/SKILL.md"
+  done
+done
 [ "$(bash .awf/bootstrap.sh)" = "$cache_binary" ]
 override_version=9.8.7
 override_binary="$XDG_CACHE_HOME/awf/$override_version/awf"
@@ -125,9 +138,24 @@ EOF
 [ "$("$candidate" resolve)" = $'global\tdocs/topics/global.md' ]
 [ "$("$candidate" resolve src/future/main.go)" = $'code/go\tdocs/topics/code/go.md\nglobal\tdocs/topics/global.md' ]
 [ "$("$candidate" resolve --coverage src/future/main.go missing/file)" = $'globals:\n  global\tdocs/topics/global.md\npath: "missing/file"\n  none\npath: "src/future/main.go"\n  code/go\tdocs/topics/code/go.md' ]
-printf '\nNative smoke guidance.\n' >> .awf/project.md
+printf '# Native smoke guidance\nKeep authored instructions.\n' > AGENTS.md
+printf '@AGENTS.md\nClaude-specific guidance.\n' > CLAUDE.md
+cp AGENTS.md "$root/expected-agents"
+cp CLAUDE.md "$root/expected-claude"
+# The record is drift metadata, not configuration or a binary selector.
+printf '0.0.0\n' > .awf/VERSION
+[ "$(bash .awf/bootstrap.sh)" = "$cache_binary" ]
+[ "$("$candidate" resolve src/future/main.go)" = $'code/go\tdocs/topics/code/go.md\nglobal\tdocs/topics/global.md' ]
+if "$candidate" check > "$root/stale-version.out"; then
+  echo "native-release-test: stale version record unexpectedly passed" >&2
+  exit 1
+fi
+grep '^.awf/VERSION:' "$root/stale-version.out" >/dev/null
 "$candidate" render
 "$candidate" check
+[ "$(cat .awf/VERSION)" = "$expected_version" ]
+cmp AGENTS.md "$root/expected-agents"
+cmp CLAUDE.md "$root/expected-claude"
 
 "$candidate" new effort smoke
 printf 'opaque effort memory\000\377\n' > .awf/efforts/smoke/memory.md

@@ -31,7 +31,7 @@ type Coverage struct {
 // Resolve returns explicit global topics and every topic matching at least one
 // lexical repository-relative path. The target paths do not need to exist.
 func Resolve(root string, values []string) ([]TopicMatch, error) {
-	sources, err := Load(root)
+	topics, err := LoadTopics(root)
 	if err != nil {
 		return nil, err
 	}
@@ -41,7 +41,7 @@ func Resolve(root string, values []string) ([]TopicMatch, error) {
 	}
 
 	matches := make([]TopicMatch, 0)
-	for _, topic := range sources.Topics {
+	for _, topic := range topics {
 		matched := topic.Global
 		for _, value := range normalized {
 			if pathglob.MatchAny(topic.Paths, value) {
@@ -63,7 +63,7 @@ func ResolveCoverage(root string, values []string) (Coverage, error) {
 	if len(values) == 0 {
 		return Coverage{}, fmt.Errorf("coverage requires at least one path")
 	}
-	sources, err := Load(root)
+	topics, err := LoadTopics(root)
 	if err != nil {
 		return Coverage{}, err
 	}
@@ -75,14 +75,14 @@ func ResolveCoverage(root string, values []string) (Coverage, error) {
 	normalized = compactStrings(normalized)
 
 	result := Coverage{Paths: make([]PathCoverage, 0, len(normalized))}
-	for _, topic := range sources.Topics {
+	for _, topic := range topics {
 		if topic.Global {
 			result.Globals = append(result.Globals, topicMatch(topic))
 		}
 	}
 	for _, value := range normalized {
 		entry := PathCoverage{Path: value}
-		for _, topic := range sources.Topics {
+		for _, topic := range topics {
 			if !topic.Global && pathglob.MatchAny(topic.Paths, value) {
 				entry.Matches = append(entry.Matches, topicMatch(topic))
 			}

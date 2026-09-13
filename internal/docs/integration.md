@@ -1,37 +1,61 @@
 # Integrating AWF
 
-Use this guide to adopt AWF in an existing repository, connect its check to repository-owned automation, update the pinned release, or repair a partial integration. AWF owns its fixed outputs, all marked except the exact `@AGENTS.md` import in `CLAUDE.md`, and implements topic resolution, local effort memory, and optional scaffolds. AWF supplies default agent commit guidance in the shared generated `AGENTS.md` frame. The repository owns authored guidance, local commit conventions and overrides, hooks, CI, gates, and every Git configuration change. Agents execute Git operations under those conventions; the CLI performs no Git operations.
+Use this guide to adopt AWF, connect its check to repository-owned automation, update a pinned release, or repair an integration. AWF generates its own fixed skills and launch infrastructure. Repository agent instructions and project knowledge remain author-owned. The repository owns hooks, CI, gates, commit conventions, and every Git operation or configuration change; AWF does not manage them.
 
-## Read guidance before initialization
+## Read before installation
 
-The public launcher for a published release downloads that release's archive and checksums, verifies the binary, caches it, forwards the requested arguments, and returns the binary's exit status:
+The public launcher downloads its concrete release's archive and checksums, verifies and caches the binary, forwards arguments, and returns the binary's exit status:
 
 ```sh
 curl -fsSL https://github.com/hypnotox/agentic-workflows/releases/latest/download/awf.sh | bash -s -- docs integration
 ```
 
-This documentation command does not change the current directory or repository. Run later commands from the repository root. The launcher mutates a repository only when you explicitly request a mutating command such as `init`.
+Reading documentation does not modify or repin a repository. Run mutating commands from the repository root. Once the pinned binary is available, AWF needs no Git, external skills, services, or network access.
 
-## Adopt an existing repository
+## Adopt a repository
 
-1. Inspect the repository before writing anything:
-   - read existing agent instructions and contributor documentation;
-   - inspect `.awf/project.md`, `docs/topics/`, any older `.awf` sources, and fixed generated destinations;
-   - inspect hook scripts, `git config --get core.hooksPath`, CI, and the repository's normal checks;
-   - identify useful repository-specific guidance and current implementation knowledge.
-2. Preserve useful authored guidance in `.awf/project.md` and applicable `docs/topics/**/*.md` sources before giving AWF ownership of a fixed generated destination. Do not copy obsolete generated boilerplate merely because it exists.
-3. For a repository with no AWF sources, run the selected release binary with `init`. For a repository whose `.awf/project.md` and topics already use the accepted source format, run `render` instead. Follow the migration procedure below for format 1. `init` creates `.awf/project.md` and then renders; it is not a general retry command.
-4. If either command stops after partial effects, inspect its output and the repository diff. Preserve every file already written, correct the reported collision or invalid source, then continue with `render` when `.awf/project.md` now exists. Do not blindly rerun `init` after it created that source.
-5. Edit the sources, run `render` and `check`, and review the complete diff. Use `awf docs topics` for selector and maintenance rules.
-6. Run the repository's existing tests or gate. Commit `.awf/project.md`, topic sources, and generated outputs together.
+1. Inspect existing agent and contributor instructions, topics, older `.awf` sources, and fixed generated destinations. Inspect repository checks, hook scripts, CI, and the effective hook location (`git config --get core.hooksPath` in Git repositories).
+2. Keep useful repository instructions in author-owned `AGENTS.md` and applicable current knowledge in `docs/topics/**/*.md`. Use `awf docs agents` for concise authoring guidance and optional Claude support. Neither `AGENTS.md` nor `CLAUDE.md` is created or replaced by AWF. If older AWF sources or generated guides exist, perform the ownership transition below before rendering.
+3. Inspect `.awf/VERSION`: this exact path is reserved for AWF's renderer-version record and may be replaced even without a marker. Preserve or move any unrelated existing content before giving AWF that destination. It is not configuration, a binary pin, or a prerequisite for commands.
+4. Run the selected binary's `init`. It performs the same generation as `render`, creates no descriptor or agent guide, and can be repeated under ordinary render ownership rules.
+5. Run `render` and `check`, review the full diff, and run the repository's tests or gate. Commit the author-owned guidance, topics, and generated outputs together.
 
-An unmarked file at a fixed destination is repository-owned and AWF refuses to overwrite it, except that an existing `CLAUDE.md` containing exactly `@AGENTS.md` is already the complete markerless generated output. Transfer ownership explicitly: first preserve useful content in AWF sources or another repository-owned file, then remove or move the destination and render the generated replacement. Never add an AWF marker to content that has not been reconciled with its source.
+The fixed outputs are four skills under both `.pi/skills/` and `.claude/skills/`, the root `awf` wrapper, `.awf/bootstrap.sh`, `.awf/.gitignore`, and `.awf/VERSION`. A leading AWF comment marks ownership except for the reserved version record. Both harnesses receive the same canonical workflow instructions; the CLI guides remain available without native skills.
 
-## Add the working-tree check to automation
+Rendering refuses non-regular destinations and unmarked collisions other than `.awf/VERSION`. To give AWF a colliding destination, first preserve useful content elsewhere, then remove or move the destination deliberately. Do not add an AWF marker to unreconciled authored content. If generation stops after partial writes, inspect the output and diff, retain valid files, correct the reported problem, and rerun `render`. AWF never automatically deletes retired output.
 
-Add `./awf check` to the repository's existing gate and CI after the checkout is available. Keep source edits, rendering, review, staging, and commits explicit; neither `check` nor a hook performs them. For agents, explicit commits are deliberate agent-run Git operations, not operations that require a separate user request.
+## Transition existing installations
 
-An optional repository-owned pre-commit hook can be as small as:
+Use the target binary directly during an incompatible transition; the old repository wrapper still selects its old release. Read its guides first. Conversion is manual and bounded to the known old layouts, not an automatic migration.
+
+For installations with `.awf/project.md`:
+
+1. Reconcile its body with the current `AGENTS.md`, including useful edits in either file and **unrendered descriptor edits**. Keep repository-specific instructions in `AGENTS.md`; remove superseded shared workflow prose now delivered by skills and CLI guides. Do not blindly render the old source over authored edits or discard the descriptor before comparison.
+2. Remove the generated ownership marker from the retained `AGENTS.md`. Preserve useful Claude instructions; a retained `CLAUDE.md`, including an existing `@AGENTS.md` import, is now author-owned. Remove any old ownership marker there too. Neither file needs a particular layout.
+3. Retire `.awf/project.md` after preserving its useful content. There is no replacement descriptor or format field.
+
+Inspect `.awf/topics/` even if no descriptor remains. For the former format-1 layout, move its topic Markdown to `docs/topics/`, preserving nested paths and reconciling existing destinations without overwriting useful content. Topic selector semantics are unchanged. Repair references and relative links; selectors remain repository-relative, so change only selectors that actually refer to relocated paths. Remove the old location after reconciliation, including an empty retired directory.
+
+The older v0.50 layout split topic selectors and prose under `.awf/topics/metadata/` and `.awf/topics/parts/`. Follow `MIGRATING-v0.50.md` in the release archive or the [repository copy](https://github.com/hypnotox/agentic-workflows/blob/main/MIGRATING-v0.50.md) to combine them and preserve other authored overrides. Do not move that split layout as though each file were a complete topic. Inspect legacy hooks and remove obsolete AWF calls while retaining unrelated behavior. Change or unset hook configuration only through an explicit repository decision.
+
+`init`, `render`, `check`, and topic resolution report an actionable migration error while `.awf/project.md` or `.awf/topics/` remains; they never silently ignore that guidance. Documentation and artifact/effort commands remain available. There is no old-location fallback or format parser.
+
+Inspect the reserved `.awf/VERSION` destination, then render and check with the target binary:
+
+```sh
+/path/to/new/awf render
+/path/to/new/awf check
+/path/to/new/awf resolve
+/path/to/new/awf resolve <relevant-path>...
+```
+
+Review reported retired marked files. Delete obsolete ones deliberately or remove their marker to retain them as author-owned content. Preserve tracked change documents, decisions, plans, local effort memory, archives, and worktrees throughout the transition. Run the repository's checks and commit the reconciled result. Rendering updates the bootstrap pin for later wrapper commands. In AWF's own checkout, use `./x` to execute the target checkout source.
+
+## Connect checks to automation
+
+Add `./awf check` to the repository's existing gate and CI after checkout. It validates topic sources, generated bytes, executable state, and retired ownership markers in the working tree. It does not validate an isolated staged snapshot or prove overall integration. Keep source edits, rendering, review, staging, and commits explicit.
+
+An optional repository-owned pre-commit hook can be:
 
 ```sh
 #!/bin/sh
@@ -39,70 +63,36 @@ set -eu
 exec ./awf check
 ```
 
-Make the script executable and integrate it into the repository's existing hook dispatcher or configured hook directory. If the repository deliberately stores hooks in `.githooks` and has no conflicting arrangement, activation is a repository operation:
+Make it executable and integrate it into the existing hook dispatcher or configured directory. For a repository deliberately using `.githooks` with no conflicting arrangement:
 
 ```sh
 chmod +x .githooks/pre-commit
 git config core.hooksPath .githooks
 ```
 
-Do not replace an existing `core.hooksPath` or hook body without preserving its unrelated behavior. AWF does not create, activate, edit, or remove hooks. `check` examines AWF files in the current working tree; it does not validate an isolated staged commit and does not prove that hooks, CI, or the overall integration are complete.
-
-## Repair ownership and integration
-
-Use the reported path and `git diff` to distinguish these cases:
-
-- **Current marked output is stale:** run the selected binary's `render`, then review it.
-- **Unmarked fixed destination collides:** preserve its useful content, explicitly transfer or retain ownership, and only then render. A changed markerless `CLAUDE.md` is a collision; only the exact `@AGENTS.md` content is recognized.
-- **Marked file is retired:** `render` reports it and `check` fails. Delete it if obsolete, or remove the marker to retain it as repository-owned content. AWF never deletes it.
-- **Generated output and source disagree:** edit the source, not the generated destination, and render again.
-- **Integration is incomplete:** inspect the repository's gate, CI, hook scripts, executable modes, and effective `core.hooksPath`; AWF does not assess these.
-
-For repositories converted from v0.50, follow `MIGRATING-v0.50.md` in the target release archive or the [repository copy](https://github.com/hypnotox/agentic-workflows/blob/main/MIGRATING-v0.50.md). Inspect every legacy hook and the effective `core.hooksPath`. Remove obsolete AWF calls while preserving unrelated checks, and change or unset hook configuration only through an explicit repository decision. AWF performs no legacy cleanup or Git configuration.
+Preserve unrelated hook behavior and existing `core.hooksPath` configuration. AWF does not install, activate, edit, or remove hooks. Agent commits are deliberate Git operations under repository conventions; they do not normally require a separate user request. The completion workflow owns their default cadence.
 
 ## Update the pinned release
 
-Read the target release's guide before changing the repository pin. For a published exact version, use its launcher without invoking a mutating command:
+Read the target release's guide before changing the pin:
 
 ```sh
 curl -fsSL https://github.com/hypnotox/agentic-workflows/releases/download/v<target>/awf.sh | bash -s -- docs integration
 ```
 
-Reading guidance only populates the user cache; it does not repin the repository. For a compatible source format, explicitly select the target binary through the existing wrapper and render:
+For a compatible update, explicitly select the target binary through the existing wrapper:
 
 ```sh
 AWF_VERSION=<target> ./awf render
 ./awf check
 ```
 
-The target binary rewrites the committed bootstrap pin. Review and commit the source and generated changes together. Never substitute the latest release silently for a repository pin. If the target changes the source format, follow its migration guide instead of assuming a same-format render.
+The target renderer rewrites the committed bootstrap pin and `.awf/VERSION`. The version record contains the running renderer's embedded version and is checked for drift; neither its presence nor its value controls binary selection, resolution, documentation, or artifact creation. The bootstrap selects the pinned binary. Never silently substitute the latest release. For an incompatible change, follow the target's migration guide instead of assuming render is sufficient.
 
-## Migrate source format 1 to 2
+## Repair and confirm
 
-Source format 2 moves canonical topics from `.awf/topics/` to `docs/topics/`. The topic Markdown and selector syntax are unchanged. `resolve`, `render`, and `check` reject format 1 rather than silently treating its old topic directory as an empty topic set.
+Use the reported path and diff to distinguish stale marked output (render it), unmarked collisions (reconcile ownership), retired marked files (delete or unmark deliberately), and invalid topics (fix their authored source). A missing or stale version record is generated drift, repaired by render—not a request to configure AWF.
 
-Use the target format-2 binary directly from the repository root during this transition, not the old pinned repository wrapper:
+For incomplete integration, inspect repository gates, CI, hook scripts, executable modes, and effective hook configuration. AWF does not assess them. Before reporting completion, follow `awf docs completion`, including when the work uses no effort or worktree.
 
-1. Move the topics from `.awf/topics/` to `docs/topics/`, preserving nested paths and one authoritative copy. Reconcile any existing destination files deliberately without overwriting useful content. Repositories without topics need no directory move.
-2. Repair references and relative Markdown links affected by the move. Selectors remain repository-relative; change only selectors that refer to relocated paths, not all selectors merely because their topic moved.
-3. Change `.awf/project.md` frontmatter from `format: 1` to `format: 2`, preserving its body. Leave effort memory, existing plans and ADRs, worktrees, and archives untouched.
-4. Render and check with the target binary, then inspect topic resolution for the paths the moved topics should cover:
-
-   ```sh
-   /path/to/new/awf render
-   /path/to/new/awf check
-   /path/to/new/awf resolve
-   /path/to/new/awf resolve <relevant-path>...
-   ```
-
-5. Review the moved sources, repaired references, and generated diff; run the repository's normal checks and commit the transition together. Rendering updates the repository wrapper's pin for subsequent commands.
-
-There is no old-location fallback or automatic conversion. In AWF's own source repository, the embedded CLI manuals also move to `internal/docs/`; adopting repositories do not need that package or copies of those manuals.
-
-## Confirm the integrated result
-
-Use `awf docs effort` for the authoritative completion and integration procedure. It applies whether or not the work uses effort memory or worktrees.
-
-## Optional companion skills
-
-External engineering skills can complement AWF, but AWF neither installs nor requires them. The optional [`agentic-skills`](https://github.com/hypnotox/agentic-skills) package provides `agentic-planning`, `agentic-implementing`, `agentic-reviewing`, `agentic-artifact-design`, and `agentic-code-design` for general engineering methods. If a repository requires particular skills, record that requirement in its own `.awf/project.md`; keep universal recommendations here rather than in every generated frame.
+External engineering skills may complement AWF but are neither installed nor required by it. The optional [agentic-skills](https://github.com/hypnotox/agentic-skills) package supplies general engineering methods. If a repository requires external skills or shared doctrine, state that in its author-owned guidance rather than duplicating those methods in AWF workflows.

@@ -4,9 +4,9 @@
 [![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go&logoColor=white)](go.mod)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](LICENSE)
 
-`awf` is a small Go CLI that projects repository-owned agent guidance, routes paths to current topics, inspects routing coverage for chosen paths, keeps optional local effort memory, and creates optional intent, specification, plan, ADR, and topic starters.
+`awf` is a small Go CLI that delivers fixed workflow skills and embedded guides, routes paths to current topics, reports routing coverage for chosen paths, keeps optional local effort memory, and creates optional intent, specification, plan, ADR, and topic starters.
 
-AWF supplies default agent commit guidance in the shared generated `AGENTS.md` frame; agents execute Git operations under repository conventions. The CLI performs no Git operations and does not manage reviews, repository gates, hooks, CI, migrations, or document meaning. It works without Git or external agent skills once its pinned binary is available.
+Repository instructions in `AGENTS.md` and optional `CLAUDE.md` remain author-owned. Four AWF skills share their substantive instructions with the CLI guides: topics, effort continuity, change definition, and completion. The completion workflow supplies default agent commit guidance; agents execute Git operations under repository conventions. The CLI performs no Git operations and does not manage reviews, repository gates, hooks, CI, migrations, or document meaning. It works without Git or external agent skills once its pinned binary is available.
 
 ## Start
 
@@ -20,19 +20,22 @@ The launcher selects its concrete release, downloads and verifies that release's
 
 Alternatively, download an archive from the [latest release](https://github.com/hypnotox/agentic-workflows/releases/latest), extract `awf`, and run the binary directly. AWF supports Linux and macOS on amd64 and arm64.
 
-Initialization creates `.awf/project.md`, the fixed generated guidance, and a repository-local `./awf` wrapper pinned to that release. Commit sources and generated outputs together.
+Initialization installs the fixed skills, supporting infrastructure, `.awf/VERSION` renderer record, and a repository-local `./awf` wrapper pinned to that release. It creates no project descriptor or agent instruction file. Commit related authored and generated changes together.
 
 ## Documentation
 
 The authoritative adopter guides are ordinary Markdown in `internal/docs/`, embedded in every binary and readable here:
 
 - [AWF guide](internal/docs/overview.md): purpose, source/generated ownership, render/check, and guide discovery;
-- [Integration](internal/docs/integration.md): adoption, repository-owned hooks and CI, updates, and repair;
+- [Integration](internal/docs/integration.md): adoption, ownership transition, repository-owned automation, updates, and repair;
+- [Agent guidance](internal/docs/agents.md): concise author-owned `AGENTS.md` and optional Claude support;
 - [Topics](internal/docs/topics.md): path-routed current project knowledge, topic creation, and optional coverage inspection;
-- [Efforts](internal/docs/effort.md): local continuity, change definitions, implementation plans, durable ADRs, and worktrees;
+- [Efforts](internal/docs/effort.md): local continuity, notes, worktrees, and handoffs;
+- [Changes](internal/docs/changes.md): optional intent, specification, plan, and ADR documents;
+- [Completion](internal/docs/completion.md): verification, commits, retrospectives, integration, and cleanup, with or without an effort;
 - [Migrating from v0.50](MIGRATING-v0.50.md): one-time conversion and legacy cleanup.
 
-Use `./awf docs`, `./awf docs integration`, `./awf docs topics`, and `./awf docs effort` inside an adopting repository. Generated `AGENTS.md` and the Pi and Claude skill entrypoints route agents to these guides without duplicating their runbooks. Repositories using source format 1 should follow the [format-2 migration](internal/docs/integration.md#migrate-source-format-1-to-2) before updating.
+Use `./awf docs` to discover guides and `./awf docs <page>` to read one. Pi and Claude receive substantive skills derived from the same canonical workflows, not a second instruction set. Existing installations must follow the [ownership transition](internal/docs/integration.md#transition-existing-installations), including preservation of unrendered `.awf/project.md` edits and any old topic layout.
 
 ## Development
 
@@ -50,7 +53,7 @@ Project knowledge belongs in `docs/`: current implementation guidance in [`docs/
 
 ## Status
 
-AWF is pre-1.0. Source formats and generated output may change between releases; incompatible changes use explicit manual migration guidance.
+AWF is pre-1.0. Authored topic contracts and generated output may change between releases; incompatible changes use explicit manual migration guidance.
 
 ## License
 

@@ -3,7 +3,6 @@ package projector
 import (
 	"bufio"
 	"bytes"
-	_ "embed"
 	"errors"
 	"fmt"
 	"io"
@@ -13,9 +12,6 @@ import (
 	"sort"
 	"strings"
 )
-
-//go:embed templates/project.md
-var initialProjectTemplate string
 
 // RenderResult describes visible render changes and marked files AWF no longer owns.
 type RenderResult struct {
@@ -29,37 +25,18 @@ type Finding struct {
 	Message string
 }
 
-// Init creates the initial project source and renders the fixed output set.
+// Init is the first-install entrypoint to the same fixed generation as Render.
 func Init(root string) (RenderResult, error) {
-	filename := filepath.Join(root, filepath.FromSlash(projectPath))
-	if err := os.MkdirAll(filepath.Dir(filename), 0o755); err != nil {
-		return RenderResult{}, fmt.Errorf("create .awf directory: %w", err)
-	}
-	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
-	if err != nil {
-		if errors.Is(err, fs.ErrExist) {
-			return RenderResult{}, fmt.Errorf("%s already exists", projectPath)
-		}
-		return RenderResult{}, fmt.Errorf("create %s: %w", projectPath, err)
-	}
-	if _, err := io.WriteString(file, initialProjectTemplate); err != nil {
-		_ = file.Close()
-		return RenderResult{}, fmt.Errorf("write %s: %w", projectPath, err)
-	}
-	if err := file.Close(); err != nil {
-		return RenderResult{}, fmt.Errorf("close %s: %w", projectPath, err)
-	}
 	return Render(root)
 }
 
 // Render validates sources and writes the complete fixed output set. It never
 // deletes files that are no longer outputs.
 func Render(root string) (RenderResult, error) {
-	sources, err := Load(root)
-	if err != nil {
+	if _, err := LoadTopics(root); err != nil {
 		return RenderResult{}, err
 	}
-	outputs := Build(sources)
+	outputs := Build()
 	if err := preflightOutputs(root, outputs); err != nil {
 		return RenderResult{}, err
 	}
@@ -89,11 +66,10 @@ func Render(root string) (RenderResult, error) {
 
 // Check compares the fixed projection with the filesystem without changing it.
 func Check(root string) ([]Finding, error) {
-	sources, err := Load(root)
-	if err != nil {
+	if _, err := LoadTopics(root); err != nil {
 		return nil, err
 	}
-	outputs := Build(sources)
+	outputs := Build()
 	findings := make([]Finding, 0)
 	for _, output := range outputs {
 		filename := filepath.Join(root, filepath.FromSlash(output.Path))
@@ -223,7 +199,7 @@ func unmanagedMarkedFiles(root string, outputs []Output) ([]string, error) {
 			}
 			return nil
 		}
-		if managed[relative] || relative == projectPath || entry.Type()&os.ModeSymlink != 0 {
+		if managed[relative] || entry.Type()&os.ModeSymlink != 0 {
 			return nil
 		}
 		info, err := entry.Info()
@@ -282,7 +258,7 @@ func ignoredScanDirectory(relative string) bool {
 }
 
 func ownsOutput(output Output, content []byte) bool {
-	return hasOwnershipMarker(content) || (output.markerless && bytes.Equal(content, output.Bytes))
+	return output.Path == VersionPath || hasOwnershipMarker(content)
 }
 
 func hasOwnershipMarker(content []byte) bool {

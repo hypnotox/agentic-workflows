@@ -1,4 +1,4 @@
-// Command awf projects repository-owned sources into agent guidance.
+// Command awf delivers fixed workflows and routes authored project knowledge.
 package main
 
 import (
@@ -149,7 +149,7 @@ func runDocs(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if len(args) > 1 {
-		return usage(stderr, "usage: awf docs [integration|topics|effort]")
+		return usage(stderr, "usage: awf docs [integration|agents|topics|effort|changes|completion]")
 	}
 	name := ""
 	if len(args) == 1 {
@@ -157,7 +157,7 @@ func runDocs(args []string, stdout, stderr io.Writer) int {
 	}
 	page, ok := awfdocs.Page(name)
 	if !ok {
-		return usage(stderr, fmt.Sprintf("unknown documentation page %q; expected integration, topics, or effort", name))
+		return usage(stderr, fmt.Sprintf("unknown documentation page %q; expected integration, agents, topics, effort, changes, or completion", name))
 	}
 	if _, err := stdout.Write(page); err != nil {
 		return failure(stderr, err)
@@ -359,13 +359,13 @@ func failure(stderr io.Writer, err error) int {
 	return 1
 }
 
-const globalHelp = `AWF projects agent guidance and keeps lightweight local effort memory.
+const globalHelp = `AWF delivers fixed workflow skills and keeps lightweight local effort memory.
 
 Usage:
   awf <command> [arguments]
 
 Commands:
-  init       create the minimal AWF sources and projection
+  init       install the fixed generated files
   render     render the fixed generated files
   check      check sources and generated files
   resolve    find global topics or topics for repository paths
@@ -379,7 +379,7 @@ Run ` + "`awf help <command>`" + ` for command details or ` + "`awf docs`" + ` f
 
 const initHelp = `Usage: awf init
 
-Create .awf/project.md with editable starter guidance and render the fixed generated files.
+Install the same fixed files as render. Agent instructions remain author-owned; no project descriptor is created.
 Read ` + "`awf docs integration`" + ` before adopting AWF in an existing repository.
 `
 
@@ -403,7 +403,7 @@ Coverage reports explicit globals once and matching non-global topics for each d
 See ` + "`awf docs topics`" + ` for authoring, maintenance, and coverage limits.
 `
 
-const docsHelp = `Usage: awf docs [integration|topics|effort]
+const docsHelp = `Usage: awf docs [integration|agents|topics|effort|changes|completion]
 
 Print the embedded overview or one adopter guide to standard output.
 `
@@ -419,7 +419,7 @@ Commands:
   topic <id> <pattern>...  create ` + projector.TopicsPath + `/<id>.md with supplied selectors
 
 Creation never replaces an existing destination. Quote glob patterns so the shell does not expand them.
-See ` + "`awf docs effort`" + ` and ` + "`awf docs topics`" + ` for lifecycle and authoring guidance.
+See ` + "`awf docs changes`" + ` for change documents, ` + "`awf docs effort`" + ` for continuity, and ` + "`awf docs topics`" + ` for topic authoring.
 `
 
 const effortHelp = `Usage: awf effort <command>

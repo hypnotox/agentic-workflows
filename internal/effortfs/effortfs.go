@@ -2,12 +2,18 @@
 package effortfs
 
 import (
+	_ "embed"
 	"fmt"
-	"io"
 	"os"
 	"path/filepath"
 	"sort"
+	"text/template"
 )
+
+//go:embed templates/memory.md
+var memoryTemplateSource string
+
+var memoryTemplate = template.Must(template.New("memory").Parse(memoryTemplateSource))
 
 const memoryName = "memory.md"
 
@@ -44,7 +50,7 @@ func New(root, slug string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("create memory for effort %q: %w", slug, err)
 	}
-	if _, err := io.WriteString(memoryFile, starter(slug)); err != nil {
+	if err := memoryTemplate.Execute(memoryFile, slug); err != nil {
 		_ = memoryFile.Close()
 		return "", fmt.Errorf("write memory for effort %q: %w", slug, err)
 	}
@@ -172,13 +178,4 @@ func pathExists(path string) (bool, error) {
 		return false, nil
 	}
 	return false, err
-}
-
-func starter(slug string) string {
-	return "# Effort: " + slug + "\n\n" +
-		"Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.\n\n" +
-		"## Current checkpoint\n\nSummarize current progress, verification results, and remaining uncertainty. Replace stale state rather than appending a log.\n\n" +
-		"## Next action\n\nName the immediate continuation and anything genuinely blocking it, not the entire remaining plan.\n\n" +
-		"## Locations and artifacts\n\nRecord actual checkout locations and reference change definitions, plans, ADRs, and relevant work products.\n\n" +
-		"## Continuation context\n\nRetain consequential requirements, agreements, and findings needed to continue that are not recorded elsewhere. Distinguish proposals from agreements and link evidence. Keep retrospective details in notes.md.\n"
 }

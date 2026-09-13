@@ -1,4 +1,4 @@
-// Package projector loads AWF sources and projects the fixed generated surface.
+// Package projector publishes fixed AWF content and resolves authored topics.
 package projector
 
 import (
@@ -14,18 +14,8 @@ import (
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 )
 
-const (
-	// SourceFormat is the only source shape accepted by this binary.
-	SourceFormat = 2
-	// TopicsPath is the repository-relative directory of canonical topic sources.
-	TopicsPath  = "docs/topics"
-	projectPath = ".awf/project.md"
-)
-
-// Project is the opaque project-specific guidance from .awf/project.md.
-type Project struct {
-	Body []byte
-}
+// TopicsPath is the repository-relative directory of canonical topic sources.
+const TopicsPath = "docs/topics"
 
 // Topic is one path-routed current-guidance source.
 type Topic struct {
@@ -36,53 +26,29 @@ type Topic struct {
 	Body       []byte
 }
 
-// SourceTree is the complete validated source input for one operation.
-type SourceTree struct {
-	Project Project
-	Topics  []Topic
-}
-
-type projectMetadata struct {
-	Format int `yaml:"format"`
-}
-
 type topicMetadata struct {
 	Paths []string `yaml:"paths"`
 }
 
-// Load reads and validates the AWF source tree rooted at root.
-func Load(root string) (SourceTree, error) {
-	project, err := loadProject(root)
-	if err != nil {
-		return SourceTree{}, err
+// rejectLegacyLayout catches the known retired source locations before an
+// operation could silently omit guidance. Conversion is manual, not a fallback.
+func rejectLegacyLayout(root string) error {
+	for _, legacy := range []string{".awf/project.md", ".awf/topics"} {
+		if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(legacy))); err == nil {
+			return fmt.Errorf("legacy AWF source at %s; preserve authored guidance in AGENTS.md and topics in %s, then retire the old source; run `awf docs integration` for manual migration", legacy, TopicsPath)
+		} else if !os.IsNotExist(err) {
+			return fmt.Errorf("inspect %s: %w", legacy, err)
+		}
 	}
-	topics, err := loadTopics(root)
-	if err != nil {
-		return SourceTree{}, err
-	}
-	return SourceTree{Project: project, Topics: topics}, nil
+	return nil
 }
 
-func loadProject(root string) (Project, error) {
-	content, err := os.ReadFile(filepath.Join(root, filepath.FromSlash(projectPath)))
-	if err != nil {
-		return Project{}, fmt.Errorf("read %s: %w", projectPath, err)
+// LoadTopics reads and validates topics directly, without project metadata or
+// generated files. Known legacy layouts must be reconciled before use.
+func LoadTopics(root string) ([]Topic, error) {
+	if err := rejectLegacyLayout(root); err != nil {
+		return nil, err
 	}
-	var metadata projectMetadata
-	body, found, err := frontmatter.Parse(content, &metadata)
-	if err != nil {
-		return Project{}, fmt.Errorf("%s: %w", projectPath, err)
-	}
-	if !found {
-		return Project{}, fmt.Errorf("%s: leading frontmatter is required", projectPath)
-	}
-	if metadata.Format != SourceFormat {
-		return Project{}, fmt.Errorf("unsupported AWF source format %d; this binary accepts format %d", metadata.Format, SourceFormat)
-	}
-	return Project{Body: append([]byte(nil), body...)}, nil
-}
-
-func loadTopics(root string) ([]Topic, error) {
 	rootPath := filepath.Join(root, filepath.FromSlash(TopicsPath))
 	if _, err := os.Stat(rootPath); err != nil {
 		if os.IsNotExist(err) {
