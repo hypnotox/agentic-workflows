@@ -10,7 +10,7 @@ Use `./x` during development: it runs the checkout source. The root `./awf` wrap
 
 Use `./x resolve` for explicit global topics, adding repository-relative paths for matching knowledge. Read every returned source, reuse established context, and keep affected topics current. Follow the topic workflow, available through `./x docs topics`. When authoring Markdown under `docs/`, follow the shared contract in `./x docs knowledge`.
 
-Use the change workflow (`./x docs changes`) when brainstorming a material choice or defining a change's outcome or route, including when no change document is needed. Use the ADR workflow (`./x docs adr`) when recording or changing enduring decisions.
+Use the change workflow (`./x docs changes`) when brainstorming a material choice, resolving consequential code structure, or defining a change's outcome or route, including when no change document is needed. Use the ADR workflow (`./x docs adr`) when recording or changing enduring decisions.
 
 Use an effort for continuity across stages, sessions, or handoffs and for implementation worktrees; check for a matching active effort first. Follow the effort workflow (`./x docs effort`). Use the completion workflow (`./x docs completion`) during implementation for verification and commit cadence, and before final completion or integration, even without an effort. Native AWF skills supply the same workflows.
 

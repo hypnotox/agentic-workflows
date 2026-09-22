@@ -27,7 +27,7 @@ awf docs knowledge    author the OKF bundle, metadata, indexes, and logs under d
 awf docs agents       author concise repository instructions and optional Claude support
 awf docs topics       discover, read, and maintain path-routed current knowledge
 awf docs effort       keep continuity, memory, notes, and worktree handoffs
-awf docs changes      define outcomes and routes; challenge premises and review definitions or plans where warranted
+awf docs changes      define outcomes and routes; challenge premises and review definitions, code designs, or plans where warranted
 awf docs adr          record decisions and maintain ADR review, authority, and lifecycle
 awf docs completion   verify and commit coherent units, review results where warranted, and finish work
 ```

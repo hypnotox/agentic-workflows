@@ -1,6 +1,6 @@
 # Define changes and implementation routes
 
-Use this workflow when a change needs material choices about its outcome or direction, or when an intent, specification, or plan becomes useful. Keep documents proportionate: reuse an adequate established outcome rather than creating a document for every task. Independent review is warranted by complexity in assumptions, trade-offs, interactions, or sequencing. Routine, well-understood changes and uniform mechanical edits need no independent review, regardless of line or file count. AWF creates each requested file independently; it checks structural metadata but does not interpret prose, infer relationships, enforce stages, or decide readiness.
+Use this workflow when a change needs material choices about its outcome, direction, or code structure, or when an intent, specification, or plan becomes useful. Keep documents proportionate: reuse an adequate established outcome rather than creating a document for every task. Independent review is warranted by complexity in assumptions, trade-offs, interactions, or sequencing. Routine, well-understood changes and uniform mechanical edits need no independent review, regardless of line or file count. AWF creates each requested file independently; it checks structural metadata but does not interpret prose, infer relationships, enforce stages, or decide readiness.
 
 Use the repository's documented AWF runner; examples below use `./awf`. For continuity and implementation worktrees, use `docs effort`. During implementation, use `docs completion` for verification, commit cadence, and final completion or integration.
 
@@ -39,11 +39,13 @@ Relationships are authored references, not automated links. Use descriptive slug
 
 Give each requirement and decision one authoritative home. Preserve agreed outcomes and criteria while work proceeds; record material deviations and agreed changes explicitly rather than rewriting success to match implementation. Commit documents while they guide implementation or review so Git retains that basis.
 
-## Review definitions and plans before use
+## Review definitions, designs, and plans before use
 
 Before relying on an intent, specification, or plan whose assumptions, interactions, or route require nontrivial judgment, obtain or reuse a directly applicable independent review from fresh context. Review intent for a supported problem and coherent outcome, a specification against the agreed intent, and a plan for scope, dependencies, integration, and proportionate verification against the agreed change and active decisions. Apply these checks to substantial inline definitions and plans too.
 
-Use a suitable agent when available and permitted, with the target, agreed basis, relevant evidence, constraints, and review questions. Request findings, reconcile material findings before dependent work, and recheck conclusions affected by substantive corrections. Otherwise check directly and disclose that the review was not independent.
+Before a proposed code structure requiring nontrivial judgment becomes a dependency of a specification, plan, or implementation, obtain or reuse an independent design review. Assess coherence, ownership, state, contracts, dependencies, and proportionate complexity against the agreed behavior, constraints, and current model. An inline outline suffices; a behavioral specification may precede design. Review informs consequential user-owned choices rather than settling them. Recheck materially changed structural choices before relying on them; result review still assesses the actual structure, reusing applicable conclusions and examining deviations and newly visible interactions.
+
+Use a suitable agent when available and permitted, with the target, agreed basis, relevant evidence, constraints, and review questions. Reviewers report findings without editing or delegating. The coordinating agent reconciles material findings before dependent work and rechecks conclusions affected by substantive corrections. Otherwise check directly and disclose that the review was not independent.
 
 An applicable premise challenge can satisfy intent review. Review related documents together when one assessment covers their questions; further review is needed only for material content or judgment not already covered. Routine corrections need no independent review. These checks require no separate review documents or approval stages.
 
