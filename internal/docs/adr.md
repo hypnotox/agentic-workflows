@@ -16,7 +16,9 @@ Use one record per coherent decision area; split choices with independent reason
 
 Before relying on a new or revised decision whose trade-offs, interactions, or supersession require nontrivial judgment, obtain or reuse a directly applicable independent review from fresh context. Assess fit to the agreed outcome and constraints, the rationale, and consistency with active authority. Routine corrections need no independent review; line and file counts do not decide.
 
-When permitted and available, use a suitable agent with the proposed decision, agreed basis, relevant evidence, constraints, and affected authority. Request findings rather than edits, address material findings before dependent work, and recheck conclusions affected by substantive corrections. Otherwise check directly and disclose that the review was not independent. An applicable direction or definition review can cover these questions; creating an ADR does not itself require another review or approval stage.
+When new independent decision review is needed, delegate it to a suitable available agent. This checkpoint authorizes the coordinating agent to delegate without a separate operator request, within the active task, applicable permissions, and role boundaries; explicit prohibitions remain binding. Supply the proposed decision, agreed basis, relevant evidence, constraints, and affected authority. Reviewers report findings without editing or delegating. Address material findings before dependent work, and recheck conclusions affected by substantive corrections.
+
+Use supported discovery and activation before treating delegation as unavailable. If an explicit prohibition applies or no suitable agent can be made available, check directly and disclose the reason and lack of independence. Absence of a separate operator request is not a prohibition. An applicable direction or definition review can cover these questions; creating an ADR does not itself require another review or approval stage.
 
 ## Maintain decision authority
 
