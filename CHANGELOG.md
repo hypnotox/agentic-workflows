@@ -2,7 +2,7 @@
 
 All notable changes to `awf` are documented here, newest first.
 
-## Unreleased
+## [0.58.0] - 2026-09-22
 
 ### Breaking changes
 
@@ -13,6 +13,11 @@ All notable changes to `awf` are documented here, newest first.
 ### Features
 
 - Add `awf docs knowledge` as the shared bundle-authoring guide. All concept starters now include type, title, and description; new ADRs begin pending/draft. Bundle-wide checking remains exclusive to `check`, without Git, network, or optional-metadata gates.
+
+### Documentation
+
+- Add an early independent design-review checkpoint for consequential code structure, including inline designs, before dependent implementation.
+- Include affected documentation in result reviews and clarify reviewer boundaries, evidence-backed retrospectives, and integration-before-cleanup ordering.
 
 ## [0.57.0] - 2026-09-13
 
