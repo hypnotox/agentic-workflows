@@ -6,6 +6,8 @@
 
 `awf` is a small Go CLI that delivers fixed workflow skills and embedded guides, routes paths to current topics, reports routing coverage for chosen paths, keeps optional local effort memory, and creates optional intent, specification, plan, ADR, and topic starters.
 
+Markdown under `docs/` forms an OKF v0.2 knowledge bundle. `awf check` validates its structure, required AWF descriptions, and ADR state pairs without assessing truth or approval. Titles remain optional, and documents remain author-owned.
+
 Repository instructions in `AGENTS.md` and optional `CLAUDE.md` remain author-owned. Five AWF skills share their substantive instructions with the CLI guides: topics, effort continuity, change definition, ADRs, and completion. The completion workflow supplies default agent commit guidance; agents execute Git operations under repository conventions. The CLI performs no Git operations and does not manage reviews, repository gates, hooks, CI, migrations, or document meaning. It works without Git or external agent skills once its pinned binary is available.
 
 ## Start
@@ -28,6 +30,7 @@ The authoritative adopter guides are ordinary Markdown in `internal/docs/`, embe
 
 - [AWF guide](internal/docs/overview.md): purpose, source/generated ownership, render/check, and guide discovery;
 - [Integration](internal/docs/integration.md): adoption, ownership transition, repository-owned automation, updates, and repair;
+- [Knowledge](internal/docs/knowledge.md): shared bundle metadata, reserved indexes/logs, and structural checking;
 - [Agent guidance](internal/docs/agents.md): concise author-owned `AGENTS.md` and optional Claude support;
 - [Topics](internal/docs/topics.md): path-routed current project knowledge, topic creation, and optional coverage inspection;
 - [Efforts](internal/docs/effort.md): local continuity, notes, worktrees, and handoffs;
@@ -36,7 +39,7 @@ The authoritative adopter guides are ordinary Markdown in `internal/docs/`, embe
 - [Completion](internal/docs/completion.md): verification, commits, independent result review where warranted, retrospectives, integration, and cleanup, with or without an effort;
 - [Migrating from v0.50](MIGRATING-v0.50.md): one-time conversion and legacy cleanup.
 
-Use `./awf docs` to discover guides and `./awf docs <page>` to read one. Pi and Claude receive substantive skills derived from the same canonical workflows, not a second instruction set. Existing installations must follow the [ownership transition](internal/docs/integration.md#transition-existing-installations), including preservation of unrendered `.awf/project.md` edits and any old topic layout.
+Use `./awf docs` to discover guides and `./awf docs <page>` to read one. Pi and Claude receive substantive skills derived from the same canonical workflows, not a second instruction set. Existing installations must follow the [ownership transition](internal/docs/integration.md#transition-existing-installations), including preservation of unrendered `.awf/project.md` edits and any old topic layout, and the [manual documentation metadata upgrade](internal/docs/integration.md#upgrade-documentation-metadata).
 
 ## Development
 

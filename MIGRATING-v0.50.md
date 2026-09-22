@@ -33,6 +33,9 @@ Create one file per retained topic at `docs/topics/<id>.md`:
 
 ```markdown
 ---
+type: Project Topic
+title: Topic title
+description: Summarize the current guidance and scope owned by this topic.
 paths:
   - 'path/to/area/**'
 ---
@@ -42,7 +45,7 @@ paths:
 Current guidance goes here.
 ```
 
-Move the old selector paths and useful prose into that file. Remove claim IDs, `Backing:`, `Verify:`, coverage metadata, domains, and other old structural fields. AWF now interprets only `paths`. Repair references and relative links affected by the move; selectors remain repository-relative.
+Move the old selector paths and useful prose into that file. Remove claim IDs, `Backing:`, `Verify:`, coverage metadata, domains, and other old structural fields. Routing interprets only `paths`; `check` also validates the shared metadata contract in `awf docs knowledge`. Repair references and relative links affected by the move; selectors remain repository-relative.
 
 For genuinely repository-wide current knowledge, use the exact sole global declaration:
 
@@ -53,9 +56,11 @@ paths:
 
 The standalone `**` entry is invalid in a mixed or duplicate list. A standalone `*` is still an ordinary root-level wildcard, including in mixed lists; `src/**` and `**/*.go` are also ordinary path selectors.
 
-Review retained decision documents deliberately. Keep accepted decisions that still govern the repository as active ADRs in `docs/decisions/`, link them from applicable topics, and retire only withdrawn or superseded records after preserving any still-binding substance. Current topics describe implemented behavior and practical implications; active ADRs own the enduring choices and rationale.
+Review retained decision documents deliberately. Preserve established agreement and implementation state using the `decision_status` / OKF `status` mapping in `awf docs adr`. A legacy use of the word accepted does not by itself establish activation; reconcile its documented authority and implementation evidence. Keep still-governing decisions as active ADRs in `docs/decisions/`, link them from applicable topics, and retire only withdrawn or superseded records after preserving any still-binding substance. Current topics describe implemented behavior and practical implications; active ADRs own the enduring choices and rationale.
 
 New change intent and specification documents belong in `docs/changes/<slug>/`. Implementation plans belong in `docs/plans/<slug>.md`; a change can lead to multiple plans or ADRs. Do not move or delete existing effort-local plans automatically. When older work resumes, an agent may deliberately move a still-useful plan into `docs/plans/` and update references while preserving one authoritative copy.
+
+Reconcile all retained Markdown under `docs/`, not only topics, using the manual documentation metadata upgrade in `awf docs integration`. Concepts need appropriate type and description strings; titles are optional. Reserved indexes and logs follow their own structure and are not topics. Preserve bodies and existing decision authority; no command performs this migration automatically.
 
 ## 3. Retire the old representation
 

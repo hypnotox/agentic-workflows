@@ -1,11 +1,14 @@
 ---
+type: Project Topic
+title: Product and CLI
+description: Product boundaries, CLI responsibilities, and stable command and report contracts.
 paths:
   - '**'
 ---
 
 # Product and CLI
 
-AWF owns static projection of its fixed workflow skills and infrastructure, embedded adopter guides, lexical path-to-topic routing and optional coverage inspection, local effort memory, and create-only intent, specification, plan, ADR, and topic starters. Repository agent instructions remain author-owned; there is no project descriptor or replacement configuration. The completion workflow supplies default agent commit guidance with or without effort memory; agents execute Git operations under repository conventions and overrides. The CLI performs no Git operations and does not own repository review, gates, hooks, CI, Git worktrees, migrations, document meaning, or general documentation authoring.
+AWF owns static projection of its fixed workflow skills and infrastructure, embedded adopter guides, read-only knowledge-bundle conformance checking, lexical path-to-topic routing and optional coverage inspection, local effort memory, and create-only intent, specification, plan, ADR, and topic starters. Repository agent instructions remain author-owned; there is no project descriptor or replacement configuration. The completion workflow supplies default agent commit guidance with or without effort memory; agents execute Git operations under repository conventions and overrides. The CLI performs no Git operations and does not own repository review, gates, hooks, CI, Git worktrees, migrations, document meaning, or general documentation authoring.
 
 The public commands are `init`, `render`, `check`, `resolve`, `docs`, `new`, `effort`, and `version`. `new` creates efforts, change definitions, independent plans, ADRs, and topics. `effort` retains only `list`, `show`, and `finish`. `resolve --coverage` reports globals once and specific matches for each explicit normalized input path; gaps succeed. Command handling and report formatting remain thin adapters over filesystem and projection owners; business behavior does not belong in the CLI.
 

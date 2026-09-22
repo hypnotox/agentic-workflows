@@ -1,6 +1,6 @@
 # Define changes and implementation routes
 
-Use this workflow when a change needs material choices about its outcome or direction, or when an intent, specification, or plan becomes useful. Keep documents proportionate: reuse an adequate established outcome rather than creating a document for every task. Independent review is warranted by complexity in assumptions, trade-offs, interactions, or sequencing. Routine, well-understood changes and uniform mechanical edits need no independent review, regardless of line or file count. AWF creates each requested file independently; it does not interpret content, infer relationships, enforce stages, or decide readiness.
+Use this workflow when a change needs material choices about its outcome or direction, or when an intent, specification, or plan becomes useful. Keep documents proportionate: reuse an adequate established outcome rather than creating a document for every task. Independent review is warranted by complexity in assumptions, trade-offs, interactions, or sequencing. Routine, well-understood changes and uniform mechanical edits need no independent review, regardless of line or file count. AWF creates each requested file independently; it checks structural metadata but does not interpret prose, infer relationships, enforce stages, or decide readiness.
 
 Use the repository's documented AWF runner; examples below use `./awf`. For continuity and implementation worktrees, use `docs effort`. During implementation, use `docs completion` for verification, commit cadence, and final completion or integration.
 
@@ -35,7 +35,7 @@ Use the agreed change as the basis for each plan it needs:
 
 When a consequential choice needs enduring rationale, use the ADR workflow through `./awf docs adr` or the native `awf-adr` skill. That workflow owns decision records and their lifecycle.
 
-Relationships are authored references, not automated links. Use descriptive slugs, distinct when a change needs several plans, and reference the originating intent or specification from derived documents. A related effort may use the change's slug, but no document requires effort memory or another document. Creation refuses replacement. Adapt or omit starter sections and remove unused prompts.
+Relationships are authored references, not automated links. Use descriptive slugs, distinct when a change needs several plans, and reference the originating intent or specification from derived documents. A related effort may use the change's slug, but no document requires effort memory or another document. Creation refuses replacement. Follow `awf docs knowledge` for shared metadata: replace starter titles and description prompts with useful authored values. Adapt or omit starter sections and remove unused prompts.
 
 Give each requirement and decision one authoritative home. Preserve agreed outcomes and criteria while work proceeds; record material deviations and agreed changes explicitly rather than rewriting success to match implementation. Commit documents while they guide implementation or review so Git retains that basis.
 

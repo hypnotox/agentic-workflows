@@ -149,7 +149,7 @@ func runDocs(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if len(args) > 1 {
-		return usage(stderr, "usage: awf docs [integration|agents|topics|effort|changes|adr|completion]")
+		return usage(stderr, "usage: awf docs [integration|knowledge|agents|topics|effort|changes|adr|completion]")
 	}
 	name := ""
 	if len(args) == 1 {
@@ -157,7 +157,7 @@ func runDocs(args []string, stdout, stderr io.Writer) int {
 	}
 	page, ok := awfdocs.Page(name)
 	if !ok {
-		return usage(stderr, fmt.Sprintf("unknown documentation page %q; expected integration, agents, topics, effort, changes, adr, or completion", name))
+		return usage(stderr, fmt.Sprintf("unknown documentation page %q; expected integration, knowledge, agents, topics, effort, changes, adr, or completion", name))
 	}
 	if _, err := stdout.Write(page); err != nil {
 		return failure(stderr, err)
@@ -391,7 +391,7 @@ See ` + "`awf docs integration`" + ` for ownership and update procedures.
 
 const checkHelp = `Usage: awf check
 
-Validate working-tree AWF sources and generated files. Unmanaged AWF-marked files fail the check.
+Validate the docs/ knowledge bundle, topic selectors, and generated files. Unmanaged AWF-marked files fail the check.
 See ` + "`awf docs integration`" + ` for gate and CI integration.
 `
 
@@ -403,7 +403,7 @@ Coverage reports explicit globals once and matching non-global topics for each d
 See ` + "`awf docs topics`" + ` for authoring, maintenance, and coverage limits.
 `
 
-const docsHelp = `Usage: awf docs [integration|agents|topics|effort|changes|adr|completion]
+const docsHelp = `Usage: awf docs [integration|knowledge|agents|topics|effort|changes|adr|completion]
 
 Print the embedded overview or one adopter guide to standard output.
 `
@@ -415,7 +415,7 @@ Commands:
   intent <slug>            create docs/changes/<slug>/intent.md
   spec <slug>              create docs/changes/<slug>/spec.md
   plan <slug>              create docs/plans/<slug>.md
-  adr <slug>               create docs/decisions/<slug>.md with pending status
+  adr <slug>               create docs/decisions/<slug>.md with pending/draft decision metadata
   topic <id> <pattern>...  create ` + projector.TopicsPath + `/<id>.md with supplied selectors
 
 Creation never replaces an existing destination. Quote glob patterns so the shell does not expand them.

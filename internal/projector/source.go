@@ -11,6 +11,7 @@ import (
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
+	"github.com/hypnotox/agentic-workflows/internal/knowledge"
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
 )
 
@@ -62,7 +63,7 @@ func LoadTopics(root string) ([]Topic, error) {
 		if walkErr != nil {
 			return walkErr
 		}
-		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".md") {
+		if entry.IsDir() || !strings.EqualFold(filepath.Ext(entry.Name()), ".md") || knowledge.IsReserved(entry.Name()) {
 			return nil
 		}
 		info, err := entry.Info()

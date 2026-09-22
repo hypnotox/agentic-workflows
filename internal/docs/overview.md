@@ -15,7 +15,7 @@ Do not edit generated files as their source. Use the repository's documented AWF
 ./awf check
 ```
 
-`init` is a first-install entrypoint to the same generation. Render replaces regular marked outputs and the reserved version record, refuses other unmarked collisions, and reports retired marked files without deleting them. Check validates topics and working-tree generated output; it does not prove overall repository integration, a staged snapshot, Git history, or project-specific behavior. Review and commit related authored and generated changes together.
+`init` is a first-install entrypoint to the same generation. Render replaces regular marked outputs and the reserved version record, refuses other unmarked collisions, and reports retired marked files without deleting them. Check validates the `docs/` knowledge bundle, topic selectors, and working-tree generated output; it does not prove overall repository integration, a staged snapshot, Git history, or project-specific behavior. Review and commit related authored and generated changes together.
 
 ## Discover guides
 
@@ -23,6 +23,7 @@ Read the workflow relevant to the task, through native AWF skills or the CLI. Re
 
 ```text
 awf docs integration  adopt AWF, update versions, connect repository automation, or repair integration
+awf docs knowledge    author the OKF bundle, metadata, indexes, and logs under docs/
 awf docs agents       author concise repository instructions and optional Claude support
 awf docs topics       discover, read, and maintain path-routed current knowledge
 awf docs effort       keep continuity, memory, notes, and worktree handoffs

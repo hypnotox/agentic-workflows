@@ -2,7 +2,7 @@
 type: Change Intent
 title: Adopt OKF for AWF repository documentation
 description: Adopt OKF v0.2 structural conformance with required AWF descriptions and interoperable ADR lifecycle metadata.
-status: draft
+status: stable
 ---
 
 # Intent: Adopt OKF for AWF repository documentation

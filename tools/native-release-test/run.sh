@@ -52,7 +52,7 @@ EOF
 chmod 0755 "$root/fake-bin/curl"
 
 tar -xzf "$archive" -C "$root/bin"
-for guide in overview integration agents topics effort changes adr completion; do
+for guide in overview integration knowledge agents topics effort changes adr completion; do
   [ -f "$root/bin/internal/docs/$guide.md" ] || { echo "native-release-test: missing internal/docs/$guide.md" >&2; exit 1; }
 done
 candidate="$root/bin/awf"
@@ -66,7 +66,7 @@ AWF_VERSION=0.0.0 bash "$launcher" docs integration > "$root/integration.md"
 cmp "$root/bin/internal/docs/integration.md" "$root/integration.md"
 bash "$launcher" docs > "$root/overview.md"
 cmp "$root/bin/internal/docs/overview.md" "$root/overview.md"
-for guide in agents topics effort changes adr completion; do
+for guide in knowledge agents topics effort changes adr completion; do
   bash "$launcher" docs "$guide" > "$root/$guide.md"
   cmp "$root/bin/internal/docs/$guide.md" "$root/$guide.md"
 done
@@ -125,12 +125,16 @@ cmp "$root/malformed/before" "$root/malformed/.awf/project.md"
 mkdir -p docs/topics/code
 cat > docs/topics/global.md <<'EOF'
 ---
+type: Project Topic
+description: Global smoke guidance.
 paths: ['**']
 ---
 Global smoke guidance.
 EOF
 cat > docs/topics/code/go.md <<'EOF'
 ---
+type: Project Topic
+description: Go smoke guidance.
 paths: ['src/**/*.go']
 ---
 Go smoke guidance.
@@ -169,7 +173,8 @@ cmp "$root/expected-memory" "$root/shown-memory"
 [ "$("$candidate" new spec smoke)" = "spec: docs/changes/smoke/spec.md" ]
 [ "$("$candidate" new plan smoke)" = "plan: docs/plans/smoke.md" ]
 [ "$("$candidate" new adr smoke-choice)" = "adr: docs/decisions/smoke-choice.md" ]
-grep '^status: pending$' docs/decisions/smoke-choice.md >/dev/null
+grep '^decision_status: pending$' docs/decisions/smoke-choice.md >/dev/null
+grep '^status: draft$' docs/decisions/smoke-choice.md >/dev/null
 [ "$("$candidate" new topic generated/smoke 'generated/**')" = "topic: docs/topics/generated/smoke.md" ]
 [ "$("$candidate" resolve generated/future.txt)" = $'generated/smoke\tdocs/topics/generated/smoke.md\nglobal\tdocs/topics/global.md' ]
 "$candidate" check

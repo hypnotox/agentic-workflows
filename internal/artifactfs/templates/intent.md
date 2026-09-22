@@ -1,3 +1,9 @@
+---
+type: Change Intent
+title: {{quote .Name}}
+description: Describe the problem and desired outcome of this change.
+---
+
 # Intent: {{.Name}}
 
 Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.

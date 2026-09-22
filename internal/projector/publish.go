@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"sort"
 	"strings"
+
+	"github.com/hypnotox/agentic-workflows/internal/knowledge"
 )
 
 // RenderResult describes visible render changes and marked files AWF no longer owns.
@@ -19,7 +21,7 @@ type RenderResult struct {
 	Unmanaged []string
 }
 
-// Finding is one reason check considers the projection stale.
+// Finding is one structural or generated-output problem reported by check.
 type Finding struct {
 	Path    string
 	Message string
@@ -64,13 +66,21 @@ func Render(root string) (RenderResult, error) {
 	return RenderResult{Changed: changed, Unmanaged: unmanaged}, nil
 }
 
-// Check compares the fixed projection with the filesystem without changing it.
+// Check validates the knowledge bundle and compares the fixed projection with
+// the filesystem without changing authored or generated content.
 func Check(root string) ([]Finding, error) {
 	if _, err := LoadTopics(root); err != nil {
 		return nil, err
 	}
+	bundleFindings, err := knowledge.Check(root)
+	if err != nil {
+		return nil, err
+	}
 	outputs := Build()
-	findings := make([]Finding, 0)
+	findings := make([]Finding, 0, len(bundleFindings))
+	for _, finding := range bundleFindings {
+		findings = append(findings, Finding{Path: finding.Path, Message: finding.Message})
+	}
 	for _, output := range outputs {
 		filename := filepath.Join(root, filepath.FromSlash(output.Path))
 		content, info, err := readRegularOptional(filename)

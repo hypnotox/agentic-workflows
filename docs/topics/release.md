@@ -1,4 +1,7 @@
 ---
+type: Project Topic
+title: Release boundary
+description: Release identity, pinned bootstrap behavior, native release verification, and publishing order.
 paths:
   - 'internal/projector/VERSION'
   - '.awf/VERSION'

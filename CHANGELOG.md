@@ -4,6 +4,16 @@ All notable changes to `awf` are documented here, newest first.
 
 ## Unreleased
 
+### Breaking changes
+
+- Treat Markdown recursively under `docs/` as an OKF v0.2 bundle. `awf check` now requires concept type and description strings, checks reserved indexes/logs, and validates explicit ADR decision-state pairs. Description is an AWF requirement beyond baseline OKF; title remains optional.
+- Move ADR domain state from `status` to `decision_status`, with pending/accepted represented by OKF draft and active by stable. Upgrade metadata manually using `awf docs integration`; no command migrates authored content or changes established authority.
+- Reserve index/log Markdown basenames at every depth, excluding them from topic routing and rejecting them as concept starter destinations.
+
+### Features
+
+- Add `awf docs knowledge` as the shared bundle-authoring guide. All concept starters now include type, title, and description; new ADRs begin pending/draft. Bundle-wide checking remains exclusive to `check`, without Git, network, or optional-metadata gates.
+
 ## [0.57.0] - 2026-09-13
 
 ### Features

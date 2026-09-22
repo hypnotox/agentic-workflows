@@ -8,7 +8,7 @@ Keep the product direct and small: no policy engines, replacement configuration 
 
 Use `./x` during development: it runs the checkout source. The root `./awf` wrapper intentionally exercises the released bootstrap path and may run a different version.
 
-Use `./x resolve` for explicit global topics, adding repository-relative paths for matching knowledge. Read every returned source, reuse established context, and keep affected topics current. Follow the topic workflow, available through `./x docs topics`.
+Use `./x resolve` for explicit global topics, adding repository-relative paths for matching knowledge. Read every returned source, reuse established context, and keep affected topics current. Follow the topic workflow, available through `./x docs topics`. When authoring Markdown under `docs/`, follow the shared contract in `./x docs knowledge`.
 
 Use the change workflow (`./x docs changes`) when brainstorming a material choice or defining a change's outcome or route, including when no change document is needed. Use the ADR workflow (`./x docs adr`) when recording or changing enduring decisions.
 
@@ -20,7 +20,7 @@ Use Conventional Commits with one concern per commit. Keep related implementatio
 
 - `./x test`: run the complete Go test suite.
 - `./x gate`: format-check, test, and build.
-- `./x render && ./x check`: refresh and check fixed outputs and validate topics.
+- `./x render && ./x check`: refresh and check fixed outputs, validate the knowledge bundle, and check topic selectors.
 - `./x resolve [<path>...]`: find applicable topics.
 - `./x docs`: discover embedded workflow and adoption guides.
 - `./x build`: build `bin/awf`.

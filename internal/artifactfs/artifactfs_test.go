@@ -8,6 +8,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/hypnotox/agentic-workflows/internal/frontmatter"
 	"github.com/hypnotox/agentic-workflows/internal/projector"
 )
 
@@ -40,8 +41,12 @@ func TestTrackedArtifactsCreateWithoutEffortAndPreserveExistingContent(t *testin
 			if err != nil || len(body) == 0 {
 				t.Fatalf("created body = %q, %v", body, err)
 			}
-			if test.name == "adr" && !bytes.HasPrefix(body, []byte("---\nstatus: pending\n---\n")) {
-				t.Fatalf("new ADR does not start pending: %q", body)
+			var metadata map[string]any
+			if _, found, err := frontmatter.Parse(body, &metadata); err != nil || !found {
+				t.Fatalf("starter frontmatter: found=%v, %v", found, err)
+			}
+			if test.name == "adr" && (metadata["decision_status"] != "pending" || metadata["status"] != "draft") {
+				t.Fatalf("new ADR does not start pending/draft: %q", body)
 			}
 			for _, unexpected := range []string{".git", ".awf", "AGENTS.md"} {
 				if _, err := os.Stat(filepath.Join(root, unexpected)); !os.IsNotExist(err) {

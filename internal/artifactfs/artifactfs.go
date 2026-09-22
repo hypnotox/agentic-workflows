@@ -13,6 +13,7 @@ import (
 	"strings"
 	"text/template"
 
+	"github.com/hypnotox/agentic-workflows/internal/knowledge"
 	"github.com/hypnotox/agentic-workflows/internal/projector"
 )
 
@@ -40,6 +41,9 @@ func NewSpec(root, slug string) (string, error) {
 
 // NewPlan creates a tracked implementation plan scaffold.
 func NewPlan(root, slug string) (string, error) {
+	if err := validateConceptName(slug); err != nil {
+		return "", err
+	}
 	if err := validateSlug("plan", slug); err != nil {
 		return "", err
 	}
@@ -65,6 +69,9 @@ func newChangeDocument(root, slug, kind string) (string, error) {
 
 // NewADR creates a tracked architecture decision record scaffold.
 func NewADR(root, slug string) (string, error) {
+	if err := validateConceptName(slug); err != nil {
+		return "", err
+	}
 	if err := validateSlug("decision", slug); err != nil {
 		return "", err
 	}
@@ -154,7 +161,17 @@ func validateSlug(kind, slug string) error {
 	return nil
 }
 
+func validateConceptName(name string) error {
+	if knowledge.IsReserved(path.Base(name) + ".md") {
+		return fmt.Errorf("concept name %q is reserved by OKF for an index or update log", name)
+	}
+	return nil
+}
+
 func validateTopicID(id string) error {
+	if err := validateConceptName(id); err != nil {
+		return err
+	}
 	if id == "" || strings.HasSuffix(strings.ToLower(id), ".md") || strings.Contains(id, `\`) || path.IsAbs(id) || path.Clean(id) != id {
 		return fmt.Errorf("invalid topic ID %q: use slash-separated letters, numbers, hyphens, or underscores without .md", id)
 	}

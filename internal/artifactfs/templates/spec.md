@@ -1,3 +1,9 @@
+---
+type: Specification
+title: {{quote .Name}}
+description: Describe the behavior and acceptance boundaries specified here.
+---
+
 # Specification: {{.Name}}
 
 Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.

@@ -1,4 +1,7 @@
 ---
+type: Project Topic
+title: {{quote .Name}}
+description: Describe the current knowledge and scope owned by this topic.
 paths:
 {{range .Selectors}}  - {{quote .}}
 {{end}}---

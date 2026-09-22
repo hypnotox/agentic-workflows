@@ -10,7 +10,7 @@ Include a brief present-tense orientation: what the project does, its important 
 
 Keep only genuinely global requirements in the entrypoint. Distinguish hard rules, defaults, and options; state the conditions that change their applicability. Include essential build, test, and maintenance commands and a few useful canonical pointers. Prefer the repository's actual runner over an exhaustive CLI inventory. Explain a non-obvious runner distinction when choosing incorrectly would change what executes.
 
-Include the discovery cues agents need before selecting detailed guidance: how to find applicable topics, when brainstorming or definition needs the change workflow, when enduring decisions need the ADR workflow, when continuity needs an effort, and how to reach verification and commit guidance during implementation as well as at completion, even without an effort. Point to the AWF CLI workflow when native skills are unavailable. Native skill descriptions own the skill catalog; do not reproduce it in `AGENTS.md`.
+Include the discovery cues agents need before selecting detailed guidance: how to find applicable topics and the shared knowledge-document contract, when brainstorming or definition needs the change workflow, when enduring decisions need the ADR workflow, when continuity needs an effort, and how to reach verification and commit guidance during implementation as well as at completion, even without an effort. Point to the AWF CLI workflow when native skills are unavailable. Native skill descriptions own the skill catalog; do not reproduce it in `AGENTS.md`.
 
 Write concrete instructions, preserve judgment for routine choices, and use examples only to clarify—not to add hidden requirements. Resolve contradictions and repeated rules across the instruction set. Remove stale guidance rather than accumulating exceptions. Keep rationale and detailed procedures with their most specific authoritative owner.
 
@@ -28,7 +28,8 @@ Preserve the documented data format. Use Conventional Commits.
 
 Use `./awf resolve` for global topics, adding repository-relative paths for
 matching knowledge. Read the returned sources and keep affected topics current;
-use the topic workflow, available through `./awf docs topics`.
+use the topic workflow, available through `./awf docs topics`. When authoring
+Markdown under `docs/`, follow the shared contract in `./awf docs knowledge`.
 
 Use the change workflow (`./awf docs changes`) when brainstorming a material
 choice or defining a change's outcome or route, including when no change document
@@ -46,7 +47,7 @@ Native AWF skills supply the same workflows.
 
 - `go test ./...`: run tests.
 - `go build ./...`: build packages.
-- `./awf render && ./awf check`: refresh and check fixed AWF outputs.
+- `./awf render && ./awf check`: refresh fixed AWF outputs and check them plus the knowledge bundle.
 
 ## References
 

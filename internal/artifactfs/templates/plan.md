@@ -1,3 +1,9 @@
+---
+type: Implementation Plan
+title: {{quote .Name}}
+description: Describe the implementation route and the outcome it delivers.
+---
+
 # Plan: {{.Name}}
 
 Adapt or omit sections. Remove prompts and content that does not help this document serve its purpose.
