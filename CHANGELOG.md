@@ -2,6 +2,12 @@
 
 All notable changes to `awf` are documented here, newest first.
 
+## [0.58.1] - 2026-09-22
+
+### Fixed
+
+- Explicitly authorize coordinating agents to delegate required independent challenges and reviews within the active task and applicable permissions. Require supported agent discovery before falling back to direct review, while preserving explicit prohibitions and reviewer role boundaries.
+
 ## [0.58.0] - 2026-09-22
 
 ### Breaking changes
