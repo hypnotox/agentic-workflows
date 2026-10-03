@@ -10,7 +10,7 @@ Before implementation relies on code structure requiring nontrivial judgment, us
 
 ## Verify and commit coherent results
 
-Compare the actual result with the agreed outcome and criteria. When intent, specification, or applicable ADRs exist, use those agreements rather than only the plan's completed steps. Check the meaningful behavior, inspect the combined diff, and update affected documentation and topics. Report what was checked, what remains uncertain or unmet, and material deviations.
+Compare the actual result with the agreed outcome and criteria. When intent, specification, or applicable ADRs exist, use those agreements rather than only the plan's completed steps. Verify meaningful behavior and contracts with checks that tolerate incidental changes unless those details are contractual. Preserve checks for real defects when simplifying verification. Inspect the combined diff and update affected documentation and topics. Report what was checked, what that evidence establishes, what remains unassessed, uncertain, or unmet, and material deviations.
 
 In Git repositories, commit completed, verified changes before reporting completion, without waiting for a separate request, unless instructed otherwise. A small coherent change normally needs one commit. For larger work, commit coherent verified units as they finish, usually at phase boundaries; do not defer all commits to final completion. Keep related implementation, tests, and documentation together. If committing is blocked, report what remains uncommitted and why.
 
