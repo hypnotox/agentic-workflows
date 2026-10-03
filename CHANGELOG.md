@@ -2,6 +2,16 @@
 
 All notable changes to `awf` are documented here, newest first.
 
+## [0.59.0] - 2026-10-04
+
+### Features
+
+- Restore Codex support with all five workflow skills under `.agents/skills/`, sharing canonical content and generated ownership checks with Pi and Claude. Existing marked Codex skills refresh normally; authored collisions remain protected.
+
+### Documentation
+
+- Resolve consequential factual uncertainty with proportionate trials before dependent or costly work. Verify meaningful contracts while allowing incidental details to vary, and state what verification evidence establishes and what remains unassessed.
+
 ## [0.58.1] - 2026-09-22
 
 ### Fixed
