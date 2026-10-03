@@ -39,7 +39,7 @@ The authoritative adopter guides are ordinary Markdown in `internal/docs/`, embe
 - [Completion](internal/docs/completion.md): verification, commits, independent result review where warranted, retrospectives, integration, and cleanup, with or without an effort;
 - [Migrating from v0.50](MIGRATING-v0.50.md): one-time conversion and legacy cleanup.
 
-Use `./awf docs` to discover guides and `./awf docs <page>` to read one. Pi and Claude receive substantive skills derived from the same canonical workflows, not a second instruction set. Existing installations must follow the [ownership transition](internal/docs/integration.md#transition-existing-installations), including preservation of unrendered `.awf/project.md` edits and any old topic layout, and the [manual documentation metadata upgrade](internal/docs/integration.md#upgrade-documentation-metadata).
+Use `./awf docs` to discover guides and `./awf docs <page>` to read one. Codex (`.agents/skills/`), Pi (`.pi/skills/`), and Claude (`.claude/skills/`) receive all five skills with identical canonical workflow bodies. Existing installations must follow the [ownership transition](internal/docs/integration.md#transition-existing-installations), including preservation of unrendered `.awf/project.md` edits and any old topic layout, and the [manual documentation metadata upgrade](internal/docs/integration.md#upgrade-documentation-metadata).
 
 ## Development
 

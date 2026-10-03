@@ -85,10 +85,15 @@ bash "$launcher" init
 [ ! -e CLAUDE.md ]
 [ "$(cat .awf/VERSION)" = "$expected_version" ]
 [ "$(bash "$launcher" init)" = 'render: up to date' ]
-for harness in .pi .claude; do
+for harness in .pi .claude .agents; do
   for workflow in topics effort changes adr completion; do
     [ -s "$harness/skills/awf-$workflow/SKILL.md" ]
     cmp ".pi/skills/awf-$workflow/SKILL.md" "$harness/skills/awf-$workflow/SKILL.md"
+    # Strip skill frontmatter and the ownership-marker wrapper, then compare the
+    # complete body with the workflow printed by the actual release CLI.
+    awk 'NR == 1 { next } !body && /^---$/ { body = 1; next } body && ++line > 2 { print }' \
+      "$harness/skills/awf-$workflow/SKILL.md" > "$root/skill-body.md"
+    cmp "$root/$workflow.md" "$root/skill-body.md"
   done
 done
 [ "$(bash .awf/bootstrap.sh)" = "$cache_binary" ]

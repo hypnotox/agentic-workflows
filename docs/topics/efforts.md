@@ -5,6 +5,7 @@ description: Local continuity, create-only document starters, and canonical work
 paths:
   - 'internal/effortfs/**'
   - 'internal/artifactfs/**'
+  - '.agents/skills/awf-effort/SKILL.md'
   - '.pi/skills/awf-effort/SKILL.md'
   - '.claude/skills/awf-effort/SKILL.md'
   - 'docs/changes/**'
@@ -14,10 +15,13 @@ paths:
   - 'internal/docs/changes.md'
   - 'internal/docs/adr.md'
   - 'internal/docs/completion.md'
+  - '.agents/skills/awf-changes/SKILL.md'
   - '.pi/skills/awf-changes/SKILL.md'
   - '.claude/skills/awf-changes/SKILL.md'
+  - '.agents/skills/awf-adr/SKILL.md'
   - '.pi/skills/awf-adr/SKILL.md'
   - '.claude/skills/awf-adr/SKILL.md'
+  - '.agents/skills/awf-completion/SKILL.md'
   - '.pi/skills/awf-completion/SKILL.md'
   - '.claude/skills/awf-completion/SKILL.md'
 ---
@@ -32,4 +36,4 @@ Intent owns the problem and desired outcome, and an optional specification adds 
 
 Tracked plans remain in `docs/plans/`. Existing effort-local plans remain untouched; authors may deliberately relocate useful ones into `docs/plans/` and repair references. Documents remain only while they have a concrete use; preserve still-needed knowledge before removal. AWF checks shared knowledge metadata and location-bound ADR state pairs, but does not interpret document prose, derive artifacts, enforce stages, synchronize files, or manage their lifecycle. `internal/docs/knowledge.md` owns the shared authoring contract and `internal/docs/adr.md` owns the decision-state mapping. The active [knowledge-bundle decision](../decisions/knowledge-bundle-contract.md) preserves the rationale for these metadata boundaries.
 
-Canonical workflow Markdown under `internal/docs/` owns the instructions: `effort.md` covers continuity, notes, worktrees, and handoffs; `changes.md` covers premise challenges, intent/specification/plan roles, and design review before dependent structural commitments; `adr.md` covers decision records, their review, and authority; `completion.md` covers verification, coherent commits, combined-result and affected-documentation review, integration, historical retrospective, and cleanup. Each also supplies its generated skill body for both harnesses. Review depends on complexity, and an applicable assessment can cover related questions. A premise challenge targets intent when present and needs neither an effort nor a document. Retrospective independence depends on consequential history or issues, with routine mechanical work remaining proportionate. Completion entrypoints apply during implementation so verified intermediate units receive commit guidance before final completion, and completion applies with or without an effort. ADR lifecycle guidance loads only when decision records are affected.
+Canonical workflow Markdown under `internal/docs/` owns the instructions: `effort.md` covers continuity, notes, worktrees, and handoffs; `changes.md` covers premise challenges, intent/specification/plan roles, and design review before dependent structural commitments; `adr.md` covers decision records, their review, and authority; `completion.md` covers verification, coherent commits, combined-result and affected-documentation review, integration, historical retrospective, and cleanup. Each also supplies the identical generated skill body for Codex, Pi, and Claude. Review depends on complexity, and an applicable assessment can cover related questions. A premise challenge targets intent when present and needs neither an effort nor a document. Retrospective independence depends on consequential history or issues, with routine mechanical work remaining proportionate. Completion entrypoints apply during implementation so verified intermediate units receive commit guidance before final completion, and completion applies with or without an effort. ADR lifecycle guidance loads only when decision records are affected.

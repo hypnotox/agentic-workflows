@@ -6,7 +6,7 @@ AWF delivers fixed workflow skills and embedded adopter guides. It also routes r
 
 Authors edit `AGENTS.md` directly and may maintain an optional `CLAUDE.md`. AWF neither generates these files nor requires a Markdown layout. Current project knowledge belongs in `docs/topics/`, change definitions in `docs/changes/<slug>/`, plans in `docs/plans/`, and enduring decisions in `docs/decisions/`. These remain author-owned, without generated copies. `.awf/project.md` is retired; there is no replacement configuration.
 
-AWF generates five workflow skills for Pi and Claude, the root `awf` wrapper, `.awf/bootstrap.sh`, `.awf/.gitignore`, and `.awf/VERSION` from embedded content. Workflow pages and skill bodies share one canonical instruction source. A leading AWF marker identifies generated ownership except for the exact reserved `.awf/VERSION` path. That record reports the renderer's version; the bootstrap, not the record, selects the binary.
+AWF generates five workflow skills for Codex (`.agents/skills/`), Pi (`.pi/skills/`), and Claude (`.claude/skills/`), the root `awf` wrapper, `.awf/bootstrap.sh`, `.awf/.gitignore`, and `.awf/VERSION` from embedded content. Workflow pages and all three harnesses' skill bodies share one canonical instruction source. A leading AWF marker identifies generated ownership except for the exact reserved `.awf/VERSION` path. That record reports the renderer's version; the bootstrap, not the record, selects the binary.
 
 Do not edit generated files as their source. Use the repository's documented AWF runner to refresh and check them; examples use `./awf`:
 

@@ -52,7 +52,7 @@ func Build() []Output {
 			panic("missing embedded workflow: " + workflow)
 		}
 		skill := renderTemplate("awf-"+workflow+".tmpl", templateData{Body: string(body)})
-		for _, harness := range []string{".pi", ".claude"} {
+		for _, harness := range []string{".pi", ".claude", ".agents"} {
 			outputs = append(outputs, Output{
 				Path: harness + "/skills/awf-" + workflow + "/SKILL.md", Bytes: skill, Mode: 0o644,
 			})
