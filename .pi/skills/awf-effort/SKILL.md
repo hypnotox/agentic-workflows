@@ -6,7 +6,7 @@ description: Keep continuity across stages, sessions, or handoffs; coordinate ef
 
 # Effort continuity
 
-Use an effort when work needs continuity across stages, sessions, or handoffs, and associate implementation worktrees with a coordinating effort. Small, self-contained changes without worktree isolation can remain effort-free. An effort does not require a change document or a worktree.
+Use an effort when work needs continuity across stages, sessions, or handoffs, and associate implementation worktrees with a coordinating effort. Small, self-contained changes without worktree isolation can remain effort-free. An effort does not require a change document.
 
 Use the repository's documented AWF runner; examples below use `./awf`. Read this workflow when it becomes relevant and reuse it during the task. For change definitions and plans, use `docs changes`; for decision records, use `docs adr`. During implementation, use `docs completion` for verification, commit cadence, and final completion or integration.
 
@@ -40,7 +40,9 @@ Memory owns what affects continuation; notes preserve findings after they stop a
 
 ## Coordinate checkouts and handoffs
 
-Without a worktree, the primary and implementation checkout are the same directory. When isolation helps, use native Git from the primary checkout, for example:
+In Git repositories, create or reuse a dedicated implementation worktree for an effort before changing tracked files. Default to one worktree per effort. Use the primary checkout for tracked changes only when a concrete task requirement makes it necessary or Git/worktree support is unavailable; record the reason and actual checkout in memory. Read-only efforts need no worktree until tracked changes begin.
+
+Create a worktree from the primary checkout's current committed HEAD using native Git from that checkout, for example:
 
 ```sh
 git worktree add -b awf/<slug> .awf/worktrees/<slug>
@@ -51,8 +53,13 @@ AWF does not create, inspect, or manage worktrees. The location is a convention.
 - keep coordinating memory and notes in the primary checkout;
 - keep tracked change documents, plans, ADRs, topics, and implementation in the implementation checkout;
 - record actual locations in memory and handoffs;
+- pass the actual implementation checkout path explicitly to delegated agents;
 - run creation commands from the checkout that should own the file;
 - perform worktree creation, integration, removal, and branch cleanup from the primary checkout.
+
+Before resuming tracked work in an existing worktree, the coordinating agent inspects the primary checkout and worktree for uncommitted changes and compares the effort branch with the primary checkout's current committed HEAD. Incorporate any missing primary-checkout commits using the repository's merge or rebase conventions before continuing dependent work or delegation. Preserve effort commits and uncommitted work, resolve conflicts, reload affected instructions and topics, and refresh verification affected by the reconciliation. A worktree may retain commits ahead of the primary checkout; synchronization does not require matching HEADs or fetching from a remote.
+
+Uncommitted primary-checkout changes are not shared by Git worktrees. Reconcile relevant local changes explicitly before work depends on them, preserving unrelated work; do not silently copy, discard, or commit them. Record the reconciled primary-checkout commit and actual implementation checkout in memory, or a concrete blocker if reconciliation cannot safely complete. When a recorded exception requires primary-checkout implementation, the primary and implementation checkout are the same directory.
 
 An absolute path to an AWF wrapper does not change the command's working directory. Before handing off, leave a current checkpoint with the agreements, evidence, locations, and next action the successor needs, using authoritative references for details already recorded.
 
