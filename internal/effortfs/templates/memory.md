@@ -16,4 +16,4 @@ Record actual checkout locations and reference change definitions, plans, ADRs, 
 
 ## Continuation context
 
-Retain consequential requirements, agreements, and findings needed to continue that are not recorded elsewhere. Distinguish proposals from agreements and link evidence. Keep retrospective details in notes.md.
+Retain consequential requirements, agreements, and findings needed to continue that are not recorded elsewhere. Record consequential operator decisions, requirements, corrections, and constraints promptly; preserve verbatim excerpts when exact wording matters to scope, meaning, or authority. Distinguish proposals from agreements and operator statements from agent interpretation, and link useful evidence. When refreshing this checkpoint, retain still-binding agreements until another authoritative home preserves them, then reference it. Keep retrospective details in notes.md.

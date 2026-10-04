@@ -26,11 +26,13 @@ Otherwise, create one there:
 # .awf/efforts/<slug>/memory.md
 ```
 
-Memory owns the current continuation checkpoint, not a second definition of the change or a session log. Keep the next action prominent, with current progress and verification, blockers, and actual checkout and artifact locations. Reference tracked definitions, plans, and ADRs rather than repeating them. Retain consequential agreements not recorded elsewhere and distinguish proposals from agreements. Tracked documents do not link back to ignored memory.
+Memory owns the current continuation checkpoint, not a second definition of the change or a session log. Keep the next action prominent, with current progress and verification, blockers, and actual checkout and artifact locations. Reference tracked definitions, plans, and ADRs rather than repeating them. Tracked documents do not link back to ignored memory.
+
+Record consequential operator decisions, requirements, corrections, and constraints promptly in memory when they are not recorded elsewhere. Distinguish proposals from agreements and operator statements from agent interpretation. Preserve verbatim excerpts when exact wording matters to scope, meaning, or authority.
 
 On resume, reconcile the checkpoint with the current repository, applicable instructions, topics, change documents, and ADRs. Memory is continuation evidence; current source and applicable authority determine what remains valid. Reuse context already established for the task.
 
-Replace stale state at meaningful resumable boundaries, before handoff or context replacement, and before switching away from unfinished work. Use one coordinating effort and memory writer for delegated work; children return findings rather than editing memory concurrently. A checkpoint or phase boundary is not a stopping point: continue authorized work unless the requested stopping point, a genuine need for user input, or a blocker beyond existing authority has been reached.
+Replace stale state at meaningful resumable boundaries, before handoff or context replacement, and before switching away from unfinished work. When refreshing memory, retain still-binding agreements until another authoritative home preserves them, then reference it. Use one coordinating effort and memory writer for delegated work; children return findings rather than editing memory concurrently. A checkpoint or phase boundary is not a stopping point: continue authorized work unless the requested stopping point, a genuine need for user input, or a blocker beyond existing authority has been reached.
 
 ## Retain useful findings
 
