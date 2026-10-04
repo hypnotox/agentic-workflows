@@ -2,6 +2,13 @@
 
 All notable changes to `awf` are documented here, newest first.
 
+## [0.59.1] - 2026-10-04
+
+### Documentation
+
+- Default effort tracked changes in Git repositories to dedicated worktrees, with concrete exceptions recorded in memory and explicit implementation paths for delegated agents.
+- Require coordinating agents to bring resumed worktrees up to date with the primary checkout before dependent work, preserving effort commits and uncommitted changes and refreshing affected context and verification.
+
 ## [0.59.0] - 2026-10-04
 
 ### Features
