@@ -2,6 +2,13 @@
 
 All notable changes to `awf` are documented here, newest first.
 
+## [0.59.2] - 2026-10-04
+
+### Documentation
+
+- Record consequential operator decisions, requirements, corrections, and constraints promptly in effort memory. Preserve verbatim excerpts when exact wording matters to scope, meaning, or authority, and distinguish operator statements from agent interpretation.
+- Retain still-binding agreements across checkpoint refreshes until another authoritative home preserves them, then reference it. Apply the same guidance in the memory starter and all generated effort skills.
+
 ## [0.59.1] - 2026-10-04
 
 ### Documentation
