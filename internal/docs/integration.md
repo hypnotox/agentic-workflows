@@ -51,6 +51,10 @@ Inspect the reserved `.awf/VERSION` destination, then render and check with the 
 
 Review reported retired marked files. Delete obsolete ones deliberately or remove their marker to retain them as author-owned content. Preserve tracked change documents, decisions, plans, local effort memory, archives, and worktrees throughout the transition. Run the repository's checks and commit the reconciled result. Rendering updates the bootstrap pin for later wrapper commands. In AWF's own checkout, use `./x` to execute the target checkout source.
 
+### Resolve output migration in 0.60
+
+AWF 0.60 changes the public `resolve` report. The former flat/default topic list and separate `resolve --coverage` report are removed. Update scripts, prompts, hooks, and documentation that parsed TSV or passed `--coverage` to call `resolve <path>...` directly and read the `globals`, per-argument `paths`, and `references` sections. Gaps remain nonfatal, but unsupported option-like arguments now fail as usage errors rather than being treated as paths.
+
 ## Upgrade documentation metadata
 
 All ordinary Markdown recursively under `docs/` now forms an OKF v0.2 bundle, with an additional AWF description requirement. Follow `awf docs knowledge` for the authoritative shared contract. This is a manual upgrade; `init`, `render`, and `check` never rewrite authored documents to migrate them.

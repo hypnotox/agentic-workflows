@@ -144,9 +144,16 @@ paths: ['src/**/*.go']
 ---
 Go smoke guidance.
 EOF
-[ "$("$candidate" resolve)" = $'global\tdocs/topics/global.md' ]
-[ "$("$candidate" resolve src/future/main.go)" = $'code/go\tdocs/topics/code/go.md\nglobal\tdocs/topics/global.md' ]
-[ "$("$candidate" resolve --coverage src/future/main.go missing/file)" = $'globals:\n  global\tdocs/topics/global.md\npath: "missing/file"\n  none\npath: "src/future/main.go"\n  code/go\tdocs/topics/code/go.md' ]
+cat > docs/topics/shared.md <<'EOF'
+---
+type: Project Topic
+description: Shared smoke guidance.
+paths: ['src/**']
+---
+Shared smoke guidance.
+EOF
+[ "$("$candidate" resolve)" = $'globals:\n  [1]\n\nreferences:\n  [1] global — docs/topics/global.md' ]
+[ "$("$candidate" resolve src/future/main.go missing/file src/future/main.go)" = $'globals:\n  [1]\n\npaths:\n  "src/future/main.go": [2], [3]\n  "missing/file": none\n  "src/future/main.go": [2], [3]\n\nreferences:\n  [1] global — docs/topics/global.md\n  [2] code/go — docs/topics/code/go.md\n  [3] shared — docs/topics/shared.md' ]
 printf '# Native smoke guidance\nKeep authored instructions.\n' > AGENTS.md
 printf '@AGENTS.md\nClaude-specific guidance.\n' > CLAUDE.md
 cp AGENTS.md "$root/expected-agents"
@@ -154,7 +161,7 @@ cp CLAUDE.md "$root/expected-claude"
 # The record is drift metadata, not configuration or a binary selector.
 printf '0.0.0\n' > .awf/VERSION
 [ "$(bash .awf/bootstrap.sh)" = "$cache_binary" ]
-[ "$("$candidate" resolve src/future/main.go)" = $'code/go\tdocs/topics/code/go.md\nglobal\tdocs/topics/global.md' ]
+[ "$("$candidate" resolve src/future/main.go)" = $'globals:\n  [1]\n\npaths:\n  "src/future/main.go": [2], [3]\n\nreferences:\n  [1] global — docs/topics/global.md\n  [2] code/go — docs/topics/code/go.md\n  [3] shared — docs/topics/shared.md' ]
 if "$candidate" check > "$root/stale-version.out"; then
   echo "native-release-test: stale version record unexpectedly passed" >&2
   exit 1
@@ -181,7 +188,7 @@ cmp "$root/expected-memory" "$root/shown-memory"
 grep '^decision_status: pending$' docs/decisions/smoke-choice.md >/dev/null
 grep '^status: draft$' docs/decisions/smoke-choice.md >/dev/null
 [ "$("$candidate" new topic generated/smoke 'generated/**')" = "topic: docs/topics/generated/smoke.md" ]
-[ "$("$candidate" resolve generated/future.txt)" = $'generated/smoke\tdocs/topics/generated/smoke.md\nglobal\tdocs/topics/global.md' ]
+[ "$("$candidate" resolve generated/future.txt)" = $'globals:\n  [1]\n\npaths:\n  "generated/future.txt": [2]\n\nreferences:\n  [1] global — docs/topics/global.md\n  [2] generated/smoke — docs/topics/generated/smoke.md' ]
 "$candidate" check
 "$candidate" effort finish smoke
 cmp "$root/expected-memory" .awf/effort-archive/smoke/memory.md

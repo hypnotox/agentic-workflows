@@ -133,49 +133,67 @@ func TestResolveGlobalsPathsAndEmptyResults(t *testing.T) {
 	writeTopicForTest(t, root, "m-root.md", []string{"*", "docs/**"})
 	writeTopicForTest(t, root, "n-normalized-double-star.md", []string{"./**"})
 
-	matches, err := Resolve(root, nil)
+	coverage, err := Resolve(root, nil)
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md"}}
-	if !reflect.DeepEqual(matches, want) {
-		t.Fatalf("empty Resolve = %#v, want %#v", matches, want)
+	want := Coverage{
+		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md"}},
+	}
+	if !equalCoverageForTest(coverage, want) {
+		t.Fatalf("empty Resolve = %#v, want %#v", coverage, want)
 	}
 
-	matches, err = Resolve(root, []string{`src\new\future.go`, "unknown/file.txt", "src/new/future.go"})
+	coverage, err = Resolve(root, []string{`src\new\future.go`, "unknown/file.txt", "src/new/future.go"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want = []TopicMatch{
-		{ID: "a-go", SourcePath: "docs/topics/a-go.md"},
-		{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md"},
-		{ID: "z-global", SourcePath: "docs/topics/z-global.md"},
+	want = Coverage{
+		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md"}},
+		Paths: []PathCoverage{
+			{Path: "src/new/future.go", Matches: []TopicMatch{
+				{ID: "a-go", SourcePath: "docs/topics/a-go.md"},
+				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md"},
+			}},
+			{Path: "unknown/file.txt", Matches: []TopicMatch{
+				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md"},
+			}},
+			{Path: "src/new/future.go", Matches: []TopicMatch{
+				{ID: "a-go", SourcePath: "docs/topics/a-go.md"},
+				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md"},
+			}},
+		},
 	}
-	if !reflect.DeepEqual(matches, want) {
-		t.Fatalf("path Resolve = %#v, want %#v", matches, want)
+	if !equalCoverageForTest(coverage, want) {
+		t.Fatalf("path Resolve = %#v, want %#v", coverage, want)
 	}
 	if _, err := os.Stat(filepath.Join(root, "src", "new", "future.go")); !errors.Is(err, fs.ErrNotExist) {
 		t.Fatalf("resolve target unexpectedly exists: %v", err)
 	}
 
-	matches, err = Resolve(root, []string{"README.md"})
+	coverage, err = Resolve(root, []string{"README.md"})
 	if err != nil {
 		t.Fatal(err)
 	}
-	want = []TopicMatch{
-		{ID: "m-root", SourcePath: "docs/topics/m-root.md"},
-		{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md"},
-		{ID: "z-global", SourcePath: "docs/topics/z-global.md"},
+	want = Coverage{
+		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md"}},
+		Paths: []PathCoverage{
+			{Path: "README.md", Matches: []TopicMatch{
+				{ID: "m-root", SourcePath: "docs/topics/m-root.md"},
+				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md"},
+			}},
+		},
 	}
-	if !reflect.DeepEqual(matches, want) {
-		t.Fatalf("root Resolve = %#v, want %#v", matches, want)
+	if !equalCoverageForTest(coverage, want) {
+		t.Fatalf("root Resolve = %#v, want %#v", coverage, want)
 	}
 
 	writeTestFile(t, filepath.Join(root, "docs", "topics", "z-global.md"), []byte("---\npaths: [elsewhere/**]\n---\nbody\n"), 0o644)
 	writeTestFile(t, filepath.Join(root, "docs", "topics", "n-normalized-double-star.md"), []byte("---\npaths: [elsewhere/**]\n---\nbody\n"), 0o644)
-	matches, err = Resolve(root, []string{"nested/no-match"})
-	if err != nil || len(matches) != 0 {
-		t.Fatalf("no-match Resolve = %#v, %v", matches, err)
+	coverage, err = Resolve(root, []string{"nested/no-match"})
+	want = Coverage{Paths: []PathCoverage{{Path: "nested/no-match"}}}
+	if err != nil || !equalCoverageForTest(coverage, want) {
+		t.Fatalf("no-match Resolve = %#v, want %#v, %v", coverage, want, err)
 	}
 }
 
@@ -189,20 +207,24 @@ func TestResolveValidatesPathsWhenGlobalsExist(t *testing.T) {
 	}
 }
 
-func TestResolveCoverageReportsGlobalsGapsOverlapAndNormalizedInputs(t *testing.T) {
+func TestResolveReportsGlobalsGapsOverlapAndNormalizedInputs(t *testing.T) {
 	root := t.TempDir()
 	writeTopicForTest(t, root, "z-global.md", []string{"**"})
 	writeTopicForTest(t, root, "a-go.md", []string{"src/**/*.go"})
 	writeTopicForTest(t, root, "m-src.md", []string{"src/**"})
 	before := snapshotTree(t, root)
 
-	coverage, err := ResolveCoverage(root, []string{`src\future\new.go`, "missing/file.txt", "src/else/../future/new.go"})
+	coverage, err := Resolve(root, []string{`src\future\new.go`, "missing/file.txt", "src/else/../future/new.go"})
 	if err != nil {
 		t.Fatal(err)
 	}
 	want := Coverage{
 		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md"}},
 		Paths: []PathCoverage{
+			{Path: "src/future/new.go", Matches: []TopicMatch{
+				{ID: "a-go", SourcePath: "docs/topics/a-go.md"},
+				{ID: "m-src", SourcePath: "docs/topics/m-src.md"},
+			}},
 			{Path: "missing/file.txt"},
 			{Path: "src/future/new.go", Matches: []TopicMatch{
 				{ID: "a-go", SourcePath: "docs/topics/a-go.md"},
@@ -210,32 +232,23 @@ func TestResolveCoverageReportsGlobalsGapsOverlapAndNormalizedInputs(t *testing.
 			}},
 		},
 	}
-	if !reflect.DeepEqual(coverage, want) {
-		t.Fatalf("ResolveCoverage = %#v, want %#v", coverage, want)
+	if !equalCoverageForTest(coverage, want) {
+		t.Fatalf("Resolve = %#v, want %#v", coverage, want)
 	}
 	if _, err := os.Stat(filepath.Join(root, "src", "future", "new.go")); !errors.Is(err, fs.ErrNotExist) {
-		t.Fatalf("coverage target unexpectedly exists: %v", err)
+		t.Fatalf("resolve target unexpectedly exists: %v", err)
 	}
 	after := snapshotTree(t, root)
 	if !reflect.DeepEqual(after, before) {
-		t.Fatalf("coverage changed repository tree: before %#v, after %#v", before, after)
+		t.Fatalf("resolve changed repository tree: before %#v, after %#v", before, after)
 	}
 }
 
-func TestResolveCoverageRequiresAndValidatesPaths(t *testing.T) {
+func TestResolveRejectsMalformedTopicSources(t *testing.T) {
 	root := t.TempDir()
-	writeTopicForTest(t, root, "global.md", []string{"**"})
-	if _, err := ResolveCoverage(root, nil); err == nil {
-		t.Fatal("ResolveCoverage accepted no paths")
-	}
-	for _, bad := range []string{"", "/absolute", "../escape", `C:\absolute`} {
-		if _, err := ResolveCoverage(root, []string{bad}); err == nil {
-			t.Errorf("ResolveCoverage accepted %q", bad)
-		}
-	}
 	writeTestFile(t, filepath.Join(root, "docs", "topics", "global.md"), []byte("malformed\n"), 0o644)
-	if _, err := ResolveCoverage(root, []string{"future/path"}); err == nil {
-		t.Fatal("ResolveCoverage accepted malformed topic source")
+	if _, err := Resolve(root, []string{"future/path"}); err == nil {
+		t.Fatal("Resolve accepted malformed topic source")
 	}
 }
 
@@ -476,11 +489,11 @@ func TestVersionRecordTracksRendererWithoutControllingResolution(t *testing.T) {
 		if record != "" {
 			writeTestFile(t, versionPath, []byte(record), 0o644)
 		}
-		if matches, err := Resolve(root, nil); err != nil || len(matches) != 1 {
-			t.Fatalf("Resolve with record %q = %#v, %v", record, matches, err)
+		if coverage, err := Resolve(root, nil); err != nil || len(coverage.Globals) != 1 {
+			t.Fatalf("Resolve with record %q = %#v, %v", record, coverage, err)
 		}
-		if coverage, err := ResolveCoverage(root, []string{"future/file"}); err != nil || len(coverage.Globals) != 1 {
-			t.Fatalf("coverage with record %q = %#v, %v", record, coverage, err)
+		if coverage, err := Resolve(root, []string{"future/file"}); err != nil || len(coverage.Globals) != 1 || len(coverage.Paths) != 1 {
+			t.Fatalf("path Resolve with record %q = %#v, %v", record, coverage, err)
 		}
 	}
 	if _, err := Render(root); err != nil {
@@ -515,6 +528,13 @@ func TestVersionDestinationMustBeRegular(t *testing.T) {
 			}
 		})
 	}
+}
+
+func equalCoverageForTest(left, right Coverage) bool {
+	return slices.Equal(left.Globals, right.Globals) &&
+		slices.EqualFunc(left.Paths, right.Paths, func(left, right PathCoverage) bool {
+			return left.Path == right.Path && slices.Equal(left.Matches, right.Matches)
+		})
 }
 
 func writeTopicForTest(t *testing.T, root, name string, patterns []string) {

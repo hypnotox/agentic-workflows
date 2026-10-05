@@ -25,7 +25,7 @@ func TestUnrelatedCommandsDoNotRequireOrChangeVersionRecord(t *testing.T) {
 			for _, args := range [][]string{
 				{"docs"}, {"docs", "knowledge"}, {"docs", "agents"}, {"docs", "changes"}, {"docs", "adr"}, {"docs", "completion"}, {"version"},
 				{"new", "intent", "test"}, {"new", "spec", "test"}, {"new", "plan", "test"}, {"new", "adr", "test"},
-				{"new", "topic", "test", "src/**"}, {"resolve", "src/future.go"}, {"resolve", "--coverage", "src/future.go"},
+				{"new", "topic", "test", "src/**"}, {"resolve", "src/future.go"},
 				{"new", "effort", "test"}, {"effort", "list"}, {"effort", "show", "test"}, {"effort", "finish", "test"},
 			} {
 				if code, _, stderr := runCLI(t, root, args...); code != 0 || stderr != "" {

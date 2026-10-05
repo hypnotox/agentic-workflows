@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"path"
 	"path/filepath"
-	"sort"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/pathglob"
@@ -28,94 +27,36 @@ type Coverage struct {
 	Paths   []PathCoverage
 }
 
-// Resolve returns explicit global topics and every topic matching at least one
-// lexical repository-relative path. The target paths do not need to exist.
-func Resolve(root string, values []string) ([]TopicMatch, error) {
-	topics, err := LoadTopics(root)
-	if err != nil {
-		return nil, err
-	}
-	normalized, err := normalizeResolvePaths(values)
-	if err != nil {
-		return nil, err
-	}
-
-	matches := make([]TopicMatch, 0)
-	for _, topic := range topics {
-		matched := topic.Global
-		for _, value := range normalized {
-			if pathglob.MatchAny(topic.Paths, value) {
-				matched = true
-				break
-			}
-		}
-		if matched {
-			matches = append(matches, topicMatch(topic))
-		}
-	}
-	sort.Slice(matches, func(i, j int) bool { return matches[i].ID < matches[j].ID })
-	return matches, nil
-}
-
-// ResolveCoverage reports explicit globals and matching non-global topics for
-// each distinct normalized lexical repository-relative path.
-func ResolveCoverage(root string, values []string) (Coverage, error) {
-	if len(values) == 0 {
-		return Coverage{}, fmt.Errorf("coverage requires at least one path")
-	}
+// Resolve reports explicit globals and non-global topics for every supplied
+// lexical repository-relative path, in argument order, including duplicates.
+// The target paths do not need to exist.
+func Resolve(root string, values []string) (Coverage, error) {
 	topics, err := LoadTopics(root)
 	if err != nil {
 		return Coverage{}, err
 	}
-	normalized, err := normalizeResolvePaths(values)
-	if err != nil {
-		return Coverage{}, err
+	result := Coverage{Paths: make([]PathCoverage, len(values))}
+	for i, value := range values {
+		normalized, err := normalizeResolvePath(value)
+		if err != nil {
+			return Coverage{}, err
+		}
+		result.Paths[i].Path = normalized
 	}
-	sort.Strings(normalized)
-	normalized = compactStrings(normalized)
-
-	result := Coverage{Paths: make([]PathCoverage, 0, len(normalized))}
 	for _, topic := range topics {
 		if topic.Global {
 			result.Globals = append(result.Globals, topicMatch(topic))
 		}
 	}
-	for _, value := range normalized {
-		entry := PathCoverage{Path: value}
+	for i := range result.Paths {
+		entry := &result.Paths[i]
 		for _, topic := range topics {
-			if !topic.Global && pathglob.MatchAny(topic.Paths, value) {
+			if !topic.Global && pathglob.MatchAny(topic.Paths, entry.Path) {
 				entry.Matches = append(entry.Matches, topicMatch(topic))
 			}
 		}
-		result.Paths = append(result.Paths, entry)
 	}
 	return result, nil
-}
-
-func normalizeResolvePaths(values []string) ([]string, error) {
-	normalized := make([]string, len(values))
-	for i, value := range values {
-		var err error
-		normalized[i], err = normalizeResolvePath(value)
-		if err != nil {
-			return nil, err
-		}
-	}
-	return normalized, nil
-}
-
-func compactStrings(values []string) []string {
-	if len(values) == 0 {
-		return values
-	}
-	write := 1
-	for _, value := range values[1:] {
-		if value != values[write-1] {
-			values[write] = value
-			write++
-		}
-	}
-	return values[:write]
 }
 
 func topicMatch(topic Topic) TopicMatch {

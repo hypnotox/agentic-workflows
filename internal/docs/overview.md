@@ -1,6 +1,6 @@
 # AWF guide
 
-AWF delivers fixed workflow skills and embedded adopter guides. It also routes repository paths to current topics, reports routing coverage for chosen paths, keeps optional local effort memory, and creates optional intent, specification, plan, ADR, and topic starters. It does not own Git operations, hooks, CI, repository gates, or the meaning of authored Markdown.
+AWF delivers fixed workflow skills and embedded adopter guides. It also routes repository paths to current topics, reports globals and per-argument matches with response-local source references, keeps optional local effort memory, and creates optional intent, specification, plan, ADR, and topic starters. It does not own Git operations, hooks, CI, repository gates, or the meaning of authored Markdown.
 
 ## Ownership
 

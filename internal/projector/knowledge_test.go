@@ -18,9 +18,9 @@ func TestReservedFilesNeverBecomeTopics(t *testing.T) {
 	if err != nil || len(topics) != 1 || topics[0].ID != "real" {
 		t.Fatalf("topics = %v, %v", topics, err)
 	}
-	coverage, err := ResolveCoverage(root, []string{"src/future.go"})
-	if err != nil || len(coverage.Globals) != 1 || len(coverage.Paths[0].Matches) != 0 {
-		t.Fatalf("coverage = %v, %v", coverage, err)
+	coverage, err := Resolve(root, []string{"src/future.go"})
+	if err != nil || len(coverage.Globals) != 1 || len(coverage.Paths) != 1 || len(coverage.Paths[0].Matches) != 0 {
+		t.Fatalf("resolve = %v, %v", coverage, err)
 	}
 	if _, err := Render(root); err != nil {
 		t.Fatal(err)
@@ -30,8 +30,8 @@ func TestReservedFilesNeverBecomeTopics(t *testing.T) {
 	}
 	// A malformed reserved file is a check finding, not a topic-loading gate.
 	writeTestFile(t, filepath.Join(root, "docs/topics/index.md"), []byte("---\npaths: ['**']\n---\n# Index\n"), 0o644)
-	if matches, err := Resolve(root, nil); err != nil || len(matches) != 1 {
-		t.Fatalf("reserved file became routable: %v, %v", matches, err)
+	if coverage, err := Resolve(root, nil); err != nil || len(coverage.Globals) != 1 || len(coverage.Paths) != 0 {
+		t.Fatalf("reserved file became routable: %v, %v", coverage, err)
 	}
 	if _, err := Render(root); err != nil {
 		t.Fatalf("render acquired a bundle gate: %v", err)
@@ -56,7 +56,7 @@ func TestManualAdopterMigrationPreservesAuthorityBodiesAndRouting(t *testing.T) 
 	for name, content := range legacy {
 		writeTestFile(t, filepath.Join(root, filepath.FromSlash(name)), []byte(content), 0o644)
 	}
-	beforeRouting, err := ResolveCoverage(root, []string{"src/future.go", "other/file"})
+	beforeRouting, err := Resolve(root, []string{"src/future.go", "other/file"})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -112,8 +112,8 @@ func TestManualAdopterMigrationPreservesAuthorityBodiesAndRouting(t *testing.T) 
 	if findings, err := Check(root); err != nil || len(findings) != 0 {
 		t.Fatalf("migrated check = %v, %v", findings, err)
 	}
-	afterRouting, err := ResolveCoverage(root, []string{"src/future.go", "other/file"})
-	if err != nil || !reflect.DeepEqual(beforeRouting, afterRouting) {
+	afterRouting, err := Resolve(root, []string{"src/future.go", "other/file"})
+	if err != nil || !equalCoverageForTest(beforeRouting, afterRouting) {
 		t.Fatalf("migration changed routing: before=%v, after=%v, %v", beforeRouting, afterRouting, err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".git")); !os.IsNotExist(err) {

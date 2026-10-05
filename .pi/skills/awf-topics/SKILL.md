@@ -16,12 +16,29 @@ Use the repository's documented AWF runner when repository context is needed:
 
 ```sh
 ./awf resolve
-./awf resolve internal/projector/new-file.go docs/future.md
+./awf resolve internal/projector/new-file.go docs/future.md internal/projector/./new-file.go
 ```
 
-Bare `resolve` returns explicit global topics only. A path query returns globals plus every topic matching any supplied path, once per topic, in deterministic order. Read every returned source. Once the applicable context is known, reuse it during the task rather than resolving again before every edit.
+Bare `resolve` returns explicit global topics only and omits the `paths` section. A path query keeps globals separate, then reports one entry for each supplied lexical path in argument order. Arguments are normalized for matching and validation, but repeated or normalization-equivalent arguments remain separate output entries. Topic matches within each group are ID-sorted. A path with no specific match is reported as `none` and the command still succeeds.
 
-Arguments are lexical repository-relative paths. They need not exist. AWF normalizes separators and rejects absolute paths or paths that escape the repository. A successful query with no matches prints `none`.
+Output uses response-local numbered references. Numbers are assigned on first use, globals first and then path arguments in order, and each topic ID appears once in the footer. Read each referenced source once and reuse it wherever that number appears in the response. Empty globals or empty references print an indented `none`.
+
+```text
+globals:
+  [1]
+
+paths:
+  "internal/projector/new-file.go": [2], [3]
+  "docs/future.md": none
+  "internal/projector/new-file.go": [2], [3]
+
+references:
+  [1] global — docs/topics/global.md
+  [2] code/go — docs/topics/code/go.md
+  [3] shared — docs/topics/shared.md
+```
+
+Arguments are lexical repository-relative paths. They need not exist. AWF normalizes separators, rejects absolute paths or paths that escape the repository, and treats unsupported option-like arguments as usage errors rather than paths. Path labels in output use quoted Go-style escaping. Once the applicable context is known, reuse it during the task rather than resolving again before every edit.
 
 ## Create and author a topic
 
@@ -64,17 +81,15 @@ paths:
 
 A standalone `**` is invalid in a mixed or duplicate selector list. Patterns such as `*`, `./**`, `src/**`, and `**/*.go` remain ordinary selectors rather than global declarations. Topic creation preserves the supplied selector spelling; in particular, it does not silently rewrite `./**` into an explicit global declaration. Routing interprets only the `paths` field and treats the Markdown body and other frontmatter as opaque authored content. Separately, `check` validates the shared knowledge contract; type and description do not affect routing.
 
-## Inspect routing coverage
+## Inspect topic routing
 
 Ask how explicitly chosen paths route without requiring them to exist:
 
 ```sh
-./awf resolve --coverage internal/projector/source.go docs/future.md
+./awf resolve internal/projector/source.go docs/future.md
 ```
 
-Coverage requires at least one path. It prints explicit global topics separately, once, followed by every distinct normalized input path and all matching non-global topics. An uncovered path is shown as `none` and the report still succeeds. Multiple specific matches are legitimate and can reveal useful overlap. The caller chooses the inventory with Git or ordinary file tools; AWF does not crawl the filesystem, invoke Git, apply ignore rules, or impose repository-wide coverage.
-
-Coverage finds routing gaps and overlap. It cannot establish that documentation is complete, relevant, accurate, or fresh, and a path may legitimately need no specific topic. It is an informational inspection mode, not a score or gate. Ordinary `resolve` behavior is unchanged.
+Routing output finds gaps and overlap for the caller's chosen inventory. It cannot establish that documentation is complete, relevant, accurate, or fresh, and a path may legitimately need no specific topic. AWF does not crawl the filesystem, invoke Git, apply ignore rules, or impose repository-wide coverage.
 
 ## Maintain current knowledge
 

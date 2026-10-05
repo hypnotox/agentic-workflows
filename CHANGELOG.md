@@ -2,6 +2,17 @@
 
 All notable changes to `awf` are documented here, newest first.
 
+## [0.60.0] - 2026-10-05
+
+### Breaking changes
+
+- Change `awf resolve` output from the previous flat/default report to `globals`, per-argument `paths`, and deduplicated response-local `references` sections. Supplied paths remain in argument order, including repeated or normalization-equivalent paths, and no-specific-match paths report `none` without failing.
+- Remove `resolve --coverage`; use `resolve <path>...` for explicit routing inspection. Unsupported option-like arguments are now usage errors instead of paths.
+
+### Changed
+
+- Number topic references by first use, globals first and then path arguments, so readers can open each footer source once per response.
+
 ## [0.59.2] - 2026-10-04
 
 ### Documentation

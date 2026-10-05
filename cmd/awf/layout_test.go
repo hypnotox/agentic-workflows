@@ -26,7 +26,7 @@ func TestLegacyLayoutsRequireManualMigrationWithoutMutation(t *testing.T) {
 			if err := os.WriteFile(path, []byte(legacy.body), 0o644); err != nil {
 				t.Fatal(err)
 			}
-			for _, args := range [][]string{{"resolve"}, {"resolve", "src/new.go"}, {"resolve", "--coverage", "src/new.go"}, {"init"}, {"render"}, {"check"}} {
+			for _, args := range [][]string{{"resolve"}, {"resolve", "src/new.go"}, {"init"}, {"render"}, {"check"}} {
 				code, stdout, stderr := runCLI(t, root, args...)
 				if code != 1 || stdout != "" || !strings.Contains(stderr, "legacy AWF source") || !strings.Contains(stderr, "docs integration") {
 					t.Errorf("unmigrated %v = code %d, stdout %q, stderr %q", args, code, stdout, stderr)
@@ -89,7 +89,7 @@ func TestManualOwnershipTransitionPreservesAuthoredAndUnrenderedGuidance(t *test
 	files["docs/topics/code/go.md"] = topic
 
 	code, stdout, stderr := runCLI(t, root, "resolve", "src/new.go")
-	if code != 0 || stdout != "code/go\tdocs/topics/code/go.md\n" || stderr != "" {
+	if code != 0 || stdout != "globals:\n  none\n\npaths:\n  \"src/new.go\": [1]\n\nreferences:\n  [1] code/go — docs/topics/code/go.md\n" || stderr != "" {
 		t.Fatalf("migrated resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	for _, command := range []string{"render", "check", "init"} {

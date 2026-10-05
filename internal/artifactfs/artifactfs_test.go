@@ -148,13 +148,13 @@ func TestNewTopicRoundTripsAuthoredSelectorMeaning(t *testing.T) {
 	if want := []string{"**", "src/**/*.go"}; !reflect.DeepEqual(topics[0].Paths, want) {
 		t.Fatalf("normalized paths = %v, want %v", topics[0].Paths, want)
 	}
-	matches, err := projector.Resolve(root, nil)
-	if err != nil || len(matches) != 0 {
-		t.Fatalf("bare resolve treated ./** as global: %#v, %v", matches, err)
+	coverage, err := projector.Resolve(root, nil)
+	if err != nil || len(coverage.Globals) != 0 || len(coverage.Paths) != 0 {
+		t.Fatalf("bare resolve treated ./** as global: %#v, %v", coverage, err)
 	}
-	matches, err = projector.Resolve(root, []string{"docs/nonexistent.md"})
-	if err != nil || len(matches) != 1 || matches[0].ID != "code/go" {
-		t.Fatalf("path resolve = %#v, %v", matches, err)
+	coverage, err = projector.Resolve(root, []string{"docs/nonexistent.md"})
+	if err != nil || len(coverage.Paths) != 1 || len(coverage.Paths[0].Matches) != 1 || coverage.Paths[0].Matches[0].ID != "code/go" {
+		t.Fatalf("path resolve = %#v, %v", coverage, err)
 	}
 
 	edited := []byte("author-owned topic\n")
@@ -177,9 +177,9 @@ func TestNewTopicExplicitGlobalRemainsGlobal(t *testing.T) {
 	if _, err := NewTopic(root, "global", []string{"**"}); err != nil {
 		t.Fatal(err)
 	}
-	matches, err := projector.Resolve(root, nil)
-	if err != nil || len(matches) != 1 || matches[0].ID != "global" {
-		t.Fatalf("bare resolve = %#v, %v", matches, err)
+	coverage, err := projector.Resolve(root, nil)
+	if err != nil || len(coverage.Globals) != 1 || coverage.Globals[0].ID != "global" || len(coverage.Paths) != 0 {
+		t.Fatalf("bare resolve = %#v, %v", coverage, err)
 	}
 }
 

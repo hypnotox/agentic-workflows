@@ -100,11 +100,10 @@ Use the new binary's context query when reviewing converted topics:
 
 ```sh
 /path/to/new/awf resolve                              # explicit globals only
-/path/to/new/awf resolve path/to/file.go              # globals plus path matches
-/path/to/new/awf resolve --coverage path/to/file.go   # globals and per-path specific coverage
+/path/to/new/awf resolve path/to/file.go              # globals and per-argument references
 ```
 
-Resolution returns source locations rather than topic bodies. Coverage is informational and operates only on the explicit lexical paths supplied by the caller; it is not a documentation-completeness gate.
+Resolution reports globals separately, preserves every supplied lexical path in argument order, and returns source locations once in a numbered references footer rather than topic bodies. Unmapped paths report `none` without failing. Routing inspection is informational, not a documentation-completeness gate.
 
 ## 5. Verify the repository
 

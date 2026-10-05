@@ -174,13 +174,13 @@ func TestRenderReportsAndCheckFailsUnmanagedMarker(t *testing.T) {
 	}
 }
 
-func TestResolveAndCoverageCLI(t *testing.T) {
+func TestResolveCLI(t *testing.T) {
 	root := t.TempDir()
 	if code, _, stderr := runCLI(t, root, "init"); code != 0 {
 		t.Fatal(stderr)
 	}
 	code, stdout, stderr := runCLI(t, root, "resolve")
-	if code != 0 || stdout != "none\n" || stderr != "" {
+	if code != 0 || stdout != "globals:\n  none\n\nreferences:\n  none\n" || stderr != "" {
 		t.Fatalf("resolve without globals = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	topicPath := filepath.Join(root, "docs", "topics", "code", "render.md")
@@ -190,38 +190,60 @@ func TestResolveAndCoverageCLI(t *testing.T) {
 	if err := os.WriteFile(topicPath, []byte("---\npaths: [internal/projector/**]\n---\n# Render\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
+	sharedPath := filepath.Join(root, "docs", "topics", "shared.md")
+	if err := os.WriteFile(sharedPath, []byte("---\npaths: [internal/**]\n---\n# Shared\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
 	globalPath := filepath.Join(root, "docs", "topics", "global.md")
 	if err := os.WriteFile(globalPath, []byte("---\npaths: ['**']\n---\n# Global\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	code, stdout, stderr = runCLI(t, root, "resolve")
-	if code != 0 || stdout != "global\tdocs/topics/global.md\n" || stderr != "" {
+	want := "globals:\n  [1]\n\nreferences:\n  [1] global — docs/topics/global.md\n"
+	if code != 0 || stdout != want || stderr != "" {
 		t.Fatalf("resolve globals = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
-	code, stdout, stderr = runCLI(t, root, "resolve", "internal/projector/new.go")
-	if code != 0 || stdout != "code/render\tdocs/topics/code/render.md\nglobal\tdocs/topics/global.md\n" || stderr != "" {
+	code, stdout, stderr = runCLI(t, root, "resolve", `internal\\projector\\new.go`, "README.md", "internal/projector/new.go")
+	want = "globals:\n  [1]\n\npaths:\n  \"internal/projector/new.go\": [2], [3]\n  \"README.md\": none\n  \"internal/projector/new.go\": [2], [3]\n\nreferences:\n  [1] global — docs/topics/global.md\n  [2] code/render — docs/topics/code/render.md\n  [3] shared — docs/topics/shared.md\n"
+	if code != 0 || stdout != want || stderr != "" {
 		t.Fatalf("resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
-	code, stdout, stderr = runCLI(t, root, "resolve", "--coverage", `internal\\projector\\new.go`, "README.md", "internal/projector/new.go")
-	wantCoverage := "globals:\n  global\tdocs/topics/global.md\npath: \"README.md\"\n  none\npath: \"internal/projector/new.go\"\n  code/render\tdocs/topics/code/render.md\n"
-	if code != 0 || stdout != wantCoverage || stderr != "" {
-		t.Fatalf("resolve coverage = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	code, stdout, stderr = runCLI(t, root, "resolve", "internal/other/new.go", "internal/projector/new.go")
+	want = "globals:\n  [1]\n\npaths:\n  \"internal/other/new.go\": [2]\n  \"internal/projector/new.go\": [3], [2]\n\nreferences:\n  [1] global — docs/topics/global.md\n  [2] shared — docs/topics/shared.md\n  [3] code/render — docs/topics/code/render.md\n"
+	if code != 0 || stdout != want || stderr != "" {
+		t.Fatalf("first-use resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
-	code, stdout, stderr = runCLI(t, root, "resolve", "--coverage", "line\nbreak")
-	wantCoverage = "globals:\n  global\tdocs/topics/global.md\npath: \"line\\nbreak\"\n  none\n"
-	if code != 0 || stdout != wantCoverage || stderr != "" {
-		t.Fatalf("escaped coverage = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	code, stdout, stderr = runCLI(t, root, "resolve", "line\nbreak")
+	want = "globals:\n  [1]\n\npaths:\n  \"line\\nbreak\": none\n\nreferences:\n  [1] global — docs/topics/global.md\n"
+	if code != 0 || stdout != want || stderr != "" {
+		t.Fatalf("escaped resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
-	code, stdout, stderr = runCLI(t, root, "resolve", "--coverage")
-	if code != 2 || stdout != "" || !strings.Contains(stderr, "usage:") {
-		t.Fatalf("empty coverage = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	code, stdout, stderr = runCLI(t, root, "resolve", "--coverage", "internal/projector/new.go")
+	if code != 2 || stdout != "" || stderr == "" {
+		t.Fatalf("former coverage flag = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	code, stdout, stderr = runCLI(t, root, "resolve", "--unknown")
+	if code != 2 || stdout != "" || stderr == "" {
+		t.Fatalf("unsupported resolve option = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	code, stdout, stderr = runCLI(t, root, "resolve", "internal/projector/new.go", "../escape")
+	if code != 1 || stdout != "" || !strings.Contains(stderr, "../escape") {
+		t.Fatalf("invalid resolve path = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	if err := os.WriteFile(globalPath, []byte("malformed\n"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	code, stdout, stderr = runCLI(t, root, "resolve", "internal/projector/new.go")
+	if code != 1 || stdout != "" || !strings.Contains(stderr, "docs/topics/global.md") {
+		t.Fatalf("malformed topic resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	if err := os.Remove(globalPath); err != nil {
 		t.Fatal(err)
 	}
 	code, stdout, stderr = runCLI(t, root, "resolve", "README.md")
-	if code != 0 || stdout != "none\n" || stderr != "" {
+	want = "globals:\n  none\n\npaths:\n  \"README.md\": none\n\nreferences:\n  none\n"
+	if code != 0 || stdout != want || stderr != "" {
 		t.Fatalf("resolve none = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 }
@@ -251,7 +273,7 @@ func TestArtifactCreationCLI(t *testing.T) {
 		t.Fatalf("new topic = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = runCLI(t, root, "resolve", "generated/future.txt")
-	if code != 0 || stdout != "nested/generated\tdocs/topics/nested/generated.md\n" || stderr != "" {
+	if code != 0 || stdout != "globals:\n  none\n\npaths:\n  \"generated/future.txt\": [1]\n\nreferences:\n  [1] nested/generated — docs/topics/nested/generated.md\n" || stderr != "" {
 		t.Fatalf("resolve created topic = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 

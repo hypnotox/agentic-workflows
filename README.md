@@ -4,7 +4,7 @@
 [![Go](https://img.shields.io/badge/Go-1.27+-00ADD8?logo=go&logoColor=white)](go.mod)
 [![License: AGPL-3.0-only](https://img.shields.io/badge/License-AGPL--3.0--only-blue.svg)](LICENSE)
 
-`awf` is a small Go CLI that delivers fixed workflow skills and embedded guides, routes paths to current topics, reports routing coverage for chosen paths, keeps optional local effort memory, and creates optional intent, specification, plan, ADR, and topic starters.
+`awf` is a small Go CLI that delivers fixed workflow skills and embedded guides, routes paths to current topics with per-argument source references, keeps optional local effort memory, and creates optional intent, specification, plan, ADR, and topic starters.
 
 Markdown under `docs/` forms an OKF v0.2 knowledge bundle. `awf check` validates its structure, required AWF descriptions, and ADR state pairs without assessing truth or approval. Titles remain optional, and documents remain author-owned.
 
@@ -32,7 +32,7 @@ The authoritative adopter guides are ordinary Markdown in `internal/docs/`, embe
 - [Integration](internal/docs/integration.md): adoption, ownership transition, repository-owned automation, updates, and repair;
 - [Knowledge](internal/docs/knowledge.md): shared bundle metadata, reserved indexes/logs, and structural checking;
 - [Agent guidance](internal/docs/agents.md): concise author-owned `AGENTS.md` and optional Claude support;
-- [Topics](internal/docs/topics.md): path-routed current project knowledge, topic creation, and optional coverage inspection;
+- [Topics](internal/docs/topics.md): path-routed current project knowledge, topic creation, and resolve output interpretation;
 - [Efforts](internal/docs/effort.md): local continuity, notes, worktrees, and handoffs;
 - [Changes](internal/docs/changes.md): define outcomes and routes, challenge premises, and review intent, specifications, and plans where complexity warrants it;
 - [ADRs](internal/docs/adr.md): record consequential decisions and maintain their review, authority, and lifecycle;

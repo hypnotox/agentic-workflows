@@ -5,7 +5,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"strconv"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/artifactfs"
@@ -83,28 +82,16 @@ func run(root string, args []string, stdout, stderr io.Writer) int {
 			writeText(stdout, resolveHelp)
 			return 0
 		}
-		if len(args) >= 3 && args[2] == "--coverage" {
-			if len(args) == 3 {
-				return usage(stderr, "usage: awf resolve --coverage <path>...")
+		for _, value := range args[2:] {
+			if strings.HasPrefix(value, "-") {
+				return usage(stderr, fmt.Sprintf("unknown resolve option %q; usage: awf resolve [<path>...]", value))
 			}
-			coverage, err := projector.ResolveCoverage(root, args[3:])
-			if err != nil {
-				return failure(stderr, err)
-			}
-			printCoverage(stdout, coverage)
-			return 0
 		}
-		matches, err := projector.Resolve(root, args[2:])
+		coverage, err := projector.Resolve(root, args[2:])
 		if err != nil {
 			return failure(stderr, err)
 		}
-		if len(matches) == 0 {
-			fmt.Fprintln(stdout, "none")
-			return 0
-		}
-		for _, match := range matches {
-			fmt.Fprintf(stdout, "%s\t%s\n", match.ID, match.SourcePath)
-		}
+		printResolution(stdout, coverage)
 		return 0
 	case "docs":
 		return runDocs(args[2:], stdout, stderr)
@@ -280,24 +267,46 @@ func runEffort(root string, args []string, stdout, stderr io.Writer) int {
 	}
 }
 
-func printCoverage(stdout io.Writer, coverage projector.Coverage) {
+func printResolution(stdout io.Writer, coverage projector.Coverage) {
+	numbers := make(map[string]int)
+	var references []projector.TopicMatch
+	printMatches := func(matches []projector.TopicMatch) {
+		if len(matches) == 0 {
+			fmt.Fprintln(stdout, "none")
+			return
+		}
+		for i, match := range matches {
+			number := numbers[match.ID]
+			if number == 0 {
+				references = append(references, match)
+				number = len(references)
+				numbers[match.ID] = number
+			}
+			if i > 0 {
+				fmt.Fprint(stdout, ", ")
+			}
+			fmt.Fprintf(stdout, "[%d]", number)
+		}
+		fmt.Fprintln(stdout)
+	}
+
 	fmt.Fprintln(stdout, "globals:")
-	if len(coverage.Globals) == 0 {
-		fmt.Fprintln(stdout, "  none")
-	} else {
-		for _, match := range coverage.Globals {
-			fmt.Fprintf(stdout, "  %s\t%s\n", match.ID, match.SourcePath)
+	fmt.Fprint(stdout, "  ")
+	printMatches(coverage.Globals)
+	if len(coverage.Paths) > 0 {
+		fmt.Fprintln(stdout, "\npaths:")
+		for _, entry := range coverage.Paths {
+			fmt.Fprintf(stdout, "  %q: ", entry.Path)
+			printMatches(entry.Matches)
 		}
 	}
-	for _, entry := range coverage.Paths {
-		fmt.Fprintf(stdout, "path: %s\n", strconv.Quote(entry.Path))
-		if len(entry.Matches) == 0 {
-			fmt.Fprintln(stdout, "  none")
-			continue
-		}
-		for _, match := range entry.Matches {
-			fmt.Fprintf(stdout, "  %s\t%s\n", match.ID, match.SourcePath)
-		}
+	fmt.Fprintln(stdout, "\nreferences:")
+	if len(references) == 0 {
+		fmt.Fprintln(stdout, "  none")
+		return
+	}
+	for i, match := range references {
+		fmt.Fprintf(stdout, "  [%d] %s — %s\n", i+1, match.ID, match.SourcePath)
 	}
 }
 
@@ -396,11 +405,11 @@ See ` + "`awf docs integration`" + ` for gate and CI integration.
 `
 
 const resolveHelp = `Usage: awf resolve [<path>...]
-       awf resolve --coverage <path>...
 
-Without paths, print explicit global topics. With paths, print globals and every topic matching a supplied lexical repository-relative path.
-Coverage reports explicit globals once and matching non-global topics for each distinct normalized path, including paths with no specific match.
-See ` + "`awf docs topics`" + ` for authoring, maintenance, and coverage limits.
+Report explicit globals separately and non-global topic matches for every supplied lexical repository-relative path, in argument order, including duplicates.
+Numbered references point to one deduplicated source list at the end. Numbers are assigned in first-use order and are local to this response.
+Without paths, report globals only. Unmapped paths print none and succeed.
+See ` + "`awf docs topics`" + ` for authoring, maintenance, and routing limits.
 `
 
 const docsHelp = `Usage: awf docs [integration|knowledge|agents|topics|effort|changes|adr|completion]

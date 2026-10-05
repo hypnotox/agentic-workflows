@@ -1,7 +1,7 @@
 ---
 type: Project Topic
 title: Topic routing
-description: Topic source loading, selector semantics, routing coverage, and create-only topic ownership.
+description: Topic source loading, selector semantics, resolve output, and create-only topic ownership.
 paths:
   - 'docs/topics/**'
   - 'internal/artifactfs/**'
@@ -20,6 +20,6 @@ Each non-reserved `docs/topics/**/*.md` file is one authoritative topic. `index.
 
 `internal/projector.TopicsPath` owns the topic directory used by direct loading and creation. `LoadTopics` requires neither a project descriptor nor a generated version record. It reports a manual migration diagnostic for retired `.awf/project.md`, `.awf/agents-doc.yaml`, `.awf/parts/agents-doc/`, or `.awf/topics/` locations rather than silently omitting their guidance. `internal/projector.NormalizeTopicPatterns` is the shared validation and matching-normalization contract used by source loading and `internal/artifactfs` topic creation. Creation serializes the authored selector spelling, so `./**` retains its ordinary non-global meaning even though its normalized matching form is `**`. Nested topic IDs are constrained beneath `docs/topics`, omit `.md`, and cannot end in reserved index/log basenames. Selectors remain relative to the repository root, not to the topic directory.
 
-Bare `resolve` returns explicit globals only. `resolve <path>...` returns globals plus each topic matching any argument, once per topic, in deterministic order. `resolve --coverage <path>...` requires explicit lexical paths, deduplicates and sorts their normalized forms, reports globals separately, and reports every matching non-global topic or `none` per path. Coverage does not discover paths, judge documentation quality, or fail for gaps.
+Bare `resolve` returns explicit globals only and omits the paths section. `resolve <path>...` validates every lexical repository-relative argument, normalizes it for matching, and still retains each supplied argument position in output, including repeated or normalization-equivalent paths. The report keeps globals separate, lists non-global matches or `none` for each argument in argument order, and uses response-local numbered source references with one footer entry per topic ID. Topic IDs are sorted within each match group; reference numbers are assigned by first use, globals first and then arguments. Unsupported option-like arguments are usage errors, not paths.
 
-Resolve arguments are lexical repository-relative paths: normalize separators, refuse absolute or escaping paths, validate them even when globals exist, and do not require targets to exist. The embedded `docs topics` page owns adopter authoring, coverage limits, and maintenance procedures; the generated topic skills derive their substantive bodies from that same Markdown.
+Resolve arguments normalize separators, refuse absolute or escaping paths, and do not require targets to exist. Resolve finds routing gaps and overlap for caller-chosen paths; it does not discover paths, judge documentation quality, or fail for gaps. The embedded `docs topics` page owns adopter authoring, routing-output interpretation, coverage limits, and maintenance procedures; the generated topic skills derive their substantive bodies from that same Markdown.
