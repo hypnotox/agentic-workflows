@@ -6,7 +6,7 @@ description: Verify and commit coherent results, obtain independent review when 
 
 # Complete and integrate work
 
-Use this workflow during implementation for verification and commit cadence, and before completing or integrating work. It applies with or without effort memory, change documents, or a worktree. Reuse it during the task. Use the repository's documented AWF runner; examples below use `./awf`. AWF does not perform Git operations or judge completion; agents act under repository conventions and user instructions.
+Use this workflow during implementation for verification and commit cadence, and before completing or integrating work. It applies with or without effort memory, change documents, or a worktree. Reuse it during the task. Use the repository's documented AWF runner; examples below use `./awf`. AWF uses Git only for effort-root discovery and worktree creation; it does not judge completion. Agents perform commits, synchronization, integration, and cleanup using native Git under repository conventions and user instructions.
 
 The coordinating agent owns repository-level commits, combined-result review, integration, and cleanup. Delegated agents return their assigned work, checks, and findings within their brief; their handoff does not trigger separate completion review or Git operations.
 
@@ -42,7 +42,7 @@ Review whether each change definition and plan still serves implementation, veri
 
 ## Integrate when applicable
 
-Follow repository conventions for integration. With a worktree, perform integration, worktree removal, and branch cleanup from the primary checkout, keeping coordinating memory there. Use `./awf docs effort` for the checkout and continuity conventions when needed.
+Follow repository conventions for integration. With a worktree, use native Git for integration, worktree removal, and branch cleanup from the primary checkout, keeping coordinating memory there. AWF does not perform these operations. Use `./awf docs effort` for the checkout and continuity conventions when needed.
 
 After integration, confirm that verification covers the combined result in the target checkout. Reuse still-applicable evidence; refresh checks affected by divergence, conflict resolution, or changed integration context. Request additional review only when material uncertainty warrants it. Reconcile affected ADRs and topic links before cleanup, and revisit any material findings from integration.
 

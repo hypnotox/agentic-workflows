@@ -1,6 +1,6 @@
 # AWF guide
 
-AWF delivers fixed workflow skills and embedded adopter guides. It also routes repository paths to current topics, reports globals and per-argument matches with response-local source references, keeps optional local effort memory, and creates optional intent, specification, plan, ADR, and topic starters. It does not own Git operations, hooks, CI, repository gates, or the meaning of authored Markdown.
+AWF delivers fixed workflow skills and embedded adopter guides. It also routes repository paths to current topics, reports globals and per-argument matches with response-local source references, keeps optional local effort memory, creates native Git worktrees for active efforts, and creates optional intent, specification, plan, ADR, and topic starters. Git use is limited to worktree creation and effort-root discovery. Agents retain synchronization, integration, removal, and branch cleanup; AWF does not own hooks, CI, repository gates, or the meaning of authored Markdown.
 
 ## Ownership
 
@@ -36,4 +36,4 @@ Use the completion workflow during implementation for verification and commit ca
 
 Guides are embedded in the binary and work before installation, without Git, repository sources, external skills, or network access. Reading them does not initialize, render, repin, or otherwise modify a repository. Navigate with `awf docs ...`; their canonical Markdown lives under `internal/docs/` in AWF's repository, not in an adopter checkout.
 
-Use `awf new` for create-only starters. Documents and their relationships are optional and author-owned, not derived or synchronized by AWF. Effort contents remain opaque local state. Existing installations should read `awf docs integration` before retiring old sources or transferring generated agent guides to author ownership.
+Use `awf new` for create-only starters. Tracked documents are created in the caller's checkout; effort commands share primary-checkout memory when invoked from linked Git checkouts. Documents and their relationships are optional and author-owned, not derived or synchronized by AWF. Effort contents remain opaque local state. Only worktree creation requires Git; other commands and memory-only use remain available without it. See `awf docs effort` for worktree naming and continuity. Existing installations should read `awf docs integration` before retiring old sources or transferring generated agent guides to author ownership.

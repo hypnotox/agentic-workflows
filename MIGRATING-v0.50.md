@@ -74,7 +74,7 @@ Remove obsolete calls to old AWF hook commands while preserving unrelated reposi
 
 After preservation, remove the v0.50 configuration and generated-source machinery, including the old config, lock, parts, metadata, catalogs, obsolete AWF hook files, and upgrade scripts. Remove the retired `.awf/topics/` tree once every retained topic has a complete author-owned home under `docs/topics/`. Do not create a `.awf/project.md` replacement descriptor. Also remove or unmark the old generated `.awf/efforts/.gitignore`, `.awf/worktrees/.gitignore`, and `.awf/effort-archive/.gitignore`; the new projector replaces them with `.awf/.gitignore`. Keep detached project documents as ordinary files with AWF ownership and edit-control comments removed.
 
-Do not delete ignored effort contents or native Git worktrees as part of this source cleanup. New AWF effort commands use `.awf/efforts/<slug>/memory.md` when present and treat extra resident files as opaque. Git worktrees are now entirely user-managed.
+Do not delete ignored effort contents or native Git worktrees as part of this source cleanup. Current AWF effort commands use `.awf/efforts/<slug>/memory.md` in the primary checkout when present and treat extra resident files as opaque. AWF can create new native Git worktrees for active efforts, but does not adopt or relocate existing ones. Synchronization, integration, removal, and branch cleanup remain native Git duties; see `awf docs effort`.
 
 ## 4. Render with the new binary
 

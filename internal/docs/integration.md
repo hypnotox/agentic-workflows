@@ -1,6 +1,6 @@
 # Integrating AWF
 
-Use this guide to adopt AWF, connect its check to repository-owned automation, update a pinned release, or repair an integration. AWF generates its own fixed skills and launch infrastructure. Repository agent instructions and project knowledge remain author-owned. The repository owns hooks, CI, gates, commit conventions, and every Git operation or configuration change; AWF does not manage them.
+Use this guide to adopt AWF, connect its check to repository-owned automation, update a pinned release, or repair an integration. AWF generates its own fixed skills and launch infrastructure. Repository agent instructions and project knowledge remain author-owned. AWF uses Git only for effort-root discovery and worktree creation. The repository owns hooks, CI, gates, commit conventions, Git configuration, and agent-run synchronization, integration, removal, and branch cleanup.
 
 ## Read before installation
 
@@ -10,7 +10,7 @@ The public launcher downloads its concrete release's archive and checksums, veri
 curl -fsSL https://github.com/hypnotox/agentic-workflows/releases/latest/download/awf.sh | bash -s -- docs integration
 ```
 
-Reading documentation does not modify or repin a repository. Run mutating commands from the repository root. Once the pinned binary is available, AWF needs no Git, external skills, services, or network access.
+Reading documentation does not modify or repin a repository. Run mutating commands from the repository root. Once the pinned binary is available, only effort worktree creation requires Git; other commands and memory-only use remain available without Git, external skills, services, or network access. Use `awf docs effort` for primary-checkout memory routing and worktree conventions; existing worktrees are not automatically adopted or relocated.
 
 ## Adopt a repository
 

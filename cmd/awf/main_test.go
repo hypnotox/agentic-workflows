@@ -12,48 +12,6 @@ import (
 	awfdocs "github.com/hypnotox/agentic-workflows/internal/docs"
 )
 
-func TestHelpExposesOnlyFinalCommands(t *testing.T) {
-	code, stdout, stderr := runCLI(t, t.TempDir(), "--help")
-	if code != 0 || stderr != "" {
-		t.Fatalf("help = code %d, stderr %q", code, stderr)
-	}
-	for _, command := range []string{"init", "render", "check", "resolve", "docs", "new", "effort", "version"} {
-		if !strings.Contains(stdout, "  "+command) {
-			t.Errorf("help missing %s:\n%s", command, stdout)
-		}
-	}
-	for _, retired := range []string{"  adr ", "  plan ", "  audit ", "  upgrade ", "  uninstall ", "  changelog ", "  edit ", "  reset "} {
-		if strings.Contains(stdout, retired) {
-			t.Errorf("help contains retired command %q:\n%s", retired, stdout)
-		}
-	}
-
-	code, stdout, stderr = runCLI(t, t.TempDir(), "new", "--help")
-	if code != 0 || stderr != "" {
-		t.Fatalf("new help = code %d, stderr %q", code, stderr)
-	}
-	for _, command := range []string{"effort <slug>", "intent <slug>", "spec <slug>", "plan <slug>", "adr <slug>", "topic <id> <pattern>..."} {
-		if !strings.Contains(stdout, command) {
-			t.Errorf("new help missing %q", command)
-		}
-	}
-
-	code, stdout, stderr = runCLI(t, t.TempDir(), "effort", "--help")
-	if code != 0 || stderr != "" {
-		t.Fatalf("effort help = code %d, stderr %q", code, stderr)
-	}
-	for _, command := range []string{"list", "show <slug>", "finish <slug>"} {
-		if !strings.Contains(stdout, command) {
-			t.Errorf("effort help missing %q", command)
-		}
-	}
-	for _, retired := range []string{"new <slug>", "integrate", "worktree"} {
-		if strings.Contains(stdout, retired) {
-			t.Errorf("effort help contains retired command %q", retired)
-		}
-	}
-}
-
 func TestDocsAvailableWithoutProjectStateOrMutation(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("PATH", t.TempDir())

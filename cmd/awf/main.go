@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/hypnotox/agentic-workflows/internal/artifactfs"
@@ -171,8 +172,13 @@ func runNew(root string, args []string, stdout, stderr io.Writer) int {
 		if len(args) != 2 {
 			return usage(stderr, "usage: awf new effort <slug>")
 		}
+		primary, rootErr := effortfs.Root(root)
+		if rootErr != nil {
+			return failure(stderr, rootErr)
+		}
 		label = "memory"
-		created, err = effortfs.New(root, args[1])
+		created, err = effortfs.New(primary, args[1])
+		created = effortDisplayPath(root, primary, created)
 	case "intent":
 		if len(args) != 2 {
 			return usage(stderr, "usage: awf new intent <slug>")
@@ -223,7 +229,22 @@ func runEffort(root string, args []string, stdout, stderr io.Writer) int {
 		if len(args) != 1 {
 			return usage(stderr, "usage: awf effort list")
 		}
-		slugs, err := effortfs.List(root)
+	case "show", "finish":
+		if len(args) != 2 {
+			return usage(stderr, "usage: awf effort "+args[0]+" <slug>")
+		}
+	case "worktree":
+		return runEffortWorktree(root, args[1:], stdout, stderr)
+	default:
+		return usage(stderr, fmt.Sprintf("unknown effort command %q; expected list, show, finish, or worktree", args[0]))
+	}
+	primary, err := effortfs.Root(root)
+	if err != nil {
+		return failure(stderr, err)
+	}
+	switch args[0] {
+	case "list":
+		slugs, err := effortfs.List(primary)
 		if err != nil {
 			return failure(stderr, err)
 		}
@@ -236,14 +257,11 @@ func runEffort(root string, args []string, stdout, stderr io.Writer) int {
 		}
 		return 0
 	case "show":
-		if len(args) != 2 {
-			return usage(stderr, "usage: awf effort show <slug>")
-		}
-		path, body, err := effortfs.Show(root, args[1])
+		path, body, err := effortfs.Show(primary, args[1])
 		if err != nil {
 			return failure(stderr, err)
 		}
-		fmt.Fprintln(stdout, "memory:", filepathSlash(path))
+		fmt.Fprintln(stdout, "memory:", filepathSlash(effortDisplayPath(root, primary, path)))
 		fmt.Fprintln(stdout)
 		if _, err := stdout.Write(body); err != nil {
 			return failure(stderr, err)
@@ -252,19 +270,50 @@ func runEffort(root string, args []string, stdout, stderr io.Writer) int {
 			fmt.Fprintln(stdout)
 		}
 		return 0
-	case "finish":
-		if len(args) != 2 {
-			return usage(stderr, "usage: awf effort finish <slug>")
-		}
-		path, err := effortfs.Finish(root, args[1])
+	default: // finish
+		path, err := effortfs.Finish(primary, args[1])
 		if err != nil {
 			return failure(stderr, err)
 		}
-		fmt.Fprintln(stdout, "archive:", filepathSlash(path))
+		fmt.Fprintln(stdout, "archive:", filepathSlash(effortDisplayPath(root, primary, path)))
 		return 0
-	default:
-		return usage(stderr, fmt.Sprintf("unknown effort command %q; expected list, show, or finish", args[0]))
 	}
+}
+
+func runEffortWorktree(root string, args []string, stdout, stderr io.Writer) int {
+	if len(args) == 0 || helpRequested(args) || (args[0] == "add" && helpRequested(args[1:])) {
+		writeText(stdout, worktreeHelp)
+		return 0
+	}
+	if args[0] != "add" || (len(args) != 2 && (len(args) != 4 || args[2] != "--suffix")) {
+		return usage(stderr, "usage: awf effort worktree add <effort-slug> [--suffix <suffix>]")
+	}
+	suffix := ""
+	if len(args) == 4 {
+		suffix = args[3]
+		if suffix == "" {
+			return usage(stderr, "worktree suffix cannot be empty")
+		}
+	}
+	primary, err := effortfs.Root(root)
+	if err != nil {
+		return failure(stderr, err)
+	}
+	worktree, err := effortfs.AddWorktree(primary, args[1], suffix)
+	if err != nil {
+		return failure(stderr, err)
+	}
+	fmt.Fprintln(stdout, "worktree:", filepathSlash(worktree.Path))
+	fmt.Fprintln(stdout, "branch:", worktree.Branch)
+	fmt.Fprintln(stdout, "memory:", filepathSlash(worktree.MemoryPath))
+	return 0
+}
+
+func effortDisplayPath(caller, primary, path string) string {
+	if caller != primary {
+		return filepath.Join(primary, path)
+	}
+	return path
 }
 
 func printResolution(stdout io.Writer, coverage projector.Coverage) {
@@ -380,7 +429,7 @@ Commands:
   resolve    find global topics or topics for repository paths
   docs       read embedded adopter guides
   new        create effort memory or a tracked document
-  effort     inspect or finish local effort memory
+  effort     inspect effort memory or create an implementation worktree
   version    print the AWF version
 
 Run ` + "`awf help <command>`" + ` for command details or ` + "`awf docs`" + ` for the guide.
@@ -437,8 +486,18 @@ Commands:
   list           list active efforts
   show <slug>    show an effort's memory path and contents
   finish <slug>  move an effort into the local archive
+  worktree add <effort-slug> [--suffix <suffix>]
+                 create a default or suffixed implementation worktree
 
 Create memory with ` + "`awf new effort <slug>`" + `. See ` + "`awf docs effort`" + ` for the complete workflow.
+`
+
+const worktreeHelp = `Usage: awf effort worktree add <effort-slug> [--suffix <suffix>]
+
+Create .awf/worktrees/<effort-slug>/<default-or-suffix> on awf/<effort-slug>/<default-or-suffix> from the primary checkout's committed HEAD.
+Requires an active effort. Suffixes use letters, numbers, hyphens, or underscores; default is reserved.
+Existing destinations and conflicting branches are never replaced. Integration and cleanup remain native Git operations.
+See ` + "`awf docs effort`" + ` for shared memory and checkout conventions.
 `
 
 const versionHelp = `Usage: awf version

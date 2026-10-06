@@ -6,19 +6,21 @@ Use the repository's documented AWF runner; examples below use `./awf`. Read thi
 
 ## Resume or create memory
 
-From the primary checkout, check for a matching active effort and resume it when it covers the work:
+Check for a matching active effort and resume it when it covers the work:
 
 ```sh
 ./awf effort list
 ./awf effort show <slug>
 ```
 
-Otherwise, create one there:
+Otherwise, create one:
 
 ```sh
 ./awf new effort <slug>
 # .awf/efforts/<slug>/memory.md
 ```
+
+In Git repositories, `new effort` and `effort list`, `show`, and `finish` resolve the primary checkout even when invoked from a linked checkout. Sibling worktrees share the same primary `.awf/efforts/<slug>/memory.md`, not separate effort memories. Memory-only use remains available without Git.
 
 Memory owns the current continuation checkpoint, not a second definition of the change or a session log. Keep the next action prominent, with current progress and verification, blockers, and actual checkout and artifact locations. Reference tracked definitions, plans, and ADRs rather than repeating them. Tracked documents do not link back to ignored memory.
 
@@ -36,22 +38,27 @@ Memory owns what affects continuation; notes preserve findings after they stop a
 
 ## Coordinate checkouts and handoffs
 
-In Git repositories, create or reuse a dedicated implementation worktree for an effort before changing tracked files. Default to one worktree per effort. Use the primary checkout for tracked changes only when a concrete task requirement makes it necessary or Git/worktree support is unavailable; record the reason and actual checkout in memory. Read-only efforts need no worktree until tracked changes begin.
+In Git repositories, create or reuse a dedicated implementation worktree for an effort before changing tracked files. Default to one worktree per effort; several sibling checkouts may serve the same effort without changing its ownership. Use the primary checkout for tracked changes only when a concrete task requirement makes it necessary or Git/worktree support is unavailable; record the reason and actual checkout in memory. Read-only efforts need no worktree until tracked changes begin.
 
-Create a worktree from the primary checkout's current committed HEAD using native Git from that checkout, for example:
+Use `./awf effort worktree add <effort-slug> [--suffix <suffix>]` for an existing active effort. Git is required for this command only. Omit the suffix for the reserved `default` component; explicitly passing `--suffix default` is rejected. A suffix follows the effort slug rules: one component starting with an ASCII letter or number, followed by letters, numbers, hyphens, or underscores.
 
 ```sh
-git worktree add -b awf/<slug> .awf/worktrees/<slug>
+./awf effort worktree add ship-it
+# checkout: .awf/worktrees/ship-it/default; branch: awf/ship-it/default
+./awf effort worktree add ship-it --suffix tests
+# checkout: .awf/worktrees/ship-it/tests; branch: awf/ship-it/tests
 ```
 
-AWF does not create, inspect, or manage worktrees. The location is a convention. With a worktree:
+Paths are rooted in the primary checkout: `.awf/worktrees/<effort-slug>/<component>`, with branches named `awf/<effort-slug>/<component>`. Creation uses native Git from the primary checkout's current committed HEAD, even when invoked from a linked checkout. It does not copy uncommitted or ignored files. The command prints the absolute checkout and shared memory paths and the branch name. It refuses existing paths and branch conflicts, so repeating a creation can fail. Existing worktrees are neither adopted nor relocated automatically.
+
+AWF uses Git only for this creation and effort-root discovery. Synchronization, integration, worktree removal, and branch cleanup remain agent duties using native Git under repository conventions. With a worktree:
 
 - keep coordinating memory and notes in the primary checkout;
 - keep tracked change documents, plans, ADRs, topics, and implementation in the implementation checkout;
 - record actual locations in memory and handoffs;
 - pass the actual implementation checkout path explicitly to delegated agents;
-- run creation commands from the checkout that should own the file;
-- perform worktree creation, integration, removal, and branch cleanup from the primary checkout.
+- run tracked-document starter commands from the checkout that should own the file; they remain checkout-local;
+- perform synchronization, integration, removal, and branch cleanup using native Git from the primary checkout.
 
 Before resuming tracked work in an existing worktree, the coordinating agent inspects the primary checkout and worktree for uncommitted changes and compares the effort branch with the primary checkout's current committed HEAD. Incorporate any missing primary-checkout commits using the repository's merge or rebase conventions before continuing dependent work or delegation. Preserve effort commits and uncommitted work, resolve conflicts, reload affected instructions and topics, and refresh verification affected by the reconciliation. A worktree may retain commits ahead of the primary checkout; synchronization does not require matching HEADs or fetching from a remote.
 

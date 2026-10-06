@@ -2,6 +2,16 @@
 
 All notable changes to `awf` are documented here, newest first.
 
+## [Unreleased]
+
+### Features
+
+- Add `awf effort worktree add <effort-slug> [--suffix <suffix>]` to create native Git worktrees for active efforts from the primary checkout's committed HEAD. Default and suffixed siblings use `.awf/worktrees/<effort>/<component>` and `awf/<effort>/<component>`, share effort memory, and refuse path or branch collisions without copying local files.
+
+### Changed
+
+- Route `new effort` and `effort list`, `show`, and `finish` to the Git primary checkout when invoked from linked checkouts. Tracked-document starters remain caller-checkout local, and commands other than worktree creation remain available without Git.
+
 ## [0.60.0] - 2026-10-05
 
 ### Breaking changes
