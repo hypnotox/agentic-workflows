@@ -2,7 +2,7 @@
 
 All notable changes to `awf` are documented here, newest first.
 
-## [Unreleased]
+## [0.62.0] - 2026-10-11
 
 ### Breaking changes
 
