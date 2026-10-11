@@ -494,7 +494,7 @@ Create memory with ` + "`awf new effort <slug>`" + `. See ` + "`awf docs effort`
 
 const worktreeHelp = `Usage: awf effort worktree add <effort-slug> [--suffix <suffix>]
 
-Create .awf/worktrees/<effort-slug>/<default-or-suffix> on awf/<effort-slug>/<default-or-suffix> from the primary checkout's committed HEAD.
+Create .awf/worktrees/<effort-slug>.<default-or-suffix> on awf/<effort-slug>/<default-or-suffix> from the primary checkout's committed HEAD.
 Requires an active effort. Suffixes use letters, numbers, hyphens, or underscores; default is reserved.
 Existing destinations and conflicting branches are never replaced. Integration and cleanup remain native Git operations.
 See ` + "`awf docs effort`" + ` for shared memory and checkout conventions.

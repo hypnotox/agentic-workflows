@@ -2,6 +2,12 @@
 
 All notable changes to `awf` are documented here, newest first.
 
+## [Unreleased]
+
+### Breaking changes
+
+- Create effort worktrees at `.awf/worktrees/<effort>.<component>` instead of `.awf/worktrees/<effort>/<component>`, so removing a worktree no longer leaves an empty per-effort directory. Branches remain `awf/<effort>/<component>`. Existing nested worktrees keep working and are not relocated; remove their empty per-effort directory by hand after removing them.
+
 ## [0.61.0] - 2026-10-06
 
 ### Features

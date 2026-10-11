@@ -67,7 +67,8 @@ func AddWorktree(primary, slug, suffix string) (Worktree, error) {
 		return Worktree{}, fmt.Errorf("active effort %q requires a regular memory.md file", slug)
 	}
 
-	path := filepath.Join(primary, ".awf", "worktrees", slug, component)
+	// A dot cannot appear in a slug or suffix, so flat names never collide across efforts.
+	path := filepath.Join(primary, ".awf", "worktrees", slug+"."+component)
 	if exists, err := pathExists(path); err != nil {
 		return Worktree{}, fmt.Errorf("inspect worktree destination: %w", err)
 	} else if exists {

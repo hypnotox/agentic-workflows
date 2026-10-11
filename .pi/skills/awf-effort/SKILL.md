@@ -50,12 +50,12 @@ Use `./awf effort worktree add <effort-slug> [--suffix <suffix>]` for an existin
 
 ```sh
 ./awf effort worktree add ship-it
-# checkout: .awf/worktrees/ship-it/default; branch: awf/ship-it/default
+# checkout: .awf/worktrees/ship-it.default; branch: awf/ship-it/default
 ./awf effort worktree add ship-it --suffix tests
-# checkout: .awf/worktrees/ship-it/tests; branch: awf/ship-it/tests
+# checkout: .awf/worktrees/ship-it.tests; branch: awf/ship-it/tests
 ```
 
-Paths are rooted in the primary checkout: `.awf/worktrees/<effort-slug>/<component>`, with branches named `awf/<effort-slug>/<component>`. Creation uses native Git from the primary checkout's current committed HEAD, even when invoked from a linked checkout. It does not copy uncommitted or ignored files. The command prints the absolute checkout and shared memory paths and the branch name. It refuses existing paths and branch conflicts, so repeating a creation can fail. Existing worktrees are neither adopted nor relocated automatically.
+Paths are rooted in the primary checkout: `.awf/worktrees/<effort-slug>.<component>`, with branches named `awf/<effort-slug>/<component>`. Each checkout is a direct child of `.awf/worktrees/`, so removing it leaves no per-effort directory behind. Creation uses native Git from the primary checkout's current committed HEAD, even when invoked from a linked checkout. It does not copy uncommitted or ignored files. The command prints the absolute checkout and shared memory paths and the branch name. It refuses existing paths and branch conflicts, so repeating a creation can fail. Existing worktrees are neither adopted nor relocated automatically.
 
 AWF uses Git only for this creation and effort-root discovery. Synchronization, integration, worktree removal, and branch cleanup remain agent duties using native Git under repository conventions. With a worktree:
 
