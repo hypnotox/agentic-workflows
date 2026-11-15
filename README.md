@@ -34,7 +34,7 @@ Then, from the repository root, install the fixed files:
 curl -fsSL https://github.com/hypnotox/agentic-workflows/releases/latest/download/awf.sh | bash -s -- init
 ```
 
-Initialization creates the skills, the pinned `./awf` wrapper, and its supporting files under `.awf/`. It creates no configuration file and never writes `AGENTS.md` or `CLAUDE.md`; add a one-sentence route to AWF there yourself (`./awf docs agents`). Commit the authored and generated changes together. Repositories with an older AWF installation follow `./awf docs migrate` instead.
+Initialization creates the skills, the pinned `./awf` wrapper, and its supporting files under `.awf/`. It creates no configuration file and never writes `AGENTS.md` or `CLAUDE.md`; add a one-sentence route to AWF there yourself (`./awf docs agents`). Commit the authored and generated changes together. Repositories with an older AWF installation read the migration guide through the launcher instead, with `docs migrate` in place of `init`; their own `./awf` wrapper still runs the old release, which may not have that page.
 
 ## Limits
 

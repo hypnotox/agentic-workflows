@@ -70,6 +70,10 @@ Review the complete diff, especially agent guidance, every retained topic, and d
 
 Installations rendered before this output was removed keep marked `.pi/skills/awf-*` files, which `check` reports as unmanaged until removed. Pi and omp read `.agents/skills`. Remove the old copies with `rm -r .pi/skills/awf-*`.
 
+### Starter descriptions and resolve references
+
+`check` now reports a document under `docs/` whose `description` is still the unedited starter prompt; replace it with a summary of the document. `resolve` prints each referenced topic's description on an indented line under its reference; update anything that parsed the `references` section line by line.
+
 ### Resolve output in 0.60
 
 AWF 0.60 replaced the flat topic list and the separate `resolve --coverage` report. Update scripts, prompts, hooks, and documentation that parsed the old TSV output or passed `--coverage` to call `resolve <path>...` and read its `globals`, per-argument `paths`, and `references` sections. Gaps remain nonfatal, and option-like arguments are now usage errors rather than paths.
