@@ -1,0 +1,1 @@
+I want to grow tally over the next few sessions: first a `-json` output mode, then a `-by-ext` summary that groups totals by file extension, and finally a character count flag `-m` that handles UTF-8 properly. Please do the JSON output today and set things up so we, or someone else, can pick up the other two next time without re-explaining all this.

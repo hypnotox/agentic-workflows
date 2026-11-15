@@ -1,0 +1,13 @@
+# tally
+
+`tally` prints line, word, and byte counts, like a minimal `wc`.
+
+```sh
+go build -o tally .
+./tally notes.txt todo.txt
+printf 'one two\n' | ./tally -w
+```
+
+Flags `-l`, `-w`, and `-c` select lines, words, and bytes; with none, all three
+are printed. Each input gets one line of right-aligned columns followed by its
+name, and a `total` line follows when more than one file is given.

@@ -1,0 +1,30 @@
+package count
+
+import (
+	"strings"
+	"testing"
+)
+
+func TestReader(t *testing.T) {
+	tests := []struct {
+		name  string
+		input string
+		want  Counts
+	}{
+		{"empty", "", Counts{}},
+		{"one line", "hello world\n", Counts{Lines: 1, Words: 2, Bytes: 12}},
+		{"no trailing newline", "a b c", Counts{Lines: 0, Words: 3, Bytes: 5}},
+		{"repeated spaces", "a   b\n\n", Counts{Lines: 2, Words: 2, Bytes: 7}},
+	}
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			got, err := Reader(strings.NewReader(tt.input))
+			if err != nil {
+				t.Fatal(err)
+			}
+			if got != tt.want {
+				t.Errorf("Reader(%q) = %+v, want %+v", tt.input, got, tt.want)
+			}
+		})
+	}
+}

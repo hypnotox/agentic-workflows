@@ -1,0 +1,78 @@
+// Command tally prints line, word, and byte counts for files or standard input.
+package main
+
+import (
+	"flag"
+	"fmt"
+	"io"
+	"os"
+
+	"example.com/tally/internal/count"
+)
+
+func main() {
+	os.Exit(run(os.Args[1:], os.Stdin, os.Stdout, os.Stderr))
+}
+
+func run(args []string, stdin io.Reader, stdout, stderr io.Writer) int {
+	fs := flag.NewFlagSet("tally", flag.ContinueOnError)
+	fs.SetOutput(stderr)
+	lines := fs.Bool("l", false, "print line counts")
+	words := fs.Bool("w", false, "print word counts")
+	bytes := fs.Bool("c", false, "print byte counts")
+	if err := fs.Parse(args); err != nil {
+		return 2
+	}
+	if !*lines && !*words && !*bytes {
+		*lines, *words, *bytes = true, true, true
+	}
+	show := func(c count.Counts, name string) {
+		if *lines {
+			fmt.Fprintf(stdout, "%8d", c.Lines)
+		}
+		if *words {
+			fmt.Fprintf(stdout, "%8d", c.Words)
+		}
+		if *bytes {
+			fmt.Fprintf(stdout, "%8d", c.Bytes)
+		}
+		if name != "" {
+			fmt.Fprintf(stdout, " %s", name)
+		}
+		fmt.Fprintln(stdout)
+	}
+
+	if fs.NArg() == 0 {
+		c, err := count.Reader(stdin)
+		if err != nil {
+			fmt.Fprintf(stderr, "tally: %v\n", err)
+			return 1
+		}
+		show(c, "")
+		return 0
+	}
+
+	status := 0
+	var total count.Counts
+	for _, name := range fs.Args() {
+		f, err := os.Open(name)
+		if err != nil {
+			fmt.Fprintf(stderr, "tally: %v\n", err)
+			status = 1
+			continue
+		}
+		c, err := count.Reader(f)
+		f.Close()
+		if err != nil {
+			fmt.Fprintf(stderr, "tally: %s: %v\n", name, err)
+			status = 1
+			continue
+		}
+		show(c, name)
+		total = total.Add(c)
+	}
+	if fs.NArg() > 1 {
+		show(total, "total")
+	}
+	return status
+}

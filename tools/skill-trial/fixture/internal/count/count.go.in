@@ -1,0 +1,48 @@
+// Package count computes line, word, and byte totals for text input.
+package count
+
+import (
+	"bufio"
+	"io"
+	"strings"
+)
+
+// Counts holds the totals for one input.
+type Counts struct {
+	Lines int
+	Words int
+	Bytes int
+}
+
+// Add returns the element-wise sum of c and o.
+func (c Counts) Add(o Counts) Counts {
+	return Counts{
+		Lines: c.Lines + o.Lines,
+		Words: c.Words + o.Words,
+		Bytes: c.Bytes + o.Bytes,
+	}
+}
+
+// Reader counts r until EOF.
+func Reader(r io.Reader) (Counts, error) {
+	var c Counts
+	br := bufio.NewReader(r)
+	for {
+		line, err := br.ReadString('\n')
+		c.Bytes += len(line)
+		if strings.HasSuffix(line, "\n") {
+			c.Lines++
+		}
+		for _, field := range strings.Split(strings.TrimRight(line, "\n"), " ") {
+			if field != "" {
+				c.Words++
+			}
+		}
+		if err == io.EOF {
+			return c, nil
+		}
+		if err != nil {
+			return c, err
+		}
+	}
+}

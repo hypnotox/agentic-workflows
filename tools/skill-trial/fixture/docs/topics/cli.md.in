@@ -1,0 +1,16 @@
+---
+type: Project Topic
+title: Command line interface
+description: Flags, output format, and exit status of the tally command.
+paths:
+  - 'main.go'
+  - 'main_test.go'
+---
+
+# Command line interface
+
+`main.go` owns flag parsing, input selection, and output. `run` takes its arguments and streams explicitly so tests drive it without a subprocess.
+
+Output is a public contract that scripts parse: one line per input with the selected columns in the fixed order lines, words, bytes, each right-aligned in eight characters, then a space and the input name. Standard input has no name. A `total` line follows when more than one file is given. Change the format only with the owner's agreement.
+
+Errors go to standard error prefixed `tally:`. A failing file sets exit status 1 but does not stop the remaining inputs; flag errors exit with status 2.

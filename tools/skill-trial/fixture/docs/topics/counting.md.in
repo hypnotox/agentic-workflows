@@ -1,0 +1,17 @@
+---
+type: Project Topic
+title: Counting rules
+description: How tally defines lines, words, and bytes, and where those rules live.
+paths:
+  - 'internal/count/**'
+---
+
+# Counting rules
+
+`internal/count` owns the counting rules; the command only formats their results. The rules are intended to match POSIX `wc` in the C locale:
+
+- A line is a newline character; a final line without a newline is not counted.
+- A word is a maximal run of non-whitespace characters.
+- Bytes are raw input bytes; no decoding happens.
+
+`Reader` streams its input line by line so large files do not need to fit in memory. Keep it free of file-system access so callers decide where input comes from.
