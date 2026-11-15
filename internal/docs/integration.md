@@ -10,7 +10,7 @@ The public launcher downloads its concrete release's archive and checksums, veri
 curl -fsSL https://github.com/hypnotox/agentic-workflows/releases/latest/download/awf.sh | bash -s -- docs integration
 ```
 
-Reading documentation does not modify or repin a repository. Run mutating commands from the repository root. Once the pinned binary is available, only effort worktree creation requires Git; other commands and memory-only use remain available without Git, external skills, services, or network access. Use `awf docs effort` for primary-checkout memory routing and worktree conventions; existing worktrees are not automatically adopted or relocated.
+Reading documentation does not modify or repin a repository. Run mutating commands from the repository root. Once the pinned binary is available, only effort worktree creation requires Git; other commands and memory-only use remain available without Git, services, or network access. The workflow skills additionally require the agentic-skills package, described at the end of this guide. Use `awf docs effort` for primary-checkout memory routing and worktree conventions; existing worktrees are not automatically adopted or relocated.
 
 ## Adopt a repository
 
@@ -111,4 +111,4 @@ Use the reported path and diff to distinguish stale marked output (render it), u
 
 For incomplete integration, inspect repository gates, CI, hook scripts, executable modes, and effective hook configuration. AWF does not assess them. Use `awf docs completion` during implementation and integration for verification, commit cadence, final review, and cleanup, including when the work uses no effort or worktree.
 
-External engineering skills may complement AWF but are neither installed nor required by it. The optional [agentic-skills](https://github.com/hypnotox/agentic-skills) package supplies general engineering methods. If a repository requires external skills or shared doctrine, state that in its author-owned guidance rather than duplicating those methods in AWF workflows.
+AWF's workflow skills require the [agentic-skills](https://github.com/hypnotox/agentic-skills) package. The workflows decide when a repository checkpoint happens and which documents result, and name its methods, such as `agentic-brainstorming` and `agentic-reviewing`, for how to carry it out. AWF neither installs nor renders the package: install it in each agent harness the repository uses, following its README. Keep other shared doctrine in its own source rather than duplicating it in AWF workflows.

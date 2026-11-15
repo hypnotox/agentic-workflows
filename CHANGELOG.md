@@ -7,6 +7,7 @@ All notable changes to `awf` are documented here, newest first.
 ### Breaking changes
 
 - Remove the `.pi/skills` output; `.agents/skills` is the shared copy for Codex, Pi, and omp. Pi documents discovery from `.agents/skills`, and omp 18.11.1 was observed reading `.agents/skills` and `.claude/skills` and listing an identical skill once. Pi's own project-skill discovery was not observed: a temporary-repository check listed no project skills from either directory. Existing `.pi/skills/awf-*` files keep their AWF marker and `check` reports them as unmanaged until removed; AWF never deletes them, so remove them manually (`rm -r .pi/skills/awf-*`).
+- Require the [agentic-skills](https://github.com/hypnotox/agentic-skills) package. The workflow skills now name its methods, such as `agentic-brainstorming`, `agentic-planning`, `agentic-reviewing`, and `agentic-implementing`, for how to carry out each checkpoint, so agents without it lose that guidance. AWF does not install it: install it in each agent harness the repository uses. The CLI itself still works offline, and every command except worktree creation still works without Git. The `docs agents` example now routes to AWF in one sentence; adopters can replace copied trigger lists in `AGENTS.md` with it.
 
 ### Changed
 

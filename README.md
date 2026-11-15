@@ -8,7 +8,9 @@
 
 Markdown under `docs/` forms an OKF v0.2 knowledge bundle. `awf check` validates its structure, required AWF descriptions, and ADR state pairs without assessing truth or approval. Titles remain optional, and documents remain author-owned.
 
-Repository instructions in `AGENTS.md` and optional `CLAUDE.md` remain author-owned. Five AWF skills share their substantive instructions with the CLI guides: topics, effort continuity, change definition, ADRs, and completion. The completion workflow supplies default agent commit guidance; agents execute commits, synchronization, integration, removal, and branch cleanup using native Git under repository conventions. The CLI uses Git only for worktree creation and effort-root discovery; it does not manage reviews, repository gates, hooks, CI, migrations, or document meaning. Only worktree creation requires Git. Other commands and memory-only use work without Git or external agent skills once the pinned binary is available.
+Repository instructions in `AGENTS.md` and optional `CLAUDE.md` remain author-owned. Five AWF skills share their substantive instructions with the CLI guides: topics, effort continuity, change definition, ADRs, and completion. The completion workflow supplies default agent commit guidance; agents execute commits, synchronization, integration, removal, and branch cleanup using native Git under repository conventions. The CLI uses Git only for worktree creation and effort-root discovery; it does not manage reviews, repository gates, hooks, CI, migrations, or document meaning.
+
+AWF requires the [agentic-skills](https://github.com/hypnotox/agentic-skills) package, installed in each agent harness you use. AWF's workflows decide when a repository checkpoint such as brainstorming, review, or a retrospective happens and which documents result, and rely on agentic-skills methods for how to carry it out. Once the pinned binary is available, the CLI itself works offline, and every command except worktree creation works without Git.
 
 ## Start
 

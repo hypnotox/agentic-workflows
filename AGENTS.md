@@ -2,17 +2,13 @@
 
 `awf` is a public pre-1.0 Go CLI at `github.com/hypnotox/agentic-workflows`. It delivers fixed workflow skills and embedded guides, routes repository paths to current topics, keeps local effort memory, and offers create-only document starters. Own both the requested change and the project's long-term health.
 
-Keep the product direct and small: no policy engines, replacement configuration layers, or speculative abstractions. Preserve author ownership; never overwrite unmarked repository files except the reserved `.awf/VERSION` record, or automatically delete retired generated files. Keep AWF usable without Git, external skills, services, or network access once its pinned binary is available.
+Keep the product direct and small: no policy engines, replacement configuration layers, or speculative abstractions. Preserve author ownership; never overwrite unmarked repository files except the reserved `.awf/VERSION` record, or automatically delete retired generated files. Keep the AWF CLI usable without services or network access once its pinned binary is available, and without Git except for worktree creation. The workflow skills require the agentic-skills package for their methods; do not restate those methods in AWF.
 
 ## Working here
 
 Use `./x` during development: it runs the checkout source. The root `./awf` wrapper intentionally exercises the released bootstrap path and may run a different version.
 
-Use `./x resolve` for explicit global topics, adding repository-relative paths for matching knowledge. Read every returned source, reuse established context, and keep affected topics current. Follow the topic workflow, available through `./x docs topics`. When authoring Markdown under `docs/`, follow the shared contract in `./x docs knowledge`.
-
-Use the change workflow (`./x docs changes`) when brainstorming a material choice, resolving consequential code structure, or defining a change's outcome or route, including when no change document is needed. Use the ADR workflow (`./x docs adr`) when recording or changing enduring decisions.
-
-Use an effort for continuity across stages, sessions, or handoffs and for implementation worktrees; check for a matching active effort first. Follow the effort workflow (`./x docs effort`). Use the completion workflow (`./x docs completion`) during implementation for verification and commit cadence, and before final completion or integration, even without an effort. Native AWF skills supply the same workflows.
+This repository uses the AWF workflow skills, each also readable as `./x docs <page>`; at the start of work, run `./x resolve` with the repository-relative paths you will change and read every returned topic. When authoring Markdown under `docs/`, follow the shared contract in `./x docs knowledge`.
 
 Use Conventional Commits with one concern per commit. Keep related implementation, tests, and documentation together. All projected content belongs in embedded template/source files, not Go string literals. Edit the owning sources and run `./x render && ./x check`; do not edit generated skills or infrastructure directly. `AGENTS.md`, optional `CLAUDE.md`, and topics are author-owned.
 

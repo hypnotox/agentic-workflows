@@ -10,7 +10,7 @@ Include a brief present-tense orientation: what the project does, its important 
 
 Keep only genuinely global requirements in the entrypoint. Distinguish hard rules, defaults, and options; state the conditions that change their applicability. Include essential build, test, and maintenance commands and a few useful canonical pointers. Prefer the repository's actual runner over an exhaustive CLI inventory. Explain a non-obvious runner distinction when choosing incorrectly would change what executes.
 
-Include the discovery cues agents need before selecting detailed guidance: how to find applicable topics and the shared knowledge-document contract, when brainstorming, consequential code design, or definition needs the change workflow, when enduring decisions need the ADR workflow, when continuity needs an effort, and how to reach verification and commit guidance during implementation as well as at completion, even without an effort. Point to the AWF CLI workflow when native skills are unavailable. Native skill descriptions own the skill catalog; do not reproduce it in `AGENTS.md`.
+Route to AWF in one stable sentence: say that the repository uses the AWF workflow skills, which are also readable through the runner as `awf docs <page>` where native skills are unavailable, and tell agents to run `awf resolve` for the paths they will change at the start of work. The skill descriptions say when each workflow applies, so do not copy their trigger conditions or the skill catalog into `AGENTS.md`; copies drift from the skills they repeat. Point to `awf docs knowledge` when contributors author Markdown under `docs/`.
 
 Write concrete instructions, preserve judgment for routine choices, and use examples only to clarify—not to add hidden requirements. Resolve contradictions and repeated rules across the instruction set. Remove stale guidance rather than accumulating exceptions. Keep rationale and detailed procedures with their most specific authoritative owner.
 
@@ -26,22 +26,10 @@ requested change and the project's ongoing correctness and maintainability.
 
 Preserve the documented data format. Use Conventional Commits.
 
-Use `./awf resolve` for global topics, adding repository-relative paths for
-matching knowledge. Read the returned sources and keep affected topics current;
-use the topic workflow, available through `./awf docs topics`. When authoring
-Markdown under `docs/`, follow the shared contract in `./awf docs knowledge`.
-
-Use the change workflow (`./awf docs changes`) when brainstorming a material
-choice, resolving consequential code structure, or defining a change's outcome
-or route, including when no change document is needed. Use the ADR workflow
-(`./awf docs adr`) when recording or changing enduring decisions.
-
-Use an effort for continuity across stages, sessions, or handoffs and for
-implementation worktrees; check for an existing effort first. Follow the effort
-workflow (`./awf docs effort`). Use the completion workflow
-(`./awf docs completion`) during implementation for verification and commit
-cadence, and before final completion or integration, even without an effort.
-Native AWF skills supply the same workflows.
+This repository uses the AWF workflow skills, each also readable as
+`./awf docs <page>`; at the start of work, run `./awf resolve` with the paths you
+will change and read every returned topic. When authoring Markdown under
+`docs/`, follow the shared contract in `./awf docs knowledge`.
 
 ## Commands
 
@@ -55,7 +43,7 @@ Native AWF skills supply the same workflows.
 - `docs/topics/`: current path-routed project knowledge.
 ```
 
-Change and ADR workflow cues belong in the entrypoint; detailed document lifecycles belong in their workflows.
+Workflow triggers and document lifecycles belong in the skills, not the entrypoint.
 
 ## Optional Claude support
 

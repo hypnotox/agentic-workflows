@@ -7,22 +7,10 @@ project's ongoing correctness and maintainability.
 Preserve the documented output format; scripts parse it. Use Conventional
 Commits.
 
-Use `./awf resolve` for global topics, adding repository-relative paths for
-matching knowledge. Read the returned sources and keep affected topics current;
-use the topic workflow, available through `./awf docs topics`. When authoring
-Markdown under `docs/`, follow the shared contract in `./awf docs knowledge`.
-
-Use the change workflow (`./awf docs changes`) when brainstorming a material
-choice, resolving consequential code structure, or defining a change's outcome
-or route, including when no change document is needed. Use the ADR workflow
-(`./awf docs adr`) when recording or changing enduring decisions.
-
-Use an effort for continuity across stages, sessions, or handoffs and for
-implementation worktrees; check for an existing effort first. Follow the effort
-workflow (`./awf docs effort`). Use the completion workflow
-(`./awf docs completion`) during implementation for verification and commit
-cadence, and before final completion or integration, even without an effort.
-Native AWF skills supply the same workflows.
+This repository uses the AWF workflow skills, each also readable as
+`./awf docs <page>`; at the start of work, run `./awf resolve` with the paths you
+will change and read every returned topic. When authoring Markdown under
+`docs/`, follow the shared contract in `./awf docs knowledge`.
 
 ## Commands
 
