@@ -1,0 +1,5 @@
+intent: Describe the problem and desired outcome of this change.
+spec: Describe the behavior and acceptance boundaries specified here.
+plan: Describe the implementation route and the outcome it delivers.
+adr: Describe the consequential choice and the scope it governs.
+topic: Describe the current knowledge and scope owned by this topic.

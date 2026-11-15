@@ -90,7 +90,7 @@ func TestCommandHelpCarriesContractsGuidesDelegate(t *testing.T) {
 		args  []string
 		terms []string
 	}{
-		{[]string{"help", "resolve"}, []string{"globals only", "none", "absolute", "option-like", "numbered references"}},
+		{[]string{"help", "resolve"}, []string{"globals only", "none", "absolute", "option-like", "numbered references", "description"}},
 		{[]string{"help", "new"}, []string{"never replaces", "index or log", "global topic", "Quote glob"}},
 		{[]string{"help", "effort"}, []string{"primary checkout", ".awf/effort-archive/<slug>", "worktree add", "default"}},
 		{[]string{"effort", "worktree", "add", "--help"}, []string{"committed HEAD", "not copied", "ASCII letter or number", "refused"}},
@@ -171,7 +171,7 @@ func TestResolveCLI(t *testing.T) {
 	if err := os.MkdirAll(filepath.Dir(topicPath), 0o755); err != nil {
 		t.Fatal(err)
 	}
-	if err := os.WriteFile(topicPath, []byte("---\npaths: [internal/projector/**]\n---\n# Render\n"), 0o644); err != nil {
+	if err := os.WriteFile(topicPath, []byte("---\ndescription: Render guidance.\npaths: [internal/projector/**]\n---\n# Render\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 	sharedPath := filepath.Join(root, "docs", "topics", "shared.md")
@@ -179,27 +179,27 @@ func TestResolveCLI(t *testing.T) {
 		t.Fatal(err)
 	}
 	globalPath := filepath.Join(root, "docs", "topics", "global.md")
-	if err := os.WriteFile(globalPath, []byte("---\npaths: ['**']\n---\n# Global\n"), 0o644); err != nil {
+	if err := os.WriteFile(globalPath, []byte("---\ndescription: |-\n  Global\n  guidance.\npaths: ['**']\n---\n# Global\n"), 0o644); err != nil {
 		t.Fatal(err)
 	}
 
 	code, stdout, stderr = runCLI(t, root, "resolve")
-	want := "globals:\n  [1]\n\nreferences:\n  [1] global — docs/topics/global.md\n"
+	want := "globals:\n  [1]\n\nreferences:\n  [1] global — docs/topics/global.md\n      Global guidance.\n"
 	if code != 0 || stdout != want || stderr != "" {
 		t.Fatalf("resolve globals = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = runCLI(t, root, "resolve", `internal\\projector\\new.go`, "README.md", "internal/projector/new.go")
-	want = "globals:\n  [1]\n\npaths:\n  \"internal/projector/new.go\": [2], [3]\n  \"README.md\": none\n  \"internal/projector/new.go\": [2], [3]\n\nreferences:\n  [1] global — docs/topics/global.md\n  [2] code/render — docs/topics/code/render.md\n  [3] shared — docs/topics/shared.md\n"
+	want = "globals:\n  [1]\n\npaths:\n  \"internal/projector/new.go\": [2], [3]\n  \"README.md\": none\n  \"internal/projector/new.go\": [2], [3]\n\nreferences:\n  [1] global — docs/topics/global.md\n      Global guidance.\n  [2] code/render — docs/topics/code/render.md\n      Render guidance.\n  [3] shared — docs/topics/shared.md\n"
 	if code != 0 || stdout != want || stderr != "" {
 		t.Fatalf("resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = runCLI(t, root, "resolve", "internal/other/new.go", "internal/projector/new.go")
-	want = "globals:\n  [1]\n\npaths:\n  \"internal/other/new.go\": [2]\n  \"internal/projector/new.go\": [3], [2]\n\nreferences:\n  [1] global — docs/topics/global.md\n  [2] shared — docs/topics/shared.md\n  [3] code/render — docs/topics/code/render.md\n"
+	want = "globals:\n  [1]\n\npaths:\n  \"internal/other/new.go\": [2]\n  \"internal/projector/new.go\": [3], [2]\n\nreferences:\n  [1] global — docs/topics/global.md\n      Global guidance.\n  [2] shared — docs/topics/shared.md\n  [3] code/render — docs/topics/code/render.md\n      Render guidance.\n"
 	if code != 0 || stdout != want || stderr != "" {
 		t.Fatalf("first-use resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = runCLI(t, root, "resolve", "line\nbreak")
-	want = "globals:\n  [1]\n\npaths:\n  \"line\\nbreak\": none\n\nreferences:\n  [1] global — docs/topics/global.md\n"
+	want = "globals:\n  [1]\n\npaths:\n  \"line\\nbreak\": none\n\nreferences:\n  [1] global — docs/topics/global.md\n      Global guidance.\n"
 	if code != 0 || stdout != want || stderr != "" {
 		t.Fatalf("escaped resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
@@ -257,13 +257,18 @@ func TestArtifactCreationCLI(t *testing.T) {
 		t.Fatalf("new topic = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = runCLI(t, root, "resolve", "generated/future.txt")
-	if code != 0 || stdout != "globals:\n  none\n\npaths:\n  \"generated/future.txt\": [1]\n\nreferences:\n  [1] nested/generated — docs/topics/nested/generated.md\n" || stderr != "" {
+	if code != 0 || stdout != "globals:\n  none\n\npaths:\n  \"generated/future.txt\": [1]\n\nreferences:\n  [1] nested/generated — docs/topics/nested/generated.md\n      Describe the current knowledge and scope owned by this topic.\n" || stderr != "" {
 		t.Fatalf("resolve created topic = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 
 	code, stdout, stderr = runCLI(t, root, "check")
-	if code != 0 || stdout != "check: ok\n" || stderr != "" {
-		t.Fatalf("check with conforming starters = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	if code != 1 || !strings.HasPrefix(stdout, "check: failed\n") || stderr != "" {
+		t.Fatalf("check with unedited starters = code %d, stdout %q, stderr %q", code, stdout, stderr)
+	}
+	for _, relative := range []string{"docs/changes/simple/intent.md", "docs/changes/simple/spec.md", "docs/plans/simple.md", "docs/decisions/simple-choice.md", "docs/topics/nested/generated.md"} {
+		if !strings.Contains(stdout, relative+": AWF description is still the starter prompt") {
+			t.Errorf("check omitted unedited starter %s: %s", relative, stdout)
+		}
 	}
 
 	artifacts := map[string][]byte{
@@ -348,6 +353,34 @@ func TestRetiredCreationRoutesAreNotAliases(t *testing.T) {
 		code, stdout, stderr := runCLI(t, t.TempDir(), args...)
 		if code != 2 || stdout != "" || stderr == "" {
 			t.Errorf("retired route %v = code %d, stdout %q, stderr %q", args, code, stdout, stderr)
+		}
+	}
+}
+
+func TestErrorsNameTheFailureAndNextStep(t *testing.T) {
+	root := t.TempDir()
+	for _, tc := range []struct {
+		args  []string
+		code  int
+		terms []string
+	}{
+		{[]string{"effort", "show", "missing"}, 1, []string{`"missing"`, "awf effort list", "awf new effort"}},
+		{[]string{"effort", "finish", "missing"}, 1, []string{`"missing"`, "awf effort list", "awf new effort"}},
+		{[]string{"effort", "show"}, 2, []string{"usage: awf effort show <slug>", "awf help effort"}},
+		{[]string{"new", "intent"}, 2, []string{"usage: awf new intent <slug>", "awf help new"}},
+		{[]string{"check", "extra"}, 2, []string{"usage: awf check", "awf help check"}},
+		{[]string{"effort", "worktree", "add"}, 2, []string{"usage: awf effort worktree add", "awf effort worktree add --help"}},
+		{[]string{"new", "unknown"}, 2, []string{`"unknown"`, "awf help new"}},
+		{[]string{"help", "unknown"}, 2, []string{`"unknown"`, "awf --help"}},
+	} {
+		code, stdout, stderr := runCLI(t, root, tc.args...)
+		if code != tc.code || stdout != "" {
+			t.Errorf("%v = code %d, stdout %q, stderr %q", tc.args, code, stdout, stderr)
+		}
+		for _, term := range tc.terms {
+			if !strings.Contains(stderr, term) {
+				t.Errorf("%v error lacks %q: %q", tc.args, term, stderr)
+			}
 		}
 	}
 }

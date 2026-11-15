@@ -1,7 +1,7 @@
 ---
 type: Specification
 title: {{quote .Name}}
-description: Describe the behavior and acceptance boundaries specified here.
+description: {{.Description}}
 ---
 
 # Specification: {{.Name}}

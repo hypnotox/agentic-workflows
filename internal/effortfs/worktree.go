@@ -60,6 +60,9 @@ func AddWorktree(primary, slug, suffix string) (Worktree, error) {
 
 	memoryPath := filepath.Join(primary, activePath(slug), memoryName)
 	info, err := os.Lstat(memoryPath)
+	if os.IsNotExist(err) {
+		return Worktree{}, missingEffort(slug)
+	}
 	if err != nil {
 		return Worktree{}, fmt.Errorf("inspect active effort %q memory: %w", slug, err)
 	}
@@ -72,7 +75,7 @@ func AddWorktree(primary, slug, suffix string) (Worktree, error) {
 	if exists, err := pathExists(path); err != nil {
 		return Worktree{}, fmt.Errorf("inspect worktree destination: %w", err)
 	} else if exists {
-		return Worktree{}, fmt.Errorf("worktree destination %q already exists", path)
+		return Worktree{}, fmt.Errorf("worktree destination %q already exists; use that checkout or pass --suffix <suffix> for another", path)
 	}
 	branch := "awf/" + slug + "/" + component
 	if _, err := git(primary, "worktree", "add", "-b", branch, path, "HEAD"); err != nil {

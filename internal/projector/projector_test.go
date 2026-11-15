@@ -134,7 +134,7 @@ func TestResolveGlobalsPathsAndEmptyResults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := Coverage{
-		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md"}},
+		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md", Description: "Test routing"}},
 	}
 	if !equalCoverageForTest(coverage, want) {
 		t.Fatalf("empty Resolve = %#v, want %#v", coverage, want)
@@ -145,18 +145,18 @@ func TestResolveGlobalsPathsAndEmptyResults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want = Coverage{
-		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md"}},
+		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md", Description: "Test routing"}},
 		Paths: []PathCoverage{
 			{Path: "src/new/future.go", Matches: []TopicMatch{
-				{ID: "a-go", SourcePath: "docs/topics/a-go.md"},
-				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md"},
+				{ID: "a-go", SourcePath: "docs/topics/a-go.md", Description: "Test routing"},
+				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md", Description: "Test routing"},
 			}},
 			{Path: "unknown/file.txt", Matches: []TopicMatch{
-				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md"},
+				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md", Description: "Test routing"},
 			}},
 			{Path: "src/new/future.go", Matches: []TopicMatch{
-				{ID: "a-go", SourcePath: "docs/topics/a-go.md"},
-				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md"},
+				{ID: "a-go", SourcePath: "docs/topics/a-go.md", Description: "Test routing"},
+				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md", Description: "Test routing"},
 			}},
 		},
 	}
@@ -172,11 +172,11 @@ func TestResolveGlobalsPathsAndEmptyResults(t *testing.T) {
 		t.Fatal(err)
 	}
 	want = Coverage{
-		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md"}},
+		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md", Description: "Test routing"}},
 		Paths: []PathCoverage{
 			{Path: "README.md", Matches: []TopicMatch{
-				{ID: "m-root", SourcePath: "docs/topics/m-root.md"},
-				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md"},
+				{ID: "m-root", SourcePath: "docs/topics/m-root.md", Description: "Test routing"},
+				{ID: "n-normalized-double-star", SourcePath: "docs/topics/n-normalized-double-star.md", Description: "Test routing"},
 			}},
 		},
 	}
@@ -215,16 +215,16 @@ func TestResolveReportsGlobalsGapsOverlapAndNormalizedInputs(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := Coverage{
-		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md"}},
+		Globals: []TopicMatch{{ID: "z-global", SourcePath: "docs/topics/z-global.md", Description: "Test routing"}},
 		Paths: []PathCoverage{
 			{Path: "src/future/new.go", Matches: []TopicMatch{
-				{ID: "a-go", SourcePath: "docs/topics/a-go.md"},
-				{ID: "m-src", SourcePath: "docs/topics/m-src.md"},
+				{ID: "a-go", SourcePath: "docs/topics/a-go.md", Description: "Test routing"},
+				{ID: "m-src", SourcePath: "docs/topics/m-src.md", Description: "Test routing"},
 			}},
 			{Path: "missing/file.txt"},
 			{Path: "src/future/new.go", Matches: []TopicMatch{
-				{ID: "a-go", SourcePath: "docs/topics/a-go.md"},
-				{ID: "m-src", SourcePath: "docs/topics/m-src.md"},
+				{ID: "a-go", SourcePath: "docs/topics/a-go.md", Description: "Test routing"},
+				{ID: "m-src", SourcePath: "docs/topics/m-src.md", Description: "Test routing"},
 			}},
 		},
 	}

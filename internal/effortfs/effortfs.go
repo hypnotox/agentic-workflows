@@ -29,12 +29,12 @@ func New(root, slug string) (string, error) {
 	if exists, err := pathExists(filepath.Join(root, activeRelative)); err != nil {
 		return "", fmt.Errorf("check active effort %q: %w", slug, err)
 	} else if exists {
-		return "", fmt.Errorf("active effort %q already exists", slug)
+		return "", fmt.Errorf("active effort %q already exists; run `awf effort show %s` or choose another slug", slug, slug)
 	}
 	if exists, err := pathExists(filepath.Join(root, archiveRelative)); err != nil {
 		return "", fmt.Errorf("check archived effort %q: %w", slug, err)
 	} else if exists {
-		return "", fmt.Errorf("archived effort %q already exists", slug)
+		return "", fmt.Errorf("archived effort %q already exists; choose another slug", slug)
 	}
 
 	activeDirectory := filepath.Join(root, activeRelative)
@@ -103,6 +103,9 @@ func Show(root, slug string) (string, []byte, error) {
 	memoryRelative := filepath.Join(activePath(slug), memoryName)
 	body, err := os.ReadFile(filepath.Join(root, memoryRelative))
 	if err != nil {
+		if os.IsNotExist(err) {
+			return "", nil, missingEffort(slug)
+		}
 		return "", nil, fmt.Errorf("read memory for effort %q: %w", slug, err)
 	}
 	return memoryRelative, body, nil
@@ -120,7 +123,7 @@ func Finish(root, slug string) (string, error) {
 	info, err := os.Lstat(activeDirectory)
 	if err != nil {
 		if os.IsNotExist(err) {
-			return "", fmt.Errorf("active effort %q does not exist", slug)
+			return "", missingEffort(slug)
 		}
 		return "", fmt.Errorf("inspect active effort %q: %w", slug, err)
 	}
@@ -133,7 +136,7 @@ func Finish(root, slug string) (string, error) {
 	if exists, err := pathExists(archiveDirectory); err != nil {
 		return "", fmt.Errorf("check archived effort %q: %w", slug, err)
 	} else if exists {
-		return "", fmt.Errorf("archived effort %q already exists", slug)
+		return "", fmt.Errorf("archived effort %q already exists at %s; move that archive aside before finishing", slug, filepath.ToSlash(archiveRelative))
 	}
 	if err := os.MkdirAll(filepath.Dir(archiveDirectory), 0o755); err != nil {
 		return "", fmt.Errorf("create effort archive directory: %w", err)
@@ -142,6 +145,11 @@ func Finish(root, slug string) (string, error) {
 		return "", fmt.Errorf("archive effort %q: %w", slug, err)
 	}
 	return archiveRelative, nil
+}
+
+// missingEffort names the commands that list or create active efforts.
+func missingEffort(slug string) error {
+	return fmt.Errorf("active effort %q does not exist; run `awf effort list` to see active efforts or `awf new effort %s` to create it", slug, slug)
 }
 
 func validateSlug(slug string) error {

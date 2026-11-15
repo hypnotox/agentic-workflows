@@ -11,8 +11,9 @@ import (
 
 // TopicMatch identifies one topic selected by Resolve.
 type TopicMatch struct {
-	ID         string
-	SourcePath string
+	ID          string
+	SourcePath  string
+	Description string
 }
 
 // PathCoverage reports the non-global topics matching one normalized path.
@@ -60,7 +61,7 @@ func Resolve(root string, values []string) (Coverage, error) {
 }
 
 func topicMatch(topic Topic) TopicMatch {
-	return TopicMatch{ID: topic.ID, SourcePath: topic.SourcePath}
+	return TopicMatch{ID: topic.ID, SourcePath: topic.SourcePath, Description: topic.Description}
 }
 
 func normalizeResolvePath(value string) (string, error) {

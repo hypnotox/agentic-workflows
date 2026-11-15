@@ -89,7 +89,7 @@ func TestManualOwnershipTransitionPreservesAuthoredAndUnrenderedGuidance(t *test
 	files["docs/topics/code/go.md"] = topic
 
 	code, stdout, stderr := runCLI(t, root, "resolve", "src/new.go")
-	if code != 0 || stdout != "globals:\n  none\n\npaths:\n  \"src/new.go\": [1]\n\nreferences:\n  [1] code/go — docs/topics/code/go.md\n" || stderr != "" {
+	if code != 0 || stdout != "globals:\n  none\n\npaths:\n  \"src/new.go\": [1]\n\nreferences:\n  [1] code/go — docs/topics/code/go.md\n      Existing source guidance\n" || stderr != "" {
 		t.Fatalf("migrated resolve = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	for _, command := range []string{"render", "check", "init"} {

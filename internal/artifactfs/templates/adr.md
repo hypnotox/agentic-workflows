@@ -1,7 +1,7 @@
 ---
 type: Architecture Decision
 title: {{quote .Name}}
-description: Describe the consequential choice and the scope it governs.
+description: {{.Description}}
 decision_status: pending
 status: draft
 ---

@@ -49,6 +49,22 @@ func TestConceptContract(t *testing.T) {
 	}
 }
 
+func TestUneditedStarterDescriptionIsAFinding(t *testing.T) {
+	for _, starter := range []string{"intent", "spec", "plan", "adr", "topic"} {
+		prompt, ok := StarterDescription(starter)
+		if !ok || prompt == "" {
+			t.Fatalf("missing %s starter description", starter)
+		}
+		messages := validate("docs/concept.md", []byte("---\ntype: Custom\ndescription: '"+prompt+"'\n---\n"))
+		if len(messages) != 1 || !strings.Contains(messages[0], "starter prompt") || !strings.Contains(messages[0], "replace") {
+			t.Fatalf("%s prompt findings = %v", starter, messages)
+		}
+		if messages := validate("docs/concept.md", []byte("---\ntype: Custom\ndescription: "+prompt+" Edited.\n---\n")); len(messages) != 0 {
+			t.Fatalf("edited %s description rejected: %v", starter, messages)
+		}
+	}
+}
+
 func TestADRStatePairsAreLocationBoundAndExplicit(t *testing.T) {
 	for _, decision := range []string{"pending", "accepted", "active", "retired", "", "42"} {
 		for _, status := range []string{"draft", "stable", "deprecated", "pending", "", "42"} {

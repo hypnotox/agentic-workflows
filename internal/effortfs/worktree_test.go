@@ -4,6 +4,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strings"
 	"testing"
 )
 
@@ -70,5 +71,17 @@ func runGit(t *testing.T, root string, args ...string) {
 	t.Helper()
 	if _, err := git(root, args...); err != nil {
 		t.Fatal(err)
+	}
+}
+
+func TestAddWorktreeForMissingEffortNamesNextStep(t *testing.T) {
+	_, err := AddWorktree(t.TempDir(), "missing", "")
+	if err == nil {
+		t.Fatal("AddWorktree for a missing effort succeeded")
+	}
+	for _, term := range []string{`"missing"`, "awf effort list", "awf new effort"} {
+		if !strings.Contains(err.Error(), term) {
+			t.Errorf("error %q lacks %q", err, term)
+		}
 	}
 }

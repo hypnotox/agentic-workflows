@@ -35,7 +35,7 @@ func run(root string, args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 		if len(args) != 2 {
-			return usage(stderr, "usage: awf init")
+			return badArguments(stderr, "awf init", "awf help init")
 		}
 		result, err := projector.Init(root)
 		if err != nil {
@@ -49,7 +49,7 @@ func run(root string, args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 		if len(args) != 2 {
-			return usage(stderr, "usage: awf render")
+			return badArguments(stderr, "awf render", "awf help render")
 		}
 		result, err := projector.Render(root)
 		if err != nil {
@@ -63,7 +63,7 @@ func run(root string, args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 		if len(args) != 2 {
-			return usage(stderr, "usage: awf check")
+			return badArguments(stderr, "awf check", "awf help check")
 		}
 		findings, err := projector.Check(root)
 		if err != nil {
@@ -85,7 +85,7 @@ func run(root string, args []string, stdout, stderr io.Writer) int {
 		}
 		for _, value := range args[2:] {
 			if strings.HasPrefix(value, "-") {
-				return usage(stderr, fmt.Sprintf("unknown resolve option %q; usage: awf resolve [<path>...]", value))
+				return usage(stderr, fmt.Sprintf("unknown resolve option %q; usage: awf resolve [<path>...]; run `awf help resolve` for details", value))
 			}
 		}
 		coverage, err := projector.Resolve(root, args[2:])
@@ -106,12 +106,12 @@ func run(root string, args []string, stdout, stderr io.Writer) int {
 			return 0
 		}
 		if len(args) != 2 {
-			return usage(stderr, "usage: awf version")
+			return badArguments(stderr, "awf version", "awf help version")
 		}
 		fmt.Fprintln(stdout, "version:", projector.Version)
 		return 0
 	default:
-		return usage(stderr, fmt.Sprintf("unknown command %q; run `awf --help`", args[1]))
+		return usage(stderr, fmt.Sprintf("unknown command %q; run `awf --help` for the command list", args[1]))
 	}
 }
 
@@ -121,11 +121,11 @@ func runHelp(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if len(args) != 3 || args[1] != "help" {
-		return usage(stderr, "usage: awf help [command]")
+		return badArguments(stderr, "awf help [command]", "awf --help")
 	}
 	help, ok := commandHelp(args[2])
 	if !ok {
-		return usage(stderr, fmt.Sprintf("unknown command %q", args[2]))
+		return usage(stderr, fmt.Sprintf("unknown command %q; run `awf --help` for the command list", args[2]))
 	}
 	writeText(stdout, help)
 	return 0
@@ -137,7 +137,7 @@ func runDocs(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if len(args) > 1 {
-		return usage(stderr, "usage: awf docs [integration|migrate|knowledge|agents|topics|effort|changes|adr|completion]")
+		return badArguments(stderr, "awf docs [integration|migrate|knowledge|agents|topics|effort|changes|adr|completion]", "awf help docs")
 	}
 	name := ""
 	if len(args) == 1 {
@@ -145,7 +145,7 @@ func runDocs(args []string, stdout, stderr io.Writer) int {
 	}
 	page, ok := awfdocs.Page(name)
 	if !ok {
-		return usage(stderr, fmt.Sprintf("unknown documentation page %q; expected integration, migrate, knowledge, agents, topics, effort, changes, adr, or completion", name))
+		return usage(stderr, fmt.Sprintf("unknown documentation page %q; expected integration, migrate, knowledge, agents, topics, effort, changes, adr, or completion; run `awf docs` for the overview", name))
 	}
 	if _, err := stdout.Write(page); err != nil {
 		return failure(stderr, err)
@@ -170,7 +170,7 @@ func runNew(root string, args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "effort":
 		if len(args) != 2 {
-			return usage(stderr, "usage: awf new effort <slug>")
+			return badArguments(stderr, "awf new effort <slug>", "awf help new")
 		}
 		primary, rootErr := effortfs.Root(root)
 		if rootErr != nil {
@@ -181,36 +181,36 @@ func runNew(root string, args []string, stdout, stderr io.Writer) int {
 		created = effortDisplayPath(root, primary, created)
 	case "intent":
 		if len(args) != 2 {
-			return usage(stderr, "usage: awf new intent <slug>")
+			return badArguments(stderr, "awf new intent <slug>", "awf help new")
 		}
 		label = "intent"
 		created, err = artifactfs.NewIntent(root, args[1])
 	case "spec":
 		if len(args) != 2 {
-			return usage(stderr, "usage: awf new spec <slug>")
+			return badArguments(stderr, "awf new spec <slug>", "awf help new")
 		}
 		label = "spec"
 		created, err = artifactfs.NewSpec(root, args[1])
 	case "plan":
 		if len(args) != 2 {
-			return usage(stderr, "usage: awf new plan <slug>")
+			return badArguments(stderr, "awf new plan <slug>", "awf help new")
 		}
 		label = "plan"
 		created, err = artifactfs.NewPlan(root, args[1])
 	case "adr":
 		if len(args) != 2 {
-			return usage(stderr, "usage: awf new adr <slug>")
+			return badArguments(stderr, "awf new adr <slug>", "awf help new")
 		}
 		label = "adr"
 		created, err = artifactfs.NewADR(root, args[1])
 	case "topic":
 		if len(args) < 3 {
-			return usage(stderr, "usage: awf new topic <id> <pattern>...")
+			return badArguments(stderr, "awf new topic <id> <pattern>...", "awf help new")
 		}
 		label = "topic"
 		created, err = artifactfs.NewTopic(root, args[1], args[2:])
 	default:
-		return usage(stderr, fmt.Sprintf("unknown new command %q; expected effort, intent, spec, plan, adr, or topic", args[0]))
+		return usage(stderr, fmt.Sprintf("unknown new command %q; expected effort, intent, spec, plan, adr, or topic; run `awf help new` for details", args[0]))
 	}
 	if err != nil {
 		return failure(stderr, err)
@@ -227,16 +227,16 @@ func runEffort(root string, args []string, stdout, stderr io.Writer) int {
 	switch args[0] {
 	case "list":
 		if len(args) != 1 {
-			return usage(stderr, "usage: awf effort list")
+			return badArguments(stderr, "awf effort list", "awf help effort")
 		}
 	case "show", "finish":
 		if len(args) != 2 {
-			return usage(stderr, "usage: awf effort "+args[0]+" <slug>")
+			return badArguments(stderr, "awf effort "+args[0]+" <slug>", "awf help effort")
 		}
 	case "worktree":
 		return runEffortWorktree(root, args[1:], stdout, stderr)
 	default:
-		return usage(stderr, fmt.Sprintf("unknown effort command %q; expected list, show, finish, or worktree", args[0]))
+		return usage(stderr, fmt.Sprintf("unknown effort command %q; expected list, show, finish, or worktree; run `awf help effort` for details", args[0]))
 	}
 	primary, err := effortfs.Root(root)
 	if err != nil {
@@ -286,13 +286,13 @@ func runEffortWorktree(root string, args []string, stdout, stderr io.Writer) int
 		return 0
 	}
 	if args[0] != "add" || (len(args) != 2 && (len(args) != 4 || args[2] != "--suffix")) {
-		return usage(stderr, "usage: awf effort worktree add <effort-slug> [--suffix <suffix>]")
+		return badArguments(stderr, "awf effort worktree add <effort-slug> [--suffix <suffix>]", "awf effort worktree add --help")
 	}
 	suffix := ""
 	if len(args) == 4 {
 		suffix = args[3]
 		if suffix == "" {
-			return usage(stderr, "worktree suffix cannot be empty")
+			return usage(stderr, "worktree suffix cannot be empty; omit --suffix for the default checkout")
 		}
 	}
 	primary, err := effortfs.Root(root)
@@ -355,7 +355,13 @@ func printResolution(stdout io.Writer, coverage projector.Coverage) {
 		return
 	}
 	for i, match := range references {
-		fmt.Fprintf(stdout, "  [%d] %s — %s\n", i+1, match.ID, match.SourcePath)
+		label := fmt.Sprintf("  [%d] ", i+1)
+		fmt.Fprintf(stdout, "%s%s — %s\n", label, match.ID, match.SourcePath)
+		// One line per description keeps the report line-oriented; a topic
+		// without a string description gets no description line.
+		if description := strings.Join(strings.Fields(match.Description), " "); description != "" {
+			fmt.Fprintf(stdout, "%s%s\n", strings.Repeat(" ", len(label)), description)
+		}
 	}
 }
 
@@ -412,6 +418,13 @@ func usage(stderr io.Writer, message string) int {
 	return 2
 }
 
+// badArguments reports a wrong argument count with the command's synopsis and
+// the help page that explains it.
+func badArguments(stderr io.Writer, synopsis, help string) int {
+	fmt.Fprintf(stderr, "awf: wrong number of arguments; usage: %s\nrun `%s` for details\n", synopsis, help)
+	return 2
+}
+
 func failure(stderr io.Writer, err error) int {
 	fmt.Fprintln(stderr, "awf:", err)
 	return 1
@@ -457,6 +470,7 @@ const resolveHelp = `Usage: awf resolve [<path>...]
 
 Report explicit global topics, then each supplied path with its matching non-global topics, in argument order and including duplicates.
 Topics appear as numbered references to one deduplicated source list at the end. Numbers are assigned in first-use order, globals first, and are local to this response; read each source once.
+Each reference line is followed by the topic's description on its own line, indented under the reference text, with whitespace collapsed to single spaces; a topic without a string description has no description line.
 Without paths, report globals only. A path with no specific topic prints none and the command still succeeds.
 Paths are lexical and repository-relative; they need not exist. Separators are normalized, absolute or escaping paths are rejected, and option-like arguments are usage errors. Path labels use quoted Go-style escaping.
 See ` + "`awf docs topics`" + ` for authoring and maintenance.

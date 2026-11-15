@@ -25,8 +25,9 @@ var starterTemplates = template.Must(template.New("starters").Funcs(template.Fun
 }).ParseFS(starterFiles, "templates/*.md"))
 
 type starterData struct {
-	Name      string
-	Selectors []string
+	Name        string
+	Description string
+	Selectors   []string
 }
 
 // NewIntent creates a tracked change intent scaffold.
@@ -108,7 +109,7 @@ func create(root, relative, kind, name, body string) (string, error) {
 	file, err := os.OpenFile(filename, os.O_WRONLY|os.O_CREATE|os.O_EXCL, 0o644)
 	if err != nil {
 		if os.IsExist(err) {
-			return "", fmt.Errorf("%s %q already exists", kind, name)
+			return "", fmt.Errorf("%s %q already exists at %s; edit that file or choose another name", kind, name, filepath.ToSlash(relative))
 		}
 		return "", fmt.Errorf("create %s %q: %w", kind, name, err)
 	}
@@ -184,6 +185,11 @@ func validateTopicID(id string) error {
 }
 
 func renderStarter(name string, data starterData) (string, error) {
+	description, ok := knowledge.StarterDescription(name)
+	if !ok {
+		return "", fmt.Errorf("render %s starter: no starter description", name)
+	}
+	data.Description = description
 	var body bytes.Buffer
 	if err := starterTemplates.ExecuteTemplate(&body, name+".md", data); err != nil {
 		return "", fmt.Errorf("render %s starter: %w", name, err)

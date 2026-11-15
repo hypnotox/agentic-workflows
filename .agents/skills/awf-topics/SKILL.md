@@ -19,7 +19,7 @@ Each non-reserved `docs/topics/**/*.md` file is a topic: one body of current pro
 ./awf resolve internal/projector/new-file.go docs/future.md
 ```
 
-Pass the repository-relative paths you will work on; they need not exist. The report lists global topics, then each path's matches as numbered references, then each number's source file. Read every referenced source once. A path with no specific topic reports `none`, which is not an error; `awf help resolve` gives the output and argument rules. Routing shows matches for the paths you chose, not that documentation is complete, accurate, or fresh.
+Pass the repository-relative paths you will work on; they need not exist. The report lists global topics, then each path's matches as numbered references, then each number's source file with its description beneath it. Read every referenced source once. A path with no specific topic reports `none`, which is not an error; `awf help resolve` gives the output and argument rules. Routing shows matches for the paths you chose, not that documentation is complete, accurate, or fresh.
 
 ## Create and author a topic
 
@@ -46,7 +46,7 @@ paths:
 
 Selectors are relative to the repository root, not the topic's directory. `*` matches within one path component and `**` across directories. Selectors are positive only; several topics may match one path. The exact sole selector `paths: ['**']` makes a global topic that every `resolve` reports. `awf help new` gives the ID and selector rules.
 
-Begin the body with a focused purpose, then current behavior, ownership boundaries, and relationships that matter to future changes, then constraints and practical implications. Prefer useful orientation to an exhaustive inventory, keep change and verification guidance near its facts, and link active ADRs instead of repeating their rationale. Remove prompts and anything that does not serve the topic.
+`resolve` prints the description under each reference, so write one line that tells a reader whether the topic matters to their change. Begin the body with a focused purpose, then current behavior, ownership boundaries, and relationships that matter to future changes, then constraints and practical implications. Prefer useful orientation to an exhaustive inventory, keep change and verification guidance near its facts, and link active ADRs instead of repeating their rationale. Remove prompts and anything that does not serve the topic.
 
 ## Maintain current knowledge
 

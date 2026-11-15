@@ -22,13 +22,17 @@ const TopicsPath = "docs/topics"
 type Topic struct {
 	ID         string
 	SourcePath string
-	Paths      []string
-	Global     bool
-	Body       []byte
+	// Description is the authored description, or empty when it is absent or
+	// not a string. Routing does not validate it; check does.
+	Description string
+	Paths       []string
+	Global      bool
+	Body        []byte
 }
 
 type topicMetadata struct {
-	Paths []string `yaml:"paths"`
+	Paths       []string `yaml:"paths"`
+	Description any      `yaml:"description"`
 }
 
 // rejectLegacyLayout catches the known retired source locations before an
@@ -95,12 +99,14 @@ func LoadTopics(root string) ([]Topic, error) {
 			return err
 		}
 		id := strings.TrimSuffix(filepath.ToSlash(topicRelative), filepath.Ext(topicRelative))
+		description, _ := metadata.Description.(string)
 		topics = append(topics, Topic{
-			ID:         id,
-			SourcePath: relative,
-			Paths:      patterns,
-			Global:     global,
-			Body:       append([]byte(nil), body...),
+			ID:          id,
+			SourcePath:  relative,
+			Description: description,
+			Paths:       patterns,
+			Global:      global,
+			Body:        append([]byte(nil), body...),
 		})
 		return nil
 	})

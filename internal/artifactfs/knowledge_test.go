@@ -13,15 +13,17 @@ import (
 
 func TestAllStartersConformToKnowledgeContract(t *testing.T) {
 	root := t.TempDir()
+	created := make(map[string]string)
 	for _, test := range []struct {
-		kind   string
-		create func(string, string) (string, error)
+		kind    string
+		starter string
+		create  func(string, string) (string, error)
 	}{
-		{"Change Intent", NewIntent},
-		{"Specification", NewSpec},
-		{"Implementation Plan", NewPlan},
-		{"Architecture Decision", NewADR},
-		{"Project Topic", func(root, name string) (string, error) { return NewTopic(root, name, []string{"src/**"}) }},
+		{"Change Intent", "intent", NewIntent},
+		{"Specification", "spec", NewSpec},
+		{"Implementation Plan", "plan", NewPlan},
+		{"Architecture Decision", "adr", NewADR},
+		{"Project Topic", "topic", func(root, name string) (string, error) { return NewTopic(root, name, []string{"src/**"}) }},
 	} {
 		relative, err := test.create(root, "ship-it")
 		if err != nil {
@@ -35,12 +37,37 @@ func TestAllStartersConformToKnowledgeContract(t *testing.T) {
 		if _, found, err := frontmatter.Parse(content, &metadata); err != nil || !found {
 			t.Fatalf("%s: frontmatter found=%v, %v", relative, found, err)
 		}
-		if metadata["type"] != test.kind || metadata["title"] != "ship-it" {
+		prompt, _ := knowledge.StarterDescription(test.starter)
+		if metadata["type"] != test.kind || metadata["title"] != "ship-it" || metadata["description"] != prompt {
 			t.Fatalf("%s: metadata = %v", relative, metadata)
+		}
+		created[filepath.ToSlash(relative)] = prompt
+	}
+
+	// An unedited starter fails only for its description prompt.
+	findings, err := knowledge.Check(root)
+	if err != nil || len(findings) != len(created) {
+		t.Fatalf("unedited starter bundle: %v, %v", findings, err)
+	}
+	for _, finding := range findings {
+		if _, ok := created[finding.Path]; !ok || !strings.Contains(finding.Message, "starter prompt") {
+			t.Fatalf("unexpected starter finding: %v", finding)
+		}
+	}
+
+	for relative, prompt := range created {
+		filename := filepath.Join(root, filepath.FromSlash(relative))
+		content, err := os.ReadFile(filename)
+		if err != nil {
+			t.Fatal(err)
+		}
+		edited := strings.Replace(string(content), prompt, "Authored summary of "+relative+".", 1)
+		if err := os.WriteFile(filename, []byte(edited), 0o644); err != nil {
+			t.Fatal(err)
 		}
 	}
 	if findings, err := knowledge.Check(root); err != nil || len(findings) != 0 {
-		t.Fatalf("starter bundle: %v, %v", findings, err)
+		t.Fatalf("edited starter bundle: %v, %v", findings, err)
 	}
 	if _, err := projector.Render(root); err != nil {
 		t.Fatal(err)

@@ -100,6 +100,8 @@ func validate(relative string, content []byte) []string {
 	}
 	if !nonemptyString(metadata["description"]) {
 		messages = append(messages, "AWF description must be a non-empty string (required beyond baseline OKF)")
+	} else if isStarterDescription(metadata["description"]) {
+		messages = append(messages, "AWF description is still the starter prompt; replace it with a summary of this document")
 	}
 	if strings.HasPrefix(relative, "docs/decisions/") {
 		decision, _ := metadata["decision_status"].(string)

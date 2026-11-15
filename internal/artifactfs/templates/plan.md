@@ -1,7 +1,7 @@
 ---
 type: Implementation Plan
 title: {{quote .Name}}
-description: Describe the implementation route and the outcome it delivers.
+description: {{.Description}}
 ---
 
 # Plan: {{.Name}}

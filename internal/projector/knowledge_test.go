@@ -113,7 +113,7 @@ func TestManualAdopterMigrationPreservesAuthorityBodiesAndRouting(t *testing.T) 
 		t.Fatalf("migrated check = %v, %v", findings, err)
 	}
 	afterRouting, err := Resolve(root, []string{"src/future.go", "other/file"})
-	if err != nil || !equalCoverageForTest(beforeRouting, afterRouting) {
+	if err != nil || !equalCoverageForTest(routingOnlyForTest(beforeRouting), routingOnlyForTest(afterRouting)) {
 		t.Fatalf("migration changed routing: before=%v, after=%v, %v", beforeRouting, afterRouting, err)
 	}
 	if _, err := os.Stat(filepath.Join(root, ".git")); !os.IsNotExist(err) {
@@ -152,4 +152,21 @@ func TestCheckReportsInvalidUTF8WithoutGatingRender(t *testing.T) {
 	if after := snapshotTree(t, root); !reflect.DeepEqual(before, after) {
 		t.Fatal("check changed authored bytes")
 	}
+}
+
+// routingOnlyForTest drops topic descriptions, which authors may add without
+// changing which topics a path selects.
+func routingOnlyForTest(coverage Coverage) Coverage {
+	strip := func(matches []TopicMatch) []TopicMatch {
+		stripped := make([]TopicMatch, len(matches))
+		for i, match := range matches {
+			stripped[i] = TopicMatch{ID: match.ID, SourcePath: match.SourcePath}
+		}
+		return stripped
+	}
+	result := Coverage{Globals: strip(coverage.Globals)}
+	for _, entry := range coverage.Paths {
+		result.Paths = append(result.Paths, PathCoverage{Path: entry.Path, Matches: strip(entry.Matches)})
+	}
+	return result
 }

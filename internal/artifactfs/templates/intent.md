@@ -1,7 +1,7 @@
 ---
 type: Change Intent
 title: {{quote .Name}}
-description: Describe the problem and desired outcome of this change.
+description: {{.Description}}
 ---
 
 # Intent: {{.Name}}

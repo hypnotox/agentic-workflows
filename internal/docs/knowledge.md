@@ -20,7 +20,7 @@ description: Set up the local toolchain and run the repository's checks.
 Author-owned content goes here.
 ```
 
-`type` and `description` must be non-empty strings. **Description is an AWF requirement beyond baseline OKF**, which requires only type. Write a concise summary that helps readers and ingestion tools assess relevance without reading the whole document. `title` is optional; OKF consumers may derive it from the filename. Prefer a meaningful display title when that improves discovery. AWF starters include both title and description; replace the slug-derived title and description prompt with useful authored values.
+`type` and `description` must be non-empty strings. **Description is an AWF requirement beyond baseline OKF**, which requires only type. Write a concise summary that helps readers and ingestion tools assess relevance without reading the whole document. `title` is optional; OKF consumers may derive it from the filename. Prefer a meaningful display title when that improves discovery. AWF starters include both title and description; replace the slug-derived title and description prompt with useful authored values. `check` fails while a description is still the starter prompt.
 
 The starter types are `Project Topic`, `Change Intent`, `Specification`, `Implementation Plan`, and `Architecture Decision`. Descriptive custom types and unknown extension fields are welcome; this is not a closed taxonomy. Tags, timestamps, provenance, verification, and other optional fields are not required. Non-ADR optional metadata has no additional AWF schema gate or state machine. Missing metadata does not establish review or approval, even though OKF consumers default an absent status to stable.
 
@@ -61,7 +61,7 @@ Neither reserved file is required. Headings with no entries may represent an emp
 
 Run `awf check` from the repository root. It reports repository-relative structural findings alongside existing generated-output checks and retains topic-selector validation. Every non-reserved Markdown file under the conventional ADR location, `docs/decisions/`, additionally requires the consistent, explicit state pair defined by `awf docs adr`. This check is location-bound: a custom type does not opt a decision record out, and an Architecture Decision type elsewhere does not opt a file in. Reserved files are exempt.
 
-The checker rejects missing or malformed concept frontmatter, missing/blank/non-string type or description, invalid reserved-file structure, and missing/invalid/inconsistent ADR state pairs. An absent or empty `docs/` is valid.
+The checker rejects missing or malformed concept frontmatter, missing/blank/non-string type or description, a description left as the unedited starter prompt, invalid reserved-file structure, and missing/invalid/inconsistent ADR state pairs. An absent or empty `docs/` is valid.
 
 Validation is read-only and offline. It checks structure and declared-state consistency, not truth, completeness, prose quality, freshness, review evidence, agreement, implementation, or attestation. `init`, `render`, and `resolve` retain topic validation but do not acquire bundle-wide conformance gates. None of these commands migrates authored documents or synchronizes metadata.
 

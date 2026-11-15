@@ -79,6 +79,18 @@ cmp "$candidate" "$cache_binary"
 
 # Once cached, both public and repository entrypoints must work without downloading.
 export AWF_FAKE_OFFLINE=1
+# Without a cached binary, an offline launcher names the download and the next step.
+if XDG_CACHE_HOME="$root/offline-cache" bash "$launcher" docs > "$root/offline.out" 2> "$root/offline.err"; then
+  echo "native-release-test: offline launch without a cache unexpectedly succeeded" >&2
+  exit 1
+else
+  status=$?
+fi
+[ "$status" -eq 1 ]
+[ ! -s "$root/offline.out" ]
+grep "could not download .*/v${expected_version}/${asset}" "$root/offline.err" >/dev/null
+grep "not cached" "$root/offline.err" >/dev/null
+[ ! -e "$root/offline-cache/awf/$expected_version/awf" ]
 bash "$launcher" init
 [ ! -e .awf/project.md ]
 [ ! -e AGENTS.md ]
@@ -152,8 +164,8 @@ paths: ['src/**']
 ---
 Shared smoke guidance.
 EOF
-[ "$("$candidate" resolve)" = $'globals:\n  [1]\n\nreferences:\n  [1] global — docs/topics/global.md' ]
-[ "$("$candidate" resolve src/future/main.go missing/file src/future/main.go)" = $'globals:\n  [1]\n\npaths:\n  "src/future/main.go": [2], [3]\n  "missing/file": none\n  "src/future/main.go": [2], [3]\n\nreferences:\n  [1] global — docs/topics/global.md\n  [2] code/go — docs/topics/code/go.md\n  [3] shared — docs/topics/shared.md' ]
+[ "$("$candidate" resolve)" = $'globals:\n  [1]\n\nreferences:\n  [1] global — docs/topics/global.md\n      Global smoke guidance.' ]
+[ "$("$candidate" resolve src/future/main.go missing/file src/future/main.go)" = $'globals:\n  [1]\n\npaths:\n  "src/future/main.go": [2], [3]\n  "missing/file": none\n  "src/future/main.go": [2], [3]\n\nreferences:\n  [1] global — docs/topics/global.md\n      Global smoke guidance.\n  [2] code/go — docs/topics/code/go.md\n      Go smoke guidance.\n  [3] shared — docs/topics/shared.md\n      Shared smoke guidance.' ]
 printf '# Native smoke guidance\nKeep authored instructions.\n' > AGENTS.md
 printf '@AGENTS.md\nClaude-specific guidance.\n' > CLAUDE.md
 cp AGENTS.md "$root/expected-agents"
@@ -161,7 +173,7 @@ cp CLAUDE.md "$root/expected-claude"
 # The record is drift metadata, not configuration or a binary selector.
 printf '0.0.0\n' > .awf/VERSION
 [ "$(bash .awf/bootstrap.sh)" = "$cache_binary" ]
-[ "$("$candidate" resolve src/future/main.go)" = $'globals:\n  [1]\n\npaths:\n  "src/future/main.go": [2], [3]\n\nreferences:\n  [1] global — docs/topics/global.md\n  [2] code/go — docs/topics/code/go.md\n  [3] shared — docs/topics/shared.md' ]
+[ "$("$candidate" resolve src/future/main.go)" = $'globals:\n  [1]\n\npaths:\n  "src/future/main.go": [2], [3]\n\nreferences:\n  [1] global — docs/topics/global.md\n      Global smoke guidance.\n  [2] code/go — docs/topics/code/go.md\n      Go smoke guidance.\n  [3] shared — docs/topics/shared.md\n      Shared smoke guidance.' ]
 if "$candidate" check > "$root/stale-version.out"; then
   echo "native-release-test: stale version record unexpectedly passed" >&2
   exit 1
@@ -188,7 +200,18 @@ cmp "$root/expected-memory" "$root/shown-memory"
 grep '^decision_status: pending$' docs/decisions/smoke-choice.md >/dev/null
 grep '^status: draft$' docs/decisions/smoke-choice.md >/dev/null
 [ "$("$candidate" new topic generated/smoke 'generated/**')" = "topic: docs/topics/generated/smoke.md" ]
-[ "$("$candidate" resolve generated/future.txt)" = $'globals:\n  [1]\n\npaths:\n  "generated/future.txt": [2]\n\nreferences:\n  [1] global — docs/topics/global.md\n  [2] generated/smoke — docs/topics/generated/smoke.md' ]
+[ "$("$candidate" resolve generated/future.txt)" = $'globals:\n  [1]\n\npaths:\n  "generated/future.txt": [2]\n\nreferences:\n  [1] global — docs/topics/global.md\n      Global smoke guidance.\n  [2] generated/smoke — docs/topics/generated/smoke.md\n      Describe the current knowledge and scope owned by this topic.' ]
+# Fresh starters fail check until their description prompts are replaced.
+starters="docs/changes/smoke/intent.md docs/changes/smoke/spec.md docs/plans/smoke.md docs/decisions/smoke-choice.md docs/topics/generated/smoke.md"
+if "$candidate" check > "$root/starters.out"; then
+  echo "native-release-test: unedited starters unexpectedly passed" >&2
+  exit 1
+fi
+for starter in $starters; do
+  grep "^$starter: .*starter prompt" "$root/starters.out" >/dev/null
+  sed 's/^description: Describe .*/description: Smoke starter summary./' "$starter" > "$root/starter.md"
+  cat "$root/starter.md" > "$starter"
+done
 "$candidate" check
 "$candidate" effort finish smoke
 cmp "$root/expected-memory" .awf/effort-archive/smoke/memory.md
