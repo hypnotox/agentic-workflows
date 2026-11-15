@@ -8,13 +8,13 @@ description: For all implementation work, from the first verified unit to the en
 
 Use this workflow throughout implementation, not only at the end: to verify and commit each coherent unit, review the result, and before reporting completion, integrating, publishing, or cleaning up. It applies with or without an effort, change documents, or a worktree.
 
-Commands use `./awf`; substitute the repository's AWF runner. Other workflows are cited as `awf docs <page>`, the same text as the skill `awf-<page>`. Methods named `agentic-…` come from the required agentic-skills package: this workflow says when they apply, and the method says how. `agentic-implementing` owns implementing, verifying, result review, and work-history review.
+Commands use `./awf`; substitute the repository's AWF runner. Other workflows are cited as `awf docs <page>`, the same text as the skill `awf-<page>`. Methods named `agentic-…` come from the required agentic-skills package: this workflow says where in the work they apply, and the method says how, including when independent review is warranted. `agentic-implementing` owns implementing, verifying, result review, and work-history review.
 
 The coordinating agent owns commits, review of the combined result, integration, and cleanup; delegated agents return their work, checks, and findings within their brief.
 
 ## Review cues
 
-The review cues are the situations in which `agentic-reviewing` says independent review is warranted, such as several viable designs, a public contract or compatibility change, or a hard-to-reverse step. Routine changes and uniform mechanical edits need none, whatever their size. `agentic-reviewing` owns that list, choosing the reviewer, briefing, reuse, and fallback. Give the reviewer the target and its basis, not your conclusion.
+The review cues are the situations listed in `agentic-reviewing` under "When independent review is warranted"; read that list before deciding. `agentic-reviewing` owns it, together with choosing the reviewer, briefing, reuse, and fallback. Give the reviewer the target and its basis, not your conclusion.
 
 ## Verify each coherent unit
 
@@ -46,7 +46,7 @@ Use `awf docs adr` for affected decision records; lasting choices belong in ADRs
 
 ## Integrate and publish
 
-Confirm with the user before pushing, opening a pull request, tagging, or releasing, and before merging into the default branch, unless the request already authorized that step. These steps are visible outside the checkout or hard to undo. While a step awaits confirmation, finish and report everything that does not depend on it, and leave the worktree and branch in place. A retrospective waits for a merge the task is expected to perform, so it covers the integration.
+Confirm with the user before pushing, opening a pull request, tagging, or releasing, and before merging into the default branch, unless the request already authorized that step. These steps are visible outside the checkout or hard to undo. While a step awaits confirmation, finish and report everything that does not depend on it, and leave the worktree and branch in place. A retrospective waits for a merge the task is expected to perform, so it covers the integration; if the merge is declined or deferred, run it then.
 
 Integrate with native Git under the repository's conventions; AWF does not integrate. With a worktree, integrate and clean up from the primary checkout as `awf docs effort` describes. Afterwards, confirm verification covers the combined result in the target checkout, refreshing checks affected by divergence or conflict resolution, and reconcile affected ADR and topic links.
 

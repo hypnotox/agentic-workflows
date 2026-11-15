@@ -45,7 +45,7 @@ Agreed with the owner on 2026-11-15:
 8. **Observation trial.** Run once, with a small harness kept for explicit future runs outside `./x gate` and the test suite. Results are directional.
 9. **Accepted audit findings** that fit this change: warn at adoption that an existing `docs/` tree becomes the knowledge bundle; separate migration material from the adoption guide and retire the root migration file; give the literal `init` command; lead the README with purpose and remove its stale launcher condition; make CLI errors name a next step consistently; fix this repository's dead topic selector and procedure-in-topic deviations.
 
-10. **Review triggers.** Replace "requires nontrivial judgment" with positive cues: several viable designs, a public contract or compatibility change, a hard-to-reverse step, or guidance that changes agent behavior.
+10. **Review triggers.** (Changed by agreement on 2026-11-15: the situations now live once in `agentic-reviewing`, with a fifth for work judged by looking at or playing the result; AWF refers to that list.) Replace "requires nontrivial judgment" with positive cues: several viable designs, a public contract or compatibility change, a hard-to-reverse step, or guidance that changes agent behavior.
 11. **Retrospective.** Required for work that used an effort or met a meaningful issue; routine effort-free changes need none.
 12. **`description` gains a consumer.** `resolve` prints each referenced topic's description, and an unedited starter placeholder description fails `check`.
 

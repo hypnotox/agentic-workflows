@@ -12,7 +12,7 @@ curl -fsSL https://github.com/hypnotox/agentic-workflows/releases/latest/downloa
 
 Alternatively, download an archive from the [latest release](https://github.com/hypnotox/agentic-workflows/releases/latest), extract `awf`, and run it directly. AWF supports Linux and macOS on amd64 and arm64.
 
-The workflow skills require the [agentic-skills](https://github.com/hypnotox/agentic-skills) package. The workflows decide when a repository checkpoint happens and which documents result, and name its methods, such as `agentic-brainstorming` and `agentic-reviewing`, for how to carry it out. AWF neither installs nor renders the package: install it in each agent harness the repository uses, following its README.
+The workflow skills require the [agentic-skills](https://github.com/hypnotox/agentic-skills) package. The workflows say where in a change a checkpoint belongs and which documents result, and name its methods, such as `agentic-brainstorming` and `agentic-reviewing`, for how to carry it out. AWF neither installs nor renders the package: install it in each agent harness the repository uses, following its README.
 
 ### An existing `docs/` tree
 

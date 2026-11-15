@@ -8,17 +8,17 @@ description: For a change that involves a material choice about outcome, scope, 
 
 Use this workflow when a change involves a material choice about its outcome, scope, compatibility, or direction, a consequential code-structure choice, or would benefit from an intent, specification, or plan, whether or not a document is written. Routine changes whose outcome and route are already clear skip it and go straight to implementation under `awf docs completion`.
 
-Commands use `./awf`; substitute the repository's AWF runner. Other workflows are cited as `awf docs <page>`, the same text as the skill `awf-<page>`. Methods named `agentic-…` come from the required agentic-skills package: this workflow says when they apply and which documents result, and the method says how.
+Commands use `./awf`; substitute the repository's AWF runner. Other workflows are cited as `awf docs <page>`, the same text as the skill `awf-<page>`. Methods named `agentic-…` come from the required agentic-skills package: this workflow says where in a change they apply and which documents result, and the method says how, including when independent review is warranted.
 
 ## Review cues
 
-The review cues are the situations in which `agentic-reviewing` says independent review is warranted, such as several viable designs, a public contract or compatibility change, or a hard-to-reverse step. Routine changes and uniform mechanical edits need none, whatever their size. `agentic-reviewing` owns that list, choosing the reviewer, briefing, reuse, and fallback. Give the reviewer the target and its basis, not your conclusion.
+The review cues are the situations listed in `agentic-reviewing` under "When independent review is warranted"; read that list before deciding. `agentic-reviewing` owns it, together with choosing the reviewer, briefing, reuse, and fallback. Give the reviewer the target and its basis, not your conclusion.
 
 ## Settle the direction
 
 1. Resolve material choices with `agentic-brainstorming` and structural ones with `agentic-code-design`.
 2. When the review cues apply, have the direction's premises challenged before planning relies on it, using the premise check in `agentic-brainstorming`. Target the current `docs/changes/<slug>/intent.md` if there is one, otherwise the problem, outcome, and constraints from the conversation. Writing a claim into an intent does not establish it. Settle consequential factual uncertainty with a proportionate trial before costly dependent work.
-3. Confirm the direction with the user before planning or dependent implementation: the recommended direction, its main trade-offs, and what remains open. The outcome is agreed once the user confirms it. A request settles a material choice only where it states that choice or explicitly leaves it to you; when it is silent on one, such as a new output format or which inputs a feature covers, bring it to the user with your recommendation before building on it, instead of choosing and reporting afterwards. Record the agreement in the intent or effort memory when the work has one; otherwise the conversation is enough.
+3. Confirm the direction with the user before planning or dependent implementation: the recommended direction, its main trade-offs, and what remains open. The outcome is agreed once the user confirms it; a request that states every material choice is already agreed and needs no further stop. A request settles a material choice only where it states that choice or explicitly leaves it to you; when it is silent on one, such as a new output format or which inputs a feature covers, bring it to the user with your recommendation before building on it, instead of choosing and reporting afterwards. Record the agreement in the intent or effort memory when the work has one; otherwise the conversation is enough.
 
 The plan then needs no separate approval unless the user asks to see it. Keep working until the next steering point in `awf docs completion`, a genuine need for user input, or a blocker.
 
