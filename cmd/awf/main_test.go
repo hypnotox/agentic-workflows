@@ -82,6 +82,31 @@ func TestDocsHelpAndUsage(t *testing.T) {
 	}
 }
 
+func TestCommandHelpCarriesContractsGuidesDelegate(t *testing.T) {
+	// The workflow guides send agents to command help for argument and output
+	// rules, so each help page must keep describing the contract it owns.
+	for _, tc := range []struct {
+		args  []string
+		terms []string
+	}{
+		{[]string{"help", "resolve"}, []string{"globals only", "none", "absolute", "option-like", "numbered references"}},
+		{[]string{"help", "new"}, []string{"never replaces", "index or log", "global topic", "Quote glob"}},
+		{[]string{"help", "effort"}, []string{"primary checkout", ".awf/effort-archive/<slug>", "worktree add", "default"}},
+		{[]string{"effort", "worktree", "add", "--help"}, []string{"committed HEAD", "not copied", "ASCII letter or number", "refused"}},
+		{[]string{"help", "check"}, []string{"decision_status", "topic selectors"}},
+	} {
+		code, stdout, stderr := runCLI(t, t.TempDir(), tc.args...)
+		if code != 0 || stderr != "" {
+			t.Fatalf("%v = code %d, stderr %q", tc.args, code, stderr)
+		}
+		for _, term := range tc.terms {
+			if !strings.Contains(stdout, term) {
+				t.Errorf("%v help lacks %q:\n%s", tc.args, term, stdout)
+			}
+		}
+	}
+}
+
 func TestInitRenderCheckRoundTripWithoutGit(t *testing.T) {
 	root := t.TempDir()
 	t.Setenv("PATH", t.TempDir())

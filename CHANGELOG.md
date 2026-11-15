@@ -8,6 +8,15 @@ All notable changes to `awf` are documented here, newest first.
 
 - Remove the `.pi/skills` output; `.agents/skills` is the shared copy for Codex, Pi, and omp. Pi documents discovery from `.agents/skills`, and omp 18.11.1 was observed reading `.agents/skills` and `.claude/skills` and listing an identical skill once. Pi's own project-skill discovery was not observed: a temporary-repository check listed no project skills from either directory. Existing `.pi/skills/awf-*` files keep their AWF marker and `check` reports them as unmanaged until removed; AWF never deletes them, so remove them manually (`rm -r .pi/skills/awf-*`).
 
+### Changed
+
+- Rewrite the five workflow skills and their `awf docs` pages. Each description now states when to load the skill, so `AGENTS.md` no longer needs copied trigger lists, and each body opens with when it applies and is roughly a third shorter. Checkpoints name the `agentic-skills` method that does the work instead of restating its delegation, briefing, reuse, and fallback rules.
+- Add human steering points that agents will now act on: confirm the direction with the user before planning; bring a material deviation from the agreed outcome back to the user; and confirm before pushing, opening a pull request, tagging, or releasing, and before merging into the default branch, unless the request already authorized it. Routine work needs no plan approval.
+- Trigger independent review on positive cues (several viable designs, a public contract or compatibility change, a hard-to-reverse step, or guidance that changes agent behavior) instead of "nontrivial judgment". Require a retrospective only for work that used an effort or met a meaningful issue.
+- Let each effort decide whether it needs a worktree and record the choice and reason in memory, instead of defaulting every effort with tracked changes to one.
+- State that the default commit cadence lands commits on the current branch of the working checkout and does not cover pushing or merging.
+- Move argument and output rules for `resolve`, `new`, `effort`, and `effort worktree add` from the guides into `awf help <command>`.
+
 ## [0.62.0] - 2026-10-11
 
 ### Breaking changes

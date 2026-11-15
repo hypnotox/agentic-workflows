@@ -1,28 +1,24 @@
 # Record and maintain decisions
 
-Use this workflow when a consequential choice needs rationale that should outlive the change, or when an existing ADR's decision or authority changes. Routine implementation details need no ADR. AWF creates the requested starter and checks declared metadata consistency, but does not interpret decision prose, synchronize fields, or manage authority.
+Use this workflow when a consequential choice needs rationale that should outlive the change, or when an existing ADR's decision, status, or authority changes. Routine implementation details need no ADR.
 
-Use the repository's documented AWF runner; examples below use `./awf`. For intent, specifications, and implementation plans, use `docs changes`. During implementation and integration, use `docs completion`.
+Commands use `./awf`; substitute the repository's AWF runner. Other workflows are cited as `awf docs <page>`, the same text as the skill `awf-<page>`. Use `awf docs changes` for intent, specifications, and plans.
 
 ## Record the decision
 
-From the checkout that owns the decision, create only the record the work needs:
+From the checkout that owns the decision:
 
 ```sh
-./awf new adr <decision-slug>  # docs/decisions/<decision-slug>.md
+./awf new adr <decision-slug>  # docs/decisions/<decision-slug>.md, pending/draft
 ```
 
-Use one record per coherent decision area; split choices with independent reasons to change. Preserve the consequential choice, its scope, supporting evidence, and rationale worth retaining. An ADR is not a specification summary. Reference the originating intent or specification and relevant active decisions instead of duplicating their requirements. An ADR does not require an effort or a separate change document; state its basis briefly when none exists. Creation refuses replacement. Follow `awf docs knowledge` for shared metadata and replace starter titles and description prompts with useful authored values. Adapt or omit starter sections and remove unused prompts.
+Use one record per coherent decision area, splitting choices with independent reasons to change. Record the choice, its scope, the evidence, and the rationale worth keeping. An ADR is not a specification summary: reference the originating intent or specification and related active decisions instead of copying requirements, or state the basis briefly when none exists. Follow `awf docs knowledge` for metadata and replace starter prompts.
 
-Before relying on a new or revised decision whose trade-offs, interactions, or supersession require nontrivial judgment, obtain or reuse a directly applicable independent review from fresh context. Assess fit to the agreed outcome and constraints, the rationale, and consistency with active authority. Routine corrections need no independent review; line and file counts do not decide.
-
-When new independent decision review is needed, delegate it to a suitable available agent. This checkpoint authorizes the coordinating agent to delegate without a separate operator request, within the active task, applicable permissions, and role boundaries; explicit prohibitions remain binding. Supply the proposed decision, agreed basis, relevant evidence, constraints, and affected authority. Reviewers report findings without editing or delegating. Address material findings before dependent work, and recheck conclusions affected by substantive corrections.
-
-Use supported discovery and activation before treating delegation as unavailable. If an explicit prohibition applies or no suitable agent can be made available, check directly and disclose the reason and lack of independence. Absence of a separate operator request is not a prohibition. An applicable direction or definition review can cover these questions; creating an ADR does not itself require another review or approval stage.
+Independent review of a new or revised decision is warranted when it involves several viable designs, a public contract or compatibility change, a hard-to-reverse step, or guidance that changes agent behavior; routine corrections need none. In a repository that uses AWF, these cues take the place of the general review threshold in `agentic-reviewing`, from the required agentic-skills package, which owns how the review is done. Assess fit to the agreed outcome and constraints, the rationale, and consistency with active authority; an applicable direction or definition review can cover this. Address material findings before dependent work.
 
 ## Maintain decision authority
 
-ADR concepts under `docs/decisions/` carry hand-maintained `decision_status` and OKF `status` fields. New records start as pending/draft:
+Records under `docs/decisions/` carry two hand-maintained fields, updated together:
 
 | `decision_status` | `status` | Authority |
 |---|---|---|
@@ -30,18 +26,14 @@ ADR concepts under `docs/decisions/` carry hand-maintained `decision_status` and
 | `accepted` | `draft` | Agreed, but not yet fully in effect. |
 | `active` | `stable` | Governs the repository; applicable implementation has been verified. |
 
-`decision_status` owns the domain state; `status` is its interoperable representation, not another approval process. Update them together. OKF describes draft as not yet reviewed; AWF deliberately keeps accepted decisions draft until activation. Generic OKF consumers cannot distinguish pending from accepted without reading `decision_status`.
+`decision_status` owns the state; `status` is its OKF representation. Record only agreement and implementation that actually happened; never invent acceptance. A decision may become accepted and active in the same change. `awf check` rejects missing or inconsistent pairs but never infers agreement or promotes a decision. To migrate a legacy `status: pending|accepted|active` field, follow `awf docs integration`.
 
-These fields record established agreement and implementation state, not an additional approval gate. Do not invent acceptance. A decision may become accepted and active in the same change. For existing records, use their documented agreement and implementation evidence. `awf check` rejects missing, invalid, or inconsistent pairs; it never infers agreement, verifies implementation, promotes decisions, synchronizes fields, or retires records. Use only draft and stable for this lifecycle; other document kinds do not acquire this state machine. For legacy status migration, use `awf docs integration`.
+Keep all records together in `docs/decisions/` and find relevant ones through topics and ordinary inspection. Topics state current implications and link to active ADRs for enduring choices.
 
-Keep pending, accepted, and active records together in `docs/decisions/`. Discover relevant ADRs through topics and ordinary repository inspection; there is no roster, query command, or clause-level lifecycle. Topics describe current practical implications and link to active ADRs for enduring choices and rationale.
+Before implementation changes an active decision, identify the affected ADRs and their intended replacements, even when the conflict surfaces after work began. Pending and accepted records do not displace active authority: an accepted replacement guides implementation while the predecessor's still-governing commitments remain in effect.
 
-Before implementation changes an active decision, identify affected ADRs and intended replacements—even if the conflict is discovered after work began. A successor should identify what it intends to replace and why. Pending and accepted records do not displace active authority: an accepted replacement guides implementation while the predecessor's still-governing commitments remain in effect.
+For substantive supersession, prefer replacing the containing record, even when only part changes. Restate the resulting decisions in independently understandable ADRs, carrying still-binding commitments forward with their original meaning and marking which are inherited and which are new.
 
-For substantive supersession, prefer replacing the containing record, even when only part changes. Restate the resulting decisions in one or more independently understandable ADRs so readers need not reconstruct current authority from a chain. Carry forward still-binding commitments with their original meaning and necessary rationale, distinguishing inherited commitments from new choices. Reuse a suitable authoritative record where that keeps ownership clear.
+Retire a predecessor only when each commitment it still holds has an active home and the accepted changes are in effect and verified. After retirement, every still-binding decision has exactly one authoritative active home. Do activation, retirement, and reference updates in one coherent change, pointing surviving references, including topic links, to the replacements, or to a committed version such as `git show <commit>:docs/decisions/<slug>.md` for history. A predecessor that no longer governs anything can be deleted; Git keeps its history.
 
-Retire a predecessor only when its remaining commitments have active homes and the accepted changes are in effect with applicable verification. Reuse valid evidence for unchanged implementation. If some replacements are not active yet, preserve the predecessor's still-governing content. After retirement, every still-binding decision must have one authoritative active home.
-
-Complete activation, retirement, and reference updates in the same coherent change. Update surviving references, including topic links and a successor's predecessor reference, to the relevant replacements or, when discussing history, an ordinary committed version such as `git show <commit>:docs/decisions/<slug>.md`. Once nothing in a predecessor still governs, it can be deleted with history retained in Git. Follow repository integration policy and keep needed historical content and references available after integration and branch cleanup.
-
-Ordinary corrections need no new ADR. Revision or deletion must not discard binding content without an authoritative surviving home. Retire withdrawn pending or accepted records and decisions that cease to apply; no replacement is needed when no commitments remain binding.
+Ordinary corrections need no new ADR, but no revision or deletion may discard a binding commitment without a surviving home. Retire withdrawn records and decisions that no longer apply.

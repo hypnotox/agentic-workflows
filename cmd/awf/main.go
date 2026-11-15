@@ -449,16 +449,17 @@ See ` + "`awf docs integration`" + ` for ownership and update procedures.
 
 const checkHelp = `Usage: awf check
 
-Validate the docs/ knowledge bundle, topic selectors, and generated files. Unmanaged AWF-marked files fail the check.
+Validate the docs/ knowledge bundle, including decision_status and status pairs under docs/decisions/, topic selectors, and generated files. Unmanaged AWF-marked files fail the check.
 See ` + "`awf docs integration`" + ` for gate and CI integration.
 `
 
 const resolveHelp = `Usage: awf resolve [<path>...]
 
-Report explicit globals separately and non-global topic matches for every supplied lexical repository-relative path, in argument order, including duplicates.
-Numbered references point to one deduplicated source list at the end. Numbers are assigned in first-use order and are local to this response.
-Without paths, report globals only. Unmapped paths print none and succeed.
-See ` + "`awf docs topics`" + ` for authoring, maintenance, and routing limits.
+Report explicit global topics, then each supplied path with its matching non-global topics, in argument order and including duplicates.
+Topics appear as numbered references to one deduplicated source list at the end. Numbers are assigned in first-use order, globals first, and are local to this response; read each source once.
+Without paths, report globals only. A path with no specific topic prints none and the command still succeeds.
+Paths are lexical and repository-relative; they need not exist. Separators are normalized, absolute or escaping paths are rejected, and option-like arguments are usage errors. Path labels use quoted Go-style escaping.
+See ` + "`awf docs topics`" + ` for authoring and maintenance.
 `
 
 const docsHelp = `Usage: awf docs [integration|knowledge|agents|topics|effort|changes|adr|completion]
@@ -476,7 +477,9 @@ Commands:
   adr <slug>               create docs/decisions/<slug>.md with pending/draft decision metadata
   topic <id> <pattern>...  create ` + projector.TopicsPath + `/<id>.md with supplied selectors
 
-Creation never replaces an existing destination. Quote glob patterns so the shell does not expand them.
+Creation never replaces an existing destination and prints the created path. Tracked documents are created in the current checkout; effort memory is created in the primary checkout.
+Topic IDs may be nested, omit .md, cannot escape the topic directory, and cannot use the basename index or log.
+Selectors are repository-relative: * matches within one path component and ** across directories. The exact sole selector ** declares a global topic; ** cannot be mixed with other selectors. Selectors are stored as supplied. Quote glob patterns so the shell does not expand them.
 See ` + "`awf docs changes`" + ` for change documents, ` + "`awf docs effort`" + ` for continuity, and ` + "`awf docs topics`" + ` for topic authoring.
 `
 
@@ -489,14 +492,19 @@ Commands:
   worktree add <effort-slug> [--suffix <suffix>]
                  create a default or suffixed implementation worktree
 
-Create memory with ` + "`awf new effort <slug>`" + `. See ` + "`awf docs effort`" + ` for the complete workflow.
-`
+In a Git repository, effort commands use the primary checkout's .awf/efforts, also when run from a linked worktree.
+finish moves the whole effort directory to .awf/effort-archive/<slug> and never replaces an existing archive.
+Create memory with ` + "`awf new effort <slug>`" + `.
+
+` + worktreeDetails
 
 const worktreeHelp = `Usage: awf effort worktree add <effort-slug> [--suffix <suffix>]
 
-Create .awf/worktrees/<effort-slug>.<default-or-suffix> on awf/<effort-slug>/<default-or-suffix> from the primary checkout's committed HEAD.
-Requires an active effort. Suffixes use letters, numbers, hyphens, or underscores; default is reserved.
-Existing destinations and conflicting branches are never replaced. Integration and cleanup remain native Git operations.
+` + worktreeDetails
+
+const worktreeDetails = `worktree add creates .awf/worktrees/<effort-slug>.<default-or-suffix> on branch awf/<effort-slug>/<default-or-suffix>, using native Git from the primary checkout's committed HEAD; uncommitted and ignored files are not copied. It requires Git and an active effort.
+A suffix starts with an ASCII letter or number, followed by letters, numbers, hyphens, or underscores; omit it for default, which cannot be passed explicitly.
+It prints the absolute checkout path, the shared memory path, and the branch. Existing paths and conflicting branches are refused, and existing worktrees are not adopted. Synchronization, integration, and cleanup remain native Git operations.
 See ` + "`awf docs effort`" + ` for shared memory and checkout conventions.
 `
 

@@ -1,77 +1,59 @@
 # Effort continuity
 
-Use an effort when work needs continuity across stages, sessions, or handoffs, and associate implementation worktrees with a coordinating effort. Small, self-contained changes without worktree isolation can remain effort-free. An effort does not require a change document.
+Use an effort when work spans several stages, sessions, or handoffs, or should run in its own worktree. Small, self-contained changes stay effort-free. An effort needs no change document.
 
-Use the repository's documented AWF runner; examples below use `./awf`. Read this workflow when it becomes relevant and reuse it during the task. For change definitions and plans, use `docs changes`; for decision records, use `docs adr`. During implementation, use `docs completion` for verification, commit cadence, and final completion or integration.
+Commands use `./awf`; substitute the repository's AWF runner. Other workflows are cited as `awf docs <page>`, the same text as the skill `awf-<page>`. Use `awf docs completion` for verification, commits, and finishing.
 
 ## Resume or create memory
 
-Check for a matching active effort and resume it when it covers the work:
+Check for a matching active effort and resume it when it covers the work; otherwise create one:
 
 ```sh
 ./awf effort list
 ./awf effort show <slug>
+./awf new effort <slug>   # .awf/efforts/<slug>/memory.md
 ```
 
-Otherwise, create one:
+In a Git repository, memory lives in the primary checkout and all of the effort's worktrees share it. Memory works without Git.
+
+## Keep memory a continuation checkpoint
+
+Memory is the current continuation checkpoint, not a session log or a second definition of the change. Keep the next action prominent, with progress, verification, blockers, and actual checkout and artifact locations. Reference tracked documents instead of repeating them; tracked documents do not link back to memory.
+
+Record consequential operator decisions, requirements, corrections, and constraints promptly when no other home holds them. Distinguish proposals from agreements, and operator statements from your interpretation. Quote verbatim when exact wording matters to scope, meaning, or authority.
+
+On resume, reconcile memory with the current repository, instructions, topics, and documents; current source and authority win. Refresh memory at resumable boundaries, before handoff or context replacement, and before switching away from unfinished work, keeping still-binding agreements until another authoritative home holds them.
+
+One coordinating agent writes memory; delegated agents return findings instead. A checkpoint is not a stopping point: continue until the requested stopping point, a steering point in `awf docs changes` or `awf docs completion`, a genuine need for user input, or a blocker.
+
+## Retain significant findings
+
+Record significant findings in `notes.md` beside memory: issues, avoidable friction, non-obvious pitfalls, and resolved problems worth reviewing. Note what happened, its effect, and the resolution or follow-up, separating observations from suspected causes. Ordinary debugging needs no log; create no empty notes file. Notes feed the retrospective; they are local, so material findings must still reach the user.
+
+## Decide whether to use a worktree
+
+Decide before the effort first changes tracked files, and record the choice and reason in memory. A worktree helps when work runs in parallel with other work, runs long, should leave the primary checkout usable, or makes risky changes that may be abandoned. Short sequential work can use the primary checkout; read-only work needs none.
+
+Create one for an active effort; only this command needs Git:
 
 ```sh
-./awf new effort <slug>
-# .awf/efforts/<slug>/memory.md
+./awf effort worktree add ship-it                # .awf/worktrees/ship-it.default, branch awf/ship-it/default
+./awf effort worktree add ship-it --suffix tests # .awf/worktrees/ship-it.tests, branch awf/ship-it/tests
 ```
 
-In Git repositories, `new effort` and `effort list`, `show`, and `finish` resolve the primary checkout even when invoked from a linked checkout. Sibling worktrees share the same primary `.awf/efforts/<slug>/memory.md`, not separate effort memories. Memory-only use remains available without Git.
+One worktree per effort is usual; siblings may serve the same effort. `awf help effort` gives creation details. With a worktree:
 
-Memory owns the current continuation checkpoint, not a second definition of the change or a session log. Keep the next action prominent, with current progress and verification, blockers, and actual checkout and artifact locations. Reference tracked definitions, plans, and ADRs rather than repeating them. Tracked documents do not link back to ignored memory.
+- keep memory and notes in the primary checkout, and tracked documents, topics, and implementation in the worktree;
+- record actual locations in memory and handoffs, and pass the worktree path explicitly to delegated agents;
+- run document starters from the checkout that should own the file; an absolute path to the runner does not change the working directory;
+- synchronize, integrate, remove the worktree, and delete its branch with native Git from the primary checkout; AWF does none of these. Integrate only as `awf docs completion` describes, which includes confirming with the user first.
 
-Record consequential operator decisions, requirements, corrections, and constraints promptly in memory when they are not recorded elsewhere. Distinguish proposals from agreements and operator statements from agent interpretation. Preserve verbatim excerpts when exact wording matters to scope, meaning, or authority.
+Before resuming tracked work in an existing worktree, check both checkouts for uncommitted changes and compare the effort branch with the primary checkout's committed HEAD. Bring in missing primary commits by the repository's merge or rebase convention before dependent work or delegation, preserving effort commits and uncommitted work, then reload affected instructions and topics and refresh affected verification. Synchronizing needs neither matching HEADs nor a fetch from a remote. Uncommitted primary-checkout changes are not shared with worktrees: reconcile relevant ones explicitly, never silently copying, discarding, or committing them. Record the reconciled commit, or the blocker, in memory.
 
-On resume, reconcile the checkpoint with the current repository, applicable instructions, topics, change documents, and ADRs. Memory is continuation evidence; current source and applicable authority determine what remains valid. Reuse context already established for the task.
+## Hand off and archive
 
-Replace stale state at meaningful resumable boundaries, before handoff or context replacement, and before switching away from unfinished work. When refreshing memory, retain still-binding agreements until another authoritative home preserves them, then reference it. Use one coordinating effort and memory writer for delegated work; children return findings rather than editing memory concurrently. A checkpoint or phase boundary is not a stopping point: continue authorized work unless the requested stopping point, a genuine need for user input, or a blocker beyond existing authority has been reached.
-
-## Retain useful findings
-
-When significant findings arise, create `notes.md` beside memory. Record issues, avoidable friction, non-obvious pitfalls, and useful findings, including resolved problems worth reviewing. Preserve what happened, its effect, and the resolution or needed follow-up with useful evidence; distinguish observations from suspected causes. Ordinary debugging attempts need no log, but repeated friction can merit a note.
-
-Memory owns what affects continuation; notes preserve findings after they stop affecting the next action. Reference details rather than duplicating them. Create no empty notes file or separate retrospective artifact merely to satisfy a process. Notes are local and ignored, not shared follow-up tracking; material findings must reach the user at completion.
-
-## Coordinate checkouts and handoffs
-
-In Git repositories, create or reuse a dedicated implementation worktree for an effort before changing tracked files. Default to one worktree per effort; several sibling checkouts may serve the same effort without changing its ownership. Use the primary checkout for tracked changes only when a concrete task requirement makes it necessary or Git/worktree support is unavailable; record the reason and actual checkout in memory. Read-only efforts need no worktree until tracked changes begin.
-
-Use `./awf effort worktree add <effort-slug> [--suffix <suffix>]` for an existing active effort. Git is required for this command only. Omit the suffix for the reserved `default` component; explicitly passing `--suffix default` is rejected. A suffix follows the effort slug rules: one component starting with an ASCII letter or number, followed by letters, numbers, hyphens, or underscores.
-
-```sh
-./awf effort worktree add ship-it
-# checkout: .awf/worktrees/ship-it.default; branch: awf/ship-it/default
-./awf effort worktree add ship-it --suffix tests
-# checkout: .awf/worktrees/ship-it.tests; branch: awf/ship-it/tests
-```
-
-Paths are rooted in the primary checkout: `.awf/worktrees/<effort-slug>.<component>`, with branches named `awf/<effort-slug>/<component>`. Each checkout is a direct child of `.awf/worktrees/`, so removing it leaves no per-effort directory behind. Creation uses native Git from the primary checkout's current committed HEAD, even when invoked from a linked checkout. It does not copy uncommitted or ignored files. The command prints the absolute checkout and shared memory paths and the branch name. It refuses existing paths and branch conflicts, so repeating a creation can fail. Existing worktrees are neither adopted nor relocated automatically.
-
-AWF uses Git only for this creation and effort-root discovery. Synchronization, integration, worktree removal, and branch cleanup remain agent duties using native Git under repository conventions. With a worktree:
-
-- keep coordinating memory and notes in the primary checkout;
-- keep tracked change documents, plans, ADRs, topics, and implementation in the implementation checkout;
-- record actual locations in memory and handoffs;
-- pass the actual implementation checkout path explicitly to delegated agents;
-- run tracked-document starter commands from the checkout that should own the file; they remain checkout-local;
-- perform synchronization, integration, removal, and branch cleanup using native Git from the primary checkout.
-
-Before resuming tracked work in an existing worktree, the coordinating agent inspects the primary checkout and worktree for uncommitted changes and compares the effort branch with the primary checkout's current committed HEAD. Incorporate any missing primary-checkout commits using the repository's merge or rebase conventions before continuing dependent work or delegation. Preserve effort commits and uncommitted work, resolve conflicts, reload affected instructions and topics, and refresh verification affected by the reconciliation. A worktree may retain commits ahead of the primary checkout; synchronization does not require matching HEADs or fetching from a remote.
-
-Uncommitted primary-checkout changes are not shared by Git worktrees. Reconcile relevant local changes explicitly before work depends on them, preserving unrelated work; do not silently copy, discard, or commit them. Record the reconciled primary-checkout commit and actual implementation checkout in memory, or a concrete blocker if reconciliation cannot safely complete. When a recorded exception requires primary-checkout implementation, the primary and implementation checkout are the same directory.
-
-An absolute path to an AWF wrapper does not change the command's working directory. Before handing off, leave a current checkpoint with the agreements, evidence, locations, and next action the successor needs, using authoritative references for details already recorded.
-
-## Archive after completion
-
-Follow `./awf docs completion` before finishing the effort. Once its completion and cleanup conditions are met, run from the primary checkout:
+Before a handoff, leave a current checkpoint with the agreements, evidence, locations, and next action the successor needs. Once `awf docs completion` is satisfied, archive from the primary checkout:
 
 ```sh
 ./awf effort finish <slug>
 ```
-
-This moves the whole effort directory to `.awf/effort-archive/<slug>` without replacement. AWF treats effort contents as opaque, leaves tracked documents alone, and does not assess readiness.

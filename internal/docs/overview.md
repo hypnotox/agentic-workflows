@@ -19,17 +19,17 @@ Do not edit generated files as their source. Use the repository's documented AWF
 
 ## Discover guides
 
-Read the workflow relevant to the task, through native AWF skills or the CLI. Reuse established guidance rather than reloading it before every action:
+Read the workflow relevant to the task, through native AWF skills or the CLI; the skill `awf-<page>` carries the same text as `awf docs <page>`, and its description says when to use it. Reuse established guidance rather than reloading it before every action:
 
 ```text
 awf docs integration  adopt AWF, update versions, connect repository automation, or repair integration
 awf docs knowledge    author the OKF bundle, metadata, indexes, and logs under docs/
 awf docs agents       author concise repository instructions and optional Claude support
-awf docs topics       discover, read, and maintain path-routed current knowledge
-awf docs effort       keep continuity, memory, notes, and worktree handoffs
-awf docs changes      define outcomes and routes; challenge premises and review definitions, code designs, or plans where warranted
-awf docs adr          record decisions and maintain ADR review, authority, and lifecycle
-awf docs completion   verify and commit coherent units, review results where warranted, and finish work
+awf docs topics       find, read, and maintain the topics that apply to the paths you work on
+awf docs effort       keep continuity across stages and sessions, decide on a worktree, and hand off
+awf docs changes      settle a material choice with the user before planning, and write intent, specification, or plan
+awf docs adr          record consequential decisions and maintain their authority and lifecycle
+awf docs completion   verify and commit each unit, review the result, confirm before publishing, and finish work
 ```
 
 Use the completion workflow during implementation for verification and commit cadence, not only at final completion; it applies even without an effort. Small self-contained changes without worktree isolation can remain effort-free; continuity across stages, sessions, or handoffs and implementation worktrees use coordinating efforts.
