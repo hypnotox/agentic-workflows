@@ -2,7 +2,7 @@
 type: Change Intent
 title: Streamline AWF workflows and guidance
 description: Shorter, clearly triggered workflow skills that rely on agentic-skills for method, add human steering points, and tidy the adoption surface.
-status: draft
+status: stable
 ---
 
 # Intent: Streamline AWF workflows and guidance
@@ -41,9 +41,13 @@ Agreed with the owner on 2026-11-15:
 4. **Worktrees.** An effort decides whether it needs a worktree and records the choice.
 5. **Commit cadence** stays an AWF default that repository and user instructions override. It does not cover pushing or merging.
 6. **`AGENTS.md` stays author-owned.** Skill descriptions carry routing. Rendered templates with in-place editing are not reintroduced now; revisit if the trial shows descriptions do not route reliably.
-7. **Drop the `.pi/skills` output** if discovery from `.agents/skills` is confirmed for Pi. It is confirmed for omp 18.11.1, which also reads `.claude/skills` and lists an identical skill once.
+7. **Drop the `.pi/skills` output.** Pi documents discovery from `.agents/skills`; omp 18.11.1 was observed reading `.agents/skills` and `.claude/skills` and listing an identical skill once. Pi's own project-skill discovery was not observed: a temporary-repository check listed no project skills from either directory. Say so in the changelog.
 8. **Observation trial.** Run once, with a small harness kept for explicit future runs outside `./x gate` and the test suite. Results are directional.
 9. **Accepted audit findings** that fit this change: warn at adoption that an existing `docs/` tree becomes the knowledge bundle; separate migration material from the adoption guide and retire the root migration file; give the literal `init` command; lead the README with purpose and remove its stale launcher condition; make CLI errors name a next step consistently; fix this repository's dead topic selector and procedure-in-topic deviations.
+
+10. **Review triggers.** Replace "requires nontrivial judgment" with positive cues: several viable designs, a public contract or compatibility change, a hard-to-reverse step, or guidance that changes agent behavior.
+11. **Retrospective.** Required for work that used an effort or met a meaningful issue; routine effort-free changes need none.
+12. **`description` gains a consumer.** `resolve` prints each referenced topic's description, and an unedited starter placeholder description fails `check`.
 
 ## Non-goals
 
@@ -52,9 +56,6 @@ Agreed with the owner on 2026-11-15:
 - A standing evaluation suite.
 - Release cadence and effort-archive pruning.
 
-## Open questions
+## Route
 
-- Pi's own discovery of project `.agents/skills` is documented but not observed: a temp-repository check listed no project skills from either `.agents/skills` or `.pi/skills`, so it did not distinguish them.
-- Whether `description` should gain a consumer, such as `resolve` printing it, and whether an unedited starter placeholder should fail `check`.
-- Which positive cues replace "requires nontrivial judgment" for review checkpoints, and when a retrospective may be skipped.
-- Whether one implementation plan or several serve this scope.
+Two plans: the skills rewrite with the observation trial first, then the adoption surface, CLI changes, and this repository's own fixes.
