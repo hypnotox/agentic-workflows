@@ -14,7 +14,7 @@ Installing AWF in a repository gives you:
 - optional local effort memory for work that spans sessions or handoffs, native Git worktrees for active efforts, and create-only starters for intent, specification, plan, ADR, and topic documents;
 - a repository-local `./awf` wrapper pinned to one verified release.
 
-AWF requires the [agentic-skills](https://github.com/hypnotox/agentic-skills) package, installed in each agent harness you use. AWF's workflows decide when a repository checkpoint such as brainstorming, review, or a retrospective happens and which documents result, and rely on agentic-skills methods for how to carry it out. Once the pinned binary is available, the CLI itself works offline, and every command except worktree creation works without Git.
+AWF requires the [agentic-skills](https://github.com/hypnotox/agentic-skills) package, installed in each agent harness you use. AWF's workflows say where in a change a checkpoint such as brainstorming, review, or a retrospective belongs and which documents result, and rely on agentic-skills methods for how to carry it out. Once the pinned binary is available, the CLI itself works offline, and every command except worktree creation works without Git.
 
 ## Start
 
