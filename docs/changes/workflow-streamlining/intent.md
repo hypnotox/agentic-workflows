@@ -58,4 +58,4 @@ Agreed with the owner on 2026-11-15:
 
 ## Route
 
-Two plans: the skills rewrite with the observation trial first, then the adoption surface, CLI changes, and this repository's own fixes.
+Two plans carried this change: the skills rewrite with the observation trial, then the adoption surface, CLI changes, and this repository's own fixes. Both are implemented and removed; read them with `git show 88750b21b:docs/plans/workflow-skills-rewrite.md` and `git show 88750b21b:docs/plans/adoption-surface-cleanup.md`. The trial's recorded result is in `tools/skill-trial/README.md`.

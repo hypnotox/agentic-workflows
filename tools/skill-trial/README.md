@@ -68,3 +68,12 @@ Results are directional. Each label is one run per task: a small, nondeterminist
 The fixture's `AGENTS.md` follows the current `awf docs agents` example. The `baseline-main` run of 2026-11-15 used the earlier example, which listed each workflow's trigger and CLI page; compare it with later runs as old guidance as a whole against new, not as skill text alone.
 
 Before recording a baseline, check each task prompt against the behavior it is meant to expose: a prompt that already authorizes a step cannot show whether the agent asks first. When guidance is reworded because of a trial, rerunning the same tasks shows only that the wording handles those tasks; add a task the wording was not written against before treating the fix as general.
+
+## Recorded run: 2026-11-15
+
+Run on 2026-11-15 with one headless agent, one model, and one run per task; results are directional and live outside the repository.
+
+- With the previous guidance, the agent chose a design itself and reported afterwards, and merged into the default branch unasked.
+- With the rewritten guidance, after one wording fix found by the trial, the agent brought unstated material choices to the user before building and waited for confirmation before merging. The multi-stage task loaded native skills and obtained an independent review of a new output contract.
+- Limits of that evidence: the wording fix names examples that match two of the trial tasks, and the rerun used the same tasks, so its success is not independent of the fix. The first integration prompt authorized the merge and had to be reworded and its baseline rerun.
+- Not improved: native skills loaded only in the multi-stage task; the other tasks read `awf docs <page>` or no workflow, and the routine fix was not committed under either guidance. Whether descriptions alone route reliably, the condition for revisiting intent item 6, is therefore not established and is the owner's decision.
