@@ -48,26 +48,22 @@ func TestBuildSharesCanonicalWorkflowsAndFixedTemplates(t *testing.T) {
 		".claude/skills/awf-adr/SKILL.md",
 		".claude/skills/awf-changes/SKILL.md", ".claude/skills/awf-completion/SKILL.md",
 		".claude/skills/awf-effort/SKILL.md", ".claude/skills/awf-topics/SKILL.md",
-		".pi/skills/awf-adr/SKILL.md",
-		".pi/skills/awf-changes/SKILL.md", ".pi/skills/awf-completion/SKILL.md",
-		".pi/skills/awf-effort/SKILL.md", ".pi/skills/awf-topics/SKILL.md", "awf",
+		"awf",
 	}
 	if got := outputPathsForTest(outputs); !slices.Equal(got, wantPaths) {
 		t.Fatalf("output paths = %v, want %v", got, wantPaths)
 	}
 	for _, workflow := range []string{"topics", "effort", "changes", "adr", "completion"} {
-		pi := outputForTest(t, outputs, ".pi/skills/awf-"+workflow+"/SKILL.md")
-		for _, harness := range []string{".claude", ".agents"} {
-			skill := outputForTest(t, outputs, harness+"/skills/awf-"+workflow+"/SKILL.md")
-			if !bytes.Equal(pi.Bytes, skill.Bytes) {
-				t.Errorf("Pi and %s %s skills differ", harness, workflow)
-			}
+		shared := outputForTest(t, outputs, ".agents/skills/awf-"+workflow+"/SKILL.md")
+		claude := outputForTest(t, outputs, ".claude/skills/awf-"+workflow+"/SKILL.md")
+		if !bytes.Equal(shared.Bytes, claude.Bytes) {
+			t.Errorf("Codex and Claude %s skills differ", workflow)
 		}
 		var metadata struct {
 			Name        string `yaml:"name"`
 			Description string `yaml:"description"`
 		}
-		body, found, err := frontmatter.Parse(pi.Bytes, &metadata)
+		body, found, err := frontmatter.Parse(shared.Bytes, &metadata)
 		if err != nil || !found || metadata.Name != "awf-"+workflow || metadata.Description == "" {
 			t.Fatalf("%s skill metadata = %#v, %v", workflow, metadata, err)
 		}
@@ -78,7 +74,7 @@ func TestBuildSharesCanonicalWorkflowsAndFixedTemplates(t *testing.T) {
 		if !bytes.HasPrefix(body, []byte(markdownMarker+"\n\n")) || !bytes.Equal(bytes.TrimPrefix(body, []byte(markdownMarker+"\n\n")), canonical) {
 			t.Errorf("%s skill body does not share the complete canonical workflow", workflow)
 		}
-		if !hasOwnershipMarker(pi.Bytes) {
+		if !hasOwnershipMarker(shared.Bytes) {
 			t.Errorf("%s skill lacks a recognized ownership marker", workflow)
 		}
 	}
@@ -282,7 +278,7 @@ func TestRenderCheckRepairAndUnmanagedMarkers(t *testing.T) {
 		t.Fatalf("clean Check = %#v, %v", findings, err)
 	}
 
-	writeTestFile(t, filepath.Join(root, ".pi", "skills", "awf-topics", "SKILL.md"), []byte(markdownMarker+"\nmodified\n"), 0o644)
+	writeTestFile(t, filepath.Join(root, ".claude", "skills", "awf-topics", "SKILL.md"), []byte(markdownMarker+"\nmodified\n"), 0o644)
 	writeTestFile(t, filepath.Join(root, codexPath), []byte(markdownMarker+"\nmodified\n"), 0o644)
 	if err := os.Chmod(filepath.Join(root, "awf"), 0o611); err != nil {
 		t.Fatal(err)
@@ -302,7 +298,7 @@ func TestRenderCheckRepairAndUnmanagedMarkers(t *testing.T) {
 	}
 	want := []Finding{
 		{Path: codexPath, Message: "generated content differs"},
-		{Path: ".pi/skills/awf-topics/SKILL.md", Message: "generated content differs"},
+		{Path: ".claude/skills/awf-topics/SKILL.md", Message: "generated content differs"},
 		{Path: "awf", Message: "generated executable state differs"},
 		{Path: "old.md", Message: "unmanaged file still carries an AWF ownership marker"},
 	}
@@ -314,7 +310,7 @@ func TestRenderCheckRepairAndUnmanagedMarkers(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(repaired.Changed, []string{codexPath, ".pi/skills/awf-topics/SKILL.md", "awf"}) {
+	if !slices.Equal(repaired.Changed, []string{codexPath, ".claude/skills/awf-topics/SKILL.md", "awf"}) {
 		t.Fatalf("repaired = %v", repaired.Changed)
 	}
 	if !slices.Equal(repaired.Unmanaged, []string{"old.md"}) {

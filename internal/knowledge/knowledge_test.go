@@ -140,7 +140,7 @@ func TestCheckWalksWholeBundleReadOnly(t *testing.T) {
 		"AGENTS.md":                       "outside bundle",
 		"internal/docs/guide.md":          "outside bundle",
 		".awf/efforts/work/memory.md":     "outside bundle",
-		".pi/skills/test/SKILL.md":        "outside bundle",
+		".claude/skills/test/SKILL.md":    "outside bundle",
 		"docs/manual/nested/arbitrary.MD": "---\ntype: A custom type\ndescription: A summary\n---\n",
 		"docs/.hidden/concept.md":         "no frontmatter",
 		"docs/topics/index.md":            "# Contents\n",

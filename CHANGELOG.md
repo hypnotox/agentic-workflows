@@ -2,6 +2,12 @@
 
 All notable changes to `awf` are documented here, newest first.
 
+## [Unreleased]
+
+### Breaking changes
+
+- Remove the `.pi/skills` output; `.agents/skills` is the shared copy for Codex, Pi, and omp. Pi documents discovery from `.agents/skills`, and omp 18.11.1 was observed reading `.agents/skills` and `.claude/skills` and listing an identical skill once. Pi's own project-skill discovery was not observed: a temporary-repository check listed no project skills from either directory. Existing `.pi/skills/awf-*` files keep their AWF marker and `check` reports them as unmanaged until removed; AWF never deletes them, so remove them manually (`rm -r .pi/skills/awf-*`).
+
 ## [0.62.0] - 2026-10-11
 
 ### Breaking changes

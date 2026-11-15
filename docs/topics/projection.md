@@ -10,7 +10,6 @@ paths:
   - 'AGENTS.md'
   - 'CLAUDE.md'
   - '.agents/skills/**'
-  - '.pi/skills/**'
   - '.claude/skills/**'
   - 'awf'
   - '.awf/bootstrap.sh'
@@ -24,7 +23,7 @@ paths:
 
 All projected content lives in `internal/projector/templates/*.tmpl`. Go supplies runtime values and canonical workflow Markdown, executes templates, and publishes/checks outputs. The downloader template owns both the marked repository bootstrap and the release-only unmarked public launcher. Keep shell content, skill frontmatter, ignore rules, and version-record formatting in templates, not Go string literals. Ownership-marker constants in Go recognize the file contract; the templates own their emitted representation.
 
-`internal/docs/` owns the embedded CLI guides. Its topic, effort, changes, ADR, and completion Markdown also supplies identical complete bodies for the five generated skills under Codex's `.agents/skills/`, Pi's `.pi/skills/`, and Claude's `.claude/skills/`. Skill templates own applicability descriptions and frontmatter, not a second copy of workflow instructions. The guides use CLI navigation and tell readers to use the repository's documented runner, so generated skills do not depend on adopter-local copies of `internal/docs/`.
+`internal/docs/` owns the embedded CLI guides. Its topic, effort, changes, ADR, and completion Markdown also supplies identical complete bodies for the five generated skills under `.agents/skills/` (serving Codex, Pi, and omp) and Claude's `.claude/skills/`. Skill templates own applicability descriptions and frontmatter, not a second copy of workflow instructions. The guides use CLI navigation and tell readers to use the repository's documented runner, so generated skills do not depend on adopter-local copies of `internal/docs/`.
 
 The other fixed outputs are `.awf/.gitignore`, `awf`, `.awf/bootstrap.sh`, and `.awf/VERSION`. The version record contains the running renderer's embedded version. Its exact path is reserved AWF-owned metadata: render may replace an older or arbitrary regular value without a marker. It supplies no configuration, binary-selection pin, or command prerequisite. The bootstrap still selects the pinned binary.
 

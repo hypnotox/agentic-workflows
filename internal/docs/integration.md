@@ -20,7 +20,7 @@ Reading documentation does not modify or repin a repository. Run mutating comman
 4. Run the selected binary's `init`. It performs the same generation as `render`, creates no descriptor or agent guide, and can be repeated under ordinary render ownership rules.
 5. Reconcile `docs/` with `awf docs knowledge`, using the manual metadata upgrade below for existing documents. Run `render` and `check`, review the full diff, and run the repository's tests or gate. Commit the author-owned guidance, topics, and generated outputs together.
 
-The fixed outputs are five skills for Codex under `.agents/skills/`, Pi under `.pi/skills/`, and Claude under `.claude/skills/`, the root `awf` wrapper, `.awf/bootstrap.sh`, `.awf/.gitignore`, and `.awf/VERSION`. A leading AWF comment marks ownership except for the reserved version record. All three harnesses receive identical canonical workflow bodies; the CLI guides remain available without native skills.
+The fixed outputs are five skills under `.agents/skills/` (serving Codex, Pi, and omp) and Claude under `.claude/skills/`, the root `awf` wrapper, `.awf/bootstrap.sh`, `.awf/.gitignore`, and `.awf/VERSION`. A leading AWF comment marks ownership except for the reserved version record. Both skill directories receive identical canonical workflow bodies; the CLI guides remain available without native skills.
 
 Rendering refuses non-regular destinations and unmarked collisions other than `.awf/VERSION`. To give AWF a colliding destination, first preserve useful content elsewhere, then remove or move the destination deliberately. Do not add an AWF marker to unreconciled authored content. If generation stops after partial writes, inspect the output and diff, retain valid files, correct the reported problem, and rerun `render`. AWF never automatically deletes retired output.
 
@@ -49,7 +49,7 @@ Inspect the reserved `.awf/VERSION` destination, then render and check with the 
 /path/to/new/awf resolve <relevant-path>...
 ```
 
-Review reported retired marked files. Delete obsolete ones deliberately or remove their marker to retain them as author-owned content. Preserve tracked change documents, decisions, plans, local effort memory, archives, and worktrees throughout the transition. Run the repository's checks and commit the reconciled result. Rendering updates the bootstrap pin for later wrapper commands. In AWF's own checkout, use `./x` to execute the target checkout source.
+Review reported retired marked files. Delete obsolete ones deliberately or remove their marker to retain them as author-owned content. Preserve tracked change documents, decisions, plans, local effort memory, archives, and worktrees throughout the transition. Run the repository's checks and commit the reconciled result. Installations that rendered a `.pi/skills` copy before this change keep those marked `awf-*` files, which `check` reports as unmanaged until removed; AWF never deletes them, so remove them with `rm -r .pi/skills/awf-*` (Pi and omp read `.agents/skills`). Rendering updates the bootstrap pin for later wrapper commands. In AWF's own checkout, use `./x` to execute the target checkout source.
 
 ### Resolve output migration in 0.60
 
