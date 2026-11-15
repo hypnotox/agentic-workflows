@@ -6,13 +6,12 @@ paths:
   - 'x'
   - 'go.mod'
   - 'go.sum'
-  - '.golangci*.yml'
   - '.github/workflows/ci.yml'
   - '**/*_test.go'
 ---
 
 # Development and assurance
 
-AWF development uses `./x` to run the checkout source. The generated `./awf` wrapper is reserved for the released bootstrap path.
+`x` is the checkout-source runner: `./x gate` checks Go formatting, then runs `go test ./...` and `go build ./...`, and the AWF subcommands run `go run ./cmd/awf`. CI's `gate` job runs `./x gate` and `./x check` and fails if `./x render` changes tracked files; pushes to `main` also run the tests and check on macOS arm64.
 
-Keep assurance focused on retained behavior: knowledge-bundle conformance and required descriptions, explicit ADR state pairs, reserved-file structure and topic exclusion, manual migration without authored rewrites, direct topic loading, file-backed static templates, canonical CLI/skill content sharing, authored agent-file preservation, fixed output ownership and version-record drift, topic matching and per-argument resolve output, create-only artifact destinations, opaque effort memory, embedded-doc routing and non-mutation, CLI smoke, and release bootstrap/launcher behavior. Test starter contracts through observable status, routing meaning, collision preservation, and opacity rather than exact explanatory wording or heading counts. Native release fixtures use the actual candidate archives, checksums, shared downloader, and public launcher; do not replace first-download coverage with a preseeded cache. Prefer `go test ./...` and `go build ./...` over selectors, timing systems, policy checkers, or tests of exact explanatory prose.
+Assurance is the Go test suite alongside each owning package, with no selectors, timing systems, or policy checkers. Tests pin observable contracts—status, routing meaning, collision preservation, ownership, opacity—rather than exact explanatory wording or heading counts.
