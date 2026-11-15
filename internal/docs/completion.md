@@ -8,7 +8,7 @@ The coordinating agent owns commits, review of the combined result, integration,
 
 ## Review cues
 
-Independent review is warranted when the work involves several viable designs, a public contract or compatibility change, a hard-to-reverse step, or guidance that changes agent behavior. Routine changes and uniform mechanical edits need none, whatever their size. In a repository that uses AWF, these cues take the place of the general review threshold in `agentic-reviewing` and the methods that cite it; other work may be reviewed at your judgment but need not be. `agentic-reviewing` owns choosing the reviewer, briefing, reuse, and fallback. Give the reviewer the target and its basis, not your conclusion.
+The review cues are the situations in which `agentic-reviewing` says independent review is warranted, such as several viable designs, a public contract or compatibility change, or a hard-to-reverse step. Routine changes and uniform mechanical edits need none, whatever their size. `agentic-reviewing` owns that list, choosing the reviewer, briefing, reuse, and fallback. Give the reviewer the target and its basis, not your conclusion.
 
 ## Verify each coherent unit
 
@@ -46,7 +46,7 @@ Integrate with native Git under the repository's conventions; AWF does not integ
 
 ## Retrospective
 
-A retrospective is required when the work used an effort or met a meaningful issue, such as a failed approach, a misunderstanding, a user correction, or friction with tools or guidance, even if resolved. Routine effort-free changes need none. This specializes the work-history review in `agentic-implementing`, which owns how to run it and when to make it independent.
+A retrospective is required when the work used an effort or met a meaningful issue, such as a failed approach, a misunderstanding, a user correction, or friction with tools or guidance, even if resolved. Routine effort-free changes need none. This applies the retrospective rule in `agentic-implementing`, which owns how to run it and when to make it independent; in AWF, an effort marks long-running or multi-stage work.
 
 Run it once verification, review findings, documentation, and any integration within the task are reconciled, before the final report and cleanup; a merge awaiting confirmation in the task comes first, while a pull request handoff does not wait for its later merge. Supply the history as evidence: effort memory and notes, decisions, review findings, and verification and integration outcomes. Report material findings to the user, including resolved issues worth tracking.
 

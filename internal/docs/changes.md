@@ -6,7 +6,7 @@ Commands use `./awf`; substitute the repository's AWF runner. Other workflows ar
 
 ## Review cues
 
-Independent review is warranted when the work involves several viable designs, a public contract or compatibility change, a hard-to-reverse step, or guidance that changes agent behavior. Routine changes and uniform mechanical edits need none, whatever their size. In a repository that uses AWF, these cues take the place of the general review threshold in `agentic-reviewing` and the methods that cite it; other work may be reviewed at your judgment but need not be. `agentic-reviewing` owns choosing the reviewer, briefing, reuse, and fallback. Give the reviewer the target and its basis, not your conclusion.
+The review cues are the situations in which `agentic-reviewing` says independent review is warranted, such as several viable designs, a public contract or compatibility change, or a hard-to-reverse step. Routine changes and uniform mechanical edits need none, whatever their size. `agentic-reviewing` owns that list, choosing the reviewer, briefing, reuse, and fallback. Give the reviewer the target and its basis, not your conclusion.
 
 ## Settle the direction
 

@@ -14,7 +14,7 @@ From the checkout that owns the decision:
 
 Use one record per coherent decision area, splitting choices with independent reasons to change. Record the choice, its scope, the evidence, and the rationale worth keeping. An ADR is not a specification summary: reference the originating intent or specification and related active decisions instead of copying requirements, or state the basis briefly when none exists. Follow `awf docs knowledge` for metadata and replace starter prompts.
 
-Independent review of a new or revised decision is warranted when it involves several viable designs, a public contract or compatibility change, a hard-to-reverse step, or guidance that changes agent behavior; routine corrections need none. In a repository that uses AWF, these cues take the place of the general review threshold in `agentic-reviewing`, from the required agentic-skills package, which owns how the review is done. Assess fit to the agreed outcome and constraints, the rationale, and consistency with active authority; an applicable direction or definition review can cover this. Address material findings before dependent work.
+Independent review of a new or revised decision is warranted in the situations `agentic-reviewing`, from the required agentic-skills package, lists for review, such as several viable designs or a hard-to-reverse step; routine corrections need none. That skill owns how the review is done and names the reviewer for a decision record. Assess fit to the agreed outcome and constraints, the rationale, and consistency with active authority; an applicable direction or definition review can cover this. Address material findings before dependent work.
 
 ## Maintain decision authority
 
