@@ -46,7 +46,7 @@ func TestUnrelatedCommandsDoNotRequireOrChangeVersionRecord(t *testing.T) {
 
 func TestCheckWithoutInstallationReportsMissingOutputs(t *testing.T) {
 	code, stdout, stderr := runCLI(t, t.TempDir(), "check")
-	if code != 1 || stderr != "" || !strings.Contains(stdout, ".awf/VERSION: missing generated file") {
+	if code != 1 || stderr != "" || !strings.Contains(stdout, ".awf/VERSION: missing generated file; run `awf render`") {
 		t.Fatalf("uninstalled check = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 }

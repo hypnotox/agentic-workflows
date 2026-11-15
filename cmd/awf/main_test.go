@@ -145,7 +145,7 @@ func TestRenderReportsAndCheckFailsUnmanagedMarker(t *testing.T) {
 		t.Fatalf("render = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 	code, stdout, stderr = runCLI(t, root, "check")
-	if code != 1 || stderr != "" || !strings.Contains(stdout, "old.md: unmanaged file still carries an AWF ownership marker") {
+	if code != 1 || stderr != "" || !strings.Contains(stdout, "old.md: unmanaged file still carries an AWF ownership marker; delete it") {
 		t.Fatalf("check = code %d, stdout %q, stderr %q", code, stdout, stderr)
 	}
 

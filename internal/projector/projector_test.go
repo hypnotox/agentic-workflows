@@ -297,10 +297,10 @@ func TestRenderCheckRepairAndUnmanagedMarkers(t *testing.T) {
 		t.Fatal(err)
 	}
 	want := []Finding{
-		{Path: codexPath, Message: "generated content differs"},
-		{Path: ".claude/skills/awf-topics/SKILL.md", Message: "generated content differs"},
-		{Path: "awf", Message: "generated executable state differs"},
-		{Path: "old.md", Message: "unmanaged file still carries an AWF ownership marker"},
+		{Path: codexPath, Message: "generated content differs; run `awf render`"},
+		{Path: ".claude/skills/awf-topics/SKILL.md", Message: "generated content differs; run `awf render`"},
+		{Path: "awf", Message: "generated executable state differs; run `awf render`"},
+		{Path: "old.md", Message: "unmanaged file still carries an AWF ownership marker; delete it, or remove the marker to keep it as your own"},
 	}
 	if !reflect.DeepEqual(findings, want) {
 		t.Fatalf("drift findings = %#v, want %#v", findings, want)
@@ -354,7 +354,7 @@ func TestCheckPrunesUnmanagedMarkersInNestedRepositories(t *testing.T) {
 	if err != nil {
 		t.Fatal(err)
 	}
-	want := []Finding{{Path: "ordinary/retired.md", Message: "unmanaged file still carries an AWF ownership marker"}}
+	want := []Finding{{Path: "ordinary/retired.md", Message: "unmanaged file still carries an AWF ownership marker; delete it, or remove the marker to keep it as your own"}}
 	if !reflect.DeepEqual(findings, want) {
 		t.Fatalf("Check = %#v, want %#v", findings, want)
 	}
@@ -462,7 +462,7 @@ func TestVersionRecordTracksRendererWithoutControllingResolution(t *testing.T) {
 	}
 	Version = "2.0.0"
 	findings, err := Check(root)
-	if err != nil || !slices.Contains(findings, Finding{Path: VersionPath, Message: "generated content differs"}) {
+	if err != nil || !slices.Contains(findings, Finding{Path: VersionPath, Message: "generated content differs; run `awf render`"}) {
 		t.Fatalf("new renderer Check = %#v, %v", findings, err)
 	}
 	if _, err := Render(root); err != nil {
@@ -476,7 +476,7 @@ func TestVersionRecordTracksRendererWithoutControllingResolution(t *testing.T) {
 		t.Fatal(err)
 	}
 	findings, err = Check(root)
-	want := []Finding{{Path: VersionPath, Message: "missing generated file"}}
+	want := []Finding{{Path: VersionPath, Message: "missing generated file; run `awf render`"}}
 	if err != nil || !reflect.DeepEqual(findings, want) {
 		t.Fatalf("missing record Check = %#v, %v", findings, err)
 	}

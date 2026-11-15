@@ -88,7 +88,7 @@ func Check(root string) ([]Finding, error) {
 			return nil, fmt.Errorf("inspect %s: %w", output.Path, err)
 		}
 		if info == nil {
-			findings = append(findings, Finding{Path: output.Path, Message: "missing generated file"})
+			findings = append(findings, Finding{Path: output.Path, Message: "missing generated file; run `awf render`"})
 			continue
 		}
 		if !info.Mode().IsRegular() {
@@ -100,10 +100,10 @@ func Check(root string) ([]Finding, error) {
 			continue
 		}
 		if !bytes.Equal(content, output.Bytes) {
-			findings = append(findings, Finding{Path: output.Path, Message: "generated content differs"})
+			findings = append(findings, Finding{Path: output.Path, Message: "generated content differs; run `awf render`"})
 		}
 		if !sameExecutableClass(info.Mode(), output.Mode) {
-			findings = append(findings, Finding{Path: output.Path, Message: "generated executable state differs"})
+			findings = append(findings, Finding{Path: output.Path, Message: "generated executable state differs; run `awf render`"})
 		}
 	}
 	unmanaged, err := unmanagedMarkedFiles(root, outputs)
@@ -111,7 +111,7 @@ func Check(root string) ([]Finding, error) {
 		return nil, err
 	}
 	for _, path := range unmanaged {
-		findings = append(findings, Finding{Path: path, Message: "unmanaged file still carries an AWF ownership marker"})
+		findings = append(findings, Finding{Path: path, Message: "unmanaged file still carries an AWF ownership marker; delete it, or remove the marker to keep it as your own"})
 	}
 	sort.Slice(findings, func(i, j int) bool {
 		if findings[i].Path == findings[j].Path {
