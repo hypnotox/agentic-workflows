@@ -28,7 +28,7 @@ func TestLegacyLayoutsRequireManualMigrationWithoutMutation(t *testing.T) {
 			}
 			for _, args := range [][]string{{"resolve"}, {"resolve", "src/new.go"}, {"init"}, {"render"}, {"check"}} {
 				code, stdout, stderr := runCLI(t, root, args...)
-				if code != 1 || stdout != "" || !strings.Contains(stderr, "legacy AWF source") || !strings.Contains(stderr, "docs integration") {
+				if code != 1 || stdout != "" || !strings.Contains(stderr, "legacy AWF source") || !strings.Contains(stderr, "docs migrate") {
 					t.Errorf("unmigrated %v = code %d, stdout %q, stderr %q", args, code, stdout, stderr)
 				}
 			}

@@ -17,6 +17,8 @@ All notable changes to `awf` are documented here, newest first.
 - Let each effort decide whether it needs a worktree and record the choice and reason in memory, instead of defaulting every effort with tracked changes to one.
 - State that the default commit cadence lands commits on the current branch of the working checkout and does not cover pushing or merging.
 - Move argument and output rules for `resolve`, `new`, `effort`, and `effort worktree add` from the guides into `awf help <command>`.
+- Add `awf docs migrate` for converting older installations and adapting to changed contracts. It takes over the transition material from `awf docs integration` and the still-applicable parts of the root `MIGRATING-v0.50.md`, which is removed from the repository and release archives; the original remains at the [v0.62.0 tag](https://github.com/hypnotox/agentic-workflows/blob/v0.62.0/MIGRATING-v0.50.md). The legacy-source error now points to `awf docs migrate`.
+- Rework the adoption guidance: the README leads with what AWF is for, the README and integration guide give the literal `init` command, and both warn before installation that every Markdown file under an existing `docs/` tree joins the knowledge bundle and needs frontmatter for `check` to pass. The knowledge guide moves checker edge cases to a closing section without changing any rule.
 
 ## [0.62.0] - 2026-10-11
 

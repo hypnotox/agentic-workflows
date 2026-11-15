@@ -24,6 +24,6 @@ Keep enforcement read-only and local to `check`, alongside existing topic and ge
 
 ## Consequences
 
-Existing adopters must add meaningful descriptions and migrate legacy ADR status explicitly, preserving bodies, selectors, and established authority. This is a breaking documentation contract, with manual instructions in `awf docs integration`. Missing optional metadata and unresolved cross-links remain acceptable. There is no required OKF service or runtime tool.
+Existing adopters must add meaningful descriptions and migrate legacy ADR status explicitly, preserving bodies, selectors, and established authority. This is a breaking documentation contract, with manual instructions in `awf docs migrate`. Missing optional metadata and unresolved cross-links remain acceptable. There is no required OKF service or runtime tool.
 
 The shared authoring contract lives in `awf docs knowledge`; this record owns the lasting rationale rather than duplicating its validation rules. Tests in `internal/knowledge/`, `internal/artifactfs/`, and `internal/projector/` cover structural acceptance, starter output, reserved-name routing, and manual migration without authored rewrites. The local gate and Linux native-release smoke verified the applicable implementation during adoption. These checks do not attest the contents of adopter documents.

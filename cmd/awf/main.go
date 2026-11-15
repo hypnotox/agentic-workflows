@@ -137,7 +137,7 @@ func runDocs(args []string, stdout, stderr io.Writer) int {
 		return 0
 	}
 	if len(args) > 1 {
-		return usage(stderr, "usage: awf docs [integration|knowledge|agents|topics|effort|changes|adr|completion]")
+		return usage(stderr, "usage: awf docs [integration|migrate|knowledge|agents|topics|effort|changes|adr|completion]")
 	}
 	name := ""
 	if len(args) == 1 {
@@ -145,7 +145,7 @@ func runDocs(args []string, stdout, stderr io.Writer) int {
 	}
 	page, ok := awfdocs.Page(name)
 	if !ok {
-		return usage(stderr, fmt.Sprintf("unknown documentation page %q; expected integration, knowledge, agents, topics, effort, changes, adr, or completion", name))
+		return usage(stderr, fmt.Sprintf("unknown documentation page %q; expected integration, migrate, knowledge, agents, topics, effort, changes, adr, or completion", name))
 	}
 	if _, err := stdout.Write(page); err != nil {
 		return failure(stderr, err)
@@ -438,7 +438,7 @@ Run ` + "`awf help <command>`" + ` for command details or ` + "`awf docs`" + ` f
 const initHelp = `Usage: awf init
 
 Install the same fixed files as render. Agent instructions remain author-owned; no project descriptor is created.
-Read ` + "`awf docs integration`" + ` before adopting AWF in an existing repository.
+Read ` + "`awf docs integration`" + ` before adopting AWF in an existing repository, or ` + "`awf docs migrate`" + ` for an older AWF installation.
 `
 
 const renderHelp = `Usage: awf render
@@ -462,7 +462,7 @@ Paths are lexical and repository-relative; they need not exist. Separators are n
 See ` + "`awf docs topics`" + ` for authoring and maintenance.
 `
 
-const docsHelp = `Usage: awf docs [integration|knowledge|agents|topics|effort|changes|adr|completion]
+const docsHelp = `Usage: awf docs [integration|migrate|knowledge|agents|topics|effort|changes|adr|completion]
 
 Print the embedded overview or one adopter guide to standard output.
 `

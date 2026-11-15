@@ -46,11 +46,6 @@ archives:
           owner: root
           group: root
           mode: 0644
-      - src: MIGRATING-v0.50.md
-        info:
-          owner: root
-          group: root
-          mode: 0644
       - src: internal/docs/*.md
         info:
           owner: root
@@ -69,7 +64,6 @@ archives:
     files:
       - LICENSE
       - README.md
-      - MIGRATING-v0.50.md
       - internal/docs/*.md
 
 checksum:

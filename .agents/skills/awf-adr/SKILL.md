@@ -32,7 +32,7 @@ Records under `docs/decisions/` carry two hand-maintained fields, updated togeth
 | `accepted` | `draft` | Agreed, but not yet fully in effect. |
 | `active` | `stable` | Governs the repository; applicable implementation has been verified. |
 
-`decision_status` owns the state; `status` is its OKF representation. Record only agreement and implementation that actually happened; never invent acceptance. A decision may become accepted and active in the same change. `awf check` rejects missing or inconsistent pairs but never infers agreement or promotes a decision. To migrate a legacy `status: pending|accepted|active` field, follow `awf docs integration`.
+`decision_status` owns the state; `status` is its OKF representation. Record only agreement and implementation that actually happened; never invent acceptance. A decision may become accepted and active in the same change. `awf check` rejects missing or inconsistent pairs but never infers agreement or promotes a decision. To migrate a legacy `status: pending|accepted|active` field, follow `awf docs migrate`.
 
 Keep all records together in `docs/decisions/` and find relevant ones through topics and ordinary inspection. Topics state current implications and link to active ADRs for enduring choices.
 

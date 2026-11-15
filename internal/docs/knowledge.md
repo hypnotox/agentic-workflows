@@ -2,7 +2,7 @@
 
 Ordinary Markdown recursively under `docs/` forms an [Open Knowledge Format (OKF) v0.2](https://github.com/GoogleCloudPlatform/open-knowledge-format/blob/main/SPEC.md) knowledge bundle. This includes manually authored files and document kinds AWF does not create. Documents remain author-owned. Root README and agent instructions, generated skills, AWF's internal guides, and local effort memory are outside the bundle.
 
-Use this guide for the shared metadata and reserved-file contract. Use `awf docs topics` for routing, `awf docs changes` for change definitions and plans, and `awf docs adr` for decision authority. Use `awf docs integration` for installation and manual upgrades.
+Use this guide for the shared metadata and reserved-file contract. Use `awf docs topics` for routing, `awf docs changes` for change definitions and plans, and `awf docs adr` for decision authority. Use `awf docs integration` for installation and `awf docs migrate` for upgrading documents written before this contract.
 
 ## Concept metadata
 
@@ -28,7 +28,7 @@ Concept IDs are paths relative to `docs/`, without `.md`. Links starting with `/
 
 ## Reserved indexes and logs
 
-`index.md` and `log.md` are reserved at every depth. They are not concepts, need neither type nor description, and never become topics or require selectors. AWF recognizes Markdown extensions and these reserved basenames case-insensitively. Concept starters refuse these basenames; a directory called `index` or `log` is fine.
+`index.md` and `log.md` are reserved at every depth. They are not concepts, need neither type nor description, and never become topics or require selectors. Concept starters refuse these basenames; a directory called `index` or `log` is fine.
 
 An index groups linked list entries under Markdown headings:
 
@@ -39,7 +39,7 @@ An index groups linked list entries under Markdown headings:
 - [Design notes](design/) - Current design guidance.
 ```
 
-Indexes have no frontmatter except that `docs/index.md` may contain only `okf_version: "0.2"` in a YAML block. There is no need to create an index just to declare the version. Unknown declared versions receive best-effort structural checking, not rejection solely for their version.
+Indexes have no frontmatter except that `docs/index.md` may contain only `okf_version: "0.2"` in a YAML block. There is no need to create an index just to declare the version.
 
 A log has no frontmatter and records a flat list of updates under valid `YYYY-MM-DD` date headings, newest first:
 
@@ -55,12 +55,19 @@ A log has no frontmatter and records a flat list of updates under valid `YYYY-MM
 - Established the development documentation.
 ```
 
-Neither reserved file is required. Headings with no entries may represent an empty listing or history. Checks recognize Markdown headings and lists, including Setext headings, ordered lists, and reference-style links; fenced code and quoted examples are not sections or entries. Checks do not require an exhaustive listing, entry descriptions, particular prose, or bold labels in logs.
+Neither reserved file is required. Headings with no entries may represent an empty listing or history. Checks do not require an exhaustive listing, entry descriptions, particular prose, or bold labels in logs.
 
 ## Check the bundle
 
 Run `awf check` from the repository root. It reports repository-relative structural findings alongside existing generated-output checks and retains topic-selector validation. Every non-reserved Markdown file under the conventional ADR location, `docs/decisions/`, additionally requires the consistent, explicit state pair defined by `awf docs adr`. This check is location-bound: a custom type does not opt a decision record out, and an Architecture Decision type elsewhere does not opt a file in. Reserved files are exempt.
 
-The checker rejects invalid UTF-8, missing or malformed concept frontmatter, missing/blank/non-string type or description, invalid reserved-file structure, and missing/invalid/inconsistent ADR state pairs. An absent or empty `docs/` is valid. The scan is filesystem-based, includes hidden directories and manually authored Markdown, and does not consult Git or ignore rules. It does not follow symlinks; Markdown file entries must be regular files, and `docs/` itself must be a directory rather than a symlink.
+The checker rejects missing or malformed concept frontmatter, missing/blank/non-string type or description, invalid reserved-file structure, and missing/invalid/inconsistent ADR state pairs. An absent or empty `docs/` is valid.
 
 Validation is read-only and offline. It checks structure and declared-state consistency, not truth, completeness, prose quality, freshness, review evidence, agreement, implementation, or attestation. `init`, `render`, and `resolve` retain topic validation but do not acquire bundle-wide conformance gates. None of these commands migrates authored documents or synchronizes metadata.
+
+## Checker details
+
+- **Scope.** The scan is filesystem-based: it includes hidden directories and manually authored Markdown and does not consult Git or ignore rules. Markdown extensions and the reserved basenames match case-insensitively.
+- **Files.** Every file must be valid UTF-8. The scan does not follow symlinks: Markdown file entries must be regular files, and `docs/` itself must be a directory rather than a symlink.
+- **Reserved-file structure.** Checks recognize actual Markdown headings, lists, and links, including Setext headings, ordered lists, and reference-style links; fenced code and quoted examples are not sections or entries.
+- **Versions.** An index declaring an unknown `okf_version` receives best-effort structural checking, not rejection solely for its version.

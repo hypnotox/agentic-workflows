@@ -23,7 +23,7 @@ func TestUnrelatedCommandsDoNotRequireOrChangeVersionRecord(t *testing.T) {
 				}
 			}
 			for _, args := range [][]string{
-				{"docs"}, {"docs", "knowledge"}, {"docs", "agents"}, {"docs", "changes"}, {"docs", "adr"}, {"docs", "completion"}, {"version"},
+				{"docs"}, {"docs", "migrate"}, {"docs", "knowledge"}, {"docs", "agents"}, {"docs", "changes"}, {"docs", "adr"}, {"docs", "completion"}, {"version"},
 				{"new", "intent", "test"}, {"new", "spec", "test"}, {"new", "plan", "test"}, {"new", "adr", "test"},
 				{"new", "topic", "test", "src/**"}, {"resolve", "src/future.go"},
 				{"new", "effort", "test"}, {"effort", "list"}, {"effort", "show", "test"}, {"effort", "finish", "test"},

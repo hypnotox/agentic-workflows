@@ -36,7 +36,7 @@ type topicMetadata struct {
 func rejectLegacyLayout(root string) error {
 	for _, legacy := range []string{".awf/project.md", ".awf/agents-doc.yaml", ".awf/parts/agents-doc", ".awf/topics"} {
 		if _, err := os.Lstat(filepath.Join(root, filepath.FromSlash(legacy))); err == nil {
-			return fmt.Errorf("legacy AWF source at %s; preserve authored guidance in AGENTS.md and topics in %s, then retire the old source; run `awf docs integration` for manual migration", legacy, TopicsPath)
+			return fmt.Errorf("legacy AWF source at %s; preserve authored guidance in AGENTS.md and topics in %s, then retire the old source; run `awf docs migrate` for manual migration", legacy, TopicsPath)
 		} else if !os.IsNotExist(err) {
 			return fmt.Errorf("inspect %s: %w", legacy, err)
 		}

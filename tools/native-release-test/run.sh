@@ -52,7 +52,7 @@ EOF
 chmod 0755 "$root/fake-bin/curl"
 
 tar -xzf "$archive" -C "$root/bin"
-for guide in overview integration knowledge agents topics effort changes adr completion; do
+for guide in overview integration migrate knowledge agents topics effort changes adr completion; do
   [ -f "$root/bin/internal/docs/$guide.md" ] || { echo "native-release-test: missing internal/docs/$guide.md" >&2; exit 1; }
 done
 candidate="$root/bin/awf"
@@ -66,7 +66,7 @@ AWF_VERSION=0.0.0 bash "$launcher" docs integration > "$root/integration.md"
 cmp "$root/bin/internal/docs/integration.md" "$root/integration.md"
 bash "$launcher" docs > "$root/overview.md"
 cmp "$root/bin/internal/docs/overview.md" "$root/overview.md"
-for guide in knowledge agents topics effort changes adr completion; do
+for guide in migrate knowledge agents topics effort changes adr completion; do
   bash "$launcher" docs "$guide" > "$root/$guide.md"
   cmp "$root/bin/internal/docs/$guide.md" "$root/$guide.md"
 done

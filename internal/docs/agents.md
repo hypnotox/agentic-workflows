@@ -53,4 +53,4 @@ If Claude should read the same repository instructions, create an author-owned `
 @AGENTS.md
 ```
 
-Preserve useful Claude-specific instructions alongside that import when needed. Neither file is created, replaced, or structurally validated by AWF. See `awf docs integration` before transitioning previously generated agent guides to author ownership.
+Preserve useful Claude-specific instructions alongside that import when needed. Neither file is created, replaced, or structurally validated by AWF. See `awf docs migrate` before transitioning previously generated agent guides to author ownership.

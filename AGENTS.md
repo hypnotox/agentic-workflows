@@ -1,6 +1,6 @@
 # Agent guide
 
-`awf` is a public pre-1.0 Go CLI at `github.com/hypnotox/agentic-workflows`. It delivers fixed workflow skills and embedded guides, routes repository paths to current topics, keeps local effort memory, and offers create-only document starters. Own both the requested change and the project's long-term health.
+`awf` is a public pre-1.0 Go CLI at `github.com/hypnotox/agentic-workflows` that gives adopting repositories workflow skills for coding agents and routes them to current project knowledge; the global [product topic](docs/topics/product.md) states its responsibilities and boundaries. Own both the requested change and the project's long-term health.
 
 Keep the product direct and small: no policy engines, replacement configuration layers, or speculative abstractions. Preserve author ownership; never overwrite unmarked repository files except the reserved `.awf/VERSION` record, or automatically delete retired generated files. Keep the AWF CLI usable without services or network access once its pinned binary is available, and without Git except for worktree creation. The workflow skills require the agentic-skills package for their methods; do not restate those methods in AWF.
 
@@ -25,7 +25,7 @@ Use Conventional Commits with one concern per commit. Keep related implementatio
 
 - `README.md`: public entrypoint and documentation index.
 - `internal/docs/`: canonical adopter guides and shared workflow instructions.
+- `internal/docs/migrate.md` (`./x docs migrate`): conversion of older installations.
 - `docs/topics/`: path-routed current implementation knowledge.
 - `docs/changes/`, `docs/plans/`, `docs/decisions/`: authored change definitions, implementation routes, and enduring decisions when useful; see `./x docs changes` and `./x docs adr`.
-- `MIGRATING-v0.50.md`: conversion of older installations.
 - `CHANGELOG.md`: release history.
