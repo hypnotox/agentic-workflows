@@ -40,7 +40,7 @@ Use `awf docs adr` for affected decision records; lasting choices belong in ADRs
 
 ## Integrate and publish
 
-Confirm with the user before pushing, opening a pull request, tagging, or releasing, and before merging into the default branch, unless the request already authorized that step. These steps are visible outside the checkout or hard to undo. While a step awaits confirmation, finish everything that does not depend on it, including the report and any retrospective, and leave the worktree and branch in place.
+Confirm with the user before pushing, opening a pull request, tagging, or releasing, and before merging into the default branch, unless the request already authorized that step. These steps are visible outside the checkout or hard to undo. While a step awaits confirmation, finish and report everything that does not depend on it, and leave the worktree and branch in place. A retrospective waits for a merge the task is expected to perform, so it covers the integration.
 
 Integrate with native Git under the repository's conventions; AWF does not integrate. With a worktree, integrate and clean up from the primary checkout as `awf docs effort` describes. Afterwards, confirm verification covers the combined result in the target checkout, refreshing checks affected by divergence or conflict resolution, and reconcile affected ADR and topic links.
 
@@ -48,7 +48,7 @@ Integrate with native Git under the repository's conventions; AWF does not integ
 
 A retrospective is required when the work used an effort or met a meaningful issue, such as a failed approach, a misunderstanding, a user correction, or friction with tools or guidance, even if resolved. Routine effort-free changes need none. This specializes the work-history review in `agentic-implementing`, which owns how to run it and when to make it independent.
 
-Run it once verification, review findings, documentation, and any integration within the task are reconciled, before the final report and cleanup; a pull request handoff does not wait for the merge. Supply the history as evidence: effort memory and notes, decisions, review findings, and verification and integration outcomes. Report material findings to the user, including resolved issues worth tracking.
+Run it once verification, review findings, documentation, and any integration within the task are reconciled, before the final report and cleanup; a merge awaiting confirmation in the task comes first, while a pull request handoff does not wait for its later merge. Supply the history as evidence: effort memory and notes, decisions, review findings, and verification and integration outcomes. Report material findings to the user, including resolved issues worth tracking.
 
 Put a reusable lesson in the most specific topic under `awf docs topics`; topics hold current guidance, not incident history. Surface substantial follow-up instead of silently expanding the task, and track it in repository issues; effort notes are local.
 
