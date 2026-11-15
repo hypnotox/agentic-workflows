@@ -62,6 +62,14 @@ Depends on change 3, which defines what the descriptions carry.
 
 Run the same tasks against the rewritten skills and compare transcripts with the baseline: which skills loaded and when, whether topics were resolved and read, whether the direction came back to the user before planning, whether review and retrospective matched the new triggers, and whether integration waited for confirmation. Treat results as directional. Fix guidance at its source where the trial shows a misreading, as its own commit, and report what the trial did and did not show. The owner decides whether a trial result blocks integration.
 
+## Trial result
+
+Run on 2026-11-15 with one headless agent, one model, and one run per task; results are directional and live outside the repository.
+
+- With the previous guidance, the agent chose a design itself and reported afterwards, and merged into the default branch unasked.
+- With the rewritten guidance, after one wording fix found by the trial, the agent brought unstated material choices to the user before building and waited for confirmation before merging. The multi-stage task loaded native skills and obtained an independent review of a new output contract.
+- Not improved: native skills loaded only in the multi-stage task; the other tasks read `awf docs <page>` or no workflow, and the routine fix was not committed under either guidance. Whether descriptions alone route reliably, the condition for revisiting intent item 6, is therefore not established and is the owner's decision.
+
 ## Verification
 
 - `./x gate` and `./x render && ./x check` pass after each change.
