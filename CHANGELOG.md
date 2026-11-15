@@ -13,6 +13,7 @@ All notable changes to `awf` are documented here, newest first.
 ### Changed
 
 - Rewrite the five workflow skills and their `awf docs` pages. Each description now states when to load the skill, intended to replace copied trigger lists in `AGENTS.md`; a small one-off trial did not establish that descriptions alone route reliably, and each body opens with when it applies and is roughly a third shorter. Checkpoints name the `agentic-skills` method that does the work instead of restating its delegation, briefing, reuse, and fallback rules.
+- Point coordinating agents to `agentic-subagents` for choosing each delegated agent's model and reasoning effort.
 - Add human steering points: confirm the direction with the user before planning; bring a material deviation from the agreed outcome back to the user; and confirm before pushing, opening a pull request, tagging, or releasing, and before merging into the default branch, unless the request already authorized it. Routine work needs no plan approval.
 - Trigger independent review on the concrete situations listed by `agentic-reviewing` (such as several viable designs, a public contract or compatibility change, or a hard-to-reverse step) instead of "nontrivial judgment"; this needs an agentic-skills version that states them. Require a retrospective only for work that used an effort or met a meaningful issue.
 - Let each effort decide whether it needs a worktree and record the choice and reason in memory, instead of defaulting every effort with tracked changes to one.

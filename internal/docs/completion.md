@@ -4,7 +4,7 @@ Use this workflow throughout implementation, not only at the end: to verify and 
 
 Commands use `./awf`; substitute the repository's AWF runner. Other workflows are cited as `awf docs <page>`, the same text as the skill `awf-<page>`. Methods named `agentic-…` come from the required agentic-skills package: this workflow says where in the work they apply, and the method says how, including when independent review is warranted. `agentic-implementing` owns implementing, verifying, result review, and work-history review.
 
-The coordinating agent owns commits, review of the combined result, integration, and cleanup; delegated agents return their work, checks, and findings within their brief.
+The coordinating agent owns commits, review of the combined result, integration, and cleanup; delegated agents return their work, checks, and findings within their brief. When delegating, choose each agent's model and reasoning effort to fit the judgment that piece of work needs, as `agentic-subagents` describes: gathering evidence usually needs less capability than deciding on it.
 
 ## Review cues
 
